@@ -64,6 +64,15 @@ pub fn compile_cancellable(
         std::fs::create_dir_all(path.parent().expect("SDK parent"))?;
         std::fs::write(path, contents.replace("\n[lints]\nworkspace = true\n", ""))?;
     }
+    #[cfg(target_os = "linux")]
+    // SAFETY: geteuid has no arguments and does not mutate process state.
+    if unsafe { libc::geteuid() } == 0 {
+        // Account caches and the daemon's umask can make files owner-only. The
+        // dropped compiler identity reads only these copied public inputs;
+        // preserve the private cache's permissions and ownership.
+        read_only_input(&source)?;
+        read_only_input(&sdk)?;
+    }
     let cargo_home = work.join("cargo-home");
     std::fs::create_dir_all(&cargo_home)?;
     let rustup_home = std::env::var_os("RUSTUP_HOME")
@@ -334,6 +343,27 @@ fn container_staging() -> Result<Option<tempfile::TempDir>> {
         ));
     }
     Ok(None)
+}
+#[cfg(target_os = "linux")]
+fn read_only_input(path: &Path) -> Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    let metadata = path.symlink_metadata()?;
+    let mode = if metadata.is_dir() {
+        for entry in std::fs::read_dir(path)? {
+            read_only_input(&entry?.path())?;
+        }
+        0o555
+    } else if metadata.is_file() {
+        if metadata.permissions().mode() & 0o111 != 0 {
+            0o555
+        } else {
+            0o444
+        }
+    } else {
+        bail!("Compiler input cannot contain links or special files");
+    };
+    std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode))?;
+    Ok(())
 }
 #[cfg(target_os = "linux")]
 fn copy_source(original: &Path, target: &Path, files: &mut usize, bytes: &mut u64) -> Result<()> {

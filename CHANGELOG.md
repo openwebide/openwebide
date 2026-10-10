@@ -9,6 +9,8 @@ for what's still ahead.
 
 ## [Unreleased]
 
+- Make copied Rust source and embedded SDK inputs readable by the isolated Linux compiler identity, preserving private account-cache permissions during source installation.
+
 - Allow the selected Apple developer toolchain in the Rust plugin compiler sandbox, supporting hosts with a full Xcode installation as well as Command Line Tools.
 
 - Publish the Rust plugin SDK through a pinned public Git checkout, with a capability reference and source-authoring instructions. Marketplace CI validates catalog content and tests, lints and compiles executable references against that exact SDK; registry publication remains planned.

@@ -330,8 +330,25 @@ mod tests {
                 }}
             "#);
             std::fs::write(source.join("build.rs"), script).unwrap();
-            build::compile(&source, "sdk_fixture", &stage)
-                    .unwrap_or_else(|error| panic!("isolated source compilation: {error:#}"))
+            #[cfg(target_os = "linux")]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                for file in ["Cargo.toml", "Cargo.lock", "src/lib.rs", "build.rs"] {
+                    std::fs::set_permissions(source.join(file), std::fs::Permissions::from_mode(0o600)).unwrap();
+                }
+                for directory in [&source, &source.join("src")] {
+                    std::fs::set_permissions(directory, std::fs::Permissions::from_mode(0o700)).unwrap();
+                }
+            }
+            let bytes = build::compile(&source, "sdk_fixture", &stage)
+                    .unwrap_or_else(|error| panic!("isolated source compilation: {error:#}"));
+            #[cfg(target_os = "linux")]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                assert_eq!(std::fs::metadata(source.join("Cargo.toml")).unwrap().permissions().mode() & 0o777, 0o600);
+                assert_eq!(std::fs::metadata(&source).unwrap().permissions().mode() & 0o777, 0o700);
+            }
+            bytes
             })
             .clone()
     }
