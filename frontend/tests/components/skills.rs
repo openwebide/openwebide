@@ -12,7 +12,23 @@ fn fixture(mode: WorkspaceMode, chat: bool) -> Mounted {
         state.seed_connection();
         state.seed_session();
         if chat {
-            state.seed_plugin_tools(openwebide_core::plugins::PluginToolGroup::SkillAuthoring);
+            let prepared = state.seed_skill_plugin();
+            if mode == WorkspaceMode::Local {
+                state
+                    .settings
+                    .bridge_url
+                    .set("ws://bridge.test:3001".into());
+                *state.fake.bridge_credential.borrow_mut() =
+                    Some(("skills-test-token".into(), i64::MAX));
+                let mock = super::local_bridge::fake_bridge_http();
+                super::local_bridge::bridge_found(&mock, false);
+                super::local_bridge::set_bridge_plugin(
+                    &mock,
+                    &serde_json::to_string(&prepared).unwrap(),
+                );
+                let mock = send_wrapper::SendWrapper::new(mock);
+                on_cleanup(move || super::local_bridge::restore_bridge_http(&mock));
+            }
         }
         state
             .projects
@@ -449,7 +465,7 @@ async fn browser_skill_tools_persist_and_toggle_removes_context_and_tools_from_n
                 |(_, command, session)| *session && matches!(command, SkillCommand::Create { .. })
             )
             .count(),
-        1
+        0
     );
 }
 

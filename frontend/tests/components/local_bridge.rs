@@ -73,25 +73,29 @@ export function fakeBridgeHttp() {
         if (path === '/plugins/prepare' || path === '/plugins/package') { const plugin = JSON.parse(mock.plugin); return mock.invalid ? new Response(JSON.stringify({error:'preparation failed'}), {status:400}) : new Response(JSON.stringify(path === '/plugins/prepare' ? (plugin.prepared || plugin) : plugin)); }
         if (path === '/plugins/invoke') {
             mock.actor = body.call;
+            const plugin = JSON.parse(mock.plugin);
+            mock.collection = (plugin.prepared || plugin).manifest.executable.library === 'skills_fixture' ? 'skills' : 'memories';
             return new Response(JSON.stringify({id:'plugin-ui', step:{status:'ready'}}));
         }
         if (path === '/plugins/continue') {
             const continuation = body.continuation;
             if (continuation.sequence === 0) {
                 if (mock.actor.operation === 'context') {
-                    return new Response(JSON.stringify({id:'plugin-ui', step:{status:'host_call', sequence:1, capability:'collections', payload:JSON.stringify({collection:'memories', operation:{action:'list', after:0}})}}));
+                    return new Response(JSON.stringify({id:'plugin-ui', step:{status:'host_call', sequence:1, capability:'collections', payload:JSON.stringify({collection:mock.collection, operation:{action:'list', after:0}})}}));
                 }
                 const args = JSON.parse(mock.actor.arguments);
-                const action = mock.actor.name.replace('memory_', '');
-                const value = {title:args.title, content:args.content, auto_title:args.auto_title};
+                const action = mock.actor.name.replace(/^(memory|skill)_/, '');
+                const value = mock.collection === 'skills' ? {draft:args.draft} : {title:args.title, content:args.content, auto_title:args.auto_title};
                 const operation = action === 'create' ? {action, value} : action === 'update' ? {action, id:args.id, revision:args.revision, value} : {action, id:args.id, revision:args.revision};
-                return new Response(JSON.stringify({id:'plugin-ui', step:{status:'host_call', sequence:1, capability:'collections', payload:JSON.stringify({collection:'memories', operation})}}));
+                return new Response(JSON.stringify({id:'plugin-ui', step:{status:'host_call', sequence:1, capability:'collections', payload:JSON.stringify({collection:mock.collection, operation})}}));
             }
             const ok = continuation.response.Ok !== undefined;
             if (mock.actor.operation === 'context' && ok) {
                 const page = JSON.parse(continuation.response.Ok);
-                const tools = JSON.parse(mock.plugin).manifest.contributions.tools.map(tool => tool.name);
-                const content = JSON.stringify({prompt:page.enabled ? page.records.map(record => record.value.content).join('\n') || null : null, disabled_tools:page.enabled ? [] : tools});
+                const plugin = JSON.parse(mock.plugin);
+                const tools = (plugin.prepared || plugin).manifest.contributions.tools.map(tool => tool.name);
+                const prompt = page.records.map(record => mock.collection === 'skills' ? record.value.draft.name : record.value.content).join('\n');
+                const content = JSON.stringify({prompt:page.enabled ? prompt || null : null, disabled_tools:page.enabled ? [] : tools});
                 return new Response(JSON.stringify({id:'plugin-ui', step:{status:'complete', ok:true, content, summary:'Fixture context'}}));
             }
             return new Response(JSON.stringify({id:'plugin-ui', step:{status:'complete', ok, content:ok ? continuation.response.Ok : continuation.response.Err, summary:ok ? 'Stored' : 'Failed'}}));

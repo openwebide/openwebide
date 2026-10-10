@@ -248,6 +248,58 @@ pub struct FakeBackend {
 }
 
 impl FakeBackend {
+    fn fixture_skill_records(
+        &self,
+        project: i64,
+        request: &openwebide_core::plugins::records::RecordRequest,
+    ) -> Result<String, String> {
+        use openwebide_core::plugins::records::RecordOperation;
+        let mut all = self.skills.borrow_mut();
+        let data = all.entry(project).or_default();
+        match &request.operation {
+            RecordOperation::Create { value } => {
+                let draft = serde_json::from_value(value["draft"].clone())
+                    .map_err(|error| error.to_string())?;
+                let id = data.entries.iter().map(|entry| entry.id).max().unwrap_or(0) + 1;
+                data.entries.insert(
+                    0,
+                    openwebide_core::ProjectSkill {
+                        plugin: None,
+                        id,
+                        revision: 1,
+                        updated_at: 0,
+                        draft,
+                    },
+                );
+            }
+            RecordOperation::Update {
+                id,
+                revision,
+                value,
+            } => {
+                let entry = data
+                    .entries
+                    .iter_mut()
+                    .find(|entry| entry.id == *id && entry.revision == *revision)
+                    .ok_or("Skill changed. Refresh before editing.")?;
+                entry.draft = serde_json::from_value(value["draft"].clone())
+                    .map_err(|error| error.to_string())?;
+                entry.revision += 1;
+            }
+            RecordOperation::Delete { id, revision } => {
+                let index = data
+                    .entries
+                    .iter()
+                    .position(|entry| entry.id == *id && entry.revision == *revision)
+                    .ok_or("Skill changed. Refresh before deleting.")?;
+                data.entries.remove(index);
+            }
+            _ => {}
+        }
+        let records: Vec<_> = data.entries.iter().map(|entry| serde_json::json!({"id":entry.id,"revision":entry.revision,"updated_at":entry.updated_at,"value":{"draft":entry.draft,"origin":entry.plugin}})).collect();
+        Ok(serde_json::json!({"enabled":data.enabled,"records":records,"next":null}).to_string())
+    }
+
     fn fixture_tasks<'a>(
         &'a self,
         project: Option<i64>,
@@ -639,6 +691,9 @@ impl Backend for FakeBackend {
             let project = scope.project_id.ok_or("Missing project")?;
             let command: openwebide_core::plugins::records::RecordRequest =
                 serde_json::from_str(&request.payload).map_err(|error| error.to_string())?;
+            if command.collection == "skills" {
+                return self.fixture_skill_records(project, &command);
+            }
             let pending = self.memory_command_results.borrow_mut().pop_front();
             if let Some(pending) = pending {
                 pending.await.map_err(|error| error.to_string())??;

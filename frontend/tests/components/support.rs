@@ -156,19 +156,33 @@ impl TestState {
         self.projects.active_project.set(Some(1));
     }
 
-    pub fn seed_plugin_tools(&self, group: openwebide_core::plugins::PluginToolGroup) {
-        let mut prepared = openwebide_core::plugins::testing::receipt();
-        prepared.manifest.compatibility.plugin_api = 2;
-        prepared.manifest.contributions.tool_groups = vec![group];
-        self.fake.project_plugin_entries.borrow_mut().insert(
-            1,
-            vec![openwebide_core::plugins::ProjectPlugin {
-                id: 1,
-                revision: 1,
-                prepared,
-                enabled: true,
-            }],
-        );
+    pub fn seed_skill_plugin(&self) -> openwebide_core::plugins::PreparedPlugin {
+        use openwebide_core::plugins::PluginTool;
+        let mut prepared = self.seed_memory_plugin();
+        prepared.manifest.contributions.tools = [
+            "skill_create",
+            "skill_update",
+            "skill_delete",
+            "skill_search",
+            "skill_list",
+            "skill_read",
+        ]
+        .into_iter()
+        .map(|name| PluginTool {
+            name: name.into(),
+            description: "SDK Skills fixture".into(),
+            parameters: serde_json::json!({"type":"object"}),
+            requires_approval: matches!(name, "skill_create" | "skill_update" | "skill_delete"),
+        })
+        .collect();
+        prepared.manifest.executable.as_mut().unwrap().library = "skills_fixture".into();
+        self.fake
+            .project_plugin_entries
+            .borrow_mut()
+            .get_mut(&1)
+            .unwrap()[0]
+            .prepared = prepared.clone();
+        prepared
     }
 
     pub fn seed_scheduling_plugin(&self) {
