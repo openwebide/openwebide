@@ -6,6 +6,53 @@ use serde::{Deserialize, Serialize};
 /// App and bridge control endpoints reject plugin transport credentials.
 pub const PLUGIN_HTTP_HEADER: &str = "x-openwebide-plugin";
 
+/// Preserve public validation messages consistently across both transports.
+/// Malformed responses and internal error bodies receive a generic message.
+pub fn host_rpc_error(status: u16, response: &[u8]) -> String {
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct PublicError {
+        error: String,
+    }
+    if status == 400
+        && response.len() <= 4096
+        && let Ok(error) = serde_json::from_slice::<PublicError>(response)
+        && !error.error.trim().is_empty()
+    {
+        return error.error;
+    }
+    format!("Plugin execution host request failed (HTTP {status})")
+}
+
+#[cfg(test)]
+mod host_error_tests {
+    use super::host_rpc_error;
+
+    #[test]
+    fn validation_errors_survive_transport_without_exposing_internal_errors() {
+        let capacity = br#"{"error":"Too many active plugin invocations."}"#;
+        assert_eq!(
+            host_rpc_error(400, capacity),
+            "Too many active plugin invocations."
+        );
+        assert_eq!(
+            host_rpc_error(500, capacity),
+            "Plugin execution host request failed (HTTP 500)"
+        );
+        for body in [
+            b"not JSON".as_slice(),
+            br#"{"error":""}"#,
+            br#"{"error":"validation","private":"internal"}"#,
+            &[b'a'; 4097],
+        ] {
+            assert_eq!(
+                host_rpc_error(400, body),
+                "Plugin execution host request failed (HTTP 400)"
+            );
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PluginOperation {

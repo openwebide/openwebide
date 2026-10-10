@@ -398,9 +398,10 @@ and the agent can manage, without requiring changes to the app for each new
 capability.
 
 - Activate the executable Scheduling release and verify interrupted-run recovery,
-  updates during active work and invocation error recovery on server and paired
-  hosts, extending deployed CRUD, configured naming, delivered agent work,
-  bounded monitors and pending-occurrence source-version handoff verification.
+  updates and delivery failures during scheduled agent execution on server and
+  paired hosts, extending deployed CRUD, configured naming, delivered agent work,
+  bounded monitors, pending-occurrence source-version handoff and active Rust
+  invocation version pinning verification.
   Verify history retention and
   quota recovery through the browser lifecycle before removing transitional
   built-in handlers.

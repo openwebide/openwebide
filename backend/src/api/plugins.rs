@@ -73,7 +73,9 @@ async fn send_plugin_rpc<T: serde::de::DeserializeOwned>(
             error.public_message().to_owned()
         })?;
     if status != 200 {
-        return Err("Plugin execution host request failed".into());
+        return Err(openwebide_core::plugins::execution::host_rpc_error(
+            status, &response,
+        ));
     }
     serde_json::from_slice(&response)
         .map_err(|_| "Plugin execution host returned an invalid response".into())
@@ -435,7 +437,9 @@ pub(crate) async fn prepare(
     .await?;
     if status != 200 {
         return Err(if status == 400 {
-            ApiError::bad_request(String::from_utf8_lossy(&body))
+            ApiError::bad_request(openwebide_core::plugins::execution::host_rpc_error(
+                status, &body,
+            ))
         } else {
             ApiError::bad_gateway("Plugin preparation failed on the execution host.")
         });
@@ -482,7 +486,9 @@ pub(crate) async fn preparation(
     .await?;
     if status != 200 {
         return Err(if status == 400 {
-            ApiError::bad_request(String::from_utf8_lossy(&body))
+            ApiError::bad_request(openwebide_core::plugins::execution::host_rpc_error(
+                status, &body,
+            ))
         } else {
             ApiError::bad_gateway("Plugin preparation is unavailable on the execution host.")
         });

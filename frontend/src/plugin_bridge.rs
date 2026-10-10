@@ -36,10 +36,9 @@ impl PluginBridgeClient {
                 .await
                 .map_err(|error| format!("Plugin host unavailable: {error}"))?;
         if !response.ok() {
-            return Err(format!(
-                "Plugin host HTTP {}: {}",
+            return Err(openwebide_core::plugins::execution::host_rpc_error(
                 response.status(),
-                response.text().await.unwrap_or_default()
+                response.text().await.unwrap_or_default().as_bytes(),
             ));
         }
         response.json().await.map_err(|error| error.to_string())

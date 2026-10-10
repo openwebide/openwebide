@@ -9,7 +9,11 @@ for what's still ahead.
 
 ## [Unreleased]
 
-- Verify Scheduling source-version handoff through deployed server and paired hosts using two Git-pinned, host-compiled executable versions. Periodic reconciliation advances the pending occurrence's generation; the updated plugin delivers it once and preserves its durable history. Updates during active work and invocation error recovery remain under verification.
+- Share bounded plugin host error decoding between server and paired transports. Preserve public validation messages, including invocation capacity errors, while returning generic messages for malformed responses and internal failures. Deployed checks verify validation-failure recovery, bounded admission and capacity reclamation after cancellation on both hosts.
+
+- Verify executable version pinning during deployed plugin updates on both hosts: an executing Rust invocation resumes with its original component and grant, while subsequent invocations use the updated source.
+
+- Verify Scheduling source-version handoff through deployed server and paired hosts using two Git-pinned, host-compiled executable versions. Periodic reconciliation advances the pending occurrence's generation; the updated plugin delivers it once and preserves its durable history. Scheduled agent interruption and concurrent delivery failure recovery remain under verification.
 
 - Verify compiled defaults through deployed server and paired-host HTTP flows: plugin-owned Memory and Skill CRUD, configured Memory/Scheduling naming, scheduled agent execution and bounded monitors. Pending scheduled work survives full deployment restarts. Monitor cancellation remains conversation-scoped, and completed checks leave the active flyout state. Browser lifecycle verification remains in progress.
 
