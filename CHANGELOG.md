@@ -9,6 +9,8 @@ for what's still ahead.
 
 ## [Unreleased]
 
+- Verify Scheduling source-version handoff through deployed server and paired hosts using two Git-pinned, host-compiled executable versions. Periodic reconciliation advances the pending occurrence's generation; the updated plugin delivers it once and preserves its durable history. Updates during active work and invocation error recovery remain under verification.
+
 - Verify compiled defaults through deployed server and paired-host HTTP flows: plugin-owned Memory and Skill CRUD, configured Memory/Scheduling naming, scheduled agent execution and bounded monitors. Pending scheduled work survives full deployment restarts. Monitor cancellation remains conversation-scoped, and completed checks leave the active flyout state. Browser lifecycle verification remains in progress.
 
 - Make copied Rust source and embedded SDK inputs readable by the isolated Linux compiler identity, preserving private account-cache permissions during source installation. Verify public Git source compilation and plugin-owned execution in the production image, cancellation during preparation, cache reuse, and server installation with inherited project enablement.

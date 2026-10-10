@@ -397,9 +397,10 @@ Extend agent and editor capabilities through versioned plugin packages that user
 and the agent can manage, without requiring changes to the app for each new
 capability.
 
-- Activate the executable Scheduling release and verify interrupted-run recovery
-  and source-version handoff on server and paired hosts, extending deployed CRUD,
-  configured naming, delivered agent work and bounded monitor verification.
+- Activate the executable Scheduling release and verify interrupted-run recovery,
+  updates during active work and invocation error recovery on server and paired
+  hosts, extending deployed CRUD, configured naming, delivered agent work,
+  bounded monitors and pending-occurrence source-version handoff verification.
   Verify history retention and
   quota recovery through the browser lifecycle before removing transitional
   built-in handlers.
