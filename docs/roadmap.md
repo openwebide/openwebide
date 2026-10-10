@@ -97,6 +97,11 @@ tracks the remaining work rather than every optimization already shipped.
   near-2-MiB Rust fallback edit around 8 ms; repeat and measure actual facade/view
   costs before claiming latency completion. Explicit structural actions use cooperative preparation
   with request-time cancellation.
+  Oversized direct preparation now rejects before grammar construction, matching
+  the worker's existing byte-admission ordering and releasing only the affected
+  cached document. Its 633 native core tests and strict native/WASM library lint
+  pass. This avoids unnecessary parser setup above the syntax limit;
+  admitted-source preparation and physical cold readiness still need improvement.
 
 - [ ] **Cold startup and native input:** remove remaining full-source shaping in
   touch and unsupported-layout fallbacks. Desktop startup now uses bounded native

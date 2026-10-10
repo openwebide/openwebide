@@ -5627,3 +5627,22 @@ takes 8.36 ms. Above the syntax cap, sampled document construction also remains
 visible. Keep cold readiness, admission, fallback/source work and real UI
 responsiveness open; do not extrapolate the native debug literal improvement
 to full editor latency.
+
+### Early byte admission before direct parser construction
+
+The shared `SyntaxPreparations::prepare_with` cache now checks the existing
+`MAX_STRUCTURE_BYTES` limit before taking or constructing a grammar document.
+Borrowed, shared and editing-context preparation use this entry point; the
+worker already applies the same byte cap before document construction. Oversized
+requests remove only their cached owner and return `TooLarge` before consulting
+cancellation. Ordinary editing and the document admission limit are unchanged.
+
+The regression checks preparation is not invoked, unrelated cached source stays
+available, and all three direct APIs plus the worker preserve rejection ordering.
+All 633 native core tests pass with `editor-parser`, as do strict native
+all-target lint, strict WASM library lint, formatting and diff checks. The
+standalone core WASM all-target command fails in the native proptest/getrandom
+test dependency configuration; it is not counted as successful browser
+verification. No new frontend browser run or latency measurement was performed
+for this guard. This is a construction-order change, not evidence of admitted-source
+cold readiness or frontend latency improvement.

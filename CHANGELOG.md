@@ -9,6 +9,8 @@ for what's still ahead.
 
 ## [Unreleased]
 
+- Reject oversized syntax requests before constructing a grammar parser in the shared preparation cache, releasing stale analysis while preserving ordinary editing above the syntax limit.
+
 - Add shared native/WASM measurements for admitted-document input preparation, comparing editing context with full decoration output and recording budget fallbacks.
 
 - Prepare ordinary-input editing context without also generating syntax highlights and folds, sharing the same parser structure and source validation.
