@@ -9,6 +9,8 @@ for what's still ahead.
 
 ## [Unreleased]
 
+- Verify Scheduling updates during streamed agent execution on both deployed hosts. Plugin-owned reconciliation invalidates the prior generation, cancels its active run, retains one terminal history snapshot with the original message and avoids requeueing an accepted one-time prompt.
+
 - Verify interrupted Scheduling delivery on deployed server and paired hosts: restart during an actual streamed response, recover the expired lease as interrupted, preserve one history result with the original message, and avoid replaying the accepted prompt.
 
 - Verify Scheduling quota recovery through both deployed host transports. Fill history through the public collections capability, journal a real delivery preflight failure at quota, and invoke bounded Rust reconciliation to free space and flush that journal exactly once. Browser lifecycle verification remains in progress.

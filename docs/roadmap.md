@@ -397,14 +397,13 @@ Extend agent and editor capabilities through versioned plugin packages that user
 and the agent can manage, without requiring changes to the app for each new
 capability.
 
-- Activate the executable Scheduling release and verify source-version updates
-  during scheduled agent execution on server and
-  paired hosts, extending deployed CRUD, configured naming, delivered agent work,
-  bounded monitors, pending-occurrence source-version handoff and active Rust
-  invocation version pinning, interrupted-run recovery and full-quota preflight
-  journaling/retention verification. Verify history retention and quota recovery
-  through the browser lifecycle before removing transitional
-  built-in handlers.
+- Activate the executable Scheduling release after deployed browser lifecycle
+  verification, extending server and paired-host HTTP checks for CRUD, configured
+  naming, delivered agent work, bounded monitors, pending-occurrence handoff,
+  active invocation pinning, updates during streamed execution, interrupted-run
+  recovery and full-quota preflight journaling/retention. Verify history retention
+  and quota recovery through the browser before removing transitional built-in
+  handlers.
 - Extend authenticated, run-pinned private record callbacks with shared collection
   adapters for further app data and workspace primitives. Verify compiled-default
   initialization through deployed browser flows, extending the verified server
