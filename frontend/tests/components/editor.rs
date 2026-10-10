@@ -3235,6 +3235,107 @@ async fn built_in_language_parser_folds_share_local_remote_and_wasm_contracts() 
 }
 
 #[wasm_bindgen_test]
+async fn held_syntax_keeps_embedded_typing_and_post_edit_context_in_both_modes() {
+    use openwebide_core::{
+        WorkspaceMode,
+        editor::{Indentation, Selection},
+    };
+    use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        for (path, source) in [
+            ("pending.html", "<script>\nfunction run() {}\n</script>"),
+            ("pending.md", "```javascript\nfunction run() {}\n```"),
+            (
+                "mixed.html",
+                "<script>\nfunction run() {}\n</script>\n<style>\na {}\n</style>",
+            ),
+            (
+                "mixed.md",
+                "```javascript\nfunction run() {}\n```\n```css\na {}\n```",
+            ),
+        ] {
+            let slot = std::rc::Rc::new(std::cell::Cell::new(None::<EditorActions>));
+            let capture = slot.clone();
+            let transport = std::rc::Rc::new(DeferredSyntax::default());
+            let installed = transport.clone();
+            let mounted = mount_test(move |state| {
+                state.seed_project();
+                state
+                    .projects
+                    .projects
+                    .update(|projects| projects[0].mode = mode);
+                state.workspace.open_file.set(Some(path.into()));
+                state.workspace.content.set(source.into());
+                let actions = EditorActions::new(state.workspace);
+                actions.install_syntax_transport(installed);
+                capture.set(Some(actions));
+                view! { <div/> }
+            });
+            let actions = slot.get().unwrap();
+            wait_until("held initial embedded syntax request", || {
+                !transport.pending.borrow().is_empty()
+            })
+            .await;
+            assert!(actions.syntax_is_pending());
+            let selections: Vec<_> = source
+                .match_indices("{}")
+                .map(|(start, _)| Selection::caret(start + 1))
+                .collect();
+            let inside = selections[0].head;
+            mounted
+                .state
+                .workspace
+                .editor_documents
+                .update(|documents| {
+                    let mut document = openwebide_core::editor::Document::new(source);
+                    document.set_selections(selections).unwrap();
+                    documents.insert((1, path.into()), document);
+                });
+            let selection = actions
+                .command(
+                    EditorCommand::TypeCharacter('('),
+                    Selection::caret(inside),
+                    Indentation::default(),
+                )
+                .unwrap()
+                .unwrap();
+            assert_eq!(
+                actions.source(),
+                source.replace("{}", "{()}"),
+                "{mode:?} {path}: pairing while syntax is held"
+            );
+            let selection = actions
+                .command(EditorCommand::DeletePair, selection, Indentation::default())
+                .unwrap()
+                .unwrap();
+            assert_eq!(
+                actions.source(),
+                source,
+                "{mode:?} {path}: paired deletion after edit"
+            );
+            actions
+                .command(EditorCommand::Newline, selection, Indentation::default())
+                .unwrap()
+                .unwrap();
+            assert_eq!(
+                actions.source(),
+                source.replace("{}", "{\n    \n}"),
+                "{mode:?} {path}: block Enter after edit"
+            );
+            assert!(mounted.state.workspace.dirty.get_untracked());
+            let edited = actions.source();
+            transport.respond(true);
+            settle().await;
+            assert_eq!(
+                actions.source(),
+                edited,
+                "{mode:?} {path}: old worker reply preserves typed edits"
+            );
+        }
+    }
+}
+
+#[wasm_bindgen_test]
 async fn parsed_typing_contexts_share_modes_mixed_cursors_and_stale_guards() {
     use openwebide_core::{
         WorkspaceMode,

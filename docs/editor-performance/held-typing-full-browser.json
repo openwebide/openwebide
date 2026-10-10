@@ -1,0 +1,48 @@
+{
+  "scope": "Complete independently inventoried editor browser suite, all component groups, library and both separate font matrices",
+  "runner": "Linux arm64 Chromium 154; two CPUs; 10 GiB; 300-second runner and unchanged readiness deadlines",
+  "plannedEditorTests": 188,
+  "executedTests": 188,
+  "passedTests": 188,
+  "failedTests": 0,
+  "groupCounts": [
+    22,
+    55,
+    55,
+    54,
+    1,
+    1
+  ],
+  "terminalExitCode": 0,
+  "manifest": {
+    "base": "8cb111c0c51060f40ff98af071af58c79415b4fa",
+    "sourceSha256": {
+      "frontend/src/state_actions/editor.rs": "d92f50e386496e7bf14f1dbf036f167686d04a35353b1d0d30ec610909fcdac3",
+      "frontend/src/state_actions/editor/structural_actions.rs": "88110d598d2d2ff841138b6e88c597f785a7350c39f9e1d04c7584cf9ee0c574",
+      "frontend/src/state_actions/editor/preparation.rs": "d0fb8fb102d4f12f3bb952f1ccd323ddcc3914309b469394450f6e5747068289",
+      "frontend/src/components/editor.rs": "350e0742a481344292056ed048169f5e153a518737798a38fb94c7292496abc9",
+      "frontend/src/editor_worker.rs": "62d48be6c91f79c4ac6befd656e042b6306c5392f3bb0c36a57da9177491e5c6",
+      "frontend/tests/components/editor.rs": "209d6f22fa38b02794119a686bf77f94097950eff9369774886ab4cc93f367e9",
+      "crates/core/src/editor/syntax.rs": "5701c237ed0b31d71fda139dec152ae037d6c5e6194b87f4b9638eea8e493507",
+      "crates/core/src/editor/syntax/preparation.rs": "f05f046ce313b04b7c3e5592782b0487c22867cbc9b3f0e3a98ddf153fb15979",
+      "crates/core/src/editor/syntax/cache.rs": "5cf33534931794fc64bda8f9bb0caa90eb57827f4ca08ded75920c9aa5d21170",
+      "crates/core/src/editor/syntax_providers.rs": "560a73bc096acb74790090d65b7747eba6721a57383f519a585d5167e4a8cad1",
+      "crates/core/src/editor/syntax_injections.rs": "93e2a26d8834727c241effc62a1d20772279fd1a8e02055299267f7d0763524e",
+      "tools/run-editor-browser-tests.py": "81a3cce570c0448a4a3493e899b3ae6922bff0704b656a12d85de42f2881378b"
+    },
+    "artifactSha256": {
+      "components.wasm": "5b646b061825a85a66b3152ffa06377f4a665033bb1265fb0cb3e0421ce7de5e",
+      "editor-library.wasm": "db1ec3bafc47d86879d06653eb51bc77ab5a1de4de2639ea903c3321bc5f5c22"
+    }
+  },
+  "logSha256": "3d032688ee7f3163f411a0fa646e791087a91480f64747382e89739f36d1acc6",
+  "results": [
+    "test result: ok. 22 passed; 0 failed; 0 ignored; 6 filtered out; finished in 0.98s",
+    "test result: ok. 55 passed; 0 failed; 0 ignored; 486 filtered out; finished in 93.13s",
+    "test result: ok. 55 passed; 0 failed; 0 ignored; 486 filtered out; finished in 50.81s",
+    "test result: ok. 54 passed; 0 failed; 0 ignored; 487 filtered out; finished in 32.40s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 540 filtered out; finished in 21.27s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 540 filtered out; finished in 17.47s"
+  ],
+  "limits": "Proves this local automated editor inventory; admitted-boundary responsiveness, source-copy/final-phase costs, retained decoration audit, hosted reliability and physical-device gates remain open."
+}

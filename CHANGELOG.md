@@ -112,6 +112,7 @@ for what's still ahead.
 - Add transactional plugin-owned record storage with account/project/plugin namespaces, revision checks, bounded pages and quotas, plus an isolated Rust source authoring checker. Shared collection adapters and first-party migrations remain in progress.
 
 - Add Rust plugin SDK and isolated source-to-WASM preparation foundations, with a shared executable-tool workflow for server and paired hosts. First-party deployment and complete lifecycle verification remain unfinished.
+- Use current embedded-language context for pairing, paired deletion and Enter while background syntax is pending, retaining ordinary lexical editing when immediate analysis is unavailable.
 
 - Prepare explicit selection expansion and bracket jumps through the same guarded syntax service as Reindent and embedded comments. Preserve immediate lexical navigation for unsupported grammars; cancel pending structural actions after newer navigation or selection intent, including unchanged selections.
 
