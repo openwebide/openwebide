@@ -406,9 +406,10 @@ capability.
   production compiler-image verification, and
   deployed compiled-default initialization. Marketplaces ship pinned Rust source and Cargo.lock;
   hosts compile against the declared SDK version and validate the WASM component
-  before activation. Cache artifacts by source, SDK and toolchain. Publish the SDK
-  distribution and source-authoring/custom-marketplace workflow, and verify the
-  complete install/run/update lifecycle through both host adapters.
+  before activation. Cache artifacts by source, SDK and toolchain. Publish a
+  registry release of the SDK, extending the available pinned public Git SDK and
+  verified source-authoring/custom-marketplace workflow. Verify the complete
+  install/run/update lifecycle through both host adapters.
 - Verify asynchronous installation through deployed server and paired-host
   browsers, including compiler cancellation and deadline/error recovery through
   installation, cold action caches and bundled initialization.

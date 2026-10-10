@@ -9,6 +9,8 @@ for what's still ahead.
 
 ## [Unreleased]
 
+- Publish the Rust plugin SDK through a pinned public Git checkout, with a capability reference and source-authoring instructions. Marketplace CI validates catalog content and tests, lints and compiles executable references against that exact SDK; registry publication remains planned.
+
 - Share plugin preparation policy across browser, Spin and native bridge clients. Use short start/status requests, common deadlines and cancellation cleanup for installation, cold action caches and bundled initialization. Reclaim completed results under queue pressure so repeated tool calls do not exhaust preparation capacity.
 
 - Show host preparation progress and a Cancel installation action in Plugins. Installation and frontend cold-cache actions share asynchronous preparation through server and paired transports; cancel pending requests and reject stale account/project results before recording receipts. Bound requests and preparation time, and preserve installed versions when preparation fails. Deployed lifecycle verification remains in progress.
