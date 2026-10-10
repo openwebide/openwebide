@@ -396,6 +396,20 @@ pub(super) async fn build_run_plan(
     session_id: i64,
     send: SendMessageBody,
 ) -> Result<RunPlan, ApiError> {
+    let host = super::plugins::PlanningHost::new(state, user_id, session_id);
+    build_run_plan_with_plugin_transport(state, user_id, session_id, send, &host).await
+}
+
+pub(super) async fn build_run_plan_with_plugin_transport<T>(
+    state: &AppState,
+    user_id: UserId,
+    session_id: i64,
+    send: SendMessageBody,
+    transport: &T,
+) -> Result<RunPlan, ApiError>
+where
+    T: openwebide_agent::plugins::execution::PluginTransport,
+{
     state.store.ensure_not_rewinding(session_id).await?;
     let session = state.store.get_session(session_id, user_id).await?;
     let task_model = match send.queued_prompt {
@@ -525,7 +539,7 @@ pub(super) async fn build_run_plan(
         &runtime,
         input,
         &plugin_bindings,
-        &plugin_host,
+        transport,
         plugin_host.clone(),
         |plugins| async move {
             super::plugins::context_grants(state, user_id, &plugin_context, &plugins)

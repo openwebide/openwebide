@@ -1381,196 +1381,200 @@ fn prompt_api_and_default_selection_are_user_scoped() {
 #[test]
 fn project_memory_run_planning_includes_enabled_context_and_tools_and_omits_projectless_data() {
     futures::executor::block_on(async {
-        let store = openwebide_storage::Store::new(crate::state::AppDb::open_in_memory().unwrap());
-        store.migrate().await.unwrap();
-        let user = store
-            .insert_user("owner", "hash", openwebide_core::UserRole::Admin, 0)
-            .await
-            .unwrap();
-        let connection = store
-            .insert_connection(&NewConnection {
-                name: "server".into(),
-                kind: openwebide_core::ProviderKind::LlamaCpp,
-                base_url: "http://server".into(),
+        for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+            let store =
+                openwebide_storage::Store::new(crate::state::AppDb::open_in_memory().unwrap());
+            store.migrate().await.unwrap();
+            let user = store
+                .insert_user("owner", "hash", openwebide_core::UserRole::Admin, 0)
+                .await
+                .unwrap();
+            let connection = store
+                .insert_connection(&NewConnection {
+                    name: "server".into(),
+                    kind: openwebide_core::ProviderKind::LlamaCpp,
+                    base_url: "http://server".into(),
+                    model: None,
+                    context_limit: Some(32768),
+                })
+                .await
+                .unwrap();
+            let project = store
+                .create_project(
+                    &NewProject {
+                        name: "project".into(),
+                        mode,
+                        path: Some("test".into()),
+                    },
+                    user.id,
+                    0,
+                )
+                .await
+                .unwrap()
+                .id;
+            let session = store
+                .create_session(
+                    "session",
+                    Some(connection.id),
+                    None,
+                    Some(project),
+                    user.id,
+                    0,
+                )
+                .await
+                .unwrap()
+                .id;
+            store
+                .memory_command(
+                    user.id,
+                    project,
+                    &openwebide_core::MemoryCommand::Create {
+                        auto_title: false,
+                        title: "Build".into(),
+                        content: "Run cargo test".into(),
+                    },
+                    false,
+                    1,
+                )
+                .await
+                .unwrap();
+            let host = install_collection_plugin(&store, user.id, "memories").await;
+            let state = AppState { store };
+            let body = || SendMessageBody {
+                content: "go".into(),
                 model: None,
-                context_limit: Some(32768),
-            })
-            .await
-            .unwrap();
-        let project = store
-            .create_project(
-                &NewProject {
-                    name: "project".into(),
-                    mode: WorkspaceMode::Remote,
-                    path: Some("test".into()),
-                },
-                user.id,
-                0,
-            )
-            .await
-            .unwrap()
-            .id;
-        let session = store
-            .create_session(
-                "session",
-                Some(connection.id),
-                None,
-                Some(project),
-                user.id,
-                0,
-            )
-            .await
-            .unwrap()
-            .id;
-        store
-            .memory_command(
-                user.id,
-                project,
-                &openwebide_core::MemoryCommand::Create {
-                    auto_title: false,
-                    title: "Build".into(),
-                    content: "Run cargo test".into(),
-                },
-                false,
-                1,
-            )
-            .await
-            .unwrap();
-        install_tool_group(
-            &store,
-            user.id,
-            openwebide_core::plugins::PluginToolGroup::Memory,
-        )
-        .await;
-        let state = AppState { store };
-        let body = || SendMessageBody {
-            content: "go".into(),
-            model: None,
-            editor_context: None,
-            browser_preferences: None,
-            queued_prompt: None,
-        };
-        let plan = build_run_plan(&state, user.id, session, body())
-            .await
-            .unwrap();
-        assert!(
-            plan.request
-                .tools
-                .iter()
-                .any(|tool| tool.name == "memory_search")
-        );
-        assert!(
-            plan.request
-                .system_prompt
+                editor_context: None,
+                browser_preferences: None,
+                queued_prompt: None,
+            };
+            let plan =
+                build_run_plan_with_plugin_transport(&state, user.id, session, body(), &host)
+                    .await
+                    .unwrap();
+            assert!(
+                plan.request
+                    .tools
+                    .iter()
+                    .any(|tool| tool.name == "memory_search")
+            );
+            assert!(
+                plan.request
+                    .system_prompt
+                    .unwrap()
+                    .contains("Run cargo test")
+            );
+            let mut selected = state.store.get_connection(connection.id).await.unwrap();
+            selected.tool_selection =
+                openwebide_core::ToolSelection::Selected(vec!["memory_read".into()]);
+            state.store.update_connection(&selected).await.unwrap();
+            let plan =
+                build_run_plan_with_plugin_transport(&state, user.id, session, body(), &host)
+                    .await
+                    .unwrap();
+            assert_eq!(
+                plan.request
+                    .tools
+                    .iter()
+                    .map(|tool| tool.name.as_str())
+                    .collect::<Vec<_>>(),
+                vec!["memory_read"]
+            );
+            assert_eq!(
+                matches!(plan.kind, RunKind::Agent { .. }),
+                mode == WorkspaceMode::Remote,
+            );
+            selected.tool_selection = openwebide_core::ToolSelection::All;
+            state.store.update_connection(&selected).await.unwrap();
+            state
+                .store
+                .memory_command(
+                    user.id,
+                    project,
+                    &openwebide_core::MemoryCommand::SetEnabled { enabled: false },
+                    false,
+                    2,
+                )
+                .await
+                .unwrap();
+            let plan =
+                build_run_plan_with_plugin_transport(&state, user.id, session, body(), &host)
+                    .await
+                    .unwrap();
+            assert!(
+                !plan
+                    .request
+                    .tools
+                    .iter()
+                    .any(|tool| tool.name.starts_with("memory_"))
+            );
+            assert!(
+                !plan
+                    .request
+                    .system_prompt
+                    .unwrap()
+                    .contains("Run cargo test")
+            );
+            let no_root = state
+                .store
+                .create_project(
+                    &NewProject {
+                        name: "Named project".into(),
+                        mode,
+                        path: None,
+                    },
+                    user.id,
+                    0,
+                )
+                .await
                 .unwrap()
-                .contains("Run cargo test")
-        );
-        let mut selected = state.store.get_connection(connection.id).await.unwrap();
-        selected.tool_selection =
-            openwebide_core::ToolSelection::Selected(vec!["memory_read".into()]);
-        state.store.update_connection(&selected).await.unwrap();
-        let plan = build_run_plan(&state, user.id, session, body())
-            .await
-            .unwrap();
-        assert_eq!(
-            plan.request
-                .tools
-                .iter()
-                .map(|tool| tool.name.as_str())
-                .collect::<Vec<_>>(),
-            vec!["memory_read"]
-        );
-        assert!(matches!(plan.kind, RunKind::Agent { .. }));
-        selected.tool_selection = openwebide_core::ToolSelection::All;
-        state.store.update_connection(&selected).await.unwrap();
-        state
-            .store
-            .memory_command(
-                user.id,
-                project,
-                &openwebide_core::MemoryCommand::SetEnabled { enabled: false },
-                false,
-                2,
-            )
-            .await
-            .unwrap();
-        let plan = build_run_plan(&state, user.id, session, body())
-            .await
-            .unwrap();
-        assert!(
-            !plan
-                .request
-                .tools
-                .iter()
-                .any(|tool| tool.name.starts_with("memory_"))
-        );
-        assert!(
-            !plan
-                .request
-                .system_prompt
+                .id;
+            let named = state
+                .store
+                .create_session(
+                    "named",
+                    Some(connection.id),
+                    None,
+                    Some(no_root),
+                    user.id,
+                    0,
+                )
+                .await
                 .unwrap()
-                .contains("Run cargo test")
-        );
-        let no_root = state
-            .store
-            .create_project(
-                &NewProject {
-                    name: "Named project".into(),
-                    mode: WorkspaceMode::Remote,
-                    path: None,
-                },
-                user.id,
-                0,
-            )
-            .await
-            .unwrap()
-            .id;
-        let named = state
-            .store
-            .create_session(
-                "named",
-                Some(connection.id),
-                None,
-                Some(no_root),
-                user.id,
-                0,
-            )
-            .await
-            .unwrap()
-            .id;
-        let plan = build_run_plan(&state, user.id, named, body())
-            .await
-            .unwrap();
-        assert_eq!(plan.kind, RunKind::WebChat);
-        assert!(
-            plan.request
-                .tools
-                .iter()
-                .any(|tool| tool.name == "memory_create")
-        );
-        let empty = state
-            .store
-            .create_session("projectless", Some(connection.id), None, None, user.id, 0)
-            .await
-            .unwrap()
-            .id;
-        let plan = build_run_plan(&state, user.id, empty, body())
-            .await
-            .unwrap();
-        assert!(
-            !plan
-                .request
-                .tools
-                .iter()
-                .any(|tool| tool.name.starts_with("memory_"))
-        );
-        assert!(
-            !plan
-                .request
-                .system_prompt
+                .id;
+            let plan = build_run_plan_with_plugin_transport(&state, user.id, named, body(), &host)
+                .await
+                .unwrap();
+            assert_eq!(plan.kind, RunKind::WebChat);
+            assert!(
+                plan.request
+                    .tools
+                    .iter()
+                    .any(|tool| tool.name == "memory_create")
+            );
+            let empty = state
+                .store
+                .create_session("projectless", Some(connection.id), None, None, user.id, 0)
+                .await
                 .unwrap()
-                .contains("Run cargo test")
-        );
+                .id;
+            let plan = build_run_plan_with_plugin_transport(&state, user.id, empty, body(), &host)
+                .await
+                .unwrap();
+            assert!(
+                !plan
+                    .request
+                    .tools
+                    .iter()
+                    .any(|tool| tool.name.starts_with("memory_"))
+            );
+            assert!(
+                !plan
+                    .request
+                    .system_prompt
+                    .unwrap()
+                    .contains("Run cargo test")
+            );
+        }
     });
 }
 
@@ -1868,201 +1872,214 @@ fn scheduled_model_overrides_are_run_scoped_in_every_workspace() {
 #[test]
 fn project_skill_run_planning_includes_enabled_context_and_tools_and_omits_projectless_data() {
     futures::executor::block_on(async {
-        let store = openwebide_storage::Store::new(crate::state::AppDb::open_in_memory().unwrap());
-        store.migrate().await.unwrap();
-        let user = store
-            .insert_user("owner", "hash", openwebide_core::UserRole::Admin, 0)
-            .await
-            .unwrap();
-        let connection = store
-            .insert_connection(&NewConnection {
-                name: "server".into(),
-                kind: openwebide_core::ProviderKind::LlamaCpp,
-                base_url: "http://server".into(),
-                model: None,
-                context_limit: Some(32768),
-            })
-            .await
-            .unwrap();
-        let project = store
-            .create_project(
-                &NewProject {
-                    name: "project".into(),
-                    mode: WorkspaceMode::Remote,
-                    path: Some("test".into()),
-                },
-                user.id,
-                0,
-            )
-            .await
-            .unwrap()
-            .id;
-        let session = store
-            .create_session(
-                "session",
-                Some(connection.id),
-                None,
-                Some(project),
-                user.id,
-                0,
-            )
-            .await
-            .unwrap()
-            .id;
-        store
-            .skill_command(
-                user.id,
-                project,
-                &openwebide_core::SkillCommand::Create {
-                    draft: openwebide_core::SkillDraft {
-                        name: "build-check".into(),
-                        description: "Check builds when reviewing changes".into(),
-                        instructions: "PRIVATE INSTRUCTIONS".into(),
-                        enabled: true,
-                        resources: Vec::new(),
-                        metadata: Default::default(),
+        for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+            let store =
+                openwebide_storage::Store::new(crate::state::AppDb::open_in_memory().unwrap());
+            store.migrate().await.unwrap();
+            let user = store
+                .insert_user("owner", "hash", openwebide_core::UserRole::Admin, 0)
+                .await
+                .unwrap();
+            let connection = store
+                .insert_connection(&NewConnection {
+                    name: "server".into(),
+                    kind: openwebide_core::ProviderKind::LlamaCpp,
+                    base_url: "http://server".into(),
+                    model: None,
+                    context_limit: Some(32768),
+                })
+                .await
+                .unwrap();
+            let project = store
+                .create_project(
+                    &NewProject {
+                        name: "project".into(),
+                        mode,
+                        path: Some("test".into()),
                     },
-                },
-                false,
-                1,
-            )
-            .await
-            .unwrap();
-        install_tool_group(
-            &store,
-            user.id,
-            openwebide_core::plugins::PluginToolGroup::SkillAuthoring,
-        )
-        .await;
-        let state = AppState { store };
-        let body = || SendMessageBody {
-            content: "go".into(),
-            model: None,
-            editor_context: None,
-            browser_preferences: None,
-            queued_prompt: None,
-        };
-        let plan = build_run_plan(&state, user.id, session, body())
-            .await
-            .unwrap();
-        assert!(
-            plan.request
-                .tools
-                .iter()
-                .any(|tool| tool.name == "skill_list")
-        );
-        assert!(
-            plan.request
-                .system_prompt
+                    user.id,
+                    0,
+                )
+                .await
                 .unwrap()
-                .contains("Check builds when reviewing changes")
-        );
-        let mut selected = state.store.get_connection(connection.id).await.unwrap();
-        selected.tool_selection =
-            openwebide_core::ToolSelection::Selected(vec!["skill_read".into()]);
-        state.store.update_connection(&selected).await.unwrap();
-        let plan = build_run_plan(&state, user.id, session, body())
-            .await
-            .unwrap();
-        assert_eq!(
-            plan.request
-                .tools
-                .iter()
-                .map(|tool| tool.name.as_str())
-                .collect::<Vec<_>>(),
-            vec!["skill_read"]
-        );
-        assert!(matches!(plan.kind, RunKind::Agent { .. }));
-        selected.tool_selection = openwebide_core::ToolSelection::All;
-        state.store.update_connection(&selected).await.unwrap();
-        state
-            .store
-            .skill_command(
-                user.id,
-                project,
-                &openwebide_core::SkillCommand::SetEnabled { enabled: false },
-                false,
-                2,
-            )
-            .await
-            .unwrap();
-        let plan = build_run_plan(&state, user.id, session, body())
-            .await
-            .unwrap();
-        assert!(
-            !plan
-                .request
-                .tools
-                .iter()
-                .any(|tool| tool.name.starts_with("skill_"))
-        );
-        assert!(
-            !plan
-                .request
-                .system_prompt
+                .id;
+            let session = store
+                .create_session(
+                    "session",
+                    Some(connection.id),
+                    None,
+                    Some(project),
+                    user.id,
+                    0,
+                )
+                .await
                 .unwrap()
-                .contains("Check builds when reviewing changes")
-        );
-        let no_root = state
-            .store
-            .create_project(
-                &NewProject {
-                    name: "Named project".into(),
-                    mode: WorkspaceMode::Remote,
-                    path: None,
-                },
-                user.id,
-                0,
-            )
-            .await
-            .unwrap()
-            .id;
-        let named = state
-            .store
-            .create_session(
-                "named",
-                Some(connection.id),
-                None,
-                Some(no_root),
-                user.id,
-                0,
-            )
-            .await
-            .unwrap()
-            .id;
-        let plan = build_run_plan(&state, user.id, named, body())
-            .await
-            .unwrap();
-        assert_eq!(plan.kind, RunKind::WebChat);
-        assert!(
-            plan.request
-                .tools
-                .iter()
-                .any(|tool| tool.name == "skill_create")
-        );
-        let empty = state
-            .store
-            .create_session("projectless", Some(connection.id), None, None, user.id, 0)
-            .await
-            .unwrap()
-            .id;
-        let plan = build_run_plan(&state, user.id, empty, body())
-            .await
-            .unwrap();
-        assert!(
-            !plan
-                .request
-                .tools
-                .iter()
-                .any(|tool| tool.name.starts_with("skill_"))
-        );
-        assert!(
-            !plan
-                .request
-                .system_prompt
+                .id;
+            store
+                .skill_command(
+                    user.id,
+                    project,
+                    &openwebide_core::SkillCommand::Create {
+                        draft: openwebide_core::SkillDraft {
+                            name: "build-check".into(),
+                            description: "Check builds when reviewing changes".into(),
+                            instructions: "PRIVATE INSTRUCTIONS".into(),
+                            enabled: true,
+                            resources: Vec::new(),
+                            metadata: Default::default(),
+                        },
+                    },
+                    false,
+                    1,
+                )
+                .await
+                .unwrap();
+            let host = install_collection_plugin(&store, user.id, "skills").await;
+            let state = AppState { store };
+            let body = || SendMessageBody {
+                content: "go".into(),
+                model: None,
+                editor_context: None,
+                browser_preferences: None,
+                queued_prompt: None,
+            };
+            let plan =
+                build_run_plan_with_plugin_transport(&state, user.id, session, body(), &host)
+                    .await
+                    .unwrap();
+            assert!(
+                plan.request
+                    .tools
+                    .iter()
+                    .any(|tool| tool.name == "skill_list")
+            );
+            assert!(
+                plan.request
+                    .system_prompt
+                    .as_ref()
+                    .unwrap()
+                    .contains("Check builds when reviewing changes")
+            );
+            assert!(
+                !plan
+                    .request
+                    .system_prompt
+                    .as_ref()
+                    .unwrap()
+                    .contains("PRIVATE INSTRUCTIONS")
+            );
+            let mut selected = state.store.get_connection(connection.id).await.unwrap();
+            selected.tool_selection =
+                openwebide_core::ToolSelection::Selected(vec!["skill_read".into()]);
+            state.store.update_connection(&selected).await.unwrap();
+            let plan =
+                build_run_plan_with_plugin_transport(&state, user.id, session, body(), &host)
+                    .await
+                    .unwrap();
+            assert_eq!(
+                plan.request
+                    .tools
+                    .iter()
+                    .map(|tool| tool.name.as_str())
+                    .collect::<Vec<_>>(),
+                vec!["skill_read"]
+            );
+            assert_eq!(
+                matches!(plan.kind, RunKind::Agent { .. }),
+                mode == WorkspaceMode::Remote,
+            );
+            selected.tool_selection = openwebide_core::ToolSelection::All;
+            state.store.update_connection(&selected).await.unwrap();
+            state
+                .store
+                .skill_command(
+                    user.id,
+                    project,
+                    &openwebide_core::SkillCommand::SetEnabled { enabled: false },
+                    false,
+                    2,
+                )
+                .await
+                .unwrap();
+            let plan =
+                build_run_plan_with_plugin_transport(&state, user.id, session, body(), &host)
+                    .await
+                    .unwrap();
+            assert!(
+                !plan
+                    .request
+                    .tools
+                    .iter()
+                    .any(|tool| tool.name.starts_with("skill_"))
+            );
+            assert!(
+                !plan
+                    .request
+                    .system_prompt
+                    .unwrap()
+                    .contains("Check builds when reviewing changes")
+            );
+            let no_root = state
+                .store
+                .create_project(
+                    &NewProject {
+                        name: "Named project".into(),
+                        mode,
+                        path: None,
+                    },
+                    user.id,
+                    0,
+                )
+                .await
                 .unwrap()
-                .contains("Check builds when reviewing changes")
-        );
+                .id;
+            let named = state
+                .store
+                .create_session(
+                    "named",
+                    Some(connection.id),
+                    None,
+                    Some(no_root),
+                    user.id,
+                    0,
+                )
+                .await
+                .unwrap()
+                .id;
+            let plan = build_run_plan_with_plugin_transport(&state, user.id, named, body(), &host)
+                .await
+                .unwrap();
+            assert_eq!(plan.kind, RunKind::WebChat);
+            assert!(
+                plan.request
+                    .tools
+                    .iter()
+                    .any(|tool| tool.name == "skill_create")
+            );
+            let empty = state
+                .store
+                .create_session("projectless", Some(connection.id), None, None, user.id, 0)
+                .await
+                .unwrap()
+                .id;
+            let plan = build_run_plan_with_plugin_transport(&state, user.id, empty, body(), &host)
+                .await
+                .unwrap();
+            assert!(
+                !plan
+                    .request
+                    .tools
+                    .iter()
+                    .any(|tool| tool.name.starts_with("skill_"))
+            );
+            assert!(
+                !plan
+                    .request
+                    .system_prompt
+                    .unwrap()
+                    .contains("Check builds when reviewing changes")
+            );
+        }
     });
 }
 
@@ -2198,30 +2215,155 @@ fn host_tools_require_configured_ssh_admin_and_projectless_scope_in_both_modes()
     });
 }
 
-async fn install_tool_group(
+/// Mock only the host component transport; real database grants and collection
+/// callbacks still run through the backend planning facade.
+#[derive(Clone)]
+struct CollectionContextHost {
+    collection: &'static str,
+    prepared: openwebide_core::plugins::PreparedPlugin,
+}
+impl openwebide_agent::plugins::execution::PluginTransport for CollectionContextHost {
+    async fn ensure_prepared(
+        &self,
+        expected: &openwebide_core::plugins::PreparedPlugin,
+    ) -> Result<openwebide_core::plugins::PreparedPlugin, String> {
+        assert_eq!(expected, &self.prepared);
+        Ok(expected.clone())
+    }
+    async fn start(
+        &self,
+        call: openwebide_core::plugins::execution::InvokePlugin,
+    ) -> Result<openwebide_core::plugins::execution::PluginInvocation, String> {
+        use openwebide_core::plugins::execution::{PluginInvocation, PluginOperation, PluginStep};
+        assert!(matches!(call.operation, PluginOperation::Context));
+        assert_eq!(call.prepared, self.prepared);
+        Ok(PluginInvocation {
+            id: "context".into(),
+            step: PluginStep::Ready,
+        })
+    }
+    async fn resume(
+        &self,
+        response: openwebide_core::plugins::execution::ContinuePlugin,
+    ) -> Result<openwebide_core::plugins::execution::PluginInvocation, String> {
+        use openwebide_core::plugins::execution::{PluginInvocation, PluginStep};
+        assert_eq!(response.id, "context");
+        let step = if response.sequence == 0 {
+            PluginStep::HostCall {
+                sequence: 1,
+                capability: "collections".into(),
+                payload: serde_json::json!({
+                    "collection":self.collection, "operation":{"action":"list","after":0}
+                })
+                .to_string(),
+            }
+        } else {
+            assert_eq!(response.sequence, 1);
+            let result: openwebide_core::plugins::records::CollectionResult =
+                serde_json::from_str(&response.response?).map_err(|error| error.to_string())?;
+            let prompt = result.enabled.then(|| {
+                result
+                    .records
+                    .iter()
+                    .map(|record| {
+                        if self.collection == "memories" {
+                            record.value["content"].as_str().unwrap().to_owned()
+                        } else {
+                            record.value["draft"]["description"]
+                                .as_str()
+                                .unwrap()
+                                .to_owned()
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            });
+            let disabled_tools: Vec<_> = self
+                .prepared
+                .manifest
+                .contributions
+                .tools
+                .iter()
+                .filter(|_| !result.enabled)
+                .map(|tool| tool.name.clone())
+                .collect();
+            PluginStep::Complete {
+                ok: true,
+                content: serde_json::json!({"prompt":prompt,"disabled_tools":disabled_tools})
+                    .to_string(),
+                summary: "Fixture planning complete".into(),
+            }
+        };
+        Ok(PluginInvocation {
+            id: "context".into(),
+            step,
+        })
+    }
+    fn cancel(&self, _: String) {}
+}
+async fn install_collection_plugin(
     store: &openwebide_storage::Store<crate::state::AppDb>,
     user: openwebide_core::UserId,
-    group: openwebide_core::plugins::PluginToolGroup,
-) {
+    collection: &'static str,
+) -> CollectionContextHost {
+    use openwebide_core::plugins::{PluginTool, RustPlugin};
     let mut package = openwebide_core::plugins::testing::package();
     package.skills.clear();
-    package.prepared.manifest.contributions.skills.clear();
-    package.prepared.manifest.contributions.tool_groups = vec![group];
-    package.prepared.manifest.compatibility.plugin_api = 2;
+    let manifest = &mut package.prepared.manifest;
+    manifest.contributions.skills.clear();
+    manifest.compatibility.plugin_api = 3;
+    let names = if collection == "memories" {
+        [
+            "memory_create",
+            "memory_update",
+            "memory_delete",
+            "memory_search",
+            "memory_list",
+            "memory_read",
+        ]
+    } else {
+        [
+            "skill_create",
+            "skill_update",
+            "skill_delete",
+            "skill_list",
+            "skill_read",
+            "skill_discover",
+        ]
+    };
+    manifest.contributions.tools = names
+        .into_iter()
+        .map(|name| PluginTool {
+            name: name.into(),
+            description: "Collection fixture".into(),
+            parameters: serde_json::json!({"type":"object"}),
+            requires_approval: false,
+        })
+        .collect();
+    manifest.executable = Some(RustPlugin {
+        manifest: "Cargo.toml".into(),
+        library: "collection_fixture".into(),
+        sdk_version: "0.1.0".into(),
+        capabilities: vec!["collections".into()],
+    });
     store
         .record_plugin(
             user,
             &openwebide_core::plugins::RecordPlugin {
-                approved_capabilities: Vec::new(),
+                approved_capabilities: vec!["collections".into()],
                 prepared: package.prepared.clone(),
                 revision: None,
-                package: Some(Box::new(package)),
+                package: Some(Box::new(package.clone())),
                 update_policy: None,
             },
             0,
         )
         .await
         .unwrap();
+    CollectionContextHost {
+        collection,
+        prepared: package.prepared,
+    }
 }
 
 #[test]
