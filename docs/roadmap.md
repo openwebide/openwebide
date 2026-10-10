@@ -67,17 +67,36 @@ tracks the remaining work rather than every optimization already shipped.
 
 - [ ] **Parser-aware ordinary input and decorations:** verify admitted
   HTML/Markdown input costs and budget fallbacks without delaying ordinary input;
-  audit retained structural decorations for current-source ownership. Pending
-  embedded-language typing now reuses the shared immediate parser/cache path.
-  Held-worker pairing, paired deletion, Enter, mixed JavaScript/CSS cursors and
-  stale-reply preservation pass in both modes. All 188 editor browser contracts,
-  including both font matrices, pass
-  ([receipt](editor-performance/held-typing-full-browser.json)), as do strict
-  WASM lint, formatting and 128 native frontend tests. These contracts do not
-  establish hard per-phase input bounds or admitted-boundary responsiveness.
-  Explicit Reindent, embedded comments, selection expansion and bracket jumps
-  already share cooperative preparation and request-time cancellation across
-  keyboard and menu entry points.
+  finish retained-fold/current-source ownership verification. The candidate
+  skips lexical scans for unconditional literal input and requests editing
+  structure without generating highlights/folds, sharing transactions, parser
+  phases and source guards. It now exposes the runtime input clock so readiness
+  and explicit expiry/fallback behavior can be tested deterministically in both
+  modes. The browser's default clock and 12 ms budget are unchanged. All 632
+  core tests, 128 current native frontend tests and strict native/WASM lint pass;
+  all twelve focused browser contracts pass
+  ([receipt](editor-performance/input-clock-focused-browser.json)). All 190 editor browser
+  contracts, including both font matrices, pass
+  ([receipt](editor-performance/input-clock-full-browser.json)); physical
+  readiness/latency and hosted CI are not established by those contracts.
+  The earlier full candidate run passed 76 tests, failed held Markdown pairing
+  and left 112 tests unexecuted
+  ([record](editor-performance/input-structure-full-failure.json)). Instrumented
+  diagnostics observed a cold Markdown preparation cancelling at 20 ms, then
+  warm preparations of 0–1 ms
+  ([record](editor-performance/input-preparation-diagnostic.json)). Changing
+  readiness-test clocks does not resolve cold latency or guarantee pairing
+  before context is available. Native debug fallback edit medians improved from
+  50–96 ms to below 0.5 ms
+  ([comparison](editor-performance/typing-preparation-native-comparison.json));
+  real browser/release latency, hard per-phase bounds and candidate hosted CI
+  remain open. The native/WASM input harness now passes strict lint and all
+  16 source/selection checks per output variant
+  ([first release samples](editor-performance/input-preparation-release-samples.json)).
+  Single samples show cold browser preparation exceeding the budget and a
+  near-2-MiB Rust fallback edit around 8 ms; repeat and measure actual facade/view
+  costs before claiming latency completion. Explicit structural actions use cooperative preparation
+  with request-time cancellation.
 
 - [ ] **Cold startup and native input:** remove remaining full-source shaping in
   touch and unsupported-layout fallbacks. Desktop startup now uses bounded native
@@ -255,7 +274,8 @@ tracks the remaining work rather than every optimization already shipped.
   checkpoint `71997bc` passed all 184 editor browser tests locally and all five
   hosted jobs ([receipt](editor-performance/grouped-ci-71997bc.json)). New structural navigation passes all 187 editor browser contracts and 128
   native frontend tests ([receipt](editor-performance/structural-navigation-full-browser.json));
-  its own hosted CI remains required. The subsequent embedded-input checkpoint
+  that checkpoint (`8cb111c`) passed all five hosted jobs
+  ([receipt](editor-performance/grouped-ci-8cb111c.json)). The subsequent embedded-input checkpoint
   passes the complete 188-test editor inventory
   ([receipt](editor-performance/held-typing-full-browser.json)); its own hosted CI
   and the remaining reliability checks remain required.

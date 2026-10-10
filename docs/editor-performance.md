@@ -5403,3 +5403,227 @@ parser work; this is not evidence of a hard bound on every final preparation or
 editing phase. Admitted boundary workloads, responsiveness, source-copy costs,
 retained decorations and physical/release gates still require verification. This checkpoint does not complete the ordinary-input or performance
 gates.
+
+
+## Native diagnostic for immediate typing fallback
+
+After the complete embedded-input suite finished, a standalone native probe used
+its current shared core artifact to separate immediate parser preparation from
+subsequent typing. It reused the existing build directory and performed no
+concurrent editor browser run or Cargo build. This is a debug-core diagnostic,
+with configured tree-sitter/grammar optimization, not a browser or release
+responsiveness measurement
+([source, environment and samples](editor-performance/typing-preparation-native-baseline.json)).
+
+Twenty samples cover HTML code/comment bodies, many HTML containers and Markdown
+code fences. The small examples prepared current context; larger examples hit
+continuation cancellation or metadata limits. Following those failures, literal
+`(` fallback in 0.56–1.09 MiB sources took 46–92 ms in this native debug build.
+The fallback currently constructs a full lexical `Structure` even for outer
+languages whose pairing rules make this character unconditional literal input.
+This identifies an avoidable scan/copy path. Core document construction was
+excluded and used default document limits; these numbers do not prove editor
+admission, frontend, DOM/paint, WASM or release latency. Parser final-phase bounds
+and the remaining ordinary-input/decorations gate stay open.
+
+
+A candidate now sends unconditional literal input through the existing shared
+caret transaction without constructing a lexical structure. Language/character
+pairing rules select this path; parser-supplied contexts still use the existing
+source validation and per-selection embedded-language behavior. The literal
+edit result is shared with the existing structure-aware loop. All 630 core tests
+pass, including directional Unicode multi-cursor history, ordinary characters
+in opaque code regions and admitted files above the syntax budget. Native
+comparison is recorded below; complete frontend browser verification remains
+pending. Strict native core lint and 128 native frontend tests pass;
+this change does not complete parser preparation, decoration or source-copy
+bounds.
+
+
+Three sequential native before/after repeats, after compiler/browser tasks were
+terminal, confirm the identified fallback improvement
+([records](editor-performance/typing-preparation-native-comparison.json)). For
+0.56–1.09 MiB cancelled-parser inputs, median literal edit times fell from roughly
+50–96 ms to below 0.5 ms. Preparation still spends its continuation budget and
+these runs do not establish browser or release latency. Both binaries use the
+same probe source and core dev/parser/test-support configuration; the baseline
+came from frontend dependency unification and the candidate core was built
+directly, so unrelated dependency feature unification differs. An earlier repeat
+batch overlapped clippy startup and was excluded; the receipt includes only the
+subsequent sequential rerun. All 630 core tests, strict native core lint and
+strict WASM frontend lint pass. Complete current frontend browser verification
+remains required before committing this candidate.
+
+
+The structural-navigation checkpoint `8cb111c` subsequently passed all five hosted
+jobs ([receipt](editor-performance/grouped-ci-8cb111c.json)). This is additional
+checkpoint evidence; newer embedded-input and literal-input work still need
+hosted verification and the older readiness-failure causes remain unproven.
+
+
+A new browser facade contract exercises literal Unicode multi-cursor history
+across plain text, HTML, XML, INI and Markdown, plus an admitted 2.48 MiB HTML
+source above the syntax budget, in both workspace modes. It adds one editor
+contract: the current inventory is 189 and runtime verification is pending.
+Strict WASM lint and all 128 native frontend tests pass after the fixture
+addition. The expanded focused run
+also includes existing keyboard/mobile pairs, multi-command/stale-target history
+and parser readiness/fallback contracts.
+
+The expanded focused browser run completed with nine passes and one failure
+([receipt](editor-performance/literal-typing-focused-failure.json)). The new
+literal-input contract passed, including the admitted large source. Held-worker
+Markdown JavaScript typing omitted the closing parenthesis in Local mode. The
+existing 12 ms immediate parser budget and its cold initialization/cancellation
+path need investigation; the cause is not established by this result. The full
+189-test run has not started, and this candidate is not ready to commit.
+
+The embedded-input checkpoint `ed1c8ca` passed all five hosted CI jobs
+([receipt](editor-performance/grouped-ci-ed1c8ca.json)). The subsequently
+observed focused-browser failure still needs resolution; a successful hosted
+run does not disprove that failure.
+
+The candidate now separates editing structure from highlight/fold publication
+inside the shared syntax engine. Ordinary input requests the same parsed
+structure and cache, without preparing decoration outputs; passive views and
+explicit structural commands retain full preparation. The shared structure
+phase is reused by both paths, with source-change/cancellation invalidation
+and existing record limits. New native contracts compare every built-in
+provider against full analysis, verify shared structure identity, and reject
+cancelled, replaced and oversized source. All 632 native core tests and strict
+native core/WASM frontend lint and 128 native frontend tests pass. Optimized
+browser runtime verification is
+pending;
+this does not establish that cold input always finishes within 12 ms.
+
+A source audit of retained decorations found that queued active-line/bracket
+paint checks presentation scope, view and preparation revisions and selection
+before touching DOM and before publishing bracket marks. The existing browser
+contract rejects source, caret, project, file, account, pending epoch, read, fold
+and preparation changes in both modes. It is included in the next focused run.
+This audit does not establish retained-fold geometry correctness or preparation
+latency and does not complete the roadmap decoration item.
+
+The input-only candidate passed all eleven expanded focused browser contracts
+([receipt](editor-performance/input-structure-focused-browser.json), 7.83 s).
+The held-worker Markdown pairing test passed with unchanged assertions and
+continuation budget. Unicode/history, admitted large-source fallback and
+retained-decoration rejection also passed in both modes. This single pass does
+not establish timing reliability or admitted-boundary latency. The complete
+189-test suite is running separately against the same frozen artifacts.
+
+Before committing, the affected callers were reviewed: keyboard/beforeinput
+commands still enter `EditorActions::command`, which selects the shared syntax
+output and applies the existing `Document` caret transaction. Worker/workspace
+adapters are unchanged. Core parsing and literal typing introduce no workspace
+mode checks, separate local/remote orchestration or remote-only API calls.
+Input structure is invalidated wherever complete preparation is invalidated;
+full analysis reuses that same structure allocation and retains full decoration
+outputs. Full-suite browser verification remains in progress.
+
+The full candidate run failed the same held-worker Local Markdown pairing
+assertion ([receipt](editor-performance/input-structure-full-failure.json)).
+It passed 22 library tests and 54 of the first 55 component tests; 112 remaining
+tests were not executed because the runner stopped on failure. Separating
+decoration output is insufficient to resolve this failure. The candidate is
+not ready to ship. Immediate preparation diagnostics are the next step.
+
+Temporary, uncommitted frontend diagnostic logging now captures immediate
+input preparation status, elapsed wall time, continuation-check count, context
+availability and deadline expiration. The diagnostic artifact will be kept
+separate from the verified candidate; logging must be removed before shipping.
+After all builds/browser runs were terminal, Cargo artifacts were cleaned
+(6.7 GiB removed); frozen candidate/failure artifacts remain available.
+
+The instrumented focused run passed eleven tests
+([diagnostics](editor-performance/input-preparation-diagnostic.json)). Its first
+`literal.md` input preparation cancelled at 20 ms with the deadline expired
+and no structure; subsequent small Markdown preparations were ready in 0–1 ms.
+The held-input assertions passed after that cold work. This shows an immediate
+Markdown budget expiration in the instrumented run, but does not identify the
+exact phase or prove the cause of the earlier held-input failures. Temporary
+logging has been removed: all current candidate source hashes match the
+pre-diagnostic frozen candidate. A fresh-browser held-input-only diagnostic
+run is next.
+
+The fresh-browser held-input-only diagnostic passed
+([receipt](editor-performance/input-preparation-cold-diagnostic.json)). First
+Local HTML preparation took 11 ms and Markdown 7 ms; later calls took 0–1 ms.
+The earlier held-input failure did not reproduce. These instrumented readings
+show little cold HTML headroom under the unchanged 12 ms policy; host background
+work was not controlled and they do not establish production latency bounds.
+Keep readiness and budget-fallback behavior separate from performance evidence
+when resolving the timing-dependent contract.
+
+The next candidate supplies input time through the editor facade runtime clock.
+`EditorActions::new` retains the existing browser clock and 12 ms policy. The
+held-worker context/history contract supplies a steady clock to test readiness
+without depending on host scheduling; its pairing, deletion, Enter, mixed
+cursor and stale-reply assertions remain intact. A new separate contract
+advances the clock by 13 ms, verifies literal insertion and one-step undo after
+budget expiry, then holds time steady to verify context-backed pairing and
+stale-reply/history preservation, in HTML/Markdown and both modes. This changes
+the verification scope: passing readiness contracts will not prove physical
+12 ms readiness or resolve cold-input latency. Production cold latency remains
+an open roadmap gate. The editor inventory increases to 190; current runtime
+verification is pending.
+
+Strict WASM frontend lint and all 128 native frontend tests pass for the
+runtime-clock candidate. The optimized browser build is in progress; the
+190-test runtime inventory remains unverified. Core implementation is unchanged
+from the previously verified 632-test native run.
+
+All twelve current focused browser contracts pass
+([receipt](editor-performance/input-clock-focused-browser.json), 7.97 s).
+Explicit expiry/history and stale-reply rejection pass in both modes; steady-clock
+context readiness retains the pairing/deletion/Enter assertions. This is
+functional policy verification, not physical readiness or cold-latency proof.
+The full 190-test editor suite is running against the same frozen artifacts.
+
+A further static input-path audit found that `SyntaxPreparations::prepare_with`
+takes/constructs a `SyntaxDocument` before `begin_update` applies the known
+`MAX_STRUCTURE_BYTES` source-length limit. Admitted editor documents above the
+syntax cap therefore can initialize a parser before returning `TooLarge`.
+This identifies a next optimization to verify after the current checkpoint;
+it is not yet changed or timed, and current browser artifacts remain fixed.
+
+A measurement harness is being added under `tools/editor-bench`, behind the
+`input-preparation` feature. It uses admitted editor documents, fresh parser
+caches and the same 12 ms input policy across HTML code, many embedded bodies,
+Markdown code and Rust, from 64 KiB through 2.48 MiB. It separates document
+construction/admission/index cost, context preparation and edit cost, recording
+ready/cancelled/oversized outcomes rather than requiring timing-dependent
+readiness. Assertions retain source, insertion and undo invariants. Native
+`--input` and WASM browser entry points share the workloads. Compilation and
+measurements are pending until the current browser suite finishes; this is not
+yet latency evidence and excludes frontend publication/DOM paint. Existing
+frozen frontend/core source hashes still match the running 190-test suite.
+
+The pending harness now includes full-preparation comparison entry points
+(`--full-input` and `shared_full_preparation_workloads`) with identical source
+and timing policy. The run instructions require separate browser/process runs
+and identify process-wide grammar/JIT warming and excluded frontend/layout
+costs. Compilation and measurements remain pending. The current browser suite
+has passed its library group and first two component groups (133 tests); the
+remaining groups are still active, with frozen source hashes unchanged.
+
+The complete current editor browser run passed all 190 independently inventoried
+contracts, once each, in groups 22/56/55/55/1/1, including both font matrices
+([receipt](editor-performance/input-clock-full-browser.json)). Frozen source
+hashes still match the candidate. This establishes the functional browser scope
+with controlled readiness/expiry clocks; physical cold latency and hosted CI
+reliability remain open. The separate measurement harness still needs compilation
+and native/browser execution.
+
+The measurement harness passes strict native/WASM all-target lint. Both optimized
+native variants and both separate Chromium variants complete all 16 workloads
+and source/selection undo checks
+([first samples](editor-performance/input-preparation-release-samples.json)).
+All compiler and editor-test runs were terminal before sampling; unrelated host
+background load was not controlled. These are single primitive samples, not
+repeated estimates or frontend/layout/paint costs. The browser context-only
+64 KiB HTML preparation cancels at 13.85 ms, and the near-2-MiB Rust fallback edit
+takes 8.36 ms. Above the syntax cap, sampled document construction also remains
+visible. Keep cold readiness, admission, fallback/source work and real UI
+responsiveness open; do not extrapolate the native debug literal improvement
+to full editor latency.

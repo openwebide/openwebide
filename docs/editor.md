@@ -303,7 +303,14 @@ When background syntax is pending, paired typing/deletion and Enter in registere
 embedded-language containers can reuse the same immediate preparation/cache
 path. Only current-source context is used; unavailable immediate analysis keeps
 ordinary lexical editing. Passive syntax consumers still wait for background
-publication rather than starting this input work.
+publication rather than starting this input work. Ordinary-input preparation
+requests editing structure without generating highlights and folds; completed
+full analysis reuses that same structure. Characters with unconditional literal
+behavior reuse the existing caret transaction without scanning lexical context.
+The facade accepts a runtime input clock while retaining the browser clock and
+12 ms budget by default. Readiness/history and explicit budget-expiry contracts
+use controlled clocks; they do not establish physical readiness within 12 ms.
+Cold input latency remains tracked in the roadmap and performance evidence.
 Explicit Reindent requests and comments in registered embedded-language containers
 use a yielding browser task adapter for the same Rust syntax service when no
 current structure is ready, then apply through the shared editor command facade.

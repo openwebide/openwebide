@@ -99,6 +99,7 @@ pub struct SyntaxDocument {
     text: Arc<String>,
     source_lines: Vec<super::lines::Line>,
     prepared: Option<(usize, Arc<SyntaxAnalysis>)>,
+    input_structure: Option<Arc<Structure>>,
     structure_progress: Option<(SyntaxStatus, super::structure::StructurePreparation)>,
     lexical: Option<Arc<crate::highlight::LexicalSnapshot>>,
     lexical_pending: Option<(SyntaxStatus, crate::highlight::LexicalPreparation)>,
@@ -137,6 +138,7 @@ impl SyntaxDocument {
             text: Arc::new(String::new()),
             source_lines: provider.map_or_else(Vec::new, |_| super::lines::lines("")),
             prepared: None,
+            input_structure: None,
             structure_progress: None,
             lexical: None,
             lexical_pending: None,
@@ -240,7 +242,56 @@ impl SyntaxDocument {
         {
             return Some((status, Some(analysis.clone())));
         }
-        if self.structure_progress.is_none() && self.prepared.is_none() && self.provider.is_some() {
+        let (status, structure) =
+            self.finish_structure_cooperative(status, should_continue, should_yield)?;
+        if !matches!(status, SyntaxStatus::Ready { .. }) {
+            return Some((status, None));
+        }
+        Some(self.assemble_preparation(status, tab_width, structure))
+    }
+
+    /// Prepare only editing context. Highlights and folds are background outputs,
+    /// and must not consume the ordinary-input continuation budget.
+    pub fn prepare_input_shared(
+        &mut self,
+        source: Arc<String>,
+        mut should_continue: impl FnMut() -> bool,
+    ) -> (SyntaxStatus, Option<Arc<SyntaxAnalysis>>) {
+        let status = self.update_source(&source, &mut should_continue, || source.clone(), None);
+        let (status, structure) = self
+            .finish_structure_cooperative(status, &mut should_continue, &mut || false)
+            .expect("synchronous input preparation does not yield");
+        let analysis = matches!(status, SyntaxStatus::Ready { .. }).then(|| {
+            Arc::new(SyntaxAnalysis {
+                source: self.text.clone(),
+                structure,
+                highlights: None,
+                folds: Vec::new(),
+            })
+        });
+        if analysis
+            .as_ref()
+            .is_some_and(|analysis| analysis.record_count() > transfer::MAX_ANALYSIS_RECORDS)
+        {
+            self.clear();
+            return (SyntaxStatus::TooLarge, None);
+        }
+        (status, analysis)
+    }
+
+    fn finish_structure_cooperative(
+        &mut self,
+        status: SyntaxStatus,
+        should_continue: &mut impl FnMut() -> bool,
+        should_yield: &mut impl FnMut() -> bool,
+    ) -> Option<(SyntaxStatus, Option<Arc<Structure>>)> {
+        if !matches!(status, SyntaxStatus::Ready { .. }) {
+            return Some((status, None));
+        }
+        if let Some(structure) = &self.input_structure {
+            return Some((status, Some(structure.clone())));
+        }
+        if self.structure_progress.is_none() && self.provider.is_some() {
             self.structure_progress = self.structure_preparation().map(|work| (status, work));
         }
         let mut structure = None;
@@ -269,7 +320,8 @@ impl SyntaxDocument {
                 }
             }
         }
-        Some(self.assemble_preparation(status, tab_width, structure))
+        self.input_structure = structure.clone();
+        Some((status, structure))
     }
 
     fn assemble_preparation(
@@ -427,6 +479,7 @@ impl SyntaxDocument {
             .provider
             .map_or_else(Vec::new, |_| super::lines::lines(""));
         self.prepared = None;
+        self.input_structure = None;
         self.structure_progress = None;
         self.lexical = None;
         self.lexical_pending = None;
@@ -1685,6 +1738,69 @@ mod tests {
                 recovered.source_snapshot()
             ));
             assert!(first.matches_source(source));
+        }
+    }
+
+    #[test]
+    fn input_preparation_shares_structure_without_preparing_decorations() {
+        for &(path, source, _) in super::super::syntax_contracts::LANGUAGE_CASES {
+            let language = crate::highlight::language_from_path(path);
+            let source = Arc::new(source.to_owned());
+            let mut syntax = SyntaxDocument::new(language).unwrap();
+            let (status, input) = syntax.prepare_input_shared(source.clone(), || true);
+            assert!(matches!(status, SyntaxStatus::Ready { .. }), "{path}");
+            let input = input.unwrap();
+            assert!(Arc::ptr_eq(input.source_snapshot(), &source));
+            assert!(input.highlights().is_none());
+            assert!(input.folds().is_empty());
+            assert!(
+                syntax.prepared.is_none(),
+                "input must not prepare decorations"
+            );
+            let (_, full) = syntax.prepare_shared(source.clone(), 4, || true);
+            let full = full.unwrap();
+            match (input.structure(), full.structure()) {
+                (Some(input), Some(full)) => assert!(Arc::ptr_eq(input, full), "{path}"),
+                (None, None) => (),
+                _ => panic!("input/full context mismatch: {path}"),
+            }
+            let mut fresh = SyntaxDocument::new(language).unwrap();
+            let (_, expected) = fresh.prepare_shared(source, 4, || true);
+            let expected = expected.unwrap();
+            assert_eq!(full.highlights(), expected.highlights(), "{path}");
+            assert_eq!(full.folds(), expected.folds(), "{path}");
+        }
+    }
+
+    #[test]
+    fn input_preparation_rejects_cancelled_and_replaced_sources() {
+        for (language, source) in [
+            (Language::Html, "<script>function run() {}</script>"),
+            (Language::Markdown, "```javascript\nfunction run() {}\n```"),
+        ] {
+            let source = Arc::new(source.to_owned());
+            let mut syntax = SyntaxDocument::new(language).unwrap();
+            let (_, old) = syntax.prepare_input_shared(source.clone(), || true);
+            let old = old.unwrap();
+            let changed = Arc::new(source.replace("{}", "{ // changed\n}"));
+            let (status, rejected) = syntax.prepare_input_shared(changed.clone(), || false);
+            assert_eq!(status, SyntaxStatus::Cancelled);
+            assert!(rejected.is_none());
+            assert!(syntax.input_structure.is_none());
+            let (_, current) = syntax.prepare_input_shared(changed.clone(), || true);
+            let current = current.unwrap();
+            assert!(!current.matches_source(&source));
+            assert!(current.matches_source(&changed));
+            assert!(!Arc::ptr_eq(
+                old.structure().unwrap(),
+                current.structure().unwrap()
+            ));
+            assert!(old.matches_source(&source));
+            let too_large = Arc::new("x".repeat(MAX_STRUCTURE_BYTES + 1));
+            let (status, rejected) = syntax.prepare_input_shared(too_large, || true);
+            assert_eq!(status, SyntaxStatus::TooLarge);
+            assert!(rejected.is_none());
+            assert!(syntax.input_structure.is_none());
         }
     }
 

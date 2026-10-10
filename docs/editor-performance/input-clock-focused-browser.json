@@ -1,0 +1,34 @@
+{
+  "scope": "Input-only context, literal fallback, explicit budget expiry/history, held-context history, mixed cursors, source/account guards and retained decorations in Local/Remote",
+  "plannedEditorTests": 190,
+  "executedTests": 12,
+  "passedTests": 12,
+  "failedTests": 0,
+  "terminalExitCode": 0,
+  "manifest": {
+    "base": "ed1c8caa96fb357528b57cd118c3b0c3d30b561e",
+    "sourceSha256": {
+      "frontend/src/state_actions/editor.rs": "b4bddd907bb197dc447cc877849421e1093f1c4951a73e33b18243191635b1df",
+      "frontend/src/state_actions/editor/structural_actions.rs": "88110d598d2d2ff841138b6e88c597f785a7350c39f9e1d04c7584cf9ee0c574",
+      "frontend/src/state_actions/editor/preparation.rs": "d0fb8fb102d4f12f3bb952f1ccd323ddcc3914309b469394450f6e5747068289",
+      "frontend/src/components/editor.rs": "350e0742a481344292056ed048169f5e153a518737798a38fb94c7292496abc9",
+      "frontend/src/editor_worker.rs": "62d48be6c91f79c4ac6befd656e042b6306c5392f3bb0c36a57da9177491e5c6",
+      "frontend/tests/components/editor.rs": "1ceb92e2029322fe4797efa33c6362d3ce23963fadf664ae238a3efa21ff2178",
+      "crates/core/src/editor/pairs.rs": "df8a47ccedf6e717e76e6258d1e6bfc64dfbc6089c7c932c665d3cb30de3a353",
+      "crates/core/src/editor/syntax.rs": "fce29d43871b2fc3895d81c0150478f7faad351adfd229a1e2be9a25788dd018",
+      "crates/core/src/editor/syntax/preparation.rs": "b58d2a3be59d8fbab08e4a8ed051ff1add8e275ee0ca051bd8265b2e2f108b3a",
+      "crates/core/src/editor/syntax/cache.rs": "a4a3d2bf549ae94c408b8c8eb1a09bd1c653a82093f66e8718815ae4a8124562",
+      "crates/core/src/editor/syntax_providers.rs": "560a73bc096acb74790090d65b7747eba6721a57383f519a585d5167e4a8cad1",
+      "crates/core/src/editor/syntax_injections.rs": "93e2a26d8834727c241effc62a1d20772279fd1a8e02055299267f7d0763524e",
+      "tools/run-editor-browser-tests.py": "81a3cce570c0448a4a3493e899b3ae6922bff0704b656a12d85de42f2881378b"
+    },
+    "artifactSha256": {
+      "components.wasm": "0b429df69109a4d536b4ae67b2a4982ce02fc92a485ccc492044f24033fab20e",
+      "editor-library.wasm": "d9cb4402ffaf611403af91841b672e3877219e3575893fba8484401cd059fa19"
+    }
+  },
+  "logSha256": "aef46f6752323993e0c2a75d63074d0b75e97c4ca35c26c59187f433309ca04c",
+  "result": "{\"focusedTests\": 12, \"componentEditorInventory\": 168}\nSet timeout to 300 seconds...\nRunning headless tests in Chrome on `http://127.0.0.1:46329/`\nTry find `webdriver.json` for configure browser's capabilities:\nOk\nLoading Wasm module...\n\nrunning 12 tests\ntest editor::selection_policy_and_multi_commands_share_both_modes_and_reject_stale_targets ... ok\ntest editor::rust_editor_commands_history_and_stale_dom_share_both_modes ... ok\ntest editor::parser_budget_rejection_preserves_source_and_recovers_in_both_modes ... ok\ntest editor::parsed_typing_contexts_share_modes_mixed_cursors_and_stale_guards ... ok\ntest editor::literal_fallback_preserves_unicode_history_and_large_documents_in_both_modes ... ok\ntest editor::held_syntax_keeps_embedded_typing_and_post_edit_context_in_both_modes ... ok\ntest editor::expired_input_budget_preserves_literal_input_history_and_stale_guards_in_both_modes ... ok\ntest editor::embedded_comment_actions_wait_for_scopes_and_commit_once_in_both_modes ... ok\ntest editor::deferred_decorations_reject_replaced_source_selection_and_scope_in_both_modes ... ok\ntest editor::cold_structural_navigation_prepares_context_and_rejects_superseded_actions_in_both_modes ... ok\ntest editor::cold_structural_commands_reject_superseded_requests_in_both_modes ... ok\ntest editor::block_indentation_pairs_and_mobile_input_share_both_workspace_modes ... ok\n\ntest result: ok. 12 passed; 0 failed; 0 ignored; 531 filtered out; finished in 7.97s\n\n",
+  "clockCoverage": "Held-context readiness uses a steady clock. Explicit expiry advances 13 ms against unchanged 12 ms policy; default browser clock remains unchanged. Other focused contracts retain the default clock.",
+  "limits": "Functional policy evidence, not physical 12 ms readiness, cold latency, full-suite verification or hosted CI reliability."
+}

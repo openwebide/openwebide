@@ -88,6 +88,18 @@ impl<K: Eq> SyntaxPreparations<K> {
         })
     }
 
+    pub fn prepare_input_shared(
+        &mut self,
+        key: K,
+        language: Language,
+        source: Arc<String>,
+        should_continue: impl FnMut() -> bool,
+    ) -> (SyntaxStatus, Option<Arc<SyntaxAnalysis>>) {
+        self.prepare_with(key, language, source.len(), |document| {
+            document.prepare_input_shared(source, should_continue)
+        })
+    }
+
     fn prepare_with(
         &mut self,
         key: K,

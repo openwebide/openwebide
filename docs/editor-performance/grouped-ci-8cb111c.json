@@ -1,0 +1,39 @@
+{
+  "conclusion": "success",
+  "headSha": "8cb111c0c51060f40ff98af071af58c79415b4fa",
+  "jobs": [
+    {
+      "conclusion": "success",
+      "name": "backend-and-crates",
+      "status": "completed",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38086605066/job/114314306781"
+    },
+    {
+      "conclusion": "success",
+      "name": "frontend",
+      "status": "completed",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38086605066/job/114314306901"
+    },
+    {
+      "conclusion": "success",
+      "name": "frontend-ui-tests",
+      "status": "completed",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38086605066/job/114314306907"
+    },
+    {
+      "conclusion": "success",
+      "name": "docker",
+      "status": "completed",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38086605066/job/114314306963"
+    },
+    {
+      "conclusion": "success",
+      "name": "bridge-windows",
+      "status": "completed",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38086605066/job/114314306974"
+    }
+  ],
+  "status": "completed",
+  "url": "https://github.com/openwebide/openwebide/actions/runs/38086605066",
+  "reliability": "All five jobs pass for the structural-navigation checkpoint; newer input changes, older readiness-failure causes, repeated release/production and physical-device gates remain open."
+}

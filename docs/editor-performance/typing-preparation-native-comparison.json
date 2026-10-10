@@ -1,0 +1,1203 @@
+{
+  "scope": "Three sequential native debug before/after preparation and literal-fallback diagnostics; compiler and editor browser tasks were terminal before this repeat run",
+  "base": "ed1c8caa96fb357528b57cd118c3b0c3d30b561e",
+  "baseline": "typing-preparation-native-baseline.json",
+  "candidateSourceSha256": {
+    "crates/core/src/editor/pairs.rs": "df8a47ccedf6e717e76e6258d1e6bfc64dfbc6089c7c932c665d3cb30de3a353",
+    "crates/core/src/editor/syntax.rs": "5701c237ed0b31d71fda139dec152ae037d6c5e6194b87f4b9638eea8e493507",
+    "crates/core/src/editor/syntax/cache.rs": "5cf33534931794fc64bda8f9bb0caa90eb57827f4ca08ded75920c9aa5d21170",
+    "crates/core/src/editor/structure.rs": "78ea1ab7e0c903b567c59bd5f692bdbc06fc5cbf0e1ec6b5874c22bea1ca183a",
+    "crates/core/src/editor/mod.rs": "a54da7fdaafcb47a94217a45beb319e1228355f1131a2594360233779855fcbe"
+  },
+  "probeSourceSha256": "7c9546c93868c29d18eb7a402738450f7d81eea0efc10ff89131f2c210a69744",
+  "beforeBinarySha256": "35ef0c809479e07f6f345ccc62f006853b52d10589a30afa332a1d18caba70f4",
+  "afterBinarySha256": "551d9174b827f7c12d8dd33a262463dbadcec26dcc4d2c038d322cdbbbc61467",
+  "afterCoreArtifactSha256": "2e8805430f9600b1e9b55967582318ccf85b0ac9610f3f364eed6e4f137dcf28",
+  "summary": [
+    {
+      "kind": "html-code",
+      "beforeMedianEditMs": 50.661334000000004,
+      "afterMedianEditMs": 0.413833,
+      "beforeEditMs": [
+        50.661334000000004,
+        51.216375,
+        48.662083
+      ],
+      "afterEditMs": [
+        0.440334,
+        0.392792,
+        0.413833
+      ]
+    },
+    {
+      "kind": "html-comment",
+      "beforeMedianEditMs": 60.698833,
+      "afterMedianEditMs": 0.049916,
+      "beforeEditMs": [
+        60.136500000000005,
+        60.713542000000004,
+        60.698833
+      ],
+      "afterEditMs": [
+        0.046709,
+        0.053334,
+        0.049916
+      ]
+    },
+    {
+      "kind": "html-bodies",
+      "beforeMedianEditMs": 95.795417,
+      "afterMedianEditMs": 0.49375,
+      "beforeEditMs": [
+        95.795417,
+        95.799542,
+        94.78012500000001
+      ],
+      "afterEditMs": [
+        0.496,
+        0.49375,
+        0.470458
+      ]
+    },
+    {
+      "kind": "markdown-code",
+      "beforeMedianEditMs": 49.780958,
+      "afterMedianEditMs": 0.420375,
+      "beforeEditMs": [
+        49.791583,
+        49.780958,
+        49.121625
+      ],
+      "afterEditMs": [
+        0.426791,
+        0.40979200000000005,
+        0.420375
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "repeat": 0,
+      "stage": "before",
+      "logSha256": "c9937c77e830f9d0119e1844c86f2f1f585b19b99a5065fb72fa34c657ffa16b",
+      "samples": [
+        {
+          "kind": "html-code",
+          "bytes": 37,
+          "repeat": 1,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 2.225833,
+          "editMs": 0.054375
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 62,
+          "repeat": 1,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 0.12725,
+          "editMs": 0.0155
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 35,
+          "repeat": 1,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 0.092958,
+          "editMs": 0.010541
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 36,
+          "repeat": 1,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 1.037708,
+          "editMs": 0.016292
+        },
+        {
+          "kind": "html-code",
+          "bytes": 4627,
+          "repeat": 256,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 7.116,
+          "editMs": 0.026334
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 5672,
+          "repeat": 256,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 1.8411250000000001,
+          "editMs": 0.013
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 8960,
+          "repeat": 256,
+          "status": "TooLarge",
+          "context": false,
+          "preparationMs": 0.687417,
+          "editMs": 0.781667
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 4626,
+          "repeat": 256,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 10.203917,
+          "editMs": 0.027708999999999998
+        },
+        {
+          "kind": "html-code",
+          "bytes": 36883,
+          "repeat": 2048,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 14.795417,
+          "editMs": 3.218875
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 45096,
+          "repeat": 2048,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 13.422583,
+          "editMs": 0.0295
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 71680,
+          "repeat": 2048,
+          "status": "TooLarge",
+          "context": false,
+          "preparationMs": 3.951083,
+          "editMs": 5.638709
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 36882,
+          "repeat": 2048,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.656,
+          "editMs": 3.135333
+        },
+        {
+          "kind": "html-code",
+          "bytes": 147475,
+          "repeat": 8192,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.808,
+          "editMs": 12.388458
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 180264,
+          "repeat": 8192,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.429459,
+          "editMs": 15.441542
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 286720,
+          "repeat": 8192,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.441667,
+          "editMs": 23.80975
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 147474,
+          "repeat": 8192,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.54175,
+          "editMs": 12.659291
+        },
+        {
+          "kind": "html-code",
+          "bytes": 589843,
+          "repeat": 32768,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.420333000000001,
+          "editMs": 50.661334000000004
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 720936,
+          "repeat": 32768,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.307458,
+          "editMs": 60.136500000000005
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 1146880,
+          "repeat": 32768,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.24175,
+          "editMs": 95.795417
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 589842,
+          "repeat": 32768,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.413833,
+          "editMs": 49.791583
+        }
+      ]
+    },
+    {
+      "repeat": 0,
+      "stage": "after",
+      "logSha256": "201c63c9502911dbd1d438d7c2ad1fdd0bc654975d94316ba0a6c1ab6fb28949",
+      "samples": [
+        {
+          "kind": "html-code",
+          "bytes": 37,
+          "repeat": 1,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 2.123042,
+          "editMs": 0.0235
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 62,
+          "repeat": 1,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 0.128167,
+          "editMs": 0.015709
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 35,
+          "repeat": 1,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 0.092084,
+          "editMs": 0.010792
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 36,
+          "repeat": 1,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 0.925416,
+          "editMs": 0.015916000000000003
+        },
+        {
+          "kind": "html-code",
+          "bytes": 4627,
+          "repeat": 256,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 7.009666999999999,
+          "editMs": 0.029166
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 5672,
+          "repeat": 256,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 1.767792,
+          "editMs": 0.013208
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 8960,
+          "repeat": 256,
+          "status": "TooLarge",
+          "context": false,
+          "preparationMs": 0.692375,
+          "editMs": 0.014
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 4626,
+          "repeat": 256,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 10.305041,
+          "editMs": 0.033
+        },
+        {
+          "kind": "html-code",
+          "bytes": 36883,
+          "repeat": 2048,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 14.167917000000001,
+          "editMs": 0.047083
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 45096,
+          "repeat": 2048,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 13.674040999999999,
+          "editMs": 0.027208
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 71680,
+          "repeat": 2048,
+          "status": "TooLarge",
+          "context": false,
+          "preparationMs": 3.979208,
+          "editMs": 0.040375
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 36882,
+          "repeat": 2048,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.551375,
+          "editMs": 0.059292
+        },
+        {
+          "kind": "html-code",
+          "bytes": 147475,
+          "repeat": 8192,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 13.599875,
+          "editMs": 0.13937500000000003
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 180264,
+          "repeat": 8192,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.150625,
+          "editMs": 0.038083
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 286720,
+          "repeat": 8192,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.526709,
+          "editMs": 0.145084
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 147474,
+          "repeat": 8192,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.5615,
+          "editMs": 0.130417
+        },
+        {
+          "kind": "html-code",
+          "bytes": 589843,
+          "repeat": 32768,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.381041,
+          "editMs": 0.440334
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 720936,
+          "repeat": 32768,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.471083,
+          "editMs": 0.046709
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 1146880,
+          "repeat": 32768,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.3065,
+          "editMs": 0.496
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 589842,
+          "repeat": 32768,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.4215,
+          "editMs": 0.426791
+        }
+      ]
+    },
+    {
+      "repeat": 1,
+      "stage": "before",
+      "logSha256": "890f9c17f0a4520d25ffe3d7e3f9cf4604e438d47abdf116bf1fa5e3ecd5bc75",
+      "samples": [
+        {
+          "kind": "html-code",
+          "bytes": 37,
+          "repeat": 1,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 0.228333,
+          "editMs": 0.031083
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 62,
+          "repeat": 1,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 0.125583,
+          "editMs": 0.016208
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 35,
+          "repeat": 1,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 0.092125,
+          "editMs": 0.010458
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 36,
+          "repeat": 1,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 0.16025,
+          "editMs": 0.008666
+        },
+        {
+          "kind": "html-code",
+          "bytes": 4627,
+          "repeat": 256,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 7.105459,
+          "editMs": 0.025959
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 5672,
+          "repeat": 256,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 1.962583,
+          "editMs": 0.026125000000000002
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 8960,
+          "repeat": 256,
+          "status": "TooLarge",
+          "context": false,
+          "preparationMs": 0.709333,
+          "editMs": 0.8125
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 4626,
+          "repeat": 256,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 10.358457999999999,
+          "editMs": 0.044625
+        },
+        {
+          "kind": "html-code",
+          "bytes": 36883,
+          "repeat": 2048,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 14.365499999999999,
+          "editMs": 3.210667
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 45096,
+          "repeat": 2048,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 13.954584,
+          "editMs": 0.032666999999999995
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 71680,
+          "repeat": 2048,
+          "status": "TooLarge",
+          "context": false,
+          "preparationMs": 3.9961659999999997,
+          "editMs": 5.577667
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 36882,
+          "repeat": 2048,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.885875,
+          "editMs": 3.168583
+        },
+        {
+          "kind": "html-code",
+          "bytes": 147475,
+          "repeat": 8192,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 13.397292,
+          "editMs": 12.397542
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 180264,
+          "repeat": 8192,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.050917,
+          "editMs": 14.384709
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 286720,
+          "repeat": 8192,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.503791,
+          "editMs": 23.737250000000003
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 147474,
+          "repeat": 8192,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.535083,
+          "editMs": 12.503959
+        },
+        {
+          "kind": "html-code",
+          "bytes": 589843,
+          "repeat": 32768,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.406708,
+          "editMs": 51.216375
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 720936,
+          "repeat": 32768,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.06475,
+          "editMs": 60.713542000000004
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 1146880,
+          "repeat": 32768,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.332125,
+          "editMs": 95.799542
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 589842,
+          "repeat": 32768,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.431042,
+          "editMs": 49.780958
+        }
+      ]
+    },
+    {
+      "repeat": 1,
+      "stage": "after",
+      "logSha256": "6cf29c7912a37d0b2d234795f2c2d87f0817c2d45e74cb1e001fbed892dab9e8",
+      "samples": [
+        {
+          "kind": "html-code",
+          "bytes": 37,
+          "repeat": 1,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 0.22583299999999998,
+          "editMs": 0.030917000000000004
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 62,
+          "repeat": 1,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 0.126792,
+          "editMs": 0.016958
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 35,
+          "repeat": 1,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 0.095083,
+          "editMs": 0.010375
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 36,
+          "repeat": 1,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 0.158041,
+          "editMs": 0.009958
+        },
+        {
+          "kind": "html-code",
+          "bytes": 4627,
+          "repeat": 256,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 7.093584,
+          "editMs": 0.02125
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 5672,
+          "repeat": 256,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 1.826792,
+          "editMs": 0.013709
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 8960,
+          "repeat": 256,
+          "status": "TooLarge",
+          "context": false,
+          "preparationMs": 0.669208,
+          "editMs": 0.013583
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 4626,
+          "repeat": 256,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 10.3685,
+          "editMs": 0.033541
+        },
+        {
+          "kind": "html-code",
+          "bytes": 36883,
+          "repeat": 2048,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 14.466541,
+          "editMs": 0.05275
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 45096,
+          "repeat": 2048,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 13.182083,
+          "editMs": 0.028083
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 71680,
+          "repeat": 2048,
+          "status": "TooLarge",
+          "context": false,
+          "preparationMs": 3.9032080000000002,
+          "editMs": 0.050958
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 36882,
+          "repeat": 2048,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 13.182375,
+          "editMs": 0.049792
+        },
+        {
+          "kind": "html-code",
+          "bytes": 147475,
+          "repeat": 8192,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.846417,
+          "editMs": 0.143958
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 180264,
+          "repeat": 8192,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.52725,
+          "editMs": 0.055417
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 286720,
+          "repeat": 8192,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.502208000000001,
+          "editMs": 0.15975
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 147474,
+          "repeat": 8192,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.517709,
+          "editMs": 0.121208
+        },
+        {
+          "kind": "html-code",
+          "bytes": 589843,
+          "repeat": 32768,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.391042,
+          "editMs": 0.392792
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 720936,
+          "repeat": 32768,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.525084000000001,
+          "editMs": 0.053334
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 1146880,
+          "repeat": 32768,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.2565,
+          "editMs": 0.49375
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 589842,
+          "repeat": 32768,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.406,
+          "editMs": 0.40979200000000005
+        }
+      ]
+    },
+    {
+      "repeat": 2,
+      "stage": "before",
+      "logSha256": "2d618eedd3cc32102c904de128685175a8d0540d13f2e4fe1f114630578606e3",
+      "samples": [
+        {
+          "kind": "html-code",
+          "bytes": 37,
+          "repeat": 1,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 0.23550000000000001,
+          "editMs": 0.03025
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 62,
+          "repeat": 1,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 0.12966599999999998,
+          "editMs": 0.015208000000000001
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 35,
+          "repeat": 1,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 0.092167,
+          "editMs": 0.010459
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 36,
+          "repeat": 1,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 0.158916,
+          "editMs": 0.0095
+        },
+        {
+          "kind": "html-code",
+          "bytes": 4627,
+          "repeat": 256,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 6.990584,
+          "editMs": 0.025958000000000002
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 5672,
+          "repeat": 256,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 1.8165410000000002,
+          "editMs": 0.011042
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 8960,
+          "repeat": 256,
+          "status": "TooLarge",
+          "context": false,
+          "preparationMs": 0.698958,
+          "editMs": 0.782458
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 4626,
+          "repeat": 256,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 10.367167,
+          "editMs": 0.024334
+        },
+        {
+          "kind": "html-code",
+          "bytes": 36883,
+          "repeat": 2048,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 14.593125,
+          "editMs": 3.045083
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 45096,
+          "repeat": 2048,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 13.183334,
+          "editMs": 0.043375
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 71680,
+          "repeat": 2048,
+          "status": "TooLarge",
+          "context": false,
+          "preparationMs": 3.952334,
+          "editMs": 5.989541999999999
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 36882,
+          "repeat": 2048,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.703709,
+          "editMs": 3.155625
+        },
+        {
+          "kind": "html-code",
+          "bytes": 147475,
+          "repeat": 8192,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 13.484582999999999,
+          "editMs": 12.779625
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 180264,
+          "repeat": 8192,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.083125,
+          "editMs": 14.881917
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 286720,
+          "repeat": 8192,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.473958,
+          "editMs": 23.823833999999998
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 147474,
+          "repeat": 8192,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.531832999999999,
+          "editMs": 12.153959
+        },
+        {
+          "kind": "html-code",
+          "bytes": 589843,
+          "repeat": 32768,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.387832999999999,
+          "editMs": 48.662083
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 720936,
+          "repeat": 32768,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.309708,
+          "editMs": 60.698833
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 1146880,
+          "repeat": 32768,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.26675,
+          "editMs": 94.78012500000001
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 589842,
+          "repeat": 32768,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.450875,
+          "editMs": 49.121625
+        }
+      ]
+    },
+    {
+      "repeat": 2,
+      "stage": "after",
+      "logSha256": "789829cf5a84000002a41b78e0633ebbce325e079cb64c7a92ebcf9af93c14f8",
+      "samples": [
+        {
+          "kind": "html-code",
+          "bytes": 37,
+          "repeat": 1,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 0.237333,
+          "editMs": 0.02675
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 62,
+          "repeat": 1,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 0.13029200000000002,
+          "editMs": 0.015666
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 35,
+          "repeat": 1,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 0.09112500000000001,
+          "editMs": 0.010332999999999998
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 36,
+          "repeat": 1,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 0.164,
+          "editMs": 0.00925
+        },
+        {
+          "kind": "html-code",
+          "bytes": 4627,
+          "repeat": 256,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 7.100834000000001,
+          "editMs": 0.022708
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 5672,
+          "repeat": 256,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 1.8597920000000001,
+          "editMs": 0.01275
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 8960,
+          "repeat": 256,
+          "status": "TooLarge",
+          "context": false,
+          "preparationMs": 0.7085830000000001,
+          "editMs": 0.013375
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 4626,
+          "repeat": 256,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 10.401209,
+          "editMs": 0.037292
+        },
+        {
+          "kind": "html-code",
+          "bytes": 36883,
+          "repeat": 2048,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 14.423917,
+          "editMs": 0.058792000000000004
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 45096,
+          "repeat": 2048,
+          "status": "Ready { incremental: false }",
+          "context": true,
+          "preparationMs": 13.837292,
+          "editMs": 0.033167
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 71680,
+          "repeat": 2048,
+          "status": "TooLarge",
+          "context": false,
+          "preparationMs": 3.841791,
+          "editMs": 0.0485
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 36882,
+          "repeat": 2048,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.659833,
+          "editMs": 0.060416
+        },
+        {
+          "kind": "html-code",
+          "bytes": 147475,
+          "repeat": 8192,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.862583,
+          "editMs": 0.128458
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 180264,
+          "repeat": 8192,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.528958,
+          "editMs": 0.038875
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 286720,
+          "repeat": 8192,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.60375,
+          "editMs": 0.134
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 147474,
+          "repeat": 8192,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.712416000000001,
+          "editMs": 0.127167
+        },
+        {
+          "kind": "html-code",
+          "bytes": 589843,
+          "repeat": 32768,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.412916,
+          "editMs": 0.413833
+        },
+        {
+          "kind": "html-comment",
+          "bytes": 720936,
+          "repeat": 32768,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.445375,
+          "editMs": 0.049916
+        },
+        {
+          "kind": "html-bodies",
+          "bytes": 1146880,
+          "repeat": 32768,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.245000000000001,
+          "editMs": 0.470458
+        },
+        {
+          "kind": "markdown-code",
+          "bytes": 589842,
+          "repeat": 32768,
+          "status": "Cancelled",
+          "context": false,
+          "preparationMs": 12.415875,
+          "editMs": 0.420375
+        }
+      ]
+    }
+  ],
+  "limits": "Native debug diagnostic; excludes frontend/DOM/WASM/release, editor admission during construction and hard per-phase bounds. Baseline came from frontend dependency unification; candidate core artifact built directly with the same editor-parser/test-support features. Chrono/dependency feature unification differs. Earlier repeats overlapped clippy and are excluded; only rerun data appears here."
+}

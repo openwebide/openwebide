@@ -96,6 +96,7 @@ impl SyntaxDocument {
             return Some(SyntaxStatus::Ready { incremental: true });
         }
         self.prepared = None;
+        self.input_structure = None;
         self.structure_progress = None;
         self.lexical_pending = None;
         self.outer_fallback = None;
@@ -270,6 +271,7 @@ impl SyntaxDocument {
                 return Some(Err(SyntaxStatus::TooLarge));
             };
             self.prepared = None;
+            self.input_structure = None;
             self.row_preparation = Some(RowPreparation {
                 base: self.text.clone(),
                 source: source.clone(),
@@ -338,6 +340,7 @@ impl SyntaxDocument {
             .is_some_and(|job| Arc::ptr_eq(job.source_snapshot(), source))
         {
             self.prepared = None;
+            self.input_structure = None;
             self.admission = Some(SyntaxAdmission::new(source.clone()));
         }
         loop {
@@ -371,6 +374,7 @@ impl SyntaxDocument {
             Arc::ptr_eq(&pending.source, source) && Arc::ptr_eq(&pending.base, &self.text)
         }) {
             self.prepared = None;
+            self.input_structure = None;
             self.source_comparison = Some(SourceComparison {
                 base: self.text.clone(),
                 source: source.clone(),

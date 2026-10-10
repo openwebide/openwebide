@@ -9,6 +9,11 @@ for what's still ahead.
 
 ## [Unreleased]
 
+- Add shared native/WASM measurements for admitted-document input preparation, comparing editing context with full decoration output and recording budget fallbacks.
+
+- Prepare ordinary-input editing context without also generating syntax highlights and folds, sharing the same parser structure and source validation.
+- Skip full-file lexical structure scanning for characters that cannot trigger pairing, while preserving multi-cursor transactions, Unicode selections and undo/redo.
+
 - Use current embedded-language context for pairing, paired deletion and Enter while background syntax is pending, retaining ordinary lexical editing when immediate analysis is unavailable.
 
 - Prepare explicit selection expansion and bracket jumps through the same guarded syntax service as Reindent and embedded comments. Preserve immediate lexical navigation for unsupported grammars; cancel pending structural actions after newer navigation or selection intent, including unchanged selections.
