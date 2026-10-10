@@ -397,14 +397,15 @@ Extend agent and editor capabilities through versioned plugin packages that user
 and the agent can manage, without requiring changes to the app for each new
 capability.
 
-- Activate the executable Scheduling release and verify deployed task/monitor
-  creation, cancellation, recovery and source-version handoff on server and paired
-  hosts. Verify history retention and quota recovery through the browser lifecycle
-  before removing transitional built-in handlers.
+- Activate the executable Scheduling release, complete paired-host CRUD
+  verification, and verify delivered agent work, monitors, restart recovery and
+  source-version handoff on server and paired hosts. Verify history retention and
+  quota recovery through the browser lifecycle before removing transitional
+  built-in handlers.
 - Extend authenticated, run-pinned private record callbacks with shared collection
-  adapters for further app data and workspace primitives,
-  production compiler-image verification, and
-  deployed compiled-default initialization. Marketplaces ship pinned Rust source and Cargo.lock;
+  adapters for further app data and workspace primitives. Verify compiled-default
+  initialization through deployed browser flows, extending the verified server
+  and paired-host HTTP bootstrap. Marketplaces ship pinned Rust source and Cargo.lock;
   hosts compile against the declared SDK version and validate the WASM component
   before activation. Cache artifacts by source, SDK and toolchain. Publish a
   registry release of the SDK, extending the available pinned public Git SDK and
