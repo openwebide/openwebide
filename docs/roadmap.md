@@ -65,21 +65,17 @@ tracks the remaining work rather than every optimization already shipped.
 
 **Remaining implementation**:
 
-- [ ] **Parser-aware command readiness:** extend the cooperative Reindent readiness
-  policy to other parser-aware commands where pending analysis can lose their
-  intended behavior. Use shared structure/capability information for embedded
-  language actions rather than relying solely on the outer file language. Cover
-  deferred completion, cancellation and stale source/account/selection in both
-  modes. Reindent now passes completion, HTML/Markdown bodies, menu, capacity and
-  cancellation contracts; its evidence is in [performance verification](editor-performance.md).
-  Embedded comment actions now share that preparation path, with request-time
-  ownership and newer-command cancellation; all 183 editor browser contracts and
-  128 native frontend tests pass. Selection-specific comment capabilities now
-  reuse complete analysis, with mixed-selection and stale-account checks passing
-  in both modes ([focused evidence](editor-performance/selection-capabilities-focused-browser.json)).
-  All 184 current editor browser tests, including both font matrices, pass
-  ([complete evidence](editor-performance/selection-capabilities-full-browser.json)). Finish
-  the readiness policy for other structural commands without delaying ordinary input.
+- [ ] **Parser-aware ordinary input and decorations:** audit pending-analysis
+  behavior without delaying input. Cover HTML and Markdown body pairing,
+  deletion and Enter with a held worker reply and immediately after an edit;
+  the existing parsed-typing contract exercises completed analysis. Audit
+  retained structural decorations for current-source ownership. Explicit
+  Reindent, embedded comment actions, selection expansion and bracket jumps now
+  share cooperative preparation and request-time cancellation across keyboard
+  and menu entry points. All 187 editor browser contracts, including both font
+  matrices, pass in both modes
+  ([complete evidence](editor-performance/structural-navigation-full-browser.json));
+  this does not establish ordinary-input readiness or finish the remaining gates.
 
 - [ ] **Cold startup and native input:** remove remaining full-source shaping in
   touch and unsupported-layout fallbacks. Desktop startup now uses bounded native
@@ -251,104 +247,34 @@ tracks the remaining work rather than every optimization already shipped.
   Improvements must preserve source/account/project ownership,
   pending edits, themes, supported previews, agent context and both adapter contracts.
 - [ ] **Reliable CI and release/PWA checks:** pass the complete native/WASI/WASM,
-  platform, browser and release-app checks reliably.
-  CI run `38045611820` failed wrapped startup readiness, highlight burst generations,
-  localized wrapped-row reuse and file-switch cancellation assertions. The identical
-  50-test group at `0bd6bbd` passes on macOS and Linux with four and two CPUs
-  ([records](editor-performance/current-ci-group-browser.jsonl)). All 173 current
-  editor tests, including both font matrices, also pass in the checked Linux
-  runner ([record](editor-performance/parser-budget-browser.jsonl));
-  `0bd6bbd`, `121fbbb` and `c42bc47` also passed all five CI jobs
-  ([first receipt](editor-performance/grouped-ci-0bd6bbd.json),
-  [second receipt](editor-performance/grouped-ci-121fbbb.json),
-  [third receipt](editor-performance/grouped-ci-c42bc47.json)); repeated complete
-  verification and the production responsiveness/memory gates remain required.
-  CI run `38051791475` at `3afca61` subsequently failed wrapped startup,
-  long wrapped cursor measurement and horizontal fragment assertions
-  ([receipt](editor-performance/grouped-ci-3afca61.json)). Its exact 50-test
-  selection passes with two CPUs on the current Linux arm64 build
-  ([record](editor-performance/ci-3afca61-group-current.jsonl)); this does not
-  prove the hosted x64 failure is fixed. Investigate the first startup failure
-  and any subsequent probe contamination before declaring CI reliable.
-  The subsequent `87df822` checkpoint passed all five CI jobs
-  ([receipt](editor-performance/grouped-ci-87df822.json)), before the initial
-  native-input lifecycle change. Binding now retries when document preparation
-  finishes after mounting; all 173 editor tests pass with two CPUs in Linux arm64
-  ([record](editor-performance/native-startup-retry-browser.jsonl)). This does not
-  prove the hosted startup failure's cause; preserve unchanged readiness deadlines
-  and verify the current checkpoint on hosted CI.
-  The input-readiness checkpoint `3017d5a` then passed all five CI jobs
-  ([receipt](editor-performance/grouped-ci-3017d5a.json)). Neutral rendering
-  identity changes pass all 173 editor browser tests with unchanged paint/probe
-  count limits ([record](editor-performance/neutral-render-identity-browser.jsonl)).
-  The neutral-identity checkpoint `e2ec3f5` passed all five CI jobs
-  ([receipt](editor-performance/grouped-ci-e2ec3f5.json)). Rejected-source early
-  paint and wrapped geometry restart pass all 174 editor browser tests on two-CPU
-  Linux arm64 with unchanged readiness deadlines and paint/probe limits
-  ([record](editor-performance/rejected-source-browser.jsonl)); current hosted
-  verification, repeated reliability and the broader gates remain open.
-  The rejected-source checkpoint `43f66c9` passed all five hosted CI jobs
-  ([receipt](editor-performance/grouped-ci-43f66c9.json)).
-  Prepared-source baseline sharing passes all 469 native core tests, 128 native
-  frontend tests and 174 editor browser tests with both font matrices
-  ([record](editor-performance/shared-saved-source-browser.jsonl)). Its `8a5f1e3`
-  checkpoint passed all five hosted CI jobs
-  ([receipt](editor-performance/grouped-ci-8a5f1e3.json)).
-  Immutable save payload/acknowledgement sharing additionally passes 470 native
-  core tests, 128 native frontend tests and 30 selected browser checks, including
-  both-adapter save ownership and recovery failures
-  ([record](editor-performance/immutable-save-source-browser.jsonl)); its
-  `dc49196` checkpoint passed all five hosted CI jobs
-  ([receipt](editor-performance/grouped-ci-dc49196.json)).
-  The late-save dirty-state checkpoint `0ec8cbe` and direct disk-comparison
-  checkpoint `988f700` also passed all five hosted jobs
-  ([first receipt](editor-performance/grouped-ci-0ec8cbe.json),
-  [second receipt](editor-performance/grouped-ci-988f700.json)). The recovered
-  undo-source checkpoint `72b7a3e` subsequently failed the editor browser job
-  ([receipt](editor-performance/grouped-ci-72b7a3e.json)): the first failure was
-  the typed parser-budget fallback readiness assertion, followed by cursor-probe,
-  horizontal-fragment and geometry readiness failures. Their cause and any
-  contamination from the first failed test remain unproven. Timeout diagnostics
-  now distinguish parser status, pending work and painted state without changing
-  deadlines or assertions. The source-sharing checkpoint `ba33f5d` subsequently
-  passed all five jobs ([receipt](editor-performance/grouped-ci-ba33f5d.json));
-  this does not establish the earlier failure's cause. The final-index validation
-  checkpoint `2301c26` also passed all five jobs
-  ([receipt](editor-performance/grouped-ci-2301c26.json)). The subsequent navigation,
-  decoding and metadata-validation checkpoints also passed all five jobs
-  ([navigation](editor-performance/grouped-ci-3d7eb5d.json),
-  [decoding](editor-performance/grouped-ci-2b1e482.json),
-  [validation](editor-performance/grouped-ci-be926f5.json)). Current Reindent,
-  reveal-retry and prepared-index undo checkpoint `9d4f888` failed its hosted
-  browser job ([receipt](editor-performance/grouped-ci-9d4f888.json)). The first
-  failure published the typed parser-capacity fallback but did not finish paint
-  readiness within the existing deadline; five subsequent editor checks also
-  failed. The cause and possible fixture contamination remain unproven. The
-  subsequent embedded-comment checkpoint still requires complete hosted
-  verification; earlier green checkpoints do not prove these failures' causes.
-  Validate bounded browser setup retries after the upstream Chrome download HTTP 502 failure. Repeat near-limit Linux
-  readiness and the complete suites; a local run or one green checkpoint is insufficient.
-  Cold queued-input checks explicitly defer neighborhood paint while preserving
-  source and selection comparisons; verify the complete suite on CI as well.
-  Host-plugin fixtures and explicit Output targeting preserve the memory/skill and
-  terminal contracts; verify focus/layout behavior in the complete browser partition.
-  Warm burst checks now wait for published parser/fallback paint and exact token-owned
-  dimensions; three Linux repetitions pass the strict burst and both-mode row-reuse
-  assertions, and the expanded 149-test Linux editor component partition passes.
-  The browser setup correction (`3956122`) passed all five CI jobs; repeat complete
-  CI for the merged editor and plugin checkpoints and retain the boundary gates.
-  The scoped crop-failure fixture checkpoint (`11150a0`) passed all five jobs,
-  including the complete editor and other UI partitions and both font matrices;
-  repeat verification for subsequent implementation checkpoints remains required.
-  Later checkpoints exhausted the combined 149-test browser deadline without an
-  individual assertion failure. CI now inventories current compiled artifacts and
-  checks complete, disjoint groups of at most 64 editor tests, preserving the
-  300-second browser deadline and separate font matrices. All 167 editor tests
-  pass in the official Linux runner. The grouping checkpoint (`2eab2c2`) passed
-  all five CI jobs, including every browser group and both font matrices. The
-  following-row checkpoint (`54c814e`) repeated that complete success; full CI
-  for subsequent implementations remains required.
-  Current checkpoints and measured results are in [performance evidence](editor-performance.md).
+  platform, browser and release-app checks reliably. The embedded-comment
+  checkpoint `cc019c1` passed all five hosted jobs
+  ([receipt](editor-performance/grouped-ci-cc019c1.json)). Selection-capability
+  checkpoint `71997bc` passed all 184 editor browser tests locally and all five
+  hosted jobs ([receipt](editor-performance/grouped-ci-71997bc.json)). New structural navigation passes all 187 editor browser contracts and 128
+  native frontend tests ([receipt](editor-performance/structural-navigation-full-browser.json));
+  its own hosted CI remains required.
+
+  Investigate intermittent hosted readiness failures before declaring reliability.
+  `9d4f888` published the typed parser-budget fallback but did not finish paint
+  within the existing deadline, followed by five other failures
+  ([receipt](editor-performance/grouped-ci-9d4f888.json)). Earlier wrapped-startup
+  and parser-fallback failures at `3afca61` and `72b7a3e` also have unproven causes
+  and possible fixture contamination. Subsequent green checkpoints and isolated
+  local passes do not establish those causes. Keep parser/paint/geometry timeout
+  diagnostics and repeat near-limit Linux/x64 readiness, complete hosted suites
+  and production responsiveness/memory checks with unchanged readiness deadlines
+  and paint/probe limits.
+
+  Preserve complete compiled-artifact inventories, independently checked disjoint
+  groups of at most 64 editor tests, the 300-second browser deadline, separate
+  font matrices and every other UI partition. Repeat merged editor/plugin and
+  subsequent implementation checkpoints, including warm highlight bursts and
+  wrapped-row reuse, file-switch cancellation, cold queued-input source/selection
+  ownership, host-plugin focus/layout and explicit Output/terminal targeting.
+  Validate bounded browser-setup retries after upstream Chrome download HTTP 502
+  failures. Historical checkpoint counts, receipts and measured results live in
+  [performance evidence](editor-performance.md); they are not the current inventory.
 - [ ] **Physical Chrome/Edge PWA input:** verify real input-method commit/cancel,
   Unicode and LF/CRLF undo/redo, multiple-cursor clipboard behavior and touch input
   without rewriting unrelated text. Automated CDP composition is supporting evidence,

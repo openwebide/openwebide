@@ -81,6 +81,40 @@ pub(super) struct EditorPaint {
     pub caret: Callback<usize, Option<web_sys::DomRect>>,
 }
 
+fn prepare_editor_expansion(
+    actions: EditorActions,
+    textarea: &web_sys::HtmlTextAreaElement,
+    error: RwSignal<Option<String>>,
+    paint: RwSignal<Option<EditorPaint>>,
+    focus: Option<WorkspaceState>,
+) {
+    let request = actions.selection_command_when_ready(
+        openwebide_core::editor::SelectionCommand::Expand,
+        projected_selection(actions, textarea),
+    );
+    let textarea = textarea.clone();
+    leptos::task::spawn_local(async move {
+        let result = request.await;
+        if error.is_disposed() || !current_editor_target(actions, &textarea) {
+            return;
+        }
+        match result {
+            Ok(Some(selections)) => {
+                error.set(None);
+                if let Some(selection) = selections.first() {
+                    render_editor_selection(actions, &textarea, *selection, false);
+                    reveal_editor_caret(actions, &textarea, paint);
+                    if let Some(workspace) = focus {
+                        focus_editor_after_menu(workspace, actions, &textarea);
+                    }
+                }
+            }
+            Err(failure) => error.set(Some(failure.to_string())),
+            Ok(None) => (),
+        }
+    });
+}
+
 fn editor_selection_key(
     actions: EditorActions,
     textarea: &web_sys::HtmlTextAreaElement,
@@ -185,6 +219,10 @@ fn editor_selection_key(
         && actions.queued_motion_ticket().is_some()
     {
         motion_adapter.queue(textarea, motion, event.shift_key());
+        return true;
+    }
+    if command == Some(Command::Expand) {
+        prepare_editor_expansion(actions, textarea, error, motion_adapter.paint, None);
         return true;
     }
     let source = actions.source();
@@ -2899,9 +2937,21 @@ pub fn Editor(
             && current_editor_target(editor_actions, &textarea)
         {
             let selection = projected_selection(editor_actions, &textarea);
-            if let Some((_, target)) = editor_actions.matching_bracket(selection.head) {
-                navigate_editor(editor_actions, &textarea, target, paint_request);
-            }
+            let request = editor_actions.matching_bracket_when_ready(selection);
+            leptos::task::spawn_local(async move {
+                let result = request.await;
+                if action_error.is_disposed() || !current_editor_target(editor_actions, &textarea) {
+                    return;
+                }
+                match result {
+                    Ok(Some((_, target))) => {
+                        action_error.set(None);
+                        navigate_editor(editor_actions, &textarea, target, paint_request);
+                    }
+                    Err(failure) => action_error.set(Some(failure.to_string())),
+                    Ok(None) => (),
+                }
+            });
         }
     });
     Effect::new(move || {
@@ -3367,6 +3417,10 @@ pub fn Editor(
                                                 let source = content.get_untracked();
                                                 let selection = projected_selection(editor_actions, &textarea);
                                                 if let Err(error) = editor_actions.record_native_selection(selection) { action_error.set(Some(error.to_string())); return; }
+                                                if command == openwebide_core::editor::SelectionCommand::Expand {
+                                                    prepare_editor_expansion(editor_actions, &textarea, action_error, paint_request, Some(workspace));
+                                                    return;
+                                                }
                                                 match editor_actions.selection_command(project, &path, &source, command) {
                                                     Ok(Some(selections)) => { action_error.set(None); if let Some(selection) = selections.first() { render_editor_selection(editor_actions, &textarea, *selection, false); focus_editor_after_menu(workspace, editor_actions, &textarea); } }
                                                     Err(error) => action_error.set(Some(error.to_string())),

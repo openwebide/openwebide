@@ -24,6 +24,7 @@ pub enum EditorCommand {
 }
 
 mod columns;
+mod structural_actions;
 pub use columns::EditorColumnSelection;
 mod decorations;
 pub use decorations::EditorDecorations;
@@ -928,6 +929,11 @@ impl EditorActions {
         if !self.is_current(project, path) || !self.source_matches(source) {
             return Ok(None);
         }
+        // Explicit navigation/selection intent supersedes a pending structural
+        // action even when the command leaves the selection unchanged.
+        self.workspace
+            .editor_command_revision
+            .update(|revision| *revision = revision.wrapping_add(1));
         self.cancel_queued_motion(None);
         let Some(key) = self.key() else {
             return Ok(None);
@@ -1215,6 +1221,37 @@ impl EditorActions {
                 )
             }
         })
+    }
+
+    /// Explicit jumps use complete parser context; passive bracket decoration
+    /// keeps its existing nonblocking fallback. Capture intent before queuing.
+    pub fn matching_bracket_when_ready(
+        self,
+        selection: Selection,
+    ) -> impl std::future::Future<Output = Result<Option<(usize, usize)>, EditError>> {
+        let request = self.structural_action(selection);
+        async move {
+            let Some(action) = request? else {
+                return Ok(None);
+            };
+            if !action.current(self)
+                || !openwebide_core::editor::has_adjacent_bracket(&action.source, selection.head)
+            {
+                return Ok(None);
+            }
+            let language = openwebide_core::highlight::language_from_path(&action.scope.key.1);
+            if openwebide_core::editor::syntax_provider(language).is_none() {
+                return Ok(self.matching_bracket(selection.head));
+            }
+            let Some(syntax) = action.prepare(self, action.rules).await? else {
+                return Ok(None);
+            };
+            Ok(openwebide_core::editor::matching_bracket_with_context(
+                &action.source,
+                &syntax,
+                selection.head,
+            ))
+        }
     }
 
     /// Inspect source ownership without allocating another complete file value.
@@ -1924,119 +1961,68 @@ impl EditorActions {
         selection: Selection,
         indentation: Indentation,
     ) -> impl std::future::Future<Output = Result<Option<Selection>, EditError>> {
-        use openwebide_core::editor::{
-            SyntaxAdmission, SyntaxAdmissionStatus, SyntaxReply, SyntaxRequest,
-        };
-        // Capture ownership when the action is requested, before its future is
-        // first polled. Queued UI tasks must not acquire a different file's scope.
-        let request = (|| -> Result<_, EditError> {
-            if self.key().is_none() {
-                return Ok(None);
-            }
-            let requires_structure = self.command_requires_structure(command);
-            if self.is_composing() {
-                return Err(EditError::CompositionActive);
-            }
-            self.record_native_selection(selection)?;
-            self.workspace
-                .editor_command_revision
-                .update(|revision| *revision = revision.wrapping_add(1));
-            let command_revision = self.workspace.editor_command_revision.get_untracked();
-            let Some(scope) = self.syntax_scope() else {
-                return Ok(None);
-            };
-            let selections = self.current_selections();
-            let rules = self.rules_untracked().indentation;
-            let source = self.source().shared();
-            let revision = self
-                .workspace
-                .editor_documents
-                .with_untracked(|documents| documents.get(&scope.key).map(Document::revision));
-            Ok(Some((
-                scope,
-                selections,
-                rules,
-                source,
-                revision,
-                command_revision,
-                requires_structure,
-            )))
-        })();
+        let requires_structure = self.command_requires_structure(command);
+        let request = self.structural_action(selection);
         async move {
-            let Some((
-                scope,
-                selections,
-                rules,
-                source,
-                revision,
-                command_revision,
-                requires_structure,
-            )) = request?
-            else {
+            let Some(action) = request? else {
                 return Ok(None);
             };
-            let current = || {
-                self.syntax_scope_current(&scope)
-                    && self.workspace.editor_command_revision.get_untracked() == command_revision
-                    && !self.is_composing()
-                    && self.workspace.content.with_untracked(|current| {
-                        std::sync::Arc::ptr_eq(&current.shared(), &source)
-                    })
-                    && self.workspace.editor_documents.with_untracked(|documents| {
-                        documents.get(&scope.key).is_some_and(|document| {
-                            Some(document.revision()) == revision
-                                && document.selections() == selections
-                        })
-                    })
-                    && self.rules_untracked().indentation == rules
-            };
-            if !current() {
+            if !action.current(self) {
                 return Ok(None);
             }
             if !requires_structure {
                 return self.command(command, selection, indentation);
             }
-            let mut syntax = self.syntax_structure(|| true);
-            if syntax.is_none() {
-                let mut admission = SyntaxAdmission::new(scope.source.clone());
-                while admission.status() == SyntaxAdmissionStatus::Pending {
-                    if !current() {
-                        return Ok(None);
-                    }
-                    admission.advance(openwebide_core::highlight::LEXICAL_BATCH_BYTES);
-                    if admission.status() == SyntaxAdmissionStatus::Pending {
-                        crate::util::yield_task().await;
-                    }
-                }
-                if admission.status() == SyntaxAdmissionStatus::TooLarge {
-                    return Err(EditError::StructureUnavailable);
-                }
-                let request = SyntaxRequest::new(
-                    1,
-                    "editor-command".into(),
-                    openwebide_core::highlight::language_from_path(&scope.key.1),
-                    &scope.source,
-                    indentation.tab_width(),
-                    None,
-                );
-                let message =
-                    serde_json::to_string(&request).expect("syntax request is serializable");
-                let reply = crate::editor_worker::CooperativeClient::default()
-                    .request_while(message, current)
-                    .await
-                    .map_err(|_| EditError::StructureUnavailable)?;
-                if !current() {
-                    return Ok(None);
-                }
-                syntax = SyntaxReply::receive_shared(&reply, 1, scope.source.clone(), None)
-                    .and_then(|(_, analysis)| analysis)
-                    .and_then(|analysis| analysis.structure().cloned());
-            }
-            if !current() {
+            let Some(syntax) = action.prepare(self, indentation).await? else {
+                return Ok(None);
+            };
+            self.command_prepared(
+                action.scope.key,
+                command,
+                selection,
+                indentation,
+                Some(syntax),
+            )
+        }
+    }
+
+    /// Explicit expansion waits for syntax while ordinary selection commands
+    /// retain their immediate path. Ownership is captured before the first poll.
+    pub fn selection_command_when_ready(
+        self,
+        command: openwebide_core::editor::SelectionCommand,
+        selection: Selection,
+    ) -> impl std::future::Future<
+        Output = Result<Option<Vec<Selection>>, openwebide_core::editor::SelectionError>,
+    > {
+        let request = self.structural_action(selection);
+        async move {
+            let Some(action) = request? else {
+                return Ok(None);
+            };
+            if !action.current(self) {
                 return Ok(None);
             }
-            let syntax = syntax.ok_or(EditError::StructureUnavailable)?;
-            self.command_prepared(scope.key, command, selection, indentation, Some(syntax))
+            let language = openwebide_core::highlight::language_from_path(&action.scope.key.1);
+            if command != openwebide_core::editor::SelectionCommand::Expand
+                || openwebide_core::editor::syntax_provider(language).is_none()
+            {
+                return self.selection_command(
+                    action.scope.key.0,
+                    &action.scope.key.1,
+                    &action.source,
+                    command,
+                );
+            }
+            let Some(syntax) = action.prepare(self, action.rules).await? else {
+                return Ok(None);
+            };
+            self.operate_selections(
+                action.scope.key.0,
+                &action.scope.key.1,
+                &action.source,
+                |document| document.selection_command_with_context(command, action.rules, &syntax),
+            )
         }
     }
 

@@ -1,0 +1,26 @@
+{
+  "scope": "Initial focused structural navigation regression run",
+  "plannedEditorTests": 187,
+  "executedTests": 8,
+  "passedTests": 7,
+  "failedTests": 1,
+  "failure": "unsupported_structural_navigation_keeps_immediate_lexical_fallback_in_both_modes",
+  "cause": "Test expected bracket pairing in plain prose; the existing core navigation contract deliberately returns no pair for Language::Plain. Production behavior preserved; fixture corrected to expect None for plain text and the explicit pair for SQL.",
+  "manifest": {
+    "base": "71997bcd1ad896510a86909f9ac6744e808d2b70",
+    "sourceSha256": {
+      "frontend/src/state_actions/editor.rs": "79c7549455ed8a50451dbbb416eda697585fd6e8c66a8212a9f5b502bacdb611",
+      "frontend/src/state_actions/editor/structural_actions.rs": "88110d598d2d2ff841138b6e88c597f785a7350c39f9e1d04c7584cf9ee0c574",
+      "frontend/src/state_actions/editor/preparation.rs": "d0fb8fb102d4f12f3bb952f1ccd323ddcc3914309b469394450f6e5747068289",
+      "frontend/src/components/editor.rs": "350e0742a481344292056ed048169f5e153a518737798a38fb94c7292496abc9",
+      "frontend/src/editor_worker.rs": "62d48be6c91f79c4ac6befd656e042b6306c5392f3bb0c36a57da9177491e5c6",
+      "frontend/tests/components/editor.rs": "c2d0734fc70745da29c148419b175dc2fa9eb758bc17a480d9ca25e6977d846a",
+      "tools/run-editor-browser-tests.py": "81a3cce570c0448a4a3493e899b3ae6922bff0704b656a12d85de42f2881378b"
+    },
+    "artifactSha256": {
+      "components.wasm": "3f0a990c063727c47dd8baca4d3b53107572a8c7c92eacd625f5ec1030469809",
+      "editor-library.wasm": "e077867068843c13ab31ca1ee567931d4480c57e87bf0f0f82faca22dd68113b"
+    }
+  },
+  "logSha256": "7d7b4bf55fb3c1682a25b977cf9e1cd6419c7feec2a78012ed03c792e5ba397f"
+}

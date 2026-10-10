@@ -400,6 +400,338 @@ async fn cold_single_language_comments_keep_immediate_fallbacks_in_both_modes() 
 }
 
 #[wasm_bindgen_test]
+async fn cold_structural_navigation_prepares_context_and_rejects_superseded_actions_in_both_modes()
+{
+    use openwebide_core::{
+        WorkspaceMode,
+        editor::{Indentation, Selection, SelectionCommand},
+    };
+    use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let source = "def f():\n    value = call(foo)\n    return value\noutside()";
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            state.workspace.open_file.set(Some("cold.py".into()));
+            state.workspace.content.set(source.into());
+            EditorActions::new(state.workspace)
+                .install_syntax_transport(std::rc::Rc::new(DeferredSyntax::default()));
+            view! { <div/> }
+        });
+        let actions = EditorActions::new(mounted.state.workspace);
+        let start = source.find("value =").unwrap();
+        let end = source.find("\n    return").unwrap();
+        let selections = actions
+            .selection_command_when_ready(
+                SelectionCommand::Expand,
+                Selection {
+                    anchor: end,
+                    head: start,
+                },
+            )
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            &source[selections[0].range()],
+            "value = call(foo)\n    return value"
+        );
+        assert!(selections[0].anchor > selections[0].head);
+        assert_eq!(actions.source(), source);
+        assert!(!mounted.state.workspace.dirty.get_untracked());
+        let opener = source.find("(foo)").unwrap();
+        assert_eq!(
+            actions
+                .matching_bracket_when_ready(Selection::caret(opener))
+                .await
+                .unwrap(),
+            Some((opener, opener + 4))
+        );
+        assert_eq!(actions.source(), source);
+        drop(mounted);
+
+        for bracket in [false, true] {
+            for change in [
+                "unpolled_source",
+                "source",
+                "selection",
+                "secondary",
+                "unchanged_selection_command",
+                "command",
+                "file",
+                "project",
+                "read",
+                "epoch",
+                "account",
+                "rules",
+                "composition",
+                "dispose",
+            ] {
+                let source = "def f():\n    value = call(foo)\n    return value\n".repeat(4000);
+                let original = source.clone();
+                let slot = std::rc::Rc::new(std::cell::Cell::new(None::<EditorActions>));
+                let capture = slot.clone();
+                let mounted = mount_test(move |state| {
+                    state.seed_project();
+                    state
+                        .projects
+                        .projects
+                        .update(|projects| projects[0].mode = mode);
+                    state.workspace.open_file.set(Some("cold.py".into()));
+                    state.workspace.content.set(source.into());
+                    let actions = EditorActions::new(state.workspace);
+                    actions.install_syntax_transport(std::rc::Rc::new(DeferredSyntax::default()));
+                    capture.set(Some(actions));
+                    view! { <div/> }
+                });
+                let actions = slot.get().unwrap();
+                use futures::FutureExt;
+                let position = if bracket {
+                    original.find("(foo)").unwrap()
+                } else {
+                    0
+                };
+                let selection = Selection::caret(position);
+                let mut request = if bracket {
+                    actions
+                        .matching_bracket_when_ready(selection)
+                        .map(|result| {
+                            result
+                                .map(|pair| pair.map(|_| ()))
+                                .map_err(|error| error.to_string())
+                        })
+                        .boxed_local()
+                } else {
+                    actions
+                        .selection_command_when_ready(SelectionCommand::Expand, selection)
+                        .map(|result| {
+                            result
+                                .map(|selections| selections.map(|_| ()))
+                                .map_err(|error| error.to_string())
+                        })
+                        .boxed_local()
+                };
+                if change != "unpolled_source" {
+                    assert!(
+                        futures::poll!(request.as_mut()).is_pending(),
+                        "{mode:?}: {change}"
+                    );
+                }
+                match change {
+                    "unpolled_source" | "source" => {
+                        mounted.state.workspace.content.set("new draft".into());
+                    }
+                    "selection" => {
+                        actions.record_selection(Selection::caret(4)).unwrap();
+                    }
+                    "secondary" => {
+                        actions
+                            .selection_command(1, "cold.py", &original, SelectionCommand::AddBelow)
+                            .unwrap();
+                    }
+                    "unchanged_selection_command" => {
+                        actions
+                            .selection_command(1, "cold.py", &original, SelectionCommand::Single)
+                            .unwrap();
+                    }
+                    "command" => {
+                        actions
+                            .command(EditorCommand::Undo, selection, Indentation::default())
+                            .unwrap();
+                    }
+                    "file" => mounted
+                        .state
+                        .workspace
+                        .open_file
+                        .set(Some("other.py".into())),
+                    "project" => mounted.state.workspace.active_project.set(Some(2)),
+                    "read" => mounted
+                        .state
+                        .workspace
+                        .editor_read_revision
+                        .update(|value| *value += 1),
+                    "epoch" => mounted
+                        .state
+                        .workspace
+                        .pending_epoch
+                        .update(|value| *value += 1),
+                    "account" => mounted.state.auth.generation.update(|value| *value += 1),
+                    "rules" => {
+                        let mut rules = actions.rules_untracked().indentation;
+                        rules.tab_width += 1;
+                        actions.set_indentation(rules);
+                    }
+                    "composition" => actions.begin_composition(),
+                    "dispose" => {
+                        drop(mounted);
+                        assert_eq!(request.await.unwrap(), None);
+                        continue;
+                    }
+                    _ => unreachable!(),
+                }
+                assert_eq!(request.await.unwrap(), None, "{mode:?}: {change}");
+                assert_eq!(
+                    actions.source().as_str(),
+                    if matches!(change, "source" | "unpolled_source") {
+                        "new draft"
+                    } else {
+                        original.as_str()
+                    }
+                );
+                assert!(!mounted.state.workspace.dirty.get_untracked());
+            }
+        }
+    }
+}
+
+#[wasm_bindgen_test]
+async fn cold_structural_navigation_keyboard_and_menu_share_preparation_in_both_modes() {
+    use openwebide_core::WorkspaceMode;
+    use openwebide_frontend::state_actions::editor::EditorActions;
+    let source = "def f():\n    value = call(foo)\n    return value\noutside()";
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        for keyboard in [true, false] {
+            let mounted = mount_test(move |state| {
+                state.seed_project();
+                state
+                    .projects
+                    .projects
+                    .update(|projects| projects[0].mode = mode);
+                state.workspace.open_file.set(Some("expand.py".into()));
+                state.workspace.content.set(source.into());
+                EditorActions::new(state.workspace)
+                    .install_syntax_transport(std::rc::Rc::new(DeferredSyntax::default()));
+                editor_view(state)
+            });
+            let actions = EditorActions::new(mounted.state.workspace);
+            let input: web_sys::HtmlTextAreaElement =
+                mounted.element(".editor-textarea").unchecked_into();
+            wait_until("expansion source is installed", || input.value() == source).await;
+            let start = u32::try_from(source.find("value =").unwrap()).unwrap();
+            let end = u32::try_from(source.find("\n    return").unwrap()).unwrap();
+            input.set_selection_range(start, end).unwrap();
+            assert!(actions.syntax_is_pending());
+            if keyboard {
+                let init = web_sys::KeyboardEventInit::new();
+                init.set_key("ArrowRight");
+                init.set_alt_key(true);
+                init.set_shift_key(true);
+                init.set_bubbles(true);
+                init.set_cancelable(true);
+                let event =
+                    web_sys::KeyboardEvent::new_with_keyboard_event_init_dict("keydown", &init)
+                        .unwrap();
+                input.dispatch_event(&event).unwrap();
+                assert!(event.default_prevented());
+            } else {
+                mounted.click("button[aria-label='Editor actions']");
+                settle().await;
+                let items = mounted
+                    .root
+                    .query_selector_all("[role='menuitem']")
+                    .unwrap();
+                let item = (0..items.length())
+                    .filter_map(|index| items.item(index))
+                    .filter_map(|node| node.dyn_into::<web_sys::HtmlButtonElement>().ok())
+                    .find(|node| node.text_content().as_deref() == Some("Expand selection"))
+                    .unwrap();
+                item.click();
+            }
+            wait_until("cold expansion applies parsed suite", || {
+                actions
+                    .current_selections()
+                    .first()
+                    .is_some_and(|selection| {
+                        &source[selection.range()] == "value = call(foo)\n    return value"
+                    })
+            })
+            .await;
+            let opener = source.find("(foo)").unwrap();
+            let native = u32::try_from(opener).unwrap();
+            input.set_selection_range(native, native).unwrap();
+            if keyboard {
+                assert!(editor_key(&input, "\\", true, true).default_prevented());
+            } else {
+                mounted.click("button[aria-label='Editor actions']");
+                settle().await;
+                let items = mounted
+                    .root
+                    .query_selector_all("[role='menuitem']")
+                    .unwrap();
+                let item = (0..items.length())
+                    .filter_map(|index| items.item(index))
+                    .filter_map(|node| node.dyn_into::<web_sys::HtmlButtonElement>().ok())
+                    .find(|node| node.text_content().as_deref() == Some("Jump to matching bracket"))
+                    .unwrap();
+                item.click();
+            }
+            wait_until("cold bracket jump applies parsed pair", || {
+                actions.current_selections()
+                    == [openwebide_core::editor::Selection::caret(opener + 4)]
+            })
+            .await;
+            assert_eq!(actions.source(), source);
+            assert!(!mounted.state.workspace.dirty.get_untracked());
+            assert!(
+                actions.syntax_is_pending(),
+                "Expansion does not require the held background worker reply"
+            );
+        }
+    }
+}
+
+#[wasm_bindgen_test]
+async fn unsupported_structural_navigation_keeps_immediate_lexical_fallback_in_both_modes() {
+    use openwebide_core::{
+        WorkspaceMode,
+        editor::{Selection, SelectionCommand},
+    };
+    use openwebide_frontend::state_actions::editor::EditorActions;
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        for (path, source, caret) in [
+            ("notes.txt", "alpha(beta)", 2),
+            ("query.sql", "SELECT alpha(beta)", 9),
+        ] {
+            let mounted = mount_test(move |state| {
+                state.seed_project();
+                state
+                    .projects
+                    .projects
+                    .update(|projects| projects[0].mode = mode);
+                state.workspace.open_file.set(Some(path.into()));
+                state.workspace.content.set(source.into());
+                EditorActions::new(state.workspace)
+                    .install_syntax_transport(std::rc::Rc::new(DeferredSyntax::default()));
+                view! { <div/> }
+            });
+            let actions = EditorActions::new(mounted.state.workspace);
+            let mut request =
+                Box::pin(actions.selection_command_when_ready(
+                    SelectionCommand::Expand,
+                    Selection::caret(caret),
+                ));
+            let std::task::Poll::Ready(result) = futures::poll!(request.as_mut()) else {
+                panic!("Unsupported grammar retains immediate selection fallback");
+            };
+            let selections = result.unwrap().unwrap();
+            assert_eq!(&source[selections[0].range()], "alpha");
+            let mut bracket = Box::pin(
+                actions.matching_bracket_when_ready(Selection::caret(source.find('(').unwrap())),
+            );
+            assert_eq!(
+                futures::poll!(bracket.as_mut()),
+                std::task::Poll::Ready(Ok(None))
+            );
+            assert_eq!(actions.source(), source);
+            assert!(!mounted.state.workspace.dirty.get_untracked());
+        }
+    }
+}
+
+#[wasm_bindgen_test]
 async fn embedded_comment_menu_follows_selection_languages_without_reparsing_in_both_modes() {
     use openwebide_core::{WorkspaceMode, editor::Selection};
     use openwebide_frontend::state_actions::editor::EditorActions;

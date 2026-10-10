@@ -5308,6 +5308,9 @@ Five later layout/navigation checks also failed, and contamination from the firs
 failed fixture is still unproven. Earlier green runs and isolated local passes
 do not close this reliability requirement. Failure-only diagnostics now include
 native geometry, fallback publication, measured rows and in-progress row jobs.
+The subsequent embedded-comment checkpoint `cc019c1` passed all five hosted jobs
+([receipt](editor-performance/grouped-ci-cc019c1.json)). This establishes that
+checkpoint's hosted result, without proving why the earlier paint check failed.
 
 ## Selection-aware comment capabilities
 
@@ -5331,3 +5334,41 @@ disjoint groups of 22/54/53/53/1/1, including both font matrices
 ([complete evidence](editor-performance/selection-capabilities-full-browser.json)).
 This local success does not establish the earlier CI failure's cause or close
 the hosted reliability, responsiveness and physical-device gates.
+The selection-capability checkpoint `71997bc` subsequently passed all five hosted
+jobs ([receipt](editor-performance/grouped-ci-71997bc.json)); verification of newer
+changes and repeated readiness still remain required.
+
+## Explicit structural navigation preparation
+
+Selection expansion and bracket jumps now use the same action ownership and
+cooperative syntax preparation as Reindent and embedded comment actions. The
+shared action captures source allocation, parser scope, all selections, document
+revision, indentation and intent before its future is polled. Keyboard and menu
+entry points prepare current syntax before applying navigation; unsupported
+grammars retain immediate lexical behavior. Passive bracket decorations keep
+their nonblocking fallback. Explicit navigation and selection intent cancels an
+older pending action even when the newer command leaves its selection unchanged.
+
+New contracts cover parsed Python suite expansion and bracket pairs, held
+background syntax with actual keyboard/menu actions, unsupported plain/SQL
+navigation, and pre-poll/source/selection/secondary/file/project/read/epoch/account/
+rules/composition/disposal supersession. The cancellation matrix exercises both
+expansion and bracket jumps. Existing Reindent/comment contracts remain part of
+the focused regression set. The first optimized run passed seven of eight
+contracts ([record](editor-performance/structural-navigation-initial-browser.json));
+its only failure expected bracket pairing in plain prose, contrary to the existing
+core navigation contract. The subsequent run passed the same seven contracts but
+exposed the equivalent incorrect expectation for SQL
+([record](editor-performance/structural-navigation-fallback-browser.json)). Both
+languages are excluded from the existing bracket whitelist. The fixture now
+preserves their no-pair behavior while checking immediate lexical selection
+expansion. Production behavior remains unchanged by these corrections. All eight
+focused contracts now pass
+([record](editor-performance/structural-navigation-focused-browser.json)). The complete independently inventoried editor suite subsequently passed all
+187 tests in six disjoint runs (22/55/54/54/1/1), including both independent font
+matrices ([record](editor-performance/structural-navigation-full-browser.json)).
+The runner exited successfully and frozen source/artifact hashes match the current
+checkpoint. The production changes pass strict WASM lint, formatting and 128
+native frontend tests. Its own hosted CI remains pending. This section does not
+claim completion of ordinary-input readiness, responsiveness, hosted reliability
+or device gates.

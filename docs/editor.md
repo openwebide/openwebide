@@ -304,9 +304,12 @@ use a yielding browser task adapter for the same Rust syntax service when no
 current structure is ready, then apply through the shared editor command facade.
 Ownership is captured before queuing the action, so an unpolled task cannot acquire
 another file or newer source. Single-language comments retain immediate behavior,
-including SQL and admitted files above the structure budget. Other parser-aware
-commands still retain their existing fallback while their readiness policy remains
-on the roadmap.
+including SQL and admitted files above the structure budget. Explicit selection
+expansion and bracket jumps share this ownership/preparation path, while
+unsupported grammars retain immediate lexical selection expansion and their
+existing bracket-navigation rules. Navigation and selection
+commands supersede pending structural actions even when their selections remain
+unchanged. Passive bracket decoration retains its nonblocking fallback.
 Comment menu eligibility uses completed embedded-language structure and requires
 support at every selection's start. Mixed selections therefore disable actions
 that cannot apply atomically. Reading eligibility never starts parsing; pending
