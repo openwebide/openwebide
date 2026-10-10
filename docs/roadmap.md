@@ -241,8 +241,13 @@ tracks the remaining work rather than every optimization already shipped.
   now advance in bounded Rust batches through the shared facade. All 191 release
   editor browser contracts, including both font matrices, pass
   ([receipt](editor-performance/request-publication-full-browser.json)); measure
-  actual publication/input latency and memory before crediting responsiveness. Header and
-  capacity allocation, JavaScript string conversion, message decoding and
+  actual publication/input latency and memory before crediting responsiveness.
+  Request encoding now borrows retained source ranges without an intermediate
+  plaintext copy, sharing full/delta selection with replies. Its 636 core tests,
+  strict native/WASM lint and all 191 release browser contracts pass
+  ([receipt](editor-performance/borrowed-request-full-browser.json)); measure
+  actual memory effects and await hosted candidate CI.
+  Header and capacity allocation, JavaScript string conversion, message decoding and
   oversized-message fallback still need bounded preparation. Combined row scans retain the geometry contracts, but
   current production repeats still show 125–178 ms cold source-publication tasks
   and 64–69 ms input tasks; these

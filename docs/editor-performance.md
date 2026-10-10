@@ -5710,3 +5710,23 @@ jobs ([7ff2462](editor-performance/grouped-ci-7ff2462.json),
 [211574d](editor-performance/grouped-ci-211574d.json),
 [81d2d78](editor-performance/grouped-ci-81d2d78.json)); hosted CI for this publisher
 and the outstanding production/device gates still need verification.
+
+### Borrowed request source ranges
+
+Requests now select full/delta source ranges through the same bounded
+`SourceSelection` engine used by reply `SourcePublication`, then JSON-escape
+directly from their retained immutable source. The request job no longer stores
+an owned plaintext wire source. Reply publication still owns its required wire
+source; delta thresholds, byte budgets and protocol version are unchanged.
+
+The new boundary regression uses 2 MiB of NUL bytes (worst-case six-byte JSON
+escaping), checks the retained source allocation throughout preparation, and
+requires one escape batch per source-byte batch after header selection. The
+existing Unicode/full/delta wire contracts cover both consumers of selection.
+All 636 native core tests and strict native core/WASM frontend all-target lint
+pass. All 191 release editor browser contracts, including both independent
+font matrices, pass ([receipt](editor-performance/borrowed-request-full-browser.json)).
+These tests verify ownership, wire compatibility and geometry; they do not
+establish production latency/memory completion. Hosted candidate CI remains pending.
+This removes an intermediate allocation/copy; it does not establish physical
+latency, Chrome PSS or the remaining conversion/decoding/publication bounds.

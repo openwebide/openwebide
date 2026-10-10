@@ -1,5 +1,5 @@
-//! Incremental source comparison, copying and JSON escaping for worker requests.
-use super::{SyntaxAnalysis, SyntaxRequest, SyntaxSource, transfer::SourcePublication};
+//! Incremental source selection and borrowed JSON escaping for worker requests.
+use super::{SyntaxAnalysis, SyntaxRequest, transfer::SourceSelection};
 use std::sync::Arc;
 
 pub const SYNTAX_REQUEST_BATCH_BYTES: usize = 64 * 1024;
@@ -7,8 +7,8 @@ pub const SYNTAX_REQUEST_BATCH_BYTES: usize = 64 * 1024;
 pub struct SyntaxRequestPublication {
     source: Arc<String>,
     previous: Option<Arc<SyntaxAnalysis>>,
-    publication: Option<SourcePublication>,
-    encoded_source: Option<SyntaxSource>,
+    selection: SourceSelection,
+    started: bool,
     offset: usize,
     message: String,
     complete: bool,
@@ -45,10 +45,10 @@ impl SyntaxRequest {
         message.pop();
         message.push_str(",\"source\":");
         SyntaxRequestPublication {
-            publication: Some(SourcePublication::new(source.len(), previous.is_some())),
+            selection: SourceSelection::new(source.len(), previous.is_some()),
             source,
             previous: previous.map(|(_, analysis)| analysis),
-            encoded_source: None,
+            started: false,
             offset: 0,
             message,
             complete: false,
@@ -57,25 +57,25 @@ impl SyntaxRequest {
 }
 
 impl SyntaxRequestPublication {
-    /// Each call compares/copies or escapes at most `budget` UTF-8 source bytes.
+    /// Each call compares or escapes at most `budget` UTF-8 source bytes.
     /// Budgets of at least four bytes guarantee progress; allocation and the
     /// small request header remain runtime primitives.
     pub fn advance(&mut self, budget: usize) -> bool {
         if self.complete {
             return true;
         }
-        if let Some(publication) = &mut self.publication {
-            if !publication.advance(
+        if !self.started {
+            self.selection.advance(
                 &self.source,
                 self.previous.as_ref().map(|analysis| analysis.source()),
                 budget,
-            ) {
+            );
+            if !self.selection.is_ready() {
                 return false;
             }
-            let source = self.publication.take().unwrap().finish().unwrap();
-            match &source {
-                SyntaxSource::Full(_) => self.message.push('"'),
-                SyntaxSource::Replace { start, end, .. } => {
+            match self.selection.replacement() {
+                None => self.message.push('"'),
+                Some((start, end)) => {
                     use std::fmt::Write;
                     write!(
                         self.message,
@@ -84,16 +84,10 @@ impl SyntaxRequestPublication {
                     .expect("string formatting cannot fail");
                 }
             }
-            self.encoded_source = Some(source);
+            self.started = true;
             return false;
         }
-        let source = self
-            .encoded_source
-            .as_ref()
-            .expect("published request source");
-        let text = match source {
-            SyntaxSource::Full(text) | SyntaxSource::Replace { text, .. } => text,
-        };
+        let text = &self.source[self.selection.range()];
         let end = text.floor_char_boundary(text.len().min(self.offset.saturating_add(budget)));
         let escaped =
             serde_json::to_string(&text[self.offset..end]).expect("source text is serializable");
@@ -101,7 +95,7 @@ impl SyntaxRequestPublication {
         self.offset = end;
         if end == text.len() {
             self.message.push('"');
-            if matches!(source, SyntaxSource::Replace { .. }) {
+            if self.selection.replacement().is_some() {
                 self.message.push('}');
             }
             self.message.push('}');
@@ -119,6 +113,44 @@ impl SyntaxRequestPublication {
 mod tests {
     use super::*;
     use crate::{editor::SyntaxPreparations, highlight::Language};
+
+    #[test]
+    fn admitted_full_requests_escape_borrowed_source_without_a_copy_phase() {
+        let source = Arc::new("\u{0000}".repeat(super::super::MAX_STRUCTURE_BYTES));
+        let mut job = SyntaxRequest::publication_shared(
+            1,
+            "owner".into(),
+            Language::Plain,
+            source.clone(),
+            4,
+            None,
+        );
+        assert!(Arc::ptr_eq(&job.source, &source));
+        assert!(!job.advance(SYNTAX_REQUEST_BATCH_BYTES));
+        assert!(job.started);
+        assert_eq!(job.offset, 0);
+        let mut batches = 0;
+        loop {
+            batches += 1;
+            let complete = job.advance(SYNTAX_REQUEST_BATCH_BYTES);
+            assert!(Arc::ptr_eq(&job.source, &source));
+            assert_eq!(
+                job.offset,
+                (batches * SYNTAX_REQUEST_BATCH_BYTES).min(source.len())
+            );
+            if complete {
+                break;
+            }
+        }
+        assert_eq!(batches, source.len().div_ceil(SYNTAX_REQUEST_BATCH_BYTES));
+        let message = job.finish().unwrap();
+        assert!(message.len() <= super::super::MAX_SYNTAX_REQUEST_BYTES);
+        let decoded: SyntaxRequest = serde_json::from_str(&message).unwrap();
+        let super::super::SyntaxSource::Full(text) = decoded.source else {
+            panic!("request without a base must publish the full source");
+        };
+        assert_eq!(&text, source.as_ref());
+    }
 
     #[test]
     fn request_batches_match_wire_policy_for_unicode_escaping_and_retained_deltas() {

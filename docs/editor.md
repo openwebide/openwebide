@@ -313,6 +313,9 @@ parsing and structure extraction.
 Background, resync and structural-action requests compare/copy their retained
 source and escape its JSON text in bounded Rust batches. The shared facade yields
 between batches and rechecks source/file/project/account ownership before transport.
+Request encoding borrows the selected range from the retained source rather than
+copying it into a second plaintext string. Requests and worker replies share the
+same bounded full/delta selection policy.
 The facade accepts a runtime input clock while retaining the browser clock and
 12 ms budget by default. Readiness/history and explicit budget-expiry contracts
 use controlled clocks; they do not establish physical readiness within 12 ms.
