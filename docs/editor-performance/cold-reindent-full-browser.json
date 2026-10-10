@@ -1,0 +1,39 @@
+{
+  "manifest": {
+    "baseCommit": "be926f511a4c64bd62fd31ff84bd275add6fe6d6",
+    "sources": {
+      "crates/core/src/editor/mod.rs": "60a62055bbc452618116299bd13f22ae3b3f231e734dadfe2d6290478f594c3d",
+      "crates/core/src/editor/recovery.rs": "3d5a404f0d5b04d4f949ed3f4df9ae1c73c15352f8f629815e468cb81cbcd3d2",
+      "crates/core/src/editor/reindent.rs": "323bd15f0147c0681baf9967e0a8ecd86781484bab79a72578526ebaffbe81ea",
+      "frontend/src/editor_worker.rs": "62d48be6c91f79c4ac6befd656e042b6306c5392f3bb0c36a57da9177491e5c6",
+      "frontend/src/state_actions/editor.rs": "cfe50e6dc048ec7b5ff703af78109b8000fd3693da0f7c80f125d96103aad15d",
+      "frontend/src/components/editor.rs": "f95f412e28d4b6ffdecd99131b163a40b4df78bb30cd853880f1b5ca5d9a7c8b",
+      "frontend/tests/components/editor.rs": "431ef45c894d4615da9e1f066d02fc8e84a1795801b79198c9d7d511a4f588bf",
+      "tools/run-editor-browser-tests.py": "81a3cce570c0448a4a3493e899b3ae6922bff0704b656a12d85de42f2881378b"
+    },
+    "artifacts": {
+      "components.wasm": "205d3ae48716b4c202a3025200e3d95a8acf1475e1b4a7b8a7a52410e797ac40",
+      "editor-library.wasm": "b0320d629851e5405a2dc7410df14f793f89afb095c18ed6efe14aa98152cd0a",
+      "run-editor-browser-tests.py": "81a3cce570c0448a4a3493e899b3ae6922bff0704b656a12d85de42f2881378b"
+    }
+  },
+  "scope": "complete editor browser inventory before the added Markdown fixture; production source matches the pending checkpoint",
+  "plannedTests": 181,
+  "passedTests": 181,
+  "executedGroups": [
+    22,
+    53,
+    52,
+    52,
+    1,
+    1
+  ],
+  "failedTests": [],
+  "readinessDeadlineMs": 3000,
+  "runnerDeadlineSeconds": 300,
+  "cpuLimit": 2,
+  "memoryLimitGiB": 10,
+  "sharedMemoryGiB": 1,
+  "logSha256": "c51af4eaf573a13bad940850857a8146159801419e99203df25b8c4a2be712e3",
+  "remainingWork": "Expanded Markdown fixture and earlier failure groups subsequently passed in cold-reindent-repeat-browser.json; current-head hosted CI, responsiveness/memory and physical-device gates remain open."
+}

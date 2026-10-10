@@ -83,10 +83,24 @@ async fn document_boundary_navigation_reveals_unpainted_rows_and_preserves_selec
             .await;
             input.focus().unwrap();
             assert!(editor_key(&input, "End", true, false).default_prevented());
+            let end_started = js_sys::Date::now();
+            let end_reported = std::cell::Cell::new(false);
             wait_until("document end reveals its source caret", || {
-                actions.selection(&original) == Some(Selection::caret(original.len()))
+                let ready = actions.selection(&original) == Some(Selection::caret(original.len()))
                     && scroll.scroll_top() + f64::from(scroll.client_height())
-                        >= f64::from(scroll.scroll_height()) - 40.0
+                        >= f64::from(scroll.scroll_height()) - 40.0;
+                if !ready && js_sys::Date::now() - end_started >= 2900.0 && !end_reported.replace(true) {
+                    wasm_bindgen_test::console_log!(
+                        "document end readiness {mode:?} wrap={word_wrap}: selection={:?} bytes={} queued={} top={} height={} viewport={} native={:?} geometry_pending={} roots={}",
+                        actions.selection(&original), original.len(),
+                        actions.queued_motion_ticket().is_some(),
+                        scroll.scroll_top(), scroll.scroll_height(), scroll.client_height(),
+                        input.get_attribute("data-editor-native-bound"),
+                        actions.native_geometry_pending(),
+                        web_sys::window().unwrap().document().unwrap().query_selector_all(".editor-code").unwrap().length()
+                    );
+                }
+                ready
             })
             .await;
             assert!(editor_key(&input, "Home", true, true).default_prevented());
@@ -136,6 +150,11 @@ async fn parser_reindent_preserves_literals_and_embedded_boundaries_in_both_mode
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         for (path, source, expected) in [
             (
+                "fixture.md",
+                "# Guide\n\n```rust\nfn main() {\ncall();\n}\n```\n\nProse stays unchanged.",
+                "# Guide\n\n```rust\nfn main() {\n    call();\n}\n```\n\nProse stays unchanged.",
+            ),
+            (
                 "fixture.html",
                 "<script>\nfunction first() {\nx();\n</script>\n<style>\na {\ncolor: red;\n}\n</style>\n<script>\nfunction second() {\ny();\n}\n</script>",
                 "<script>\nfunction first() {\n    x();\n</script>\n<style>\na {\n    color: red;\n}\n</style>\n<script>\nfunction second() {\n    y();\n}\n</script>",
@@ -167,7 +186,8 @@ async fn parser_reindent_preserves_literals_and_embedded_boundaries_in_both_mode
                 head: 0,
             };
             actions
-                .command(EditorCommand::Reindent, selection, Indentation::default())
+                .reindent_when_ready(selection, Indentation::default())
+                .await
                 .unwrap()
                 .unwrap();
             assert_eq!(mounted.state.workspace.content.get_untracked(), expected);
@@ -179,13 +199,206 @@ async fn parser_reindent_preserves_literals_and_embedded_boundaries_in_both_mode
             assert_eq!(mounted.state.workspace.content.get_untracked(), source);
             // Reusing the parser cache after undo must revalidate its source.
             actions
-                .command(EditorCommand::Reindent, selection, Indentation::default())
+                .reindent_when_ready(selection, Indentation::default())
+                .await
                 .unwrap()
                 .unwrap();
             assert_eq!(mounted.state.workspace.content.get_untracked(), expected);
             drop(mounted);
             settle().await;
         }
+    }
+}
+
+#[wasm_bindgen_test]
+async fn cold_reindent_rejects_superseded_requests_in_both_modes() {
+    use openwebide_core::{
+        WorkspaceMode,
+        editor::{Indentation, Selection},
+    };
+    use openwebide_frontend::state_actions::editor::EditorActions;
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        for change in [
+            "source",
+            "selection",
+            "secondary",
+            "file",
+            "project",
+            "read",
+            "epoch",
+            "account",
+            "rules",
+            "composition",
+            "dispose",
+        ] {
+            let source = "fn block() {\ncall();\n}\n".repeat(4000);
+            let original = source.clone();
+            let slot = std::rc::Rc::new(std::cell::Cell::new(None::<EditorActions>));
+            let capture = slot.clone();
+            let mounted = mount_test(move |state| {
+                state.seed_project();
+                state
+                    .projects
+                    .projects
+                    .update(|projects| projects[0].mode = mode);
+                state.workspace.open_file.set(Some("cold.rs".into()));
+                state.workspace.content.set(source.into());
+                let actions = EditorActions::new(state.workspace);
+                actions.install_syntax_transport(std::rc::Rc::new(DeferredSyntax::default()));
+                capture.set(Some(actions));
+                view! { <div/> }
+            });
+            let actions = slot.get().unwrap();
+            let mut request = Box::pin(actions.reindent_when_ready(
+                if change == "secondary" {
+                    Selection::caret(0)
+                } else {
+                    Selection {
+                        anchor: original.len(),
+                        head: 0,
+                    }
+                },
+                Indentation::default(),
+            ));
+            assert!(
+                futures::poll!(request.as_mut()).is_pending(),
+                "{mode:?}: {change}"
+            );
+            match change {
+                "source" => mounted.state.workspace.content.set("new draft".into()),
+                "selection" => {
+                    actions.prepare_edit(Selection::caret(0)).unwrap();
+                }
+                "secondary" => {
+                    actions
+                        .selection_command(
+                            1,
+                            "cold.rs",
+                            &original,
+                            openwebide_core::editor::SelectionCommand::AddBelow,
+                        )
+                        .unwrap();
+                }
+                "file" => mounted
+                    .state
+                    .workspace
+                    .open_file
+                    .set(Some("other.rs".into())),
+                "project" => mounted.state.workspace.active_project.set(Some(2)),
+                "read" => mounted
+                    .state
+                    .workspace
+                    .editor_read_revision
+                    .update(|value| *value += 1),
+                "epoch" => mounted
+                    .state
+                    .workspace
+                    .pending_epoch
+                    .update(|value| *value += 1),
+                "account" => mounted.state.auth.generation.update(|value| *value += 1),
+                "rules" => {
+                    let mut rules = actions.rules_untracked().indentation;
+                    rules.tab_width += 1;
+                    actions.set_indentation(rules);
+                }
+                "composition" => actions.begin_composition(),
+                "dispose" => {
+                    drop(mounted);
+                    assert_eq!(request.await.unwrap(), None);
+                    continue;
+                }
+                _ => unreachable!(),
+            }
+            assert_eq!(request.await.unwrap(), None, "{mode:?}: {change}");
+            assert_eq!(
+                actions.source().as_str(),
+                if change == "source" {
+                    "new draft"
+                } else {
+                    original.as_str()
+                }
+            );
+            assert!(!mounted.state.workspace.dirty.get_untracked());
+        }
+    }
+}
+
+#[wasm_bindgen_test]
+async fn embedded_html_reindent_menu_prepares_and_commits_once_in_both_modes() {
+    use openwebide_core::WorkspaceMode;
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let source = "<script>\nfunction f() {\ncall();\n}\n</script>\n<style>\na {\ncolor: red;\n}\n</style>";
+        let expected = "<script>\nfunction f() {\n    call();\n}\n</script>\n<style>\na {\n    color: red;\n}\n</style>";
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            state.workspace.open_file.set(Some("embedded.html".into()));
+            state.workspace.content.set(source.into());
+            editor_view(state)
+        });
+        let input: web_sys::HtmlTextAreaElement =
+            mounted.element(".editor-textarea").unchecked_into();
+        wait_until("HTML native source is ready", || input.value() == source).await;
+        input
+            .set_selection_range(0, u32::try_from(source.len()).unwrap())
+            .unwrap();
+        mounted.click("button[aria-label='Editor actions']");
+        settle().await;
+        let items = mounted
+            .root
+            .query_selector_all("[role='menuitem']")
+            .unwrap();
+        let item = (0..items.length())
+            .filter_map(|index| items.item(index))
+            .filter_map(|node| node.dyn_into::<web_sys::HtmlButtonElement>().ok())
+            .find(|node| node.text_content().as_deref() == Some("Reindent selected lines"))
+            .unwrap();
+        assert!(!item.disabled());
+        item.click();
+        wait_until("embedded reindent commits", || {
+            mounted.state.workspace.content.get_untracked() == expected
+        })
+        .await;
+        editor_key(&input, "z", true, false);
+        assert_eq!(mounted.state.workspace.content.get_untracked(), source);
+        editor_key(&input, "z", true, false);
+        assert_eq!(mounted.state.workspace.content.get_untracked(), source);
+    }
+}
+
+#[wasm_bindgen_test]
+async fn cold_reindent_rejects_structure_limits_without_changing_source_in_both_modes() {
+    use openwebide_core::{
+        WorkspaceMode,
+        editor::{EditError, Indentation, MAX_STRUCTURE_BYTES, Selection},
+    };
+    use openwebide_frontend::state_actions::editor::EditorActions;
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let row = format!("{}\n", "x".repeat(127));
+        let source = row.repeat(MAX_STRUCTURE_BYTES / row.len() + 1);
+        let original = source.clone();
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            state.workspace.open_file.set(Some("large.rs".into()));
+            state.workspace.content.set(source.into());
+            view! { <div/> }
+        });
+        let actions = EditorActions::new(mounted.state.workspace);
+        assert_eq!(
+            actions
+                .reindent_when_ready(Selection::caret(0), Indentation::default())
+                .await,
+            Err(EditError::StructureUnavailable)
+        );
+        assert_eq!(actions.source(), original);
+        assert!(!mounted.state.workspace.dirty.get_untracked());
     }
 }
 
@@ -4883,7 +5096,10 @@ async fn line_comment_reindent_and_explicit_paste_commands_share_both_modes() {
             .find(|item| item.text_content().as_deref() == Some("Reindent selected lines"))
             .unwrap();
         reindent.click();
-        settle().await;
+        wait_until("requested reindent completes", || {
+            mounted.state.workspace.content.get_untracked() == "fn f() {\n  x();\n}"
+        })
+        .await;
         assert_eq!(
             mounted.state.workspace.content.get_untracked(),
             "fn f() {\n  x();\n}"
@@ -6360,9 +6576,17 @@ async fn recovery_document_format_restores_committed_browser_edits_in_both_modes
         assert!(restored.is_dirty());
         assert!(restored.undo());
         assert_eq!(restored.text(), "α\r\n");
+        assert!(std::sync::Arc::ptr_eq(
+            &restored.shared_text(),
+            &decoded.saved
+        ));
         assert!(!restored.is_dirty());
         assert!(restored.redo());
         assert_eq!(restored.text(), snapshot.text.as_str());
+        assert!(std::sync::Arc::ptr_eq(
+            &restored.shared_text(),
+            &decoded.text
+        ));
     }
 }
 

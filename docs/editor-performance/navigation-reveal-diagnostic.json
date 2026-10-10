@@ -1,0 +1,23 @@
+{
+  "manifest": {
+    "baseCommit": "be926f511a4c64bd62fd31ff84bd275add6fe6d6",
+    "sources": {
+      "crates/core/src/editor/mod.rs": "e3c1cadd0747128c81459dcb45014f340ad590ac1ca9433e8ffbe71acd7b2ccc",
+      "crates/core/src/editor/recovery.rs": "3d5a404f0d5b04d4f949ed3f4df9ae1c73c15352f8f629815e468cb81cbcd3d2",
+      "frontend/tests/components/editor.rs": "7a9de9b34d3678c0c3b114eadb7d286b29b3c0ab6f644cd37118e00ddf85c52a"
+    },
+    "artifacts": {
+      "components.wasm": "6d98cd8e8be75ffec5e952c5fbdc1b0ba3e7afdc1736d3c19eb46729c46c685e",
+      "editor-library.wasm": "4f83aa1d0eb81984ff5e7d841fa8a389c65f673132a573dee5c4ed940f4e8422"
+    }
+  },
+  "scope": "same first 52-test editor group with failure-only state diagnostics; deadlines/assertions unchanged",
+  "passed": 51,
+  "failed": 1,
+  "readinessDeadlineMs": 3000,
+  "runnerDeadlineSeconds": 300,
+  "cpuLimit": 2,
+  "logSha256": "2cb211d4803bcfc838f2b4581d014f127a3a6e6df3413853f908975d00fd9246",
+  "observedState": "document end readiness Remote wrap=true: selection=Some(Selection { anchor: 2305056, head: 2305056 }) bytes=2305056 queued=false top=907647 height=1296638 viewport=180 native=Some(\"true\") geometry_pending=false roots=1",
+  "diagnosis": "source caret is correct but scroll remains at the original 70-percent viewport; retry implementation is not yet verified"
+}

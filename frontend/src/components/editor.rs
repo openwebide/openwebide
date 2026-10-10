@@ -362,6 +362,15 @@ pub(super) fn reveal_editor_caret(
     textarea: &web_sys::HtmlTextAreaElement,
     paint: RwSignal<Option<EditorPaint>>,
 ) {
+    reveal_editor_caret_with_retry(actions, textarea, paint, true);
+}
+
+fn reveal_editor_caret_with_retry(
+    actions: EditorActions,
+    textarea: &web_sys::HtmlTextAreaElement,
+    paint: RwSignal<Option<EditorPaint>>,
+    retry: bool,
+) {
     if !current_editor_target(actions, textarea) {
         return;
     }
@@ -373,6 +382,30 @@ pub(super) fn reveal_editor_caret(
         .get_untracked()
         .and_then(|paint| paint.caret.run(selection.head))
     else {
+        // A source motion can precede the reactive paint/cache refresh. Retry
+        // after that frame instead of silently losing the explicit reveal.
+        // New source, selection, account or scroll intent cancels the request.
+        if retry {
+            let scope = untrack(|| actions.presentation_scope());
+            let scroll = crate::viewport::editor_scroll(textarea);
+            let position = (scroll.scroll_top(), scroll.scroll_left());
+            let textarea = textarea.clone();
+            leptos::leptos_dom::helpers::request_animation_frame(move || {
+                leptos::leptos_dom::helpers::request_animation_frame(move || {
+                    if paint.is_disposed() || !current_editor_target(actions, &textarea) {
+                        return;
+                    }
+                    let scroll = crate::viewport::editor_scroll(&textarea);
+                    if untrack(|| actions.presentation_scope()) == scope
+                        && actions.source() == source
+                        && actions.selection(&source) == Some(selection)
+                        && (scroll.scroll_top(), scroll.scroll_left()) == position
+                    {
+                        reveal_editor_caret_with_retry(actions, &textarea, paint, false);
+                    }
+                });
+            });
+        }
         return;
     };
     let scroll = crate::viewport::editor_scroll(textarea);
@@ -2299,7 +2332,29 @@ fn apply_editor_command(
     actions: EditorActions,
     command: EditorCommand,
     textarea: &web_sys::HtmlTextAreaElement,
+    error: RwSignal<Option<String>>,
 ) -> bool {
+    if command == EditorCommand::Reindent {
+        let selection = projected_selection(actions, textarea);
+        let indentation = actions.rules_untracked().indentation;
+        let textarea = textarea.clone();
+        leptos::task::spawn_local(async move {
+            let result = actions.reindent_when_ready(selection, indentation).await;
+            if error.is_disposed() || !current_editor_target(actions, &textarea) {
+                return;
+            }
+            match result {
+                Ok(Some(selection)) => {
+                    error.set(None);
+                    refresh_editor_folds(actions);
+                    render_editor_selection(actions, &textarea, selection, false);
+                }
+                Err(failure) => error.set(Some(failure.to_string())),
+                Ok(None) => (),
+            }
+        });
+        return true;
+    }
     if let Ok(Some(selection)) = actions.command(
         command,
         projected_selection(actions, textarea),
@@ -3218,7 +3273,12 @@ pub fn Editor(
         if let Some(textarea) = ta.get_untracked()
             && current_editor_target(editor_actions, &textarea)
         {
-            apply_editor_command(editor_actions, EditorCommand::ConvertIndentation, &textarea);
+            apply_editor_command(
+                editor_actions,
+                EditorCommand::ConvertIndentation,
+                &textarea,
+                action_error,
+            );
             let _ = textarea.focus();
         }
     });
@@ -3333,11 +3393,11 @@ pub fn Editor(
                                                 match command {
                                                     EditorCommand::LineComment => openwebide_core::editor::line_comment(language).is_none() && openwebide_core::editor::block_comment(language).is_none(),
                                                     EditorCommand::BlockComment => openwebide_core::editor::block_comment(language).is_none(),
-                                                    EditorCommand::Reindent => !openwebide_core::editor::supports_brackets(language),
+                                                    EditorCommand::Reindent => !openwebide_core::editor::supports_reindent(language),
                                                     _ => false,
                                                 }
                                             } on:click=move |_| {
-                                                if let Some(textarea) = ta.get() && !read_only.get_untracked() && current_editor_target(editor_actions, &textarea) { apply_editor_command(editor_actions, command, &textarea); let _ = textarea.focus(); }
+                                                if let Some(textarea) = ta.get() && !read_only.get_untracked() && current_editor_target(editor_actions, &textarea) { apply_editor_command(editor_actions, command, &textarea, action_error); let _ = textarea.focus(); }
                                             }><Icon name=icon /><span>{label}</span></button>
                                         }).collect_view()}
                                         <h3 class="ui-menu-heading">"Folding"</h3>
@@ -3733,7 +3793,7 @@ pub fn Editor(
                                                         "insertText" => event.data().and_then(|text| pair_character(&text)).map(EditorCommand::TypeCharacter),
                                                         _ => None,
                                                     };
-                                                    if let Some(command) = command && apply_editor_command(editor_actions, command, &textarea) { event.prevent_default(); return; }
+                                                    if let Some(command) = command && apply_editor_command(editor_actions, command, &textarea, action_error) { event.prevent_default(); return; }
                                                     if event.input_type() == "insertText" && !editor_actions.is_composing() && let Some(text) = event.data() {
                                                         editor_actions.begin_native_text(text);
                                                     }
@@ -3792,7 +3852,7 @@ pub fn Editor(
                                                     key if !modified && !event.alt_key() => pair_character(key).map(EditorCommand::TypeCharacter),
                                                     _ => None,
                                                 };
-                                                if let Some(command) = command && apply_editor_command(editor_actions, command, &textarea) {
+                                                if let Some(command) = command && apply_editor_command(editor_actions, command, &textarea, action_error) {
                                                     event.prevent_default(); event.stop_propagation();
                                                 }
                                             }
@@ -3878,6 +3938,150 @@ pub fn Editor(
 mod tests {
     use super::{browser_matches, paint_text_range};
     use leptos::prelude::document;
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    async fn cooperative_syntax_transport_stops_in_flight_and_rejects_new_requests() {
+        use crate::editor_worker::{CooperativeClient, SyntaxTransport, WorkerError};
+        let client = CooperativeClient::default();
+        let source = "fn f() { call(); }\n".repeat(256);
+        let request = openwebide_core::editor::SyntaxRequest::new(
+            1,
+            "editor-test".into(),
+            openwebide_core::highlight::Language::Rust,
+            &source,
+            4,
+            None,
+        );
+        let message = serde_json::to_string(&request).unwrap();
+        let result = client
+            .request_while(message.clone(), || {
+                client.stop();
+                true
+            })
+            .await;
+        assert_eq!(result, Err(WorkerError::Unavailable));
+        assert_eq!(
+            client.request(1, message).await,
+            Err(WorkerError::Unavailable)
+        );
+    }
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    async fn deferred_caret_reveal_retries_once_and_rejects_new_intent() {
+        use super::*;
+        use openwebide_core::editor::Selection;
+        use std::sync::{
+            Arc,
+            atomic::{AtomicUsize, Ordering},
+        };
+
+        for change in [
+            "none",
+            "source",
+            "selection",
+            "file",
+            "account",
+            "scroll",
+            "dispose",
+        ] {
+            let owner = Owner::new();
+            let (workspace, auth, actions, paint, calls) = owner.with(|| {
+                let auth = crate::state::auth::AuthState::new();
+                provide_context(auth);
+                let workspace = WorkspaceState::new();
+                workspace.active_project.set(Some(1));
+                workspace.open_file.set(Some("reveal.txt".into()));
+                workspace.content.set("line\n".repeat(100).into());
+                let actions = EditorActions::new(workspace);
+                actions.prepare_edit(Selection::caret(0)).unwrap();
+                let calls = Arc::new(AtomicUsize::new(0));
+                (
+                    workspace,
+                    auth,
+                    actions,
+                    RwSignal::new(None::<EditorPaint>),
+                    calls,
+                )
+            });
+            let parent = document().create_element("div").unwrap();
+            parent.set_attribute("data-editor-account", "0").unwrap();
+            let input: web_sys::HtmlTextAreaElement = document()
+                .create_element("textarea")
+                .unwrap()
+                .unchecked_into();
+            input.set_attribute("data-editor-project", "1").unwrap();
+            input
+                .set_attribute("data-editor-path", "reveal.txt")
+                .unwrap();
+            input
+                .set_attribute(
+                    "style",
+                    "width:300px;height:100px;line-height:20px;white-space:pre",
+                )
+                .unwrap();
+            input.set_value(&"line\n".repeat(100));
+            parent.append_child(&input).unwrap();
+            document().body().unwrap().append_child(&parent).unwrap();
+            let measured_input = input.clone();
+            let measured_calls = calls.clone();
+            owner.with(|| {
+                paint.set(Some(EditorPaint {
+                    ticket: 1,
+                    flush: Callback::new(|()| ()),
+                    neighborhood: Callback::new(|()| None),
+                    caret: Callback::new(move |_| {
+                        let count = measured_calls.fetch_add(1, Ordering::Relaxed);
+                        if count == 0 {
+                            return None;
+                        }
+                        let bounds = measured_input.get_bounding_client_rect();
+                        web_sys::DomRect::new_with_x_and_y_and_width_and_height(
+                            bounds.left(),
+                            bounds.top() + 900.0 - measured_input.scroll_top(),
+                            0.0,
+                            20.0,
+                        )
+                        .ok()
+                    }),
+                }));
+            });
+            super::reveal_editor_caret(actions, &input, paint);
+            assert_eq!(calls.load(Ordering::Relaxed), 1);
+            match change {
+                "source" => workspace.content.set("changed".into()),
+                "selection" => {
+                    actions.prepare_edit(Selection::caret(5)).unwrap();
+                }
+                "file" => workspace.open_file.set(Some("other.txt".into())),
+                "account" => auth.generation.update(|generation| *generation += 1),
+                "scroll" => input.set_scroll_top(100.0),
+                "dispose" => owner.cleanup(),
+                _ => (),
+            }
+            crate::util::sleep_ms(100).await;
+            assert_eq!(
+                calls.load(Ordering::Relaxed),
+                if change == "none" { 2 } else { 1 },
+                "{change}"
+            );
+            if change == "none" {
+                assert!(input.scroll_top() > 0.0);
+            } else {
+                assert_eq!(
+                    input.scroll_top().to_bits(),
+                    if change == "scroll" {
+                        100.0_f64
+                    } else {
+                        0.0_f64
+                    }
+                    .to_bits(),
+                    "{change}"
+                );
+            }
+            parent.remove();
+            owner.cleanup();
+        }
+    }
     fn find_matches(text: &str, query: &str) -> Vec<(u32, u32, usize)> {
         let pattern =
             openwebide_core::editor::SearchPattern::new(query, Default::default()).unwrap();

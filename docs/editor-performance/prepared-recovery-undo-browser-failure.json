@@ -1,0 +1,30 @@
+{
+  "manifest": {
+    "baseCommit": "be926f511a4c64bd62fd31ff84bd275add6fe6d6",
+    "sources": {
+      "crates/core/src/editor/mod.rs": "e3c1cadd0747128c81459dcb45014f340ad590ac1ca9433e8ffbe71acd7b2ccc",
+      "crates/core/src/editor/recovery.rs": "3d5a404f0d5b04d4f949ed3f4df9ae1c73c15352f8f629815e468cb81cbcd3d2",
+      "frontend/tests/components/editor.rs": "2e200daaa5abb9e57e318db8d296dd270ef11c681fe11f5dd66487f2dc150776",
+      "frontend/src/state_actions/editor/loading.rs": "5940a6cfd04ced421a307261897500665cbba7bf9b07907b0630b0e152d438e4",
+      "frontend/src/state/workspace.rs": "1a2c28ecd05a2b45035b76ceb8e5914ea370be2074c572d2f0f51cbc406cb928"
+    },
+    "artifacts": {
+      "components.wasm": "b3f0fe7fec51affe850f9982bb4fc2b26c5116f9ea27ae983f82b4f9a24234c2",
+      "editor-library.wasm": "4f83aa1d0eb81984ff5e7d841fa8a389c65f673132a573dee5c4ed940f4e8422"
+    }
+  },
+  "scope": "complete editor inventory planned; stopped after first failing group, remaining groups not executed",
+  "plannedTests": 176,
+  "completedGroupTests": 52,
+  "passed": 51,
+  "failed": [
+    "editor::document_boundary_navigation_reveals_unpainted_rows_and_preserves_selection_in_both_modes"
+  ],
+  "failure": "Timed out waiting for document end reveals its source caret",
+  "readinessDeadlineMs": 3000,
+  "runnerDeadlineSeconds": 300,
+  "cpuLimit": 2,
+  "architecture": "linux-arm64",
+  "logSha256": "3d256524960ba7358e4ff1fa5ed0313b6b56c46ec6eb9370c9da60a589837a8b",
+  "diagnosis": "unknown; source selection and scroll diagnostics added without changing assertions or deadlines"
+}

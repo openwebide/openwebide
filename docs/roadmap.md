@@ -65,6 +65,14 @@ tracks the remaining work rather than every optimization already shipped.
 
 **Remaining implementation**:
 
+- [ ] **Parser-aware command readiness:** extend the cooperative Reindent readiness
+  policy to other parser-aware commands where pending analysis can lose their
+  intended behavior. Use shared structure/capability information for embedded
+  language actions rather than relying solely on the outer file language. Cover
+  deferred completion, cancellation and stale source/account/selection in both
+  modes. Reindent now passes completion, HTML/Markdown bodies, menu, capacity and
+  cancellation contracts; its evidence is in [performance verification](editor-performance.md).
+
 - [ ] **Cold startup and native input:** remove remaining full-source shaping in
   touch and unsupported-layout fallbacks. Desktop startup now uses bounded native
   input for wrapped and nonuniform rows, with exactly measured origin paint while
@@ -162,7 +170,11 @@ tracks the remaining work rather than every optimization already shipped.
   Final recovery admission and fold row counts now reuse complete source-owned
   indexes. Canonical JSON decoding now borrows encoded field bytes before
   creating the owned decoded source. Encoding, complete JSON/network buffers,
-  full-source undo publication and final normalization costs still require work.
+  final normalization costs still require work. Recovered full-source undo/redo
+  now publishes retained complete source/index versions instead of copying source
+  and rebuilding coordinates. The saved index remains retained until that history
+  step is released; common-prefix/suffix comparison, fold rebasing and frontend
+  publication/normalization still require bounded preparation and memory evidence.
   Recovery metadata validation now checks borrowed selection positions and ordered
   fold ranges directly, without cloning and sorting them; fold validation retains
   only an ancestor-end stack bounded by nesting depth. Restoration still owns and
@@ -294,9 +306,13 @@ tracks the remaining work rather than every optimization already shipped.
   passed all five jobs ([receipt](editor-performance/grouped-ci-ba33f5d.json));
   this does not establish the earlier failure's cause. The final-index validation
   checkpoint `2301c26` also passed all five jobs
-  ([receipt](editor-performance/grouped-ci-2301c26.json)). These are two complete
-  green checkpoints after the earlier failure; current motion/decoding changes
-  still require their own complete hosted verification.
+  ([receipt](editor-performance/grouped-ci-2301c26.json)). The subsequent navigation,
+  decoding and metadata-validation checkpoints also passed all five jobs
+  ([navigation](editor-performance/grouped-ci-3d7eb5d.json),
+  [decoding](editor-performance/grouped-ci-2b1e482.json),
+  [validation](editor-performance/grouped-ci-be926f5.json)). Current Reindent,
+  reveal-retry and prepared-index undo changes still require their own complete
+  hosted verification; these green checkpoints do not prove the earlier failures' causes.
   Validate bounded browser setup retries after the upstream Chrome download HTTP 502 failure. Repeat near-limit Linux
   readiness and the complete suites; a local run or one green checkpoint is insufficient.
   Cold queued-input checks explicitly defer neighborhood paint while preserving

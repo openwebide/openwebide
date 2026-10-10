@@ -1,0 +1,27 @@
+{
+  "manifest": {
+    "baseCommit": "be926f511a4c64bd62fd31ff84bd275add6fe6d6",
+    "sources": {
+      "crates/core/src/editor/mod.rs": "e3c1cadd0747128c81459dcb45014f340ad590ac1ca9433e8ffbe71acd7b2ccc",
+      "crates/core/src/editor/recovery.rs": "3d5a404f0d5b04d4f949ed3f4df9ae1c73c15352f8f629815e468cb81cbcd3d2",
+      "frontend/src/components/editor.rs": "49a6a936be4b71767d04e6048b95625c6b8918b1d85756b8a6d6d65918a05853",
+      "frontend/tests/components/editor.rs": "7a9de9b34d3678c0c3b114eadb7d286b29b3c0ab6f644cd37118e00ddf85c52a",
+      "tools/run-editor-browser-tests.py": "81a3cce570c0448a4a3493e899b3ae6922bff0704b656a12d85de42f2881378b"
+    },
+    "artifacts": {
+      "components.wasm": "a1f8e6c729e3c23fe8b469abe5a771bfc395000e02e5eecd6d77f7f16d87043d",
+      "editor-library.wasm": "55675d9ef3f6cf3260bbe9432f1fab1eaa93ec914042af210990c2958359fdf7"
+    }
+  },
+  "scope": "isolated diagnostic runs only; not substitutes for failing full editor group",
+  "tests": [
+    "editor::file_switch_reads_latest_path_and_mode_exit_cancels",
+    "editor::parser_reindent_preserves_literals_and_embedded_boundaries_in_both_modes"
+  ],
+  "passed": 2,
+  "readinessDeadlineMs": 3000,
+  "runnerDeadlineSeconds": 300,
+  "cpuLimit": 2,
+  "logSha256": "d815dcc86c15859349088ea13be007ceaf4585cf4e7908346faf22c08c0a459c",
+  "diagnosis": "both pass in fresh browsers; shared-group cold parser failure and following highlight-count contamination remain unproven"
+}

@@ -9,6 +9,12 @@ for what's still ahead.
 
 ## [Unreleased]
 
+- Retry an editor caret reveal when navigation precedes prepared paint, while cancelling the retry after newer source, selection, account, file or scroll intent.
+
+- Prepare cold Reindent commands cooperatively with the shared Rust syntax service before applying one undoable edit. Cancel superseded source, selection, rule and ownership requests; enable the action for HTML and Markdown embedded code bodies and report unavailable structure instead of silently doing nothing.
+
+- Reuse complete prepared source and row indexes when undoing or redoing a recovered editor draft, avoiding full-file copying and coordinate reconstruction during replay while preserving fold rebasing and selection history.
+
 - Validate recovered selections and ordered fold ranges without copying and sorting metadata during each persistence check. Preserve Unicode boundary checks, nested-fold rules and recovery error precedence.
 
 - Decode recovery source directly from borrowed JSON base64 fields, removing temporary encoded-string copies while retaining owned UTF-8, size limits and the existing storage format.

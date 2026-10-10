@@ -104,6 +104,7 @@ mod lines;
 mod paste;
 mod reindent;
 pub use lines::LineCommand;
+pub use reindent::supports_reindent;
 mod pairs;
 mod structure;
 pub use structure::{MAX_STRUCTURE_BYTES, Structure, supports_brackets};
@@ -210,6 +211,7 @@ pub enum EditError {
     Capacity(EditorLimit),
     CompositionActive,
     UnsupportedNativeInput,
+    StructureUnavailable,
 }
 
 impl std::fmt::Display for EditError {
@@ -230,6 +232,7 @@ impl std::fmt::Display for EditError {
             Self::CompositionActive => {
                 "Finish the input composition before running an editor command"
             }
+            Self::StructureUnavailable => "Code structure is unavailable for this document",
             Self::UnsupportedNativeInput => {
                 "This native input cannot be applied to multiple selections"
             }
@@ -245,6 +248,15 @@ struct Transaction {
     inverse: Vec<Edit<HistoryText>>,
     before: Vec<Selection>,
     after: Vec<Selection>,
+    prepared: Option<(HistorySource, HistorySource)>,
+}
+
+/// Recovery already prepared both complete versions. Retain their immutable
+/// indexes with their source so replay need not reconstruct row coordinates.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct HistorySource {
+    text: std::sync::Arc<String>,
+    index: std::sync::Arc<index::LineIndex>,
 }
 
 /// Ordinary edits own only their replacement span. Recovery can retain complete
@@ -699,7 +711,7 @@ impl Document {
             &mut self.projection,
             &edits,
         );
-        self.record_transaction(edits, inverse, after, group);
+        self.record_transaction(edits, inverse, after, group, None);
         Ok(true)
     }
 
@@ -710,6 +722,7 @@ impl Document {
         inverse: Vec<Edit<T>>,
         after: Vec<Selection>,
         group: Option<u64>,
+        prepared: Option<(HistorySource, HistorySource)>,
     ) {
         let retain = |edits: Vec<Edit<T>>| {
             edits
@@ -732,6 +745,7 @@ impl Document {
             inverse,
             before: self.selections.clone(),
             after: after.clone(),
+            prepared,
         });
         for step in self.history.drain(self.history_cursor..) {
             self.history_bytes -= step.bytes;
@@ -773,14 +787,24 @@ impl Document {
         }
         let step = &self.history[self.history_cursor - 1];
         for transaction in step.transactions.iter().rev() {
-            replace_indexed_text(
-                &mut self.text,
-                &mut self.saved,
-                &mut self.line_index,
-                &mut self.folds,
-                &mut self.projection,
-                &transaction.inverse,
-            );
+            if let Some((before, _)) = &transaction.prepared {
+                replace_prepared_text(
+                    &mut self.text,
+                    &mut self.line_index,
+                    &mut self.folds,
+                    &mut self.projection,
+                    before,
+                );
+            } else {
+                replace_indexed_text(
+                    &mut self.text,
+                    &mut self.saved,
+                    &mut self.line_index,
+                    &mut self.folds,
+                    &mut self.projection,
+                    &transaction.inverse,
+                );
+            }
             self.selections.clone_from(&transaction.before);
         }
         self.history_cursor -= 1;
@@ -797,14 +821,24 @@ impl Document {
         }
         let step = &self.history[self.history_cursor];
         for transaction in &step.transactions {
-            replace_indexed_text(
-                &mut self.text,
-                &mut self.saved,
-                &mut self.line_index,
-                &mut self.folds,
-                &mut self.projection,
-                &transaction.forward,
-            );
+            if let Some((_, after)) = &transaction.prepared {
+                replace_prepared_text(
+                    &mut self.text,
+                    &mut self.line_index,
+                    &mut self.folds,
+                    &mut self.projection,
+                    after,
+                );
+            } else {
+                replace_indexed_text(
+                    &mut self.text,
+                    &mut self.saved,
+                    &mut self.line_index,
+                    &mut self.folds,
+                    &mut self.projection,
+                    &transaction.forward,
+                );
+            }
             self.selections.clone_from(&transaction.after);
         }
         self.history_cursor += 1;
@@ -874,6 +908,27 @@ fn inverse_edits(text: &str, edits: &[Edit]) -> Vec<Edit> {
         source = edit.range.end;
     }
     inverse
+}
+
+fn replace_prepared_text(
+    text: &mut std::sync::Arc<String>,
+    index: &mut std::sync::Arc<index::LineIndex>,
+    folds: &mut FoldState,
+    projection: &mut ProjectionCache,
+    prepared: &HistorySource,
+) {
+    let Some(change) = text_change(text, &prepared.text) else {
+        return;
+    };
+    let edits = [Edit {
+        range: change.range.clone(),
+        text: &prepared.text[change.range.start..change.new_end],
+    }];
+    let boundaries = folds.prepare_rebase(&index.rows, &edits);
+    projection.0.take();
+    *text = prepared.text.clone();
+    *index = prepared.index.clone();
+    folds.finish_rebase(boundaries, &index.rows);
 }
 
 fn replace_indexed_text<T: AsRef<str>>(

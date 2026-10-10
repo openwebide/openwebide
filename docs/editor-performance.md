@@ -5159,3 +5159,106 @@ two-CPU Linux arm64 with unchanged deadlines
 ([verification](editor-performance/borrowed-recovery-metadata.json)). These
 targeted contracts cover both adapters, stale/account ownership, conflicts and
 retry; they do not establish full editor CI reliability or whole-app memory gains.
+
+## Prepared recovery versions during undo and redo
+
+The recovered transaction now retains both complete immutable source/index
+versions. Replay compares the current and target text using the existing change
+boundaries, rebases folds with those same boundaries, invalidates the derived
+projection and switches to the prepared version. It does not copy source or
+reconstruct row coordinates. Selection restoration, revisions, composition
+guards, saved-baseline ownership and history source-byte budgets remain unchanged.
+Ordinary edit transactions do not retain these complete versions.
+
+This trades retention of the saved version's prepared index for avoiding replay
+reconstruction; it is not evidence of lower total memory. The recovery step's
+source bytes remain charged to the existing history budget, while index retention
+is bounded by the admitted source versions. Replacing the redo branch releases
+both retained indexes. The first ordinary edit after recovery also detaches the
+retained draft index through the existing copy-on-write path; bounding that work
+and measuring its cost remain required. Native contracts assert exact source/index identities
+through ordinary edits and cloned snapshots, and compare folding/revision/source
+behavior with ordinary full-replacement transactions on empty, clean, Unicode,
+CRLF, long and middle-change documents. The browser recovery contract asserts
+source identity after undo/redo in both workspace modes.
+
+Common-prefix/suffix comparison, fold mapping, frontend publication and native
+normalization still need bounded preparation. Full admitted-workload latency and
+memory evidence remains required before completing the editor goal.
+
+The first undo verification passed all 484 core tests and strict native/WASM/WASI
+lint, but its full editor browser verification was incomplete: the first 52-test
+group passed 51 tests and failed the admitted-file document-end navigation
+deadline ([failure evidence](editor-performance/prepared-recovery-undo-browser-failure.json)).
+The other five groups did not execute. Source selection, scroll, binding and
+geometry diagnostics were then added with the existing assertions and deadlines
+unchanged. This initial attempt did not qualify the checkpoint for commit.
+
+The same 52-test group reproduced the failure with unchanged deadlines and
+failure-only state diagnostics
+([diagnostic evidence](editor-performance/navigation-reveal-diagnostic.json)).
+In wrapped Remote mode the source selection reached byte 2,305,056 exactly, with
+no queued motion, bound native input, no pending geometry and one mounted editor.
+Scroll remained at 907,647 of 1,296,638 pixels (the starting 70% position). This
+distinguishes a lost viewport reveal from source-motion rejection; the underlying
+paint availability timing is not yet proved. A bounded frame retry guarded by
+source, selection, project/read/account scope and unchanged scroll intent was added,
+including a focused retry/cancellation contract. At that point it was not yet a
+verified fix. The preceding navigation checkpoint did pass all five hosted jobs
+([receipt](editor-performance/grouped-ci-3d7eb5d.json)); that success does not negate
+these local failures or establish reliability.
+
+The guarded retry passes its focused cancellation contract and all 21 editor
+library contracts, followed by the complete previously failing 52-test navigation
+group. The next 51-test group passed 49 tests and failed parser-backed reindent
+(HTML source remained unchanged) and file-switch highlight counts (two extra
+publications). The remaining 53 tests did not run
+([full-run evidence](editor-performance/navigation-reveal-retry-browser-failure.json)).
+Both failing tests pass individually in fresh browsers with the same frozen
+artifacts and deadlines
+([isolated diagnostics](editor-performance/reindent-file-switch-diagnostic.json));
+these are diagnostics, not a substitute for complete verification. Cold command
+syntax preparation currently has a 12 ms deadline and falls back to lexical
+reindent if no parsed structure is available. The HTML menu also disables
+reindent based on its outer language, despite embedded-body support. Parser-aware
+command readiness and container capability checks were still implementation work.
+Neither parser cancellation nor failed-mount contamination is yet proved as the
+shared-group failure's cause. The decoding checkpoint passed all five hosted jobs
+([receipt](editor-performance/grouped-ci-2b1e482.json)); that run did not verify the
+undo/retry work as a full editor checkpoint.
+
+Cold Reindent now uses a shared facade path which preserves the requested edit
+until complete structure is available. The fast path reuses current prepared
+structure; otherwise it cooperatively admits the source and asks the same core
+`SyntaxWorker` service used by browser workers through a yielding task adapter.
+The command applies through the same transaction implementation as immediate
+editing commands. It checks source allocation, document revision, all selections,
+rules, composition and project/read/account ownership between batches and before
+publication. Superseded requests return without editing; unavailable structure
+returns a typed error. HTML/Markdown containers expose reindent for their parsed
+code bodies while preserving markup and prose.
+
+This avoids cold parser cancellation being interpreted as a lexical no-op for an
+explicit reindent request. It does not establish the precise cause of the earlier
+shared-group failure. The former semantic contract now invokes the same awaited
+facade used by the menu, with its expected output and undo/redo checks retained.
+New contracts cover superseded requests in both modes, actual HTML menu execution
+and one undoable commit, and admitted editor sources above the structure budget.
+The complete optimized editor inventory passes all 181 tests, including both
+independent font matrices ([full-run evidence](editor-performance/cold-reindent-full-browser.json)).
+The implementation source was then retained while the semantic fixture added
+Markdown code-fence reindent, exact prose preservation and undo. The rebuilt
+artifact passes both complete groups containing the earlier navigation, reindent
+and file-switch failures: 104 tests with unchanged readiness deadlines and CPU
+limits ([repeated-group evidence](editor-performance/cold-reindent-repeat-browser.json)).
+This is a complete baseline plus repeated current groups, not a second complete
+181-test run of the rebuilt artifact. All 484 core tests, strict native/WASM/WASI
+lint and formatting also pass. The preceding metadata-validation checkpoint
+passed all five hosted jobs ([receipt](editor-performance/grouped-ci-be926f5.json));
+the current checkpoint still needs its own hosted CI.
+
+These runs verify the cooperative command and guarded reveal behavior without
+establishing the exact cause of every earlier shared-group failure. Other
+parser-aware commands still use their existing immediate fallback; request/reply
+serialization, source/index publication, command preparation memory, broader
+responsiveness and physical-device checks remain work.

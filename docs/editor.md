@@ -57,6 +57,11 @@ undo step. Reindent aligns selected bracket-delimited blocks, leaves multiline
 string contents untouched and preserves Python's existing block depth; it is not
 a language formatter. Unsupported comment/reindent actions appear disabled.
 
+Reindent also works inside HTML script/style bodies and supported Markdown code
+fences. If code structure is still being prepared, the requested action waits for
+it. Changing the source, selections, indentation rules, file or account cancels
+that request. Unavailable structure reports an error without changing the file.
+
 ## Multiple selections and clipboard
 
 With multiple selections, Copy joins their source text in primary-selection order;
@@ -293,6 +298,11 @@ UTF-8 ranges, folds, token coverage and bracket links are validated without pars
 the document again on the UI thread. Transport/startup failures use the same
 preparation engine synchronously with a 12 ms parser budget; unavailable contexts
 retain ordinary lexical editing. Worker parsing has a 100 ms budget.
+Explicit Reindent requests use a yielding browser task adapter for the same Rust
+syntax service when no current structure is ready, then apply through the shared
+editor command facade. They do not use the immediate lexical fallback. Other
+parser-aware commands still retain that fallback while their readiness policy
+remains on the roadmap.
 JSON/JSONC, TOML, YAML/YML, INI/EditorConfig, XML build configuration and Markdown
 use registered Rust/WASM grammars through the same preparation cache and worker.
 Markdown has separate block/inline parsing and declared fenced-code languages;

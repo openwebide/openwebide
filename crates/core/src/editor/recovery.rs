@@ -199,6 +199,16 @@ impl DocumentRecovery {
         let after = normalize_selections(&self.text, self.selections.clone())
             .map_err(|error| error.to_string())?;
         if self.text != self.saved {
+            let prepared = (
+                super::HistorySource {
+                    text: document.text.clone(),
+                    index: document.line_index.clone(),
+                },
+                super::HistorySource {
+                    text: draft.text.clone(),
+                    index: draft.line_index.clone(),
+                },
+            );
             let forward = vec![Edit {
                 range: 0..self.saved.len(),
                 text: draft.text.clone(),
@@ -209,7 +219,7 @@ impl DocumentRecovery {
             }];
             document.text = draft.text;
             document.line_index = draft.line_index;
-            document.record_transaction(forward, inverse, after, None);
+            document.record_transaction(forward, inverse, after, None, Some(prepared));
         } else {
             document.selections = after;
         }
@@ -257,11 +267,40 @@ mod prepared_tests {
     use super::*;
 
     #[test]
+    fn replacing_recovered_redo_releases_prepared_version_indexes() {
+        let saved = Document::for_editor("saved\nbody\n").unwrap();
+        let draft = Document::for_editor("draft 文😀\r\nbody\n").unwrap();
+        let saved_index = std::sync::Arc::downgrade(&saved.line_index);
+        let draft_index = std::sync::Arc::downgrade(&draft.line_index);
+        let recovery = DocumentRecovery {
+            text: draft.shared_text(),
+            saved: saved.shared_text(),
+            selections: vec![Selection::caret(draft.text().len())],
+            collapsed: Vec::new(),
+        };
+        let mut document = recovery.restore_prepared(saved, draft).unwrap();
+        assert!(document.undo());
+        assert!(saved_index.upgrade().is_some());
+        assert!(draft_index.upgrade().is_some());
+        document.replace_selections("new", None).unwrap();
+        assert!(!document.can_redo());
+        assert_eq!(document.history.len(), 1);
+        assert!(document.history[0].transactions[0].prepared.is_none());
+        assert!(saved_index.upgrade().is_none());
+        assert!(draft_index.upgrade().is_none());
+        assert!(document.undo());
+        assert_eq!(document.text(), recovery.saved.as_str());
+        assert!(!document.is_dirty());
+    }
+
+    #[test]
     fn recovered_history_retains_prepared_sources_through_edits_and_snapshot_undo() {
         let baseline = Document::for_editor("base 😀\r\n".repeat(20_000)).unwrap();
         let draft = Document::for_editor(format!("{}tail 文\r\n", baseline.text())).unwrap();
         let saved_source = baseline.shared_text();
         let draft_source = draft.shared_text();
+        let saved_index = baseline.line_index.clone();
+        let draft_index = draft.line_index.clone();
         let recovery = DocumentRecovery {
             text: draft.shared_text(),
             saved: baseline.shared_text(),
@@ -302,9 +341,13 @@ mod prepared_tests {
         for document in [&mut restored, &mut snapshot] {
             assert!(document.undo());
             assert_eq!(document.text(), recovery.saved.as_str());
+            assert!(std::sync::Arc::ptr_eq(&document.text, &saved_source));
+            assert!(std::sync::Arc::ptr_eq(&document.line_index, &saved_index));
             assert!(!document.is_dirty());
             assert!(document.redo());
             assert_eq!(document.text(), recovery.text.as_str());
+            assert!(std::sync::Arc::ptr_eq(&document.text, &draft_source));
+            assert!(std::sync::Arc::ptr_eq(&document.line_index, &draft_index));
             assert_eq!(document.selections(), recovery.selections);
             assert!(document.is_dirty());
         }
@@ -317,6 +360,10 @@ mod prepared_tests {
             ("base\r\n".into(), "文😀\r\ntail\n".into()),
             ("same\n".into(), "same\n".into()),
             ("word\n".repeat(2000), "文😀\r\n".repeat(3000)),
+            (
+                "a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\nl".into(),
+                "a\nb\nc\nd\nchanged 文😀\r\ne\nf\ng\nh\ni\nj\nk\nl".into(),
+            ),
         ] {
             let selections = vec![Selection {
                 anchor: text.len(),
