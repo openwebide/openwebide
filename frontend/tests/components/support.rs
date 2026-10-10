@@ -223,15 +223,22 @@ impl TestState {
         let mut prepared = openwebide_core::plugins::testing::receipt();
         prepared.manifest.compatibility.plugin_api = 3;
         prepared.manifest.contributions.skills.clear();
-        prepared.manifest.contributions.tools = ["memory_create", "memory_update", "memory_delete"]
-            .into_iter()
-            .map(|name| PluginTool {
-                name: name.into(),
-                description: "Host memory fixture".into(),
-                parameters: serde_json::json!({"type":"object"}),
-                requires_approval: true,
-            })
-            .collect();
+        prepared.manifest.contributions.tools = [
+            "memory_create",
+            "memory_update",
+            "memory_delete",
+            "memory_search",
+            "memory_list",
+            "memory_read",
+        ]
+        .into_iter()
+        .map(|name| PluginTool {
+            name: name.into(),
+            description: "Host memory fixture".into(),
+            parameters: serde_json::json!({"type":"object"}),
+            requires_approval: matches!(name, "memory_create" | "memory_update" | "memory_delete"),
+        })
+        .collect();
         prepared.manifest.executable = Some(RustPlugin {
             manifest: "Cargo.toml".into(),
             library: "memory_fixture".into(),

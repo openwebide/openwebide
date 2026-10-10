@@ -78,6 +78,9 @@ export function fakeBridgeHttp() {
         if (path === '/plugins/continue') {
             const continuation = body.continuation;
             if (continuation.sequence === 0) {
+                if (mock.actor.operation === 'context') {
+                    return new Response(JSON.stringify({id:'plugin-ui', step:{status:'host_call', sequence:1, capability:'collections', payload:JSON.stringify({collection:'memories', operation:{action:'list', after:0}})}}));
+                }
                 const args = JSON.parse(mock.actor.arguments);
                 const action = mock.actor.name.replace('memory_', '');
                 const value = {title:args.title, content:args.content, auto_title:args.auto_title};
@@ -85,6 +88,12 @@ export function fakeBridgeHttp() {
                 return new Response(JSON.stringify({id:'plugin-ui', step:{status:'host_call', sequence:1, capability:'collections', payload:JSON.stringify({collection:'memories', operation})}}));
             }
             const ok = continuation.response.Ok !== undefined;
+            if (mock.actor.operation === 'context' && ok) {
+                const page = JSON.parse(continuation.response.Ok);
+                const tools = JSON.parse(mock.plugin).manifest.contributions.tools.map(tool => tool.name);
+                const content = JSON.stringify({prompt:page.enabled ? page.records.map(record => record.value.content).join('\n') || null : null, disabled_tools:page.enabled ? [] : tools});
+                return new Response(JSON.stringify({id:'plugin-ui', step:{status:'complete', ok:true, content, summary:'Fixture context'}}));
+            }
             return new Response(JSON.stringify({id:'plugin-ui', step:{status:'complete', ok, content:ok ? continuation.response.Ok : continuation.response.Err, summary:ok ? 'Stored' : 'Failed'}}));
         }
         if (path === '/plugins/cancel') { mock.actor = null; return new Response('{}'); }

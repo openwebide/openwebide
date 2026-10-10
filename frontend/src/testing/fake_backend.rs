@@ -600,6 +600,27 @@ impl Backend for FakeBackend {
             Ok(())
         })
     }
+    fn plugin_host_request<'a>(
+        &'a self,
+        session: i64,
+        request: &'a openwebide_core::plugins::execution::PluginHostRequest,
+    ) -> LocalBoxFuture<'a, Result<String, String>> {
+        Box::pin(async move {
+            self.calls.borrow_mut().push(Call::Request {
+                method: "plugin_host_request",
+            });
+            if self
+                .plugin_authorities
+                .borrow()
+                .get(&request.grant)
+                .and_then(|(scope, _)| scope.session_id)
+                != Some(session)
+            {
+                return Err("Plugin conversation changed".into());
+            }
+            self.plugin_context_host_request(request).await
+        })
+    }
     fn plugin_context_host_request<'a>(
         &'a self,
         request: &'a openwebide_core::plugins::execution::PluginHostRequest,
@@ -624,7 +645,13 @@ impl Backend for FakeBackend {
             }
             let mut all = self.memories.borrow_mut();
             let data = all.entry(project).or_default();
-            if !data.enabled && !scope.user_action {
+            if !data.enabled
+                && !scope.user_action
+                && !matches!(
+                    command.operation,
+                    RecordOperation::List { .. } | RecordOperation::Read { .. }
+                )
+            {
                 return Err("Memory is disabled".into());
             }
             match command.operation {
@@ -666,7 +693,11 @@ impl Backend for FakeBackend {
                 }
                 _ => {}
             }
-            Ok(serde_json::json!({"enabled":true,"records":[],"next":null}).to_string())
+            let records: Vec<_> = data.entries.iter().map(|entry| serde_json::json!({"id":entry.id,"revision":entry.revision,"updated_at":entry.updated_at,"value":{"title":entry.title,"content":entry.content,"auto_title":entry.auto_title}})).collect();
+            Ok(
+                serde_json::json!({"enabled":data.enabled,"records":records,"next":null})
+                    .to_string(),
+            )
         })
     }
     fn project_plugins(

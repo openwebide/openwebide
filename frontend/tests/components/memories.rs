@@ -11,10 +11,7 @@ fn fixture(mode: WorkspaceMode, chat: bool) -> Mounted {
         state.seed_project();
         state.seed_connection();
         state.seed_session();
-        if chat {
-            state.seed_plugin_tools(openwebide_core::plugins::PluginToolGroup::Memory);
-        }
-        if !chat {
+        {
             let prepared = state.seed_memory_plugin();
             if mode == WorkspaceMode::Local {
                 state
@@ -424,6 +421,6 @@ async fn browser_memory_tools_persist_and_toggle_removes_context_and_tools_from_
                 |(_, command, session)| *session && matches!(command, MemoryCommand::Create { .. })
             )
             .count(),
-        1
+        0
     );
 }
