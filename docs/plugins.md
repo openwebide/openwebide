@@ -10,7 +10,7 @@ source named Open WebIDE. Click a row’s name to inspect plugin details
 and use the gear menu to choose a release. Install it on the open project's
 execution host, or on the server host when no project is open. Plugins currently
 contribute agent skills and host-executed Rust tools through the public SDK.
-Older platform tool-group installations remain transitional until users update.
+Older platform tool-group installations require an update to executable handlers.
 
 Execution hosts bundle a commit-pinned subset of the official marketplace: Web,
 Project Memory, Scheduling and Skill Authoring. Account initialization installs
@@ -112,7 +112,8 @@ credentials; credentials cannot be embedded in repository URLs.
 
 The shared plugin facade selects the project host. Both transports use the same
 core validation and installation policy. The native bridge reads Git objects from
-a bare cache, validates API 1 skills and API 2 platform tool-group manifests and skill resources, and
+a bare cache, validates API 1 skills, API 3 executables and skill resources, rejects
+retired API 2 tool-group activation, and
 publishes a commit/content-addressed snapshot by atomic rename. Hooks, checkout
 filters, package scripts and runtime installers are not run. Symlinks, submodules,
 path collisions and unsupported contributions are rejected. Packages are limited
@@ -139,17 +140,17 @@ leave the previous record and snapshot intact. Account, project, session or host
 changes prevent stale browser results from recording an installation. An already
 submitted server transaction may finish for its authenticated account.
 
-Plugin API 2 adds `contributions.toolGroups`: `web`, `memory`, `scheduling` and
-`skill-authoring`. A plugin can combine these with skills or contribute a tool
-group alone with `skills: []`. These groups use the existing shared platform
-handlers and approval rules. File editing, shell execution, git, questions and
-task coordination remain core tools. The first-party Skill Authoring plugin carries the authoring instructions; its
-tool handlers still live in the app. Discovery/read tools remain available.
-Both run adapters apply one contribution policy, and scheduled host adaptation
-preserves the selected tool set.
+Historical Plugin API 2 receipts may contain `contributions.toolGroups`: `web`,
+`memory`, `scheduling` and `skill-authoring`. They remain readable for existing
+installations, but no longer expose built-in agent handlers or feature context.
+Plugins shows Update required, and shared preparation, installation and activation
+policy rejects these releases. Existing receipts can still change their update
+preferences; project opt-outs, pins and stored data remain intact. Updates to
+executable releases use the normal capability review. File editing, shell
+execution, git, questions and task coordination remain core tools.
 
-Skill-only contributions do not require Skill Authoring. When no enabled authoring
-tool group or executable plugin supplies both skill discovery and reading, shared
+Skill-only contributions do not require Skill Authoring. When no enabled
+executable plugin supplies both skill discovery and reading, shared
 run preparation advertises `plugin_skill_list` and `plugin_skill_read` and includes
 a bounded catalog of enabled plugin skills. Server, bridge and browser executors
 read the snapshot captured when the run started, including named resources; later
@@ -157,8 +158,7 @@ updates, disablement or removal cannot replace those instructions mid-run. This
 generic loader excludes personal skills and provides no authoring operations.
 Executable skill handlers continue to use their own SDK implementation.
 
-These tool-group manifests are transitional feature switches, not completed
-migrations of executable behavior. The pinned default subset is Web, Project
+Tool-group manifests are retired feature switches. The pinned default subset is Web, Project
 Memory, Scheduling and Skill Authoring; PR Review remains optional.
 
 ## Executable plugin requirements
@@ -205,16 +205,17 @@ grant permits manual editing while automatic Memory context is switched off;
 plugin code cannot opt itself into this authority. Plugins on a paired host do
 not require that host to see a local project's browser folder. Workspace commands
 and Git retain their separate folder mapping requirement. Background runs use
-shared leased delivery; executable-default deployment remains unfinished.
+shared leased delivery; compiled defaults have verified server and paired-host
+HTTP bootstrap, with deployed browser verification still pending.
 The separate `completion` grant exposes bounded text generation through the
 session's configured primary or fast model. Plugins supply prompts and interpret
 the results; the host supplies model selection and credentials. Inputs are limited
 to 32 KiB, outputs to 1–1024 tokens and 16 KiB of text, with a 30-second completion
 deadline and no tools. Context hooks cannot request completions. The source
 Memory plugin owns its naming prompt, profile fallback and content-derived title.
-Task-history integration, workspace callbacks, installation progress
-and cancellation, and compiled offline defaults still need implementation. API 2
-first-party plugins remain transitional.
+Workspace callbacks remain unfinished. Installation progress, cancellation and
+compiled offline defaults are implemented; deployed browser lifecycle verification
+remains open. API 2 tool-group releases require an update to executable handlers.
 
 The separate `collections` capability exposes schema-validated CRUD for the
 app-visible `memories` and `skills` collections. It preserves existing UI records and enforces
@@ -243,7 +244,8 @@ completion or lease replacement. Terminal jobs can be deleted to release quota
 and their idempotency keys. The bridge polls for due events and runs them through the shared execution
 workflow, renewing leases during compilation and execution. Delivery is at least
 once; plugin code must use stable keys and revision checks for repeatable effects.
-The Scheduling policy migration remains unfinished.
+The Scheduling source owns recurrence and event policy; marketplace activation
+and deployed browser verification remain pending.
 
 The prototype `runs` capability exposes durable raw prompt submissions through
 `list`, `read`, `submit`, `cancel` and terminal `delete`. Submissions use stable
@@ -276,8 +278,8 @@ recovery also release it. Repeated status acknowledgements do not enqueue anothe
 event. Released events survive run-history deletion and retain the submitting
 source version, model and context across updates. Existing event lease/disablement
 rules and at-least-once delivery apply. Callback cancellation suppresses delivery;
-plugins own idempotency and outcome interpretation. Executable Scheduling remains
-unfinished.
+plugins own idempotency and outcome interpretation. Scheduling's executable source
+implements its completion policy through this callback contract.
 
 The `tasks` collection exposes the existing saved-task and monitor records through
 scoped CRUD. Values contain `draft`, `next_run`, `state` (a plugin-owned JSON object)
@@ -289,7 +291,8 @@ deletes require the current record revision. An unowned legacy task can be adopt
 when no prior delivery is active; another plugin's task cannot be mutated. Adoption
 preserves its ID/history and stops legacy dispatch. Goal-worker records are excluded.
 Lists use ascending ID cursors, at most 32 records and a 1 MiB serialized envelope.
-Scheduling's executable handlers and task-history integration remain unfinished.
+Scheduling's executable source manages these records and task history through
+general collection callbacks.
 
 Raw run `submit` accepts optional `prerequisites`, with at most eight objects of
 `{capability, collection, id, revision}`. Capability is `records` or `collections`
@@ -330,7 +333,10 @@ and collections in both project modes (`cargo test -p openwebide-bridge --test
 scheduling_component -- --ignored`). It covers task creation, due submission,
 cancellation completion and deletion; it does not prove Git installation, actual
 model execution, production compiler isolation or the deployed browser lifecycle.
-Crash recovery, task-history/UI integration, retention and deployment remain open.
+Separate deployed server and paired-host HTTP checks verify plugin-owned naming,
+agent execution, bounded monitors, restart and interrupted-run recovery, source
+version handoff and pinning, streamed updates, and full-quota history journaling
+and retention recovery. Deployed browser lifecycle verification remains open.
 
 Skills collection writes accept a `draft` object using the existing skill schema.
 Reads include that draft and read-only `origin` metadata for managed plugin skills.

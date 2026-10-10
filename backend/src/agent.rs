@@ -1202,11 +1202,13 @@ mod tests {
     }
 }
 
+#[cfg(test)]
 struct SpinMemoryPersistence {
     store: Arc<Store<AppDb>>,
     user: openwebide_core::UserId,
     session: i64,
 }
+#[cfg(test)]
 impl openwebide_agent::memory::MemoryStore for SpinMemoryPersistence {
     async fn execute(
         &self,
@@ -1235,62 +1237,14 @@ impl openwebide_agent::memory::MemoryStore for SpinMemoryPersistence {
     }
 }
 
-struct SpinScheduledPersistence {
-    store: Arc<Store<AppDb>>,
-    user: openwebide_core::UserId,
-    session: i64,
-}
-impl openwebide_agent::scheduled::TaskStore for SpinScheduledPersistence {
-    async fn execute(
-        &self,
-        command: &openwebide_core::scheduled::TaskCommand,
-    ) -> Result<Vec<openwebide_core::scheduled::ScheduledTask>, String> {
-        let project = self
-            .store
-            .get_session(self.session, self.user)
-            .await
-            .map_err(|error| error.to_string())?
-            .project_id;
-        let mut command = command.clone();
-        if let openwebide_core::scheduled::TaskCommand::Create { draft }
-        | openwebide_core::scheduled::TaskCommand::Update { draft, .. } = &mut command
-            && draft.session_target == openwebide_core::scheduled::SessionTarget::Existing
-            && draft.session_id == 0
-        {
-            draft.session_id = self.session;
-        }
-        let command = crate::api::naming::task(&self.store, self.user, project, command, true)
-            .await
-            .map_err(|error| error.to_string())?;
-        self.store
-            .scheduled_session_command(self.user, self.session, &command, crate::state::now())
-            .await
-            .map_err(|error| error.to_string())
-    }
-}
-type SpinMemoryExecutor = openwebide_agent::memory::MemoryTools<
-    openwebide_agent::todo::TodoTools<
-        openwebide_agent::vfs_executor::SessionToolExecutor<
-            VfsToolExecutor<
-                HostFsVfs,
-                crate::web::SpinWebClient,
-                crate::bridge_client::SpinBridgeClient,
-            >,
-            crate::web::SpinWebClient,
-            crate::bridge_client::SpinBridgeClient,
-        >,
-        TodoPersistence,
-    >,
-    SpinMemoryPersistence,
->;
-type SpinScheduledExecutor =
-    openwebide_agent::scheduled::ScheduledTools<SpinMemoryExecutor, SpinScheduledPersistence>;
+#[cfg(test)]
 struct SpinSkillPersistence {
     pinned: Arc<Vec<openwebide_core::ProjectSkill>>,
     store: Arc<Store<AppDb>>,
     user: openwebide_core::UserId,
     session: i64,
 }
+#[cfg(test)]
 impl openwebide_agent::skills::SkillStore for SpinSkillPersistence {
     async fn execute(
         &self,
@@ -1305,8 +1259,18 @@ impl openwebide_agent::skills::SkillStore for SpinSkillPersistence {
         .await
     }
 }
-type SpinBuiltinTaskExecutor =
-    openwebide_agent::skills::SkillTools<SpinScheduledExecutor, SpinSkillPersistence>;
+type SpinBuiltinTaskExecutor = openwebide_agent::todo::TodoTools<
+    openwebide_agent::vfs_executor::SessionToolExecutor<
+        VfsToolExecutor<
+            HostFsVfs,
+            openwebide_agent::NoopWebClient,
+            crate::bridge_client::SpinBridgeClient,
+        >,
+        openwebide_agent::NoopWebClient,
+        crate::bridge_client::SpinBridgeClient,
+    >,
+    TodoPersistence,
+>;
 type SpinBaseTaskExecutor = openwebide_agent::plugins::execution::PluginTools<
     openwebide_agent::skills::packages::PackageSkillTools<SpinBuiltinTaskExecutor>,
     crate::api::plugins::PlanningHost<'static>,
@@ -1362,7 +1326,7 @@ impl SpinTaskFactory {
         let workspace = self.base.as_ref().map(|base| {
             VfsToolExecutor::with_web_and_bridge(
                 HostFsVfs::new(base.clone()),
-                crate::web::SpinWebClient,
+                openwebide_agent::NoopWebClient,
                 crate::bridge_client::SpinBridgeClient::for_project(
                     self.store.clone(),
                     base.clone(),
@@ -1372,7 +1336,7 @@ impl SpinTaskFactory {
         });
         let executor = openwebide_agent::vfs_executor::SessionToolExecutor::new(
             workspace,
-            crate::web::SpinWebClient,
+            openwebide_agent::NoopWebClient,
             self.environment.clone(),
         )
         .with_host(crate::bridge_client::SpinBridgeClient::for_host(
@@ -1380,35 +1344,13 @@ impl SpinTaskFactory {
             self.user.get(),
             self.session,
         ));
-        openwebide_agent::skills::SkillTools::new(
-            openwebide_agent::scheduled::ScheduledTools::new(
-                openwebide_agent::memory::MemoryTools::new(
-                    openwebide_agent::todo::TodoTools::new(
-                        executor,
-                        TodoPersistence {
-                            store: self.store.clone(),
-                            user: self.user,
-                            session: self.session,
-                            anchor: self.anchor,
-                        },
-                    ),
-                    SpinMemoryPersistence {
-                        store: self.store.clone(),
-                        user: self.user,
-                        session: self.session,
-                    },
-                ),
-                SpinScheduledPersistence {
-                    store: self.store.clone(),
-                    user: self.user,
-                    session: self.session,
-                },
-            ),
-            SpinSkillPersistence {
-                pinned: self.plugin_skills.clone(),
+        openwebide_agent::todo::TodoTools::new(
+            executor,
+            TodoPersistence {
                 store: self.store.clone(),
                 user: self.user,
                 session: self.session,
+                anchor: self.anchor,
             },
         )
     }
@@ -1548,7 +1490,7 @@ mod memory_tests {
                     name: "memory_read".into(),
                     arguments: serde_json::json!({"id":record.id}).to_string(),
                 };
-                assert!(factory.builtin_executor().execute(&call).await.ok);
+                assert!(!factory.builtin_executor().execute(&call).await.ok);
                 let outcome = factory.executor().execute(&call).await;
                 assert!(!outcome.ok);
                 assert!(!outcome.content.contains("BUILTIN MEMORY DATA"));

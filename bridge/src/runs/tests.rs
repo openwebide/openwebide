@@ -240,9 +240,17 @@ impl RunBackend for FakeBackend {
         _query: &str,
         _limit: usize,
     ) -> Result<Vec<WebSearchResult>, String> {
+        self.operations
+            .lock()
+            .unwrap()
+            .push("legacy web search".into());
         Ok(vec![])
     }
     async fn web_fetch(&self, _user_id: i64, _url: &str) -> Result<String, String> {
+        self.operations
+            .lock()
+            .unwrap()
+            .push("legacy web fetch".into());
         Ok(String::new())
     }
 }
@@ -254,6 +262,16 @@ fn plan(kind: RunKind, content: &str) -> RunPlan {
         RunKind::Chat => Vec::new(),
     };
     let mut tools = tools;
+    openwebide_agent::plugins::configure(
+        &mut tools,
+        &mut None,
+        &openwebide_agent::plugins::PluginContext {
+            bindings: &[],
+            memories: &Default::default(),
+            skills: &Default::default(),
+            context_limit: None,
+        },
+    );
     if !tools.is_empty() {
         tools.push(openwebide_agent::tasks::executor::definition());
     }
@@ -1547,7 +1565,7 @@ async fn both_server_run_paths_save_compaction_before_the_reply_and_keep_origina
 }
 
 #[tokio::test]
-async fn projectless_run_uses_web_tools_and_rejects_workspace_calls() {
+async fn projectless_run_requires_plugin_web_tools_and_rejects_workspace_calls() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(dir.path().join("private.txt"), "secret").unwrap();
     let backend = Arc::new(FakeBackend::default());
@@ -1615,8 +1633,8 @@ async fn projectless_run_uses_web_tools_and_rejects_workspace_calls() {
     let events = events(&run);
     for (name, expected) in [
         ("host_info", true),
-        ("search_web", true),
-        ("fetch_web_page", true),
+        ("search_web", false),
+        ("fetch_web_page", false),
         ("read_file", false),
         ("write_file", false),
         ("run_command", false),
@@ -1625,6 +1643,14 @@ async fn projectless_run_uses_web_tools_and_rejects_workspace_calls() {
         assert!(events.iter().any(|event| matches!(event, RunEvent::ToolResult { name:actual, ok, .. } if actual == name && *ok == expected)));
     }
     assert!(matches!(events.last(), Some(RunEvent::Done { .. })));
+    assert!(
+        !backend
+            .operations
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|operation| operation.starts_with("legacy web"))
+    );
     assert_eq!(
         std::fs::read_to_string(dir.path().join("private.txt")).unwrap(),
         "secret"

@@ -13,12 +13,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use futures::{Stream, StreamExt};
-use openwebide_agent::{
-    AgentConfig, BridgeClient, CancelCheck, PermissionGate, VfsToolExecutor, WebClient,
-};
+use openwebide_agent::{AgentConfig, BridgeClient, CancelCheck, PermissionGate, VfsToolExecutor};
 use openwebide_core::{
     ChatCompletion, ChatMessage, ChatRequest, ChatResponse, CommandOutcome, EditorContext,
-    ModelInfo, ProviderKind, Role, RunEvent, ToolCall, TurnTelemetry, WebSearchResult,
+    ModelInfo, ProviderKind, Role, RunEvent, ToolCall, TurnTelemetry,
 };
 use openwebide_llm::{LlmProvider, ProviderError, StreamChunk, ToolStreamChunk, completion_chunks};
 use send_wrapper::SendWrapper;
@@ -220,38 +218,6 @@ impl Stream for BrowserCompletionStream {
             Poll::Pending => Poll::Pending,
             Poll::Ready(Some(_)) => unreachable!("only completion frames reach the receiver"),
         }
-    }
-}
-
-/// Browser web client delegating web search and documentation fetching to the backend API.
-#[derive(Clone)]
-pub struct BrowserWebClient {
-    api: Api,
-}
-
-impl BrowserWebClient {
-    pub fn new(api: Api) -> Self {
-        Self { api }
-    }
-}
-
-impl WebClient for BrowserWebClient {
-    fn search(
-        &self,
-        query: &str,
-        limit: usize,
-    ) -> impl Future<Output = Result<Vec<WebSearchResult>, String>> + Send {
-        let api = self.api;
-        let query = query.to_string();
-        SendWrapper::new(
-            async move { api.with_value(Clone::clone).web_search(&query, limit).await },
-        )
-    }
-
-    fn fetch_page(&self, url: &str) -> impl Future<Output = Result<String, String>> + Send {
-        let api = self.api;
-        let url = url.to_string();
-        SendWrapper::new(async move { api.with_value(Clone::clone).fetch_web_page(&url).await })
     }
 }
 
@@ -1225,77 +1191,10 @@ impl openwebide_agent::todo::TodoStore for TodoPersistence {
     }
 }
 
-struct BrowserMemoryPersistence {
-    api: SendWrapper<Api>,
-    session: i64,
-}
-impl openwebide_agent::memory::MemoryStore for BrowserMemoryPersistence {
-    async fn execute(
-        &self,
-        command: &openwebide_core::MemoryCommand,
-    ) -> Result<openwebide_core::ProjectMemories, String> {
-        SendWrapper::new(async move {
-            self.api
-                .with_value(Clone::clone)
-                .memory_command(self.session, command, true)
-                .await
-        })
-        .await
-    }
-}
-
-struct BrowserScheduledPersistence {
-    api: SendWrapper<Api>,
-    session: i64,
-}
-impl openwebide_agent::scheduled::TaskStore for BrowserScheduledPersistence {
-    fn execute(
-        &self,
-        command: &openwebide_core::scheduled::TaskCommand,
-    ) -> impl Future<Output = Result<Vec<openwebide_core::scheduled::ScheduledTask>, String>> + Send
-    {
-        SendWrapper::new(async move {
-            self.api
-                .with_value(Clone::clone)
-                .scheduled_session_command(self.session, command)
-                .await
-        })
-    }
-}
-type BrowserMemoryExecutor = openwebide_agent::memory::MemoryTools<
-    openwebide_agent::todo::TodoTools<
-        VfsToolExecutor<BrowserFsaVfs, BrowserWebClient, Option<BrowserBridgeClient>>,
-        TodoPersistence,
-    >,
-    BrowserMemoryPersistence,
+type BrowserBuiltinTaskExecutor = openwebide_agent::todo::TodoTools<
+    VfsToolExecutor<BrowserFsaVfs, openwebide_agent::NoopWebClient, Option<BrowserBridgeClient>>,
+    TodoPersistence,
 >;
-type BrowserScheduledExecutor =
-    openwebide_agent::scheduled::ScheduledTools<BrowserMemoryExecutor, BrowserScheduledPersistence>;
-struct BrowserSkillPersistence {
-    pinned: Arc<Vec<openwebide_core::ProjectSkill>>,
-    api: SendWrapper<Api>,
-    session: i64,
-}
-impl openwebide_agent::skills::SkillStore for BrowserSkillPersistence {
-    async fn execute(
-        &self,
-        command: &openwebide_core::SkillCommand,
-    ) -> Result<openwebide_core::ProjectSkills, String> {
-        SendWrapper::new(async move {
-            let backend = self.api.with_value(Clone::clone);
-            openwebide_agent::skills::pinned_command(
-                command,
-                &self.pinned,
-                backend.skill_command(self.session, command, true),
-            )
-            .await
-        })
-        .await
-    }
-}
-
-type BrowserBuiltinTaskExecutor =
-    openwebide_agent::skills::SkillTools<BrowserScheduledExecutor, BrowserSkillPersistence>;
 type BrowserBaseTaskExecutor = openwebide_agent::plugins::execution::PluginTools<
     openwebide_agent::skills::packages::PackageSkillTools<BrowserBuiltinTaskExecutor>,
     BrowserPluginTransport,
@@ -1426,36 +1325,17 @@ impl BrowserTaskFactory {
         }
     }
     fn builtin_executor(&self) -> BrowserBuiltinTaskExecutor {
-        openwebide_agent::skills::SkillTools::new(
-            openwebide_agent::scheduled::ScheduledTools::new(
-                openwebide_agent::memory::MemoryTools::new(
-                    openwebide_agent::todo::TodoTools::new(
-                        VfsToolExecutor::with_web_and_bridge(
-                            self.vfs.clone(),
-                            BrowserWebClient::new(*self.api),
-                            self.bridge.clone(),
-                        )
-                        .with_context(self.environment.clone()),
-                        TodoPersistence {
-                            api: self.api.clone(),
-                            session: self.session,
-                            anchor: self.anchor,
-                        },
-                    ),
-                    BrowserMemoryPersistence {
-                        api: self.api.clone(),
-                        session: self.session,
-                    },
-                ),
-                BrowserScheduledPersistence {
-                    api: self.api.clone(),
-                    session: self.session,
-                },
-            ),
-            BrowserSkillPersistence {
-                pinned: self.plugin_skills.clone(),
+        openwebide_agent::todo::TodoTools::new(
+            VfsToolExecutor::with_web_and_bridge(
+                self.vfs.clone(),
+                openwebide_agent::NoopWebClient,
+                self.bridge.clone(),
+            )
+            .with_context(self.environment.clone()),
+            TodoPersistence {
                 api: self.api.clone(),
                 session: self.session,
+                anchor: self.anchor,
             },
         )
     }

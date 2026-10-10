@@ -402,8 +402,7 @@ capability.
   naming, delivered agent work, bounded monitors, pending-occurrence handoff,
   active invocation pinning, updates during streamed execution, interrupted-run
   recovery and full-quota preflight journaling/retention. Verify history retention
-  and quota recovery through the browser before removing transitional built-in
-  handlers.
+  and quota recovery through the browser before publishing the marketplace release.
 - Extend authenticated, run-pinned private record callbacks with shared collection
   adapters for further app data and workspace primitives. Verify compiled-default
   initialization through deployed browser flows, extending the verified server
@@ -422,16 +421,15 @@ capability.
   existing Memory UI automatic naming through its executable default. Verify
   cold-cache preparation through the deployed browser HTTP lifecycle; native
   server and paired caches already share validated preparation and offline reuse.
-  Replace the transitional Scheduling tool-group
-  feature switch with a plugin-owned implementation and retire legacy dispatch.
+  Verify adoption of retained legacy tasks through deployed browsers when applying
+  the executable Scheduling release.
   Require the same public SDK, interfaces and privileges as community plugins:
   no first-party identity dispatch, built-in feature proxy or fallback. Keep host
   primitives general and feature policy in plugin code. Verify local/remote
   execution, cancellation, failures, disablement and updates before declaring
   these behavior migrations complete.
-- Extend the existing skills and optional platform tool-group contributions with
-  arbitrary host tool handlers and MCP servers. Add versioned tool schemas,
-  runtime contracts, capability grants and dependency/configuration validation.
+- Extend executable contributions with MCP servers and dependency/configuration
+  validation, using the existing versioned schemas and capability grants.
   Build on the MCP client and [database-backed project skills](agent-skills.md);
   keep discovery and context loading bounded through deferred tool loading.
   Add further run hooks when needed, building on the shared read-only SDK context

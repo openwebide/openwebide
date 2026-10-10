@@ -9,6 +9,118 @@ use std::{cell::Cell, rc::Rc};
 use wasm_bindgen_test::*;
 
 #[wasm_bindgen_test]
+async fn plugins_explain_retired_tool_groups_and_prevent_reactivation_in_both_modes() {
+    use openwebide_core::plugins::{
+        PluginInstallation, PluginToolGroup, PluginUpdatePolicy, ProjectPlugin,
+    };
+    use wasm_bindgen::JsCast;
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let fake = Rc::new(FakeBackend::default());
+        let captured = Rc::new(Cell::new(None));
+        let slot = captured.clone();
+        let mounted = mount_test_with_backend(fake.clone(), move |state| {
+            state.seed_project();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            state.auth.set_user(User {
+                id: UserId::new(1),
+                username: "test".into(),
+                role: UserRole::User,
+                created_at: 0,
+            });
+            let plugins = PluginsState::default();
+            let host = ProjectHost::new(state.api, state.projects, state.settings, state.auth);
+            let actions = ProjectPluginActions::new(
+                state.api,
+                plugins,
+                host,
+                state.auth,
+                state.projects,
+                state.chat,
+                state.settings,
+            );
+            slot.set(Some((plugins, actions)));
+            provide_context(plugins);
+            provide_context(actions);
+            view! {<openwebide_frontend::components::Plugins/>}
+        });
+        settle().await;
+        let (plugins, actions) = captured.get().unwrap();
+        let mut prepared = receipt();
+        prepared.manifest.compatibility.plugin_api = 2;
+        prepared.manifest.contributions.tool_groups = vec![PluginToolGroup::Memory];
+        plugins.installations.set(vec![PluginInstallation {
+            prepared: prepared.clone(),
+            revision: 1,
+            hosts: vec![prepared.host_id.clone()],
+            installed_at: 0,
+            default_enabled: true,
+            update_policy: PluginUpdatePolicy::Notify,
+        }]);
+        plugins.project_plugins.set(vec![ProjectPlugin {
+            id: 1,
+            revision: 1,
+            prepared,
+            enabled: false,
+        }]);
+        settle().await;
+        let text = mounted.root.text_content().unwrap();
+        assert!(text.contains("Update required"));
+        assert!(text.contains("Your data and update preferences are retained"));
+        let buttons = mounted
+            .root
+            .query_selector_all(".plugin-row button")
+            .unwrap();
+        let enable = (0..buttons.length())
+            .filter_map(|i| buttons.item(i))
+            .find(|button| {
+                button
+                    .text_content()
+                    .is_some_and(|text| text.trim() == "Enable")
+            })
+            .expect("Enable control")
+            .unchecked_into::<web_sys::HtmlButtonElement>();
+        assert!(enable.disabled());
+        mounted.click("button[aria-label='Installed plugin actions']");
+        settle().await;
+        let menu = mounted
+            .root
+            .query_selector_all("button[role='menuitem']")
+            .unwrap();
+        let enable = (0..menu.length())
+            .filter_map(|i| menu.item(i))
+            .find(|button| {
+                button
+                    .text_content()
+                    .is_some_and(|text| text.trim() == "Enable for project")
+            })
+            .expect("Project activation menu item")
+            .unchecked_into::<web_sys::HtmlButtonElement>();
+        assert!(enable.disabled());
+        assert!(
+            mounted
+                .root
+                .text_content()
+                .unwrap()
+                .contains("Update preferences")
+        );
+        let installed = plugins.installations.get_untracked();
+        actions.enable.run(installed[0].clone());
+        settle().await;
+        assert!(
+            plugins
+                .error
+                .get_untracked()
+                .is_some_and(|error| error.contains("Update required"))
+        );
+        assert_eq!(plugins.installations.get_untracked(), installed);
+        assert!(fake.plugin_records.borrow().is_empty());
+    }
+}
+
+#[wasm_bindgen_test]
 async fn plugins_poll_host_preparation_and_cancel_pending_requests_without_recording_stale_receipts()
  {
     use super::support::wait_until;

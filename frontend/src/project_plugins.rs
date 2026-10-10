@@ -504,6 +504,11 @@ async fn run_operation(
             }
         }
         Operation::Enable(entry) => {
+            entry
+                .prepared
+                .manifest
+                .validate_activation()
+                .map_err(|error| error.to_string())?;
             let id = project.ok_or("Open a project before enabling a plugin.")?;
             let revision = state.project_plugins.with_untracked(|entries| {
                 entries

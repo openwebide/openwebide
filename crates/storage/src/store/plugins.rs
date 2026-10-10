@@ -373,6 +373,11 @@ impl<D: Db> Store<D> {
                 revision,
             } => {
                 package.validate().map_err(plugin_error)?;
+                package
+                    .prepared
+                    .manifest
+                    .validate_activation()
+                    .map_err(plugin_error)?;
                 let receipt = &package.prepared;
                 let installations = self.plugin_installations(user).await?;
                 let installation = installations.iter().find(|entry|entry.prepared.source==receipt.source && entry.prepared.manifest==receipt.manifest && entry.prepared.digest==receipt.digest && entry.hosts.contains(&receipt.host_id))
@@ -609,6 +614,109 @@ mod lifecycle_tests {
         plugins::PluginPackage,
         plugins::testing::{catalog, package},
     };
+    #[test]
+    fn retired_activation_is_atomic_and_keeps_preferences_and_data_in_both_modes() {
+        futures::executor::block_on(async {
+            for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+                let store = Store::new(RusqliteDb::open_in_memory().unwrap());
+                store.migrate().await.unwrap();
+                let user = store
+                    .insert_user("owner", "hash", UserRole::Admin, 0)
+                    .await
+                    .unwrap()
+                    .id;
+                let project = store
+                    .create_project(
+                        &NewProject {
+                            name: "project".into(),
+                            mode,
+                            path: None,
+                        },
+                        user,
+                        0,
+                    )
+                    .await
+                    .unwrap()
+                    .id;
+                let mut package = package();
+                package.prepared.manifest.compatibility.plugin_api = 2;
+                package.prepared.manifest.contributions.tool_groups =
+                    vec![openwebide_core::plugins::PluginToolGroup::SkillAuthoring];
+                let installations = vec![PluginInstallation {
+                    prepared: package.prepared.clone(),
+                    revision: 1,
+                    hosts: vec![package.prepared.host_id.clone()],
+                    installed_at: 0,
+                    default_enabled: true,
+                    update_policy: openwebide_core::plugins::PluginUpdatePolicy::Notify,
+                }];
+                store
+                    .set_user_setting(user, KEY, &serde_json::to_string(&installations).unwrap())
+                    .await
+                    .unwrap();
+                let skills = store
+                    .skill_command(
+                        user,
+                        project,
+                        &SkillCommand::Create {
+                            draft: package.skills[0].clone(),
+                        },
+                        false,
+                        1,
+                    )
+                    .await
+                    .unwrap();
+                let error = store
+                    .project_plugin_command(
+                        user,
+                        project,
+                        &ProjectPluginCommand::Enable {
+                            package: Box::new(package.clone()),
+                            installation_revision: 1,
+                            revision: None,
+                        },
+                        2,
+                    )
+                    .await
+                    .unwrap_err();
+                assert!(
+                    matches!(error, StorageError::InvalidRequest(ref text) if text.contains("Update required"))
+                );
+                assert_eq!(store.project_skills(user, project).await.unwrap(), skills);
+                assert!(
+                    store
+                        .project_plugins(user, project)
+                        .await
+                        .unwrap()
+                        .is_empty()
+                );
+                assert_eq!(
+                    store.plugin_installations(user).await.unwrap(),
+                    installations
+                );
+                let entries = store
+                    .record_plugin(
+                        user,
+                        &RecordPlugin {
+                            prepared: package.prepared,
+                            revision: Some(1),
+                            package: None,
+                            update_policy: Some(openwebide_core::plugins::PluginUpdatePolicy::Off),
+                            approved_capabilities: Vec::new(),
+                        },
+                        3,
+                    )
+                    .await
+                    .unwrap();
+                assert_eq!(
+                    entries[0].update_policy,
+                    openwebide_core::plugins::PluginUpdatePolicy::Off
+                );
+                assert_eq!(entries[0].prepared, installations[0].prepared);
+                assert_eq!(store.project_skills(user, project).await.unwrap(), skills);
+            }
+        });
+    }
     #[test]
     fn package_skills_activate_update_disable_and_remove_through_shared_project_and_session_contract()
      {
@@ -1389,24 +1497,31 @@ mod bundled_tests {
     use crate::rusqlite_db::RusqliteDb;
     use openwebide_core::{
         NewProject, WorkspaceMode,
-        plugins::{PluginToolGroup, PluginUpdatePolicy, bundled_plugin_sources, testing::package},
+        plugins::{
+            PluginTool, PluginUpdatePolicy, RustPlugin, bundled_plugin_sources, testing::package,
+        },
     };
     fn packages() -> Vec<PluginPackage> {
         bundled_plugin_sources()
             .into_iter()
-            .zip([
-                PluginToolGroup::Web,
-                PluginToolGroup::Memory,
-                PluginToolGroup::Scheduling,
-                PluginToolGroup::SkillAuthoring,
-            ])
-            .map(|(source, group)| {
+            .map(|source| {
                 let mut pkg = package();
                 pkg.prepared.manifest.name = source.path.rsplit('/').next().unwrap().into();
                 pkg.prepared.source = source;
-                pkg.prepared.manifest.compatibility.plugin_api = 2;
-                pkg.prepared.manifest.contributions.tool_groups = vec![group];
-                if group != PluginToolGroup::SkillAuthoring {
+                pkg.prepared.manifest.compatibility.plugin_api = 3;
+                pkg.prepared.manifest.contributions.tools = vec![PluginTool {
+                    name: format!("fixture_{}", pkg.prepared.manifest.name.replace('-', "_")),
+                    description: "Fixture tool".into(),
+                    parameters: serde_json::json!({"type":"object"}),
+                    requires_approval: false,
+                }];
+                pkg.prepared.manifest.executable = Some(RustPlugin {
+                    manifest: "Cargo.toml".into(),
+                    library: "fixture_plugin".into(),
+                    sdk_version: "0.1.0".into(),
+                    capabilities: vec!["records".into()],
+                });
+                if pkg.prepared.manifest.name != "skill-authoring" {
                     pkg.prepared.manifest.contributions.skills.clear();
                     pkg.skills.clear();
                 }

@@ -154,6 +154,19 @@ pub struct PluginTool {
 }
 
 impl PluginManifest {
+    /// Historical receipts remain readable, but tool-group switches no longer
+    /// activate application-owned feature behavior.
+    pub fn requires_update(&self) -> bool {
+        !self.contributions.tool_groups.is_empty()
+    }
+    pub fn validate_activation(&self) -> Result<(), PluginError> {
+        if self.requires_update() {
+            return Err(invalid(
+                "Update required: this plugin version uses retired built-in tool groups. Choose a release with executable SDK handlers.",
+            ));
+        }
+        Ok(())
+    }
     pub fn validate(&self) -> Result<(), PluginError> {
         static VERSION: LazyLock<Regex> = LazyLock::new(|| {
             Regex::new(
@@ -482,6 +495,7 @@ pub async fn prepare_plugin(
     }
     let files = host.files(source).await?;
     let manifest = validate_files(&files)?;
+    manifest.validate_activation()?;
     let digest = package_digest(&files);
     host.publish(source, &digest, &files).await?;
     if manifest.executable.is_some() {
@@ -640,6 +654,7 @@ pub fn record_installation(
     request.prepared.validate()?;
     if let Some(package) = &request.package {
         package.validate()?;
+        request.prepared.manifest.validate_activation()?;
         if package.prepared != request.prepared {
             return Err(invalid(
                 "Plugin content does not match the installation receipt.",
@@ -655,6 +670,9 @@ pub fn record_installation(
         let same = existing.prepared.source == *source
             && existing.prepared.digest == request.prepared.digest
             && existing.prepared.manifest == request.prepared.manifest;
+        if !same {
+            request.prepared.manifest.validate_activation()?;
+        }
         if request
             .revision
             .is_some_and(|revision| revision != existing.revision)
@@ -711,6 +729,7 @@ pub fn record_installation(
             existing.revision += 1;
         }
     } else {
+        request.prepared.manifest.validate_activation()?;
         if request.revision.is_some() {
             return Err(PluginError::Conflict(
                 "This plugin installation no longer exists.".into(),
@@ -886,6 +905,82 @@ mod tests {
                 Ok(())
             })
         }
+    }
+
+    #[test]
+    fn retired_tool_groups_remain_readable_but_cannot_be_prepared_or_reactivated() {
+        futures::executor::block_on(async {
+            let mut manifest = receipt().manifest;
+            manifest.compatibility.plugin_api = 2;
+            manifest.contributions.tool_groups = vec![PluginToolGroup::Memory];
+            manifest.validate().unwrap();
+            assert!(manifest.requires_update());
+            let mut files = review_files();
+            files
+                .iter_mut()
+                .find(|file| file.path == "plugin.json")
+                .unwrap()
+                .content = serde_json::to_vec(&manifest).unwrap();
+            for id in ["server", "paired"] {
+                let host = Host {
+                    id: id.into(),
+                    files: files.clone(),
+                    fail_fetch: false,
+                    fail_publish: false,
+                    published: Mutex::default(),
+                };
+                let error = prepare_plugin(&host, &source()).await.unwrap_err();
+                assert!(error.to_string().contains("Update required"));
+                assert!(host.published.lock().unwrap().is_empty());
+            }
+            let prepared = PreparedPlugin {
+                manifest,
+                digest: package_digest(&files),
+                ..receipt()
+            };
+            prepared.validate().unwrap();
+            let installation = PluginInstallation {
+                prepared: prepared.clone(),
+                revision: 3,
+                hosts: vec![prepared.host_id.clone()],
+                installed_at: 1,
+                default_enabled: true,
+                update_policy: PluginUpdatePolicy::Notify,
+            };
+            let request = RecordPlugin {
+                prepared: prepared.clone(),
+                revision: Some(3),
+                package: None,
+                update_policy: Some(PluginUpdatePolicy::Off),
+                approved_capabilities: Vec::new(),
+            };
+            let updated = record_installation(vec![installation], &request, 2).unwrap();
+            assert_eq!(updated[0].prepared, prepared);
+            assert_eq!(updated[0].update_policy, PluginUpdatePolicy::Off);
+            assert!(updated[0].default_enabled);
+            assert_eq!(updated[0].installed_at, 1);
+            assert!(
+                record_installation(
+                    Vec::new(),
+                    &RecordPlugin {
+                        revision: None,
+                        ..request.clone()
+                    },
+                    2
+                )
+                .is_err()
+            );
+            let package = PluginPackage {
+                prepared: prepared.clone(),
+                skills: import_plugin_skills(&files, &prepared.manifest).unwrap(),
+            };
+            let activation = RecordPlugin {
+                revision: Some(updated[0].revision),
+                package: Some(Box::new(package)),
+                ..request
+            };
+            assert!(record_installation(updated, &activation, 2).is_err());
+        });
     }
 
     #[test]
@@ -1384,7 +1479,7 @@ fn discover_updates(
         .collect()
 }
 
-/// Platform service groups available through host-installed plugins.
+/// Historical service switches retained for reading existing plugin receipts.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum PluginToolGroup {
@@ -1393,24 +1488,6 @@ pub enum PluginToolGroup {
     Scheduling,
     SkillAuthoring,
 }
-pub fn enabled_tool_groups(
-    bindings: &[ProjectPlugin],
-) -> std::collections::BTreeSet<PluginToolGroup> {
-    bindings
-        .iter()
-        .filter(|binding| binding.enabled)
-        .flat_map(|binding| {
-            binding
-                .prepared
-                .manifest
-                .contributions
-                .tool_groups
-                .iter()
-                .copied()
-        })
-        .collect()
-}
-
 pub fn default_bindings(installations: &[PluginInstallation]) -> Vec<ProjectPlugin> {
     installations
         .iter()

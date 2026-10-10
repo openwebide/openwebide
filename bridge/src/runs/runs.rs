@@ -17,7 +17,7 @@ use tokio::sync::mpsc;
 use tokio::time::Instant;
 
 use crate::auth::Principal;
-use crate::runs::agent_host::{BackendWebClient, BridgeCancel, BridgeGate, InProcessBridgeClient};
+use crate::runs::agent_host::{BridgeCancel, BridgeGate, InProcessBridgeClient};
 use crate::runs::backend_client::RunBackend;
 use crate::runs::native_vfs::NativeFsVfs;
 use crate::server::WriterCmd;
@@ -832,73 +832,14 @@ fn wall_time_ms() -> u64 {
     .unwrap_or(u64::MAX)
 }
 
-struct BridgeMemoryPersistence<B> {
-    backend: Arc<B>,
-    user: i64,
-    session: i64,
-}
-impl<B: RunBackend> openwebide_agent::memory::MemoryStore for BridgeMemoryPersistence<B> {
-    async fn execute(
-        &self,
-        command: &openwebide_core::MemoryCommand,
-    ) -> Result<openwebide_core::ProjectMemories, String> {
-        self.backend
-            .memory_command(self.user, self.session, command)
-            .await
-    }
-}
-
-struct BridgeScheduledPersistence<B> {
-    backend: Arc<B>,
-    user: i64,
-    session: i64,
-}
-impl<B: RunBackend> openwebide_agent::scheduled::TaskStore for BridgeScheduledPersistence<B> {
-    async fn execute(
-        &self,
-        command: &openwebide_core::scheduled::TaskCommand,
-    ) -> Result<Vec<openwebide_core::scheduled::ScheduledTask>, String> {
-        self.backend
-            .scheduled_command(self.user, self.session, command)
-            .await
-    }
-}
-type BridgeMemoryExecutor<B> = openwebide_agent::memory::MemoryTools<
-    openwebide_agent::todo::TodoTools<
-        openwebide_agent::vfs_executor::SessionToolExecutor<
-            VfsToolExecutor<NativeFsVfs, BackendWebClient<B>, InProcessBridgeClient>,
-            BackendWebClient<B>,
-            crate::runs::agent_host::HostInfoClient<B>,
-        >,
-        TodoPersistence<B>,
+type BridgeBuiltinTaskExecutor<B> = openwebide_agent::todo::TodoTools<
+    openwebide_agent::vfs_executor::SessionToolExecutor<
+        VfsToolExecutor<NativeFsVfs, openwebide_agent::NoopWebClient, InProcessBridgeClient>,
+        openwebide_agent::NoopWebClient,
+        crate::runs::agent_host::HostInfoClient<B>,
     >,
-    BridgeMemoryPersistence<B>,
+    TodoPersistence<B>,
 >;
-type BridgeScheduledExecutor<B> = openwebide_agent::scheduled::ScheduledTools<
-    BridgeMemoryExecutor<B>,
-    BridgeScheduledPersistence<B>,
->;
-struct BridgeSkillPersistence<B> {
-    pinned: Arc<Vec<openwebide_core::ProjectSkill>>,
-    backend: Arc<B>,
-    user: i64,
-    session: i64,
-}
-impl<B: RunBackend> openwebide_agent::skills::SkillStore for BridgeSkillPersistence<B> {
-    async fn execute(
-        &self,
-        command: &openwebide_core::SkillCommand,
-    ) -> Result<openwebide_core::ProjectSkills, String> {
-        openwebide_agent::skills::pinned_command(
-            command,
-            &self.pinned,
-            self.backend.skill_command(self.user, self.session, command),
-        )
-        .await
-    }
-}
-type BridgeBuiltinTaskExecutor<B> =
-    openwebide_agent::skills::SkillTools<BridgeScheduledExecutor<B>, BridgeSkillPersistence<B>>;
 type BridgeBaseTaskExecutor<B> = openwebide_agent::plugins::execution::PluginTools<
     openwebide_agent::skills::packages::PackageSkillTools<BridgeBuiltinTaskExecutor<B>>,
     crate::plugins::transport::NativePluginTransport,
@@ -986,10 +927,7 @@ impl<B: RunBackend + 'static> BridgeTaskFactory<B> {
         let workspace = self.dir.as_ref().map(|dir| {
             VfsToolExecutor::with_web_and_bridge(
                 NativeFsVfs { root: dir.clone() },
-                BackendWebClient {
-                    backend: self.backend.clone(),
-                    user_id: self.run.owner,
-                },
+                openwebide_agent::NoopWebClient,
                 InProcessBridgeClient {
                     dir: dir.clone(),
                     execution: self.execution.clone(),
@@ -1000,10 +938,7 @@ impl<B: RunBackend + 'static> BridgeTaskFactory<B> {
         });
         let executor = openwebide_agent::vfs_executor::SessionToolExecutor::new(
             workspace,
-            BackendWebClient {
-                backend: self.backend.clone(),
-                user_id: self.run.owner,
-            },
+            openwebide_agent::NoopWebClient,
             self.environment.clone(),
         )
         .with_host(crate::runs::agent_host::HostInfoClient {
@@ -1013,35 +948,13 @@ impl<B: RunBackend + 'static> BridgeTaskFactory<B> {
             user: self.run.owner,
             session: self.run.session_id,
         });
-        openwebide_agent::skills::SkillTools::new(
-            openwebide_agent::scheduled::ScheduledTools::new(
-                openwebide_agent::memory::MemoryTools::new(
-                    openwebide_agent::todo::TodoTools::new(
-                        executor,
-                        TodoPersistence {
-                            backend: self.backend.clone(),
-                            user: self.run.owner,
-                            session: self.run.session_id,
-                            anchor: self.anchor,
-                        },
-                    ),
-                    BridgeMemoryPersistence {
-                        backend: self.backend.clone(),
-                        user: self.run.owner,
-                        session: self.run.session_id,
-                    },
-                ),
-                BridgeScheduledPersistence {
-                    backend: self.backend.clone(),
-                    user: self.run.owner,
-                    session: self.run.session_id,
-                },
-            ),
-            BridgeSkillPersistence {
-                pinned: self.plugin_skills.clone(),
+        openwebide_agent::todo::TodoTools::new(
+            executor,
+            TodoPersistence {
                 backend: self.backend.clone(),
                 user: self.run.owner,
                 session: self.run.session_id,
+                anchor: self.anchor,
             },
         )
     }

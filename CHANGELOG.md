@@ -9,6 +9,8 @@ for what's still ahead.
 
 ## [Unreleased]
 
+- Retire built-in agent dispatch for plugin tool groups. Web, Memory, Scheduling and Skill Authoring tools now require executable SDK handlers; historical tool-group receipts show Update required and cannot be prepared or re-enabled. Preserve stored data, project overrides and update preferences.
+
 - Keep plugin-contributed skills discoverable when Skill Authoring is disabled. Server, bridge and browser runs share read-only loading of pinned instructions and resources, excluding personal and disabled skills without enabling authoring tools.
 
 - Verify Scheduling updates during streamed agent execution on both deployed hosts. Plugin-owned reconciliation invalidates the prior generation, cancels its active run, retains one terminal history snapshot with the original message and avoids requeueing an accepted one-time prompt.

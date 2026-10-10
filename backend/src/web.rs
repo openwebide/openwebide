@@ -1,7 +1,7 @@
 //! Web search and documentation fetching implementation for the Spin backend.
 //!
-//! Provides internet research capabilities to the agent via [`openwebide_agent::WebClient`],
-//! backed by Spin's WASI outbound HTTP capability (`wasi:http`).
+//! Retains web research HTTP endpoints backed by Spin WASI outbound HTTP.
+//! Agent web tools execute through installed SDK plugins.
 //!
 //! Combines multi-source search providers (DuckDuckGo Instant Answer, StackOverflow,
 //! Crates.io, GitHub, Wikipedia) with proper User-Agent headers, redirect following,
@@ -9,35 +9,13 @@
 //! without requiring paid API keys or triggering bot blockers.
 
 use crate::url::url_encode;
-use std::future::Future;
 
 use bytes::{Buf, Bytes};
 use http_body_util::BodyExt;
-use openwebide_agent::WebClient;
 use openwebide_core::{WebSearchResult, html_to_markdown};
 use spin_sdk::http::{self, FullBody, Request, Response, Uri, box_body};
 
 const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 OpenWebIDE/0.1 (https://github.com/openwebide/openwebide)";
-
-/// Outbound web client backed by Spin's HTTP handler.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct SpinWebClient;
-
-impl WebClient for SpinWebClient {
-    fn search(
-        &self,
-        query: &str,
-        limit: usize,
-    ) -> impl Future<Output = Result<Vec<WebSearchResult>, String>> + Send {
-        let query = query.to_string();
-        async move { search_web_internal(&query, limit).await }
-    }
-
-    fn fetch_page(&self, url: &str) -> impl Future<Output = Result<String, String>> + Send {
-        let url = url.to_string();
-        async move { fetch_page_internal(&url).await }
-    }
-}
 
 /// Validate that a URL target uses http/https scheme and is not a cloud metadata endpoint.
 ///

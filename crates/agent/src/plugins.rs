@@ -5,10 +5,7 @@ pub mod execution;
 pub mod jobs;
 pub mod runs;
 mod worker;
-use openwebide_core::{
-    ToolDefinition,
-    plugins::{PluginToolGroup, ProjectPlugin, enabled_tool_groups},
-};
+use openwebide_core::{ToolDefinition, plugins::ProjectPlugin};
 /// Keep workspace primitives built in; optional services are supplied by plugins.
 pub struct PluginContext<'a> {
     pub bindings: &'a [ProjectPlugin],
@@ -21,50 +18,11 @@ pub fn configure(
     prompt: &mut Option<String>,
     context: &PluginContext<'_>,
 ) {
-    let groups = enabled_tool_groups(context.bindings);
-    let disabled_memories = openwebide_core::ProjectMemories {
-        enabled: false,
-        entries: Vec::new(),
-    };
-    crate::memory::configure(
-        tools,
-        prompt,
-        if groups.contains(&PluginToolGroup::Memory) {
-            context.memories
-        } else {
-            &disabled_memories
-        },
-        context.context_limit,
-    );
-    crate::scheduled::configure(tools);
-    let disabled_skills = openwebide_core::ProjectSkills {
-        enabled: false,
-        entries: Vec::new(),
-    };
-    crate::skills::configure(
-        tools,
-        prompt,
-        if groups.contains(&PluginToolGroup::SkillAuthoring) {
-            context.skills
-        } else {
-            &disabled_skills
-        },
-        context.context_limit,
-    );
-    tools.retain(|tool| match tool.name.as_str() {
-        "search_web" | "fetch_web_page" => groups.contains(&PluginToolGroup::Web),
-        "memory_create" | "memory_search" | "memory_read" | "memory_update" | "memory_delete" => {
-            groups.contains(&PluginToolGroup::Memory)
-        }
-        "monitor" | "schedule_list" | "schedule_create" | "schedule_update" | "schedule_delete" => {
-            groups.contains(&PluginToolGroup::Scheduling)
-        }
-        "skill_list" | "skill_read" | "skill_create" | "skill_update" | "skill_delete" => {
-            groups.contains(&PluginToolGroup::SkillAuthoring)
-        }
-        // Authoring instructions now come from the plugin's discoverable skill.
-        "skill_creator" => false,
-        _ => true,
+    tools.retain(|tool| {
+        !crate::memory::is_memory_tool(&tool.name)
+            && !crate::scheduled::is_scheduled_tool(&tool.name)
+            && !crate::skills::is_skill_tool(&tool.name)
+            && !matches!(tool.name.as_str(), "search_web" | "fetch_web_page")
     });
     let sdk_skill_reader = context.bindings.iter().any(|plugin| {
         plugin.enabled
@@ -84,7 +42,7 @@ pub fn configure(
                 .iter()
                 .any(|tool| tool.name == "skill_list")
     });
-    if !groups.contains(&PluginToolGroup::SkillAuthoring) && !sdk_skill_reader {
+    if !sdk_skill_reader {
         crate::skills::packages::configure(tools, prompt, context.skills, context.context_limit);
     } else {
         tools.retain(|tool| !crate::skills::packages::TOOL_NAMES.contains(&tool.name.as_str()));
@@ -94,6 +52,7 @@ pub fn configure(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use openwebide_core::plugins::PluginToolGroup;
     #[test]
     fn sdk_skill_handlers_replace_legacy_tools_without_builtin_catalog_policy() {
         for mut tools in [crate::vfs_tools(), crate::session::tools_for_host(true)] {
@@ -171,7 +130,7 @@ mod tests {
         }
     }
     #[test]
-    fn optional_services_and_context_follow_enabled_plugins_in_both_host_modes() {
+    fn legacy_tool_groups_cannot_activate_builtin_behavior_in_both_host_modes() {
         for mut tools in [crate::vfs_tools(), crate::session::tools_for_host(true)] {
             let memories = openwebide_core::ProjectMemories {
                 enabled: true,
@@ -247,11 +206,14 @@ mod tests {
                 "skill_create",
                 "skill_read",
             ] {
-                assert!(tools.iter().any(|tool| tool.name == name), "missing {name}");
+                assert!(
+                    !tools.iter().any(|tool| tool.name == name),
+                    "legacy tool {name}"
+                );
             }
             assert!(!tools.iter().any(|tool| tool.name == "skill_creator"));
             assert!(
-                prompt
+                !prompt
                     .as_ref()
                     .is_some_and(|prompt| prompt.contains("PRIVATE MEMORY"))
             );

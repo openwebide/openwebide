@@ -79,6 +79,10 @@ pub async fn prepare_on_host(
         match status.state {
             PreparationState::Ready => {
                 let prepared = status.prepared.ok_or("Missing prepared plugin receipt")?;
+                prepared
+                    .manifest
+                    .validate_activation()
+                    .map_err(|error| error.to_string())?;
                 if prepared.source != *source {
                     return Err("Plugin host returned a different source.".into());
                 }
@@ -232,6 +236,7 @@ mod client_tests {
         wait_forever: bool,
         active: AtomicBool,
         abandoned: Mutex<Vec<String>>,
+        ready: Option<PreparedPlugin>,
     }
     impl PreparationClientHost for Host {
         fn request<'a>(
@@ -244,8 +249,12 @@ mod client_tests {
                 }
                 Ok(PluginPreparation {
                     id: "a".repeat(32),
-                    state: PreparationState::Preparing,
-                    prepared: None,
+                    state: if self.ready.is_some() {
+                        PreparationState::Ready
+                    } else {
+                        PreparationState::Preparing
+                    },
+                    prepared: self.ready.clone(),
                     error: None,
                 })
             })
@@ -283,6 +292,7 @@ mod client_tests {
                 wait_forever,
                 active: AtomicBool::new(true),
                 abandoned: Mutex::new(Vec::new()),
+                ready: None,
             };
             let error = futures::executor::block_on(prepare_on_host(
                 &host,
@@ -297,6 +307,27 @@ mod client_tests {
                     "Plugin preparation exceeded its time limit."
                 }
             );
+            assert_eq!(*host.abandoned.lock().unwrap(), vec!["a".repeat(32)]);
+        }
+    }
+    #[test]
+    fn retired_receipts_from_older_hosts_cannot_complete_client_preparation() {
+        for host_id in ["server", "paired"] {
+            let mut prepared = super::super::testing::receipt();
+            prepared.host_id = host_id.into();
+            prepared.manifest.compatibility.plugin_api = 2;
+            prepared.manifest.contributions.tool_groups =
+                vec![super::super::PluginToolGroup::Memory];
+            let host = Host {
+                clock: AtomicU64::new(0),
+                wait_forever: false,
+                active: AtomicBool::new(true),
+                abandoned: Mutex::default(),
+                ready: Some(prepared.clone()),
+            };
+            let error =
+                futures::executor::block_on(prepare_on_host(&host, &prepared.source)).unwrap_err();
+            assert!(error.contains("Update required"));
             assert_eq!(*host.abandoned.lock().unwrap(), vec!["a".repeat(32)]);
         }
     }
