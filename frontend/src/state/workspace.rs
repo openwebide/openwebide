@@ -464,6 +464,7 @@ pub struct WorkspaceState {
     pub editor_group: RwSignal<u64>,
     pub editor_motion: RwSignal<Option<super::editor_motion::PendingEditorMotion>>,
     pub editor_motion_ticket: RwSignal<u64>,
+    pub editor_command_revision: RwSignal<u64>,
     pub editor_configuration_revision: RwSignal<u64>,
 }
 
@@ -566,6 +567,7 @@ impl WorkspaceState {
             editor_group: RwSignal::new(0),
             editor_motion: RwSignal::new(None),
             editor_motion_ticket: RwSignal::new(0),
+            editor_command_revision: RwSignal::new(0),
             editor_configuration_revision: RwSignal::new(0),
         }
     }
@@ -1022,6 +1024,8 @@ impl WorkspaceState {
         self.editor_motion.set(None);
         self.editor_motion_ticket
             .update(|ticket| *ticket = ticket.wrapping_add(1));
+        self.editor_command_revision
+            .update(|revision| *revision = revision.wrapping_add(1));
         self.editor_configuration_revision
             .update(|value| *value += 1);
         self.pending_epoch.update(|epoch| *epoch += 1);

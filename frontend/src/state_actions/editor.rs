@@ -1694,6 +1694,9 @@ impl EditorActions {
         if self.key() != Some(key.clone()) {
             return Ok(None);
         }
+        self.workspace
+            .editor_command_revision
+            .update(|revision| *revision = revision.wrapping_add(1));
         self.command_prepared(key, command, selection, indentation, syntax)
     }
 
@@ -1811,90 +1814,151 @@ impl EditorActions {
         self.publish_edit(key, result)
     }
 
-    /// Explicit reindent waits for complete structure instead of treating cold
-    /// parser cancellation as permission to perform a lexical no-op.
-    pub async fn reindent_when_ready(
+    pub fn reindent_when_ready(
         self,
         selection: Selection,
         indentation: Indentation,
-    ) -> Result<Option<Selection>, EditError> {
+    ) -> impl std::future::Future<Output = Result<Option<Selection>, EditError>> {
+        self.command_when_ready(EditorCommand::Reindent, selection, indentation)
+    }
+
+    /// Explicit structural actions wait for complete context when their behavior
+    /// depends on parsed language bodies. Single-language comments retain their
+    /// immediate fallback, including admitted files above the structure budget.
+    pub fn command_requires_structure(self, command: EditorCommand) -> bool {
+        let language = self
+            .key()
+            .map_or(openwebide_core::highlight::Language::Plain, |key| {
+                openwebide_core::highlight::language_from_path(&key.1)
+            });
+        command == EditorCommand::Reindent
+            || (matches!(
+                command,
+                EditorCommand::LineComment | EditorCommand::BlockComment
+            ) && openwebide_core::editor::syntax_provider(language)
+                .is_some_and(|provider| provider.injection.is_some()))
+    }
+
+    pub fn command_when_ready(
+        self,
+        command: EditorCommand,
+        selection: Selection,
+        indentation: Indentation,
+    ) -> impl std::future::Future<Output = Result<Option<Selection>, EditError>> {
         use openwebide_core::editor::{
             SyntaxAdmission, SyntaxAdmissionStatus, SyntaxReply, SyntaxRequest,
         };
-        if self.is_composing() {
-            return Err(EditError::CompositionActive);
-        }
-        self.record_native_selection(selection)?;
-        let Some(scope) = self.syntax_scope() else {
-            return Ok(None);
-        };
-        let selections = self.current_selections();
-        let rules = self.rules_untracked().indentation;
-        let source = self.source().shared();
-        let revision = self
-            .workspace
-            .editor_documents
-            .with_untracked(|documents| documents.get(&scope.key).map(Document::revision));
-        let current = || {
-            self.syntax_scope_current(&scope)
-                && !self.is_composing()
-                && self
-                    .workspace
-                    .content
-                    .with_untracked(|current| std::sync::Arc::ptr_eq(&current.shared(), &source))
-                && self.workspace.editor_documents.with_untracked(|documents| {
-                    documents.get(&scope.key).is_some_and(|document| {
-                        Some(document.revision()) == revision && document.selections() == selections
+        // Capture ownership when the action is requested, before its future is
+        // first polled. Queued UI tasks must not acquire a different file's scope.
+        let request = (|| -> Result<_, EditError> {
+            if self.key().is_none() {
+                return Ok(None);
+            }
+            let requires_structure = self.command_requires_structure(command);
+            if self.is_composing() {
+                return Err(EditError::CompositionActive);
+            }
+            self.record_native_selection(selection)?;
+            self.workspace
+                .editor_command_revision
+                .update(|revision| *revision = revision.wrapping_add(1));
+            let command_revision = self.workspace.editor_command_revision.get_untracked();
+            let Some(scope) = self.syntax_scope() else {
+                return Ok(None);
+            };
+            let selections = self.current_selections();
+            let rules = self.rules_untracked().indentation;
+            let source = self.source().shared();
+            let revision = self
+                .workspace
+                .editor_documents
+                .with_untracked(|documents| documents.get(&scope.key).map(Document::revision));
+            Ok(Some((
+                scope,
+                selections,
+                rules,
+                source,
+                revision,
+                command_revision,
+                requires_structure,
+            )))
+        })();
+        async move {
+            let Some((
+                scope,
+                selections,
+                rules,
+                source,
+                revision,
+                command_revision,
+                requires_structure,
+            )) = request?
+            else {
+                return Ok(None);
+            };
+            let current = || {
+                self.syntax_scope_current(&scope)
+                    && self.workspace.editor_command_revision.get_untracked() == command_revision
+                    && !self.is_composing()
+                    && self.workspace.content.with_untracked(|current| {
+                        std::sync::Arc::ptr_eq(&current.shared(), &source)
                     })
-                })
-                && self.rules_untracked().indentation == rules
-        };
-        let mut syntax = self.syntax_structure(|| true);
-        if syntax.is_none() {
-            let mut admission = SyntaxAdmission::new(scope.source.clone());
-            while admission.status() == SyntaxAdmissionStatus::Pending {
-                if !current() {
-                    return Ok(None);
-                }
-                admission.advance(openwebide_core::highlight::LEXICAL_BATCH_BYTES);
-                if admission.status() == SyntaxAdmissionStatus::Pending {
-                    crate::util::yield_task().await;
-                }
-            }
-            if admission.status() == SyntaxAdmissionStatus::TooLarge {
-                return Err(EditError::StructureUnavailable);
-            }
-            let request = SyntaxRequest::new(
-                1,
-                "editor-command".into(),
-                openwebide_core::highlight::language_from_path(&scope.key.1),
-                &scope.source,
-                indentation.tab_width(),
-                None,
-            );
-            let message = serde_json::to_string(&request).expect("syntax request is serializable");
-            let reply = crate::editor_worker::CooperativeClient::default()
-                .request_while(message, current)
-                .await
-                .map_err(|_| EditError::StructureUnavailable)?;
+                    && self.workspace.editor_documents.with_untracked(|documents| {
+                        documents.get(&scope.key).is_some_and(|document| {
+                            Some(document.revision()) == revision
+                                && document.selections() == selections
+                        })
+                    })
+                    && self.rules_untracked().indentation == rules
+            };
             if !current() {
                 return Ok(None);
             }
-            syntax = SyntaxReply::receive_shared(&reply, 1, scope.source.clone(), None)
-                .and_then(|(_, analysis)| analysis)
-                .and_then(|analysis| analysis.structure().cloned());
+            if !requires_structure {
+                return self.command(command, selection, indentation);
+            }
+            let mut syntax = self.syntax_structure(|| true);
+            if syntax.is_none() {
+                let mut admission = SyntaxAdmission::new(scope.source.clone());
+                while admission.status() == SyntaxAdmissionStatus::Pending {
+                    if !current() {
+                        return Ok(None);
+                    }
+                    admission.advance(openwebide_core::highlight::LEXICAL_BATCH_BYTES);
+                    if admission.status() == SyntaxAdmissionStatus::Pending {
+                        crate::util::yield_task().await;
+                    }
+                }
+                if admission.status() == SyntaxAdmissionStatus::TooLarge {
+                    return Err(EditError::StructureUnavailable);
+                }
+                let request = SyntaxRequest::new(
+                    1,
+                    "editor-command".into(),
+                    openwebide_core::highlight::language_from_path(&scope.key.1),
+                    &scope.source,
+                    indentation.tab_width(),
+                    None,
+                );
+                let message =
+                    serde_json::to_string(&request).expect("syntax request is serializable");
+                let reply = crate::editor_worker::CooperativeClient::default()
+                    .request_while(message, current)
+                    .await
+                    .map_err(|_| EditError::StructureUnavailable)?;
+                if !current() {
+                    return Ok(None);
+                }
+                syntax = SyntaxReply::receive_shared(&reply, 1, scope.source.clone(), None)
+                    .and_then(|(_, analysis)| analysis)
+                    .and_then(|analysis| analysis.structure().cloned());
+            }
+            if !current() {
+                return Ok(None);
+            }
+            let syntax = syntax.ok_or(EditError::StructureUnavailable)?;
+            self.command_prepared(scope.key, command, selection, indentation, Some(syntax))
         }
-        if !current() {
-            return Ok(None);
-        }
-        let syntax = syntax.ok_or(EditError::StructureUnavailable)?;
-        self.command_prepared(
-            scope.key,
-            EditorCommand::Reindent,
-            selection,
-            indentation,
-            Some(syntax),
-        )
     }
 
     pub fn clipboard_content(

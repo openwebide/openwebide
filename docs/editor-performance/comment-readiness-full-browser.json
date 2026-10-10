@@ -1,0 +1,44 @@
+{
+  "manifest": {
+    "baseCommit": "9d4f8880342bb70737dd1d83be4e7d32899a2939",
+    "sources": {
+      "frontend/src/state/workspace.rs": "e5b01707f8d03bb318c208c9816922d499acff15078dced9eb482f2e23a0fd1d",
+      "frontend/src/state_actions/editor.rs": "6d76395cd00ce290874f96eb2a74746a65add2f056b1b4e9276427f2fd32d861",
+      "frontend/src/components/editor.rs": "48b42489740f7c46fbe2c105bdbd573655dfce8db9c64de9f0a0f366eaed2a0b",
+      "frontend/src/editor_worker.rs": "62d48be6c91f79c4ac6befd656e042b6306c5392f3bb0c36a57da9177491e5c6",
+      "frontend/tests/components/editor.rs": "897ca4b0b9cf6f4939b5823ec1d3d0d5a4151de1a7b939621ca573b0071a6f51",
+      "crates/core/src/editor/mod.rs": "60a62055bbc452618116299bd13f22ae3b3f231e734dadfe2d6290478f594c3d",
+      "crates/core/src/editor/syntax_providers.rs": "560a73bc096acb74790090d65b7747eba6721a57383f519a585d5167e4a8cad1",
+      "crates/core/src/editor/syntax/service.rs": "3bba24bb7323e93b69f59aeac0e7d00af2c8cef80294e2038e9c8999c18fad41",
+      "crates/core/src/editor/comments.rs": "577db90550ff961055c1a3258e1192c76cbe6fc75cb69b362fb1e85888e4166c",
+      "tools/run-editor-browser-tests.py": "81a3cce570c0448a4a3493e899b3ae6922bff0704b656a12d85de42f2881378b"
+    },
+    "artifacts": {
+      "components.wasm": "100a980a3d9ea3eb1a6c17bf81a034cb9d409d268aec5947145525bf49d6d08f",
+      "editor-library.wasm": "61befd1f70fe3af41531b406ef5c6b79312967d5bf902e912db0419845a33474",
+      "run-editor-browser-tests.py": "81a3cce570c0448a4a3493e899b3ae6922bff0704b656a12d85de42f2881378b"
+    }
+  },
+  "scope": "complete current editor browser inventory, including both independent font matrices",
+  "plannedTests": 183,
+  "passedTests": 183,
+  "executedGroups": [
+    22,
+    53,
+    53,
+    53,
+    1,
+    1
+  ],
+  "failedTests": [],
+  "readinessDeadlineMs": 3000,
+  "runnerDeadlineSeconds": 300,
+  "cpuLimit": 2,
+  "memoryLimitGiB": 10,
+  "sharedMemoryGiB": 1,
+  "logSha256": "b4abc75e6a154bd6bb2906925c0dce8de99c677c55b09e9559e7173cc428aa2a",
+  "nativeFrontendTestsPassed": 128,
+  "strictWasmLint": "passed",
+  "format": "passed",
+  "remainingWork": "Current-head hosted CI, selection-specific capabilities, other structural-command readiness, broader responsiveness/memory and physical-device gates remain open."
+}

@@ -5262,3 +5262,33 @@ establishing the exact cause of every earlier shared-group failure. Other
 parser-aware commands still use their existing immediate fallback; request/reply
 serialization, source/index publication, command preparation memory, broader
 responsiveness and physical-device checks remain work.
+
+## Embedded comment command readiness
+
+Explicit line/block comments now use the same command-preparation facade as
+Reindent when the registered language provider declares embedded languages.
+Single-language comments retain immediate execution, including SQL without a
+grammar and admitted files above the structural analysis budget. This selects
+preparation from shared provider capabilities, not filesystem mode or a second
+comment implementation. All edits still use the existing core transaction path.
+
+The facade captures source, project/read/account scope, document revision,
+selections, indentation and command revision when a request is constructed.
+Supersession is checked before its first poll, between preparation batches and
+before applying the transaction. Newer commands cancel older pending actions,
+including an Undo with no history/text change. UI tasks construct the request
+before queuing rather than acquiring scope after the task starts. Workspace reset
+invalidates the command revision alongside existing preparation ownership.
+
+Expanded browser contracts cover Reindent and both comment actions, source/file
+changes before the first poll, newer unchanged-text commands, existing stale
+ownership/selection/composition cases, SQL and above-budget immediate comments,
+and actual HTML keyboard/Markdown menu commands with one undoable transaction.
+Existing mixed-language comment tests now invoke the awaited facade. The nine
+focused contracts pass ([evidence](editor-performance/comment-readiness-focused-browser.json)),
+followed by all 183 current editor browser tests, including both independent font
+matrices ([complete verification](editor-performance/comment-readiness-full-browser.json)).
+The same sources pass 128 native frontend tests, strict WASM lint and formatting.
+Current-head hosted CI remains required. Selection-specific menu capabilities and
+other structural-command readiness remain roadmap work, alongside the broader
+responsiveness, memory, device and release checks.

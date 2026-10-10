@@ -2334,12 +2334,13 @@ fn apply_editor_command(
     textarea: &web_sys::HtmlTextAreaElement,
     error: RwSignal<Option<String>>,
 ) -> bool {
-    if command == EditorCommand::Reindent {
+    if actions.command_requires_structure(command) {
         let selection = projected_selection(actions, textarea);
         let indentation = actions.rules_untracked().indentation;
         let textarea = textarea.clone();
+        let request = actions.command_when_ready(command, selection, indentation);
         leptos::task::spawn_local(async move {
-            let result = actions.reindent_when_ready(selection, indentation).await;
+            let result = request.await;
             if error.is_disposed() || !current_editor_target(actions, &textarea) {
                 return;
             }

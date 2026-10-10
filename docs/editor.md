@@ -60,7 +60,8 @@ a language formatter. Unsupported comment/reindent actions appear disabled.
 Reindent also works inside HTML script/style bodies and supported Markdown code
 fences. If code structure is still being prepared, the requested action waits for
 it. Changing the source, selections, indentation rules, file or account cancels
-that request. Unavailable structure reports an error without changing the file.
+that request. A newer editor command also cancels it, even if that command leaves
+the text unchanged. Unavailable structure reports an error without changing the file.
 
 ## Multiple selections and clipboard
 
@@ -298,11 +299,14 @@ UTF-8 ranges, folds, token coverage and bracket links are validated without pars
 the document again on the UI thread. Transport/startup failures use the same
 preparation engine synchronously with a 12 ms parser budget; unavailable contexts
 retain ordinary lexical editing. Worker parsing has a 100 ms budget.
-Explicit Reindent requests use a yielding browser task adapter for the same Rust
-syntax service when no current structure is ready, then apply through the shared
-editor command facade. They do not use the immediate lexical fallback. Other
-parser-aware commands still retain that fallback while their readiness policy
-remains on the roadmap.
+Explicit Reindent requests and comments in registered embedded-language containers
+use a yielding browser task adapter for the same Rust syntax service when no
+current structure is ready, then apply through the shared editor command facade.
+Ownership is captured before queuing the action, so an unpolled task cannot acquire
+another file or newer source. Single-language comments retain immediate behavior,
+including SQL and admitted files above the structure budget. Other parser-aware
+commands still retain their existing fallback while their readiness policy remains
+on the roadmap.
 JSON/JSONC, TOML, YAML/YML, INI/EditorConfig, XML build configuration and Markdown
 use registered Rust/WASM grammars through the same preparation cache and worker.
 Markdown has separate block/inline parsing and declared fenced-code languages;

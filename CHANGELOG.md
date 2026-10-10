@@ -9,6 +9,8 @@ for what's still ahead.
 
 ## [Unreleased]
 
+- Prepare line/block comment actions against parsed embedded-language scopes before applying them, while preserving immediate single-language comments and unsupported-grammar fallbacks. Capture command ownership before queuing and cancel superseded actions, including after a newer command that leaves the text unchanged.
+
 - Retry an editor caret reveal when navigation precedes prepared paint, while cancelling the retry after newer source, selection, account, file or scroll intent.
 
 - Prepare cold Reindent commands cooperatively with the shared Rust syntax service before applying one undoable edit. Cancel superseded source, selection, rule and ownership requests; enable the action for HTML and Markdown embedded code bodies and report unavailable structure instead of silently doing nothing.

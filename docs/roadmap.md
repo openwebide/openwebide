@@ -72,6 +72,10 @@ tracks the remaining work rather than every optimization already shipped.
   deferred completion, cancellation and stale source/account/selection in both
   modes. Reindent now passes completion, HTML/Markdown bodies, menu, capacity and
   cancellation contracts; its evidence is in [performance verification](editor-performance.md).
+  Embedded comment actions now share that preparation path, with request-time
+  ownership and newer-command cancellation; all 183 editor browser contracts and
+  128 native frontend tests pass. Finish selection-specific action capabilities and the
+  readiness policy for other structural commands without delaying ordinary input.
 
 - [ ] **Cold startup and native input:** remove remaining full-source shaping in
   touch and unsupported-layout fallbacks. Desktop startup now uses bounded native
