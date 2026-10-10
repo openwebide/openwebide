@@ -1,5 +1,5 @@
 //! Source-owned continuation and overlap validation for bounded paragraph probes.
-use super::{GlyphRectangle, HorizontalGeometry, MAX_MEASURE_BYTES, VisualLineIndex};
+use super::{GlyphRectangle, HorizontalGeometry, VisualLineIndex};
 use std::{ops::Range, sync::Arc};
 
 pub const MAX_PARAGRAPH_PROBE_BYTES: usize = 16 * 1024;
@@ -43,27 +43,6 @@ pub(super) struct ParagraphMeasurement {
     pub(super) rectangles: Arc<[GlyphRectangle]>,
 }
 pub(super) const MAX_RETAINED_RECTANGLES: usize = 128 * 1024;
-
-/// Stable original paint-run anchors can survive source shifts. Over-budget
-/// runs retain the existing bounded coordinate checkpoints.
-pub(super) fn paragraph_anchor_glyphs(
-    body: &str,
-    index: &VisualLineIndex,
-    runs: &[usize],
-) -> Option<Vec<usize>> {
-    let mut glyphs = if runs.len() <= super::MAX_ROW_GEOMETRY_ANCHORS - 2 {
-        let mut glyphs = Vec::with_capacity(runs.len() + 2);
-        glyphs.push(0);
-        let end = runs.partition_point(|byte| *byte < body.len());
-        glyphs.extend(index.boundary_glyphs(body, &runs[..end])?);
-        glyphs.push(index.len().checked_sub(2)?);
-        glyphs
-    } else {
-        index.anchor_glyphs_in(0..index.len() - 1).collect()
-    };
-    glyphs.dedup();
-    Some(glyphs)
-}
 
 /// Shared facade contract for validated replay; layout-specific geometry remains
 /// in each core plan, above the browser's measurement primitives.
@@ -124,25 +103,22 @@ impl<'a> ParagraphMeasurementPlan<'a> {
         index: VisualLineIndex,
         runs: Arc<[usize]>,
     ) -> Option<Self> {
-        if body.len() <= MAX_MEASURE_BYTES
-            || !index.source_paint_eligible()
-            || index
-                .anchor_glyphs()
-                .take(super::MAX_ROW_GEOMETRY_ANCHORS + 1)
-                .count()
-                > super::MAX_ROW_GEOMETRY_ANCHORS
-        {
+        let mut preparation = super::ParagraphAnchorPreparation::unwrapped(body, index, runs)?;
+        preparation.advance(usize::MAX);
+        Self::with_prepared_anchors(preparation.finish()?)
+    }
+    /// Accept only the complete, validated source-owned cooperative setup.
+    pub fn with_prepared_anchors(prepared: super::PreparedParagraphAnchors<'a>) -> Option<Self> {
+        if prepared.wrapped {
             return None;
         }
-        if runs.last().copied() != Some(body.len())
-            || runs.windows(2).any(|pair| pair[0] >= pair[1])
-        {
-            return None;
-        }
-        // Original paint boundaries survive shifted styled tokens. Sampling
-        // them also avoids tying measured geometry to unrelated coordinate-index
-        // checkpoints. Over-budget run tables retain the existing sparse policy.
-        let anchor_glyphs = paragraph_anchor_glyphs(body, &index, &runs)?;
+        let super::PreparedParagraphAnchors {
+            body,
+            index,
+            runs,
+            glyphs: anchor_glyphs,
+            ..
+        } = prepared;
         let probe = Self::probe_at(body, &index, &runs, 0, 0.0)?;
         let continuation = Self::continuation(body, &index, &runs, &probe)?;
         let has_tabs = index.has_tabs();

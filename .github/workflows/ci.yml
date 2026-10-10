@@ -27,9 +27,6 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Install native plugin compiler sandbox
-        run: sudo apt-get update && sudo apt-get install -y bubblewrap
-
       - name: Format check
         run: cargo fmt --all --check
 
@@ -37,11 +34,18 @@ jobs:
         run: |
           python3 -m unittest discover -s tools -p 'test_release.py'
           python3 -m unittest discover -s tools -p 'test_open_source.py'
+          python3 -m unittest discover -s tools -p 'test_editor_measurements.py'
           python3 tools/bundle_plugins.py --check
           python3 tools/release.py validate
           docker compose -f docker-compose.release.yml config --quiet
           OPENWEBIDE_SSH_AUTH_SOCK=/tmp/agent.sock OPENWEBIDE_SSH_CONFIG_DIR=/tmp/public-ssh docker compose -f docker-compose.release.yml -f docker-compose.ssh.yml config --quiet
           OPENWEBIDE_TAILSCALE_HOST=openwebide.example.ts.net OPENWEBIDE_SERVE_CONFIG_DIR=/tmp/serve docker compose -f docker-compose.https.yml config --quiet
+
+      - name: Prepare isolated plugin builds
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       - name: Clippy (native crates)
         run: cargo clippy -p openwebide-core -p openwebide-llm -p openwebide-storage -p openwebide-agent -p openwebide-auth -p openwebide-plugin-sdk -p openwebide-plugin-runtime -p openwebide-plugin-build --features openwebide-core/editor-parser --all-targets -- -D warnings
@@ -187,15 +191,13 @@ jobs:
           # Run the same contracts against optimized WASM to avoid loading the
           # ~250 MiB debug components module into Chrome. Partition editor and
           # other contracts so suite growth cannot exhaust one browser deadline.
-          # Keep expensive matrices separate; per-test readiness and each
-          # browser-run deadline are unchanged. The two ordinary name filters
-          # are complementary across every test target, including unit tests.
+          # Inventory every current test artifact and check complete, disjoint
+          # editor groups of at most 64 tests. Keep expensive matrices separate;
+          # per-test readiness and every browser-run deadline are unchanged.
           WASM_BINDGEN_TEST_TIMEOUT: "300"
         run: |
           cargo test -p openwebide-frontend --release --target wasm32-unknown-unknown -- --skip 'editor::'
-          cargo test -p openwebide-frontend --release --target wasm32-unknown-unknown 'editor::' -- --skip bounded_paragraph_geometry_preserves_fonts_features_and_whitespace_in_both_modes --skip paragraph_limit_geometry_matches_complete_rows_in_both_modes
-          cargo test -p openwebide-frontend --release --target wasm32-unknown-unknown --test components bounded_paragraph_geometry_preserves_fonts_features_and_whitespace_in_both_modes
-          cargo test -p openwebide-frontend --release --target wasm32-unknown-unknown --test components paragraph_limit_geometry_matches_complete_rows_in_both_modes
+          python3 tools/run-editor-browser-tests.py
 
       - name: Measure shared editor storage in browser WASM
         env:

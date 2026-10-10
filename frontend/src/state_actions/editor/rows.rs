@@ -182,6 +182,8 @@ fn paint_suffix_start(old: &PaintRow<'_>, new: &PaintRow<'_>) -> Option<usize> {
 const MAX_PAINT_RUN_ROWS: usize = 8;
 const MAX_RETAINED_PAINT_RUNS: usize = 16 * 1024;
 #[cfg(feature = "test-support")]
+thread_local! { static PAINT_RUN_PREPARATIONS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) }; }
+#[cfg(feature = "test-support")]
 thread_local! { static PAINT_RUN_SEGMENT_BYTES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) }; }
 #[cfg(feature = "test-support")]
 pub(super) fn take_paint_run_segment_bytes() -> usize {
@@ -297,6 +299,42 @@ impl EditorActions {
             self.cached_styled_paint_runs(paint, row)?
         };
         openwebide_core::editor::WrappedParagraphPreparation::new(body, index, runs)
+    }
+    pub async fn prepare_wrapped_paragraph_cooperatively<'a>(
+        self,
+        paint: &'a EditorRowPaint,
+        row: usize,
+    ) -> Option<openwebide_core::editor::WrappedParagraphPreparation<'a>> {
+        if !self.prepare_styled_paint_runs(paint, row).await || !self.row_paint_current(paint) {
+            return None;
+        }
+        let body = paint.projection.line_body(row)?;
+        let index = paint.projection.visual_line_index(row)?;
+        let runs = if paint_row(paint, row)?.plain.is_some() {
+            index.text_run_boundaries().collect()
+        } else {
+            self.cached_styled_paint_runs(paint, row)?
+        };
+        let preparation =
+            openwebide_core::editor::ParagraphAnchorPreparation::wrapped(body, index, runs)?;
+        openwebide_core::editor::WrappedParagraphPreparation::with_prepared_anchors(
+            self.prepare_paragraph_anchors(paint, preparation).await?,
+        )
+    }
+    async fn prepare_paragraph_anchors<'a>(
+        self,
+        paint: &EditorRowPaint,
+        mut preparation: openwebide_core::editor::ParagraphAnchorPreparation<'a>,
+    ) -> Option<openwebide_core::editor::PreparedParagraphAnchors<'a>> {
+        loop {
+            if !self.row_paint_current(paint) {
+                return None;
+            }
+            if preparation.advance(openwebide_core::editor::PAINT_RUN_BATCH_UNITS) {
+                return preparation.finish();
+            }
+            crate::util::yield_task().await;
+        }
     }
     pub fn paragraph_measurements(
         paint: &EditorRowPaint,
@@ -534,6 +572,22 @@ impl EditorActions {
             return None;
         }
         let projection = self.projection()?;
+        if row == 0
+            && self.measured_rows().is_none()
+            && let Some(coverage) = self.paragraph_coverage()
+        {
+            let window = openwebide_core::editor::wrapped_paint_window(
+                projection.lines().get(row)?.source.len(),
+                coverage.coverage.covered_height(),
+                line_height,
+                scroll,
+                viewport_height,
+            )?;
+            coverage.coverage.source_interval(
+                window.rows.start as f64 * line_height..window.rows.end as f64 * line_height,
+            )?;
+            return Some(window);
+        }
         let rows = self
             .measured_rows()
             .map(|measured| measured.rows)
@@ -921,7 +975,20 @@ impl EditorActions {
         {
             return None;
         }
-        let at = cache.geometry.iter().position(|(index, _)| *index == row)?;
+        let Some(at) = cache.geometry.iter().position(|(index, _)| *index == row) else {
+            let coverage = self.paragraph_coverage()?;
+            if row != 0
+                || !same_paint_scope(paint, &coverage.paint)
+                || !paint
+                    .projection
+                    .shares_text_version(&coverage.paint.projection)
+            {
+                return None;
+            }
+            return Some(Arc::new(
+                openwebide_core::editor::MeasuredRowGeometry::WrappedCoverage(coverage.coverage),
+            ));
+        };
         let entry = cache.geometry.remove(at)?;
         let result = entry.1.clone();
         cache.geometry.push_back(entry);
@@ -996,6 +1063,7 @@ impl EditorActions {
         if matches!(
             geometry.as_ref(),
             openwebide_core::editor::MeasuredRowGeometry::Wrapped(_)
+                | openwebide_core::editor::MeasuredRowGeometry::WrappedCoverage(_)
         ) != self.preferences().word_wrap
         {
             return None;
@@ -1130,6 +1198,8 @@ impl EditorActions {
         style: &PaintRow<'_>,
         max_runs: usize,
     ) -> Result<Option<Arc<[usize]>>, ()> {
+        #[cfg(feature = "test-support")]
+        PAINT_RUN_PREPARATIONS.set(PAINT_RUN_PREPARATIONS.get() + 1);
         let mut preparation = openwebide_core::editor::PaintRunPreparation::new(
             style.tokens,
             body.len(),
@@ -1171,22 +1241,40 @@ impl EditorActions {
         paint: &'a EditorRowPaint,
         row: usize,
     ) -> Option<openwebide_core::editor::ParagraphMeasurementPlan<'a>> {
-        if !self.prepare_styled_paint_runs(paint, row).await {
+        if !self.row_paint_current(paint) {
             return None;
         }
         let (body, index, style) = unwrapped_paragraph_row(paint, row)?;
-        if style.plain.is_some() {
-            return Self::paragraph_measurements(paint, row);
-        }
-        let runs = match self.retained_styled_paint_runs(paint, row) {
-            Some(Some(runs)) => runs,
-            _ => self
-                .prepare_row_runs(paint, row, body, &style, usize::MAX)
-                .await
-                .ok()??,
+        let runs = if let Some(plain) = style.plain {
+            if plain != body {
+                return None;
+            }
+            index.text_run_boundaries().collect()
+        } else {
+            match self.retained_styled_paint_runs(paint, row) {
+                Some(Some(runs)) => runs,
+                _ => {
+                    // Build once even when the complete table exceeds retention.
+                    // A negative cache entry limits retention, not the ephemeral plan.
+                    let runs = self
+                        .prepare_row_runs(paint, row, body, &style, usize::MAX)
+                        .await
+                        .ok()??;
+                    if cacheable_styled_row(paint, row).is_some() {
+                        self.retain_styled_paint_runs(
+                            paint,
+                            row,
+                            (runs.len() <= MAX_RETAINED_PAINT_RUNS).then(|| runs.clone()),
+                        );
+                    }
+                    runs
+                }
+            }
         };
-        openwebide_core::editor::ParagraphMeasurementPlan::with_shared_run_boundaries(
-            body, index, runs,
+        let preparation =
+            openwebide_core::editor::ParagraphAnchorPreparation::unwrapped(body, index, runs)?;
+        openwebide_core::editor::ParagraphMeasurementPlan::with_prepared_anchors(
+            self.prepare_paragraph_anchors(paint, preparation).await?,
         )
     }
     fn cached_styled_paint_runs(self, paint: &EditorRowPaint, row: usize) -> Option<Arc<[usize]>> {
@@ -1237,6 +1325,17 @@ impl EditorActions {
     }
     pub fn forget_measured_row_geometry(self, cache: &mut EditorFragmentCache, row: usize) {
         cache.geometry.retain(|(index, _)| *index != row);
+        if row == 0
+            && let Some((paint, _, _)) = cache.scope.as_ref()
+            && let Some(coverage) = self.paragraph_coverage()
+            && same_paint_scope(paint, &coverage.paint)
+        {
+            self.workspace.editor_row_preparation.update(|preparation| {
+                if let Some(preparation) = preparation {
+                    preparation.paragraph_coverage = None;
+                }
+            });
+        }
     }
     pub fn retain_measured_row_geometry(
         self,
@@ -1256,12 +1355,24 @@ impl EditorActions {
         if matches!(
             geometry,
             openwebide_core::editor::MeasuredRowGeometry::Wrapped(_)
+                | openwebide_core::editor::MeasuredRowGeometry::WrappedCoverage(_)
         ) && !paint
             .projection
             .visual_line_index(row)
             .is_some_and(|index| index.source_paint_eligible())
         {
             return;
+        }
+        if !cache
+            .geometry
+            .iter()
+            .any(|(index, old)| *index == row && old.as_ref() == &geometry)
+            && let Some(line) = paint.projection.lines().get(row)
+        {
+            let source_line = line.source_line;
+            cache
+                .paint
+                .retain(|window| !window.rows.contains(&source_line));
         }
         cache.geometry.retain(|(index, _)| *index != row);
         if cache.geometry.len() == 8 {
@@ -1326,70 +1437,103 @@ mod tests {
             future::Future,
             task::{Context, Poll, Waker},
         };
-        for stale in [
-            "complete", "source", "read", "project", "account", "dispose",
-        ] {
-            let owner = Owner::new();
-            let body = "word 文😀e\u{301} ".repeat(6000);
-            let (workspace, auth, actions, paint, expected) = owner.with(|| {
-                let auth = crate::state::auth::AuthState::new();
-                provide_context(auth);
-                let workspace = crate::state::workspace::WorkspaceState::new();
-                workspace.active_project.set(Some(1));
-                workspace.open_file.set(Some("styled.rs".into()));
-                workspace.content.set(body.clone().into());
-                let actions = EditorActions::new(workspace);
-                let tokens = vec![Token {
-                    kind: TokenKind::String,
-                    text: body.clone(),
-                }];
-                let expected: Arc<[usize]> = openwebide_core::editor::visual_text_run_ranges(&body)
-                    .map(|run| run.end)
-                    .collect();
-                let paint = actions
-                    .row_paint_snapshot(
-                        "font metrics".into(),
-                        FoldProjection::new(&body, &Default::default()),
-                        (true, Arc::new(vec![tokens.into()])),
-                        Arc::from([]),
-                        Indentation::default(),
-                        false,
-                    )
-                    .unwrap();
-                (workspace, auth, actions, paint, expected)
-            });
-            take_paint_run_segment_bytes();
-            let mut preparation = Box::pin(actions.prepare_styled_paint_runs(&paint, 0));
-            assert!(matches!(
-                preparation
-                    .as_mut()
-                    .poll(&mut Context::from_waker(Waker::noop())),
-                Poll::Pending
-            ));
-            assert!(workspace.editor_paint_runs.get_untracked().is_none());
-            let scanned = take_paint_run_segment_bytes();
-            assert!(scanned > 0 && scanned < body.len());
-            match stale {
-                "source" => workspace.pending_epoch.update(|epoch| *epoch += 1),
-                "read" => workspace
-                    .editor_read_revision
-                    .update(|revision| *revision += 1),
-                "project" => workspace.active_project.set(Some(2)),
-                "account" => auth.generation.update(|generation| *generation += 1),
-                "dispose" => owner.cleanup(),
-                _ => {}
-            }
-            assert_eq!(preparation.await, stale == "complete");
-            if stale == "complete" {
-                assert_eq!(
-                    actions.cached_styled_paint_runs(&paint, 0).unwrap(),
-                    expected
-                );
+        for giant in [false, true] {
+            for stale in [
+                "complete", "source", "read", "project", "account", "dispose",
+            ] {
+                let owner = Owner::new();
+                let body = if giant {
+                    format!("👩{}\u{200d}👩 last", "\u{301}".repeat(40_000))
+                } else {
+                    "word 文😀e\u{301} ".repeat(6000)
+                };
+                if giant {
+                    let source = Arc::new(body.clone());
+                    let mut preparation =
+                        openwebide_core::editor::DocumentPreparation::new(&source);
+                    assert!(!preparation.advance(1));
+                    while !preparation.advance(openwebide_core::editor::PAINT_RUN_BATCH_UNITS) {
+                        crate::util::yield_task().await;
+                    }
+                    let document = preparation.finish().unwrap();
+                    assert!(Arc::ptr_eq(&document.shared_text(), &source));
+                    assert!(!document.is_dirty());
+                    let index = document.projection().visual_line_index(0).unwrap();
+                    let expected = openwebide_core::editor::visual_line_offsets(&body).unwrap();
+                    for (glyph, &(byte, native)) in expected.iter().enumerate() {
+                        assert_eq!(index.at(&body, glyph), Some((byte, native)));
+                        assert_eq!(index.index_at_byte(&body, byte), Some(glyph));
+                    }
+                    assert_eq!(index.index_at_byte(&body, body.len() / 2), Some(0));
+                }
+                let (workspace, auth, actions, paint, expected) = owner.with(|| {
+                    let auth = crate::state::auth::AuthState::new();
+                    provide_context(auth);
+                    let workspace = crate::state::workspace::WorkspaceState::new();
+                    workspace.active_project.set(Some(1));
+                    workspace.open_file.set(Some("styled.rs".into()));
+                    workspace.content.set(body.clone().into());
+                    let actions = EditorActions::new(workspace);
+                    let tokens = vec![Token {
+                        kind: TokenKind::String,
+                        text: body.clone(),
+                    }];
+                    let expected: Arc<[usize]> =
+                        openwebide_core::editor::visual_text_run_ranges(&body)
+                            .map(|run| run.end)
+                            .collect();
+                    let paint = actions
+                        .row_paint_snapshot(
+                            "font metrics".into(),
+                            FoldProjection::new(&body, &Default::default()),
+                            (true, Arc::new(vec![tokens.into()])),
+                            Arc::from([]),
+                            Indentation::default(),
+                            false,
+                        )
+                        .unwrap();
+                    (workspace, auth, actions, paint, expected)
+                });
                 take_paint_run_segment_bytes();
-                assert!(actions.prepare_styled_paint_runs(&paint, 0).await);
-                assert_eq!(take_paint_run_segment_bytes(), 0);
-            } else if stale != "dispose" {
+                let mut preparation = Box::pin(actions.prepare_styled_paint_runs(&paint, 0));
+                assert!(matches!(
+                    preparation
+                        .as_mut()
+                        .poll(&mut Context::from_waker(Waker::noop())),
+                    Poll::Pending
+                ));
                 assert!(workspace.editor_paint_runs.get_untracked().is_none());
+                let scanned = take_paint_run_segment_bytes();
+                if giant {
+                    assert_eq!(
+                        scanned, 0,
+                        "the incomplete cluster must yield before emitting a run"
+                    );
+                } else {
+                    assert!(scanned > 0 && scanned < body.len());
+                }
+                match stale {
+                    "source" => workspace.pending_epoch.update(|epoch| *epoch += 1),
+                    "read" => workspace
+                        .editor_read_revision
+                        .update(|revision| *revision += 1),
+                    "project" => workspace.active_project.set(Some(2)),
+                    "account" => auth.generation.update(|generation| *generation += 1),
+                    "dispose" => owner.cleanup(),
+                    _ => {}
+                }
+                assert_eq!(preparation.await, stale == "complete");
+                if stale == "complete" {
+                    assert_eq!(
+                        actions.cached_styled_paint_runs(&paint, 0).unwrap(),
+                        expected
+                    );
+                    take_paint_run_segment_bytes();
+                    assert!(actions.prepare_styled_paint_runs(&paint, 0).await);
+                    assert_eq!(take_paint_run_segment_bytes(), 0);
+                } else if stale != "dispose" {
+                    assert!(workspace.editor_paint_runs.get_untracked().is_none());
+                }
             }
         }
     }
@@ -1400,69 +1544,166 @@ mod tests {
             future::Future,
             task::{Context, Poll, Waker},
         };
-        for stale in [
-            "complete", "source", "read", "project", "account", "dispose",
-        ] {
-            let owner = Owner::new();
-            let (workspace, auth, actions, paint) = owner.with(|| {
-                let auth = crate::state::auth::AuthState::new();
-                provide_context(auth);
-                let workspace = crate::state::workspace::WorkspaceState::new();
-                workspace.active_project.set(Some(1));
-                workspace.open_file.set(Some("uncapped.rs".into()));
-                let tokens = vec![
-                    Token {
-                        kind: TokenKind::Keyword,
-                        text: "word".into()
-                    };
-                    MAX_RETAINED_PAINT_RUNS + 1000
-                ];
-                let body = "word".repeat(tokens.len());
-                workspace.content.set(body.clone().into());
-                let actions = EditorActions::new(workspace);
-                let paint = actions
-                    .row_paint_snapshot(
-                        "font metrics".into(),
-                        FoldProjection::new(&body, &Default::default()),
-                        (true, Arc::new(vec![tokens.into()])),
-                        Arc::from([]),
-                        Indentation::default(),
-                        false,
-                    )
-                    .unwrap();
-                (workspace, auth, actions, paint)
-            });
-            // Publish the existing negative cache first, so the first Pending
-            // below proves that the uncapped fallback itself yields.
-            assert!(actions.prepare_styled_paint_runs(&paint, 0).await);
-            assert_eq!(actions.retained_styled_paint_runs(&paint, 0), Some(None));
-            let mut preparation =
-                Box::pin(actions.prepare_paragraph_measurements_cooperatively(&paint, 0));
-            assert!(matches!(
-                preparation
-                    .as_mut()
-                    .poll(&mut Context::from_waker(Waker::noop())),
-                Poll::Pending
-            ));
-            match stale {
-                "source" => workspace.pending_epoch.update(|epoch| *epoch += 1),
-                "read" => workspace
-                    .editor_read_revision
-                    .update(|revision| *revision += 1),
-                "project" => workspace.active_project.set(Some(2)),
-                "account" => auth.generation.update(|generation| *generation += 1),
-                "dispose" => owner.cleanup(),
-                _ => {}
+        for negative_cached in [false, true] {
+            for stale in [
+                "complete", "source", "read", "project", "account", "dispose",
+            ] {
+                let owner = Owner::new();
+                let (workspace, auth, actions, paint) = owner.with(|| {
+                    let auth = crate::state::auth::AuthState::new();
+                    provide_context(auth);
+                    let workspace = crate::state::workspace::WorkspaceState::new();
+                    workspace.active_project.set(Some(1));
+                    workspace.open_file.set(Some("uncapped.rs".into()));
+                    let tokens = vec![
+                        Token {
+                            kind: TokenKind::Keyword,
+                            text: "word".into()
+                        };
+                        MAX_RETAINED_PAINT_RUNS + 1000
+                    ];
+                    let body = "word".repeat(tokens.len());
+                    workspace.content.set(body.clone().into());
+                    let actions = EditorActions::new(workspace);
+                    let paint = actions
+                        .row_paint_snapshot(
+                            "font metrics".into(),
+                            FoldProjection::new(&body, &Default::default()),
+                            (true, Arc::new(vec![tokens.into()])),
+                            Arc::from([]),
+                            Indentation::default(),
+                            false,
+                        )
+                        .unwrap();
+                    (workspace, auth, actions, paint)
+                });
+                if negative_cached {
+                    assert!(actions.prepare_styled_paint_runs(&paint, 0).await);
+                    assert_eq!(actions.retained_styled_paint_runs(&paint, 0), Some(None));
+                }
+                PAINT_RUN_PREPARATIONS.set(0);
+                let mut preparation =
+                    Box::pin(actions.prepare_paragraph_measurements_cooperatively(&paint, 0));
+                assert!(matches!(
+                    preparation
+                        .as_mut()
+                        .poll(&mut Context::from_waker(Waker::noop())),
+                    Poll::Pending
+                ));
+                assert_eq!(PAINT_RUN_PREPARATIONS.get(), 1);
+                if !negative_cached {
+                    assert!(actions.retained_styled_paint_runs(&paint, 0).is_none());
+                }
+                match stale {
+                    "source" => workspace.pending_epoch.update(|epoch| *epoch += 1),
+                    "read" => workspace
+                        .editor_read_revision
+                        .update(|revision| *revision += 1),
+                    "project" => workspace.active_project.set(Some(2)),
+                    "account" => auth.generation.update(|generation| *generation += 1),
+                    "dispose" => owner.cleanup(),
+                    _ => {}
+                }
+                let plan = preparation.await;
+                assert_eq!(plan.is_some(), stale == "complete");
+                if let Some(plan) = plan {
+                    let expected = EditorActions::paragraph_measurements(&paint, 0).unwrap();
+                    assert_eq!(plan.probe().unwrap().bytes, expected.probe().unwrap().bytes);
+                    assert_eq!(plan.targets(), expected.targets());
+                }
+                if stale != "dispose" {
+                    assert_eq!(
+                        actions.retained_styled_paint_runs(&paint, 0),
+                        (negative_cached || stale == "complete").then_some(None),
+                    );
+                    assert_eq!(PAINT_RUN_PREPARATIONS.get(), 1);
+                }
             }
-            let plan = preparation.await;
-            assert_eq!(plan.is_some(), stale == "complete");
-            if let Some(plan) = plan {
-                let expected = EditorActions::paragraph_measurements(&paint, 0).unwrap();
-                assert_eq!(plan.probe().unwrap().bytes, expected.probe().unwrap().bytes);
-                assert_eq!(plan.targets(), expected.targets());
-            }
-            if stale != "dispose" {
-                assert_eq!(actions.retained_styled_paint_runs(&paint, 0), Some(None));
+        }
+    }
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    async fn paragraph_anchor_setup_yields_without_rescanning_and_rejects_stale_owners() {
+        use std::{
+            future::Future,
+            task::{Context, Poll, Waker},
+        };
+        for wrapped in [false, true] {
+            for stale in [
+                "complete", "source", "read", "project", "account", "dispose",
+            ] {
+                let owner = Owner::new();
+                let (workspace, auth, actions, paint) = owner.with(|| {
+                    let auth = crate::state::auth::AuthState::new();
+                    provide_context(auth);
+                    let workspace = crate::state::workspace::WorkspaceState::new();
+                    workspace.active_project.set(Some(1));
+                    workspace.open_file.set(Some("anchors.rs".into()));
+                    let body = "word 文😀e\u{301} ".repeat(6000);
+                    workspace.content.set(body.clone().into());
+                    let actions = EditorActions::new(workspace);
+                    let paint = actions
+                        .row_paint_snapshot(
+                            "anchor metrics".into(),
+                            FoldProjection::new(&body, &Default::default()),
+                            (
+                                true,
+                                Arc::new(vec![
+                                    vec![Token {
+                                        kind: TokenKind::String,
+                                        text: body,
+                                    }]
+                                    .into(),
+                                ]),
+                            ),
+                            Arc::from([]),
+                            Indentation::default(),
+                            false,
+                        )
+                        .unwrap();
+                    (workspace, auth, actions, paint)
+                });
+                assert!(actions.prepare_styled_paint_runs(&paint, 0).await);
+                take_paint_run_segment_bytes();
+                let mut preparation = Box::pin(async {
+                    if wrapped {
+                        actions
+                            .prepare_wrapped_paragraph_cooperatively(&paint, 0)
+                            .await
+                            .is_some()
+                    } else {
+                        actions
+                            .prepare_paragraph_measurements_cooperatively(&paint, 0)
+                            .await
+                            .is_some()
+                    }
+                });
+                assert!(matches!(
+                    preparation
+                        .as_mut()
+                        .poll(&mut Context::from_waker(Waker::noop())),
+                    Poll::Pending
+                ));
+                assert_eq!(
+                    take_paint_run_segment_bytes(),
+                    0,
+                    "cached runs must not be segmented again"
+                );
+                assert!(
+                    workspace.editor_row_cache.get_untracked().is_none(),
+                    "partial anchors cannot publish row geometry"
+                );
+                match stale {
+                    "source" => workspace.pending_epoch.update(|epoch| *epoch += 1),
+                    "read" => workspace
+                        .editor_read_revision
+                        .update(|revision| *revision += 1),
+                    "project" => workspace.active_project.set(Some(2)),
+                    "account" => auth.generation.update(|generation| *generation += 1),
+                    "dispose" => owner.cleanup(),
+                    _ => {}
+                }
+                assert_eq!(preparation.await, stale == "complete", "{wrapped}/{stale}");
             }
         }
     }
@@ -1636,29 +1877,34 @@ mod tests {
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
     #[cfg_attr(not(target_arch = "wasm32"), test)]
     fn bounded_styled_runs_preserve_complete_grapheme_and_crlf_boundaries() {
-        for suffix in ["", "\r"] {
-            let body = "word 文😀e\u{301} ".repeat(1000);
-            let tokens = [Token {
-                kind: TokenKind::String,
-                text: body.clone() + suffix,
-            }];
-            let row = PaintRow {
-                tokens: &tokens,
-                plain: None,
-                guide: 0,
-                normalize_cr: !suffix.is_empty(),
-                ending: !suffix.is_empty(),
-            };
-            let expected = openwebide_core::editor::visual_text_run_ranges(&body)
-                .map(|run| run.end)
-                .collect::<Vec<_>>();
-            let runs = styled_paint_runs(&body, &row, expected.len()).unwrap();
-            assert_eq!(runs.as_ref(), expected);
-            assert!(styled_paint_runs(&body, &row, expected.len() - 1).is_none());
-            assert_eq!(
-                styled_paint_runs(&body, &row, usize::MAX).unwrap().as_ref(),
-                expected
-            );
+        for body in [
+            "word 文😀e\u{301} ".repeat(1000),
+            format!("{}🇺🇸", "a".repeat(508)),
+            format!("👩{}\u{200d}👩 last", "\u{301}".repeat(2000)),
+        ] {
+            for suffix in ["", "\r"] {
+                let tokens = [Token {
+                    kind: TokenKind::String,
+                    text: body.clone() + suffix,
+                }];
+                let row = PaintRow {
+                    tokens: &tokens,
+                    plain: None,
+                    guide: 0,
+                    normalize_cr: !suffix.is_empty(),
+                    ending: !suffix.is_empty(),
+                };
+                let expected = openwebide_core::editor::visual_text_run_ranges(&body)
+                    .map(|run| run.end)
+                    .collect::<Vec<_>>();
+                let runs = styled_paint_runs(&body, &row, expected.len()).unwrap();
+                assert_eq!(runs.as_ref(), expected);
+                assert!(styled_paint_runs(&body, &row, expected.len() - 1).is_none());
+                assert_eq!(
+                    styled_paint_runs(&body, &row, usize::MAX).unwrap().as_ref(),
+                    expected
+                );
+            }
         }
     }
 

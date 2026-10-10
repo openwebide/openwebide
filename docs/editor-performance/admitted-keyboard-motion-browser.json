@@ -1,0 +1,74 @@
+{
+  "manifest": {
+    "baseCommit": "2301c26966c9e732287b6a95d61f937b1c5e57ae",
+    "sources": {
+      "crates/core/src/editor/motion.rs": "d82e0e7a97c2e6d505e3874ddc823601093061c46e531a8e10b5e0e5f0d76add",
+      "crates/core/src/editor/motion_queue.rs": "b42033fa21962b11137e6642b943acfd2b7925bdf7f20d03be0751c9df81ee70",
+      "crates/core/src/editor/visual_motion.rs": "64a1fd989b08d1f3b9e982335ee4c10561a985f1e6611dd6703ea83d404fab1d",
+      "frontend/src/components/editor_geometry.rs": "de75288097e8ab736ed0a31cd0ebcf978f4ccc421259290ceea769cd4fb429ca",
+      "frontend/tests/components/editor.rs": "bd2b411ee13211256fd5fc85ab19d366f517683ec2d2227e95d30e3d3d92333c"
+    },
+    "artifacts": {
+      "components.wasm": "dca84247d3b3668581746a695483fff87497cd7c369f34567fba902821bbfa17",
+      "editor-library.wasm": "d0f11fb5204fa6ecc1b5dd5f76966896ca262d8fd3d2d9ea2f727153f4e71aac"
+    }
+  },
+  "scope": "complete editor inventory, all 176 tests across six disjoint browser runs on 2-CPU Linux arm64; both font matrices and both workspace adapters; unchanged 3-second readiness and 300-second runner deadlines",
+  "browser": {
+    "tests": 176,
+    "groups": [
+      52,
+      51,
+      51,
+      1,
+      1,
+      20
+    ],
+    "logSha256": "3d10b69240cda3fb7e7c3d480e0365a69976a2e0ce4d6bd5e6abb0f393c48f03"
+  },
+  "before": {
+    "browserManifest": {
+      "baseCommit": "2301c26966c9e732287b6a95d61f937b1c5e57ae",
+      "runtimeSourceSha256": "0ccbe0e7b6bc8cfc8f80a77dbc816b171ad5d30550514ab78fc0eba124aec714",
+      "testsSha256": "1a17457e75d1395ccab2e9a120a021aac8cc27fa6938953e2a2282faec8e0a66",
+      "artifactSha256": "90a4596af5588bfa6ef03a35d35fb479c3c70f5d2ef324d04e7dc2d6edf7991b"
+    },
+    "browserFailure": "Timed out waiting for document end reveals its source caret",
+    "browserLogSha256": "cddfec10de3f3f2ceb92cda498c43e158137a9f6249c034078b41cc9ea0c4faa",
+    "coreFailure": "admitted large motion rejected with TooLarge",
+    "coreLogSha256": "e8b08d6506550b5d92a309e2dcbf31bb8d45028c215573a8a60cf9ff3eec1d8e",
+    "scope": "same initial source-end and viewport assertions; later queued page assertions added to the after test"
+  },
+  "checks": [
+    {
+      "name": "core",
+      "tests": 479,
+      "logSha256": "f4efd21c871de886650f60d8c6f579a6e155d339a372e2f84dcbe3af791963a9"
+    },
+    {
+      "name": "native",
+      "tests": 128,
+      "logSha256": "4a0320bdd3938a207edc50d9a628ef1d33b7909ed17c88767c4e430c33a53c9e"
+    },
+    {
+      "name": "clippy",
+      "tests": null,
+      "logSha256": "d3e9cde0033fee433f8f5a2bedd30b8a87c3d9ed28d3bd95f43fc8e92d5a7d4f"
+    },
+    {
+      "name": "wasm-final-clippy",
+      "tests": null,
+      "logSha256": "980b43c96b6b3568bb3052bbc6cd6dcd4128031a7c2285d5e74d45a4edf9136a"
+    },
+    {
+      "name": "wasi-clippy",
+      "tests": null,
+      "logSha256": "3f98ffb8d371017722e1de51202165d67ede117b54f9e401294e25bf85fb9263"
+    },
+    {
+      "name": "production-final-build",
+      "tests": null,
+      "logSha256": "a745ff9821ab9ebac8c41adb9d741fbdfd4b35e2876f16903455f45cf80cebad"
+    }
+  ]
+}

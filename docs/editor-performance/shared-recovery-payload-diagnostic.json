@@ -1,0 +1,11 @@
+{
+  "baseCommit": "72b7a3eeb4caa03418943728c0039c2edbe1666c",
+  "scope": "same 51-test ordinary editor group including parser-budget fallback; Linux arm64, 2 CPUs, 10 GiB; test-only timeout diagnostics added after complete 175-test frozen run",
+  "tests": 51,
+  "readinessDeadlineMs": 3000,
+  "runnerDeadlineSeconds": 300,
+  "artifactSha256": "c2d50426213a19677c565c026ef84a0f21d2584457ac6e648532a48bfda418df",
+  "testSourceSha256": "465aaea569fae9887e246248c61915dbb0de258bb0c4d2e30233da921b36335a",
+  "logSha256": "7a67d06c58785f38d7d424633b6c1820ca671d2e14f82235963c02bef423475f",
+  "hostedFailureFixed": false
+}

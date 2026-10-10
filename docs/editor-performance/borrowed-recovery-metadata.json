@@ -1,0 +1,61 @@
+{
+  "manifest": {
+    "baseCommit": "2b1e482c54ef5c648306cb112edbdfca5209e894",
+    "sources": {
+      "crates/core/src/editor/folds.rs": "2306d4e8fcbcac0e712a0c1ca6995173d0772e737d0a47a926db0acf7d9923bd",
+      "crates/core/src/editor/recovery.rs": "ea4cad4a8048e63dc930c4a4d00295c88bb764292b4959efb5c767884761143d",
+      "frontend/src/state_actions/editor/loading.rs": "5940a6cfd04ced421a307261897500665cbba7bf9b07907b0630b0e152d438e4",
+      "frontend/src/state/workspace.rs": "1a2c28ecd05a2b45035b76ceb8e5914ea370be2074c572d2f0f51cbc406cb928"
+    },
+    "artifacts": {
+      "components.wasm": "aa1f7b69588e7f846732f470a714dd1403755473a5f4a4ab20366161843951fd",
+      "editor-library.wasm": "0564186bc8b74e792945ac53165cda7a0474661d606c4676815dad384e55ab90"
+    }
+  },
+  "scope": "shared recovery metadata validation; targeted both-adapter recovery/browser contracts, not full editor inventory or production memory measurement",
+  "browser": {
+    "tests": 35,
+    "groups": [
+      15,
+      20
+    ],
+    "readinessDeadlineMs": 3000,
+    "runnerDeadlineSeconds": 300,
+    "cpuLimit": 2,
+    "architecture": "linux-arm64",
+    "logSha256": "f2251fcd02a764793d427c01b85174a1b1b3ea0ecc39db930df430a8bde65c7b"
+  },
+  "checks": [
+    {
+      "name": "core",
+      "tests": 483,
+      "logSha256": "497617a729571b6a91e65409bc0a6069365032562120043da52817e5b5633112"
+    },
+    {
+      "name": "storage-backend",
+      "tests": 213,
+      "logSha256": "850bc593e341d82ff19f3370a76291a26f79a128ed5ac90b88dfbd8373e55458"
+    },
+    {
+      "name": "clippy",
+      "tests": null,
+      "logSha256": "0b92691b41c279883e9069e36208b9ce3ec6d632a3bff95cc06fabf9015a46ec"
+    },
+    {
+      "name": "wasm-build",
+      "tests": null,
+      "logSha256": "f6ce4494cdc6f04c4d89a35ceb23e2c7789c4fd3b89ddbf6b80a8f088ef86f4b"
+    },
+    {
+      "name": "wasm-clippy",
+      "tests": null,
+      "logSha256": "b2693342d19513e59b400727b5f2f40b7b2916ae4f0c4ea0a5207c5f0d02ce04"
+    },
+    {
+      "name": "wasi-clippy",
+      "tests": null,
+      "logSha256": "98a1c2344ce0c5c43da8d4fd0cbdbd7421f8adb7c7928a18332b29a0035827ba"
+    }
+  ],
+  "foldOracleCases": 419430
+}

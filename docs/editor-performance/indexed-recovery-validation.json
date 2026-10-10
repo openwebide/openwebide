@@ -1,0 +1,54 @@
+{
+  "manifest": {
+    "baseCommit": "ba33f5d0efe3ef4eea3a132db41d4f7daaca13fd",
+    "sources": {
+      "crates/core/src/editor/recovery.rs": "ce09e6fdcf50e94a7a4bfdb4914f647afc75481ba2977443268d5fa4a21d8991",
+      "frontend/src/state_actions/editor/loading.rs": "5940a6cfd04ced421a307261897500665cbba7bf9b07907b0630b0e152d438e4",
+      "frontend/src/state/workspace.rs": "1a2c28ecd05a2b45035b76ceb8e5914ea370be2074c572d2f0f51cbc406cb928"
+    },
+    "artifacts": {
+      "components.wasm": "93cf168ddbca66063cbbe89fcdafb10c4490899cf48ca144d9878d7373a9c5c2",
+      "editor-library.wasm": "edcb03e822d73cbe2b46c2ae91e6fc279d2227fdbb6c73effdc295b96d58d10e"
+    }
+  },
+  "scope": "final recovery admission and metadata validation; same shared core and EditorActions hydration facade in both workspace adapters",
+  "browser": {
+    "tests": 35,
+    "groups": [
+      15,
+      20
+    ],
+    "readinessDeadlineMs": 3000,
+    "runnerDeadlineSeconds": 300,
+    "cpuLimit": 2,
+    "architecture": "linux-arm64",
+    "logSha256": "c4eb5ef239b97cf435469c868ee509c68bd3cabb81cb7997bd127c6d6350ce04"
+  },
+  "checks": [
+    {
+      "name": "core",
+      "tests": 474,
+      "logSha256": "869b7e79a6ab4db5feecb0f08cbe237718243e6e711941102e2d621c85a52933"
+    },
+    {
+      "name": "native",
+      "tests": 128,
+      "logSha256": "5da214de8e6a3b2764450c0d8a313bf537bde0bbdb5d4c2df1e9490747ba076c"
+    },
+    {
+      "name": "clippy",
+      "tests": null,
+      "logSha256": "7848d60fae8f41c8ce42c593a1f3053e2a5566b6200423339d559cb62469cb75"
+    },
+    {
+      "name": "wasm-clippy",
+      "tests": null,
+      "logSha256": "817a53b62f986d2b0f7fa3b5cb9025f0558018c884bcdd1567bc3ff435e9e243"
+    },
+    {
+      "name": "wasi-clippy",
+      "tests": null,
+      "logSha256": "8b819eaba8ea071ac7cafde38d132e568f06db1eb549c83c5e64928ca2c4e763"
+    }
+  ]
+}

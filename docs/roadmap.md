@@ -65,13 +65,29 @@ tracks the remaining work rather than every optimization already shipped.
 
 **Remaining implementation**:
 
+- [ ] **Parser-aware ordinary input and decorations:** audit pending-analysis
+  behavior without delaying input. Cover HTML and Markdown body pairing,
+  deletion and Enter with a held worker reply and immediately after an edit;
+  the existing parsed-typing contract exercises completed analysis. Audit
+  retained structural decorations for current-source ownership. Explicit
+  Reindent, embedded comment actions, selection expansion and bracket jumps now
+  share cooperative preparation and request-time cancellation across keyboard
+  and menu entry points. All 187 editor browser contracts, including both font
+  matrices, pass in both modes
+  ([complete evidence](editor-performance/structural-navigation-full-browser.json));
+  this does not establish ordinary-input readiness or finish the remaining gates.
+
 - [ ] **Cold startup and native input:** remove remaining full-source shaping in
   touch and unsupported-layout fallbacks. Desktop startup now uses bounded native
   input for wrapped and nonuniform rows, with exactly measured origin paint while
   complete document extents prepare. Finish production startup and memory costs
   across admitted boundary workloads; finish touch pointer selection and
   source-owned caret/selection while preserving composition mappings and complete-native fallback
-  when bounded geometry cannot be proved.
+  when bounded geometry cannot be proved. Basic direct and queued keyboard
+  motion now uses editor admission instead of the separate 2 MiB structure
+  budget; measured neighborhoods retain source and validate only measured rows.
+  Complete projection/native normalization, long word/context traversal and
+  remaining synchronous selection publication still require bounded preparation.
 - [ ] **Tabbed, wrapped and bidirectional layout:** extend bounded preparation
   beyond eligible source-monotonic wrapped paragraphs with complete-word seams;
   finish bidirectional visual-run windows, fine long-row paint and incremental glyph
@@ -101,14 +117,72 @@ tracks the remaining work rather than every optimization already shipped.
   fallbacks. The shared core now exposes conservative measured coverage with
   endpoint rejection. The shared facade now retains coverage under the same
   source/style ownership policy as completed prefixes, with shared anchors and
-  composition fallback. Browser publication, independent renderer parity and
-  latency measurements remain unfinished. Extend
+  composition fallback. Eligible origin viewports now publish proved partial paint before complete
+  extents, with independent full-renderer checks, failed-proof fallback and
+  partial-to-complete cache invalidation in both modes. Covered positive scroll
+  offsets also paint without advertising complete document heights. Four near-limit
+  beginning-edit production repeats show styled viewport paint in 253–260 ms,
+  while full geometry still takes 1.18–1.24 seconds; cold viewport paint takes
+  1.57–1.62 seconds. Broader boundary latency and memory measurements, arbitrary
+  nonorigin coverage and the remaining full measurement costs are still unfinished. Extend
   shifted suffix reuse to changed long-token and plain-run boundaries; avoid repeated prefix
   segmentation for over-limit styled run tables. Eligible styled measurement paths
   now prepare run tables in yielding batches, including uncapped unwrapped
-  measurement fallback after the retained cache limit. Finish other initial
+  measurement fallback after the retained cache limit. Paragraph paint-boundary
+  validation and exact source-anchor mapping now advance in cooperative batches
+  before wrapped and unwrapped browser probes, with complete-only publication.
+  Unwrapped preparation now
+  builds the complete table once, retaining it only within the existing cache limit;
+  it no longer restarts after a capped initial pass. Finish other initial
   run-table construction and unsupported-boundary fallbacks that still segment
-  complete rows; avoid repeated over-limit fallback reconstruction.
+  complete rows; avoid repeated over-limit fallback reconstruction. Cooperative
+  styled-run preparation now suspends inside large Unicode graphemes using
+  bounded forward/context chunks, preserving the original paint boundaries;
+  synchronous coordinate, glyph-anchor and complete-layout construction still
+  require bounded preparation. Completed visual indexes now retain sparse long-cluster
+  boundaries so caret and paint-boundary queries skip their interiors and avoid
+  lookahead through an already indexed large grapheme; initial index construction
+  now exposes a resumable builder using the same bounded Unicode scanner as paint
+  segmentation. Native/row/admission index construction now also has a complete-only
+  cooperative document builder. Normal and lossy workspace reads now prepare
+  admission and complete indexes cooperatively through the shared editor facade,
+  with cancellation and draft protection. Recovery hydration now prepares saved
+  and draft indexes before atomic publication, and disk checks classify recovery
+  without rebuilding indexes; clean changed-disk reloads prepare cooperatively.
+  Explicit recovery-review reloads now also prepare complete indexes before
+  publishing, retain shared source allocations and preserve over-limit read-only
+  viewing. Immutable editor sources now share cached admission decisions, using
+  completed document summaries or cooperative rejection results. Finish remaining
+  synchronous document callers, recovery validation/copies, metadata capacity
+  growth, external borrowed-version allocation and final publication costs. Shared
+  save preparation and acknowledgements now retain the immutable written source,
+  preserving late-write ownership without duplicating its bytes. Prepared
+  documents now share their immutable source with the saved baseline; standalone
+  edits detach the baseline only when necessary to preserve in-place source edits.
+  Clean recovery snapshots now capture source directly without building indexes;
+  recovery validation counts lines only when saved folds require it.
+  Live recovery disk checks now compare committed document sources without
+  materializing persistence records, and clean disk reload preparation moves the
+  owned read source
+  ([both-adapter contracts](editor-performance/live-disk-recovery-browser.jsonl)).
+  Admission scans and persistence serialization remain work.
+  Recovered undo steps now retain the prepared saved/draft sources instead of
+  duplicating both full files; ordinary typing history keeps owned replacement
+  spans ([complete editor contracts](editor-performance/shared-recovery-history-browser.jsonl)).
+  Recovery capture, record clones and hydration preparation now share immutable
+  saved/draft sources; clean buffers without a document share their existing source.
+  Final recovery admission and fold row counts now reuse complete source-owned
+  indexes. Canonical JSON decoding now borrows encoded field bytes before
+  creating the owned decoded source. Encoding, complete JSON/network buffers,
+  final normalization costs still require work. Recovered full-source undo/redo
+  now publishes retained complete source/index versions instead of copying source
+  and rebuilding coordinates. The saved index remains retained until that history
+  step is released; common-prefix/suffix comparison, fold rebasing and frontend
+  publication/normalization still require bounded preparation and memory evidence.
+  Recovery metadata validation now checks borrowed selection positions and ordered
+  fold ranges directly, without cloning and sorting them; fold validation retains
+  only an ancestor-end stack bounded by nesting depth. Restoration still owns and
+  normalizes its final selections and fold state.
 - [ ] **Incremental syntax and structure:** finish larger retained-container reuse,
   warm semantic list assembly, paint-table iteration, shifted suffix metadata,
   parser context/selection-list extraction and final paint publication. Finish
@@ -116,11 +190,21 @@ tracks the remaining work rather than every optimization already shipped.
   and validation. Bound cache-missing fallback scans, whole-row capacity growth,
   scratch allocation and remaining final publication work. Synchronous document
   indexes still shift/splice in place; immutable retained tables must remain exact.
+  Edits now retain preceding rows with proved unchanged complete newline endings
+  and following rows when the replacement preserves their line boundary or moves
+  them to the document start;
+  changed long rows still rebuild their coordinate and visual indexes.
+  Row admission summaries, UTF-16 totals and native checkpoints now share the
+  visual character pass; remaining synchronous construction still needs bounded
+  preparation rather than relying on fewer full-row passes.
 - [ ] **Source ownership and storage:** finish external parser snapshots,
   remaining changed-revision paint/transport comparisons, metadata materialization
   and transport serialization, message decoding, diff shaping and native-text
   materialization. Browser request source publication and oversized-message fallback
-  still run synchronously. Bound remaining
+  still run synchronously. Combined row scans retain the geometry contracts, but
+  current production repeats still show 125–178 ms cold source-publication tasks
+  and 64–69 ms input tasks; these
+  source/controller costs remain responsiveness targets. Bound remaining
   initial capacity allocation, folded/bounded projection assembly, retained
   row/coordinate copies, changed indentation-guide copies and storage suffix
   byte/coordinate shifts. Long boundary rows still scan for admission. Revisit
@@ -135,6 +219,25 @@ tracks the remaining work rather than every optimization already shipped.
   and Linux Chrome PSS. Require actual near-1-MiB String styling through load,
   scrolling and input, plus repeated startup-scroll, initial-shaping and beginning
   edit samples. Existing multi-second results do not satisfy this gate.
+  Current production repeats cover both modes with wrapping on/off: near-byte-limit
+  input takes 169–210 ms and rejected Rust long-line input 109–154 ms, with roughly
+  741–858 MiB peak Chrome PSS ([record](editor-performance/rejected-source-production.jsonl)).
+  Long-line input improves over the preceding 674–713 ms cohort, but cold startup
+  still takes 1.45–3.95 seconds; these scrolled native-window samples do not verify
+  complete source after input or clear the responsiveness/memory gate.
+  Plain documents and same-owner parser-rejected documents now paint edits during
+  pending worker analysis; grammar retries and recovery remain active. Unfinished
+  wrapped geometry restarts when syntax preparation advances. Reduce remaining
+  source, layout and memory costs while preserving grammar paint coalescing,
+  localized row reuse, cancellation and bounded terminal fallback.
+  The source-sharing checkpoint additionally verifies complete source after beginning
+  edits in 16 fresh both-mode release samples, including actual near-1-MiB String
+  styling ([record](editor-performance/shared-saved-source-production.jsonl)). Styled
+  wrapped input paints in 251–262 ms but complete geometry still takes 1.21–1.25
+  seconds; cold startup reaches 3.98 seconds. Reduce those remaining costs.
+  Neutral rendering borrows immutable projection rows with a stable cache identity;
+  fallback completion remains a separate readiness condition. Verify styled-boundary
+  and beginning-edit production workloads before crediting broader improvements.
 - [ ] **Exact geometry and fallbacks:** retain complete-renderer extent/anchor/hit
   comparisons, font/feature/whitespace matrices, Unicode/caret mapping and failed-proof
   fallback contracts. Current painted coverage and exact retained caret anchors,
@@ -144,18 +247,34 @@ tracks the remaining work rather than every optimization already shipped.
   Improvements must preserve source/account/project ownership,
   pending edits, themes, supported previews, agent context and both adapter contracts.
 - [ ] **Reliable CI and release/PWA checks:** pass the complete native/WASI/WASM,
-  platform, browser and release-app checks reliably. Validate bounded browser
-  setup retries after the upstream Chrome download HTTP 502 failure. Repeat near-limit Linux
-  readiness and the complete suites; a local run or one green checkpoint is insufficient.
-  Cold queued-input checks explicitly defer neighborhood paint while preserving
-  source and selection comparisons; verify the complete suite on CI as well.
-  Host-plugin fixtures and explicit Output targeting preserve the memory/skill and
-  terminal contracts; verify focus/layout behavior in the complete browser partition.
-  Warm burst checks now wait for published parser/fallback paint and exact token-owned
-  dimensions; three Linux repetitions pass the strict burst and both-mode row-reuse
-  assertions, and the 147-test Linux editor component partition passes. Finish and
-  repeat full CI for this correction.
-  Current checkpoints and measured results are in [performance evidence](editor-performance.md).
+  platform, browser and release-app checks reliably. The embedded-comment
+  checkpoint `cc019c1` passed all five hosted jobs
+  ([receipt](editor-performance/grouped-ci-cc019c1.json)). Selection-capability
+  checkpoint `71997bc` passed all 184 editor browser tests locally and all five
+  hosted jobs ([receipt](editor-performance/grouped-ci-71997bc.json)). New structural navigation passes all 187 editor browser contracts and 128
+  native frontend tests ([receipt](editor-performance/structural-navigation-full-browser.json));
+  its own hosted CI remains required.
+
+  Investigate intermittent hosted readiness failures before declaring reliability.
+  `9d4f888` published the typed parser-budget fallback but did not finish paint
+  within the existing deadline, followed by five other failures
+  ([receipt](editor-performance/grouped-ci-9d4f888.json)). Earlier wrapped-startup
+  and parser-fallback failures at `3afca61` and `72b7a3e` also have unproven causes
+  and possible fixture contamination. Subsequent green checkpoints and isolated
+  local passes do not establish those causes. Keep parser/paint/geometry timeout
+  diagnostics and repeat near-limit Linux/x64 readiness, complete hosted suites
+  and production responsiveness/memory checks with unchanged readiness deadlines
+  and paint/probe limits.
+
+  Preserve complete compiled-artifact inventories, independently checked disjoint
+  groups of at most 64 editor tests, the 300-second browser deadline, separate
+  font matrices and every other UI partition. Repeat merged editor/plugin and
+  subsequent implementation checkpoints, including warm highlight bursts and
+  wrapped-row reuse, file-switch cancellation, cold queued-input source/selection
+  ownership, host-plugin focus/layout and explicit Output/terminal targeting.
+  Validate bounded browser-setup retries after upstream Chrome download HTTP 502
+  failures. Historical checkpoint counts, receipts and measured results live in
+  [performance evidence](editor-performance.md); they are not the current inventory.
 - [ ] **Physical Chrome/Edge PWA input:** verify real input-method commit/cancel,
   Unicode and LF/CRLF undo/redo, multiple-cursor clipboard behavior and touch input
   without rewriting unrelated text. Automated CDP composition is supporting evidence,
@@ -163,7 +282,11 @@ tracks the remaining work rather than every optimization already shipped.
 - [ ] **Folder permissions and recovery:** expand permission/error regressions and
   verify real local directory-handle permission loss/regrant and reload recovery.
   Existing held-write contracts cover failures and stale account/folder/bridge/project
-  results, background saves and newer edits; the disposable recovery check has no
+  results, background saves, newer edits and a clean disk reload while a save waits.
+  Late acknowledgements reconcile active and retained snapshot dirty state with
+  the actual written source
+  ([failure/pass evidence](editor-performance/late-save-reload-browser.jsonl)).
+  The disposable recovery check has no
   native local folder handle. Coordinate with Offline & error-state recovery below.
 - [ ] **Accessibility and integration:** verify keyboard focus/Tab escape, assistive
   technology, touch, theme integration and PWA loading across the completed editor,

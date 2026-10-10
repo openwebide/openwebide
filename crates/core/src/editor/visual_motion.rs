@@ -1,6 +1,9 @@
 //! Measured visual rows are data; movement and selection policy stay in Rust.
 use super::{EditError, FoldProjection, SelectionError};
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 use unicode_segmentation::UnicodeSegmentation;
 
 pub const MAX_VISUAL_CARETS: usize = 65_536;
@@ -18,7 +21,7 @@ pub struct VisualCaret {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VisualLayout {
-    pub(super) source: String,
+    pub(super) source: Arc<String>,
     pub(super) projection: FoldProjection,
     pub(super) identity: String,
     carets: BTreeMap<usize, Vec<VisualCaret>>,
@@ -98,6 +101,77 @@ pub fn visual_text_run_ranges(text: &str) -> impl Iterator<Item = std::ops::Rang
     })
 }
 
+fn valid_caret_offsets(projection: &FoldProjection, carets: &[VisualCaret]) -> bool {
+    let mut by_line: BTreeMap<usize, BTreeSet<usize>> = BTreeMap::new();
+    for caret in carets {
+        let Some(line) = projection
+            .lines()
+            .partition_point(|line| line.visible_start <= caret.offset)
+            .checked_sub(1)
+        else {
+            return false;
+        };
+        by_line
+            .entry(line)
+            .or_default()
+            .insert(caret.offset - projection.lines()[line].visible_start);
+    }
+    for (line, offsets) in by_line {
+        let start = projection.lines()[line].visible_start;
+        let end = projection
+            .lines()
+            .get(line + 1)
+            .map_or(projection.text().len(), |next| next.visible_start);
+        let text = &projection.text()[start..end];
+        let body = text
+            .strip_suffix("\r\n")
+            .or_else(|| text.strip_suffix('\n'))
+            .unwrap_or(text);
+        if let Some(index) = projection.visual_line_index(line) {
+            let bytes: Vec<_> = offsets
+                .iter()
+                .copied()
+                .take_while(|offset| *offset <= body.len())
+                .collect();
+            for chunk in bytes.chunks(super::MAX_ROW_GEOMETRY_ANCHORS) {
+                if index
+                    .boundary_glyphs(body, chunk)
+                    .is_none_or(|glyphs| glyphs.len() != chunk.len())
+                {
+                    return false;
+                }
+            }
+            if offsets
+                .iter()
+                .any(|offset| *offset > body.len() && *offset != text.len())
+            {
+                return false;
+            }
+        } else {
+            // Short rows need one bounded scan, not a scan of the file prefix.
+            // Larger rows must carry complete prepared visual coordinates.
+            if body.len() > super::MAX_MEASURE_BYTES {
+                return false;
+            }
+            let mut pending = offsets;
+            for offset in text
+                .grapheme_indices(true)
+                .map(|(offset, _)| offset)
+                .chain([text.len()])
+            {
+                pending.remove(&offset);
+                if pending.is_empty() {
+                    break;
+                }
+            }
+            if !pending.is_empty() {
+                return false;
+            }
+        }
+    }
+    true
+}
+
 impl VisualLayout {
     /// Partial measurement is allowed, but every moved cursor must have its
     /// current and neighboring visual row. Missing coverage rejects atomically.
@@ -108,7 +182,26 @@ impl VisualLayout {
         rows: usize,
         carets: Vec<VisualCaret>,
     ) -> Result<Self, SelectionError> {
-        if source.len() > super::MAX_STRUCTURE_BYTES || carets.len() > MAX_VISUAL_CARETS {
+        if source.len() > super::MAX_EDITOR_BYTES {
+            return Err(SelectionError::TooLarge);
+        }
+        Self::from_source(
+            Arc::new(source.to_owned()),
+            projection,
+            identity,
+            rows,
+            carets,
+        )
+    }
+
+    fn from_source(
+        source: Arc<String>,
+        projection: FoldProjection,
+        identity: String,
+        rows: usize,
+        carets: Vec<VisualCaret>,
+    ) -> Result<Self, SelectionError> {
+        if source.len() > super::MAX_EDITOR_BYTES || carets.len() > MAX_VISUAL_CARETS {
             return Err(SelectionError::TooLarge);
         }
         if identity.is_empty()
@@ -123,19 +216,7 @@ impl VisualLayout {
         {
             return Err(EditError::InvalidSelection.into());
         }
-        let mut offsets: BTreeSet<_> = carets.iter().map(|caret| caret.offset).collect();
-        for offset in projection
-            .text()
-            .grapheme_indices(true)
-            .map(|(offset, _)| offset)
-            .chain(std::iter::once(projection.text().len()))
-        {
-            offsets.remove(&offset);
-            if offsets.is_empty() {
-                break;
-            }
-        }
-        if !offsets.is_empty() {
+        if !valid_caret_offsets(&projection, &carets) {
             return Err(EditError::InvalidSelection.into());
         }
         let mut by_row: BTreeMap<usize, Vec<VisualCaret>> = BTreeMap::new();
@@ -156,7 +237,7 @@ impl VisualLayout {
             })
             .collect();
         Ok(Self {
-            source: source.into(),
+            source,
             projection,
             identity,
             carets: by_row,
@@ -168,6 +249,26 @@ impl VisualLayout {
     /// The same target policy consumes either complete or neighborhood geometry.
     pub fn neighborhood(
         source: &str,
+        projection: FoldProjection,
+        identity: String,
+        lines: &[super::VisualLineRows],
+        carets: Vec<VisualCaret>,
+    ) -> Result<Self, SelectionError> {
+        if source.len() > super::MAX_EDITOR_BYTES {
+            return Err(SelectionError::TooLarge);
+        }
+        Self::neighborhood_source(
+            Arc::new(source.to_owned()),
+            projection,
+            identity,
+            lines,
+            carets,
+        )
+    }
+
+    /// Retain the exact source while validating only measured logical rows.
+    pub fn neighborhood_source(
+        source: Arc<String>,
         projection: FoldProjection,
         identity: String,
         lines: &[super::VisualLineRows],
@@ -194,7 +295,7 @@ impl VisualLayout {
             .len()
             .checked_add(1)
             .ok_or(SelectionError::TooLarge)?;
-        let mut result = Self::new(source, projection, identity, bound, carets)?;
+        let mut result = Self::from_source(source, projection, identity, bound, carets)?;
         result.neighbors = neighbors;
         Ok(result)
     }
@@ -264,6 +365,112 @@ impl VisualLayout {
 mod tests {
     use super::*;
     use crate::editor::{Document, Indentation, Selection, SelectionMotion};
+
+    #[test]
+    fn large_neighborhoods_share_source_and_support_queued_motion_with_sparse_validation() {
+        let row = "abcdefghijklmnopqrstuvwx 文😀\r\n";
+        let source = row.repeat(super::super::MAX_STRUCTURE_BYTES / row.len() + 1);
+        let mut doc = Document::for_editor(source.clone()).unwrap();
+        let projection = doc.projection();
+        let line = projection.lines().len() / 2;
+        let start = projection.lines()[line].visible_start;
+        doc.set_selections(vec![Selection::caret(start + 1)])
+            .unwrap();
+        let lines: Vec<_> = (line - 1..=line + 1)
+            .map(|line| super::super::VisualLineRows { line, rows: 1 })
+            .collect();
+        let carets: Vec<_> = lines
+            .iter()
+            .flat_map(|line| {
+                let start = projection.lines()[line.line].visible_start;
+                row.strip_suffix("\r\n")
+                    .unwrap()
+                    .grapheme_indices(true)
+                    .map(move |(offset, _)| VisualCaret {
+                        offset: start + offset,
+                        column: i64::try_from(offset).unwrap() * 64,
+                        row: start,
+                    })
+            })
+            .collect();
+        let retained = doc.shared_text();
+        let layout = VisualLayout::neighborhood_source(
+            retained.clone(),
+            projection,
+            "large".into(),
+            &lines,
+            carets,
+        )
+        .unwrap();
+        assert!(Arc::ptr_eq(&layout.source, &retained));
+        let mut queue = super::super::MotionQueue::new(&doc).unwrap();
+        queue
+            .push(super::super::MotionRequest {
+                motion: SelectionMotion::Down,
+                extend: false,
+                wrapped: true,
+            })
+            .unwrap();
+        queue
+            .apply_next(&mut doc, Indentation::default(), Some(&layout))
+            .unwrap();
+        assert_eq!(doc.selections(), &[Selection::caret(start + row.len() + 1)]);
+        assert_eq!(doc.text(), source);
+        assert!(!doc.can_undo());
+        assert!(!doc.is_dirty());
+    }
+
+    #[test]
+    fn sparse_caret_validation_matches_complete_unicode_and_line_ending_boundaries() {
+        for body in [
+            "文😀e\u{301} ".repeat(8_000),
+            format!("e{} tail", "\u{301}".repeat(70_000)),
+            "🇦🇧🇨🇩 ".repeat(5_000),
+        ] {
+            let source = format!("short\n{body}\r\nlast");
+            let document = Document::for_editor(source.clone()).unwrap();
+            let projection = document.projection();
+            let expected: BTreeSet<_> = source
+                .grapheme_indices(true)
+                .map(|(offset, _)| offset)
+                .chain([source.len()])
+                .collect();
+            let offsets = source
+                .char_indices()
+                .map(|(offset, _)| offset)
+                .step_by(127)
+                .chain([
+                    6,
+                    6 + body.len(),
+                    7 + body.len(),
+                    8 + body.len(),
+                    source.len(),
+                ]);
+            for offset in offsets {
+                assert_eq!(
+                    valid_caret_offsets(
+                        &projection,
+                        &[VisualCaret {
+                            offset,
+                            column: 0,
+                            row: 0
+                        }]
+                    ),
+                    expected.contains(&offset),
+                    "boundary at {offset}"
+                );
+            }
+        }
+        let document = Document::for_editor("x".repeat(65_537)).unwrap();
+        let carets: Vec<_> = (0..MAX_VISUAL_CARETS)
+            .map(|offset| VisualCaret {
+                offset,
+                column: 0,
+                row: 0,
+            })
+            .collect();
+        assert!(valid_caret_offsets(&document.projection(), &carets));
+    }
 
     #[test]
     fn long_line_index_keeps_unicode_byte_and_utf16_boundaries() {

@@ -5,6 +5,13 @@ use openwebide_core::editor::{EditError, FoldProjection, ProjectionError, Select
 
 pub use crate::state::workspace::EditorNativeContext;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum InitialNativeContextPreparation {
+    WaitingForDocument,
+    NotNeeded,
+    Bound,
+}
+
 /// Native ownership can continue when the committed source still matches the
 /// browser's value. Other replicas or a full context request reconciliation.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -74,18 +81,25 @@ impl EditorActions {
     /// Install source-owned surrounding text before initial layout.
     /// Geometry remains explicitly pending; this does not publish source extents.
     pub fn begin_initial_native_context(self) -> bool {
+        self.prepare_initial_native_context() == InitialNativeContextPreparation::Bound
+    }
+
+    /// Document preparation may finish after the input node mounts. Only that
+    /// unfinished preparation is retryable; a released geometry fallback must
+    /// not restart initial binding indefinitely.
+    pub fn prepare_initial_native_context(self) -> InitialNativeContextPreparation {
         if self.is_composing() || self.bound_native_context().is_some() || self.limit().is_some() {
-            return false;
+            return InitialNativeContextPreparation::NotNeeded;
         }
         let Some(mut context) = self.native_context() else {
-            return false;
+            return InitialNativeContextPreparation::WaitingForDocument;
         };
         if !context.projection.is_windowed() {
-            return false;
+            return InitialNativeContextPreparation::NotNeeded;
         }
         context.geometry_pending = true;
         self.set_native_binding(Some(context));
-        true
+        InitialNativeContextPreparation::Bound
     }
 
     pub fn native_geometry_pending(self) -> bool {

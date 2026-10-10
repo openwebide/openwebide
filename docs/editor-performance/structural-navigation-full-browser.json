@@ -1,0 +1,43 @@
+{
+  "scope": "Complete independently inventoried editor browser suite, library, all component groups and both independent font matrices",
+  "runner": "Linux arm64 Chromium 154; two CPUs; 10 GiB; existing 300-second runner and unchanged readiness deadlines",
+  "plannedEditorTests": 187,
+  "executedTests": 187,
+  "passedTests": 187,
+  "failedTests": 0,
+  "groupCounts": [
+    22,
+    55,
+    54,
+    54,
+    1,
+    1
+  ],
+  "terminalExitCode": 0,
+  "manifest": {
+    "base": "71997bcd1ad896510a86909f9ac6744e808d2b70",
+    "sourceSha256": {
+      "frontend/src/state_actions/editor.rs": "79c7549455ed8a50451dbbb416eda697585fd6e8c66a8212a9f5b502bacdb611",
+      "frontend/src/state_actions/editor/structural_actions.rs": "88110d598d2d2ff841138b6e88c597f785a7350c39f9e1d04c7584cf9ee0c574",
+      "frontend/src/state_actions/editor/preparation.rs": "d0fb8fb102d4f12f3bb952f1ccd323ddcc3914309b469394450f6e5747068289",
+      "frontend/src/components/editor.rs": "350e0742a481344292056ed048169f5e153a518737798a38fb94c7292496abc9",
+      "frontend/src/editor_worker.rs": "62d48be6c91f79c4ac6befd656e042b6306c5392f3bb0c36a57da9177491e5c6",
+      "frontend/tests/components/editor.rs": "a5e32c555276987a510aca550a43adb34cb4a5b47bdff4bdbec20e8d2de77642",
+      "tools/run-editor-browser-tests.py": "81a3cce570c0448a4a3493e899b3ae6922bff0704b656a12d85de42f2881378b"
+    },
+    "artifactSha256": {
+      "components.wasm": "33807d6b2b729b71957e0dddf587e5238d736e05bd8a8c4bab09a9e48605eb62",
+      "editor-library.wasm": "e077867068843c13ab31ca1ee567931d4480c57e87bf0f0f82faca22dd68113b"
+    }
+  },
+  "logSha256": "bdf7b22c54d967533c3bc6441e9709d4a44aeb8a43f638f8f1e316538fad1e9b",
+  "results": [
+    "test result: ok. 22 passed; 0 failed; 0 ignored; 6 filtered out; finished in 1.01s",
+    "test result: ok. 55 passed; 0 failed; 0 ignored; 485 filtered out; finished in 97.80s",
+    "test result: ok. 54 passed; 0 failed; 0 ignored; 486 filtered out; finished in 31.50s",
+    "test result: ok. 54 passed; 0 failed; 0 ignored; 486 filtered out; finished in 50.26s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 539 filtered out; finished in 21.23s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 539 filtered out; finished in 16.39s"
+  ],
+  "limits": "This checkpoint establishes local automated editor contracts in both workspace modes; hosted reliability, production responsiveness/memory and physical-device gates remain open."
+}

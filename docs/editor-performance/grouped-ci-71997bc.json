@@ -1,0 +1,39 @@
+{
+  "conclusion": "success",
+  "headSha": "71997bcd1ad896510a86909f9ac6744e808d2b70",
+  "jobs": [
+    {
+      "name": "frontend",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38083897477/job/114306262146"
+    },
+    {
+      "name": "docker",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38083897477/job/114306262372"
+    },
+    {
+      "name": "backend-and-crates",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38083897477/job/114306262385"
+    },
+    {
+      "name": "bridge-windows",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38083897477/job/114306262391"
+    },
+    {
+      "name": "frontend-ui-tests",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38083897477/job/114306262419"
+    }
+  ],
+  "status": "completed",
+  "url": "https://github.com/openwebide/openwebide/actions/runs/38083897477",
+  "reliability": "All five jobs pass for this selection-capability checkpoint; older readiness failure causes and verification of newer changes remain open."
+}

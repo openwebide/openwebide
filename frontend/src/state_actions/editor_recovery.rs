@@ -136,6 +136,11 @@ impl RecoveryContext {
             .workspace
             .editor_recovery(&project, self.read_only.get_untracked())
             .is_ok_and(|state| !state.files.is_empty());
+        let handle = self
+            .projects
+            .local_handles
+            .with_untracked(|handles| handles.get(&id).cloned());
+        let bridge = self.settings.bridge_url.get_untracked();
         let ticket = self.next_ticket();
         self.state.projects.update(|projects| {
             let entry = projects.entry(id).or_insert(RecoveryProject {
@@ -174,7 +179,29 @@ impl RecoveryContext {
             } else if occupied && matches!(policy, LoadPolicy::Initial) {
                 RecoveryPhase::Conflict("Saved editor files are available. Choose which files to keep before recovery saves resume.".into())
             } else {
-                match self.workspace.restore_editor_recovery(&project, &guard, &record.state, self.read_only.get_untracked()) {
+                let current = || {
+                    self.current(account, &project, ticket)
+                        && self
+                            .projects
+                            .local_handles
+                            .try_with_untracked(|handles| handles.get(&id).cloned())
+                            == Some(handle.clone())
+                        && self.settings.bridge_url.try_get_untracked().as_ref() == Some(&bridge)
+                };
+                let hydrated = super::editor::EditorActions::restore_recovery(
+                    self.workspace,
+                    &project,
+                    &guard,
+                    &record.state,
+                    self.read_only.get_untracked(),
+                    current,
+                )
+                .await;
+                if !current() {
+                    self.reject_changed_root(account, id, ticket);
+                    return;
+                }
+                match hydrated {
                     Ok(Some(hydrated)) => {
                         self.workspace.editor_recovery_checks.update(|checks| {
                             checks.retain(|(project, _), _| *project != id);
@@ -550,12 +577,14 @@ fn check_files(ctx: RecoveryContext, id: i64) {
         let _check = CheckGuard { ctx, id, ticket };
         for path in paths {
             let current = || {
-                !ctx.workspace
-                    .editor_composition
-                    .with_untracked(|composition| {
-                        composition.as_ref().is_some_and(|owner| owner.key.0 == id)
-                    })
-                    && ctx.auth.generation.try_get_untracked() == Some(account)
+                ctx.auth.generation.try_get_untracked() == Some(account)
+                    && ctx
+                        .workspace
+                        .editor_composition
+                        .try_with_untracked(|composition| {
+                            composition.as_ref().is_none_or(|owner| owner.key.0 != id)
+                        })
+                        == Some(true)
                     && ctx.projects.project(id).is_some_and(|current| {
                         Workspace::root_identity(&current) == Workspace::root_identity(&project)
                     })
@@ -591,40 +620,107 @@ fn check_files(ctx: RecoveryContext, id: i64) {
             let key = (id, path.clone());
             // Always reconcile the latest committed document, never an old draft
             // captured before the disk read. Edits during verification are retained.
-            let recovery = ctx.workspace.editor_documents.with_untracked(|documents| {
-                documents
-                    .get(&key)
-                    .map(openwebide_core::editor::Document::recovery)
+            let result = ctx.workspace.editor_documents.with_untracked(|documents| {
+                documents.get(&key).map(|document| {
+                    result.and_then(|disk| {
+                        document
+                            .recovery_disk_state(disk.as_deref())
+                            .map(|state| (state, disk))
+                    })
+                })
             });
-            let Some(recovery) = recovery else {
+            let Some(result) = result else {
                 ctx.workspace.editor_recovery_checks.update(|checks| {
                     checks.remove(&key);
                 });
                 continue;
             };
-            let result = result.and_then(|disk| {
-                recovery
-                    .reconcile_disk(disk.as_deref())
-                    .map(|(document, state)| (document, state, disk))
-            });
             match result {
-                Ok((document, state, disk)) => {
+                Ok((state, disk)) => {
                     match state {
                         RecoveryDiskState::Current => {}
                         RecoveryDiskState::AlreadySaved => {
-                            ctx.workspace.editor_documents.update(|documents| {
-                                if let Some(document) = documents.get_mut(&key) {
-                                    document
-                                        .mark_saved_version(disk.as_deref().unwrap_or_default());
-                                }
-                            });
-                            update_buffer(ctx.workspace, id, &path, document.text(), false);
+                            let disk = disk.unwrap_or_default();
+                            let source = ctx
+                                .workspace
+                                .editor_documents
+                                .try_update(|documents| {
+                                    let document = documents.get_mut(&key)?;
+                                    let source = if document.matches_text(&disk) {
+                                        document.shared_text()
+                                    } else {
+                                        std::sync::Arc::new(disk)
+                                    };
+                                    document.mark_saved_source(source.clone());
+                                    Some(source)
+                                })
+                                .flatten();
+                            if let Some(source) = source {
+                                update_buffer_source(
+                                    ctx.workspace,
+                                    id,
+                                    &path,
+                                    source.into(),
+                                    false,
+                                );
+                            }
                         }
                         RecoveryDiskState::Reloaded => {
-                            ctx.workspace.editor_documents.update(|documents| {
-                                documents.insert(key.clone(), document.clone());
-                            });
-                            update_buffer(ctx.workspace, id, &path, document.text(), false);
+                            let retained =
+                                ctx.workspace.editor_documents.with_untracked(|documents| {
+                                    documents.get(&key).map(|document| {
+                                        (document.revision(), document.shared_text())
+                                    })
+                                });
+                            let owned = || {
+                                current()
+                                    && ctx.workspace.editor_documents.try_with_untracked(
+                                        |documents| {
+                                            documents.get(&key).zip(retained.as_ref()).is_some_and(
+                                                |(document, (revision, source))| {
+                                                    document.revision() == *revision
+                                                        && std::sync::Arc::ptr_eq(
+                                                            &document.shared_text(),
+                                                            source,
+                                                        )
+                                                },
+                                            )
+                                        },
+                                    ) == Some(true)
+                            };
+                            let source = std::sync::Arc::new(disk.unwrap());
+                            let prepared =
+                                super::editor::EditorActions::prepare_source(&source, owned).await;
+                            if !owned() {
+                                continue;
+                            }
+                            match prepared {
+                                Ok(Some(document)) => {
+                                    ctx.workspace.editor_documents.update(|documents| {
+                                        documents.insert(key.clone(), document.clone());
+                                    });
+                                    update_buffer_source(
+                                        ctx.workspace,
+                                        id,
+                                        &path,
+                                        document.shared_text().into(),
+                                        false,
+                                    );
+                                }
+                                Ok(None) => continue,
+                                Err(error) => {
+                                    ctx.workspace.editor_recovery_checks.update(|checks| {
+                                        checks.insert(
+                                            key,
+                                            RecoveredFileIssue::Unavailable(
+                                                openwebide_core::editor::EditError::Capacity(error)
+                                                    .to_string(),
+                                            ),
+                                        );
+                                    });
+                                    continue;
+                                }
+                            }
                         }
                         RecoveryDiskState::Conflict | RecoveryDiskState::Missing => {
                             ctx.workspace.editor_recovery_checks.update(|checks| {
@@ -651,11 +747,17 @@ fn check_files(ctx: RecoveryContext, id: i64) {
     });
 }
 
-fn update_buffer(workspace: WorkspaceState, id: i64, path: &str, content: &str, dirty: bool) {
+fn update_buffer_source(
+    workspace: WorkspaceState,
+    id: i64,
+    path: &str,
+    content: crate::state::workspace::EditorText,
+    dirty: bool,
+) {
     batch(|| {
         workspace.editor_buffers.update(|buffers| {
             if let Some(buffer) = buffers.get_mut(&(id, path.into())) {
-                buffer.content = content.into();
+                buffer.content.clone_from(&content);
                 buffer.dirty = dirty;
             }
         });
@@ -664,14 +766,14 @@ fn update_buffer(workspace: WorkspaceState, id: i64, path: &str, content: &str, 
                 .open_file
                 .with_untracked(|open| open.as_deref() == Some(path))
         {
-            workspace.content.set(content.into());
+            workspace.content.set(content.clone());
             workspace.dirty.set(dirty);
         } else {
             workspace.snapshots.update(|snapshots| {
                 if let Some(snapshot) = snapshots.get_mut(&id)
                     && snapshot.open_file.as_deref() == Some(path)
                 {
-                    snapshot.content = content.into();
+                    snapshot.content.clone_from(&content);
                     snapshot.dirty = dirty;
                 }
             });
@@ -725,16 +827,13 @@ pub async fn verify_recovered_save(
     {
         return Ok(());
     }
-    let recovery = workspace.editor_documents.with_untracked(|documents| {
-        documents
-            .get(&key)
-            .map(openwebide_core::editor::Document::recovery)
-    });
     let result = disk.and_then(|disk| {
-        let recovery = recovery.ok_or("The recovered document's baseline is not ready")?;
-        recovery
-            .reconcile_disk(disk.as_deref())
-            .map(|(_, state)| state)
+        workspace.editor_documents.with_untracked(|documents| {
+            documents
+                .get(&key)
+                .ok_or_else(|| "The recovered document's baseline is not ready".to_string())?
+                .recovery_disk_state(disk.as_deref())
+        })
     });
     let issue = match result {
         Ok(RecoveryDiskState::Current | RecoveryDiskState::AlreadySaved) => return Ok(()),
@@ -750,7 +849,7 @@ pub async fn verify_recovered_save(
 }
 
 impl RecoveryContext {
-    fn review_current(self, scope: &FileReviewGuard) -> bool {
+    fn review_root_current(self, scope: &FileReviewGuard) -> bool {
         self.state.file_review_ticket.try_get_untracked() == Some(scope.ticket)
             && self.auth.generation.try_get_untracked() == Some(scope.account)
             && self.projects.active_project.try_get_untracked() == Some(Some(scope.project.id))
@@ -766,6 +865,9 @@ impl RecoveryContext {
                 .try_with_untracked(|handles| handles.get(&scope.project.id).cloned())
                 == Some(scope.handle.clone())
             && self.settings.bridge_url.try_get_untracked().as_ref() == Some(&scope.bridge)
+    }
+    fn review_current(self, scope: &FileReviewGuard) -> bool {
+        self.review_root_current(scope)
             && self.workspace.editor_recovery_guard_matches(
                 &scope.project,
                 &scope.guard,
@@ -840,6 +942,32 @@ impl RecoveryContext {
         }
     }
 
+    async fn read_review_current(
+        self,
+        ws: &Workspace,
+        scope: &FileReviewGuard,
+    ) -> Option<Option<String>> {
+        let result = read_review_disk(ws, &scope.path).await;
+        if !self.review_current(scope) {
+            self.invalidate_review(scope);
+            return None;
+        }
+        let disk = match result {
+            Ok(disk) => disk,
+            Err(error) => {
+                self.ui.notify(error);
+                self.state.file_review.set(None);
+                return None;
+            }
+        };
+        if disk != scope.disk {
+            self.state.file_review.set(None);
+            self.ui.notify("The disk file changed while its review was open. Review it again before choosing an action.");
+            return None;
+        }
+        Some(disk)
+    }
+
     fn resolve_file(self, overwrite: bool) {
         let scope = self
             .file_guard
@@ -856,24 +984,9 @@ impl RecoveryContext {
             return;
         };
         spawn_local(async move {
-            let result = read_review_disk(&ws, &scope.path).await;
-            if !self.review_current(&scope) {
-                self.invalidate_review(&scope);
+            let Some(disk) = self.read_review_current(&ws, &scope).await else {
                 return;
-            }
-            let disk = match result {
-                Ok(disk) => disk,
-                Err(error) => {
-                    self.ui.notify(error);
-                    self.state.file_review.set(None);
-                    return;
-                }
             };
-            if disk != scope.disk {
-                self.state.file_review.set(None);
-                self.ui.notify("The disk file changed while its review was open. Review it again before choosing an action.");
-                return;
-            }
             let key = (scope.project.id, scope.path.clone());
             if overwrite {
                 self.workspace.editor_recovery_overwrites.update(|permits| {
@@ -891,12 +1004,48 @@ impl RecoveryContext {
                 self.state.file_review.set(None);
                 self.save_file.run(());
             } else if let Some(disk) = disk {
+                let source = std::sync::Arc::new(disk);
+                let revision = self.workspace.editor_source_revision.get_untracked();
+                let owned = || {
+                    self.review_root_current(&scope)
+                        && self.workspace.editor_source_revision.try_get_untracked()
+                            == Some(revision)
+                        && self
+                            .workspace
+                            .editor_composition
+                            .try_with_untracked(Option::is_none)
+                            == Some(true)
+                };
+                let prepared = super::editor::EditorActions::prepare_source(&source, owned).await;
+                if !owned() || !self.review_current(&scope) {
+                    self.invalidate_review(&scope);
+                    return;
+                }
+                // Preparation yields to other host activity. Recheck the reviewed
+                // disk version before publishing its completed editor snapshot.
+                if self.read_review_current(&ws, &scope).await.is_none() {
+                    return;
+                }
+                if !owned() {
+                    self.invalidate_review(&scope);
+                    return;
+                }
+                let document = match prepared {
+                    Ok(Some(document)) => Some(document),
+                    Ok(None) => {
+                        self.invalidate_review(&scope);
+                        return;
+                    }
+                    // Capacity limits retain the existing bounded read-only view.
+                    Err(_) => None,
+                };
                 batch(|| {
                     self.workspace.editor_documents.update(|documents| {
-                        documents.insert(
-                            key.clone(),
-                            openwebide_core::editor::Document::new(disk.clone()),
-                        );
+                        if let Some(document) = document {
+                            documents.insert(key.clone(), document);
+                        } else {
+                            documents.remove(&key);
+                        }
                     });
                     self.read_only.set(false);
                     self.workspace.editor_buffers.update(|buffers| {
@@ -904,7 +1053,13 @@ impl RecoveryContext {
                             buffer.read_only = false;
                         }
                     });
-                    update_buffer(self.workspace, scope.project.id, &scope.path, &disk, false);
+                    update_buffer_source(
+                        self.workspace,
+                        scope.project.id,
+                        &scope.path,
+                        source.clone().into(),
+                        false,
+                    );
                     self.workspace.editor_recovery_checks.update(|checks| {
                         checks.remove(&key);
                     });

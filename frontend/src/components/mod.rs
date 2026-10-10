@@ -43,6 +43,7 @@ pub use editor::{
     bounded_paragraph_matches_complete, bounded_wrapped_matches_complete, highlight_count,
     retained_paragraph_matches_complete, take_highlight_segment_bytes, take_highlight_source_bytes,
     take_paragraph_prefix_reconciliations, take_paragraph_suffix_probes, viewport_highlight_count,
+    wrapped_coverage_matches_complete,
 };
 #[cfg(feature = "test-support")]
 pub use editor_geometry::{

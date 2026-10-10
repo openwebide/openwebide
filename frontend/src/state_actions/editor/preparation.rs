@@ -133,6 +133,45 @@ impl EditorActions {
             || !self.syntax_is_pending()
     }
 
+    /// Preserve grammar paint across pending analysis, even when the retained
+    /// generation is temporarily neutral. Plain documents can publish current
+    /// text immediately, once terminal fallback has its complete row table.
+    pub fn retain_pending_paint(self, prepared_source: bool, has_rows: bool) -> bool {
+        self.syntax_is_pending()
+            && (prepared_source
+                || (has_rows
+                    && (!self.full_row_paint_ready()
+                        || (self.key().is_some_and(|key| {
+                            openwebide_core::highlight::language_from_path(&key.1)
+                                != openwebide_core::highlight::Language::Plain
+                        }) && !self.pending_plain_after_rejection()))))
+    }
+
+    /// A rejected parser result establishes neutral paint for subsequent edits in
+    /// the same document ownership. Retry grammar analysis in the background;
+    /// never carry this policy across a read, project, account or rule change.
+    fn pending_plain_after_rejection(self) -> bool {
+        if !self.worker_syntax_pending() {
+            return false;
+        }
+        self.workspace
+            .editor_preparation
+            .with_untracked(|prepared| {
+                prepared.as_ref().is_some_and(|prepared| {
+                    let scope = &prepared.scope;
+                    prepared.status == openwebide_core::editor::SyntaxStatus::TooLarge
+                        && self.key().as_ref() == Some(&scope.key)
+                        && self.workspace.pending_epoch.get_untracked() == scope.epoch
+                        && self.workspace.editor_read_revision.get_untracked()
+                            == scope.read_revision
+                        && self.account_generation() == scope.account_generation
+                        && self.rules_untracked().indentation.tab_width() == scope.tab_width
+                        && self.workspace.editor_source_revision.get_untracked()
+                            > scope.source_revision
+                })
+            })
+    }
+
     /// Initial neutral viewport paint is independent of whole-file fallback tokens.
     /// Wrapped/nonuniform rows and large paint still require complete preparation.
     pub fn viewport_paint_ready(self, source_rows: &[usize]) -> bool {
@@ -229,6 +268,20 @@ impl EditorActions {
                     )
                 })),
             )
+        }
+    }
+
+    /// Neutral rows always borrow the immutable projection. Completing a plain
+    /// token table changes preparation readiness, not row styling or geometry.
+    pub fn render_paint(
+        paint: (bool, std::sync::Arc<openwebide_core::highlight::TokenRows>),
+    ) -> (bool, std::sync::Arc<openwebide_core::highlight::TokenRows>) {
+        static NEUTRAL: std::sync::LazyLock<std::sync::Arc<openwebide_core::highlight::TokenRows>> =
+            std::sync::LazyLock::new(|| std::sync::Arc::new(Vec::new()));
+        if paint.0 {
+            paint
+        } else {
+            (false, NEUTRAL.clone())
         }
     }
 

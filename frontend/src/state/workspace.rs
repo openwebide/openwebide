@@ -1,14 +1,24 @@
 use std::{
     collections::{HashMap, HashSet},
-    sync::Arc,
+    sync::{Arc, OnceLock},
 };
 
 use leptos::prelude::*;
 use openwebide_core::{EditDecision, FileDiff, FileEntry, PersistedEdit, SearchHit};
 
 /// Immutable editor source shared by documents, buffers and project snapshots.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct EditorText(Arc<String>);
+#[derive(Clone, Debug, Default)]
+pub struct EditorText(
+    Arc<String>,
+    Arc<OnceLock<Option<openwebide_core::editor::EditorLimit>>>,
+);
+
+impl PartialEq for EditorText {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+impl Eq for EditorText {}
 
 impl EditorText {
     pub fn shared(&self) -> Arc<String> {
@@ -16,6 +26,18 @@ impl EditorText {
     }
     pub fn as_str(&self) -> &str {
         self.0.as_str()
+    }
+    pub fn editor_limit(&self) -> Option<openwebide_core::editor::EditorLimit> {
+        *self
+            .1
+            .get_or_init(|| openwebide_core::editor::editor_limit(self.as_str()))
+    }
+    /// Cache only core-minted decisions for this exact retained source allocation.
+    pub fn record_admission(
+        &self,
+        result: openwebide_core::editor::EditorAdmissionResult<'_>,
+    ) -> bool {
+        result.matches(self.as_str()) && *self.1.get_or_init(|| result.limit()) == result.limit()
     }
 }
 impl std::ops::Deref for EditorText {
@@ -31,7 +53,7 @@ impl std::fmt::Display for EditorText {
 }
 impl From<String> for EditorText {
     fn from(text: String) -> Self {
-        Self(Arc::new(text))
+        Arc::new(text).into()
     }
 }
 impl From<&str> for EditorText {
@@ -41,7 +63,7 @@ impl From<&str> for EditorText {
 }
 impl From<Arc<String>> for EditorText {
     fn from(text: Arc<String>) -> Self {
-        Self(text)
+        Self(text, Arc::new(OnceLock::new()))
     }
 }
 impl From<EditorText> for String {
@@ -268,8 +290,8 @@ pub struct RecoveryOverwrite {
 pub struct EditorRecoveryGuard {
     project: i64,
     state: openwebide_core::editor::EditorRecovery,
-    read_revision: u64,
-    epoch: u64,
+    pub(crate) read_revision: u64,
+    pub(crate) epoch: u64,
     documents: HashMap<String, u64>,
 }
 
@@ -281,7 +303,7 @@ pub struct EditorRecoveryHydration {
     pub revoke_urls: Vec<String>,
 }
 
-struct PreparedEditorRecovery {
+pub(crate) struct PreparedEditorRecovery {
     documents: HashMap<(i64, String), openwebide_core::editor::Document>,
     buffers: HashMap<(i64, String), EditorBuffer>,
     scroll: HashMap<(i64, String), EditorScroll>,
@@ -297,14 +319,26 @@ impl PreparedEditorRecovery {
         recovery: &openwebide_core::editor::EditorRecovery,
     ) -> Result<Self, String> {
         let mut documents = HashMap::new();
+        for file in &recovery.files {
+            if let Some(saved) = &file.document {
+                documents.insert((project, file.path.clone()), saved.restore()?);
+            }
+        }
+        Ok(Self::from_documents(project, recovery, documents))
+    }
+
+    pub(crate) fn from_documents(
+        project: i64,
+        recovery: &openwebide_core::editor::EditorRecovery,
+        documents: HashMap<(i64, String), openwebide_core::editor::Document>,
+    ) -> Self {
         let mut buffers = HashMap::new();
         let mut scroll = HashMap::new();
         let mut paths = Vec::with_capacity(recovery.files.len());
         for file in &recovery.files {
             let key = (project, file.path.clone());
             paths.push(file.path.clone());
-            if let Some(saved) = &file.document {
-                let document = saved.restore()?;
+            if let Some(document) = documents.get(&key) {
                 buffers.insert(
                     key.clone(),
                     EditorBuffer {
@@ -313,7 +347,6 @@ impl PreparedEditorRecovery {
                         read_only: file.read_only,
                     },
                 );
-                documents.insert(key.clone(), document);
             }
             scroll.insert(
                 key,
@@ -341,7 +374,7 @@ impl PreparedEditorRecovery {
             needs_read: recovery.selected.is_some() && selected.is_none(),
             revoke_urls: Vec::new(),
         };
-        Ok(Self {
+        Self {
             documents,
             buffers,
             scroll,
@@ -349,7 +382,7 @@ impl PreparedEditorRecovery {
             content,
             dirty,
             result,
-        })
+        }
     }
 }
 
@@ -431,6 +464,7 @@ pub struct WorkspaceState {
     pub editor_group: RwSignal<u64>,
     pub editor_motion: RwSignal<Option<super::editor_motion::PendingEditorMotion>>,
     pub editor_motion_ticket: RwSignal<u64>,
+    pub editor_command_revision: RwSignal<u64>,
     pub editor_configuration_revision: RwSignal<u64>,
 }
 
@@ -533,6 +567,7 @@ impl WorkspaceState {
             editor_group: RwSignal::new(0),
             editor_motion: RwSignal::new(None),
             editor_motion_ticket: RwSignal::new(0),
+            editor_command_revision: RwSignal::new(0),
             editor_configuration_revision: RwSignal::new(0),
         }
     }
@@ -660,10 +695,12 @@ impl WorkspaceState {
                             "The saved baseline for `{path}` is not ready for recovery"
                         ));
                     }
-                    if openwebide_core::editor::editor_limit(text).is_some() {
+                    if text.editor_limit().is_some() {
                         return Ok(None);
                     }
-                    return Ok(Some(Document::from_shared_text(text.shared()).recovery()));
+                    return Ok(Some(
+                        openwebide_core::editor::DocumentRecovery::clean_source(text.shared()),
+                    ));
                 }
                 Ok(documents.get(&key).map(Document::recovery))
             })?;
@@ -756,15 +793,37 @@ impl WorkspaceState {
         recovery: &openwebide_core::editor::EditorRecovery,
         active_read_only: bool,
     ) -> Result<Option<EditorRecoveryHydration>, String> {
+        if !self.can_restore_editor_recovery(project, guard, recovery, active_read_only)? {
+            return Ok(None);
+        }
+        let prepared = PreparedEditorRecovery::new(project.id, recovery)?;
+        Ok(Some(
+            self.install_editor_recovery(project, recovery, prepared),
+        ))
+    }
+
+    pub(crate) fn can_restore_editor_recovery(
+        &self,
+        project: &openwebide_core::Project,
+        guard: &EditorRecoveryGuard,
+        recovery: &openwebide_core::editor::EditorRecovery,
+        active_read_only: bool,
+    ) -> Result<bool, String> {
         recovery.validate()?;
         if recovery.root.as_ref().is_some_and(|root| {
             *root != openwebide_core::editor::EditorRecoveryRoot::for_project(project)
         }) {
             return Err("The recovered files belong to a different project folder".into());
         }
-        if !self.editor_recovery_guard_matches(project, guard, active_read_only) {
-            return Ok(None);
-        }
+        Ok(self.editor_recovery_guard_matches(project, guard, active_read_only))
+    }
+
+    pub(crate) fn install_editor_recovery(
+        &self,
+        project: &openwebide_core::Project,
+        recovery: &openwebide_core::editor::EditorRecovery,
+        prepared: PreparedEditorRecovery,
+    ) -> EditorRecoveryHydration {
         let PreparedEditorRecovery {
             documents,
             buffers,
@@ -773,7 +832,7 @@ impl WorkspaceState {
             content,
             dirty,
             mut result,
-        } = PreparedEditorRecovery::new(project.id, recovery)?;
+        } = prepared;
         result.revoke_urls = self.snapshots.with_untracked(|snapshots| {
             snapshots
                 .get(&project.id)
@@ -830,7 +889,7 @@ impl WorkspaceState {
             self.editor_fold_revision
                 .update(|revision| *revision = revision.wrapping_add(1));
         });
-        Ok(Some(result))
+        result
     }
 
     pub fn register_editor_tab(&self, project: i64, path: String) {
@@ -965,6 +1024,8 @@ impl WorkspaceState {
         self.editor_motion.set(None);
         self.editor_motion_ticket
             .update(|ticket| *ticket = ticket.wrapping_add(1));
+        self.editor_command_revision
+            .update(|revision| *revision = revision.wrapping_add(1));
         self.editor_configuration_revision
             .update(|value| *value += 1);
         self.pending_epoch.update(|epoch| *epoch += 1);
@@ -1094,6 +1155,75 @@ impl Default for WorkspaceState {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn clean_recovery_capture_without_documents_preserves_both_project_modes() {
+        use openwebide_core::{Project, WorkspaceMode, editor::DocumentRecovery};
+        for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+            let owner = Owner::new();
+            owner.with(|| {
+                let workspace = WorkspaceState::with_active_project(RwSignal::new(Some(1)));
+                let project = Project {
+                    id: 1,
+                    user_id: None,
+                    created_at: 1,
+                    name: "project".into(),
+                    path: Some("project".into()),
+                    mode,
+                };
+                workspace.open_file.set(Some("clean.txt".into()));
+                workspace.content.set("文😀\r\nsecond".into());
+                let recovery = workspace.editor_recovery(&project, false).unwrap();
+                assert_eq!(recovery.files.len(), 1);
+                assert_eq!(
+                    recovery.files[0].document,
+                    Some(DocumentRecovery::clean("文😀\r\nsecond"))
+                );
+                assert!(workspace.editor_documents.get_untracked().is_empty());
+                workspace.dirty.set(true);
+                assert!(workspace.editor_recovery(&project, false).is_err());
+            });
+        }
+    }
+
+    #[test]
+    fn admission_cache_is_shared_only_by_the_immutable_source() {
+        use openwebide_core::editor::{Document, Edit, Selection};
+        let mut document = Document::new("one\r\ntwo");
+        let source = EditorText::from(document.shared_text());
+        let equal_source = EditorText::from(source.as_str());
+        let clone = source.clone();
+        assert!(source.1.get().is_none());
+        assert!(!equal_source.record_admission(document.admission()));
+        assert!(equal_source.1.get().is_none());
+        assert!(source.record_admission(document.admission()));
+        assert_eq!(clone.1.get(), Some(&None));
+        assert_eq!(source, equal_source);
+        document
+            .apply(
+                vec![Edit::replace(0..3, "changed")],
+                vec![Selection::caret(0)],
+                None,
+            )
+            .unwrap();
+        let edited = EditorText::from(document.shared_text());
+        assert!(edited.1.get().is_none());
+        assert!(!source.record_admission(document.admission()));
+        assert!(edited.record_admission(document.admission()));
+        assert_eq!(String::from(clone), "one\r\ntwo");
+        assert_eq!(edited.editor_limit(), None);
+    }
+
+    #[test]
+    fn admission_cache_retains_completed_limit_decisions() {
+        use openwebide_core::editor::{EditorAdmission, EditorLimit, MAX_EDITOR_LINE_BYTES};
+        let source = EditorText::from("x".repeat(MAX_EDITOR_LINE_BYTES + 1));
+        let mut preparation = EditorAdmission::new(source.as_str());
+        while !preparation.advance(1) {}
+        assert!(source.record_admission(preparation.finish_with_source().unwrap()));
+        assert_eq!(source.editor_limit(), Some(EditorLimit::LineBytes));
+        assert_eq!(source.clone().1.get(), Some(&Some(EditorLimit::LineBytes)));
+    }
 
     fn diff(old: &str, new: &str) -> FileDiff {
         FileDiff {
@@ -1490,9 +1620,12 @@ mod tests {
             workspace.content.set("another project".into());
             let inactive = workspace.editor_recovery(&project, false).unwrap();
             assert_eq!(inactive, active);
-            assert_eq!(inactive.files[0].document.as_ref().unwrap().saved, "base");
             assert_eq!(
-                inactive.files[0].document.as_ref().unwrap().text,
+                inactive.files[0].document.as_ref().unwrap().saved.as_str(),
+                "base"
+            );
+            assert_eq!(
+                inactive.files[0].document.as_ref().unwrap().text.as_str(),
                 "draft base"
             );
             for index in 0..openwebide_core::editor::MAX_RECOVERY_FILES {

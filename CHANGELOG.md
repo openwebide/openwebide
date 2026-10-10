@@ -111,11 +111,97 @@ for what's still ahead.
 
 - Add Rust plugin SDK and isolated source-to-WASM preparation foundations, with a shared executable-tool workflow for server and paired hosts. First-party deployment and complete lifecycle verification remain unfinished.
 
+- Prepare explicit selection expansion and bracket jumps through the same guarded syntax service as Reindent and embedded comments. Preserve immediate lexical navigation for unsupported grammars; cancel pending structural actions after newer navigation or selection intent, including unchanged selections.
+
+- Enable line/block comment menu actions from the selected embedded languages, including mixed selections, while reusing completed analysis without parsing when the menu opens. Discard stale source/account capabilities.
+
+- Prepare line/block comment actions against parsed embedded-language scopes before applying them, while preserving immediate single-language comments and unsupported-grammar fallbacks. Capture command ownership before queuing and cancel superseded actions, including after a newer command that leaves the text unchanged.
+
+- Retry an editor caret reveal when navigation precedes prepared paint, while cancelling the retry after newer source, selection, account, file or scroll intent.
+
+- Prepare cold Reindent commands cooperatively with the shared Rust syntax service before applying one undoable edit. Cancel superseded source, selection, rule and ownership requests; enable the action for HTML and Markdown embedded code bodies and report unavailable structure instead of silently doing nothing.
+
+- Reuse complete prepared source and row indexes when undoing or redoing a recovered editor draft, avoiding full-file copying and coordinate reconstruction during replay while preserving fold rebasing and selection history.
+
+- Validate recovered selections and ordered fold ranges without copying and sorting metadata during each persistence check. Preserve Unicode boundary checks, nested-fold rules and recovery error precedence.
+
+- Decode recovery source directly from borrowed JSON base64 fields, removing temporary encoded-string copies while retaining owned UTF-8, size limits and the existing storage format.
+
+- Allow keyboard navigation throughout admitted editor files, including files above the 2 MiB syntax-analysis budget. Reuse logical row indexes and source allocations for direct and queued wrapped movement, with grapheme-safe sparse caret validation.
+
+- Share immutable editor source through recovery capture, queued record clones and hydration preparation, preserving the existing encoded storage format and independent saved/draft versions.
+- Reuse complete source-owned editor indexes for final recovery admission and fold validation, retaining capacity limits, metadata checks and error precedence.
+
+- Retain prepared saved/draft sources in the recovered editor's undo step instead of copying both full files into history. Ordinary edits still retain only their replacement spans, with unchanged history budgets and undo/redo behavior.
+
+- Compare recovered editor files with disk directly from committed document sources, avoiding draft/baseline persistence copies during verification. Share source allocations when accepting completed writes and preparing clean disk reloads.
+
+- Reconcile editor dirty state after a late save finishes over a newer disk reload, preserving the newer content as a draft in the active editor and retained project snapshot.
+
+- Retain immutable editor source through save preparation and acknowledgement, avoiding full-file copies while preserving newer drafts and composition cancellation.
+
+- Share prepared editor source with its saved baseline instead of duplicating the full file during publication. Preserve in-place edits when only the baseline retains the source, immutable snapshots, late save acknowledgements and composition cancellation.
+
+- Paint edits to parser-rejected documents while grammar analysis retries, preserving source ownership and grammar recovery. Restart unfinished wrapped geometry when syntax preparation advances, so rejected-source edits cannot stall after a worker reply.
+
+- Keep neutral editor geometry identity stable when plain fallback preparation completes, while preserving separate preparation readiness and source ownership.
+
+- Retry initial editor input binding when document preparation finishes after mounting, without restarting released geometry fallbacks.
+
+- Report editor parser work-budget exhaustion as a capacity fallback, distinguishing it from cancellation while preserving file content and grammar recovery.
+
+- Paint plain-document edits before pending worker replies while retaining grammar paint coalescing and bounded terminal fallback through the shared editor facade.
+
+- Keep editor process-memory measurements complete across short-lived Chrome subprocesses by retrying only incomplete memory snapshots and retaining strict PSS coverage checks.
+
+- Capture clean editor recovery snapshots without constructing unused document indexes, reusing source capacity decisions and skipping line-count scans when no folds are saved.
+
+- Keep capacity checks usable during document updates by falling back to the immutable source cache when document state is already borrowed.
+
+- Reuse editor capacity decisions across immutable source snapshots and shared controls, preserving limit precedence and rejecting decisions belonging to another source allocation.
+
+- Prepare explicit recovered-file reloads cooperatively, rejecting stale reviews before publication and sharing the completed source across editor documents and buffers. Over-limit files keep bounded read-only viewing.
+
+- Prepare recovered saved/draft indexes cooperatively before atomic hydration, preserving one-step undo and refusing stale account, folder or editor ownership. Disk verification classifies recovery states without rebuilding document indexes; clean changed-disk reloads share cooperative preparation.
+
+- Prepare incoming editor files cooperatively through the shared facade for normal and lossy workspace reads, rejecting stale ownership and preserving drafts, unchanged-file history and over-limit read-only viewing.
+
+- Add complete-only cooperative document preparation for logical rows, native/visual coordinates and admission totals, preserving CRLF/EOF mappings and source sharing. Ordinary constructors use the same implementation; final publication costs remain roadmap work.
+
+- Share bounded Unicode source/context traversal between paint segmentation and resumable visual-index construction, visiting source characters once and publishing complete coordinates only.
+
+- Reuse exact indexed boundaries for large Unicode graphemes during caret and paragraph-anchor queries, avoiding repeated interior/lookahead scans while preserving the original paint seams.
+
+- Suspend long-token paint segmentation between bounded Unicode chunks, including within a single large grapheme, while preserving complete run boundaries and rejecting stale editor ownership before publication.
+
+- Retain the following row's exact coordinates when an edit preserves its line boundary or moves it to the document start, avoiding rescanning an untouched long line. Rebuild joined rows normally.
+
+- Collect row admission, UTF-16 totals and native checkpoints during the visual index's character pass, avoiding repeated source-row scans.
+- Inventory compiled editor tests and verify complete, disjoint browser groups for CI, preserving individual readiness limits and separate font matrices.
+
+- Retain the preceding row's exact coordinate index when an edit leaves its complete newline unchanged, avoiding repeated long-row scans when editing the following line.
+
+- Batch editor viewport sizing reads before scroll-extent writes, preserving source-owned dimensions and native-input fallback during resizing.
+
+- Record scoped main-thread task timing and optional CPU profiles for editor boundary measurements, with profiler overhead labeled separately.
+
+- Prepare paragraph paint-boundary validation and exact glyph anchors cooperatively in shared Rust, with complete-only publication and cancellation across editor ownership changes.
+
+- Prepare unwrapped styled paragraph runs in one cooperative pass, retaining only bounded tables and rejecting stale preparation without restarting the over-budget prefix.
+
+- Keep partial wrapped editor paint separate from complete document heights, and show proved viewport coverage at small positive scroll offsets while full geometry prepares in both workspace modes.
+
+- Resolve Linux compiler alternative symlinks inside isolated plugin builds, preserving source immutability and network isolation.
+
+- Add the public Rust plugin SDK and isolated host-side WASM preparation foundation, with capability and resource limits, immutable source receipts, and artifact validation. Executable tool dispatch and first-party behavior migrations remain roadmap work.
+
+- Show exactly measured origin paint while eligible wrapped paragraphs continue preparing complete geometry. Reject uncovered carets and failed crop proofs, and refresh affected fragments when complete geometry replaces partial coverage in both workspace modes.
+
 - Retry transient Chrome/ChromeDriver setup failures up to three times in both frontend CI jobs, requiring executable browser and driver paths before testing.
 
-- Retain partial wrapped-paragraph coverage through the shared editor facade with current source, ticket, syntax, file, project, account, font and layout ownership. Reuse immutable anchors and hide coverage during composition; browser publication remains unfinished.
+- Retain partial wrapped-paragraph coverage through the shared editor facade with current source, ticket, syntax, file, project, account, font and layout ownership. Reuse immutable anchors and hide coverage during composition.
 
-- Add a shared Rust primitive for measured wrapped-paragraph coverage, rejecting uncovered rows and partial endpoint carets. Browser publication remains roadmap work.
+- Add a shared Rust primitive for measured wrapped-paragraph coverage, rejecting uncovered rows and partial endpoint carets. Publish only proved coverage while complete extents continue preparing.
 
 - Record exact changed-phase wrapped-editor proof samples in both modes; archive the diagnostic patch separately from production code and retain the outstanding responsiveness work on the roadmap.
 

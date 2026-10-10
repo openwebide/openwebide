@@ -1,8 +1,8 @@
 //! Incremental logical-line and UTF-16 coordinates owned by the source document.
 use super::{
     EditError, Selection,
-    coordinates::LineCoordinates,
-    lines::{Line, LineEdit, lines, row_at},
+    coordinates::{LineCoordinatePreparation, LineCoordinates},
+    lines::{Line, LineEdit, row_at},
 };
 use std::{ops::Range, sync::Arc};
 
@@ -57,45 +57,128 @@ impl<T> PartialEq for RowCache<T> {
 }
 impl<T> Eq for RowCache<T> {}
 
+/// Initial row discovery and coordinates share one complete-only construction
+/// path. Retained indexes are never modified while a replacement is preparing.
+pub(super) struct LineIndexPreparation<'a> {
+    source: &'a str,
+    index: LineIndex,
+    coordinates: Vec<LineCoordinates>,
+    row_start: usize,
+    scan: usize,
+    active: Option<(Line, LineCoordinatePreparation<'a>)>,
+    done: bool,
+}
+impl<'a> LineIndexPreparation<'a> {
+    pub fn new(source: &'a str) -> Self {
+        Self {
+            source,
+            index: LineIndex {
+                rows: Vec::new(),
+                offsets: Vec::new(),
+                oversized_rows: Vec::new(),
+                oversized_count: 0,
+                breaks: 0,
+                coordinates: Arc::new(Vec::new()),
+                utf16_len: 0,
+                textarea_len: 0,
+                guides: RowCache::default(),
+                visible_rows: RowCache::default(),
+            },
+            coordinates: Vec::new(),
+            row_start: 0,
+            scan: 0,
+            active: None,
+            done: false,
+        }
+    }
+    /// One unit discovers at most 8 KiB of source, or advances one bounded row
+    /// coordinate step. EOF/newline handling and complete publication are shared
+    /// by synchronous construction and cooperative hosts.
+    pub fn advance(&mut self, budget: usize) -> bool {
+        for _ in 0..budget {
+            if self.done {
+                break;
+            }
+            if let Some((_, coordinates)) = &mut self.active {
+                if !coordinates.advance(1) {
+                    continue;
+                }
+                let (row, coordinates) = self.active.take().unwrap();
+                let (coordinates, summary) = coordinates.finish().unwrap();
+                let text = &self.source[row.start..row.end];
+                self.index.offsets.push((
+                    self.index.utf16_len,
+                    self.index.textarea_len,
+                    self.index.breaks,
+                ));
+                self.index.breaks += summary.breaks;
+                self.index.oversized_count += usize::from(summary.oversized);
+                self.index.oversized_rows.push(summary.oversized);
+                self.coordinates.push(coordinates);
+                self.index.utf16_len += summary.utf16_len;
+                self.index.textarea_len += summary.utf16_len - usize::from(text.ends_with("\r\n"));
+                self.done = row.end == self.source.len()
+                    && (row.start == row.end || !self.source.ends_with('\n'));
+                self.row_start = row.end;
+                self.scan = row.end;
+                self.index.rows.push(row);
+                continue;
+            }
+            let scan_end = self.scan.saturating_add(8192).min(self.source.len());
+            let newline = self.source.as_bytes()[self.scan..scan_end]
+                .iter()
+                .position(|byte| *byte == b'\n');
+            self.scan = newline.map_or(scan_end, |offset| self.scan + offset + 1);
+            if newline.is_some() || self.scan == self.source.len() {
+                let text = &self.source[self.row_start..self.scan];
+                let ending = if text.ends_with("\r\n") {
+                    2
+                } else {
+                    usize::from(text.ends_with('\n'))
+                };
+                let row = Line {
+                    start: self.row_start,
+                    body_end: self.scan - ending,
+                    end: self.scan,
+                };
+                self.active = Some((row, LineCoordinatePreparation::new(text)));
+            }
+        }
+        self.done
+    }
+    pub fn finish(mut self) -> Option<LineIndex> {
+        if !self.done {
+            return None;
+        }
+        self.index.coordinates = Arc::new(self.coordinates);
+        Some(self.index)
+    }
+}
+
 impl LineIndex {
     pub fn new(source: &str) -> Self {
-        let rows = lines(source);
-        let mut coordinates = Vec::with_capacity(rows.len());
-        let mut index = Self {
-            rows,
-            offsets: Vec::new(),
-            oversized_rows: Vec::new(),
-            oversized_count: 0,
-            breaks: 0,
-            coordinates: Arc::new(Vec::new()),
-            utf16_len: 0,
-            textarea_len: 0,
-            guides: RowCache::default(),
-            visible_rows: RowCache::default(),
-        };
-        for row in &index.rows {
-            index
-                .offsets
-                .push((index.utf16_len, index.textarea_len, index.breaks));
-            let text = &source[row.start..row.end];
-            let (breaks, oversized) = super::capacity::row_admission(text);
-            index.breaks += breaks;
-            index.oversized_count += usize::from(oversized);
-            index.oversized_rows.push(oversized);
-            coordinates.push(LineCoordinates::new(text));
-            let units = text.encode_utf16().count();
-            index.utf16_len += units;
-            index.textarea_len += units - usize::from(text.ends_with("\r\n"));
-        }
-        index.coordinates = Arc::new(coordinates);
-        index
+        let mut preparation = LineIndexPreparation::new(source);
+        preparation.advance(usize::MAX);
+        preparation.finish().unwrap()
     }
 
     /// Re-scan changed logical rows, preserving all unchanged suffix coordinates.
     /// The edit envelope includes every replacement in one overlapping row batch.
     pub fn update(&mut self, old_len: usize, new: &str, changed: Range<usize>, new_end: usize) {
         let old_rows = self.rows.len();
-        let edit = LineEdit::new(&self.rows, old_len, new.len(), changed, new_end);
+        let changed_start = changed.start;
+        let changed_end = changed.end;
+        let mut edit = LineEdit::new(&self.rows, old_len, new.len(), changed, new_end);
+        // The conservative envelope includes the preceding logical row. Its
+        // complete LF/CRLF ending is unchanged when it precedes the replacement,
+        // so retain its admission summary and exact native/visual coordinates.
+        // An unterminated row or an edit inside its ending must still be scanned.
+        let prefix = &self.rows[edit.rows.start];
+        if edit.rows.len() > 1 && prefix.body_end < prefix.end && prefix.end <= changed_start {
+            edit.rows.start += 1;
+            edit.bytes.start = prefix.end;
+        }
+        edit.retain_suffix(&self.rows, changed_end, new_end, new);
         let (start_row, end_row) = (edit.rows.start, edit.rows.end);
         let (start, end) = (edit.bytes.start, edit.bytes.end);
         let mut replacement = Self::new(&new[start..end]);
@@ -387,6 +470,176 @@ impl LineIndex {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn cooperative_line_tables_preserve_eof_rows_and_exact_native_coordinates() {
+        for source in [
+            String::new(),
+            "x".into(),
+            "\n".into(),
+            "\r\n".into(),
+            "head 文😀\r\nbody\rword\n".repeat(300),
+            format!("{}\r\nlast\n", "文😀e\u{301}\t".repeat(9000)),
+            format!("👩{}\u{200d}👩\r\n", "\u{301}".repeat(40_000)),
+        ] {
+            let expected_rows = super::super::lines::lines(&source);
+            let (breaks, _) = super::super::capacity::row_admission(&source);
+            for budget in [1, 8, 64] {
+                assert!(LineIndexPreparation::new(&source).finish().is_none());
+                let mut prep = LineIndexPreparation::new(&source);
+                assert!(!prep.advance(0));
+                let mut turns = 0;
+                loop {
+                    let rows = prep.index.rows.len();
+                    let done = prep.advance(budget);
+                    assert!(prep.index.rows.len() - rows <= budget);
+                    turns += 1;
+                    if done {
+                        break;
+                    }
+                    assert!(turns < source.len() * 4 + 3);
+                }
+                let index = prep.finish().unwrap();
+                assert_eq!(index.rows, expected_rows);
+                assert_eq!(index.utf16_len, source.encode_utf16().count());
+                assert_eq!(
+                    index.textarea_len,
+                    super::super::byte_to_textarea(&source, source.len()).unwrap()
+                );
+                assert_eq!(index.breaks, breaks);
+                for byte in source
+                    .char_indices()
+                    .map(|(byte, _)| byte)
+                    .step_by((source.len() / 97).max(1))
+                    .chain([source.len()])
+                {
+                    let expected = super::super::byte_to_textarea(&source, byte).unwrap();
+                    assert_eq!(index.byte_to_textarea(&source, byte), Ok(expected));
+                    assert_eq!(
+                        index.line_column(&source, byte),
+                        super::super::line_column(&source, byte)
+                    );
+                    for native in expected.saturating_sub(1)..=expected + 1 {
+                        assert_eq!(
+                            index.textarea_to_byte(&source, native),
+                            super::super::textarea_to_byte(&source, native)
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn edits_ending_at_row_boundaries_retain_only_separate_suffix_coordinates() {
+        let body = "文😀e\u{301}\t words ".repeat(6000);
+        for ending in ["\n", "\r\n"] {
+            for tail in ["", ending, "\nlast"] {
+                let prefix = format!("head{ending}");
+                let source = format!("{prefix}{body}{tail}");
+                for (start, replacement, retain) in [
+                    (0, "new\n", true),
+                    (0, "new\r\n", true),
+                    (4, "\n", true),
+                    (prefix.len(), "new\n", true),
+                    (0, "", true),
+                    (4, "", false),
+                    (0, "new\r", false),
+                    (prefix.len(), "new", false),
+                ] {
+                    let mut index = LineIndex::new(&source);
+                    let snapshot = index.clone();
+                    let retained = index.coordinates[1].visual().unwrap();
+                    let mut next = source.clone();
+                    next.replace_range(start..prefix.len(), replacement);
+                    index.update(
+                        source.len(),
+                        &next,
+                        start..prefix.len(),
+                        start + replacement.len(),
+                    );
+                    assert_eq!(index, LineIndex::new(&next));
+                    assert_eq!(snapshot, LineIndex::new(&source));
+                    let row = row_at(&index.rows, start + replacement.len());
+                    assert_eq!(
+                        index.coordinates[row]
+                            .visual()
+                            .unwrap()
+                            .shared_with(&retained),
+                        retain
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn edits_after_complete_long_rows_retain_exact_coordinates() {
+        let body = "文😀e\u{301}\t words ".repeat(6000);
+        for ending in ["\n", "\r\n"] {
+            let prefix = format!("{body}{ending}");
+            let source = format!("{prefix}next{ending}tail");
+            for (range, replacement) in [
+                (prefix.len()..prefix.len(), "😀"),
+                (prefix.len()..prefix.len() + 4, ""),
+                (prefix.len() + 2..prefix.len() + 2, "\r\nnew\n"),
+                (source.len()..source.len(), "\nmore"),
+            ] {
+                let mut index = LineIndex::new(&source);
+                let retained = index.coordinates[0].visual().unwrap();
+                let snapshot = index.clone();
+                let mut next = source.clone();
+                next.replace_range(range.clone(), replacement);
+                index.update(
+                    source.len(),
+                    &next,
+                    range.clone(),
+                    range.start + replacement.len(),
+                );
+                assert_eq!(index, LineIndex::new(&next));
+                assert!(
+                    index.coordinates[0]
+                        .visual()
+                        .unwrap()
+                        .shared_with(&retained)
+                );
+                assert_eq!(snapshot, LineIndex::new(&source));
+            }
+        }
+    }
+
+    #[test]
+    fn row_envelope_reuse_matches_fresh_indexes_at_unicode_and_ending_boundaries() {
+        for source in [
+            "",
+            "x",
+            "\n",
+            "\r\n",
+            "文😀\r\n\t\rword\nlast",
+            "a\n\n😀\r\n",
+        ] {
+            let boundaries: Vec<_> = source
+                .char_indices()
+                .map(|(byte, _)| byte)
+                .chain([source.len()])
+                .collect();
+            for &start in &boundaries {
+                for &end in boundaries.iter().filter(|&&end| end >= start) {
+                    for replacement in ["", "x", "文😀", "\r", "\n", "\r\n", "\n\r", "x\r\ny"] {
+                        let mut index = LineIndex::new(source);
+                        let mut next = source.to_owned();
+                        next.replace_range(start..end, replacement);
+                        index.update(source.len(), &next, start..end, start + replacement.len());
+                        assert_eq!(
+                            index,
+                            LineIndex::new(&next),
+                            "{source:?}: {start}..{end} -> {replacement:?}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
     fn reference_guides(source: &str, indentation: super::super::Indentation) -> Vec<usize> {
         let rows: Vec<_> = source.split('\n').collect();
         if source.len() > super::super::MAX_STRUCTURE_BYTES {

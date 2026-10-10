@@ -1,0 +1,43 @@
+{
+  "scope": "Complete current editor inventory; Local and Remote behavioral contracts and both font matrices",
+  "runner": "Linux arm64 Chromium 154; two CPUs; 300-second runner and unchanged readiness deadlines",
+  "plannedTests": 184,
+  "executedTests": 184,
+  "passedTests": 184,
+  "failedTests": 0,
+  "groups": [
+    22,
+    54,
+    53,
+    53,
+    1,
+    1
+  ],
+  "manifest": {
+    "base": "cc019c19cb99f085999f4f78b193a99a6486bdf7",
+    "sourceSha256": {
+      "crates/core/src/editor/comments.rs": "2c730f8cee84db894310aa7e69c184194f7be4cd30c26a4398f37d7281b939fa",
+      "crates/core/src/editor/mod.rs": "a54da7fdaafcb47a94217a45beb319e1228355f1131a2594360233779855fcbe",
+      "crates/core/src/editor/syntax/cache.rs": "5cf33534931794fc64bda8f9bb0caa90eb57827f4ca08ded75920c9aa5d21170",
+      "frontend/src/state_actions/editor.rs": "dcc6f493cae4cecd0d8d5a5eb870ae08618e6d692531c0204548ecb25262b56d",
+      "frontend/src/components/editor.rs": "30b37dab8135899b94d87d84ce13d1627fbd783d4514ba6cf701cafca4a3cb51",
+      "frontend/tests/components/editor.rs": "82ccaa80c4c53a7cebb5b78585daeeda1b5dd6d34f64ac87c8336d93f1c55add",
+      "frontend/src/state_actions/editor/preparation.rs": "d0fb8fb102d4f12f3bb952f1ccd323ddcc3914309b469394450f6e5747068289",
+      "tools/run-editor-browser-tests.py": "81a3cce570c0448a4a3493e899b3ae6922bff0704b656a12d85de42f2881378b"
+    },
+    "artifactSha256": {
+      "components.wasm": "1eb3b99a3a7dafaba62970271f5f96ae62ef819b867a56455277fc58cda2641b",
+      "editor-library.wasm": "d3f3f75e9df47d01db2a57bbee6ebc2b167daf366ae48b1554d4288f00451891"
+    }
+  },
+  "logSha256": "3ba539f1aaae14a2009e42197711a6927400a18ffbe6c543c5f2309a5d3a0f2c",
+  "results": [
+    "test result: ok. 22 passed; 0 failed; 0 ignored; 6 filtered out; finished in 1.01s",
+    "test result: ok. 54 passed; 0 failed; 0 ignored; 483 filtered out; finished in 90.29s",
+    "test result: ok. 53 passed; 0 failed; 0 ignored; 484 filtered out; finished in 49.36s",
+    "test result: ok. 53 passed; 0 failed; 0 ignored; 484 filtered out; finished in 48.66s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 536 filtered out; finished in 21.62s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 536 filtered out; finished in 15.91s"
+  ],
+  "hostedReliability": "Open; this local result does not establish the cause of the earlier hosted paint failure"
+}

@@ -198,8 +198,11 @@ export function refresh_editor_scroll(input) {
     const set = (element, name, value) => {
         if (element.style.getPropertyValue(name) !== value) element.style.setProperty(name, value);
     };
-    set(input.parentElement, '--editor-input-width', `${scroll.clientWidth}px`);
-    set(input.parentElement, '--editor-input-height', `${scroll.clientHeight}px`);
+    // Read the viewport together before changing either input dimension. A
+    // scrollbar/resize observer will refresh again if its client area changes.
+    const viewportWidth = scroll.clientWidth, viewportHeight = scroll.clientHeight;
+    set(input.parentElement, '--editor-input-width', `${viewportWidth}px`);
+    set(input.parentElement, '--editor-input-height', `${viewportHeight}px`);
     const source = extent.dataset.editorScope === input.dataset.editorScope && extent.dataset.editorView === input.parentElement.dataset.editorView && extent.dataset.editorAccount === input.parentElement.dataset.editorAccount;
     const width = source ? Number(extent.dataset.sourceWidth) : NaN;
     const height = source ? Number(extent.dataset.sourceHeight) : NaN;
@@ -208,10 +211,14 @@ export function refresh_editor_scroll(input) {
     // Bound native surrounding text has local dimensions. Retain the last
     // source extents until replacement source measurements are ready.
     const bounded = input.dataset.editorNativeBound === 'true';
-    const previousWidth = parseFloat(extent.style.width) || scroll.clientWidth;
-    const previousHeight = parseFloat(extent.style.height) || scroll.clientHeight;
-    set(extent, 'width', `${Math.max(scroll.clientWidth, widthReady ? width : bounded ? previousWidth : input.scrollWidth)}px`);
-    set(extent, 'height', `${Math.max(scroll.clientHeight, heightReady ? height : bounded ? previousHeight : input.scrollHeight)}px`);
+    const previousWidth = parseFloat(extent.style.width) || viewportWidth;
+    const previousHeight = parseFloat(extent.style.height) || viewportHeight;
+    // Native fallback dimensions depend on the new input width. Read both
+    // before changing the extent, rather than interleaving layout reads/writes.
+    const sourceWidth = widthReady ? width : bounded ? previousWidth : input.scrollWidth;
+    const sourceHeight = heightReady ? height : bounded ? previousHeight : input.scrollHeight;
+    set(extent, 'width', `${Math.max(viewportWidth, sourceWidth)}px`);
+    set(extent, 'height', `${Math.max(viewportHeight, sourceHeight)}px`);
 }
 // Position the browser's composition caret using bounded surrounding text.
 // Paint supplies the source point; native scrolling remains local.

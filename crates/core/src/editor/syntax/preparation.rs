@@ -730,9 +730,14 @@ fn parse_step(
         return Ok(None);
     }
     let mut yielded = false;
+    let mut stopped = SyntaxStatus::Cancelled;
     let mut progress = |_: &tree_sitter::ParseState| {
         *checks += 1;
-        if *checks > MAX_PROGRESS_CHECKS || !should_continue() {
+        if !should_continue() {
+            return ControlFlow::Break(());
+        }
+        if *checks > MAX_PROGRESS_CHECKS {
+            stopped = SyntaxStatus::TooLarge;
             return ControlFlow::Break(());
         }
         if should_yield() {
@@ -750,7 +755,7 @@ fn parse_step(
     if tree.is_some() || yielded {
         Ok(tree)
     } else {
-        Err(SyntaxStatus::Cancelled)
+        Err(stopped)
     }
 }
 
@@ -2107,7 +2112,7 @@ mod tests {
                 .prepare_cooperative(source, 4, || true, || false)
                 .unwrap()
                 .0,
-            SyntaxStatus::Cancelled
+            SyntaxStatus::TooLarge
         );
         assert!(document.pending.is_none());
         assert!(document.tree.is_none());

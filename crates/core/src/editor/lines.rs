@@ -105,6 +105,23 @@ impl LineEdit {
         }
     }
 
+    /// The unchanged suffix starts on an old row boundary. Retain that row only
+    /// when the replacement also ends at the document origin or a complete LF boundary; otherwise
+    /// its text joins the changed row and needs fresh coordinates.
+    pub fn retain_suffix(&mut self, rows: &[Line], changed_end: usize, new_end: usize, new: &str) {
+        let suffix = row_at(rows, changed_end);
+        if rows[suffix].start == changed_end
+            && rows[suffix].start < rows[suffix].end
+            && suffix >= self.rows.start
+            && (new_end == 0 || new.as_bytes().get(new_end - 1) == Some(&b'\n'))
+        {
+            self.rows.end = suffix;
+            self.bytes.end = new_end;
+            self.old_end = changed_end;
+            self.has_suffix = true;
+        }
+    }
+
     /// A temporary trailing empty row belongs to the retained suffix, not the edit.
     pub fn trim_suffix_row(&self, row: Option<&Line>) -> bool {
         self.has_suffix && row.is_some_and(|row| row.start == self.bytes.len())

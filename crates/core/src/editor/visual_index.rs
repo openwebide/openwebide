@@ -12,9 +12,98 @@ struct Position {
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Coordinates {
     points: Vec<Position>,
+    long_clusters: Vec<LongCluster>,
     end: Position,
     horizontal: bool,
     tabs: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct LongCluster {
+    start: Position,
+    end: usize,
+}
+
+/// Resumable construction of exact visual coordinates. Only complete indexes
+/// can be published; dropping pending work leaves its source and prior index intact.
+pub struct VisualLinePreparation<'a> {
+    body: &'a str,
+    scan: super::grapheme_scan::GraphemeScan<'a>,
+    coordinates: Coordinates,
+    cluster: Position,
+}
+impl<'a> VisualLinePreparation<'a> {
+    pub fn new(body: &'a str) -> Option<Self> {
+        (body.len() <= super::MAX_STRUCTURE_BYTES).then(|| Self {
+            body,
+            scan: super::grapheme_scan::GraphemeScan::new(body),
+            coordinates: Coordinates {
+                points: vec![Position::default()],
+                long_clusters: Vec::new(),
+                end: Position::default(),
+                horizontal: body.len() > super::MAX_MEASURE_BYTES,
+                tabs: false,
+            },
+            cluster: Position::default(),
+        })
+    }
+    /// Budget counts bounded source/context scan units, including suspensions
+    /// within large graphemes. No partial index authorizes coordinates or paint.
+    pub fn advance(&mut self, budget: usize) -> bool {
+        self.advance_with_character_scan(budget, |_, _| {})
+    }
+    pub(super) fn advance_with_character_scan(
+        &mut self,
+        budget: usize,
+        mut visit: impl FnMut(usize, char),
+    ) -> bool {
+        for _ in 0..budget {
+            if self.scan.is_done() {
+                break;
+            }
+            let coordinates = &mut self.coordinates;
+            let cluster = &mut self.cluster;
+            let body = self.body;
+            self.scan.advance(|step| {
+                for (offset, ch) in body[step.consumed.clone()].char_indices() {
+                    visit(step.consumed.start + offset, ch);
+                    coordinates.end.native += ch.len_utf16();
+                    coordinates.tabs |= ch == '\t';
+                    if coordinates.horizontal && !super::viewport::horizontal_paint_character(ch) {
+                        coordinates.horizontal = false;
+                    }
+                }
+                if let Some(end) = step.boundary {
+                    if cluster.byte - coordinates.points.last().unwrap().byte >= STEP_BYTES {
+                        coordinates.points.push(*cluster);
+                    }
+                    if end - cluster.byte > STEP_BYTES {
+                        coordinates.long_clusters.push(LongCluster {
+                            start: *cluster,
+                            end,
+                        });
+                    }
+                    coordinates.end.glyph += 1;
+                    *cluster = Position {
+                        byte: end,
+                        ..coordinates.end
+                    };
+                }
+                false
+            });
+        }
+        self.scan.is_done()
+    }
+    pub fn finish(mut self) -> Option<VisualLineIndex> {
+        if !self.scan.is_done() {
+            return None;
+        }
+        self.coordinates.end.byte = self.body.len();
+        if self.coordinates.points.last()?.byte != self.body.len() {
+            self.coordinates.points.push(self.coordinates.end);
+        }
+        Some(VisualLineIndex(Arc::new(self.coordinates)))
+    }
 }
 
 /// Immutable coordinates for one exact logical-line body. Callers retain the
@@ -28,36 +117,17 @@ impl VisualLineIndex {
         Arc::ptr_eq(&self.0, &other.0)
     }
     pub fn new(body: &str) -> Option<Self> {
-        if body.len() > super::MAX_STRUCTURE_BYTES {
-            return None;
-        }
-        let mut points = vec![Position::default()];
-        let mut end = Position::default();
-        let mut horizontal = body.len() > super::MAX_MEASURE_BYTES;
-        let mut tabs = false;
-        for (byte, glyph) in body.grapheme_indices(true) {
-            if byte - points.last()?.byte >= STEP_BYTES {
-                points.push(Position { byte, ..end });
-            }
-            for ch in glyph.chars() {
-                end.native += ch.len_utf16();
-                tabs |= ch == '\t';
-                if horizontal && !super::viewport::horizontal_paint_character(ch) {
-                    horizontal = false;
-                }
-            }
-            end.glyph += 1;
-        }
-        end.byte = body.len();
-        if points.last()?.byte != end.byte {
-            points.push(end);
-        }
-        Some(Self(Arc::new(Coordinates {
-            points,
-            end,
-            horizontal,
-            tabs,
-        })))
+        Self::with_character_scan(body, |_, _| {})
+    }
+    /// Share the exact character traversal with source-coordinate construction.
+    /// Grapheme checkpoints and original plain paint boundaries stay unchanged.
+    pub(super) fn with_character_scan(
+        body: &str,
+        mut visit: impl FnMut(usize, char),
+    ) -> Option<Self> {
+        let mut preparation = VisualLinePreparation::new(body)?;
+        preparation.advance_with_character_scan(usize::MAX, &mut visit);
+        preparation.finish()
     }
     /// Exact cluster checkpoints for a styled geometry adapter; omit EOF.
     pub fn anchor_glyphs(&self) -> impl Iterator<Item = usize> + '_ {
@@ -109,6 +179,7 @@ impl VisualLineIndex {
     pub fn retained_bytes(&self) -> usize {
         std::mem::size_of::<Coordinates>()
             + self.0.points.capacity() * std::mem::size_of::<Position>()
+            + self.0.long_clusters.capacity() * std::mem::size_of::<LongCluster>()
     }
     /// Long source-monotonic paragraphs can be sliced before shaping. Bidi
     /// controls, reversed scripts and display breaks retain full-paragraph probes.
@@ -126,9 +197,39 @@ impl VisualLineIndex {
     fn valid_body(&self, body: &str) -> bool {
         body.len() == self.0.end.byte
     }
+    fn long_cluster_at(&self, byte: usize) -> Option<&LongCluster> {
+        let index = self
+            .0
+            .long_clusters
+            .partition_point(|cluster| cluster.start.byte <= byte);
+        self.0
+            .long_clusters
+            .get(index.checked_sub(1)?)
+            .filter(|cluster| byte < cluster.end)
+    }
+    /// Stop local segmentation before an already indexed indivisible cluster.
+    /// Its known start is a complete grapheme boundary, so truncation is exact.
+    fn local_end(&self, byte: usize) -> usize {
+        let index = self
+            .0
+            .long_clusters
+            .partition_point(|cluster| cluster.start.byte < byte);
+        self.0
+            .long_clusters
+            .get(index)
+            .map_or(self.0.end.byte, |cluster| cluster.start.byte)
+    }
     pub fn at(&self, body: &str, glyph: usize) -> Option<(usize, usize)> {
         if !self.valid_body(body) || glyph >= self.len() {
             return None;
+        }
+        if let Ok(index) = self
+            .0
+            .long_clusters
+            .binary_search_by_key(&glyph, |cluster| cluster.start.glyph)
+        {
+            let start = self.0.long_clusters[index].start;
+            return Some((start.byte, start.native));
         }
         let index = self
             .0
@@ -136,7 +237,7 @@ impl VisualLineIndex {
             .partition_point(|point| point.glyph <= glyph)
             .checked_sub(1)?;
         let point = self.0.points[index];
-        let suffix = body.get(point.byte..)?;
+        let suffix = body.get(point.byte..self.local_end(point.byte))?;
         let byte = suffix
             .grapheme_indices(true)
             .map(|(byte, _)| byte)
@@ -201,6 +302,12 @@ impl VisualLineIndex {
         let mut cursor = Position::default();
         let mut result = Vec::with_capacity(bytes.len());
         for &target in bytes {
+            if let Some(cluster) = self.long_cluster_at(target) {
+                if target == cluster.start.byte {
+                    result.push(cluster.start.glyph);
+                }
+                continue;
+            }
             let checkpoint = self
                 .0
                 .points
@@ -210,7 +317,9 @@ impl VisualLineIndex {
             if point.byte > cursor.byte {
                 cursor = point;
             }
-            let mut clusters = body.get(cursor.byte..)?.graphemes(true);
+            let mut clusters = body
+                .get(cursor.byte..self.local_end(cursor.byte))?
+                .graphemes(true);
             while cursor.byte < target {
                 let cluster = clusters.next()?;
                 cursor.byte += cluster.len();
@@ -228,6 +337,9 @@ impl VisualLineIndex {
         if !self.valid_body(body) || byte > body.len() {
             return None;
         }
+        if let Some(cluster) = self.long_cluster_at(byte) {
+            return Some(cluster.start.glyph);
+        }
         let index = self
             .0
             .points
@@ -235,7 +347,7 @@ impl VisualLineIndex {
             .checked_sub(1)?;
         let point = self.0.points[index];
         let count = body
-            .get(point.byte..)?
+            .get(point.byte..self.local_end(point.byte))?
             .grapheme_indices(true)
             .take_while(|(at, _)| point.byte + at <= byte)
             .count();
@@ -246,6 +358,129 @@ impl VisualLineIndex {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn cooperative_indexes_visit_source_once_and_publish_only_complete_coordinates() {
+        for body in [
+            String::new(),
+            "a".repeat(513),
+            format!("{}🇺🇸", "a".repeat(508)),
+            "word 文😀e\u{301}\t\r ".repeat(6000),
+            format!("x👩{}\u{200d}👩 last", "\u{301}".repeat(40_000)),
+            format!("क{}ष last", "\u{94d}\u{93c}".repeat(10_000)),
+            "אב word ".repeat(10_000),
+        ] {
+            let expected = super::super::visual_line_offsets(&body).unwrap();
+            let runs = super::super::visual_text_run_ranges(&body)
+                .map(|run| run.end)
+                .collect::<Vec<_>>();
+            for budget in [1, 8, 64] {
+                assert!(
+                    VisualLinePreparation::new(&body)
+                        .unwrap()
+                        .finish()
+                        .is_none()
+                );
+                let mut prep = VisualLinePreparation::new(&body).unwrap();
+                assert!(!prep.advance(0));
+                let mut visited = Vec::new();
+                let mut turns = 0;
+                loop {
+                    let before = prep.scan.progress();
+                    let done = prep
+                        .advance_with_character_scan(budget, |byte, ch| visited.push((byte, ch)));
+                    assert!(prep.scan.progress() - before <= budget * 1536);
+                    turns += 1;
+                    if done {
+                        break;
+                    }
+                    assert!(turns < body.len() * 4 + 1);
+                }
+                assert_eq!(visited, body.char_indices().collect::<Vec<_>>());
+                let index = prep.finish().unwrap();
+                assert_eq!(index.len(), expected.len());
+                assert_eq!(index.text_run_boundaries().collect::<Vec<_>>(), runs);
+                assert_eq!(index.has_tabs(), body.contains('\t'));
+                assert_eq!(
+                    index.source_paint_eligible(),
+                    body.len() > super::super::MAX_MEASURE_BYTES
+                        && body
+                            .chars()
+                            .all(super::super::viewport::horizontal_paint_character)
+                );
+                for glyph in (0..expected.len()).step_by(97).chain([expected.len() - 1]) {
+                    assert_eq!(index.at(&body, glyph), Some(expected[glyph]));
+                }
+                if body.contains(&"\u{301}".repeat(1000)) {
+                    assert!(turns > 1);
+                }
+            }
+        }
+        assert!(
+            VisualLinePreparation::new(&"a".repeat(super::super::MAX_STRUCTURE_BYTES + 1))
+                .is_none()
+        );
+    }
+    #[test]
+    fn long_clusters_keep_local_queries_bounded_and_original_paint_seams_exact() {
+        for prefix in [0, 1, 200, 511, 512, 513] {
+            for cluster in [
+                format!("e{}", "\u{301}".repeat(40_000)),
+                format!("👩{}\u{200d}👩", "\u{301}".repeat(40_000)),
+                format!("क{}ष", "\u{94d}\u{93c}".repeat(10_000)),
+            ] {
+                let body = format!("{}{cluster} tail", "x".repeat(prefix));
+                let index = VisualLineIndex::new(&body).unwrap();
+                let boundaries = body
+                    .grapheme_indices(true)
+                    .map(|(byte, _)| byte)
+                    .chain([body.len()])
+                    .collect::<Vec<_>>();
+                let expected_runs = super::super::visual_text_run_ranges(&body)
+                    .map(|run| run.end)
+                    .collect::<Vec<_>>();
+                assert_eq!(
+                    index.text_run_boundaries().collect::<Vec<_>>(),
+                    expected_runs
+                );
+                for (glyph, &byte) in boundaries.iter().enumerate() {
+                    assert_eq!(
+                        index.at(&body, glyph),
+                        Some((byte, body[..byte].encode_utf16().count()))
+                    );
+                }
+                let end = prefix + cluster.len();
+                assert_eq!(index.0.long_clusters.len(), 1);
+                assert_eq!(index.local_end(0), prefix);
+                for byte in (prefix..end).step_by(97) {
+                    assert_eq!(index.index_at_byte(&body, byte), Some(prefix));
+                    let expected = if byte == prefix {
+                        vec![prefix]
+                    } else {
+                        Vec::new()
+                    };
+                    assert_eq!(index.boundary_glyphs(&body, &[byte]), Some(expected));
+                }
+                let queries = [
+                    prefix.saturating_sub(1),
+                    prefix,
+                    prefix + 1,
+                    end - 1,
+                    end,
+                    body.len(),
+                ];
+                let expected = queries
+                    .iter()
+                    .filter_map(|byte| boundaries.binary_search(byte).ok())
+                    .collect();
+                assert_eq!(index.boundary_glyphs(&body, &queries), Some(expected));
+                // A query immediately before the cluster scans only the prefix,
+                // rather than materializing the giant next grapheme for lookahead.
+                if prefix > 0 {
+                    assert_eq!(index.index_at_byte(&body, prefix - 1), Some(prefix - 1));
+                }
+            }
+        }
+    }
     #[test]
     fn ordered_paint_boundaries_match_complete_grapheme_coordinates() {
         for body in [

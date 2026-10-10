@@ -1,8 +1,8 @@
 //! Exact continuation policy for bounded, source-monotonic wrapped paragraphs.
-use super::paragraph::{MAX_RETAINED_RECTANGLES, ParagraphMeasurement, paragraph_anchor_glyphs};
+use super::paragraph::{MAX_RETAINED_RECTANGLES, ParagraphMeasurement};
 use super::{
-    GlyphRectangle, MAX_MEASURE_BYTES, MAX_PARAGRAPH_PROBE_BYTES, MAX_ROW_GEOMETRY_ANCHORS,
-    ParagraphMeasurements, ParagraphProbe, ParagraphReplay, VisualLineIndex, WrappedGeometry,
+    GlyphRectangle, MAX_PARAGRAPH_PROBE_BYTES, ParagraphMeasurements, ParagraphProbe,
+    ParagraphReplay, VisualLineIndex, WrappedGeometry,
 };
 use std::{ops::Range, sync::Arc};
 const TOLERANCE: f64 = 0.25;
@@ -32,21 +32,22 @@ pub struct WrappedParagraphPreparation<'a> {
 }
 impl<'a> WrappedParagraphPreparation<'a> {
     pub fn new(body: &'a str, index: VisualLineIndex, runs: Arc<[usize]>) -> Option<Self> {
-        if body.len() <= MAX_MEASURE_BYTES
-            || !index.source_paint_eligible()
-            || runs.last().copied() != Some(body.len())
-            || runs.len() > super::MAX_VISUAL_CARETS
-            || runs.windows(2).any(|pair| pair[0] >= pair[1])
-            || runs.iter().any(|byte| !body.is_char_boundary(*byte))
-            || index
-                .anchor_glyphs()
-                .take(MAX_ROW_GEOMETRY_ANCHORS + 1)
-                .count()
-                > MAX_ROW_GEOMETRY_ANCHORS
-        {
+        let mut preparation = super::ParagraphAnchorPreparation::wrapped(body, index, runs)?;
+        preparation.advance(usize::MAX);
+        Self::with_prepared_anchors(preparation.finish()?)
+    }
+    /// Accept only the complete, validated source-owned cooperative setup.
+    pub fn with_prepared_anchors(prepared: super::PreparedParagraphAnchors<'a>) -> Option<Self> {
+        if !prepared.wrapped {
             return None;
         }
-        let anchor_glyphs = paragraph_anchor_glyphs(body, &index, &runs)?;
+        let super::PreparedParagraphAnchors {
+            body,
+            index,
+            runs,
+            glyphs: anchor_glyphs,
+            ..
+        } = prepared;
         let mut result = Self {
             body,
             index,

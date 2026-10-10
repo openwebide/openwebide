@@ -90,7 +90,11 @@ def main():
                         print(json.dumps(result), flush=True)
                         assert result["passed"] is True, "WASM component tests failed"
                         break
-                    assert time.monotonic() < deadline, "WASM component tests timed out"
+                    if time.monotonic() >= deadline:
+                        # Preserve the executed-test output and first failure even
+                        # when a later contract prevents the run from completing.
+                        print(json.dumps(result), flush=True)
+                        raise AssertionError("WASM component tests timed out")
                     time.sleep(0.2)
             finally:
                 browser.stop()

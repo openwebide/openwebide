@@ -340,12 +340,15 @@ impl WrappedGeometry {
 pub enum MeasuredRowGeometry {
     Horizontal(HorizontalGeometry),
     Wrapped(WrappedGeometry),
+    /// Current measured coverage, not a complete logical-row extent.
+    WrappedCoverage(std::sync::Arc<WrappedCoverage>),
 }
 impl MeasuredRowGeometry {
     pub fn caret(&self, glyph: usize) -> Option<GlyphRectangle> {
         match self {
             Self::Horizontal(geometry) => geometry.caret(glyph),
             Self::Wrapped(geometry) => geometry.caret(glyph),
+            Self::WrappedCoverage(geometry) => geometry.caret(glyph),
         }
     }
     pub fn source_interval(
@@ -364,6 +367,13 @@ impl MeasuredRowGeometry {
                     window.rows.start as f64 * line_height..window.rows.end as f64 * line_height,
                 )
             }
+            (Self::WrappedCoverage(geometry), super::RowPaintWindow::Wrapped(window))
+                if line_height.is_finite() && line_height > 0.0 =>
+            {
+                geometry.source_interval(
+                    window.rows.start as f64 * line_height..window.rows.end as f64 * line_height,
+                )
+            }
             _ => None,
         }
     }
@@ -371,18 +381,21 @@ impl MeasuredRowGeometry {
         match self {
             Self::Horizontal(g) => g.anchors(source),
             Self::Wrapped(g) => g.anchors(source),
+            Self::WrappedCoverage(g) => g.geometry.anchors(source),
         }
     }
     pub fn width(&self) -> f64 {
         match self {
             Self::Horizontal(g) => g.width,
             Self::Wrapped(g) => g.width,
+            Self::WrappedCoverage(g) => g.geometry.width,
         }
     }
     pub fn height(&self) -> f64 {
         match self {
             Self::Horizontal(g) => g.height,
             Self::Wrapped(g) => g.height,
+            Self::WrappedCoverage(g) => g.covered_height,
         }
     }
 }

@@ -1092,6 +1092,42 @@ async fn switching_files_preserves_independent_edits_history_and_positions_in_bo
         assert_eq!(mounted.state.workspace.content.get_untracked(), "Second?");
         assert_eq!(files.read("a.txt").await.unwrap(), "Original");
         assert_eq!(files.read("b.txt").await.unwrap(), "Second");
+        // Both filesystem adapters publish the same complete source-owned index;
+        // normal and lossy reads share cooperative document preparation.
+        let large = "文😀\r\n".repeat(12_000);
+        files.write("prepared.txt", &large).await.unwrap();
+        actions.request_open.run("prepared.txt".into());
+        wait_until("Prepared file read completed", || {
+            !mounted.state.workspace.editor_loading.get_untracked()
+        })
+        .await;
+        mounted
+            .state
+            .workspace
+            .editor_documents
+            .with_untracked(|documents| {
+                let document = &documents[&(1, "prepared.txt".into())];
+                assert_eq!(document.text(), large);
+                assert_eq!(document.line_count(), 12_001);
+                assert!(std::sync::Arc::ptr_eq(
+                    &document.shared_text(),
+                    &mounted.state.workspace.content.get_untracked().shared()
+                ));
+                assert!(!document.is_dirty());
+            });
+        actions.on_open_lossy.run(());
+        wait_until("Prepared lossy read completed", || {
+            !mounted.state.workspace.editor_loading.get_untracked()
+        })
+        .await;
+        assert_eq!(mounted.state.workspace.content.get_untracked(), large);
+        mounted
+            .state
+            .workspace
+            .editor_documents
+            .with_untracked(|documents| {
+                assert_eq!(documents[&(1, "prepared.txt".into())].text(), large);
+            });
         // Input arriving while a read is pending must win, even for facade callers.
         actions.request_open.run("third.txt".into());
         mounted.state.workspace.content.set("new input".into());

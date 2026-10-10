@@ -1,0 +1,39 @@
+{
+  "conclusion": "success",
+  "headSha": "cc019c19cb99f085999f4f78b193a99a6486bdf7",
+  "jobs": [
+    {
+      "name": "backend-and-crates",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38082131069/job/114301045980"
+    },
+    {
+      "name": "frontend-ui-tests",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38082131069/job/114301046167"
+    },
+    {
+      "name": "frontend",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38082131069/job/114301046182"
+    },
+    {
+      "name": "docker",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38082131069/job/114301046213"
+    },
+    {
+      "name": "bridge-windows",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38082131069/job/114301046229"
+    }
+  ],
+  "status": "completed",
+  "url": "https://github.com/openwebide/openwebide/actions/runs/38082131069",
+  "reliability": "This checkpoint passes all five hosted jobs; the earlier parser fallback failure cause remains unproven."
+}

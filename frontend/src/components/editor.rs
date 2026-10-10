@@ -81,6 +81,40 @@ pub(super) struct EditorPaint {
     pub caret: Callback<usize, Option<web_sys::DomRect>>,
 }
 
+fn prepare_editor_expansion(
+    actions: EditorActions,
+    textarea: &web_sys::HtmlTextAreaElement,
+    error: RwSignal<Option<String>>,
+    paint: RwSignal<Option<EditorPaint>>,
+    focus: Option<WorkspaceState>,
+) {
+    let request = actions.selection_command_when_ready(
+        openwebide_core::editor::SelectionCommand::Expand,
+        projected_selection(actions, textarea),
+    );
+    let textarea = textarea.clone();
+    leptos::task::spawn_local(async move {
+        let result = request.await;
+        if error.is_disposed() || !current_editor_target(actions, &textarea) {
+            return;
+        }
+        match result {
+            Ok(Some(selections)) => {
+                error.set(None);
+                if let Some(selection) = selections.first() {
+                    render_editor_selection(actions, &textarea, *selection, false);
+                    reveal_editor_caret(actions, &textarea, paint);
+                    if let Some(workspace) = focus {
+                        focus_editor_after_menu(workspace, actions, &textarea);
+                    }
+                }
+            }
+            Err(failure) => error.set(Some(failure.to_string())),
+            Ok(None) => (),
+        }
+    });
+}
+
 fn editor_selection_key(
     actions: EditorActions,
     textarea: &web_sys::HtmlTextAreaElement,
@@ -185,6 +219,10 @@ fn editor_selection_key(
         && actions.queued_motion_ticket().is_some()
     {
         motion_adapter.queue(textarea, motion, event.shift_key());
+        return true;
+    }
+    if command == Some(Command::Expand) {
+        prepare_editor_expansion(actions, textarea, error, motion_adapter.paint, None);
         return true;
     }
     let source = actions.source();
@@ -362,6 +400,15 @@ pub(super) fn reveal_editor_caret(
     textarea: &web_sys::HtmlTextAreaElement,
     paint: RwSignal<Option<EditorPaint>>,
 ) {
+    reveal_editor_caret_with_retry(actions, textarea, paint, true);
+}
+
+fn reveal_editor_caret_with_retry(
+    actions: EditorActions,
+    textarea: &web_sys::HtmlTextAreaElement,
+    paint: RwSignal<Option<EditorPaint>>,
+    retry: bool,
+) {
     if !current_editor_target(actions, textarea) {
         return;
     }
@@ -373,6 +420,30 @@ pub(super) fn reveal_editor_caret(
         .get_untracked()
         .and_then(|paint| paint.caret.run(selection.head))
     else {
+        // A source motion can precede the reactive paint/cache refresh. Retry
+        // after that frame instead of silently losing the explicit reveal.
+        // New source, selection, account or scroll intent cancels the request.
+        if retry {
+            let scope = untrack(|| actions.presentation_scope());
+            let scroll = crate::viewport::editor_scroll(textarea);
+            let position = (scroll.scroll_top(), scroll.scroll_left());
+            let textarea = textarea.clone();
+            leptos::leptos_dom::helpers::request_animation_frame(move || {
+                leptos::leptos_dom::helpers::request_animation_frame(move || {
+                    if paint.is_disposed() || !current_editor_target(actions, &textarea) {
+                        return;
+                    }
+                    let scroll = crate::viewport::editor_scroll(&textarea);
+                    if untrack(|| actions.presentation_scope()) == scope
+                        && actions.source() == source
+                        && actions.selection(&source) == Some(selection)
+                        && (scroll.scroll_top(), scroll.scroll_left()) == position
+                    {
+                        reveal_editor_caret_with_retry(actions, &textarea, paint, false);
+                    }
+                });
+            });
+        }
         return;
     };
     let scroll = crate::viewport::editor_scroll(textarea);
@@ -833,6 +904,29 @@ pub fn take_paragraph_suffix_probes() -> usize {
 #[cfg(feature = "test-support")]
 pub fn take_paragraph_prefix_reconciliations() -> usize {
     super::editor_rows::take_paragraph_prefix_reconciliations()
+}
+
+#[cfg(feature = "test-support")]
+pub fn wrapped_coverage_matches_complete(
+    input: &web_sys::HtmlTextAreaElement,
+    snapshot: &crate::state::workspace::EditorParagraphCoverage,
+) -> bool {
+    let paint = &snapshot.paint;
+    let html = highlight_html(
+        &paint.tokens,
+        paint.prepared_source,
+        &paint.guides,
+        PaintRows {
+            indices: &[0],
+            projection: None,
+            source: Some(&paint.projection),
+            source_slices: &[],
+        },
+        paint.indentation,
+        paint.whitespace,
+        false,
+    );
+    super::editor_rows::check_wrapped_coverage_geometry(input, snapshot, &html).unwrap_or(false)
 }
 
 #[cfg(feature = "test-support")]
@@ -1309,6 +1403,7 @@ fn HighlightOverlay(
     let presentation_scope = Memo::new(move |_| actions.presentation_scope());
     let presented_scope = StoredValue::new(None);
     let painted_whitespace = StoredValue::new(false);
+    let painted_complete_rows = StoredValue::new(false);
     let painted_syntax =
         StoredValue::new(None::<(bool, std::sync::Arc<openwebide_core::highlight::TokenRows>)>);
     let layout_callback = StoredValue::new_local(Closure::<dyn FnMut(bool, bool)>::new(
@@ -1355,12 +1450,13 @@ fn HighlightOverlay(
             }
         });
     });
-    let tokens = Memo::new(move |_| {
+    let prepared_paint = Memo::new(move |_| {
         content.track();
         actions.presentation_scope();
         actions.preparation_revision();
         actions.syntax_paint()
     });
+    let tokens = Memo::new(move |_| EditorActions::render_paint(prepared_paint.get()));
     let guides = Memo::new(move |_| {
         content.track();
         actions.presentation_scope();
@@ -1368,22 +1464,23 @@ fn HighlightOverlay(
         actions.indent_guides(indentation.get())
     });
     let retain_style = Callback::new(move |()| {
-        actions.syntax_is_pending()
-            && painted_syntax.with_value(|syntax| {
-                syntax
-                    .as_ref()
-                    .is_some_and(|syntax| syntax.0 || !syntax.1.is_empty())
+        painted_syntax.with_value(|syntax| {
+            syntax.as_ref().is_some_and(|syntax| {
+                actions.retain_pending_paint(syntax.0, painted_complete_rows.get_value())
             })
-            && presented_scope.get_value() == presentation_scope.get_untracked()
+        }) && presented_scope.get_value() == presentation_scope.get_untracked()
     });
     let fragment_cache =
         StoredValue::new(crate::state_actions::editor::EditorFragmentCache::default());
-    let batch_key = StoredValue::new(None::<(u64, String, usize, bool)>);
+    let batch_key = StoredValue::new(None::<(u64, u64, String, usize, bool)>);
     let batch_ticket = StoredValue::new(None::<u64>);
     Effect::new(move || {
         layout_revision.track();
         actions.view_revision();
         actions.preferences();
+        let syntax_revision = actions.preparation_revision();
+        // Preparation readiness can advance without changing neutral geometry.
+        prepared_paint.track();
         let prepared_tokens = tokens.get();
         if retain_style.run(()) || !actions.full_row_paint_ready() {
             batch_key.set_value(None);
@@ -1424,6 +1521,7 @@ fn HighlightOverlay(
         let revision = actions.view_revision();
         let key = (
             revision,
+            syntax_revision,
             metrics.clone(),
             std::sync::Arc::as_ptr(&prepared_tokens.1) as usize,
             whitespace,
@@ -1504,6 +1602,13 @@ fn HighlightOverlay(
                 },
                 move |row, geometry| {
                     if actions.row_preparation_current(ticket) && !fragment_cache.is_disposed() {
+                        if let openwebide_core::editor::MeasuredRowGeometry::WrappedCoverage(
+                            prefix,
+                        ) = geometry
+                        {
+                            actions.retain_paragraph_coverage(ticket, &geometry_paint, row, prefix);
+                            return;
+                        }
                         fragment_cache.update_value(|cache| {
                             actions.retain_preparation_geometry(
                                 cache,
@@ -1581,12 +1686,14 @@ fn HighlightOverlay(
         !fragment_windows.with(Vec::is_empty)
             && actions.row_geometry_is_pending()
             && actions.measured_prefix().is_none()
+            && actions.paragraph_coverage().is_none()
     });
     let partial_geometry = Memo::new(move |_| {
         actions.measured_rows().is_none()
-            && actions.measured_prefix().is_some_and(|prefix| {
-                prefix.paint.word_wrap || !prefix.paint.projection.has_uniform_rows()
-            })
+            && (actions.paragraph_coverage().is_some()
+                || actions.measured_prefix().is_some_and(|prefix| {
+                    prefix.paint.word_wrap || !prefix.paint.projection.has_uniform_rows()
+                }))
     });
     let rendered = RwSignal::new(String::new());
     let rendered_scope = RwSignal::new(0_u64);
@@ -1671,7 +1778,9 @@ fn HighlightOverlay(
                 }
             });
         }
-        let html = cached.unwrap_or_else(|| {
+        let partial_paragraph =
+            actions.measured_rows().is_none() && actions.paragraph_coverage().is_some();
+        let html = cached.map(Some).unwrap_or_else(|| {
             let fragment = input.as_ref().and_then(|input| {
                 let mut result = None;
                 fragment_cache.update_value(|cache| {
@@ -1682,17 +1791,24 @@ fn HighlightOverlay(
                 result
             });
             fragment.map_or_else(
-                || render(&[]),
+                || (!partial_paragraph).then(|| render(&[])),
                 |fragment| {
                     if let Some(key) = cache_window {
                         fragment_cache.update_value(|cache| {
                             actions.retain_fragment(cache, key, fragment.clone());
                         });
                     }
-                    fragment
+                    Some(fragment)
                 },
             )
         });
+        let Some(html) = html else {
+            // A failed partial shaping proof waits for complete geometry. It
+            // cannot turn bounded preparation into synchronous full-row paint.
+            ready.set(false);
+            presentation.set(false);
+            return;
+        };
         if immediate && let Some(overlay) = node_ref.get_untracked() {
             if let Ok(Some(content)) = overlay.query_selector(".editor-highlight-content") {
                 content.set_inner_html(&html);
@@ -1714,11 +1830,15 @@ fn HighlightOverlay(
         }
         painted_whitespace.set_value(show_whitespace.get_untracked());
         painted_syntax.set_value(Some(tokens.get_untracked()));
+        painted_complete_rows.set_value(!prepared_paint.get_untracked().1.is_empty());
         rendered_scope.set(actions.projection_revision());
         rendered.set(html);
         presented_scope.set_value(presentation_scope.get_untracked());
         presentation.set(!viewport.get_untracked().rows.is_empty());
-        ready.set(!viewport.get_untracked().rows.is_empty() && !partial_geometry.get_untracked());
+        ready.set(
+            !viewport.get_untracked().rows.is_empty()
+                && (!partial_geometry.get_untracked() || actions.paragraph_coverage().is_some()),
+        );
         let published_generation = generation.get_value();
         // Re-align after the highlighted HTML reaches the DOM.
         leptos::leptos_dom::helpers::queue_microtask(move || {
@@ -1859,7 +1979,7 @@ fn HighlightOverlay(
                 || painted_syntax.with_value(|paint| {
                     paint
                         .as_ref()
-                        .is_none_or(|(prepared, tokens)| !prepared && tokens.is_empty())
+                        .is_none_or(|(prepared, _)| !prepared && !painted_complete_rows.get_value())
                 }))
             && textarea_ref.get_untracked().is_some_and(|input| {
                 current_editor_target(actions, &input)
@@ -1870,7 +1990,7 @@ fn HighlightOverlay(
                     && crate::viewport::editor_scroll(&input).client_width() > 0
                     && crate::viewport::editor_scroll(&input).client_height() > 0
             })
-            && tokens.with_untracked(|(prepared, tokens)| {
+            && prepared_paint.with_untracked(|(prepared, tokens)| {
                 actions.initial_viewport_paint_ready(&visible.get_untracked(), (*prepared, tokens))
             });
         if initial {
@@ -2250,7 +2370,30 @@ fn apply_editor_command(
     actions: EditorActions,
     command: EditorCommand,
     textarea: &web_sys::HtmlTextAreaElement,
+    error: RwSignal<Option<String>>,
 ) -> bool {
+    if actions.command_requires_structure(command) {
+        let selection = projected_selection(actions, textarea);
+        let indentation = actions.rules_untracked().indentation;
+        let textarea = textarea.clone();
+        let request = actions.command_when_ready(command, selection, indentation);
+        leptos::task::spawn_local(async move {
+            let result = request.await;
+            if error.is_disposed() || !current_editor_target(actions, &textarea) {
+                return;
+            }
+            match result {
+                Ok(Some(selection)) => {
+                    error.set(None);
+                    refresh_editor_folds(actions);
+                    render_editor_selection(actions, &textarea, selection, false);
+                }
+                Err(failure) => error.set(Some(failure.to_string())),
+                Ok(None) => (),
+            }
+        });
+        return true;
+    }
     if let Ok(Some(selection)) = actions.command(
         command,
         projected_selection(actions, textarea),
@@ -2496,8 +2639,8 @@ pub fn Editor(
                     12.0,
                 );
             }
-            // Only origin paint is useful before complete source extents exist.
-            // Retain restored scroll requests until the complete table can place them.
+            // Completed-prefix paint is restricted to the origin until complete
+            // source extents can place restored scroll requests.
             if editor_actions.scroll().top == 0.0
                 && editor_actions.scroll().left == 0.0
                 && let Some(prefix) = editor_actions.measured_prefix()
@@ -2510,6 +2653,24 @@ pub fn Editor(
                     f64::from(crate::viewport::editor_scroll(&input).client_height()),
                     12.0,
                 );
+            }
+            if editor_actions.scroll().top >= 0.0
+                && editor_actions.scroll().left == 0.0
+                && let Some(coverage) = editor_actions.paragraph_coverage()
+                && let Some(input) = ta.get()
+                && current_editor_target(editor_actions, &input)
+                && super::editor_rows::metrics_identity(&input).as_ref()
+                    == Some(&coverage.paint.metrics)
+                && coverage.coverage.covered_height()
+                    > editor_actions.scroll().top
+                        + f64::from(crate::viewport::editor_scroll(&input).client_height())
+                        + 24.0
+            {
+                return openwebide_core::editor::EditorViewport {
+                    rows: 0..1,
+                    top: 0.0,
+                    height: coverage.coverage.covered_height(),
+                };
             }
             let batched = projection.with(|view| {
                 openwebide_core::editor::needs_measured_batches(rows, view.text().len())
@@ -2776,9 +2937,21 @@ pub fn Editor(
             && current_editor_target(editor_actions, &textarea)
         {
             let selection = projected_selection(editor_actions, &textarea);
-            if let Some((_, target)) = editor_actions.matching_bracket(selection.head) {
-                navigate_editor(editor_actions, &textarea, target, paint_request);
-            }
+            let request = editor_actions.matching_bracket_when_ready(selection);
+            leptos::task::spawn_local(async move {
+                let result = request.await;
+                if action_error.is_disposed() || !current_editor_target(editor_actions, &textarea) {
+                    return;
+                }
+                match result {
+                    Ok(Some((_, target))) => {
+                        action_error.set(None);
+                        navigate_editor(editor_actions, &textarea, target, paint_request);
+                    }
+                    Err(failure) => action_error.set(Some(failure.to_string())),
+                    Ok(None) => (),
+                }
+            });
         }
     });
     Effect::new(move || {
@@ -3058,6 +3231,7 @@ pub fn Editor(
     // Existing nodes retain their current viewport during commands and external updates.
     let restored_textarea =
         StoredValue::new_local(None::<(web_sys::HtmlTextAreaElement, Option<(i64, String)>)>);
+    let awaiting_initial_native_context = StoredValue::new(false);
     Effect::new(move || {
         let full_projection = projection.get();
         editor_actions.track_native_context();
@@ -3075,8 +3249,18 @@ pub fn Editor(
             .ok()
             .flatten()
             .is_some_and(|query| query.matches());
-        if mounted && !touch && view_mode.get_untracked() == ViewMode::Code {
-            editor_actions.begin_initial_native_context();
+        if mounted {
+            awaiting_initial_native_context.set_value(true);
+        }
+        if awaiting_initial_native_context.get_value()
+            && !touch
+            && view_mode.get_untracked() == ViewMode::Code
+        {
+            workspace.editor_documents.track();
+            awaiting_initial_native_context.set_value(
+                editor_actions.prepare_initial_native_context()
+                    == crate::state_actions::editor::InitialNativeContextPreparation::WaitingForDocument,
+            );
         }
         let current_projection = editor_actions.input_projection().unwrap_or(full_projection);
         let value = current_projection.textarea_text();
@@ -3140,7 +3324,12 @@ pub fn Editor(
         if let Some(textarea) = ta.get_untracked()
             && current_editor_target(editor_actions, &textarea)
         {
-            apply_editor_command(editor_actions, EditorCommand::ConvertIndentation, &textarea);
+            apply_editor_command(
+                editor_actions,
+                EditorCommand::ConvertIndentation,
+                &textarea,
+                action_error,
+            );
             let _ = textarea.focus();
         }
     });
@@ -3228,6 +3417,10 @@ pub fn Editor(
                                                 let source = content.get_untracked();
                                                 let selection = projected_selection(editor_actions, &textarea);
                                                 if let Err(error) = editor_actions.record_native_selection(selection) { action_error.set(Some(error.to_string())); return; }
+                                                if command == openwebide_core::editor::SelectionCommand::Expand {
+                                                    prepare_editor_expansion(editor_actions, &textarea, action_error, paint_request, Some(workspace));
+                                                    return;
+                                                }
                                                 match editor_actions.selection_command(project, &path, &source, command) {
                                                     Ok(Some(selections)) => { action_error.set(None); if let Some(selection) = selections.first() { render_editor_selection(editor_actions, &textarea, *selection, false); focus_editor_after_menu(workspace, editor_actions, &textarea); } }
                                                     Err(error) => action_error.set(Some(error.to_string())),
@@ -3250,16 +3443,8 @@ pub fn Editor(
                                             ("Toggle block comment", EditorCommand::BlockComment, "Ctrl/Cmd+Shift+/", IconName::Brackets),
                                             ("Reindent selected lines", EditorCommand::Reindent, "", IconName::ListIndentIncrease),
                                         ].into_iter().map(move |(label, command, shortcut, icon)| view! {
-                                            <button type="button" role="menuitem" class="ui-dropdown-item recent-item" title=shortcut disabled=move || read_only.get() || {
-                                                let language = openwebide_core::highlight::language_from_path(&open_file.get().unwrap_or_default());
-                                                match command {
-                                                    EditorCommand::LineComment => openwebide_core::editor::line_comment(language).is_none() && openwebide_core::editor::block_comment(language).is_none(),
-                                                    EditorCommand::BlockComment => openwebide_core::editor::block_comment(language).is_none(),
-                                                    EditorCommand::Reindent => !openwebide_core::editor::supports_brackets(language),
-                                                    _ => false,
-                                                }
-                                            } on:click=move |_| {
-                                                if let Some(textarea) = ta.get() && !read_only.get_untracked() && current_editor_target(editor_actions, &textarea) { apply_editor_command(editor_actions, command, &textarea); let _ = textarea.focus(); }
+                                            <button type="button" role="menuitem" class="ui-dropdown-item recent-item" title=shortcut disabled=move || read_only.get() || !editor_actions.command_supported(command) on:click=move |_| {
+                                                if let Some(textarea) = ta.get() && !read_only.get_untracked() && current_editor_target(editor_actions, &textarea) { apply_editor_command(editor_actions, command, &textarea, action_error); let _ = textarea.focus(); }
                                             }><Icon name=icon /><span>{label}</span></button>
                                         }).collect_view()}
                                         <h3 class="ui-menu-heading">"Folding"</h3>
@@ -3655,7 +3840,7 @@ pub fn Editor(
                                                         "insertText" => event.data().and_then(|text| pair_character(&text)).map(EditorCommand::TypeCharacter),
                                                         _ => None,
                                                     };
-                                                    if let Some(command) = command && apply_editor_command(editor_actions, command, &textarea) { event.prevent_default(); return; }
+                                                    if let Some(command) = command && apply_editor_command(editor_actions, command, &textarea, action_error) { event.prevent_default(); return; }
                                                     if event.input_type() == "insertText" && !editor_actions.is_composing() && let Some(text) = event.data() {
                                                         editor_actions.begin_native_text(text);
                                                     }
@@ -3714,7 +3899,7 @@ pub fn Editor(
                                                     key if !modified && !event.alt_key() => pair_character(key).map(EditorCommand::TypeCharacter),
                                                     _ => None,
                                                 };
-                                                if let Some(command) = command && apply_editor_command(editor_actions, command, &textarea) {
+                                                if let Some(command) = command && apply_editor_command(editor_actions, command, &textarea, action_error) {
                                                     event.prevent_default(); event.stop_propagation();
                                                 }
                                             }
@@ -3800,6 +3985,150 @@ pub fn Editor(
 mod tests {
     use super::{browser_matches, paint_text_range};
     use leptos::prelude::document;
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    async fn cooperative_syntax_transport_stops_in_flight_and_rejects_new_requests() {
+        use crate::editor_worker::{CooperativeClient, SyntaxTransport, WorkerError};
+        let client = CooperativeClient::default();
+        let source = "fn f() { call(); }\n".repeat(256);
+        let request = openwebide_core::editor::SyntaxRequest::new(
+            1,
+            "editor-test".into(),
+            openwebide_core::highlight::Language::Rust,
+            &source,
+            4,
+            None,
+        );
+        let message = serde_json::to_string(&request).unwrap();
+        let result = client
+            .request_while(message.clone(), || {
+                client.stop();
+                true
+            })
+            .await;
+        assert_eq!(result, Err(WorkerError::Unavailable));
+        assert_eq!(
+            client.request(1, message).await,
+            Err(WorkerError::Unavailable)
+        );
+    }
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    async fn deferred_caret_reveal_retries_once_and_rejects_new_intent() {
+        use super::*;
+        use openwebide_core::editor::Selection;
+        use std::sync::{
+            Arc,
+            atomic::{AtomicUsize, Ordering},
+        };
+
+        for change in [
+            "none",
+            "source",
+            "selection",
+            "file",
+            "account",
+            "scroll",
+            "dispose",
+        ] {
+            let owner = Owner::new();
+            let (workspace, auth, actions, paint, calls) = owner.with(|| {
+                let auth = crate::state::auth::AuthState::new();
+                provide_context(auth);
+                let workspace = WorkspaceState::new();
+                workspace.active_project.set(Some(1));
+                workspace.open_file.set(Some("reveal.txt".into()));
+                workspace.content.set("line\n".repeat(100).into());
+                let actions = EditorActions::new(workspace);
+                actions.prepare_edit(Selection::caret(0)).unwrap();
+                let calls = Arc::new(AtomicUsize::new(0));
+                (
+                    workspace,
+                    auth,
+                    actions,
+                    RwSignal::new(None::<EditorPaint>),
+                    calls,
+                )
+            });
+            let parent = document().create_element("div").unwrap();
+            parent.set_attribute("data-editor-account", "0").unwrap();
+            let input: web_sys::HtmlTextAreaElement = document()
+                .create_element("textarea")
+                .unwrap()
+                .unchecked_into();
+            input.set_attribute("data-editor-project", "1").unwrap();
+            input
+                .set_attribute("data-editor-path", "reveal.txt")
+                .unwrap();
+            input
+                .set_attribute(
+                    "style",
+                    "width:300px;height:100px;line-height:20px;white-space:pre",
+                )
+                .unwrap();
+            input.set_value(&"line\n".repeat(100));
+            parent.append_child(&input).unwrap();
+            document().body().unwrap().append_child(&parent).unwrap();
+            let measured_input = input.clone();
+            let measured_calls = calls.clone();
+            owner.with(|| {
+                paint.set(Some(EditorPaint {
+                    ticket: 1,
+                    flush: Callback::new(|()| ()),
+                    neighborhood: Callback::new(|()| None),
+                    caret: Callback::new(move |_| {
+                        let count = measured_calls.fetch_add(1, Ordering::Relaxed);
+                        if count == 0 {
+                            return None;
+                        }
+                        let bounds = measured_input.get_bounding_client_rect();
+                        web_sys::DomRect::new_with_x_and_y_and_width_and_height(
+                            bounds.left(),
+                            bounds.top() + 900.0 - measured_input.scroll_top(),
+                            0.0,
+                            20.0,
+                        )
+                        .ok()
+                    }),
+                }));
+            });
+            super::reveal_editor_caret(actions, &input, paint);
+            assert_eq!(calls.load(Ordering::Relaxed), 1);
+            match change {
+                "source" => workspace.content.set("changed".into()),
+                "selection" => {
+                    actions.prepare_edit(Selection::caret(5)).unwrap();
+                }
+                "file" => workspace.open_file.set(Some("other.txt".into())),
+                "account" => auth.generation.update(|generation| *generation += 1),
+                "scroll" => input.set_scroll_top(100.0),
+                "dispose" => owner.cleanup(),
+                _ => (),
+            }
+            crate::util::sleep_ms(100).await;
+            assert_eq!(
+                calls.load(Ordering::Relaxed),
+                if change == "none" { 2 } else { 1 },
+                "{change}"
+            );
+            if change == "none" {
+                assert!(input.scroll_top() > 0.0);
+            } else {
+                assert_eq!(
+                    input.scroll_top().to_bits(),
+                    if change == "scroll" {
+                        100.0_f64
+                    } else {
+                        0.0_f64
+                    }
+                    .to_bits(),
+                    "{change}"
+                );
+            }
+            parent.remove();
+            owner.cleanup();
+        }
+    }
     fn find_matches(text: &str, query: &str) -> Vec<(u32, u32, usize)> {
         let pattern =
             openwebide_core::editor::SearchPattern::new(query, Default::default()).unwrap();

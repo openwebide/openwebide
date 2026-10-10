@@ -1,0 +1,632 @@
+{
+  "conclusion": "success",
+  "databaseId": 38075438418,
+  "headSha": "2b1e482c54ef5c648306cb112edbdfca5209e894",
+  "jobs": [
+    {
+      "completedAt": "2026-10-10T18:22:55Z",
+      "conclusion": "success",
+      "databaseId": 114281314230,
+      "name": "bridge-windows",
+      "startedAt": "2026-10-10T18:21:22Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-10T18:21:25Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-10T18:21:23Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:21:36Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-10-10T18:21:25Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:21:50Z",
+          "conclusion": "success",
+          "name": "Run dtolnay/rust-toolchain@master",
+          "number": 3,
+          "startedAt": "2026-10-10T18:21:36Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:22:18Z",
+          "conclusion": "success",
+          "name": "Run Swatinem/rust-cache@v2",
+          "number": 4,
+          "startedAt": "2026-10-10T18:21:50Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:22:50Z",
+          "conclusion": "success",
+          "name": "Check bridge Windows adapters with TLS",
+          "number": 5,
+          "startedAt": "2026-10-10T18:22:18Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:22:50Z",
+          "conclusion": "success",
+          "name": "Post Run Swatinem/rust-cache@v2",
+          "number": 9,
+          "startedAt": "2026-10-10T18:22:50Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:22:53Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 10,
+          "startedAt": "2026-10-10T18:22:50Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:22:53Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 11,
+          "startedAt": "2026-10-10T18:22:53Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38075438418/job/114281314230"
+    },
+    {
+      "completedAt": "2026-10-10T18:32:19Z",
+      "conclusion": "success",
+      "databaseId": 114281314384,
+      "name": "frontend",
+      "startedAt": "2026-10-10T18:21:21Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-10T18:21:24Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-10T18:21:22Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:21:25Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-10-10T18:21:24Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:21:35Z",
+          "conclusion": "success",
+          "name": "Run dtolnay/rust-toolchain@master",
+          "number": 3,
+          "startedAt": "2026-10-10T18:21:25Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:21:38Z",
+          "conclusion": "success",
+          "name": "Prepare browser parser C compiler",
+          "number": 4,
+          "startedAt": "2026-10-10T18:21:35Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:21:49Z",
+          "conclusion": "success",
+          "name": "Run Swatinem/rust-cache@v2",
+          "number": 5,
+          "startedAt": "2026-10-10T18:21:38Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:21:50Z",
+          "conclusion": "success",
+          "name": "Install Trunk",
+          "number": 6,
+          "startedAt": "2026-10-10T18:21:49Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:21:57Z",
+          "conclusion": "success",
+          "name": "Test PWA caching and installation",
+          "number": 7,
+          "startedAt": "2026-10-10T18:21:50Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:25:08Z",
+          "conclusion": "success",
+          "name": "Build frontend",
+          "number": 8,
+          "startedAt": "2026-10-10T18:21:57Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:25:18Z",
+          "conclusion": "success",
+          "name": "Run ./.github/actions/setup-editor-browser",
+          "number": 9,
+          "startedAt": "2026-10-10T18:25:08Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:25:22Z",
+          "conclusion": "success",
+          "name": "Check production Rust/WASM editor worker",
+          "number": 10,
+          "startedAt": "2026-10-10T18:25:18Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:25:23Z",
+          "conclusion": "success",
+          "name": "Install Spin runtime for editor input verification",
+          "number": 11,
+          "startedAt": "2026-10-10T18:25:22Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:26:08Z",
+          "conclusion": "success",
+          "name": "Build backend for editor input verification",
+          "number": 12,
+          "startedAt": "2026-10-10T18:25:23Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:32:17Z",
+          "conclusion": "success",
+          "name": "Check production editor input, history and pointer selection",
+          "number": 13,
+          "startedAt": "2026-10-10T18:26:08Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:32:18Z",
+          "conclusion": "success",
+          "name": "Post Run Swatinem/rust-cache@v2",
+          "number": 25,
+          "startedAt": "2026-10-10T18:32:17Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:32:18Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 26,
+          "startedAt": "2026-10-10T18:32:18Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:32:18Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 27,
+          "startedAt": "2026-10-10T18:32:18Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38075438418/job/114281314384"
+    },
+    {
+      "completedAt": "2026-10-10T18:30:37Z",
+      "conclusion": "success",
+      "databaseId": 114281314421,
+      "name": "backend-and-crates",
+      "startedAt": "2026-10-10T18:21:21Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-10T18:21:23Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-10T18:21:22Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:21:24Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-10-10T18:21:23Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:21:38Z",
+          "conclusion": "success",
+          "name": "Run dtolnay/rust-toolchain@master",
+          "number": 3,
+          "startedAt": "2026-10-10T18:21:24Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:21:44Z",
+          "conclusion": "success",
+          "name": "Prepare browser parser C compiler",
+          "number": 4,
+          "startedAt": "2026-10-10T18:21:38Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:22:02Z",
+          "conclusion": "success",
+          "name": "Run Swatinem/rust-cache@v2",
+          "number": 5,
+          "startedAt": "2026-10-10T18:21:44Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:22:07Z",
+          "conclusion": "success",
+          "name": "Format check",
+          "number": 6,
+          "startedAt": "2026-10-10T18:22:02Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:22:13Z",
+          "conclusion": "success",
+          "name": "Validate release tooling and install configuration",
+          "number": 7,
+          "startedAt": "2026-10-10T18:22:07Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:22:22Z",
+          "conclusion": "success",
+          "name": "Prepare isolated plugin builds",
+          "number": 8,
+          "startedAt": "2026-10-10T18:22:13Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:22:51Z",
+          "conclusion": "success",
+          "name": "Clippy (native crates)",
+          "number": 9,
+          "startedAt": "2026-10-10T18:22:22Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:23:02Z",
+          "conclusion": "success",
+          "name": "Clippy (backend, wasm32-wasip2)",
+          "number": 10,
+          "startedAt": "2026-10-10T18:22:51Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:24:03Z",
+          "conclusion": "success",
+          "name": "Clippy (frontend, wasm32-unknown-unknown)",
+          "number": 11,
+          "startedAt": "2026-10-10T18:23:02Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:24:16Z",
+          "conclusion": "success",
+          "name": "Clippy (editor measurements)",
+          "number": 12,
+          "startedAt": "2026-10-10T18:24:03Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:24:28Z",
+          "conclusion": "success",
+          "name": "Clippy (bridge)",
+          "number": 13,
+          "startedAt": "2026-10-10T18:24:16Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:28:35Z",
+          "conclusion": "success",
+          "name": "Tests (native)",
+          "number": 14,
+          "startedAt": "2026-10-10T18:24:28Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:29:06Z",
+          "conclusion": "success",
+          "name": "Tests (editor storage workloads)",
+          "number": 15,
+          "startedAt": "2026-10-10T18:28:35Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:29:30Z",
+          "conclusion": "success",
+          "name": "Tests (frontend native)",
+          "number": 16,
+          "startedAt": "2026-10-10T18:29:06Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:30:35Z",
+          "conclusion": "success",
+          "name": "Build backend component",
+          "number": 17,
+          "startedAt": "2026-10-10T18:29:30Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:30:35Z",
+          "conclusion": "success",
+          "name": "Post Run Swatinem/rust-cache@v2",
+          "number": 33,
+          "startedAt": "2026-10-10T18:30:35Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:30:35Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 34,
+          "startedAt": "2026-10-10T18:30:35Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:30:35Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 35,
+          "startedAt": "2026-10-10T18:30:35Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38075438418/job/114281314421"
+    },
+    {
+      "completedAt": "2026-10-10T18:57:20Z",
+      "conclusion": "success",
+      "databaseId": 114281314477,
+      "name": "frontend-ui-tests",
+      "startedAt": "2026-10-10T18:21:21Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-10T18:21:23Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-10T18:21:22Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:21:25Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-10-10T18:21:23Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:21:37Z",
+          "conclusion": "success",
+          "name": "Run dtolnay/rust-toolchain@master",
+          "number": 3,
+          "startedAt": "2026-10-10T18:21:25Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:21:39Z",
+          "conclusion": "success",
+          "name": "Prepare browser parser C compiler",
+          "number": 4,
+          "startedAt": "2026-10-10T18:21:37Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:21:52Z",
+          "conclusion": "success",
+          "name": "Run Swatinem/rust-cache@v2",
+          "number": 5,
+          "startedAt": "2026-10-10T18:21:39Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:22:04Z",
+          "conclusion": "success",
+          "name": "Run ./.github/actions/setup-editor-browser",
+          "number": 6,
+          "startedAt": "2026-10-10T18:21:52Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:22:04Z",
+          "conclusion": "success",
+          "name": "Point ChromeDriver at the installed Chrome",
+          "number": 7,
+          "startedAt": "2026-10-10T18:22:04Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:22:05Z",
+          "conclusion": "success",
+          "name": "Install wasm-bindgen test runner",
+          "number": 8,
+          "startedAt": "2026-10-10T18:22:04Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:56:43Z",
+          "conclusion": "success",
+          "name": "Tests (frontend UI)",
+          "number": 9,
+          "startedAt": "2026-10-10T18:22:05Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:57:18Z",
+          "conclusion": "success",
+          "name": "Measure shared editor storage in browser WASM",
+          "number": 10,
+          "startedAt": "2026-10-10T18:56:43Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:57:18Z",
+          "conclusion": "success",
+          "name": "Post Run Swatinem/rust-cache@v2",
+          "number": 19,
+          "startedAt": "2026-10-10T18:57:18Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:57:18Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 20,
+          "startedAt": "2026-10-10T18:57:18Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:57:18Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 21,
+          "startedAt": "2026-10-10T18:57:18Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38075438418/job/114281314477"
+    },
+    {
+      "completedAt": "2026-10-10T18:32:05Z",
+      "conclusion": "success",
+      "databaseId": 114281314480,
+      "name": "docker",
+      "startedAt": "2026-10-10T18:21:21Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-10T18:21:22Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-10T18:21:22Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:21:24Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-10-10T18:21:22Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:21:25Z",
+          "conclusion": "success",
+          "name": "Test container supervisor",
+          "number": 3,
+          "startedAt": "2026-10-10T18:21:24Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:30:13Z",
+          "conclusion": "success",
+          "name": "Build container image",
+          "number": 4,
+          "startedAt": "2026-10-10T18:21:25Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:30:13Z",
+          "conclusion": "success",
+          "name": "Check bundled bridge",
+          "number": 5,
+          "startedAt": "2026-10-10T18:30:13Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:30:24Z",
+          "conclusion": "success",
+          "name": "Check SSH Git agent forwarding and strict host keys",
+          "number": 6,
+          "startedAt": "2026-10-10T18:30:13Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:30:24Z",
+          "conclusion": "success",
+          "name": "Check host-owned workspace Git access",
+          "number": 7,
+          "startedAt": "2026-10-10T18:30:24Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:31:00Z",
+          "conclusion": "success",
+          "name": "Check HTTPS REST, SSE and WebSocket transport (Docker)",
+          "number": 8,
+          "startedAt": "2026-10-10T18:30:24Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:31:06Z",
+          "conclusion": "success",
+          "name": "Install rootless Podman",
+          "number": 9,
+          "startedAt": "2026-10-10T18:31:00Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:31:06Z",
+          "conclusion": "success",
+          "name": "Validate release Quadlet services without starting them",
+          "number": 10,
+          "startedAt": "2026-10-10T18:31:06Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:31:14Z",
+          "conclusion": "success",
+          "name": "Load the same image into rootless Podman",
+          "number": 11,
+          "startedAt": "2026-10-10T18:31:06Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:32:03Z",
+          "conclusion": "success",
+          "name": "Check HTTPS REST, SSE and WebSocket transport (rootless Podman)",
+          "number": 12,
+          "startedAt": "2026-10-10T18:31:14Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:32:03Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 24,
+          "startedAt": "2026-10-10T18:32:03Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-10T18:32:03Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 25,
+          "startedAt": "2026-10-10T18:32:03Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38075438418/job/114281314480"
+    }
+  ],
+  "status": "completed",
+  "url": "https://github.com/openwebide/openwebide/actions/runs/38075438418"
+}

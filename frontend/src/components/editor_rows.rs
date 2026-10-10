@@ -240,14 +240,21 @@ async fn measure_wrapped_paragraph(
     scope: &crate::state::workspace::EditorRowPaint,
     logical: usize,
     current: &impl Fn() -> bool,
+    coverage: &impl Fn(openwebide_core::editor::WrappedCoverage),
     render: &impl Fn(&[usize], bool, &[crate::state_actions::editor::EditorRowSourceSlice]) -> String,
 ) -> Result<Option<(f64, openwebide_core::editor::WrappedGeometry)>, ()> {
-    if !current() || !actions.prepare_styled_paint_runs(scope, logical).await || !current() {
+    if !current() {
         return Ok(None);
     }
-    let Some(mut plan) = actions.prepare_wrapped_paragraph(scope, logical) else {
+    let Some(mut plan) = actions
+        .prepare_wrapped_paragraph_cooperatively(scope, logical)
+        .await
+    else {
         return Ok(None);
     };
+    if !current() {
+        return Ok(None);
+    }
     if let Some(prefix) = actions.paragraph_prefix(scope, logical) {
         while current() && actions.resume_paragraph_prefix_batch(&prefix, &mut plan) > 0 {
             crate::util::yield_task().await;
@@ -258,6 +265,15 @@ async fn measure_wrapped_paragraph(
     let body = scope.projection.line_body(logical).ok_or(())?;
     let timing = ProbeTiming::installed();
     let mut probes = 0;
+    let mut coverage_published = false;
+    // Unavailable metrics disable early paint; complete preparation retains its
+    // existing fallback contract.
+    let line_height = window()
+        .get_computed_style(paint)
+        .ok()
+        .flatten()
+        .and_then(|style| style.get_property_value("line-height").ok())
+        .and_then(|value| value.strip_suffix("px")?.parse::<f64>().ok());
     while let Some(probe) = plan.probe().cloned() {
         if !current() {
             return Ok(None);
@@ -351,6 +367,13 @@ async fn measure_wrapped_paragraph(
                 trace.clock.now() - started,
                 targets.len(),
             );
+        }
+        if !coverage_published
+            && current()
+            && let Some(prefix) = line_height.and_then(|height| plan.viewport_coverage(height))
+        {
+            coverage(prefix);
+            coverage_published = true;
         }
         paint.set_inner_html("");
         probes += 1;
@@ -647,14 +670,34 @@ pub(super) async fn measure_batches(
             .is_some_and(|parent| parent.class_list().contains("editor-word-wrap"));
         if count == 1 && lengths[start] > openwebide_core::editor::MAX_MEASURE_BYTES {
             let result = if wrapped {
-                measure_wrapped_paragraph(actions, &paint, &scope, start, &current, &render)
-                    .await?
-                    .map(|(width, geometry)| {
-                        (
-                            width,
-                            openwebide_core::editor::MeasuredRowGeometry::Wrapped(geometry),
-                        )
-                    })
+                measure_wrapped_paragraph(
+                    actions,
+                    &paint,
+                    &scope,
+                    start,
+                    &current,
+                    &|prefix| {
+                        if current()
+                            && input.is_connected()
+                            && metrics_identity(&input).as_ref() == Some(metrics)
+                        {
+                            geometry(
+                                start,
+                                openwebide_core::editor::MeasuredRowGeometry::WrappedCoverage(
+                                    std::sync::Arc::new(prefix),
+                                ),
+                            );
+                        }
+                    },
+                    &render,
+                )
+                .await?
+                .map(|(width, geometry)| {
+                    (
+                        width,
+                        openwebide_core::editor::MeasuredRowGeometry::Wrapped(geometry),
+                    )
+                })
             } else {
                 measure_paragraph(&paint, &scope, start, &current, &render, Some(actions))
                     .await?
@@ -810,6 +853,41 @@ pub(super) fn metrics_identity(input: &web_sys::HtmlTextAreaElement) -> Option<S
     ))
 }
 
+/// Independent complete-renderer oracle for committed partial anchors. The full
+/// source is attached only in this test adapter, never in coverage publication.
+#[cfg(feature = "test-support")]
+pub(super) fn check_wrapped_coverage_geometry(
+    input: &web_sys::HtmlTextAreaElement,
+    snapshot: &crate::state::workspace::EditorParagraphCoverage,
+    html: &str,
+) -> Option<bool> {
+    if metrics_identity(input).as_ref() != Some(&snapshot.paint.metrics) {
+        return None;
+    }
+    let (_probe, paint) = styled_row_probe(input).ok()?;
+    paint.set_inner_html(html);
+    let row = paint.query_selector(".editor-source-line").ok()??;
+    let body = snapshot.paint.projection.line_body(0)?;
+    let geometry =
+        openwebide_core::editor::MeasuredRowGeometry::WrappedCoverage(snapshot.coverage.clone());
+    let anchors = geometry.anchors(0..snapshot.coverage.glyph_end())?;
+    let glyphs = anchors
+        .iter()
+        .map(|anchor| anchor.glyph)
+        .collect::<Vec<_>>();
+    let expected = super::editor_geometry::paragraph_rectangles_individual(&row, body, 0, &glyphs)?;
+    Some(
+        anchors.len() == expected.len()
+            && anchors.iter().zip(&expected).all(|(a, b)| {
+                a.glyph == b.glyph
+                    && (a.left - b.left).abs() <= 0.25
+                    && (a.top - b.top).abs() <= 0.25
+                    && (a.width - b.width).abs() <= 0.25
+                    && (a.height - b.height).abs() <= 0.25
+            }),
+    )
+}
+
 #[cfg(feature = "test-support")]
 pub(super) async fn check_wrapped_paragraph_geometry(
     input: &web_sys::HtmlTextAreaElement,
@@ -820,7 +898,8 @@ pub(super) async fn check_wrapped_paragraph_geometry(
 ) -> Result<bool, ()> {
     let (_probe, paint) = styled_row_probe(input)?;
     let Some((width, bounded)) =
-        measure_wrapped_paragraph(actions, &paint, scope, logical, &|| true, &render).await?
+        measure_wrapped_paragraph(actions, &paint, scope, logical, &|| true, &|_| {}, &render)
+            .await?
     else {
         web_sys::console::error_1(&"bounded wrapped paragraph rejected".into());
         return Ok(false);

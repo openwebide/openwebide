@@ -1047,6 +1047,19 @@ pub(super) fn window_paint(
         .iter()
         .filter_map(|(index, window)| actions.row_source_slice(cache, *index, window, line_height))
         .collect::<Vec<_>>();
+    if actions.measured_rows().is_none()
+        && actions.paragraph_coverage().is_some()
+        && windows.iter().any(|(index, _)| {
+            !slices
+                .iter()
+                .any(|slice| slice.source_line == projection.lines()[*index].source_line)
+        })
+    {
+        for (index, _) in windows {
+            actions.forget_measured_row_geometry(cache, *index);
+        }
+        return None;
+    }
     paint.set_inner_html(&render(&slices));
     let mut changed = false;
     for (index, window) in windows {
@@ -1411,7 +1424,7 @@ fn measurement_context<'a>(
 fn measured_layout(
     actions: EditorActions,
     input: &web_sys::HtmlTextAreaElement,
-    source: &str,
+    source: &crate::state::workspace::EditorText,
     projection: openwebide_core::editor::FoldProjection,
     global: Option<&VisualMetrics>,
     row_element: impl Fn(usize) -> Option<web_sys::Element>,
@@ -1443,7 +1456,7 @@ fn measured_layout(
     {
         return None;
     }
-    VisualLayout::neighborhood(source, projection, identity, &lines, carets).ok()
+    VisualLayout::neighborhood_source(source.shared(), projection, identity, &lines, carets).ok()
 }
 
 /// Cold measurement uses the same exact row sampler as warm paint, with bounded
@@ -1511,7 +1524,7 @@ pub(super) fn neighborhood_layout(
     {
         return None;
     }
-    VisualLayout::neighborhood(&source, projection, identity, &lines, carets).ok()
+    VisualLayout::neighborhood_source(source.shared(), projection, identity, &lines, carets).ok()
 }
 
 /// Current painted coverage already contains exact browser caret geometry. Do

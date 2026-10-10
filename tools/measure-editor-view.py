@@ -9,6 +9,7 @@ than once; Linux PSS, when readable, apportions those pages across processes.
 """
 import argparse
 import base64
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -37,6 +38,19 @@ def host_constraints():
 
 
 def process_memory(driver):
+    # Chrome can create or retire a utility process between ps and smaps reads.
+    # Retry only the snapshot, retaining None when coverage stays incomplete.
+    for attempt in range(1, 4):
+        result = process_memory_snapshot(driver)
+        result["memorySnapshotAttempts"] = attempt
+        if result["chrome_pss_kib"] is not None or not Path("/proc").is_dir():
+            return result
+        if attempt < 3:
+            time.sleep(.01)
+    return result
+
+
+def process_memory_snapshot(driver):
     records = {}
     for line in subprocess.check_output(["ps", "-axo", "pid=,ppid=,rss="], text=True).splitlines():
         pid, parent, rss = map(int, line.split())
@@ -73,10 +87,11 @@ def source_for(case):
         return "x\n" * 99_999
     if case == "long-line":
         return "文😀 words " * (1024 * 1024 // len("文😀 words ".encode()))
-    if case == "styled-long-line":
+    if case in {"styled-long-line", "styled-long-line-following-row"}:
         prefix, suffix, unit = 'const VALUE: &str = "', '";', "文😀 words "
         budget = 1024 * 1024 - len((prefix + suffix).encode())
-        return prefix + unit * (budget // len(unit.encode())) + suffix
+        source = prefix + unit * (budget // len(unit.encode())) + suffix
+        return source + "\nlet next = 0;" if case == "styled-long-line-following-row" else source
     raise ValueError(case)
 
 
@@ -121,6 +136,7 @@ class MemorySamples:
 
 
 READY = """
+    window.editorViewObservePaint?.();
     const input = document.querySelector('textarea[data-editor-path]');
     const paint = document.querySelector('.editor-highlight:not(.editor-caret-measure) .editor-highlight-content');
     const extent = input?.parentElement.querySelector('.editor-scroll-extent');
@@ -128,15 +144,16 @@ READY = """
         input.dataset.editorNativeGeneration && extent?.dataset.editorScope === input.dataset.editorScope;
     return input && paint && (input.value.length === arguments[0] || bound) &&
         paint.dataset.editorScope === input.dataset.editorScope &&
-        (getComputedStyle(input).whiteSpace !== 'pre-wrap' || Number(paint.dataset.documentHeight) > 0) &&
+        (getComputedStyle(input).whiteSpace !== 'pre-wrap' ||
+            (Number(extent?.dataset.sourceHeight) > 0 && extent.dataset.editorScope === input.dataset.editorScope)) &&
         input.parentElement.classList.contains('highlight-ready') &&
         (!arguments[1] || !!paint.querySelector('.tok-string'));
 """
 
 
-def measure(case, mode, wrapped, trace=False, repetition=1, input_position="start"):
+def measure(case, mode, wrapped, trace=False, repetition=1, input_position="start", profile=False, file_name="measure.rs"):
     source = source_for(case)
-    require_styled = case == "styled-long-line"
+    require_styled = case in {"styled-long-line", "styled-long-line-following-row"}
     native = source.replace("\r\n", "\n")
     # JS lengths are UTF-16, not Python's Unicode scalar count.
     native_length = len(native.encode("utf-16-le")) // 2
@@ -155,10 +172,10 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
             project = runtime.request("POST", "/api/projects", {
                 "name": "View measurement", "mode": mode, "path": path,
             }, expected=201)
-            (Path(folder) / "measure.rs").write_bytes(source.encode())
+            (Path(folder) / file_name).write_bytes(source.encode())
             encoded = base64.b64encode(source.encode()).decode()
             recovery = {"format": 1, "root": {"mode": mode, "path": path if mode == "remote" else None},
-                        "selected": "measure.rs", "files": [{"path": "measure.rs",
+                        "selected": file_name, "files": [{"path": file_name,
                         "document": {"text": encoded, "saved": encoded,
                                      "selections": [{"anchor": 0, "head": 0}], "collapsed": []},
                         "scroll": {"top": 0, "left": 0}, "read_only": False}]}
@@ -177,6 +194,10 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
                 browser.call("POST", "/cookie", {"cookie": {"name": cookie.name, "value": cookie.value,
                              "domain": "127.0.0.1", "path": cookie.path, "httpOnly": True}})
             samples = MemorySamples(browser.process.pid)
+            if profile:
+                for command, params in [("Performance.enable", {}), ("Profiler.enable", {}),
+                                        ("Profiler.setSamplingInterval", {"interval": 2000}), ("Profiler.start", {})]:
+                    browser.call("POST", "/goog/cdp/execute", {"cmd": command, "params": params})
             browser.call("POST", "/goog/cdp/execute", {"cmd": "Page.addScriptToEvaluateOnNewDocument", "params": {
                 "source": """
                     window.editorViewScroll = input => {
@@ -184,8 +205,21 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
                         return scroll && getComputedStyle(scroll).position === 'absolute' ? scroll : input;
                     };
                     window.editorViewMeasurement = {maxFrameMs: 0, inputAt: 0,
-                        longTasks: 0, longTaskMs: 0, maxLongTaskMs: 0, phase: "cold", probes: [], batches: [], workers: [], fonts: [], nativeEvents: [], traceTruncated: false};
+                        coldViewportPaintMs: null, coldCompleteGeometryMs: null,
+                        inputViewportPaintMs: null, inputCompleteGeometryMs: null,
+                        coldViewportHadCompleteExtent: null, inputViewportHadCompleteExtent: null,
+                        inputPreviousScope: null, inputScrollTop: null, inputScrollLeft: null,
+                        longTasks: 0, longTaskMs: 0, maxLongTaskMs: 0, longTaskEvents: [], phase: "cold", probes: [], batches: [], workers: [], fonts: [], nativeEvents: [], traceTruncated: false};
                     if (__TRACE__) {
+                        editorViewMeasurement.runtimeErrors = [];
+                        const recordError = text => {
+                            if (editorViewMeasurement.runtimeErrors.length < 16)
+                                editorViewMeasurement.runtimeErrors.push(String(text).slice(0,1024));
+                            else editorViewMeasurement.traceTruncated = true;
+                        };
+                        window.addEventListener('error', event => recordError(event.message));
+                        const originalError = console.error.bind(console);
+                        console.error = (...args) => { recordError(args.map(String).join(' ')); originalError(...args); };
                         const batches = new WeakMap();
                         window.__openwebideEditorProbeTiming = (paint, phase, elapsedMs, units) => {
                             let record = batches.get(paint);
@@ -302,7 +336,18 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
                         Worker = class extends OriginalWorker {
                             constructor(...args) {
                                 super(...args);
-                                this.addEventListener("message", () => recordEvent(editorViewMeasurement.workers, "reply"));
+                                this.addEventListener("message", event => {
+                                    const record = recordEvent(editorViewMeasurement.workers, "reply");
+                                    if (!record) return;
+                                    record.messageUtf16Units = typeof event.data === "string" ? event.data.length : null;
+                                    try {
+                                        const reply = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+                                        record.status = reply?.status ?? null;
+                                        record.hasAnalysis = !!reply?.analysis;
+                                        record.highlightRows = Array.isArray(reply?.analysis?.highlights)
+                                            ? reply.analysis.highlights.length : null;
+                                    } catch { record.status = "non-JSON control message"; }
+                                });
                             }
                             postMessage(...args) {
                                 recordEvent(editorViewMeasurement.workers, "request");
@@ -312,21 +357,63 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
                     }
                     new PerformanceObserver(list => {
                         for (const entry of list.getEntries()) {
+                            if (__TRACE__ && editorViewMeasurement.longTaskEvents.length < 256) {
+                                editorViewMeasurement.longTaskEvents.push({at: entry.startTime,
+                                    durationMs: entry.duration, observedAt: performance.now(),
+                                    phase: editorViewMeasurement.phase,
+                                    scope: document.querySelector('textarea[data-editor-path]')?.dataset.editorScope ?? null});
+                            } else if (__TRACE__) editorViewMeasurement.traceTruncated = true;
                             editorViewMeasurement.longTasks++;
                             editorViewMeasurement.longTaskMs += entry.duration;
                             editorViewMeasurement.maxLongTaskMs = Math.max(editorViewMeasurement.maxLongTaskMs, entry.duration);
                         }
                     }).observe({type: 'longtask', buffered: true});
+                    window.editorViewObservePaint = () => {
+                        const input = document.querySelector('textarea[data-editor-path]');
+                        const paint = input?.parentElement.querySelector('.editor-highlight-content');
+                        const scope = input?.dataset.editorScope;
+                        if (scope && paint?.dataset.editorScope === scope &&
+                            input.parentElement.classList.contains('highlight-ready') &&
+                            (!__REQUIRE_STYLED__ || paint.querySelector('.tok-string'))) {
+                            const extent = input.parentElement.querySelector('.editor-scroll-extent');
+                            const complete = extent?.dataset.editorScope === scope &&
+                                Number(extent.dataset.sourceHeight) > 0;
+                            const measurement = editorViewMeasurement;
+                            if (measurement.phase === 'cold') {
+                                if (measurement.coldViewportPaintMs === null) {
+                                    measurement.coldViewportPaintMs = performance.now();
+                                    measurement.coldViewportHadCompleteExtent = complete;
+                                }
+                                if (complete && measurement.coldCompleteGeometryMs === null)
+                                    measurement.coldCompleteGeometryMs = performance.now();
+                            } else if (measurement.phase === 'input' && measurement.inputAt &&
+                                scope !== measurement.inputPreviousScope) {
+                                if (measurement.inputViewportPaintMs === null) {
+                                    measurement.inputViewportPaintMs = performance.now() - measurement.inputAt;
+                                    measurement.inputViewportHadCompleteExtent = complete;
+                                }
+                                if (complete && measurement.inputCompleteGeometryMs === null)
+                                    measurement.inputCompleteGeometryMs = performance.now() - measurement.inputAt;
+                            }
+                        }
+                    };
                     let last;
                     function tick(at) {
                         if (last !== undefined) editorViewMeasurement.maxFrameMs = Math.max(editorViewMeasurement.maxFrameMs, at-last);
+                        editorViewObservePaint();
                         last = at; requestAnimationFrame(tick);
                     }
                     requestAnimationFrame(tick);
                     document.addEventListener('beforeinput', event => {
-                        if (event.target.matches('textarea[data-editor-path]')) editorViewMeasurement.inputAt = performance.now();
+                        if (event.target.matches('textarea[data-editor-path]')) {
+                            editorViewMeasurement.inputAt = performance.now();
+                            editorViewMeasurement.inputPreviousScope = event.target.dataset.editorScope;
+                            const scroll = editorViewScroll(event.target);
+                            editorViewMeasurement.inputScrollTop = scroll?.scrollTop ?? null;
+                            editorViewMeasurement.inputScrollLeft = scroll?.scrollLeft ?? null;
+                        }
                     }, true);
-                """.replace("__TRACE__", json.dumps(trace))}})
+                """.replace("__TRACE__", json.dumps(trace)).replace("__REQUIRE_STYLED__", json.dumps(require_styled))}})
             started = time.monotonic()
             phase = "cold paint"
             browser.call("POST", "/url", {"url": runtime.url + "/"})
@@ -376,7 +463,11 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
                     const offset = Number(horizontal ? row?.dataset.paintLeft : row?.dataset.paintTop);
                     const target = horizontal ? scroll.scrollLeft : scroll.scrollTop;
                     const margin = horizontal ? scroll.clientWidth * 2 + 30 : scroll.clientHeight + 8 * parseFloat(getComputedStyle(input).lineHeight) + 32;
-                    const moved = singleRow ? Number.isFinite(offset) && offset <= target + 30 && target - offset <= margin : first !== old;
+                    // A wrapped long row can occupy many screens even when the
+                    // file has other rows. Prove its crop moved using geometry;
+                    // ordinary multiline windows can also change the first row.
+                    const cropped = Number.isFinite(offset) && offset <= target + 30 && target - offset <= margin;
+                    const moved = cropped || (!singleRow && first !== old);
                     if (moved && paint?.dataset.editorScope === input.dataset.editorScope && input.parentElement.classList.contains('highlight-ready') && (!requireStyled || paint.querySelector('.tok-string')))
                         return done({scrollToPaintMs: performance.now()-started, scrollAxis: horizontal ? 'horizontal' : 'vertical', scrollOffset: target});
                     requestAnimationFrame(check);
@@ -414,11 +505,14 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
             edited = browser.call("POST", "/execute/async", {"script": """
                 const done=arguments[arguments.length-1], inputPosition=arguments[0], requireStyled=arguments[1], deadline=performance.now()+10000;
                 function check() {
+                    editorViewObservePaint();
                     const input=document.querySelector('textarea[data-editor-path]');
                     const paint=document.querySelector('.editor-highlight-content');
                     if (performance.now()>deadline) return done({error:'Input paint timed out'});
                     if ((inputPosition === 'end' ? input.value.endsWith('z') : input.value.startsWith('z')) && paint.dataset.editorScope===input.dataset.editorScope &&
-                        (getComputedStyle(input).whiteSpace !== 'pre-wrap' || Number(paint.dataset.documentHeight)>0) &&
+                        (getComputedStyle(input).whiteSpace !== 'pre-wrap' ||
+                            (Number(input.parentElement.querySelector('.editor-scroll-extent')?.dataset.sourceHeight)>0 &&
+                             input.parentElement.querySelector('.editor-scroll-extent')?.dataset.editorScope===input.dataset.editorScope)) &&
                         input.parentElement.classList.contains('highlight-ready') && (!requireStyled || paint.querySelector('.tok-string')))
                         return done({inputToPaintMs:performance.now()-editorViewMeasurement.inputAt});
                     requestAnimationFrame(check);
@@ -442,19 +536,53 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
             sampled = samples.finish()
             samples = None
             tasks = browser.script("return {...window.editorViewMeasurement, wasmBytes: window.editorViewWasmMemory.buffer.byteLength};")
-            return {"case": case, "mode": mode, "wrap": wrapped, "repetition": repetition, "sourceBytes": len(source.encode()),
+            profiling = {}
+            if profile:
+                metrics = browser.call("POST", "/goog/cdp/execute", {"cmd": "Performance.getMetrics", "params": {}})
+                cpu = browser.call("POST", "/goog/cdp/execute", {"cmd": "Profiler.stop", "params": {}})
+                profiling = {"cpuProfile": cpu["profile"], "cpuProfileMetrics": metrics["metrics"]}
+            return {**profiling, "cpuProfiling": profile, "case": case, "fileName": file_name, "mode": mode, "wrap": wrapped, "repetition": repetition, "sourceBytes": len(source.encode()),
                     "inputPosition": input_position, "verifiedSourceCaretBeforeInput": verified_source_caret,
                     "completeSourceAfterInputVerified": input_position in {"beginning", "end"}, "loadToPaintMs": load_ms, **snapshot, **scroll, **edited, **memory,
                     "afterInputMemory": process_memory(browser.process.pid), **sampled,
+                    **{key: tasks[key] for key in ["coldViewportPaintMs", "coldCompleteGeometryMs",
+                        "coldViewportHadCompleteExtent", "inputViewportPaintMs", "inputCompleteGeometryMs",
+                        "inputViewportHadCompleteExtent", "inputScrollTop", "inputScrollLeft"]},
                     "afterInputWasmCommittedBytes": tasks["wasmBytes"],
                     "longTasks": tasks["longTasks"], "longTaskMs": tasks["longTaskMs"],
                     "maxLongTaskMs": tasks["maxLongTaskMs"], "maxFrameIncludingInputMs": tasks["maxFrameMs"],
-                    **({"layoutProbes": tasks["probes"], "preparationBatches": tasks["batches"], "workerEvents": tasks["workers"], "fontEvents": tasks["fonts"], "nativeEvents": tasks["nativeEvents"], "traceTruncated": tasks["traceTruncated"]} if trace else {})}
+                    **({"layoutProbes": tasks["probes"], "preparationBatches": tasks["batches"], "workerEvents": tasks["workers"], "fontEvents": tasks["fonts"], "nativeEvents": tasks["nativeEvents"], "longTaskEvents": tasks["longTaskEvents"], "traceTruncated": tasks["traceTruncated"]} if trace else {})}
         except (AssertionError, TimeoutError, RuntimeError) as error:
             observed = samples.finish() if samples else {}
             samples = None
-            print(json.dumps({"case": case, "mode": mode, "wrap": wrapped, "repetition": repetition, "sourceBytes": len(source.encode()),
-                              "failedPhase": phase, "failure": type(error).__name__, **observed}), flush=True)
+            diagnostics = {}
+            if trace and browser:
+                try:
+                    diagnostics = browser.call("POST", "/execute/sync", {"script": """
+                        const state=globalThis.editorViewMeasurement ?? {};
+                        const input=document.querySelector('textarea[data-editor-path]');
+                        const paint=document.querySelector('.editor-highlight-content');
+                        const extent=input?.parentElement.querySelector('.editor-scroll-extent');
+                        return {failureState:{nativeLength:input?.value.length,
+                            nativeStartsWithMarker:input?.value.startsWith('z'),
+                            inputScope:input?.dataset.editorScope,paintScope:paint?.dataset.editorScope,
+                            extentScope:extent?.dataset.editorScope,sourceHeight:extent?.dataset.sourceHeight,
+                            highlightReady:input?.parentElement.classList.contains('highlight-ready'),
+                            alerts:[...document.querySelectorAll('[role="alert"],.notice.error')].map(node=>node.textContent.slice(0,512))},
+                            layoutProbes:state.probes,preparationBatches:state.batches,workerEvents:state.workers,
+                            nativeEvents:state.nativeEvents,fontEvents:state.fonts,runtimeErrors:state.runtimeErrors,traceTruncated:state.traceTruncated};
+                    """, "args": []}, timeout=5)
+                except (OSError, ValueError, RuntimeError) as diagnostic_error:
+                    diagnostics = {"failureDiagnosticError": type(diagnostic_error).__name__}
+                try:
+                    recovered = runtime.request("GET", f"/api/projects/{project['id']}/editor-recovery")
+                    actual = base64.b64decode(recovered["state"]["files"][0]["document"]["text"]).decode()
+                    diagnostics["failureRecovery"] = {"sourceBytes": len(actual.encode()),
+                        "unchanged": actual == source, "markerDelta": actual.count("z") - source.count("z")}
+                except (OSError, ValueError, RuntimeError, KeyError, IndexError) as diagnostic_error:
+                    diagnostics["failureRecoveryError"] = type(diagnostic_error).__name__
+            print(json.dumps({"case": case, "fileName": file_name, "mode": mode, "wrap": wrapped, "repetition": repetition, "sourceBytes": len(source.encode()),
+                              "failedPhase": phase, "failure": type(error).__name__, **observed, **diagnostics}), flush=True)
             raise
         finally:
             try:
@@ -470,28 +598,40 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--cases", nargs="+", choices=["small", "medium", "byte-limit", "line-limit", "long-line", "styled-long-line"], default=["small"])
+    parser.add_argument("--cases", nargs="+", choices=["small", "medium", "byte-limit", "line-limit", "long-line", "styled-long-line", "styled-long-line-following-row"], default=["small"])
     parser.add_argument("--modes", nargs="+", choices=["local", "remote"], default=["local", "remote"])
     parser.add_argument("--wrap", action="store_true")
     parser.add_argument("--trace", action="store_true", help="Record bounded probe/worker diagnostics; timings include instrumentation overhead")
+    parser.add_argument("--profile", action="store_true", help="Capture a diagnostic main-thread CPU profile; timings and memory include profiler overhead")
     parser.add_argument("--input-position", choices=["start", "beginning", "end"], default="start", help="Use native-window start or verified complete-source Home/End navigation before typing")
+    parser.add_argument("--file-name", default="measure.rs", help="Fixture filename selects the production language policy")
     parser.add_argument("--repeat", type=int, default=1, help="Fresh browser/runtime runs for each case and mode")
     parser.add_argument("--require-pss", action="store_true", help="Fail if apportioned Chrome process memory cannot be measured")
     args = parser.parse_args()
     if args.repeat < 1:
         parser.error("--repeat must be positive")
+    if Path(args.file_name).name != args.file_name or args.file_name in {"", ".", ".."}:
+        parser.error("--file-name must be a single filename")
     assert os.environ.get("CHROMEDRIVER"), "Set CHROMEDRIVER to a compatible driver"
     print(json.dumps({"host": platform.platform(), "measurement": "production editor; process-tree memory",
                       **host_constraints(),
-                      "repetitions": args.repeat,
+                      "repetitions": args.repeat, "fileName": args.file_name,
                       "measurementImage": os.environ.get("EDITOR_VIEW_IMAGE"),
-                      "inputTimingStart": "beforeinput", "inputPosition": args.input_position,
+                      "inputTimingStart": "beforeinput", "inputPosition": args.input_position, "cpuProfiling": args.profile,
+                      "frontendWasmSha256": {
+                          path.name: hashlib.sha256(path.read_bytes()).hexdigest()
+                          for path in sorted((ROOT / "frontend/dist").glob("*.wasm"))
+                      },
+                      "backendWasmSha256": hashlib.sha256(
+                          (ROOT / "target/wasm32-wasip2/release/openwebide_backend.wasm").read_bytes()
+                      ).hexdigest(),
+                      "measurementScriptSha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
                       "checkoutHead": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
                       "browser": subprocess.check_output([os.environ["CHROME"], "--version"], text=True).strip() if os.environ.get("CHROME") else "WebDriver default"}), flush=True)
     for case in args.cases:
         for mode in args.modes:
             for repetition in range(1, args.repeat + 1):
-                result = measure(case, mode, args.wrap, args.trace, repetition, args.input_position)
+                result = measure(case, mode, args.wrap, args.trace, repetition, args.input_position, args.profile, args.file_name)
                 print(json.dumps(result), flush=True)
                 if args.require_pss:
                     assert result["peakChromePssKiB"] is not None, "Chrome peak PSS was unavailable"

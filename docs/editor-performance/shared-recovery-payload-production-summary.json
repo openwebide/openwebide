@@ -1,0 +1,234 @@
+[
+  {
+    "case": "byte-limit",
+    "wrap": false,
+    "samples": 4,
+    "coldViewportPaintMs": [
+      1421.4,
+      1535.4
+    ],
+    "coldCompleteGeometryMs": [
+      1421.4,
+      1535.4
+    ],
+    "inputViewportPaintMs": [
+      162.9,
+      171.5
+    ],
+    "inputCompleteGeometryMs": [
+      162.9,
+      171.5
+    ],
+    "peakChromePssKiB": [
+      794799,
+      831546
+    ],
+    "wasmCommittedBytes": [
+      73465856,
+      73465856
+    ]
+  },
+  {
+    "case": "byte-limit",
+    "wrap": true,
+    "samples": 4,
+    "coldViewportPaintMs": [
+      1449.7,
+      1542.4
+    ],
+    "coldCompleteGeometryMs": [
+      1449.7,
+      1542.4
+    ],
+    "inputViewportPaintMs": [
+      158.4,
+      202.1
+    ],
+    "inputCompleteGeometryMs": [
+      158.5,
+      202.1
+    ],
+    "peakChromePssKiB": [
+      812776,
+      842284
+    ],
+    "wasmCommittedBytes": [
+      73465856,
+      73465856
+    ]
+  },
+  {
+    "case": "line-limit",
+    "wrap": false,
+    "samples": 4,
+    "coldViewportPaintMs": [
+      1106.7,
+      1164.7
+    ],
+    "coldCompleteGeometryMs": [
+      1106.7,
+      1164.7
+    ],
+    "inputViewportPaintMs": [
+      18.1,
+      24.7
+    ],
+    "inputCompleteGeometryMs": [
+      18.1,
+      24.7
+    ],
+    "peakChromePssKiB": [
+      700397,
+      707759
+    ],
+    "wasmCommittedBytes": [
+      32964608,
+      34668544
+    ]
+  },
+  {
+    "case": "line-limit",
+    "wrap": true,
+    "samples": 4,
+    "coldViewportPaintMs": [
+      1308.6,
+      1346.1
+    ],
+    "coldCompleteGeometryMs": [
+      1308.6,
+      1346.1
+    ],
+    "inputViewportPaintMs": [
+      244.7,
+      248.9
+    ],
+    "inputCompleteGeometryMs": [
+      244.7,
+      248.9
+    ],
+    "peakChromePssKiB": [
+      703249,
+      706922
+    ],
+    "wasmCommittedBytes": [
+      46792704,
+      46989312
+    ]
+  },
+  {
+    "case": "long-line",
+    "wrap": false,
+    "samples": 4,
+    "coldViewportPaintMs": [
+      3700.6,
+      4438.7
+    ],
+    "coldCompleteGeometryMs": [
+      3700.6,
+      4438.7
+    ],
+    "inputViewportPaintMs": [
+      106.2,
+      109.7
+    ],
+    "inputCompleteGeometryMs": [
+      106.2,
+      109.7
+    ],
+    "peakChromePssKiB": [
+      728988,
+      788592
+    ],
+    "wasmCommittedBytes": [
+      31719424,
+      31719424
+    ]
+  },
+  {
+    "case": "long-line",
+    "wrap": true,
+    "samples": 4,
+    "coldViewportPaintMs": [
+      1255.4,
+      1310
+    ],
+    "coldCompleteGeometryMs": [
+      2792.3,
+      2886
+    ],
+    "inputViewportPaintMs": [
+      121.7,
+      131.3
+    ],
+    "inputCompleteGeometryMs": [
+      121.7,
+      131.3
+    ],
+    "peakChromePssKiB": [
+      740811,
+      815235
+    ],
+    "wasmCommittedBytes": [
+      31719424,
+      31784960
+    ]
+  },
+  {
+    "case": "styled-long-line",
+    "wrap": false,
+    "samples": 4,
+    "coldViewportPaintMs": [
+      3281.6,
+      4324.8
+    ],
+    "coldCompleteGeometryMs": [
+      3281.6,
+      4324.8
+    ],
+    "inputViewportPaintMs": [
+      127.8,
+      152.3
+    ],
+    "inputCompleteGeometryMs": [
+      127.8,
+      152.4
+    ],
+    "peakChromePssKiB": [
+      709024,
+      726020
+    ],
+    "wasmCommittedBytes": [
+      32964608,
+      32964608
+    ]
+  },
+  {
+    "case": "styled-long-line",
+    "wrap": true,
+    "samples": 4,
+    "coldViewportPaintMs": [
+      1399.7,
+      1562.7
+    ],
+    "coldCompleteGeometryMs": [
+      2280,
+      2582.7
+    ],
+    "inputViewportPaintMs": [
+      230.1,
+      266
+    ],
+    "inputCompleteGeometryMs": [
+      1117.6,
+      1184.6
+    ],
+    "peakChromePssKiB": [
+      721365,
+      743860
+    ],
+    "wasmCommittedBytes": [
+      32964608,
+      32964608
+    ]
+  }
+]

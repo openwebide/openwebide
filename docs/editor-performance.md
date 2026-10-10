@@ -4067,3 +4067,1308 @@ new input responsiveness or complete editor-goal verification.
 Earlier full CI checkpoint `644ece9` (run 38021534434) is now confirmed successful
 across all five jobs, in addition to the previously confirmed `338c7bd` result.
 The latest checkpoint CI runs remain pending at the time of this verification.
+
+### Partial wrapped origin publication checkpoint
+
+Eligible origin viewports now publish only native-measured partial coverage while
+complete paragraph geometry continues preparing. Failed crop proofs discard that
+coverage and wait for full geometry; uncovered carets and temporary endpoints are
+rejected. Replacement geometry invalidates affected fragment-cache windows so
+provisional heights cannot survive the complete publication.
+
+All 149 contracts in the Linux editor partition passed in 183.97 seconds,
+including the held-continuation publication regression, independent full-renderer
+oracle and failed-proof fallback in both workspace modes. The 17 wrapped/unwrapped
+macOS browser contracts also passed; cache allocation/recency tests and strict
+WASM lint passed. See [Linux results](editor-performance/partial-coverage-publication-linux.jsonl).
+This checkpoint does not establish production boundary latency/PSS improvements;
+those measurements and the full editor completion gates remain on the roadmap.
+CI for `3956122` completed successfully across all five jobs.
+
+
+### Partial coverage extents and positive viewport offsets
+
+Partial paragraph paint no longer advertises complete document height. The editor
+uses the same shared facade and measured coverage in both workspace modes, and
+accepts a positive scroll offset only when the complete visible viewport plus
+overscan lies within proved geometry. Completed-prefix selection and uncovered
+viewport fallback remain unchanged. The held-continuation regression covers cold
+origin, 2-pixel edit offsets and failed crop proofs at 19.5 pixels, retaining the
+independent complete-renderer, source ownership, endpoint and complete-height checks.
+
+Production Ctrl+Home leaves a 2-pixel scroll offset in this Linux browser. The old
+origin-only selector therefore delayed visible input paint until complete geometry.
+The [before-offset evidence](editor-performance/partial-coverage-milestones-before-offset-linux.jsonl)
+records first styled input paint at 1.26–1.37 seconds. Four fresh
+[after-offset repeats](editor-performance/partial-coverage-milestones-after-offset-linux.jsonl)
+(two per workspace mode) show styled viewport paint at 253–260 ms while complete
+geometry takes 1.18–1.24 seconds. All four early input paints precede complete
+extents. Cold viewport paint takes 1.57–1.62 seconds, with complete geometry at
+2.54–2.60 seconds. Peak Chrome PSS is 708,631–739,275 KiB. These are
+1,048,567-byte styled Rust paragraphs with exact beginning caret and edited-source
+verification; local-mode measurements use recovery data rather than a real granted
+folder handle. The measurement now separates visible paint from complete geometry
+and requires complete source extents for its original completion gate. Artifact
+hashes, image identity and resource limits accompany the evidence.
+
+CI run `38027092539` passed native/backend, Windows, Docker and production frontend
+jobs, including isolated Linux compiler preparation, but failed the UI partition.
+Its first failure was the new held-continuation fixture observing plain fragments
+before String styling. The waiter now requires actual String styling within the
+existing deadline; no geometry, source or fallback assertion was removed. The final
+regression passes in macOS Chrome in 2.70 seconds. Full Linux partition and new
+checkpoint CI results are tracked below. Full geometry costs, broader boundary
+workloads, physical PWA input and the complete editor goal remain open.
+
+The final compiled WASM passes all 149 Linux editor-partition contracts with the
+existing two font-matrix exclusions and unchanged 300-second deadline; see
+[final partition evidence](editor-performance/partial-coverage-final-linux.jsonl).
+Strict optimized WASM lint, formatting and Python compilation also pass. The
+previous two-contract Linux check is retained as
+[focused offset evidence](editor-performance/partial-coverage-offset-linux.jsonl).
+A successful new full CI run remains required.
+
+
+### One-pass uncapped unwrapped run preparation
+
+The shared `EditorActions::prepare_paragraph_measurements_cooperatively` facade
+now prepares a fresh styled table once with the existing cooperative core iterator.
+It retains the completed table only when it fits the existing cache limit; otherwise
+it publishes the same scoped negative retention entry and passes the ephemeral
+complete table to the measurement plan. Existing negative entries still allow
+complete preparation. This removes the initial capped pass followed by a restart
+without enlarging the retained cache or changing browser geometry contracts.
+Both filesystem modes use this facade and the same DOM measurement adapter.
+
+The fresh/negative-cache regression checks one preparation, yielding before
+publication, exact comparison with the previous synchronous plan, and source,
+read, project, account and disposal cancellation. All nine shared row-preparation
+regressions pass in macOS Chrome (0.09 seconds). The both-mode component contract
+now requires exactly one complete segmentation on the first request as well as
+subsequent requests, while retaining bounded negative metadata and stale-project
+rejection. Strict optimized WASM library/test lint also passes.
+
+The raw-bindings Linux harness cannot run the mixed library artifact: module
+initialization invokes an unrelated native notification test before the WASM
+browser harness can start. That attempt is not evidence of a passing library
+partition; the supported WASM runner provides the library result above, and Linux
+verification uses the component artifact. This checkpoint makes no new latency
+or process-memory claim. Repeated over-limit requests still reconstruct an
+ephemeral full table; remaining paragraph costs and full editor gates stay open.
+
+The updated both-mode component contract passes in macOS Chrome (0.05 seconds).
+All 149 Linux editor-partition contracts also pass with the existing font-matrix
+exclusions and unchanged deadline; see
+[one-pass Linux evidence](editor-performance/one-pass-unwrapped-runs-linux.jsonl).
+Full CI for the new checkpoint remains required.
+
+
+### Cooperative paragraph anchor setup
+
+Paragraph paint-run order/character-boundary validation and exact source-anchor
+mapping now advance in batches through `ParagraphAnchorPreparation` in the shared
+Rust core. An opaque complete result authorizes the existing wrapped or unwrapped
+plan; a partial, invalid or mismatched-layout result cannot authorize probes.
+Original synchronous constructors drain the same preparation policy, preserving
+complete-renderer fallback and caller contracts. Small tables retain original
+paint-run anchors, including omission of interior Unicode cluster boundaries;
+over-budget tables retain the original sparse checkpoint policy.
+
+Both browser measurement paths call the shared editor facade, which revalidates
+source/read/project/account ownership around every yield. Cached segmentation is
+not repeated during anchor setup. The DOM adapter receives the complete plan and
+checks its current metrics/target before measuring; no adapter implements a second
+validation or mapping policy. Plain boundary collection, bounded sparse-table
+finalization and unrelated full-source fallbacks remain separate remaining costs.
+
+Twenty-four native paragraph contracts pass, including an independent complete
+Unicode-coordinate oracle at multiple budgets and rejection of partial, invalid
+and wrong-layout setup. Native core Clippy passes with warnings denied. The new
+facade regression suspends after segmentation is cached and checks completion
+and source/read/project/account/disposal cancellation for both paragraph layouts.
+Browser, Linux partition and new checkpoint CI results are tracked below. This
+change makes no measured latency/PSS claim and does not complete the editor goal.
+
+All ten shared row-preparation regressions pass in macOS Chrome (0.13 seconds),
+including cached-setup cancellation. Twelve paragraph component contracts pass
+in 63.16 seconds, including the complete-renderer and font/feature/whitespace
+matrices in both workspace modes. All 149 Linux editor-partition contracts pass
+in 171.90 seconds with the existing exclusions and deadline;
+[artifact-bound evidence](editor-performance/cooperative-paragraph-anchors-linux.jsonl)
+records the compiled binding hash. Strict optimized WASM lint passes.
+
+CI run `38029031142` for the previous viewport checkpoint passed four jobs but
+failed first in `source_slice_measurement_failure_restores_full_source_in_both_modes`.
+Its three-second full-source fallback wait timed out; later tests also failed and
+the partition reached its overall deadline. The fixture now restores the Range
+hook before its failure assertion and reports whether the injected failure fired,
+visible source bytes and slice ownership. Its deadline and complete-source/native
+fallback assertions remain unchanged. This diagnostic edit followed the Linux
+partition above; its targeted checks and full CI remain required.
+
+The diagnostic fixture passes in macOS Chrome in 0.88 seconds. Its four-contract
+Linux neighborhood (loaded-font switch, near-limit styled horizontal windows,
+injected source-slice failure and prepared native-window editing) passes under a
+two-CPU limit with all existing deadlines/assertions retained; see
+[constrained Linux evidence](editor-performance/slice-failure-diagnostics-two-cpu-linux.jsonl).
+Final strict WASM lint also passes. This does not reproduce or resolve the CI-only
+timeout; the expanded diagnostics must establish the next CI failure state if it
+recurs. CI reliability and the complete editor goal remain open.
+
+
+### Production source-publication task timing and scoped failure injection
+
+Four fresh production repeats after cooperative anchor setup pass source/caret,
+actual String styling, complete geometry, scrolling and Linux PSS checks in both
+workspace modes. First styled input viewport paint is 251–274 ms, complete input
+geometry is 1.22–1.26 seconds, cold styled viewport paint is 1.55–1.60 seconds and
+complete cold geometry is 2.49–2.56 seconds. Peak Chrome PSS is
+693,793–736,502 KiB. These results do not establish a material improvement over
+the previous cohort. [Task-timed evidence](editor-performance/cooperative-anchor-production-tasks-linux.jsonl)
+records exact frontend/backend/script hashes and image/resource constraints.
+The same local recovery-handle limitation and frozen backend snapshot apply.
+
+The measurement tool now records bounded long-task start/duration, observation
+time, phase and current editor scope. The four ordinary runs show 140–147 ms
+cold tasks during first source publication and 64–75 ms input tasks before
+geometry completion. A separate, explicitly labeled
+[diagnostic CPU profile](editor-performance/cooperative-anchor-cpu-profile-linux.jsonl)
+includes profiler overhead and cannot serve as a normal latency/PSS baseline.
+Correlating its monotonic navigation clock with task start times shows
+`refresh_editor_scroll`/`set_editor_scroll_position`, string transfer into WASM
+and anonymous WASM work in the cold task; some of the same WASM stacks recur
+after native input. Stripped production symbols do not establish exact named
+Rust-function attribution. Source publication/indexing and scroll-refresh paths
+remain the next measured candidates, rather than declaring total background
+geometry costs resolved. Python compilation and injected JavaScript syntax checks
+pass. The current production Trunk/PWA build also passes.
+
+Both checkpoint CI runs `38029581778` and `38030710930` passed four jobs but failed
+the source-slice failure fixture first. The latter's diagnostics prove injection
+fired while visible source still began at zero (770 of 210,000 bytes). The fixture
+previously accepted an origin anchor as setup readiness and could corrupt a
+background preparation probe before reaching its requested offscreen viewport.
+It now requires complete current-scope geometry/extents, verifies actual scroll
+positions, excludes background height probes and requires a positive injected
+source offset. All setup/fallback deadlines remain three seconds, and exact
+full-source restoration, native source preservation and subsequent bounded paint
+assertions remain in place. The held-continuation contract separately retains
+partial-coverage failure semantics. The corrected fixture passes on macOS in
+0.91 seconds. The unchanged Linux editor partition passes all 149 tests in
+166.57 seconds, with its existing two font-matrix exclusions and 300-second
+deadline; see [full output](editor-performance/complete-source-slice-failure-linux.jsonl).
+Strict optimized WASM library/test lint and formatting checks pass. A new full
+CI run remains required; the editor and CI reliability gates stay open.
+
+### Batched viewport sizing reads
+
+The browser viewport primitive now reads the client width/height together before
+changing input dimensions, reads any required native fallback extents before
+changing either source extent, and retains the existing resize-observer settling
+and source/account/view ownership checks. Complete source dimensions still avoid
+native dimension reads; bounded native windows still retain prior source extents
+while replacement geometry prepares. The feature facade and both workspace
+adapters remain unchanged.
+
+The existing both-mode extent contract now compares shrinking and growing
+viewports with an independent complete native renderer, with wrapping enabled
+and disabled, exact source checks and its unchanged three-second waits. It
+passes on macOS in 1.20 seconds. The same Linux editor partition passes all 149
+tests in 176.34 seconds, retaining the two existing font-matrix exclusions and
+300-second deadline; see [full output](editor-performance/batched-scroll-refresh-linux.jsonl).
+Strict optimized WASM library/test lint and the production Trunk/PWA build pass.
+
+[Four fresh production repeats](editor-performance/batched-scroll-production-linux.jsonl)
+pass source/caret, actual near-1-MiB String styling, complete geometry, scrolling
+and Linux PSS checks in both modes. Cold styled viewport paint is 1.52–1.61
+seconds and complete cold geometry is 2.51–2.57 seconds. Input viewport paint is
+248–257 ms and complete input geometry is 1.20–1.22 seconds. Peak Chrome PSS is
+683,929–744,991 KiB. Cold source-publication tasks still take 136–150 ms and input
+tasks 60–72 ms. These observations do not establish a material latency/memory
+improvement or completion of source/controller responsiveness work. The same
+frozen backend, local recovery-handle limitation and measurement image/resource
+constraints apply; exact artifacts are recorded in the evidence header. Full CI,
+physical-device input and the remaining editor implementation gates remain open.
+
+### Reuse of proved unchanged preceding-row indexes
+
+The shared source index's conservative edit envelope formerly rebuilt the
+preceding row even when its complete LF/CRLF ending preceded the replacement.
+`LineIndex::update` now excludes that proved unchanged row from reconstruction,
+retaining its admission summary and exact immutable native/visual coordinates.
+Edits inside an ending and unterminated rows retain the conservative scan.
+Parser context envelopes are unchanged; no workspace-mode branch or second
+implementation was added. Document construction and changed long-row indexes
+still run synchronously.
+
+All 252 native editor tests pass, including exhaustive replacements at Unicode,
+LF, CRLF and standalone-CR boundaries against fresh complete indexes, and exact
+retained-coordinate checks across edits after long rows. Retained snapshots
+remain unchanged. Strict optimized core library/test lint passes, as does the
+production Trunk/PWA build. The unchanged Linux editor partition passes all 149
+tests in 179.02 seconds, retaining both existing font-matrix exclusions and its
+300-second deadline; see [full output](editor-performance/retained-preceding-row-editor-linux.jsonl).
+Strict optimized frontend WASM library/test lint and formatting checks pass.
+
+The production measurement tool adds a near-1-MiB styled first row followed by a
+short editable row. Wrapped crop movement is proved from measured offsets even
+when scrolling remains inside the same logical row of a multiline file. Native
+Ctrl+End, exact recovered source/caret before input and full resulting source
+after input are verified. Actual String styling, complete geometry, scrolling
+and Linux PSS checks remain required. With unchanged four-CPU/10-GiB limits,
+the previous `b846c17` frontend's four fresh local/remote samples show following-row
+input viewport/complete geometry in 105.5–112.0 ms; the new frontend's four fresh
+samples show 78.4–90.0 ms. Cold paint does not improve: it is 1.51–1.58 seconds
+before and 1.56–1.62 seconds after. Peak Chrome PSS is 729,933–742,401 KiB before
+and 734,243–742,695 KiB after, with no established memory improvement.
+[Before evidence](editor-performance/retained-preceding-row-before-linux.jsonl)
+and [after evidence](editor-performance/retained-preceding-row-after-linux.jsonl)
+record exact frontend/backend/script hashes. These observations support the
+following-row improvement, not removal of cold source-publication tasks or
+changed-long-row costs. The frozen backend, local recovery-handle limitation and
+existing image apply to both cohorts. Python compilation and executing all eight
+production measurements verify the updated measurement script.
+
+The earlier crop-failure fixture checkpoint `11150a0` passed all five CI jobs in
+[run 38033623746](https://github.com/openwebide/openwebide/actions/runs/38033623746).
+The UI log confirms 375 other components, 149 editor components, both independent
+font matrices, frontend unit/integration partitions and storage measurements pass;
+the editor partition takes 228.24 seconds. Both previously failing crop-failure
+and early wrapped-paint fixtures pass. This establishes that checkpoint's full
+CI result; subsequent implementation checkpoints still require repeated full CI.
+
+### Combined row-coordinate character pass and complete browser grouping
+
+Source-row indexing now collects raw UTF-16 totals, admission summaries and
+native checkpoints during the visual index's character traversal. Short or
+visual-over-limit rows use one character pass for those summaries/checkpoints;
+projection windows retain the existing short-row fast path. Visual grapheme
+checkpoints, plain paint boundaries, CRLF inverse offsets and shared immutable
+coordinates remain unchanged. Constructors still run synchronously: fewer passes
+do not establish bounded initial construction or changed-row preparation.
+
+All 253 native editor tests pass, including independent byte-admission/UTF-16
+oracles at ordinary, Unicode/CRLF and byte-limit boundaries and visual-index
+rejection above the structure limit. Existing independent coordinate queries,
+index edits, history, composition and retained-snapshot contracts also pass.
+Strict optimized core and frontend WASM library/test lint, formatting and the
+current production Trunk/PWA build pass.
+
+The `b846c17` and `7ea1367` full CI runs each passed four jobs; their combined
+149-test editor browser run exceeded its 300-second deadline without an
+individual assertion failure. The previously failing crop/partial-paint and
+new resize contracts passed. CI now uses
+`tools/run-editor-browser-tests.py`: Cargo supplies current test artifacts, the
+official runner inventories their editor tests, and independently listed
+selections must equal every planned group. Selection collisions, omissions,
+duplicates and missing independent matrices fail the plan. Ordinary groups have
+at most 64 tests; round-robin assignment distributes expensive fixtures. Every
+test keeps its readiness assertions and each browser keeps the 300-second
+deadline. The existing two font matrices still run independently.
+
+[Official Linux evidence](editor-performance/combined-row-official-browser-linux.jsonl)
+proves all 167 editor tests execute: ordinary component groups pass 50/50/49 tests
+in 99.38/33.65/37.00 seconds, font matrices pass in 22.06/14.97 seconds, and 16
+editor unit tests pass in 0.18 seconds. Artifacts/script hashes, official runner
+version/checksum provenance, existing image and unchanged four-CPU/10-GiB limits
+are recorded. This verifies the actual grouping/runner; full CI with the new
+grouping subsequently passed all five jobs at `2eab2c2`. The
+[complete CI receipt](editor-performance/grouped-ci-2eab2c2.json) includes every
+planned group, both font matrices, the ordinary UI partition and browser storage
+workloads. Later implementation checkpoints still require complete verification.
+The next checkpoint, `54c814e`, also passed all five jobs with the same complete
+selection and unchanged browser limits; its [receipt](editor-performance/grouped-ci-54c814e.json)
+records the repeated execution of every group and both matrices.
+
+Fresh production cohorts compare the previous `7ea1367` frontend with the
+combined-pass frontend, four local/remote repetitions each. No host build
+process was observed at one-second intervals during either cohort (25/24
+observations); the earlier known-contended run is excluded from comparisons.
+Exact full source/caret, actual near-1-MiB String styling, scrolling, complete
+geometry and Linux PSS checks pass. Cold styled viewport paint is 1.52–1.70
+seconds before and 1.49–1.56 seconds after. Before cold source-publication tasks
+are 139–149 ms; three after tasks are 125–129 ms and one is 178 ms. That outlier
+prevents claiming consistently improved blocking latency. Input viewport paint
+is 245–269 ms before and 247–273 ms after; complete input geometry is
+1.18–1.26 seconds before and 1.18–1.26 seconds after. Peak Chrome PSS is
+672,942–738,142 KiB before and 732,281–742,660 KiB after, with no established
+memory improvement. These measurements do not complete responsiveness gates.
+[Before](editor-performance/combined-row-before-linux.jsonl),
+[after](editor-performance/combined-row-after-linux.jsonl) and
+[host observations before](editor-performance/combined-row-before-host.json)/
+[after](editor-performance/combined-row-after-host.json) retain exact artifacts
+and limitations. Both cohorts include the same trace/host-observation overhead;
+the frozen backend snapshot and absence of a real local directory handle remain.
+
+## Paint segmentation within large graphemes
+
+Styled run preparation now advances a Unicode cursor through source and backward
+context chunks of at most 512 bytes. Each scan step caps cursor calls and forward/context
+progress; a large indivisible grapheme can suspend before emitting its run. Small
+chunk overlap retains sequential regional-indicator parity. Original 512-byte
+grapheme-safe run boundaries, token merging, CR normalization, caps and complete-only
+publication stay exact. This shared primitive serves the existing editor facade
+without selecting workspace modes.
+
+All 256 native editor tests pass with `PROPTEST_CASES=1024`, including fresh
+whole-string segmentation comparisons and the retained mixed-Unicode failing seed.
+The same final WASM artifact passes all 16 editor library tests in macOS and Linux
+Chrome. A giant combining/emoji cluster must suspend without publishing any run;
+source/read/project/account/disposal changes reject that suspended preparation.
+The browser boundary contract includes a flag pair crossing byte 512 and CR
+normalization. [Runner evidence](editor-performance/chunked-paint-browser.jsonl)
+records exact source/artifact hashes, selection, limits and complete console output.
+These are scoped correctness/yielding checks, not production responsiveness or
+memory measurements. Synchronous coordinate/anchor construction, other complete
+fallbacks and the full release/device gates remain unfinished.
+
+## Indexed long-cluster queries
+
+The completed visual index now retains the byte end and exact starting
+byte/UTF-16/glyph coordinates of clusters longer than 512 bytes, during its
+existing construction pass. Original paint checkpoints remain separate and
+unchanged. Anchor/interior queries skip indexed cluster interiors; caret lookahead
+stops at their known start instead of materializing the next large cluster.
+Retained-memory accounting includes the sparse metadata allocation. Initial
+coordinate construction and other whole-source preparation remain synchronous.
+
+All 257 shared editor tests pass. Combining, emoji-join and Indic clusters with
+prefix lengths around the 512-byte seams compare every glyph coordinate and
+original paint boundary with complete segmentation, including interior and EOF
+queries. Strict optimized core/frontend WASM lint passes. The same final WASM
+artifact passes all 16 editor library tests in macOS and Linux Chrome, including
+exact giant-cluster coordinate comparisons through the existing editor tests.
+[Browser evidence](editor-performance/long-cluster-query-browser.jsonl) records
+source/artifact hashes, unchanged limits and complete runner output. These scoped
+checks do not establish full production latency or memory gates.
+
+## Resumable visual-index construction
+
+Paint segmentation and visual-index construction now share the same bounded
+Unicode source/context scanner. The ordinary constructor consumes the resumable
+builder completely; cooperative callers can advance it in scan-unit budgets and
+publish only its completed index. Source visitation occurs once in forward byte
+order, including when one large cluster suspends across tasks; backward Unicode
+context does not repeat the character visitor. Paint seams, native/glyph totals,
+long-cluster metadata, tab detection and source-paint admission stay exact.
+
+All 258 shared editor tests pass, including independent complete segmentation and
+exact character-visit comparisons across budgets, Unicode context, EOF, RTL and
+CR/tab fixtures. Strict optimized core/frontend WASM lint passes. All 16 editor
+library tests pass on macOS and Linux Chrome; the giant-cluster fixture explicitly
+advances the new builder across yielding tasks before checking complete coordinates.
+[Browser evidence](editor-performance/cooperative-visual-browser.jsonl) records
+exact source/artifact hashes and complete runner output. This is preparation
+infrastructure: native/row/admission indexing, workspace-read and recovery
+integration still need cooperative construction/publication. Existing document
+calls remain synchronous, and production latency/memory gates are unfinished.
+
+## Cooperative row and document indexes
+
+Native checkpoints and admission summaries now have complete-only row preparation.
+Eligible visual rows share the bounded Unicode traversal; short/unsupported visual
+rows advance through bounded character chunks. Logical row discovery scans at most
+8 KiB per unit, then advances that row's coordinates before adding its exact raw
+and normalized offsets. EOF empty rows, CRLF and standalone-CR admission semantics
+remain identical. Ordinary index constructors consume the same implementation.
+`DocumentPreparation` exposes the completed index as a source-sharing document;
+it cannot expose partial row/native/visual mappings.
+
+All 260 native editor tests pass, including independent logical-row discovery,
+byte admission, UTF-16/native conversion and complete segmentation comparisons
+across budgets and oversized visual fallback. Strict optimized core/frontend WASM
+lint passes. All 16 editor library tests pass in macOS and Linux Chrome; the giant
+fixture now prepares a complete document through yielding tasks, checks source
+sharing/clean state and compares exact glyph coordinates. [Browser evidence](editor-performance/cooperative-document-browser.jsonl)
+records source/artifact hashes and complete output. Workspace reads and recovery
+still need to await this builder with ownership cancellation and draft protection.
+Metadata vector growth, saved-source allocation and final publication costs remain
+responsiveness/memory targets; these primitive checks do not complete those gates.
+
+## Cooperative incoming files
+
+The shared editor facade now prepares incoming files before publishing their
+source. Allocation-free admission advances through at most 8 KiB per unit, rejects
+byte limits immediately, and retains CRLF/standalone-CR and first-error ordering.
+Normal and lossy workspace reads await admission and complete document indexes;
+both filesystem adapters use the same preparation and publication policy. Every
+yield checks account, project, read revision, root guard, source revision and draft
+ownership. Publication installs the completed document and source together;
+over-limit sources retain the existing bounded read-only view. Unchanged files
+retain their existing selections, folds, history and source allocation.
+
+Recovery and other synchronous document callers still need this integration.
+Capacity memoization, metadata growth, saved-source allocation and final equality
+checks/publication remain responsiveness targets; these changes do not establish
+production latency or memory gates.
+
+All 261 native editor tests pass, including exact admission comparisons across
+Unicode/CRLF byte seams and first-error precedence. Strict optimized core and
+frontend WASM lint passes. All 19 editor library browser tests pass on macOS and
+Linux Chrome; the extended file-switching test passes through both filesystem
+adapters on both platforms, including normal and lossy prepared reads.
+[Browser evidence](editor-performance/cooperative-read-browser.jsonl) records
+source/artifact hashes and complete output. Assertions, the three-second readiness
+limit and the 300-second browser runner timeout remain unchanged.
+
+## Cooperative recovery hydration and disk verification
+
+Recovery prepares saved and draft indexes with the same shared editor admission
+and document builder as incoming file reads. Final restoration shares edit history
+policy with ordinary transactions, installs the prepared draft index without
+rebuilding it, and retains one-step undo against the original saved source. Clean
+records reuse their saved index. Workspace hydration collects complete documents
+before publishing project tabs, buffers, scroll positions and selected content
+atomically. Ownership checks reject newer editor activity, compositions, reads,
+account changes, root/handle/bridge changes and disposed state across yields;
+final snapshot validation also protects inactive project state.
+
+Disk verification now uses shared recovery classification without constructing
+throwaway documents. Changed clean disk sources use cooperative preparation with
+retained document source/revision checks before replacement. Explicit recovered
+file review reloads still construct synchronously. Record validation, admission
+memoization, source/history copies, final comparisons and publication remain
+responsiveness/memory work; physical folder permission and PWA checks remain
+unproven. These changes do not complete the production latency/memory gates.
+
+All 263 native editor tests pass, including comparisons with transaction-based
+restoration, undo/redo, folds, source-index sharing and invalid prepared documents.
+Native workspace recovery tests and strict optimized core/frontend WASM lint pass.
+All 20 editor library tests and 17 inventoried recovery/read component contracts
+pass on macOS and Linux Chrome. The new hydration fixture explicitly yields during
+saved and draft preparation in both project modes, checks complete-only source
+publication and rejects account/root/read/source/epoch/disposal changes. Existing
+real-adapter hydration, conflicts, permission retry, review, save and file-read
+contracts remain covered without changing their readiness or runner deadlines.
+[Browser evidence](editor-performance/cooperative-recovery-browser.jsonl) records
+exact artifacts, source hashes, selection inventory and complete output. The
+[preceding complete CI run](editor-performance/grouped-ci-81a6516.json) also passed
+all five jobs; current changes still require their full CI run.
+
+## Cooperative explicit review reloads
+
+Explicit recovered-file reloads now use the same complete-only admission/index
+preparation as incoming reads and hydration. Cheap account/root/read-source and
+composition guards run across yields; complete recovery snapshot validation runs
+before publication. The reviewed disk is read again after preparation so external
+changes during that window preserve the draft and require another review. Reloads
+install the completed document and share its source with active content/buffers.
+Over-limit sources keep bounded read-only viewing without allocating document
+indexes. Clean changed-disk reloads also share their prepared source with buffers.
+
+Recovery validation, final disk/source comparisons, remaining document callers,
+metadata growth, saved-source/history allocation and production latency/memory
+checks remain unfinished. Physical PWA and folder-permission checks remain open.
+
+Strict optimized frontend WASM lint passes. All 20 editor library tests and the
+17 inventoried recovery/read component contracts pass in macOS and Linux Chrome,
+including both real filesystem adapters. Extended review assertions verify shared
+document/buffer source and fresh undo history; admission checks retain typed
+capacity failures. Existing stale disk/editor/account/cancel, hydration, permission
+retry, save and normal/lossy read contracts remain covered without changing any
+readiness or runner deadlines. [Browser evidence](editor-performance/cooperative-review-browser.jsonl)
+records source/artifact hashes, selection inventory and complete output.
+
+## Production boundary measurements and neutral paint
+
+The release bundle at `121fbbb` was measured in isolated Linux Chromium
+154.0.8037.92, with four CPUs, 10 GiB container memory and 1 GiB shared memory.
+The frontend WASM SHA-256 is
+`0082cabf3ffcbb39e924507e66a2c230217e889e8b90a0918abfb4f69f4f6aec`;
+the backend WASM SHA-256 is
+`d6c06e54fb13fad2de610eca312726c538be8af03ecbdf10aa320b55eff02aa9`.
+[Unwrapped](editor-performance/current-production-boundaries-unwrapped.jsonl)
+and [wrapped](editor-performance/current-production-boundaries-wrapped.jsonl)
+records contain three repetitions per case and project mode, 36 samples total.
+Every sample passes the strict peak/final Chrome PSS checks and unchanged
+rendering deadlines. Some intermediate or pre-load snapshots remain unavailable
+and are explicitly null; the records do not imply continuous memory coverage.
+Local cases use database recovery fixtures and do not prove filesystem permissions.
+
+The cases contain 8,388,416 bytes, 99,999 short lines, and a 1,048,572-byte
+Unicode line. Near-byte-limit input takes 157–199 ms; long-line input takes
+707–789 ms. Peak Chrome PSS across these cases is roughly 688–875 MiB.
+The input occurs at the current scrolled native window; complete-source input
+verification is explicitly false in these measurement records. These observations
+do not complete the responsiveness/memory or physical PWA gates.
+
+The [wrapped long-line profile](editor-performance/current-production-long-line-profile.jsonl)
+shows that neutral text paint waits for a pending worker reply: input-to-paint is
+706 ms, with about 549 ms of main-thread idle time in that interval. Profiling
+adds overhead and is diagnostic evidence rather than a normal timing baseline.
+An experimental change to update neutral paint before worker completion was
+withheld: the complete browser group failed highlight coalescing, localized
+wrapped-row reuse and file-switch cancellation assertions. Removing retention
+also caused multi-second near-byte-limit input and increased process memory.
+The remaining fix must distinguish genuine neutral documents from temporary
+neutral paint for grammar-supported documents, while retaining the bounded
+terminal-fallback mapping. Existing production retention remains unchanged.
+
+Memory sampling retries an incomplete process-tree snapshot up to three times,
+without repeating editor operations. Persistent missing PSS remains a failure
+under `--require-pss`; partial process coverage is never reported as complete.
+Four deterministic sampler tests cover complete descendants, process retirement,
+persistent unreadable children and platforms without `/proc`.
+
+## Pending plain-document paint
+
+The shared editor facade now allows current plain-document paint while a worker
+reply is pending. It continues to retain grammar-supported generations, including
+temporary neutral grammar paint, and keeps terminal fallback's bounded native
+mapping until complete row preparation. No local/remote feature path was added.
+A deferred-reply regression verifies source, native mapping and visible new text
+before reply publication in both project modes, wrapped and unwrapped. All 172
+editor tests pass across six independently inventoried Linux browser runs, including
+both font matrices and the coalescing, row-reuse and file-switch contracts that
+rejected the earlier experiment ([evidence](editor-performance/neutral-paint-browser.jsonl)).
+All 128 native frontend library tests and strict optimized frontend WASM lint pass.
+
+The production frontend WASM SHA-256 is
+`bb485a2f9dda9bfbcd5b18c0e86c2c08c5440dab9b89b6a601e0edf72b8f37c6`.
+The backend and container constraints match the preceding baseline. The complete
+Rust boundary matrix retains three repetitions per case/mode/wrapping setting
+([unwrapped](editor-performance/neutral-paint-rust-unwrapped.jsonl),
+[wrapped](editor-performance/neutral-paint-rust-wrapped.jsonl)); all 36 samples
+pass peak/final PSS checks and existing rendering deadlines. Rust long-line input
+still takes 714–771 ms. Near-byte-limit input takes 155–221 ms. Those costs remain
+open; this change does not complete the responsiveness/memory gate.
+
+The measurement tool's new `--file-name` option selects the actual production
+language policy without changing the source workload or default Rust fixture.
+The 1,048,572-byte Unicode line was also measured as `measure.txt`, with three
+repetitions per mode and wrapping setting for each release bundle.
+
+| Plain-file input | Baseline median / range (ms) | Current median / range (ms) |
+| --- | ---: | ---: |
+| Unwrapped | 143.2 / 140.1–146.4 | 126.0 / 123.8–150.2 |
+| Wrapped | 151.3 / 149.2–165.7 | 151.2 / 143.6–158.0 |
+
+Records: baseline [unwrapped](editor-performance/plain-neutral-before-unwrapped.jsonl)
+and [wrapped](editor-performance/plain-neutral-before-wrapped.jsonl); current
+[unwrapped](editor-performance/plain-neutral-after-unwrapped.jsonl) and
+[wrapped](editor-performance/plain-neutral-after-wrapped.jsonl). Peak PSS spans
+roughly 652–724 MiB across these runs, with no demonstrated memory improvement.
+The wrapped timing difference is immaterial. These are scrolled native-window
+input measurements, with complete-source verification explicitly false. Deferred
+worker tests prove early neutral publication; production timings do not prove
+that every large wrapped input avoids worker or geometry waits.
+
+## Parser budget rejection and worker reply diagnostics
+
+The Rust Unicode long-line worker trace shows fixed parser work-budget exhaustion,
+previously reported as cancellation. The shared `parse_step` now returns `TooLarge`
+for that limit and preserves `Cancelled` for stopped work; the check limit remains
+4,096 and cumulative across yields. Explicit cancellation takes precedence over
+budget exhaustion. Both synchronous and cooperative drivers use this policy.
+Rejected source remains editable through the existing neutral fallback, and a
+small valid replacement restores grammar preparation. No transport or mode policy
+was duplicated. Trace-only reply diagnostics now retain status, analysis presence,
+highlight-row count and message UTF-16 length, without copying source into logs.
+
+The [preceding production trace](editor-performance/parser-budget-before-worker.jsonl)
+contains `Cancelled` replies in both modes. The
+[current trace](editor-performance/parser-budget-worker.jsonl) contains `TooLarge`
+for cold and input requests in both modes, with successful paint/input and
+peak/final Chrome PSS checks. The current frontend WASM SHA-256 is
+`63a420c2c678783b02c973f2b429faa091f3c21357bb846adef13893f79c6f06`;
+the backend and container constraints match the preceding measurements.
+Input-to-paint remains 714–719 ms, including roughly 575–585 ms between worker
+request and reply. Tracing adds overhead; these are diagnosis samples rather
+than a latency improvement claim. Avoiding repeated rejected parsing, neutral
+layout identity invalidation and wrapped/memory costs remains open.
+
+All 468 native core tests, all 173 editor browser tests (including both font
+matrices), strict native core lint and strict optimized core/frontend WASM lint
+pass. [Verification evidence](editor-performance/parser-budget-browser.jsonl)
+includes exact artifacts, source hashes, complete native output and six independently
+inventoried browser runs. The new browser regression checks rejection, complete
+source retention, native mapping, explicit cancellation and recovery in both modes.
+The [preceding checkpoint](editor-performance/grouped-ci-c42bc47.json) passed
+all five CI jobs; current full CI remains required.
+
+The subsequent [plain-paint CI run](editor-performance/grouped-ci-3afca61.json)
+failed wrapped startup readiness, the long wrapped cursor probe bound and a
+horizontal fragment cleanup assertion. The exact 50-test selection passes on
+the current arm64 artifact with two CPUs and unchanged deadlines
+([record](editor-performance/ci-3afca61-group-current.jsonl)). Hosted x64 failure
+remains unresolved. Check whether the first startup timeout leaves probe/state
+behind and contaminates later assertions; the local selection pass does not
+prove either cause or a fix. Current CI and reliable repeated verification remain
+required.
+
+
+## Initial native context readiness
+
+Initial input binding now distinguishes a document still being prepared from an
+unneeded binding. The shared editor facade supplies this result; the component
+retries on document publication and stops after binding or a terminal fallback.
+Both workspace modes use the same lifecycle and retain source/selection ownership.
+The existing ownership contract now checks missing-document readiness before
+preparation in both modes. Near-limit startup tests also log readiness metadata
+once near their unchanged three-second deadline to diagnose future failures.
+
+All 173 editor browser tests pass on Linux arm64 with two CPUs, unchanged
+deadlines and both font matrices ([record](editor-performance/native-startup-retry-browser.jsonl)).
+All 128 native frontend tests, strict optimized frontend WASM lint and the
+production frontend build pass. This does not establish the cause of the previous
+hosted x64 startup failure. The preceding checkpoint `87df822` passed all five
+CI jobs ([receipt](editor-performance/grouped-ci-87df822.json)) before this
+lifecycle change. Current hosted verification and repeated reliability checks
+remain required; responsiveness, memory and physical PWA gates remain open.
+
+
+## Neutral rendering identity
+
+The shared editor facade now supplies one neutral rendering identity for plain
+fallback rows, which borrow text from the current immutable projection. Completing
+the fallback token table no longer changes geometry identity when the row styling
+is unchanged. Grammar token identities remain distinct. The component separately
+retains complete-row readiness and uses preparation state for initial immediate
+paint, preserving pending-source retention and file-switch paint cancellation.
+Source, project, account, font and projection ownership checks still apply.
+
+The full 173-test editor browser suite passes on two-CPU Linux arm64, including
+both font matrices, burst coalescing, localized wrapped-row reuse, bounded native
+input, source retention and file-switch cancellation
+([record](editor-performance/neutral-render-identity-browser.jsonl)). The warm-cache
+contract compares the rendering identity that owns measured geometry; its readiness
+requirement and all paint/probe count limits remain unchanged. The existing
+fallback contract checks identity before and after completion in both modes.
+All 128 native frontend tests, strict optimized frontend WASM lint and the
+production build pass.
+
+The preceding `3017d5a` checkpoint passed all five hosted CI jobs
+([receipt](editor-performance/grouped-ci-3017d5a.json)), following the green
+`87df822` checkpoint. This cache change still needs current hosted CI; repeated
+release/PWA verification and the broader responsiveness/memory gates remain open.
+
+Sixteen fresh production samples cover near-byte-limit and 1-MiB Unicode long-line
+files, both modes, wrapping on/off and two repetitions per combination
+([record](editor-performance/neutral-render-identity-production.jsonl)). Peak/final
+Chrome PSS checks pass in every sample. Near-byte-limit input takes 148–177 ms;
+long-line input takes 674–713 ms, with roughly 740–860 MiB peak Chrome PSS across
+these samples. These are scrolled native-window measurements; complete-source
+after-input verification is explicitly false. They do not establish a latency or
+memory improvement and still fail the broader responsiveness gate. Repeated
+parser rejection waits, styled boundaries, beginning edits and physical PWA/input
+verification remain required.
+
+
+## Rejected-source paint and wrapped geometry restart
+
+The shared editor facade now publishes neutral edits while retrying grammar
+analysis after a typed `TooLarge` result. The prior rejection must match project,
+path, epoch, read revision, account and tab width; cancelled results and foreign
+ownership cannot enable early paint. Grammar analysis still runs and a later valid
+source recovers real highlighting. Local and remote projects use this same policy.
+
+The first candidate exposed a wrapped geometry stall: completing syntax preparation
+invalidated an unfinished measurement job, but unchanged neutral token identity
+prevented its replacement from starting. The component's in-flight batch key now
+includes the facade's preparation revision. Existing completed neutral geometry
+remains reusable, and the source/syntax ownership checks remain intact. A regression
+holds animation frames across the worker reply and proves geometry completes with
+exact complete source and native mapping in both modes.
+
+All 174 editor browser tests pass on two-CPU Linux arm64, including both font
+matrices and the new restart regression
+([record](editor-performance/rejected-source-browser.jsonl)). The literal-context
+contract now retries the optional bounded syntax query within its existing
+three-second readiness deadline; all literal/code-region and color assertions
+remain unchanged. All 128 native frontend tests, strict optimized frontend WASM
+lint, production build and four measurement-memory tests pass. Trace-only failure
+diagnostics capture bounded geometry/runtime metadata and recovery source length
+without logging document text or extending readiness deadlines.
+
+The preceding `e2ec3f5` checkpoint passed all five hosted CI jobs
+([receipt](editor-performance/grouped-ci-e2ec3f5.json)). Current hosted CI and
+repeated release/PWA, styled-boundary, beginning-edit, responsiveness and memory
+checks remain required.
+
+Sixteen fresh release samples cover near-byte-limit and 1-MiB Unicode long-line
+Rust fixtures, both modes, wrapping on/off and two repetitions per combination
+([record](editor-performance/rejected-source-production.jsonl)). Every sample
+passes the existing peak/final Chrome PSS requirement. Near-byte-limit input takes
+168.5–209.9 ms; long-line input takes 108.5–154.0 ms, compared with 674–713 ms in
+the preceding neutral-identity cohort. Peak PSS is 741–858 MiB. Startup remains
+1.45–3.95 seconds; byte-limit latency and memory show no material improvement.
+These are scrolled native-window observations, with complete-source-after-input
+verification explicitly false and no actual String styling. They do not validate
+styled boundaries, beginning edits, physical PWA/FSA permissions or the full
+responsiveness/memory gate. Measurement limits and readiness deadlines are unchanged.
+
+
+## Sharing prepared source with the saved baseline
+
+The shared core document now retains its saved baseline as the same immutable
+source allocation used by complete document preparation. Initial publication and
+marking the current version saved no longer allocate another full source string;
+clean dirty-state checks can prove equality by source identity. Acknowledging an
+external write still checks exact bytes and retains the version actually written,
+so a late acknowledgement cannot mark newer typing clean. External versions that
+match neither retained source still require their own baseline allocation.
+
+The first candidate broke the existing unused-projection contract by forcing a
+source copy on a standalone document's first edit. The corrected edit path releases
+the unused projection, then detaches only the saved baseline if it is the sole
+other owner and no weak source handles exist. The mutable source keeps its buffer
+and insertion headroom. External snapshots and composition retain the original
+source and use the existing source-detach path. This defers a necessary baseline
+copy to the first standalone edit; it does not eliminate source copies from edits
+with retained versions. No adapter or UI mode branch is involved.
+
+Four fresh styled wrapped beginning-edit samples at `43f66c9` retain actual String
+paint and verify exact complete recovered source after input
+([baseline](editor-performance/styled-baseline-43f66c9.jsonl)). Viewport paint takes
+225–247 ms and complete geometry 1.10–1.88 seconds. A bounded [diagnostic trace](editor-performance/styled-baseline-trace-43f66c9.jsonl)
+still observes 71 input probe entries, with 69 paragraph layout batches; this
+change targets source allocation and does not claim to fix wrapped probe reflow.
+Current source-sharing regression tests cover prepared-source identity, detached
+edits, retained saved versions, late acknowledgements and undo. All 469 native
+core tests pass, including unchanged projection, history, recovery and composition
+contracts. All 174 editor browser tests (both font matrices included), 128 native
+frontend tests and strict native-core/optimized frontend WASM lint pass
+([record](editor-performance/shared-saved-source-browser.jsonl)).
+
+Sixteen fresh release samples cover actual near-1-MiB String styling and
+near-8-MiB files, both modes, wrapping on/off and two repetitions per combination
+([record](editor-performance/shared-saved-source-production.jsonl)). Every sample
+verifies source caret zero before insertion, exact complete recovered source after
+insertion and the existing observed peak/final Chrome PSS requirement. Resource
+limits remain four CPUs, 10 GiB container memory and 1 GiB shared memory; source
+checks do not prove physical FSA permissions or real IME input.
+
+| Fixture | Wrapping | Startup ms | Input viewport ms | Input complete geometry ms |
+| --- | --- | --- | --- | --- |
+| Styled long line | On | 2588–2638 | 251–262 | 1206–1247 |
+| Styled long line | Off | 3343–3980 | 148–151 | 148–152 |
+| Byte limit | On | 1513–1788 | 170–203 | 170–203 |
+| Byte limit | Off | 1553–1675 | 141–182 | 141–182 |
+
+In the wrapped styled cohort, cold committed WASM memory is 32.31 MiB, versus
+33.44–34.56 MiB in the preceding same-fixture baseline; after input it is 40.94 MiB,
+versus 42.06–43.13 MiB. These are linear-memory high-water observations, not
+per-object allocation measurements. The core identity regression directly proves
+that the prepared saved baseline shares source. Observed peak Chrome PSS across
+all current samples is 697–854 MiB; variation does not establish a process-memory
+improvement. Wrapped styled complete geometry remains over one second, startup
+remains multi-second, and no latency improvement is established. The byte-limit
+beginning edits additionally verify complete source, so their positions differ
+from the preceding scrolled-window cohort. Full responsiveness, memory, unsupported
+shaping and physical PWA release gates remain open.
+
+
+## Immutable source through asynchronous saves
+
+`EditorActions::prepare_save` now returns the same `EditorText` source retained by
+the normalized document and workspace buffer. The shared workspace save workflow
+borrows its bytes for `Workspace::write`, then acknowledges its immutable source
+allocation through `Document::mark_saved_source`. Previously converting the result
+to `String` copied the full source, and acknowledging a late write could allocate
+a second saved-version copy. Local filesystem and remote HTTP primitives retain
+the same contracts; no UI or mode-specific save policy was added.
+
+Acknowledgement records the version actually written, including when newer edits
+have detached the current source. Existing account, workspace-root, bridge, project
+and file-switch ownership checks remain unchanged. Borrowed external disk versions
+still use the exact-byte `mark_saved_version` path. Source identity regressions
+cover prepared save payloads, late acknowledgements, undo and composition
+cancellation. This is an allocation/lifetime change; it makes no new whole-app
+latency or process-memory claim. Full responsiveness and physical-device gates
+remain open.
+
+The preceding rejected-source checkpoint `43f66c9` passed all five hosted CI jobs
+([receipt](editor-performance/grouped-ci-43f66c9.json)). The baseline-sharing
+checkpoint `8a5f1e3` also passed all five hosted CI jobs
+([receipt](editor-performance/grouped-ci-8a5f1e3.json)); the current save change
+at `dc49196` also passed all five hosted CI jobs
+([receipt](editor-performance/grouped-ci-dc49196.json)). Later implementation
+checkpoints still require their own hosted verification.
+
+All 470 native core tests, 128 native frontend tests, strict native-core lint
+(including tests) and optimized frontend WASM lint pass. Thirty selected browser
+checks pass on two-CPU Linux arm64, including six editor save/recovery contracts
+and the source-allocation regression
+([record](editor-performance/immutable-save-source-browser.jsonl)). The save
+ownership contract holds writes across root/file/account/bridge/project changes,
+write failure and newer typing in both local filesystem and remote HTTP adapters.
+Formatting and recovery-conflict checks retain their original assertions and
+three-second readiness deadline. This selected run does not replace full hosted
+CI, production timing or physical-device verification.
+
+## Late save after a clean disk reload
+
+A held-write regression reproduced a clean-state mismatch: reloading newer disk
+content while an older save waited left the active editor marked clean after the
+older write replaced the file. The document and retained buffer correctly differed
+from the acknowledged source, but active and project-snapshot dirty flags did not.
+The shared save completion now reconciles each matching view with the exact source
+written, retaining account, root, project and file ownership guards.
+
+The unchanged regression fails on the preceding implementation at local case 8
+and passes after the correction. Ten scenarios per adapter cover the active reload,
+switching away after reload, newer typing, write failure and ownership changes.
+All 29 selected save-related browser checks, 128 native frontend tests and strict
+optimized frontend WASM lint including tests pass
+([failure/pass record](editor-performance/late-save-reload-browser.jsonl)).
+This is a shared-state correction, not a performance measurement or physical
+folder-permission verification; those roadmap gates remain open.
+
+## Disk verification without persistence snapshots
+
+The shared document now classifies fresh disk reads directly from its committed
+source and baseline, using the same comparison and admission policy as persisted
+recovery records. Composition previews remain excluded. Both automatic recovery
+verification and the pre-save check use this path, avoiding two full-source copies
+and persistence metadata capture on each verification. Completed writes reuse the
+document source for saved acknowledgement and buffer publication; clean reloads
+move the owned disk read into cooperative preparation instead of cloning it.
+
+All 471 native core tests, 128 native frontend tests, native core lint including
+tests, optimized frontend WASM lint including tests and 21 selected browser checks
+pass ([record](editor-performance/live-disk-recovery-browser.jsonl)). The new
+both-adapter contract checks clean reload and already-completed writes, shared
+document/buffer/active source allocations, saved baselines and undo behavior.
+The core contract compares live and persisted decisions across clean/dirty state,
+composition, late saved baselines, missing files and capacity rejection.
+Admission scans, persistence serialization, whole-app timing/memory and physical
+permission/input verification remain separate unfinished gates.
+
+## Prepared sources retained by recovered undo history
+
+Recovery's single undo step now retains the complete prepared saved and draft
+source allocations. It no longer clones both full files during final history
+publication. Ordinary editing transactions keep owned replacement spans; their
+source bytes are moved into history, with no new shared allocation per edit.
+History grouping, byte accounting, eviction and replacement application stay in
+the shared core engine. Both representations compare by exact text.
+
+The new core contract checks the recovered transaction's source allocation
+identity, its unchanged byte charge, later edits and independent snapshot
+undo/redo. Existing parity contracts compare prepared recovery with ordinary
+transaction restoration, including selections, folds, revision and saved state.
+All 472 native core tests, 128 native frontend tests, strict native/core and
+optimized frontend WASM lint, and all 175 editor browser tests pass
+([record](editor-performance/shared-recovery-history-browser.jsonl)). The browser
+inventory covers every editor test in six disjoint runs, including both font
+matrices, with unchanged readiness and runner deadlines.
+
+This removes the recovery-specific source copies; it is not a whole-app memory
+or latency claim. Edits can still detach a source retained by immutable history.
+At this checkpoint, recovery payload capture/preparation copies, admission
+validation, full-source undo publication and physical-device gates remained
+unfinished; the following section records the subsequent payload-sharing work.
+
+
+## Immutable recovery payloads
+
+Recovery capture, queued record clones and hydration preparation now retain the
+same immutable saved and draft sources as the document. Clean buffers without a
+document retain their existing source for both fields. Decoding wraps the owned
+UTF-8 result without another full-source copy. The encoded JSON/storage format,
+capacity checks, committed composition boundary, stale-scope guards and independent
+saved/draft versions remain unchanged. Recovery transport still encodes and decodes
+complete source strings; admission and final metadata validation remain work.
+
+The core allocation contract checks pointer identity through capture, cloning and
+restoration, exact encoded JSON compatibility, and later independent edits. Both
+workspace adapters check source identity during recovery capture and cooperative
+hydration. All 473 core, 213 backend/storage and 128 native frontend tests pass,
+as do native, WASI and optimized frontend WASM lint. The complete frozen editor
+inventory passes all 175 browser checks in six disjoint runs with unchanged limits
+([verification](editor-performance/shared-recovery-payload-verification.json)).
+A subsequent test-only change adds timeout diagnostics to the parser fallback
+contract; its exact 51-test hosted selection passes locally on two-CPU Linux arm64
+([diagnostic verification](editor-performance/shared-recovery-payload-diagnostic.json)).
+This is not proof of a hosted x64 fix. The preceding `72b7a3e` checkpoint failed
+its frontend browser job after a parser-budget fallback readiness timeout; later
+probe/geometry failures may be related, but the evidence does not establish that
+([CI receipt](editor-performance/grouped-ci-72b7a3e.json)). The preceding `0ec8cbe`
+and `988f700` checkpoints passed all five jobs. Repeated current CI remains required.
+
+The uninstrumented production frontend completed 32 beginning-of-source samples:
+byte and line admission boundaries, plain and grammar-highlighted long lines,
+both modes, wrapping enabled/disabled, two repetitions each
+([complete samples and manifest](editor-performance/shared-recovery-payload-production.jsonl),
+[ranges](editor-performance/shared-recovery-payload-production-summary.json)).
+Every sample verified exact complete source after input and caret offset zero
+before input, with complete renderer PSS snapshots. The backend is the unchanged
+historical control artifact, and local cases use database recovery fixtures;
+these measurements do not verify physical directory permissions. Multiple earlier
+allocation changes separate this cohort from the earlier control, so these are
+pipeline measurements, not an isolated causal comparison of payload sharing.
+
+Cold viewport paint ranges from 1.11 to 4.44 seconds. The wrapped styled long-line
+case paints the input viewport in 230–266 ms and completes geometry in
+1.12–1.18 seconds; wrapped line-limit input takes 245–249 ms. Peak renderer PSS
+ranges from approximately 684 to 823 MiB. These remain responsiveness and memory
+work, despite successful source/caret checks. Byte-limit beginning-of-source
+samples at this checkpoint retained the earlier nonzero vertical scroll
+position; the later keyboard-motion section records its correction. Full-source undo publication, transport encoding,
+cold/fallback geometry and physical PWA/IME/permission verification remain open.
+
+
+## Final recovery validation from complete indexes
+
+Final recovery restoration now uses the already prepared documents' source-owned
+admission summaries and the draft's complete LF row count. It still validates
+selection boundaries, fold order/overlap, source identity, capacity and fresh
+preparation state. Mismatched prepared sources retain the original source-scan
+validation and error precedence; they cannot prove validity for another payload.
+Standalone CR continues to affect editor admission without becoming an LF fold
+row. The persisted record validator retains its existing source-based behavior.
+
+A new shared core regression compares ordinary and prepared recovery across
+byte, line and individual-line capacity rejection, invalid Unicode selections,
+invalid/crossing folds, mixed line endings, competing errors and mismatched
+prepared sources. This removes repeated admitted-source scans from final
+hydration, without changing persistence policy. Initial record validation,
+metadata normalization, transport serialization and full-source undo publication
+remain unfinished; no whole-app latency or memory improvement is claimed here.
+
+All 474 native core and 128 native frontend tests pass. Strict native/core,
+optimized frontend WASM including tests and backend WASI lint pass. All 15
+recovery-related component checks and 20 editor library browser checks pass on
+two-CPU Linux arm64 with unchanged deadlines
+([verification](editor-performance/indexed-recovery-validation.json)). The browser
+contracts include cooperative hydration cancellation, stale account/project guards,
+disk conflicts, save failure/retry and source identity through both real adapters.
+This is targeted verification of the changed path, not another complete editor
+inventory or a hosted CI result; those wider gates remain open.
+
+
+## Keyboard motion across admitted files
+
+Boundary-size production measurements exposed a correctness gap: navigation used
+the 2 MiB structure-analysis budget even for an admitted 8 MiB editor document.
+The recorded beginning caret could already be zero before Ctrl+Home, masking the
+rejected key while the viewport remained at the earlier scroll position. The
+smaller virtualized-row fixture passes before the change; the larger admitted
+fixture fails to reveal the document-end caret, and the shared core regression
+fails with `SelectionError::TooLarge`.
+
+Direct and queued basic motion now use the document's indexed editor admission.
+Logical row descriptors come from cached source-owned projection/index metadata;
+horizontal and boundary motion no longer computes an unused display column.
+Direct grapheme cursors avoid segmenting the complete prefix on every arrow key.
+Measured neighborhoods retain the immutable source allocation, validate grapheme
+positions only in requested logical rows and use prepared sparse coordinates for
+long rows. The browser's warm and cold adapters use the same shared constructor.
+Fold, source, composition, queue order and measurement identity checks remain.
+
+New core contracts cover admitted files above the structure budget, large folded
+views, queued sparse neighborhoods and exact source allocation identity. Complete
+Unicode segmentation independently checks direct motion at every character boundary
+in representative combining, emoji, regional-indicator and Indic fixtures.
+Sparse layout validation is checked against complete segmentation for large Unicode
+rows, CRLF interiors and a large indivisible grapheme; a dense admitted caret list
+crosses the existing sparse-query batch limit without dropping positions.
+The new browser contract covers both workspace modes and wrapping settings,
+virtualized origin/end rows, extended selection and queued page movement.
+
+This does not complete all responsiveness work: initial projection/native CRLF
+normalization, long word/context traversal, synchronous selection publication,
+unsupported geometry/touch fallbacks and physical-device verification remain open.
+Structural selection commands retain their separate analysis budget. Current
+full hosted verification is still required.
+
+All 479 native core tests, 128 native frontend tests, native/core lint, optimized
+frontend WASM lint including tests and backend WASI lint pass. The complete frozen
+editor inventory passes all 176 browser checks in six disjoint two-CPU Linux arm64
+runs with unchanged readiness, runner and probe limits
+([verification and before/after identities](editor-performance/admitted-keyboard-motion-browser.json)).
+The admitted large-file browser regression passes in both modes with wrapping
+on/off, including source-end/origin viewport reveal, directional selection and
+queued page motion. The preceding source-sharing checkpoint `ba33f5d` passed all
+five hosted jobs ([receipt](editor-performance/grouped-ci-ba33f5d.json)); current
+motion changes still require their own complete and repeated CI verification.
+
+The uninstrumented production build passes eight byte-boundary beginning-input
+samples: two repetitions per workspace mode with wrapping on/off
+([complete samples and manifest](editor-performance/admitted-keyboard-motion-production.jsonl)).
+Every sample retains the complete source, proves caret offset zero and has input
+scroll coordinates `(top: 2, left: 0)`, replacing the preceding cohort's remote
+viewport position far down the file. Cold viewport paint still takes
+1.43–1.54 seconds, input viewport paint 152–171 ms and peak renderer PSS
+approximately 775–825 MiB. These are correctness/remaining-cost measurements,
+not an isolated memory-improvement claim. The backend remains the unchanged
+historical control; local database recovery fixtures do not verify physical folder
+permissions. This checkpoint fixes navigation and removes repeated-prefix layout
+validation/source copies; the broader responsiveness/device gates remain open.
+
+
+## Recovery decoding without encoded-field copies
+
+The shared recovery codec now asks the JSON reader for a string view and decodes
+that view directly into the owned UTF-8 source. Canonical base64 fields contain
+no JSON escapes, so slice/string readers can lend the original input bytes instead
+of allocating an intermediate encoded `String`. Readers which already own a
+value, and escaped JSON fields, remain supported through the same visitor.
+Encoded-length and decoded-length limits, base64 validation and invalid UTF-8
+rejection remain in the shared codec; the serialized/storage format is unchanged.
+HTTP persistence in both workspace modes and database recovery use this codec.
+
+The allocation contract records the exact borrowed field addresses and lengths
+inside the real JSON input, verifies source/control/Unicode equality and checks
+that decoded sources remain independently owned after the input and original
+payload are dropped. Compatibility checks include owned JSON values, escaped
+fields and wrong field types; existing malformed base64, UTF-8, metadata and
+capacity contracts remain in place. Test-only tracing records addresses/lengths,
+with no production tracing or retained source pointers.
+
+All 481 core, 213 backend/storage and 128 native frontend tests pass, as do strict
+native, optimized frontend WASM including tests and backend WASI lint. The 15
+recovery-related component contracts and all 20 editor library browser contracts
+pass on two-CPU Linux arm64 with unchanged deadlines
+([verification](editor-performance/borrowed-recovery-decoding.json)). This targeted
+verification covers both real workspace adapters, cancellation, stale ownership,
+disk conflict and save/retry behavior; it is not a complete editor inventory or a
+whole-app memory/latency measurement. Encoding, JSON/network buffers, decoded
+source ownership and remaining publication costs still
+require work.
+
+The preceding `2301c26` final-index validation checkpoint passed all five hosted
+jobs ([receipt](editor-performance/grouped-ci-2301c26.json)), following the fully
+green `ba33f5d` source-sharing checkpoint. These runs do not establish the earlier
+parser-fallback failure's cause. Current motion/decoding checkpoints still require
+their own complete hosted and repeated verification.
+
+## Recovery metadata checks without normalization copies
+
+Persistence checks now validate borrowed selection offsets directly. They preserve
+the count limit and Unicode boundary errors, while restoration still normalizes
+and owns its final selections. Persisted folds must already be normalized: a
+linear check rejects invalid bounds, unordered/duplicate headers and crossing
+ranges, retaining only an ancestor-end stack bounded by nesting depth. It does
+not clone or sort the entire fold list. Source-size and selection failures still
+precede fold failures, and folds still use LF logical rows.
+
+The existing fold normalizer is an independent oracle for every list of up to
+four ranges over four endpoint positions, checked against six document lengths
+(419,430 cases). Selection checks cover every offset pair around Unicode and
+CRLF source, overlapping/reversed selections and invalid count limits without
+mutating the payload. This changes the shared recovery validator used by both
+workspace adapters and backend/storage persistence; source decoding, restoration,
+history and the storage format are unchanged. Deep ancestor-stack allocation,
+final selection/fold normalization and whole-source publication remain costs.
+
+All 483 core and 213 storage/backend tests pass, with strict native core,
+frontend WASM including tests and backend WASI lint. The optimized browser suite
+passes 15 recovery component contracts and 20 editor library contracts on
+two-CPU Linux arm64 with unchanged deadlines
+([verification](editor-performance/borrowed-recovery-metadata.json)). These
+targeted contracts cover both adapters, stale/account ownership, conflicts and
+retry; they do not establish full editor CI reliability or whole-app memory gains.
+
+## Prepared recovery versions during undo and redo
+
+The recovered transaction now retains both complete immutable source/index
+versions. Replay compares the current and target text using the existing change
+boundaries, rebases folds with those same boundaries, invalidates the derived
+projection and switches to the prepared version. It does not copy source or
+reconstruct row coordinates. Selection restoration, revisions, composition
+guards, saved-baseline ownership and history source-byte budgets remain unchanged.
+Ordinary edit transactions do not retain these complete versions.
+
+This trades retention of the saved version's prepared index for avoiding replay
+reconstruction; it is not evidence of lower total memory. The recovery step's
+source bytes remain charged to the existing history budget, while index retention
+is bounded by the admitted source versions. Replacing the redo branch releases
+both retained indexes. The first ordinary edit after recovery also detaches the
+retained draft index through the existing copy-on-write path; bounding that work
+and measuring its cost remain required. Native contracts assert exact source/index identities
+through ordinary edits and cloned snapshots, and compare folding/revision/source
+behavior with ordinary full-replacement transactions on empty, clean, Unicode,
+CRLF, long and middle-change documents. The browser recovery contract asserts
+source identity after undo/redo in both workspace modes.
+
+Common-prefix/suffix comparison, fold mapping, frontend publication and native
+normalization still need bounded preparation. Full admitted-workload latency and
+memory evidence remains required before completing the editor goal.
+
+The first undo verification passed all 484 core tests and strict native/WASM/WASI
+lint, but its full editor browser verification was incomplete: the first 52-test
+group passed 51 tests and failed the admitted-file document-end navigation
+deadline ([failure evidence](editor-performance/prepared-recovery-undo-browser-failure.json)).
+The other five groups did not execute. Source selection, scroll, binding and
+geometry diagnostics were then added with the existing assertions and deadlines
+unchanged. This initial attempt did not qualify the checkpoint for commit.
+
+The same 52-test group reproduced the failure with unchanged deadlines and
+failure-only state diagnostics
+([diagnostic evidence](editor-performance/navigation-reveal-diagnostic.json)).
+In wrapped Remote mode the source selection reached byte 2,305,056 exactly, with
+no queued motion, bound native input, no pending geometry and one mounted editor.
+Scroll remained at 907,647 of 1,296,638 pixels (the starting 70% position). This
+distinguishes a lost viewport reveal from source-motion rejection; the underlying
+paint availability timing is not yet proved. A bounded frame retry guarded by
+source, selection, project/read/account scope and unchanged scroll intent was added,
+including a focused retry/cancellation contract. At that point it was not yet a
+verified fix. The preceding navigation checkpoint did pass all five hosted jobs
+([receipt](editor-performance/grouped-ci-3d7eb5d.json)); that success does not negate
+these local failures or establish reliability.
+
+The guarded retry passes its focused cancellation contract and all 21 editor
+library contracts, followed by the complete previously failing 52-test navigation
+group. The next 51-test group passed 49 tests and failed parser-backed reindent
+(HTML source remained unchanged) and file-switch highlight counts (two extra
+publications). The remaining 53 tests did not run
+([full-run evidence](editor-performance/navigation-reveal-retry-browser-failure.json)).
+Both failing tests pass individually in fresh browsers with the same frozen
+artifacts and deadlines
+([isolated diagnostics](editor-performance/reindent-file-switch-diagnostic.json));
+these are diagnostics, not a substitute for complete verification. Cold command
+syntax preparation currently has a 12 ms deadline and falls back to lexical
+reindent if no parsed structure is available. The HTML menu also disables
+reindent based on its outer language, despite embedded-body support. Parser-aware
+command readiness and container capability checks were still implementation work.
+Neither parser cancellation nor failed-mount contamination is yet proved as the
+shared-group failure's cause. The decoding checkpoint passed all five hosted jobs
+([receipt](editor-performance/grouped-ci-2b1e482.json)); that run did not verify the
+undo/retry work as a full editor checkpoint.
+
+Cold Reindent now uses a shared facade path which preserves the requested edit
+until complete structure is available. The fast path reuses current prepared
+structure; otherwise it cooperatively admits the source and asks the same core
+`SyntaxWorker` service used by browser workers through a yielding task adapter.
+The command applies through the same transaction implementation as immediate
+editing commands. It checks source allocation, document revision, all selections,
+rules, composition and project/read/account ownership between batches and before
+publication. Superseded requests return without editing; unavailable structure
+returns a typed error. HTML/Markdown containers expose reindent for their parsed
+code bodies while preserving markup and prose.
+
+This avoids cold parser cancellation being interpreted as a lexical no-op for an
+explicit reindent request. It does not establish the precise cause of the earlier
+shared-group failure. The former semantic contract now invokes the same awaited
+facade used by the menu, with its expected output and undo/redo checks retained.
+New contracts cover superseded requests in both modes, actual HTML menu execution
+and one undoable commit, and admitted editor sources above the structure budget.
+The complete optimized editor inventory passes all 181 tests, including both
+independent font matrices ([full-run evidence](editor-performance/cold-reindent-full-browser.json)).
+The implementation source was then retained while the semantic fixture added
+Markdown code-fence reindent, exact prose preservation and undo. The rebuilt
+artifact passes both complete groups containing the earlier navigation, reindent
+and file-switch failures: 104 tests with unchanged readiness deadlines and CPU
+limits ([repeated-group evidence](editor-performance/cold-reindent-repeat-browser.json)).
+This is a complete baseline plus repeated current groups, not a second complete
+181-test run of the rebuilt artifact. All 484 core tests, strict native/WASM/WASI
+lint and formatting also pass. The preceding metadata-validation checkpoint
+passed all five hosted jobs ([receipt](editor-performance/grouped-ci-be926f5.json));
+the current checkpoint still needs its own hosted CI.
+
+These runs verify the cooperative command and guarded reveal behavior without
+establishing the exact cause of every earlier shared-group failure. Other
+parser-aware commands still use their existing immediate fallback; request/reply
+serialization, source/index publication, command preparation memory, broader
+responsiveness and physical-device checks remain work.
+
+## Embedded comment command readiness
+
+Explicit line/block comments now use the same command-preparation facade as
+Reindent when the registered language provider declares embedded languages.
+Single-language comments retain immediate execution, including SQL without a
+grammar and admitted files above the structural analysis budget. This selects
+preparation from shared provider capabilities, not filesystem mode or a second
+comment implementation. All edits still use the existing core transaction path.
+
+The facade captures source, project/read/account scope, document revision,
+selections, indentation and command revision when a request is constructed.
+Supersession is checked before its first poll, between preparation batches and
+before applying the transaction. Newer commands cancel older pending actions,
+including an Undo with no history/text change. UI tasks construct the request
+before queuing rather than acquiring scope after the task starts. Workspace reset
+invalidates the command revision alongside existing preparation ownership.
+
+Expanded browser contracts cover Reindent and both comment actions, source/file
+changes before the first poll, newer unchanged-text commands, existing stale
+ownership/selection/composition cases, SQL and above-budget immediate comments,
+and actual HTML keyboard/Markdown menu commands with one undoable transaction.
+Existing mixed-language comment tests now invoke the awaited facade. The nine
+focused contracts pass ([evidence](editor-performance/comment-readiness-focused-browser.json)),
+followed by all 183 current editor browser tests, including both independent font
+matrices ([complete verification](editor-performance/comment-readiness-full-browser.json)).
+The same sources pass 128 native frontend tests, strict WASM lint and formatting.
+Current-head hosted CI remains required. Selection-specific menu capabilities and
+other structural-command readiness remain roadmap work, alongside the broader
+responsiveness, memory, device and release checks.
+
+## Hosted parser fallback failure
+
+The `9d4f888` checkpoint subsequently failed its hosted editor browser partition
+([receipt](editor-performance/grouped-ci-9d4f888.json)). The first two editor
+groups passed all 105 tests; the third passed 46 and failed six. The two font
+matrices and 22 library tests were not reached. The other four CI jobs passed.
+
+The first failure was the existing parser-budget fallback contract. Its diagnostic
+showed `TooLarge`, no pending syntax, a bound native input and one mounted editor,
+but no ready paint within the unchanged three-second deadline. This proves typed
+rejection reached publication; it does not establish why presentation stalled.
+Five later layout/navigation checks also failed, and contamination from the first
+failed fixture is still unproven. Earlier green runs and isolated local passes
+do not close this reliability requirement. Failure-only diagnostics now include
+native geometry, fallback publication, measured rows and in-progress row jobs.
+The subsequent embedded-comment checkpoint `cc019c1` passed all five hosted jobs
+([receipt](editor-performance/grouped-ci-cc019c1.json)). This establishes that
+checkpoint's hosted result, without proving why the earlier paint check failed.
+
+## Selection-aware comment capabilities
+
+The shared editor facade now computes line/block comment eligibility from every
+selection's start language in completed embedded-language structure. Mixed
+selections require support everywhere, matching atomic core comment semantics.
+Pending containers retain provisional outer-language eligibility; invoking their
+actions still uses cooperative preparation. Capacity-rejected container actions
+are disabled. Single-language actions reuse the existing marker registry.
+
+The cache read requires the exact immutable source allocation, language, key and
+tab width, without parsing or changing retention order. Core coverage checks
+unprepared and mismatched entries, equal bytes with different ownership and
+unchanged retention. Browser coverage exercises Python, Rust, JSON and prose,
+mixed/reversed selections and stale account ownership, without new worker requests.
+The capability check and existing parser-budget fallback both pass in Local and
+Remote ([focused evidence](editor-performance/selection-capabilities-focused-browser.json)).
+All 628 parser-enabled core tests, 128 native frontend tests, strict core/WASM/WASI
+lint and formatting pass. All 184 current editor browser tests pass in complete,
+disjoint groups of 22/54/53/53/1/1, including both font matrices
+([complete evidence](editor-performance/selection-capabilities-full-browser.json)).
+This local success does not establish the earlier CI failure's cause or close
+the hosted reliability, responsiveness and physical-device gates.
+The selection-capability checkpoint `71997bc` subsequently passed all five hosted
+jobs ([receipt](editor-performance/grouped-ci-71997bc.json)); verification of newer
+changes and repeated readiness still remain required.
+
+## Explicit structural navigation preparation
+
+Selection expansion and bracket jumps now use the same action ownership and
+cooperative syntax preparation as Reindent and embedded comment actions. The
+shared action captures source allocation, parser scope, all selections, document
+revision, indentation and intent before its future is polled. Keyboard and menu
+entry points prepare current syntax before applying navigation; unsupported
+grammars retain immediate lexical behavior. Passive bracket decorations keep
+their nonblocking fallback. Explicit navigation and selection intent cancels an
+older pending action even when the newer command leaves its selection unchanged.
+
+New contracts cover parsed Python suite expansion and bracket pairs, held
+background syntax with actual keyboard/menu actions, unsupported plain/SQL
+navigation, and pre-poll/source/selection/secondary/file/project/read/epoch/account/
+rules/composition/disposal supersession. The cancellation matrix exercises both
+expansion and bracket jumps. Existing Reindent/comment contracts remain part of
+the focused regression set. The first optimized run passed seven of eight
+contracts ([record](editor-performance/structural-navigation-initial-browser.json));
+its only failure expected bracket pairing in plain prose, contrary to the existing
+core navigation contract. The subsequent run passed the same seven contracts but
+exposed the equivalent incorrect expectation for SQL
+([record](editor-performance/structural-navigation-fallback-browser.json)). Both
+languages are excluded from the existing bracket whitelist. The fixture now
+preserves their no-pair behavior while checking immediate lexical selection
+expansion. Production behavior remains unchanged by these corrections. All eight
+focused contracts now pass
+([record](editor-performance/structural-navigation-focused-browser.json)). The complete independently inventoried editor suite subsequently passed all
+187 tests in six disjoint runs (22/55/54/54/1/1), including both independent font
+matrices ([record](editor-performance/structural-navigation-full-browser.json)).
+The runner exited successfully and frozen source/artifact hashes match the current
+checkpoint. The production changes pass strict WASM lint, formatting and 128
+native frontend tests. Its own hosted CI remains pending. This section does not
+claim completion of ordinary-input readiness, responsiveness, hosted reliability
+or device gates.

@@ -196,7 +196,7 @@ impl Composition {
     pub(super) fn committed_document(&self) -> &Document {
         &self.before
     }
-    pub(super) fn mark_saved_snapshot(&mut self, saved: std::sync::Arc<str>) {
+    pub(super) fn mark_saved_snapshot(&mut self, saved: std::sync::Arc<String>) {
         self.before.mark_saved_snapshot(saved);
     }
 }

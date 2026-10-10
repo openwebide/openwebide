@@ -1,0 +1,2 @@
+# Replay mixed Unicode regional-indicator parity at a source chunk boundary.
+cc b6345fd1a2b319d5cbf1cb7fad68dce1ad1374794d899008bb9686997510920a

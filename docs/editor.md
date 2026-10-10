@@ -57,6 +57,12 @@ undo step. Reindent aligns selected bracket-delimited blocks, leaves multiline
 string contents untouched and preserves Python's existing block depth; it is not
 a language formatter. Unsupported comment/reindent actions appear disabled.
 
+Reindent also works inside HTML script/style bodies and supported Markdown code
+fences. If code structure is still being prepared, the requested action waits for
+it. Changing the source, selections, indentation rules, file or account cancels
+that request. A newer editor command also cancels it, even if that command leaves
+the text unchanged. Unavailable structure reports an error without changing the file.
+
 ## Multiple selections and clipboard
 
 With multiple selections, Copy joins their source text in primary-selection order;
@@ -127,8 +133,12 @@ and neighboring logical lines using the same caret sampler as prepared paint.
 Explicit neighbor links preserve wrapped movement without estimating unmeasured
 heights; stable line-relative IDs are mapped separately to screen coordinates. File/account/source/fold changes cancel stale
 requests; unavailable layout cancels after eight frames with an error. Full paint
-viewport rendering remains a follow-up. Multiple selection movement and
-structural selection commands are bounded to files up to 2 MiB; Escape still
+viewport preparation remains a follow-up. Basic single/multiple-cursor movement
+and queued page/arrow navigation work throughout admitted editor files (up to
+8 MiB, 100,000 display lines and 1 MiB per line). They reuse indexed logical rows;
+measured neighborhoods share the document source and validate grapheme positions
+only in measured rows, using prepared sparse coordinates for long rows. Structural
+selection commands retain their separate 2 MiB analysis budget; Escape still
 returns to the primary cursor in larger files.
 
 ## Indentation
@@ -289,6 +299,22 @@ UTF-8 ranges, folds, token coverage and bracket links are validated without pars
 the document again on the UI thread. Transport/startup failures use the same
 preparation engine synchronously with a 12 ms parser budget; unavailable contexts
 retain ordinary lexical editing. Worker parsing has a 100 ms budget.
+Explicit Reindent requests and comments in registered embedded-language containers
+use a yielding browser task adapter for the same Rust syntax service when no
+current structure is ready, then apply through the shared editor command facade.
+Ownership is captured before queuing the action, so an unpolled task cannot acquire
+another file or newer source. Single-language comments retain immediate behavior,
+including SQL and admitted files above the structure budget. Explicit selection
+expansion and bracket jumps share this ownership/preparation path, while
+unsupported grammars retain immediate lexical selection expansion and their
+existing bracket-navigation rules. Navigation and selection
+commands supersede pending structural actions even when their selections remain
+unchanged. Passive bracket decoration retains its nonblocking fallback.
+Comment menu eligibility uses completed embedded-language structure and requires
+support at every selection's start. Mixed selections therefore disable actions
+that cannot apply atomically. Reading eligibility never starts parsing; pending
+container actions can prepare their context when invoked, while capacity-rejected
+containers disable those actions.
 JSON/JSONC, TOML, YAML/YML, INI/EditorConfig, XML build configuration and Markdown
 use registered Rust/WASM grammars through the same preparation cache and worker.
 Markdown has separate block/inline parsing and declared fenced-code languages;

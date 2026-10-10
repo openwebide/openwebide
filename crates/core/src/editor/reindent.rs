@@ -3,6 +3,12 @@ use super::{
     Document, Edit, EditError, Indentation, Structure, lines::selected_rows, structure::closing,
 };
 use crate::highlight::Language;
+
+/// Containers support reindent through their parsed code bodies. This command
+/// preserves prose/markup; it is not a whole-document formatter.
+pub fn supports_reindent(language: Language) -> bool {
+    super::supports_brackets(language) || matches!(language, Language::Html | Language::Markdown)
+}
 impl Document {
     pub fn reindent(
         &mut self,

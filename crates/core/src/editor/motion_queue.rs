@@ -35,7 +35,7 @@ impl MotionQueue {
         if document.is_composing() {
             return Err(EditError::CompositionActive.into());
         }
-        if document.text().len() > super::MAX_STRUCTURE_BYTES {
+        if document.admission().limit().is_some() {
             return Err(SelectionError::TooLarge);
         }
         Ok(Self {

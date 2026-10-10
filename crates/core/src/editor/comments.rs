@@ -46,6 +46,15 @@ pub fn block_comment(language: Language) -> Option<(&'static str, &'static str)>
         _ => None,
     }
 }
+
+/// Line-comment actions use a block comment when the language has no line marker.
+pub fn supports_line_comment(language: Language) -> bool {
+    line_comment(language).is_some() || block_comment(language).is_some()
+}
+
+pub fn supports_block_comment(language: Language) -> bool {
+    block_comment(language).is_some()
+}
 fn balanced_comments(text: &str) -> bool {
     let mut depth = 0;
     let mut position = 0;

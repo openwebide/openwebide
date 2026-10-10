@@ -1,0 +1,64 @@
+{
+  "manifest": {
+    "baseCommit": "3d7eb5d78c4f08421ee260e63b4dc638709d1022",
+    "sources": {
+      "crates/core/src/editor/recovery.rs": "4c0e9ae802da2d33ca0532e7045b03e058f3d36894484b46825870ab740aa31d",
+      "frontend/src/api.rs": "79e1ffdc224c4e2105435e97911853c381c15c174343d79e393cff3d00598c20",
+      "frontend/src/state_actions/editor/loading.rs": "5940a6cfd04ced421a307261897500665cbba7bf9b07907b0630b0e152d438e4"
+    },
+    "artifacts": {
+      "components.wasm": "405e8b38167df10b1553edfd6a94d95cdba2261d103890c1c7d108f8a8baca13",
+      "editor-library.wasm": "9113fd1e371d93ce3962af43a284be6ffa8526e4ba34cf1cc3f274ca0936a5da"
+    }
+  },
+  "scope": "shared recovery JSON source decoder used by HTTP and database persistence for both workspace modes; targeted browser contracts, not complete editor inventory or a whole-app memory benchmark",
+  "browser": {
+    "tests": 35,
+    "groups": [
+      15,
+      20
+    ],
+    "readinessDeadlineMs": 3000,
+    "runnerDeadlineSeconds": 300,
+    "cpuLimit": 2,
+    "architecture": "linux-arm64",
+    "logSha256": "bf2e938d610d664e00534a6d690a78557d764a63eab0ccd95ab14e7c79ee82bc"
+  },
+  "checks": [
+    {
+      "name": "core",
+      "tests": 481,
+      "logSha256": "26997317eaeb6ab3417f878e786809b048bbb346233a007cea51960cd5833153"
+    },
+    {
+      "name": "storage-backend",
+      "tests": 213,
+      "logSha256": "e56894ba5b418fb2701d3bd432110b8db600e817ea996d948a8bc877853dacf6"
+    },
+    {
+      "name": "native",
+      "tests": 128,
+      "logSha256": "c97da03454c149951826c32718cb0e3f0b265139dafa0b8a3f2e41d702e04838"
+    },
+    {
+      "name": "native-clippy",
+      "tests": null,
+      "logSha256": "1e17c376ce573e57b591a688d6c322db1ce763ee2bd1fea1523d054bfa8b12d6"
+    },
+    {
+      "name": "wasm-clippy",
+      "tests": null,
+      "logSha256": "5d23c156b60709969ca452b853f054f51c3bcbf040ea9cd6168631983092370e"
+    },
+    {
+      "name": "wasi-clippy",
+      "tests": null,
+      "logSha256": "d517c4c12c29b80603bdabc9124214ee3c8973c1ed858efa3d77b5bc2797936d"
+    },
+    {
+      "name": "final-contracts",
+      "tests": 2,
+      "logSha256": "019083620594dc2d8c90f6597d34c193f662088770bdfe58d85093c9de239084"
+    }
+  ]
+}

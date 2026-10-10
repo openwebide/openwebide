@@ -415,6 +415,7 @@ impl WorkspaceActions {
             load_dir.run((project_id, String::new()));
         });
 
+        let save_editor = super::editor::EditorActions::new(workspace);
         let on_open_lossy = Callback::new(move |()| {
             let Some(project_id) = active_project.get_untracked() else {
                 return;
@@ -422,6 +423,7 @@ impl WorkspaceActions {
             let Some(path) = workspace.open_file.get_untracked() else {
                 return;
             };
+            let baseline = workspace.content.get_untracked();
             let revision = workspace.begin_editor_read();
             let generation = auth.generation.get_untracked();
             let epoch = directory_epoch.get_untracked();
@@ -444,13 +446,19 @@ impl WorkspaceActions {
                 if !current() {
                     return;
                 }
-                workspace.editor_loading.set(false);
                 match result {
                     Ok(content) => {
-                        workspace.content.set(content.into());
+                        save_editor.publish_read(content, &baseline, current).await;
+                        if !current() {
+                            return;
+                        }
+                        workspace.editor_loading.set(false);
                         workspace.retain_editor_buffer(true);
                     }
-                    Err(error) => ui.toast.set(Some(error.to_string())),
+                    Err(error) => {
+                        workspace.editor_loading.set(false);
+                        ui.toast.set(Some(error.to_string()));
+                    }
                 }
             });
         });
@@ -460,7 +468,6 @@ impl WorkspaceActions {
                 i64,
                 EditorRoot,
             >::new()));
-        let save_editor = super::editor::EditorActions::new(workspace);
         let open_request = Callback::new(
             move |(path, completion): (String, Option<Callback<Result<(), String>>>)| {
                 let Some(project_id) = active_project.get_untracked() else {
@@ -628,11 +635,9 @@ impl WorkspaceActions {
                     {
                         match result {
                             Ok(content) => {
-                                if workspace
-                                    .content
-                                    .with_untracked(|current| current.as_str() != content)
-                                {
-                                    workspace.content.set(content.into());
+                                save_editor.publish_read(content, &baseline, current).await;
+                                if !current() {
+                                    return;
                                 }
                             }
                             Err(error) => ui.toast.set(Some(error.to_string())),
@@ -985,7 +990,7 @@ impl WorkspaceActions {
                         }
                         workspace.editor_documents.update(|documents| {
                             if let Some(document) = documents.get_mut(&(project_id, path.clone())) {
-                                document.mark_saved_version(&content);
+                                document.mark_saved_source(content.shared());
                             }
                         });
                         workspace.editor_buffers.update(|buffers| {
@@ -993,20 +998,18 @@ impl WorkspaceActions {
                                 buffer.dirty = buffer.content != content;
                             }
                         });
-                        if save_editor.is_current(project_id, &path)
-                            && workspace.content.get_untracked() == content
-                        {
-                            workspace.dirty.set(false);
-                        } else {
-                            workspace.snapshots.update(|snapshots| {
-                                if let Some(snapshot) = snapshots.get_mut(&project_id)
-                                    && snapshot.open_file.as_deref() == Some(path.as_str())
-                                    && snapshot.content == content
-                                {
-                                    snapshot.dirty = false;
-                                }
-                            });
+                        if save_editor.is_current(project_id, &path) {
+                            workspace
+                                .dirty
+                                .set(workspace.content.get_untracked() != content);
                         }
+                        workspace.snapshots.update(|snapshots| {
+                            if let Some(snapshot) = snapshots.get_mut(&project_id)
+                                && snapshot.open_file.as_deref() == Some(path.as_str())
+                            {
+                                snapshot.dirty = snapshot.content != content;
+                            }
+                        });
                         if path.rsplit('/').next() == Some(".editorconfig") {
                             workspace
                                 .editor_configuration_revision

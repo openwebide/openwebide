@@ -1,0 +1,63 @@
+{
+  "evidence": "shared recovery payload verification",
+  "manifest": {
+    "baseCommit": "72b7a3eeb4caa03418943728c0039c2edbe1666c",
+    "sources": {
+      "crates/core/src/editor/mod.rs": "182bad770a2ef52f78b40818d4c9f55ffd44ffc8a86efa5e927bb57b7df53521",
+      "crates/core/src/editor/recovery.rs": "973f181e1b7ab86ef20b6ac502ef8940b3bceb2cb93d055098a235b8769a570c",
+      "frontend/src/state/workspace.rs": "1a2c28ecd05a2b45035b76ceb8e5914ea370be2074c572d2f0f51cbc406cb928",
+      "frontend/src/state_actions/editor/loading.rs": "5940a6cfd04ced421a307261897500665cbba7bf9b07907b0630b0e152d438e4",
+      "frontend/tests/components/editor.rs": "7faf9bef04f39b721f02a44758f2cfa15f53329417aaf75a43e5423054cbabf6",
+      "tools/run-editor-browser-tests.py": "81a3cce570c0448a4a3493e899b3ae6922bff0704b656a12d85de42f2881378b"
+    },
+    "artifacts": {
+      "components.wasm": "b80f80e48c4de0182a2a74500edb46d332aed5d4a991f2fd395afeb76a482951",
+      "editor-library.wasm": "82b591cb3509d0922b5e9b000ee73a804f4571064d83823d12fa4731b8a872f1"
+    }
+  },
+  "browser": {
+    "tests": 175,
+    "groups": [
+      51,
+      51,
+      51,
+      1,
+      1,
+      20
+    ],
+    "logSha256": "a5dd7e1b256945f064d604b18c317d8049f264f5534a1adb4d1033e0b870644e",
+    "scope": "complete frozen editor inventory before timeout-only diagnostic addition"
+  },
+  "checks": [
+    {
+      "name": "core",
+      "tests": 473,
+      "logSha256": "7ba4488b795a507da4cc8b0a71b97bf75339da7c2625c69827f93517c63540cc"
+    },
+    {
+      "name": "storage-backend",
+      "tests": 213,
+      "logSha256": "ceb5d5851466896deb8346e3475c176937499d68ef62cb4026eeb2ec965fc78b"
+    },
+    {
+      "name": "native",
+      "tests": 128,
+      "logSha256": "94b125d13dd0223572fb807815929fad416aede7b45180a36877495ad7794d13"
+    },
+    {
+      "name": "native-clippy",
+      "tests": null,
+      "logSha256": "6e30ba631fc3f7c0e2b61644f15056d2d3f3dec8e94b0c27c069055463c4f9f4"
+    },
+    {
+      "name": "wasm-clippy",
+      "tests": null,
+      "logSha256": "0af6c4c8f0a46eceda6d18619a33a6f7b7e55d168ce3d1a1fcc01943fd1abb3f"
+    },
+    {
+      "name": "wasi-clippy",
+      "tests": null,
+      "logSha256": "fd6ab3b0499dc576f63df44939f7af2468b02a96102cd945cd31aed67f2bb510"
+    }
+  ]
+}

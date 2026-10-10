@@ -36,6 +36,24 @@ impl<K: Eq> SyntaxPreparations<K> {
         self.entries.retain(|entry| keep(&entry.0));
     }
 
+    /// Read an existing complete analysis without parsing, touching LRU order or
+    /// comparing the complete source. Other allocations require fresh preparation.
+    pub fn cached_analysis(
+        &self,
+        key: &K,
+        language: Language,
+        source: &Arc<String>,
+        tab_width: usize,
+    ) -> Option<Arc<SyntaxAnalysis>> {
+        let entry = self
+            .entries
+            .iter()
+            .find(|entry| &entry.0 == key && entry.1 == language)?;
+        let (width, analysis) = entry.2.prepared.as_ref()?;
+        (*width == tab_width && Arc::ptr_eq(analysis.source_snapshot(), source))
+            .then(|| analysis.clone())
+    }
+
     pub(super) fn previous_publication(&self, key: &K) -> Option<(u32, Arc<SyntaxAnalysis>)> {
         self.entries
             .iter()
@@ -119,6 +137,53 @@ impl<K: Eq> SyntaxPreparations<K> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn cached_analysis_requires_exact_prepared_ownership_without_changing_retention() {
+        let mut cache = SyntaxPreparations::default();
+        let source = Arc::new("fn main() { call(); }\n".to_owned());
+        assert!(
+            cache
+                .cached_analysis(&1, Language::Rust, &source, 4)
+                .is_none()
+        );
+        let (_, prepared) = cache.prepare_shared(1, Language::Rust, source.clone(), 4, || true);
+        let prepared = prepared.unwrap();
+        let cached = cache
+            .cached_analysis(&1, Language::Rust, &source, 4)
+            .unwrap();
+        assert!(Arc::ptr_eq(&cached, &prepared));
+        let bytes = cache.retained_source_bytes();
+        assert!(
+            cache
+                .cached_analysis(&2, Language::Rust, &source, 4)
+                .is_none()
+        );
+        assert!(
+            cache
+                .cached_analysis(&1, Language::Python, &source, 4)
+                .is_none()
+        );
+        assert!(
+            cache
+                .cached_analysis(&1, Language::Rust, &source, 8)
+                .is_none()
+        );
+        let replacement = Arc::new(source.as_ref().clone());
+        assert!(
+            cache
+                .cached_analysis(&1, Language::Rust, &replacement, 4)
+                .is_none()
+        );
+        assert_eq!(cache.len(), 1);
+        assert_eq!(cache.retained_source_bytes(), bytes);
+        cache.remove(&1);
+        assert!(
+            cache
+                .cached_analysis(&1, Language::Rust, &source, 4)
+                .is_none()
+        );
+    }
+
     #[test]
     fn retention_is_bounded_lru_and_cancelled_entries_release_sources() {
         let mut cache = SyntaxPreparations::default();

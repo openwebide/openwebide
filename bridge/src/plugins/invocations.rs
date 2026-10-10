@@ -384,3 +384,55 @@ impl Invocations {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn pending_responses_reject_other_owners_and_stale_sequences_before_cancellation() {
+        let invocations = Invocations::default();
+        let cancelled = Arc::new(AtomicBool::new(false));
+        let (_events, receiver) = async_mpsc::channel(1);
+        let (response, replies) = mpsc::sync_channel(1);
+        invocations.entries.lock().await.insert(
+            "call".into(),
+            Arc::new(Invocation {
+                owner: "owner".into(),
+                started: Instant::now(),
+                cancelled: cancelled.clone(),
+                notify: Arc::new(tokio::sync::Notify::new()),
+                state: Mutex::new(InvocationState {
+                    deferred: None,
+                    events: receiver,
+                    pending: Some((7, response)),
+                }),
+            }),
+        );
+        for (owner, sequence) in [("other", 7), ("owner", 6)] {
+            assert!(
+                invocations
+                    .resume(
+                        owner,
+                        ContinuePlugin {
+                            id: "call".into(),
+                            sequence,
+                            response: Ok("{}".into()),
+                        },
+                    )
+                    .await
+                    .is_err()
+            );
+            assert!(matches!(replies.try_recv(), Err(mpsc::TryRecvError::Empty)));
+        }
+        assert!(invocations.cancel("other", "call").await.is_err());
+        assert!(!cancelled.load(Ordering::Relaxed));
+        invocations.cancel("owner", "call").await.unwrap();
+        assert!(cancelled.load(Ordering::Relaxed));
+        assert!(matches!(
+            replies.try_recv(),
+            Err(mpsc::TryRecvError::Disconnected)
+        ));
+        assert!(invocations.entry("call").await.is_err());
+    }
+}

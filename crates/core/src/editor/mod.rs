@@ -20,8 +20,11 @@ mod pointer;
 pub use pointer::{PointerSelection, selection_scroll_delta};
 mod motion_queue;
 pub use motion_queue::{MotionQueue, MotionRequest};
+mod grapheme_scan;
 mod paint_runs;
 pub use paint_runs::{PAINT_RUN_BATCH_UNITS, PaintRunPreparation};
+mod paragraph_anchors;
+pub use paragraph_anchors::{ParagraphAnchorPreparation, PreparedParagraphAnchors};
 mod paragraph;
 mod wrapped_paragraph;
 pub use wrapped_paragraph::WrappedParagraphPreparation;
@@ -31,7 +34,7 @@ pub use paragraph::{
     ParagraphReplay,
 };
 mod visual_motion;
-pub use visual_index::VisualLineIndex;
+pub use visual_index::{VisualLineIndex, VisualLinePreparation};
 mod visual_neighbors;
 pub use visual_motion::{
     MAX_VISUAL_CARETS, VisualCaret, VisualLayout, visual_caret_offsets, visual_line_offsets,
@@ -59,8 +62,8 @@ mod folds;
 pub use folds::{FoldCommand, FoldRange, FoldState, normalize_folds};
 mod capacity;
 pub use capacity::{
-    EditorLimit, MAX_EDITOR_BYTES, MAX_EDITOR_LINE_BYTES, MAX_EDITOR_LINES, TEXT_PAGE_BYTES,
-    TextPage, editor_limit,
+    EditorAdmission, EditorAdmissionResult, EditorLimit, MAX_EDITOR_BYTES, MAX_EDITOR_LINE_BYTES,
+    MAX_EDITOR_LINES, TEXT_PAGE_BYTES, TextPage, editor_limit,
 };
 mod paint;
 pub use paint::{PaintCoverage, PaintPosition, PaintSelection, retained_paint_ranges};
@@ -94,13 +97,14 @@ pub use syntax_providers::{
     SyntaxContextScope, SyntaxHighlightScope, SyntaxProvider, syntax_provider,
 };
 mod comments;
-pub use comments::{block_comment, line_comment};
+pub use comments::{block_comment, line_comment, supports_block_comment, supports_line_comment};
 mod coordinates;
 mod index;
 mod lines;
 mod paste;
 mod reindent;
 pub use lines::LineCommand;
+pub use reindent::supports_reindent;
 mod pairs;
 mod structure;
 pub use structure::{MAX_STRUCTURE_BYTES, Structure, supports_brackets};
@@ -207,6 +211,7 @@ pub enum EditError {
     Capacity(EditorLimit),
     CompositionActive,
     UnsupportedNativeInput,
+    StructureUnavailable,
 }
 
 impl std::fmt::Display for EditError {
@@ -227,6 +232,7 @@ impl std::fmt::Display for EditError {
             Self::CompositionActive => {
                 "Finish the input composition before running an editor command"
             }
+            Self::StructureUnavailable => "Code structure is unavailable for this document",
             Self::UnsupportedNativeInput => {
                 "This native input cannot be applied to multiple selections"
             }
@@ -238,10 +244,61 @@ impl std::error::Error for EditError {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Transaction {
-    forward: Vec<Edit>,
-    inverse: Vec<Edit>,
+    forward: Vec<Edit<HistoryText>>,
+    inverse: Vec<Edit<HistoryText>>,
     before: Vec<Selection>,
     after: Vec<Selection>,
+    prepared: Option<(HistorySource, HistorySource)>,
+}
+
+/// Recovery already prepared both complete versions. Retain their immutable
+/// indexes with their source so replay need not reconstruct row coordinates.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct HistorySource {
+    text: std::sync::Arc<String>,
+    index: std::sync::Arc<index::LineIndex>,
+}
+
+/// Ordinary edits own only their replacement span. Recovery can retain complete
+/// prepared sources without copying them into its single undo transaction.
+#[derive(Clone, Debug, Eq)]
+enum HistoryText {
+    Owned(String),
+    Shared(std::sync::Arc<String>),
+}
+
+impl From<String> for HistoryText {
+    fn from(text: String) -> Self {
+        Self::Owned(text)
+    }
+}
+
+impl From<std::sync::Arc<String>> for HistoryText {
+    fn from(text: std::sync::Arc<String>) -> Self {
+        Self::Shared(text)
+    }
+}
+
+impl std::ops::Deref for HistoryText {
+    type Target = str;
+    fn deref(&self) -> &str {
+        match self {
+            Self::Owned(text) => text,
+            Self::Shared(text) => text,
+        }
+    }
+}
+
+impl AsRef<str> for HistoryText {
+    fn as_ref(&self) -> &str {
+        self
+    }
+}
+
+impl PartialEq for HistoryText {
+    fn eq(&self, other: &Self) -> bool {
+        **self == **other
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -261,7 +318,7 @@ pub struct Document {
     editor_limits: bool,
     line_index: std::sync::Arc<index::LineIndex>,
     projection: ProjectionCache,
-    saved: std::sync::Arc<str>,
+    saved: std::sync::Arc<String>,
     selections: Vec<Selection>,
     history: Vec<std::sync::Arc<HistoryStep>>,
     history_cursor: usize,
@@ -294,6 +351,32 @@ const HISTORY_STEPS: usize = 1_000;
 const EDIT_RESERVE_BYTES: usize = 64 * 1024;
 pub const MAX_DOCUMENT_BYTES: usize = 32 * 1024 * 1024;
 
+/// Prepare source-owned row/native/visual indexes without publishing a partial
+/// document. Hosts retain the source and validate their ownership before finish.
+pub struct DocumentPreparation<'a> {
+    source: &'a std::sync::Arc<String>,
+    index: index::LineIndexPreparation<'a>,
+}
+impl<'a> DocumentPreparation<'a> {
+    pub fn new(source: &'a std::sync::Arc<String>) -> Self {
+        Self {
+            source,
+            index: index::LineIndexPreparation::new(source),
+        }
+    }
+    pub fn advance(&mut self, budget: usize) -> bool {
+        self.index.advance(budget)
+    }
+    /// Index preparation is complete-only. The saved baseline shares the source;
+    /// hosts must revalidate account/project/read ownership before publication.
+    pub fn finish(self) -> Option<Document> {
+        Some(Document::from_prepared_text(
+            self.source.clone(),
+            self.index.finish()?,
+        ))
+    }
+}
+
 impl Document {
     /// Source-indexed guide policy; immutable results are shared across queries.
     pub fn indent_guide_columns(&self, indentation: Indentation) -> std::sync::Arc<[usize]> {
@@ -306,11 +389,15 @@ impl Document {
 
     /// Construct from an immutable host snapshot without copying its source.
     pub fn from_shared_text(text: std::sync::Arc<String>) -> Self {
+        let index = index::LineIndex::new(&text);
+        Self::from_prepared_text(text, index)
+    }
+    fn from_prepared_text(text: std::sync::Arc<String>, index: index::LineIndex) -> Self {
         Self {
             identity: std::sync::Arc::new(()),
-            saved: std::sync::Arc::from(text.as_str()),
+            saved: text.clone(),
             editor_limits: false,
-            line_index: std::sync::Arc::new(index::LineIndex::new(&text)),
+            line_index: std::sync::Arc::new(index),
             projection: ProjectionCache::default(),
             text,
             selections: vec![Selection::caret(0)],
@@ -491,6 +578,11 @@ impl Document {
     pub fn text(&self) -> &str {
         &self.text
     }
+    /// Indexed totals prove admitted sources without scanning their bytes.
+    /// Over-limit sources retain the shared scan's exact failure precedence.
+    pub fn admission(&self) -> EditorAdmissionResult<'_> {
+        capacity::EditorAdmissionResult::from_index(&self.text, &self.line_index)
+    }
     pub fn selections(&self) -> &[Selection] {
         &self.selections
     }
@@ -498,11 +590,11 @@ impl Document {
         self.revision
     }
     pub fn is_dirty(&self) -> bool {
-        self.text.as_str() != self.saved.as_ref()
+        !std::sync::Arc::ptr_eq(&self.text, &self.saved)
+            && self.text.as_str() != self.saved.as_str()
     }
     pub fn mark_saved(&mut self) {
-        let saved = self.saved_version(&self.text);
-        self.mark_saved_snapshot(saved);
+        self.mark_saved_snapshot(self.text.clone());
     }
     /// A write can finish after another edit. Record the version actually written
     /// without treating the newer in-memory document as saved.
@@ -510,14 +602,23 @@ impl Document {
         let saved = self.saved_version(text);
         self.mark_saved_snapshot(saved);
     }
-    fn saved_version(&self, text: &str) -> std::sync::Arc<str> {
-        if self.saved.as_ref() == text {
+    /// Acknowledge the immutable source actually written by an asynchronous
+    /// save. Retain its allocation even if newer typing replaced the document.
+    pub fn mark_saved_source(&mut self, source: std::sync::Arc<String>) {
+        self.mark_saved_snapshot(source);
+    }
+    fn saved_version(&self, text: &str) -> std::sync::Arc<String> {
+        if std::ptr::eq(self.text.as_str(), text) {
+            self.text.clone()
+        } else if std::ptr::eq(self.saved.as_str(), text) || self.saved.as_str() == text {
             self.saved.clone()
+        } else if self.matches_text(text) {
+            self.text.clone()
         } else {
-            std::sync::Arc::from(text)
+            std::sync::Arc::new(text.to_owned())
         }
     }
-    fn mark_saved_snapshot(&mut self, saved: std::sync::Arc<str>) {
+    fn mark_saved_snapshot(&mut self, saved: std::sync::Arc<String>) {
         self.saved = saved;
         if let Some(composition) = &mut self.composition {
             composition.mark_saved_snapshot(self.saved.clone());
@@ -604,11 +705,36 @@ impl Document {
         drop(parts);
         replace_indexed_text(
             &mut self.text,
+            &mut self.saved,
             &mut self.line_index,
             &mut self.folds,
             &mut self.projection,
             &edits,
         );
+        self.record_transaction(edits, inverse, after, group, None);
+        Ok(true)
+    }
+
+    // Editing and recovery share history limits, grouping and revision policy.
+    fn record_transaction<T: Into<HistoryText>>(
+        &mut self,
+        edits: Vec<Edit<T>>,
+        inverse: Vec<Edit<T>>,
+        after: Vec<Selection>,
+        group: Option<u64>,
+        prepared: Option<(HistorySource, HistorySource)>,
+    ) {
+        let retain = |edits: Vec<Edit<T>>| {
+            edits
+                .into_iter()
+                .map(|edit| Edit {
+                    range: edit.range,
+                    text: edit.text.into(),
+                })
+                .collect::<Vec<_>>()
+        };
+        let edits = retain(edits);
+        let inverse = retain(inverse);
         let bytes = edits
             .iter()
             .chain(&inverse)
@@ -619,6 +745,7 @@ impl Document {
             inverse,
             before: self.selections.clone(),
             after: after.clone(),
+            prepared,
         });
         for step in self.history.drain(self.history_cursor..) {
             self.history_bytes -= step.bytes;
@@ -652,7 +779,6 @@ impl Document {
         self.motion_columns = None;
         self.identity = std::sync::Arc::new(());
         self.revision = self.revision.wrapping_add(1);
-        Ok(true)
     }
 
     pub fn undo(&mut self) -> bool {
@@ -661,13 +787,24 @@ impl Document {
         }
         let step = &self.history[self.history_cursor - 1];
         for transaction in step.transactions.iter().rev() {
-            replace_indexed_text(
-                &mut self.text,
-                &mut self.line_index,
-                &mut self.folds,
-                &mut self.projection,
-                &transaction.inverse,
-            );
+            if let Some((before, _)) = &transaction.prepared {
+                replace_prepared_text(
+                    &mut self.text,
+                    &mut self.line_index,
+                    &mut self.folds,
+                    &mut self.projection,
+                    before,
+                );
+            } else {
+                replace_indexed_text(
+                    &mut self.text,
+                    &mut self.saved,
+                    &mut self.line_index,
+                    &mut self.folds,
+                    &mut self.projection,
+                    &transaction.inverse,
+                );
+            }
             self.selections.clone_from(&transaction.before);
         }
         self.history_cursor -= 1;
@@ -684,13 +821,24 @@ impl Document {
         }
         let step = &self.history[self.history_cursor];
         for transaction in &step.transactions {
-            replace_indexed_text(
-                &mut self.text,
-                &mut self.line_index,
-                &mut self.folds,
-                &mut self.projection,
-                &transaction.forward,
-            );
+            if let Some((_, after)) = &transaction.prepared {
+                replace_prepared_text(
+                    &mut self.text,
+                    &mut self.line_index,
+                    &mut self.folds,
+                    &mut self.projection,
+                    after,
+                );
+            } else {
+                replace_indexed_text(
+                    &mut self.text,
+                    &mut self.saved,
+                    &mut self.line_index,
+                    &mut self.folds,
+                    &mut self.projection,
+                    &transaction.forward,
+                );
+            }
             self.selections.clone_from(&transaction.after);
         }
         self.history_cursor += 1;
@@ -762,21 +910,44 @@ fn inverse_edits(text: &str, edits: &[Edit]) -> Vec<Edit> {
     inverse
 }
 
-fn replace_indexed_text(
+fn replace_prepared_text(
     text: &mut std::sync::Arc<String>,
     index: &mut std::sync::Arc<index::LineIndex>,
     folds: &mut FoldState,
     projection: &mut ProjectionCache,
-    edits: &[Edit],
+    prepared: &HistorySource,
+) {
+    let Some(change) = text_change(text, &prepared.text) else {
+        return;
+    };
+    let edits = [Edit {
+        range: change.range.clone(),
+        text: &prepared.text[change.range.start..change.new_end],
+    }];
+    let boundaries = folds.prepare_rebase(&index.rows, &edits);
+    projection.0.take();
+    *text = prepared.text.clone();
+    *index = prepared.index.clone();
+    folds.finish_rebase(boundaries, &index.rows);
+}
+
+fn replace_indexed_text<T: AsRef<str>>(
+    text: &mut std::sync::Arc<String>,
+    saved: &mut std::sync::Arc<String>,
+    index: &mut std::sync::Arc<index::LineIndex>,
+    folds: &mut FoldState,
+    projection: &mut ProjectionCache,
+    edits: &[Edit<T>],
 ) {
     // No-op ranges must not open folds or discard unchanged row coordinates.
     let edits: Vec<_> = edits
         .iter()
         .filter_map(|edit| {
-            let change = text_change(&text[edit.range.clone()], &edit.text)?;
+            let replacement = edit.text.as_ref();
+            let change = text_change(&text[edit.range.clone()], replacement)?;
             Some(Edit {
                 range: edit.range.start + change.range.start..edit.range.start + change.range.end,
-                text: &edit.text[change.range.start..change.new_end],
+                text: &replacement[change.range.start..change.new_end],
             })
         })
         .collect();
@@ -786,6 +957,15 @@ fn replace_indexed_text(
     // An unused derived view must not force a detach of its shared source.
     // Retained external views and composition baselines still require a copy.
     projection.0.take();
+    // If only our clean baseline retains this source, preserve the mutable
+    // buffer and its insertion headroom. External snapshots still keep the
+    // original allocation and force the normal source detach below.
+    if std::sync::Arc::ptr_eq(text, saved)
+        && std::sync::Arc::strong_count(text) == 2
+        && std::sync::Arc::weak_count(text) == 0
+    {
+        *saved = std::sync::Arc::new(text.as_ref().clone());
+    }
     let boundaries = folds.prepare_rebase(&index.rows, &edits);
     // Merge edits whose row contexts overlap. Multiple cursors in one long row
     // rebuild it once, while distant edits retain unchanged interior indexes.
@@ -1399,7 +1579,7 @@ mod tests {
             .unwrap();
         assert_eq!(preview, document.text.as_ptr());
         assert_eq!(preview_index, std::sync::Arc::as_ptr(&document.line_index));
-        assert_eq!(document.recovery().text, source);
+        assert_eq!(document.recovery().text.as_str(), source);
         assert!(document.cancel_composition());
         assert!(std::sync::Arc::ptr_eq(&text, &document.text));
         assert!(std::sync::Arc::ptr_eq(&index, &document.line_index));
@@ -1545,16 +1725,71 @@ mod tests {
     }
 
     #[test]
+    fn prepared_documents_share_saved_source_and_detach_edits_without_losing_baselines() {
+        let source = std::sync::Arc::new("文😀 words\r\n".repeat(4096));
+        let mut preparation = DocumentPreparation::new(&source);
+        while !preparation.advance(8) {}
+        let mut document = preparation.finish().unwrap();
+        assert!(std::sync::Arc::ptr_eq(&source, &document.text));
+        assert!(std::sync::Arc::ptr_eq(&source, &document.saved));
+        assert!(!document.is_dirty());
+        document.insert_native_text("a", None).unwrap();
+        assert!(document.is_dirty());
+        assert!(!std::sync::Arc::ptr_eq(&source, &document.text));
+        assert!(std::sync::Arc::ptr_eq(&source, &document.saved));
+        assert_eq!(document.recovery().saved.as_str(), *source);
+        let written = document.shared_text();
+        document.mark_saved_source(written.clone());
+        assert!(std::sync::Arc::ptr_eq(&written, &document.saved));
+        assert!(!document.is_dirty());
+        document.insert_native_text("b", None).unwrap();
+        document.mark_saved_source(written.clone());
+        assert!(document.is_dirty());
+        assert!(std::sync::Arc::ptr_eq(&written, &document.saved));
+        assert!(document.undo());
+        assert!(!document.is_dirty());
+        assert!(document.undo());
+        assert!(document.is_dirty());
+        assert_eq!(document.text(), source.as_str());
+        assert_eq!(document.recovery().saved.as_str(), *written);
+    }
+
+    #[test]
+    fn written_source_acknowledgements_survive_composition_cancellation_without_copying() {
+        let mut document = Document::new("before");
+        document.begin_composition(Some(1));
+        document
+            .native_edit(
+                Some(Edit::replace(0..0, "preview ")),
+                Selection::caret(8),
+                NativeInputKind::Insert,
+                None,
+            )
+            .unwrap();
+        let written = document.shared_text();
+        document.mark_saved_source(written.clone());
+        assert!(std::sync::Arc::ptr_eq(&written, &document.saved));
+        assert!(!document.is_dirty());
+        assert!(document.cancel_composition());
+        assert_eq!(document.text(), "before");
+        assert!(document.is_dirty());
+        assert!(std::sync::Arc::ptr_eq(&written, &document.saved));
+        assert_eq!(document.recovery().saved.as_str(), "preview before");
+    }
+
+    #[test]
     fn saved_baselines_are_shared_until_a_distinct_version_is_acknowledged() {
         let mut document = Document::new("文\r\n😀");
         let snapshot = document.clone();
+        assert!(std::sync::Arc::ptr_eq(&document.saved, &document.text));
         assert!(std::sync::Arc::ptr_eq(&document.saved, &snapshot.saved));
         document.insert_native_text("a", None).unwrap();
         document.mark_saved();
+        assert!(std::sync::Arc::ptr_eq(&document.saved, &document.text));
         assert!(!document.is_dirty());
         assert!(!snapshot.is_dirty());
         assert!(!std::sync::Arc::ptr_eq(&document.saved, &snapshot.saved));
-        assert_eq!(snapshot.recovery().saved, "文\r\n😀");
+        assert_eq!(snapshot.recovery().saved.as_str(), "文\r\n😀");
         let saved = document.saved.clone();
         document.mark_saved();
         document.mark_saved_version("a文\r\n😀");
@@ -1604,8 +1839,8 @@ mod tests {
         ));
         assert!(!document.is_dirty());
         let recovery = document.recovery();
-        assert_eq!(recovery.text, "文\r\n😀");
-        assert_eq!(recovery.saved, "a文\r\n😀");
+        assert_eq!(recovery.text.as_str(), "文\r\n😀");
+        assert_eq!(recovery.saved.as_str(), "a文\r\n😀");
         assert!(document.cancel_composition());
         assert!(std::sync::Arc::ptr_eq(&saved, &document.saved));
         assert_eq!(document.text(), "文\r\n😀");

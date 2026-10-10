@@ -2,10 +2,10 @@
 use super::visual_motion::{MotionColumns, VisualGoal, VisualLayout};
 use super::{
     Document, EditError, Indentation, Selection, SelectionError,
-    lines::{lines, row_at},
+    lines::Line,
     selections::{byte_at_column, display_column},
 };
-use unicode_segmentation::UnicodeSegmentation;
+use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SelectionMotion {
@@ -22,15 +22,16 @@ pub enum SelectionMotion {
 }
 
 fn previous(text: &str, at: usize) -> usize {
-    text.grapheme_indices(true)
-        .take_while(|(offset, _)| *offset < at)
-        .last()
-        .map_or(0, |(offset, _)| offset)
+    GraphemeCursor::new(at, text.len(), true)
+        .prev_boundary(text, 0)
+        .expect("complete source supplies the grapheme cursor's context")
+        .unwrap_or(0)
 }
 fn next(text: &str, at: usize) -> usize {
-    text.grapheme_indices(true)
-        .find(|(offset, _)| *offset > at)
-        .map_or(text.len(), |(offset, _)| offset)
+    GraphemeCursor::new(at, text.len(), true)
+        .next_boundary(text, 0)
+        .expect("complete source supplies the grapheme cursor's context")
+        .unwrap_or(text.len())
 }
 pub(super) fn category(grapheme: &str) -> u8 {
     if grapheme.chars().all(char::is_whitespace) {
@@ -110,7 +111,7 @@ impl Document {
         indentation: Indentation,
         layout: &VisualLayout,
     ) -> Result<bool, SelectionError> {
-        if layout.source != *self.text || layout.projection != self.projection() {
+        if layout.source != self.text || layout.projection != self.projection() {
             return Err(EditError::StaleContext.into());
         }
         self.move_selections_in(motion, extend, indentation, Some(layout))
@@ -126,12 +127,21 @@ impl Document {
         if self.is_composing() {
             return Err(EditError::CompositionActive.into());
         }
-        if self.text.len() > super::MAX_STRUCTURE_BYTES {
+        if self.admission().limit().is_some() {
             return Err(SelectionError::TooLarge);
         }
         let projection = self.projection();
         let text = projection.text();
-        let rows = lines(text);
+        let rows = projection.lines();
+        let line_at = |row: usize| {
+            let visible = &rows[row];
+            let source = &self.line_index.rows[visible.source_line];
+            Line {
+                start: visible.visible_start,
+                body_end: visible.visible_start + source.body_end - source.start,
+                end: visible.visible_start + visible.source.len(),
+            }
+        };
         let vertical = matches!(motion, SelectionMotion::Up | SelectionMotion::Down);
         let mut columns = Vec::with_capacity(self.selections.len());
         let mut selections = Vec::with_capacity(self.selections.len());
@@ -141,28 +151,33 @@ impl Document {
                 .visible_selection(*selection)
                 .map_err(|_| EditError::InvalidSelection)?;
             let at = visible.head;
-            let row = row_at(&rows, at);
-            let line = &rows[row];
-            let column = self
-                .motion_columns
-                .as_ref()
-                .and_then(|columns| match columns {
-                    MotionColumns::Logical(columns)
-                        if vertical && columns.len() == self.selections.len() =>
-                    {
-                        Some(columns)
-                    }
-                    _ => None,
-                })
-                .map_or_else(
-                    || {
-                        display_column(
-                            &text[line.start..at.min(line.body_end)],
-                            indentation.tab_width(),
-                        )
-                    },
-                    |columns| columns[index],
-                );
+            let row = rows
+                .partition_point(|line| line.visible_start <= at)
+                .saturating_sub(1);
+            let line = line_at(row);
+            let column = if vertical {
+                self.motion_columns
+                    .as_ref()
+                    .and_then(|columns| match columns {
+                        MotionColumns::Logical(columns)
+                            if vertical && columns.len() == self.selections.len() =>
+                        {
+                            Some(columns)
+                        }
+                        _ => None,
+                    })
+                    .map_or_else(
+                        || {
+                            display_column(
+                                &text[line.start..at.min(line.body_end)],
+                                indentation.tab_width(),
+                            )
+                        },
+                        |columns| columns[index],
+                    )
+            } else {
+                0
+            };
             columns.push(column);
             let head = if !extend
                 && visible.anchor != visible.head
@@ -209,7 +224,7 @@ impl Document {
                         } else {
                             (row + 1).min(rows.len() - 1)
                         };
-                        let line = &rows[target];
+                        let line = line_at(target);
                         line.start
                             + byte_at_column(
                                 &text[line.start..line.body_end],
@@ -255,6 +270,110 @@ impl Document {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn admitted_large_documents_support_basic_motion_without_structure_analysis() {
+        let row = "\t文😀e\u{301} words more words\r\n";
+        let source = row.repeat(super::super::MAX_STRUCTURE_BYTES / row.len() + 1);
+        let mut doc = Document::for_editor(source.clone()).unwrap();
+        assert!(source.len() > super::super::MAX_STRUCTURE_BYTES);
+        for (motion, expected) in [
+            (SelectionMotion::DocumentEnd, source.len()),
+            (SelectionMotion::Left, source.len() - 2),
+            (SelectionMotion::LineStart, source.len() - row.len()),
+            (SelectionMotion::Right, source.len() - row.len() + 1),
+            (SelectionMotion::DocumentStart, 0),
+            (SelectionMotion::WordRight, 1),
+            (SelectionMotion::WordRight, 4),
+            (SelectionMotion::LineEnd, row.len() - 2),
+            (SelectionMotion::Down, row.len() * 2 - 2),
+            (SelectionMotion::Up, row.len() - 2),
+        ] {
+            doc.move_selections(motion, false, Indentation::default())
+                .unwrap();
+            assert_eq!(
+                doc.selections(),
+                &[Selection::caret(expected)],
+                "{motion:?}"
+            );
+        }
+        doc.move_selections(SelectionMotion::DocumentStart, true, Indentation::default())
+            .unwrap();
+        assert_eq!(
+            doc.selections(),
+            &[Selection {
+                anchor: row.len() - 2,
+                head: 0
+            }]
+        );
+        assert_eq!(doc.text(), source);
+        assert!(!doc.can_undo());
+        assert!(!doc.is_dirty());
+    }
+
+    #[test]
+    fn direct_grapheme_cursors_match_complete_segmentation_at_every_character_boundary() {
+        for text in [
+            "",
+            "ascii words\r\nlast",
+            "a\u{301}\u{302}😀e\u{301}",
+            "👨\u{200d}👩\u{200d}👧\u{200d}👦!",
+            "🇦🇧🇨🇩🇪🇫🇬",
+            "\u{600}a\rstandalone\nend",
+            "क्\u{200d}ष क्क",
+        ] {
+            let starts: Vec<_> = text.grapheme_indices(true).map(|(byte, _)| byte).collect();
+            for at in text
+                .char_indices()
+                .map(|(byte, _)| byte)
+                .chain([text.len()])
+            {
+                let expected_previous = starts
+                    .iter()
+                    .copied()
+                    .take_while(|byte| *byte < at)
+                    .last()
+                    .unwrap_or(0);
+                let expected_next = starts
+                    .iter()
+                    .copied()
+                    .find(|byte| *byte > at)
+                    .unwrap_or(text.len());
+                assert_eq!(
+                    previous(text, at),
+                    expected_previous,
+                    "previous {text:?} at {at}"
+                );
+                assert_eq!(next(text, at), expected_next, "next {text:?} at {at}");
+            }
+        }
+    }
+
+    #[test]
+    fn large_folded_motion_uses_visible_source_rows_and_keeps_hidden_text_intact() {
+        let hidden = "hidden words in a row\n".repeat(100_000 - 3);
+        let source = format!("head\n{hidden}tail");
+        let mut doc = Document::for_editor(source.clone()).unwrap();
+        assert!(source.len() > super::super::MAX_STRUCTURE_BYTES);
+        doc.fold_state_mut().set_ranges(
+            vec![super::super::FoldRange {
+                start_line: 0,
+                end_line: 100_000 - 3,
+            }],
+            100_000 - 1,
+        );
+        doc.fold_command(super::super::FoldCommand::CollapseAll);
+        doc.set_selections(vec![Selection::caret(4)]).unwrap();
+        doc.move_selections(SelectionMotion::Right, false, Indentation::default())
+            .unwrap();
+        assert_eq!(doc.selections(), &[Selection::caret(5 + hidden.len())]);
+        assert!(doc.fold_state().collapsed_at(0).is_some());
+        doc.move_selections(SelectionMotion::Up, false, Indentation::default())
+            .unwrap();
+        assert_eq!(doc.selections(), &[Selection::caret(0)]);
+        assert_eq!(doc.text(), source);
+        assert!(!doc.can_undo());
+        assert!(!doc.is_dirty());
+    }
     #[test]
     fn oversized_motion_keeps_selections_history_and_dirty_state_unchanged() {
         let mut doc = Document::new("x".repeat(super::super::MAX_STRUCTURE_BYTES + 1));

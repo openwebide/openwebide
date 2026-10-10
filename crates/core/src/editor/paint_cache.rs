@@ -22,6 +22,19 @@ impl<K: PartialEq> PaintCache<K> {
         self.entries.clear();
         self.bytes = 0;
     }
+    /// Invalidate affected windows without disturbing unaffected recency or the
+    /// retained allocation budget.
+    pub fn retain(&mut self, mut keep: impl FnMut(&K) -> bool) {
+        let bytes = &mut self.bytes;
+        self.entries.retain(|(key, value)| {
+            if keep(key) {
+                true
+            } else {
+                *bytes -= value.capacity();
+                false
+            }
+        });
+    }
     pub fn get(&mut self, key: &K) -> Option<String> {
         let index = self
             .entries
@@ -58,6 +71,33 @@ impl<K: PartialEq> PaintCache<K> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn invalidating_windows_preserves_unaffected_recency_and_allocation_limits() {
+        let mut cache = PaintCache::default();
+        for key in 0..MAX_ENTRIES {
+            cache.insert(key, format!("fragment {key}"));
+        }
+        cache.get(&0).unwrap();
+        cache.retain(|key| key % 2 == 0);
+        assert_eq!(cache.entries.front().unwrap().0, 2);
+        assert_eq!(cache.entries.back().unwrap().0, 0);
+        assert!(cache.get(&1).is_none());
+        assert!(cache.get(&0).is_some());
+        assert_eq!(
+            cache.bytes,
+            cache
+                .entries
+                .iter()
+                .map(|(_, value)| value.capacity())
+                .sum::<usize>()
+        );
+        cache.insert(100, "x".repeat(MAX_BYTES));
+        assert_eq!(cache.entries.len(), 1);
+        assert!(cache.get(&100).is_some());
+        cache.retain(|_| false);
+        assert!(cache.entries.is_empty());
+        assert_eq!(cache.bytes, 0);
+    }
     #[test]
     fn bounded_fragments_evict_by_recency_and_allocation_without_retaining_rejected_paint() {
         let mut cache = PaintCache::default();

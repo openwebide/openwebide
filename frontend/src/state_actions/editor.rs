@@ -24,12 +24,14 @@ pub enum EditorCommand {
 }
 
 mod columns;
+mod structural_actions;
 pub use columns::EditorColumnSelection;
 mod decorations;
 pub use decorations::EditorDecorations;
 mod input;
 mod motion;
-pub use input::{EditorNativeCommit, EditorNativeContext};
+pub use input::{EditorNativeCommit, EditorNativeContext, InitialNativeContextPreparation};
+mod loading;
 mod preparation;
 mod rows;
 #[cfg(feature = "test-support")]
@@ -134,15 +136,32 @@ impl EditorActions {
 
     pub fn new(workspace: WorkspaceState) -> Self {
         let preferences = use_context::<crate::state::settings::SettingsState>();
+        let capacity_documents = ArcRwSignal::from(workspace.editor_documents);
         Self {
             workspace,
             auth: use_context::<crate::state::auth::AuthState>(),
             preferences,
             rules: Memo::new(move |_| resolve_current_rules(workspace, preferences)),
             capacity: Memo::new(move |_| {
-                workspace
-                    .content
-                    .with(|source| openwebide_core::editor::editor_limit(source))
+                workspace.content.with(|source| {
+                    if let Some(key) = workspace
+                        .active_project
+                        .get_untracked()
+                        .zip(workspace.open_file.get_untracked())
+                    {
+                        // A document update may evaluate this memo while holding
+                        // the write guard. Its immutable source cache remains
+                        // valid even when indexed totals cannot be borrowed.
+                        capacity_documents.try_with_untracked(|documents| {
+                            if let Some(document) = documents.get(&key)
+                                && std::ptr::eq(document.text(), source.as_str())
+                            {
+                                source.record_admission(document.admission());
+                            }
+                        });
+                    }
+                    source.editor_limit()
+                })
             }),
             group: workspace.editor_group,
             typing: RwSignal::new(None),
@@ -178,7 +197,7 @@ impl EditorActions {
     pub fn prepare_save(
         self,
         rules: &openwebide_core::editor::EditorRules,
-    ) -> Result<Option<String>, EditError> {
+    ) -> Result<Option<EditorText>, EditError> {
         let Some(key) = self.key() else {
             return Ok(None);
         };
@@ -197,7 +216,7 @@ impl EditorActions {
             self.workspace.content.set(text.clone());
             self.publish_dirty(key);
         }
-        result.map(|text| text.map(Into::into))
+        result
     }
 
     pub fn begin_composition(self) {
@@ -910,6 +929,11 @@ impl EditorActions {
         if !self.is_current(project, path) || !self.source_matches(source) {
             return Ok(None);
         }
+        // Explicit navigation/selection intent supersedes a pending structural
+        // action even when the command leaves the selection unchanged.
+        self.workspace
+            .editor_command_revision
+            .update(|revision| *revision = revision.wrapping_add(1));
         self.cancel_queued_motion(None);
         let Some(key) = self.key() else {
             return Ok(None);
@@ -975,11 +999,11 @@ impl EditorActions {
         .flatten()
     }
 
-    pub fn preparation_revision(self) {
+    pub fn preparation_revision(self) -> u64 {
         self.workspace.editor_worker_active.track();
         self.workspace.editor_fallback_active.track();
-        self.workspace.editor_preparation_revision.track();
         self.workspace.editor_fallback_paint.track();
+        self.workspace.editor_preparation_revision.get()
     }
 
     pub fn syntax_highlights(
@@ -1197,6 +1221,37 @@ impl EditorActions {
                 )
             }
         })
+    }
+
+    /// Explicit jumps use complete parser context; passive bracket decoration
+    /// keeps its existing nonblocking fallback. Capture intent before queuing.
+    pub fn matching_bracket_when_ready(
+        self,
+        selection: Selection,
+    ) -> impl std::future::Future<Output = Result<Option<(usize, usize)>, EditError>> {
+        let request = self.structural_action(selection);
+        async move {
+            let Some(action) = request? else {
+                return Ok(None);
+            };
+            if !action.current(self)
+                || !openwebide_core::editor::has_adjacent_bracket(&action.source, selection.head)
+            {
+                return Ok(None);
+            }
+            let language = openwebide_core::highlight::language_from_path(&action.scope.key.1);
+            if openwebide_core::editor::syntax_provider(language).is_none() {
+                return Ok(self.matching_bracket(selection.head));
+            }
+            let Some(syntax) = action.prepare(self, action.rules).await? else {
+                return Ok(None);
+            };
+            Ok(openwebide_core::editor::matching_bracket_with_context(
+                &action.source,
+                &syntax,
+                selection.head,
+            ))
+        }
     }
 
     /// Inspect source ownership without allocating another complete file value.
@@ -1676,6 +1731,20 @@ impl EditorActions {
         if self.key() != Some(key.clone()) {
             return Ok(None);
         }
+        self.workspace
+            .editor_command_revision
+            .update(|revision| *revision = revision.wrapping_add(1));
+        self.command_prepared(key, command, selection, indentation, syntax)
+    }
+
+    fn command_prepared(
+        self,
+        key: (i64, String),
+        command: EditorCommand,
+        selection: Selection,
+        indentation: Indentation,
+        syntax: Option<std::sync::Arc<openwebide_core::editor::Structure>>,
+    ) -> Result<Option<Selection>, EditError> {
         self.typing.set(None);
         let result = self
             .workspace
@@ -1780,6 +1849,181 @@ impl EditorActions {
             })
             .unwrap_or(Ok(None));
         self.publish_edit(key, result)
+    }
+
+    pub fn reindent_when_ready(
+        self,
+        selection: Selection,
+        indentation: Indentation,
+    ) -> impl std::future::Future<Output = Result<Option<Selection>, EditError>> {
+        self.command_when_ready(EditorCommand::Reindent, selection, indentation)
+    }
+
+    /// Explicit structural actions wait for complete context when their behavior
+    /// depends on parsed language bodies. Single-language comments retain their
+    /// immediate fallback, including admitted files above the structure budget.
+    pub fn command_requires_structure(self, command: EditorCommand) -> bool {
+        let language = self
+            .key()
+            .map_or(openwebide_core::highlight::Language::Plain, |key| {
+                openwebide_core::highlight::language_from_path(&key.1)
+            });
+        command == EditorCommand::Reindent
+            || (matches!(
+                command,
+                EditorCommand::LineComment | EditorCommand::BlockComment
+            ) && openwebide_core::editor::syntax_provider(language)
+                .is_some_and(|provider| provider.injection.is_some()))
+    }
+
+    /// Reactive eligibility query. Reuse complete syntax only; opening a menu or
+    /// moving a selection must not start grammar work on the UI thread.
+    pub fn command_supported(self, command: EditorCommand) -> bool {
+        self.workspace.active_project.track();
+        self.workspace.open_file.track();
+        self.workspace.content.track();
+        self.workspace.editor_documents.track();
+        self.workspace.editor_preparation.track();
+        self.workspace.editor_syntax.track();
+        self.workspace.editor_source_revision.track();
+        self.workspace.editor_read_revision.track();
+        self.workspace.pending_epoch.track();
+        self.workspace.editor_rules.track();
+        self.workspace.editor_indentation.track();
+        self.preparation_revision();
+        if let Some(auth) = self.auth {
+            auth.generation.track();
+        }
+        let Some(key) = self.key() else {
+            return false;
+        };
+        let language = openwebide_core::highlight::language_from_path(&key.1);
+        let supported: fn(openwebide_core::highlight::Language) -> bool = match command {
+            EditorCommand::LineComment => openwebide_core::editor::supports_line_comment,
+            EditorCommand::BlockComment => openwebide_core::editor::supports_block_comment,
+            EditorCommand::Reindent => return openwebide_core::editor::supports_reindent(language),
+            _ => return true,
+        };
+        if !self.command_requires_structure(command) {
+            return supported(language);
+        }
+        let prepared = self
+            .workspace
+            .editor_preparation
+            .get_untracked()
+            .filter(|prepared| self.syntax_scope_current(&prepared.scope));
+        if prepared.as_ref().is_some_and(|prepared| {
+            matches!(
+                prepared.status,
+                openwebide_core::editor::SyntaxStatus::TooLarge
+            )
+        }) {
+            return false;
+        }
+        let structure = prepared
+            .as_ref()
+            .and_then(|prepared| prepared.analysis.as_ref())
+            .and_then(|analysis| analysis.structure().cloned())
+            .or_else(|| {
+                let source = self
+                    .workspace
+                    .editor_syntax_scope
+                    .get_untracked()
+                    .filter(|scope| self.syntax_scope_current(scope))
+                    .map_or_else(|| self.source().shared(), |scope| scope.source);
+                self.workspace.editor_syntax.with_untracked(|cache| {
+                    cache
+                        .cached_analysis(
+                            &key,
+                            language,
+                            &source,
+                            self.rules_untracked().indentation.tab_width(),
+                        )
+                        .and_then(|analysis| analysis.structure().cloned())
+                })
+            });
+        let Some(structure) = structure else {
+            // Pending container actions can prepare their context on demand.
+            return supported(language);
+        };
+        let selections = self.current_selections();
+        if selections.is_empty() {
+            return supported(structure.language_at(0));
+        }
+        selections
+            .iter()
+            .all(|selection| supported(structure.language_at(selection.range().start)))
+    }
+
+    pub fn command_when_ready(
+        self,
+        command: EditorCommand,
+        selection: Selection,
+        indentation: Indentation,
+    ) -> impl std::future::Future<Output = Result<Option<Selection>, EditError>> {
+        let requires_structure = self.command_requires_structure(command);
+        let request = self.structural_action(selection);
+        async move {
+            let Some(action) = request? else {
+                return Ok(None);
+            };
+            if !action.current(self) {
+                return Ok(None);
+            }
+            if !requires_structure {
+                return self.command(command, selection, indentation);
+            }
+            let Some(syntax) = action.prepare(self, indentation).await? else {
+                return Ok(None);
+            };
+            self.command_prepared(
+                action.scope.key,
+                command,
+                selection,
+                indentation,
+                Some(syntax),
+            )
+        }
+    }
+
+    /// Explicit expansion waits for syntax while ordinary selection commands
+    /// retain their immediate path. Ownership is captured before the first poll.
+    pub fn selection_command_when_ready(
+        self,
+        command: openwebide_core::editor::SelectionCommand,
+        selection: Selection,
+    ) -> impl std::future::Future<
+        Output = Result<Option<Vec<Selection>>, openwebide_core::editor::SelectionError>,
+    > {
+        let request = self.structural_action(selection);
+        async move {
+            let Some(action) = request? else {
+                return Ok(None);
+            };
+            if !action.current(self) {
+                return Ok(None);
+            }
+            let language = openwebide_core::highlight::language_from_path(&action.scope.key.1);
+            if command != openwebide_core::editor::SelectionCommand::Expand
+                || openwebide_core::editor::syntax_provider(language).is_none()
+            {
+                return self.selection_command(
+                    action.scope.key.0,
+                    &action.scope.key.1,
+                    &action.source,
+                    command,
+                );
+            }
+            let Some(syntax) = action.prepare(self, action.rules).await? else {
+                return Ok(None);
+            };
+            self.operate_selections(
+                action.scope.key.0,
+                &action.scope.key.1,
+                &action.source,
+                |document| document.selection_command_with_context(command, action.rules, &syntax),
+            )
+        }
     }
 
     pub fn clipboard_content(
@@ -2018,6 +2262,19 @@ mod source_tests {
             assert_eq!(buffer.content, source);
             assert_eq!(snapshot.content, source);
             assert_eq!(edited, "x文😀\r\nbody\n");
+            let written = actions
+                .prepare_save(&actions.rules_untracked())
+                .unwrap()
+                .unwrap();
+            let prepared = workspace.editor_documents.with_untracked(|documents| {
+                documents
+                    .get(&(1, "source.rs".into()))
+                    .unwrap()
+                    .shared_text()
+            });
+            assert!(Arc::ptr_eq(&written.shared(), &prepared));
+            assert!(Arc::ptr_eq(&written.shared(), &actions.source().shared()));
+            assert_eq!(source, "文😀\r\nbody\n");
         });
     }
 }

@@ -1,0 +1,27 @@
+{
+  "scope": "Focused explicit structural navigation, shared Reindent/comment readiness, existing parser selection/navigation and parser budget fallback; Local and Remote",
+  "runner": "Linux arm64 Chromium 154; two CPUs; existing 300-second runner and unchanged readiness deadlines",
+  "plannedEditorTests": 187,
+  "executedTests": 8,
+  "passedTests": 8,
+  "failedTests": 0,
+  "manifest": {
+    "base": "71997bcd1ad896510a86909f9ac6744e808d2b70",
+    "sourceSha256": {
+      "frontend/src/state_actions/editor.rs": "79c7549455ed8a50451dbbb416eda697585fd6e8c66a8212a9f5b502bacdb611",
+      "frontend/src/state_actions/editor/structural_actions.rs": "88110d598d2d2ff841138b6e88c597f785a7350c39f9e1d04c7584cf9ee0c574",
+      "frontend/src/state_actions/editor/preparation.rs": "d0fb8fb102d4f12f3bb952f1ccd323ddcc3914309b469394450f6e5747068289",
+      "frontend/src/components/editor.rs": "350e0742a481344292056ed048169f5e153a518737798a38fb94c7292496abc9",
+      "frontend/src/editor_worker.rs": "62d48be6c91f79c4ac6befd656e042b6306c5392f3bb0c36a57da9177491e5c6",
+      "frontend/tests/components/editor.rs": "a5e32c555276987a510aca550a43adb34cb4a5b47bdff4bdbec20e8d2de77642",
+      "tools/run-editor-browser-tests.py": "81a3cce570c0448a4a3493e899b3ae6922bff0704b656a12d85de42f2881378b"
+    },
+    "artifactSha256": {
+      "components.wasm": "33807d6b2b729b71957e0dddf587e5238d736e05bd8a8c4bab09a9e48605eb62",
+      "editor-library.wasm": "e077867068843c13ab31ca1ee567931d4480c57e87bf0f0f82faca22dd68113b"
+    }
+  },
+  "logSha256": "f1457e3254643c98b5cbc3094fe58d5ae96a0665df0dfc0b729750523e4075c2",
+  "result": "{\"focusedTests\": 8, \"totalEditorTests\": 187}\nSet timeout to 300 seconds...\nRunning headless tests in Chrome on `http://127.0.0.1:35991/`\nTry find `webdriver.json` for configure browser's capabilities:\nOk\nLoading Wasm module...\n\nrunning 8 tests\ntest editor::unsupported_structural_navigation_keeps_immediate_lexical_fallback_in_both_modes ... ok\ntest editor::parser_selection_and_navigation_share_modes_and_reject_old_file_events ... ok\ntest editor::parser_reindent_preserves_literals_and_embedded_boundaries_in_both_modes ... ok\ntest editor::parser_budget_rejection_preserves_source_and_recovers_in_both_modes ... ok\ntest editor::embedded_comment_actions_wait_for_scopes_and_commit_once_in_both_modes ... ok\ntest editor::cold_structural_navigation_prepares_context_and_rejects_superseded_actions_in_both_modes ... ok\ntest editor::cold_structural_navigation_keyboard_and_menu_share_preparation_in_both_modes ... ok\ntest editor::cold_structural_commands_reject_superseded_requests_in_both_modes ... ok\n\ntest result: ok. 8 passed; 0 failed; 0 ignored; 532 filtered out; finished in 7.64s\n\n",
+  "fullSuite": "Not established by this focused result; running separately"
+}

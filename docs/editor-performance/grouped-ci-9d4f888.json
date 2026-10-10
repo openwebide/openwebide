@@ -1,0 +1,51 @@
+{
+  "conclusion": "failure",
+  "headSha": "9d4f8880342bb70737dd1d83be4e7d32899a2939",
+  "jobs": [
+    {
+      "name": "docker",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38080858411/job/114297292153"
+    },
+    {
+      "name": "backend-and-crates",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38080858411/job/114297292350"
+    },
+    {
+      "name": "bridge-windows",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38080858411/job/114297292357"
+    },
+    {
+      "name": "frontend",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38080858411/job/114297292403"
+    },
+    {
+      "name": "frontend-ui-tests",
+      "status": "completed",
+      "conclusion": "failure",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38080858411/job/114297292454"
+    }
+  ],
+  "status": "completed",
+  "url": "https://github.com/openwebide/openwebide/actions/runs/38080858411",
+  "editorPlannedTests": 181,
+  "editorExecutedGroups": [
+    53,
+    52,
+    52
+  ],
+  "editorPassedTests": 151,
+  "editorFailedTests": 6,
+  "editorUnexecutedTests": 24,
+  "firstFailure": "editor::parser_budget_rejection_preserves_source_and_recovers_in_both_modes",
+  "diagnostic": "Local; TooLarge; pending=false; painted=false; one request; no queued requests; native bound; one editor root",
+  "cause": "Unproven: typed rejection reaches publication but paint is not ready; subsequent fixture contamination is unproven.",
+  "logSha256": "10b4392a26d336b8bff9517bbefac539afb80ccf4a536c3ea9d6183b4f5c7d91"
+}

@@ -84,6 +84,57 @@ pub trait SyntaxTransport {
     fn stop(&self);
 }
 
+/// Browser task adapter for the same Rust service used in a dedicated worker.
+/// A command owns this request; dropping its future releases the service/job.
+#[derive(Default)]
+pub struct CooperativeClient {
+    stopped: Cell<bool>,
+}
+impl CooperativeClient {
+    pub async fn request_while(
+        &self,
+        message: String,
+        mut should_continue: impl FnMut() -> bool,
+    ) -> Result<String, WorkerError> {
+        let mut service = SyntaxWorker::default();
+        if self.stopped.get() {
+            return Err(WorkerError::Unavailable);
+        }
+        if let Some(reply) = service.enqueue(&message) {
+            return Ok(reply);
+        }
+        while service.has_work() {
+            if self.stopped.get() {
+                return Err(WorkerError::Unavailable);
+            }
+            let deadline = js_sys::Date::now() + f64::from(SYNTAX_BATCH_MS);
+            if let Some(reply) = service.advance(
+                || !self.stopped.get() && should_continue(),
+                || js_sys::Date::now() >= deadline,
+            ) {
+                if self.stopped.get() {
+                    return Err(WorkerError::Unavailable);
+                }
+                return Ok(reply);
+            }
+            crate::util::yield_task().await;
+        }
+        Err(WorkerError::Transport)
+    }
+}
+impl SyntaxTransport for CooperativeClient {
+    fn request(
+        &self,
+        _ticket: u32,
+        message: String,
+    ) -> futures::future::LocalBoxFuture<'_, Result<String, WorkerError>> {
+        Box::pin(self.request_while(message, || true))
+    }
+    fn stop(&self) {
+        self.stopped.set(true);
+    }
+}
+
 type ReadyWaiter = Rc<RefCell<Option<futures::channel::oneshot::Sender<Result<(), WorkerError>>>>>;
 
 pub struct WorkerClient {

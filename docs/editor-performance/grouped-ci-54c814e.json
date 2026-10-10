@@ -1,0 +1,49 @@
+{
+  "conclusion": "success",
+  "headSha": "54c814e7e4414b26114f2cdf99d6f2b75ad0a128",
+  "jobs": [
+    {
+      "conclusion": "success",
+      "name": "frontend",
+      "status": "completed"
+    },
+    {
+      "conclusion": "success",
+      "name": "bridge-windows",
+      "status": "completed"
+    },
+    {
+      "conclusion": "success",
+      "name": "frontend-ui-tests",
+      "status": "completed"
+    },
+    {
+      "conclusion": "success",
+      "name": "backend-and-crates",
+      "status": "completed"
+    },
+    {
+      "conclusion": "success",
+      "name": "docker",
+      "status": "completed"
+    }
+  ],
+  "status": "completed",
+  "url": "https://github.com/openwebide/openwebide/actions/runs/38038343204",
+  "ui_result_lines": [
+    "frontend-ui-tests\tTests (frontend UI)\t2026-10-10T08:40:35.2625997Z test result: ok. 6 passed; 0 failed; 0 ignored; 16 filtered out; finished in 0.04s",
+    "frontend-ui-tests\tTests (frontend UI)\t2026-10-10T08:42:48.0649209Z test result: ok. 375 passed; 0 failed; 0 ignored; 151 filtered out; finished in 128.20s",
+    "frontend-ui-tests\tTests (frontend UI)\t2026-10-10T08:42:48.9844423Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.01s",
+    "frontend-ui-tests\tTests (frontend UI)\t2026-10-10T08:42:53.3798227Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "frontend-ui-tests\tTests (frontend UI)\t2026-10-10T08:43:00.5839280Z {\"editorTests\": 167, \"browserRuns\": 6, \"planOnly\": false}",
+    "frontend-ui-tests\tTests (frontend UI)\t2026-10-10T08:48:29.6166878Z test result: ok. 50 passed; 0 failed; 0 ignored; 476 filtered out; finished in 143.01s",
+    "frontend-ui-tests\tTests (frontend UI)\t2026-10-10T08:52:31.9985761Z test result: ok. 50 passed; 0 failed; 0 ignored; 476 filtered out; finished in 55.19s",
+    "frontend-ui-tests\tTests (frontend UI)\t2026-10-10T08:56:33.5471375Z test result: ok. 49 passed; 0 failed; 0 ignored; 477 filtered out; finished in 56.52s",
+    "frontend-ui-tests\tTests (frontend UI)\t2026-10-10T09:00:08.1609662Z test result: ok. 1 passed; 0 failed; 0 ignored; 525 filtered out; finished in 27.58s",
+    "frontend-ui-tests\tTests (frontend UI)\t2026-10-10T09:04:00.2662213Z test result: ok. 1 passed; 0 failed; 0 ignored; 525 filtered out; finished in 42.96s",
+    "frontend-ui-tests\tTests (frontend UI)\t2026-10-10T09:04:02.5885000Z test result: ok. 16 passed; 0 failed; 0 ignored; 6 filtered out; finished in 0.30s",
+    "frontend-ui-tests\tMeasure shared editor storage in browser WASM\t2026-10-10T09:04:32.1155136Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 filtered out; finished in 12.75s",
+    "frontend-ui-tests\tMeasure shared editor storage in browser WASM\t2026-10-10T09:04:32.2675225Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+  ],
+  "scope": "Second full CI success with the same complete browser grouping; later implementations still require current complete checks."
+}

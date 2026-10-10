@@ -7,6 +7,30 @@ pub struct FoldRange {
     pub end_line: usize,
 }
 
+/// Validate already ordered persisted ranges without cloning and sorting them.
+/// The ancestor stack retains only end lines, bounded by nesting depth.
+pub(super) fn are_normalized(ranges: &[FoldRange], line_count: usize) -> bool {
+    let mut ancestors = Vec::new();
+    let mut previous_start = None;
+    for range in ranges {
+        if range.start_line >= range.end_line
+            || range.end_line >= line_count
+            || previous_start.is_some_and(|start| start >= range.start_line)
+        {
+            return false;
+        }
+        previous_start = Some(range.start_line);
+        while ancestors.last().is_some_and(|end| *end < range.start_line) {
+            ancestors.pop();
+        }
+        if ancestors.last().is_some_and(|end| range.end_line > *end) {
+            return false;
+        }
+        ancestors.push(range.end_line);
+    }
+    true
+}
+
 /// Keep one control per header and nested/disjoint ranges only.
 pub fn normalize_folds(mut ranges: Vec<FoldRange>, line_count: usize) -> Vec<FoldRange> {
     ranges.retain(|range| range.start_line < range.end_line && range.end_line < line_count);
@@ -302,6 +326,32 @@ impl FoldState {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn persisted_range_validation_matches_normalization_exhaustively() {
+        // Include invalid/reversed ranges, duplicate headers, nesting, crossings,
+        // touching endpoints and unsorted input. The existing normalizer is the
+        // independent acceptance oracle for persisted metadata.
+        for length in 0..=4_u32 {
+            for mut encoded in 0..16_usize.pow(length) {
+                let mut ranges = Vec::new();
+                for _ in 0..length {
+                    ranges.push(super::FoldRange {
+                        start_line: encoded % 4,
+                        end_line: (encoded / 4) % 4,
+                    });
+                    encoded /= 16;
+                }
+                for lines in 0..=5 {
+                    assert_eq!(
+                        super::are_normalized(&ranges, lines),
+                        super::normalize_folds(ranges.clone(), lines) == ranges,
+                        "{ranges:?}, {lines} lines"
+                    );
+                }
+            }
+        }
+    }
+
     use super::*;
 
     #[test]
