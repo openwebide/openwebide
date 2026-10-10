@@ -2,8 +2,23 @@
 use super::EditorActions;
 use crate::state::workspace::{EditorFallbackPaint, EditorSyntaxScope, PreparedEditorSyntax};
 use leptos::prelude::*;
-use openwebide_core::editor::{SyntaxReply, SyntaxRequest};
+use openwebide_core::editor::{SyntaxReply, SyntaxRequest, SyntaxRequestPublication};
 use std::{cell::Cell, rc::Rc};
+
+pub(super) async fn publish_syntax_request(
+    mut publication: SyntaxRequestPublication,
+    mut current: impl FnMut() -> bool,
+) -> Option<String> {
+    loop {
+        if !current() {
+            return None;
+        }
+        if publication.advance(openwebide_core::editor::SYNTAX_REQUEST_BATCH_BYTES) {
+            return current().then(|| publication.finish()).flatten();
+        }
+        crate::util::yield_task().await;
+    }
+}
 
 #[derive(Clone)]
 struct PublishedSyntax {
@@ -539,23 +554,30 @@ impl EditorActions {
                     if previous.is_none() {
                         published.set_value(None);
                     }
-                    let previous_analysis = previous
-                        .as_ref()
-                        .map(|previous| (previous.ticket, previous.analysis.as_ref()));
                     let document = format!(
                         "{}:{}:{}:{}",
                         scope.account_generation, scope.read_revision, scope.key.0, scope.key.1
                     );
-                    let request = SyntaxRequest::new(
+                    let language = openwebide_core::highlight::language_from_path(&scope.key.1);
+                    let publication = SyntaxRequest::publication_shared(
                         request_ticket,
                         document.clone(),
-                        openwebide_core::highlight::language_from_path(&scope.key.1),
-                        &scope.source,
+                        language,
+                        scope.source.clone(),
                         scope.tab_width,
-                        previous_analysis,
+                        previous
+                            .as_ref()
+                            .map(|previous| (previous.ticket, previous.analysis.clone())),
                     );
-                    let message = serde_json::to_string(&request)
-                        .expect("syntax request contains only serializable primitives");
+                    let Some(message) = publish_syntax_request(publication, || {
+                        !pending.is_disposed()
+                            && ticket.get_value() == request_ticket
+                            && self.syntax_scope_current(&scope)
+                    })
+                    .await
+                    else {
+                        continue;
+                    };
                     let reply = client.request(request_ticket, message).await;
                     if pending.is_disposed() {
                         break;
@@ -580,16 +602,23 @@ impl EditorActions {
                         // Only one resync per scoped request. Recheck ownership after
                         // each await so a missing worker base cannot revive stale text.
                         published.set_value(None);
-                        let full = SyntaxRequest::new(
+                        let full = SyntaxRequest::publication_shared(
                             request_ticket,
                             document,
-                            request.language,
-                            &scope.source,
+                            language,
+                            scope.source.clone(),
                             scope.tab_width,
                             None,
                         );
-                        let message = serde_json::to_string(&full)
-                            .expect("syntax request contains only serializable primitives");
+                        let Some(message) = publish_syntax_request(full, || {
+                            !pending.is_disposed()
+                                && ticket.get_value() == request_ticket
+                                && self.syntax_scope_current(&scope)
+                        })
+                        .await
+                        else {
+                            continue;
+                        };
                         let reply = client.request(request_ticket, message).await;
                         if pending.is_disposed() {
                             break;
@@ -648,6 +677,86 @@ mod tests {
     use super::*;
     use crate::state::{auth::AuthState, workspace::WorkspaceState};
     use std::sync::Arc;
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    async fn request_publication_yields_and_rejects_replaced_owners_in_both_modes() {
+        use crate::state::projects::ProjectsState;
+        use openwebide_core::{Project, WorkspaceMode, highlight::Language};
+        for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+            for change in 0..4 {
+                let owner = Owner::new();
+                let (actions, workspace, auth) = owner.with(|| {
+                    let workspace = WorkspaceState::new();
+                    let auth = AuthState::new();
+                    provide_context(auth);
+                    let projects = ProjectsState::with_active_project(workspace.active_project);
+                    projects.projects.set(vec![Project {
+                        id: 1,
+                        name: "one".into(),
+                        mode,
+                        path: Some("one".into()),
+                        user_id: None,
+                        created_at: 1,
+                    }]);
+                    provide_context(projects);
+                    workspace.active_project.set(Some(1));
+                    workspace.open_file.set(Some("request.rs".into()));
+                    workspace
+                        .content
+                        .set("// 文😀\\\"\t\r\n".repeat(10_000).into());
+                    (EditorActions::new(workspace), workspace, auth)
+                });
+                let scope = actions.syntax_scope().unwrap();
+                let publication = SyntaxRequest::publication_shared(
+                    9,
+                    "owner".into(),
+                    Language::Rust,
+                    scope.source.clone(),
+                    4,
+                    None,
+                );
+                let mut pending = Box::pin(publish_syntax_request(publication, || {
+                    actions.syntax_scope_current(&scope)
+                }));
+                assert!(
+                    futures::poll!(&mut pending).is_pending(),
+                    "large publication must yield"
+                );
+                match change {
+                    0 => workspace.content.set("new source".into()),
+                    1 => workspace.open_file.set(Some("other.rs".into())),
+                    2 => workspace.active_project.set(Some(2)),
+                    _ => auth.generation.update(|generation| *generation += 1),
+                }
+                assert!(pending.await.is_none());
+                let current = actions.syntax_scope().unwrap();
+                let publication = SyntaxRequest::publication_shared(
+                    10,
+                    "owner".into(),
+                    Language::Rust,
+                    current.source.clone(),
+                    4,
+                    None,
+                );
+                let message =
+                    publish_syntax_request(publication, || actions.syntax_scope_current(&current))
+                        .await
+                        .unwrap();
+                let expected = SyntaxRequest::new(
+                    10,
+                    "owner".into(),
+                    Language::Rust,
+                    &current.source,
+                    4,
+                    None,
+                );
+                assert_eq!(
+                    serde_json::from_str::<serde_json::Value>(&message).unwrap(),
+                    serde_json::to_value(expected).unwrap()
+                );
+            }
+        }
+    }
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     fn syntax_requests_share_source_across_pending_queries_and_tab_settings() {

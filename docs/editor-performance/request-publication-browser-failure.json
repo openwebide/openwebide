@@ -1,0 +1,33 @@
+{
+  "base": "81d2d78fb4a4d4ffccc8472316774749637b1867",
+  "profile": "release",
+  "artifactSha256": {
+    "components.wasm": "19d58ec1fb3e0150a1a33e5ef1e4fcde731a877b0d5f72420754e8d0617396f1",
+    "editor-library.wasm": "17501c2211f457b187bf4872f8c699165626ad9a57c8fcf067ff9b9d42b12a25"
+  },
+  "reportedPassed": 148,
+  "reportedFailed": [
+    "editor::rejected_wrapped_geometry_restarts_when_syntax_completes_in_both_modes"
+  ],
+  "withoutTerminalResults": 42,
+  "exitCode": 143,
+  "termination": "Stopped owned fixture after a reported failure left requestAnimationFrame paused and later tests stopped progressing; not a successful complete run",
+  "observedAnimationFrameHook": "callback => { const id = next++; pending.set(id, callback); return id; }",
+  "isolatedDiagnostic": {
+    "passed": 0,
+    "failed": 1,
+    "assertion": "frontend/tests/components/editor.rs:11158: request queue empty after one yield",
+    "exitCode": 1
+  },
+  "sourceSha256": {
+    "crates/core/src/editor/syntax/request.rs": "91d03906a9d347bce32c746a8737b6387d75e0727753c4edbae1b76a88fd4075",
+    "frontend/src/state_actions/editor/preparation.rs": "db2e058f9bf21ab0cd69276565248bcde4713cecc098bffc95e75c6a828c2829",
+    "frontend/src/state_actions/editor/structural_actions.rs": "822259eeea497afc20672a4bcc0dc69f0acf0c6c81a07ca4defefbf73983ef60",
+    "frontend/tests/components/editor.rs": "1ceb92e2029322fe4797efa33c6362d3ce23963fadf664ae238a3efa21ff2178"
+  },
+  "logSha256": {
+    "openwebide-request-publication-full-browser.log": "e5a27b76c6809751c6e599c8a83e2ffe0cae0f5862c2062b665a23a2ed6db4fd",
+    "openwebide-request-publication-single-browser.log": "c32fba5bdcf46f3a772f4880207164ebd95a2d2d2f384ab3feff84331083d009"
+  },
+  "nextVerification": "Rebuild changed test, retaining geometry assertions and existing 3-second readiness deadline; repeat entire compiled inventory"
+}

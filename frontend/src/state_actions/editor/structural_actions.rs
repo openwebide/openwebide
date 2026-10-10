@@ -95,15 +95,19 @@ impl StructuralAction {
             if admission.status() == SyntaxAdmissionStatus::TooLarge {
                 return Err(EditError::StructureUnavailable);
             }
-            let request = SyntaxRequest::new(
+            let publication = SyntaxRequest::publication_shared(
                 1,
                 "editor-command".into(),
                 openwebide_core::highlight::language_from_path(&self.scope.key.1),
-                &self.scope.source,
+                self.scope.source.clone(),
                 indentation.tab_width(),
                 None,
             );
-            let message = serde_json::to_string(&request).expect("syntax request is serializable");
+            let Some(message) =
+                super::preparation::publish_syntax_request(publication, current).await
+            else {
+                return Ok(None);
+            };
             let reply = crate::editor_worker::CooperativeClient::default()
                 .request_while(message, current)
                 .await

@@ -6,6 +6,8 @@ mod folds;
 mod highlighting;
 mod highlights;
 mod preparation;
+mod request;
+pub use request::{SYNTAX_REQUEST_BATCH_BYTES, SyntaxRequestPublication};
 mod service;
 mod subtrees;
 pub use service::{

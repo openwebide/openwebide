@@ -9,6 +9,8 @@ for what's still ahead.
 
 ## [Unreleased]
 
+- Publish syntax request deltas and JSON source text in bounded batches, yielding between batches and cancelling superseded background, resync and structural-action requests.
+
 - Check ordinary-input syntax budgets during source admission, comparison and row-index preparation through the same cooperative engine used by background analysis, without preparing decoration output.
 
 - Reject oversized syntax requests before constructing a grammar parser in the shared preparation cache, releasing stale analysis while preserving ordinary editing above the syntax limit.

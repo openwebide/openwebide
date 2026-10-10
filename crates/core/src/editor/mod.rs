@@ -86,10 +86,10 @@ mod syntax_providers;
 #[cfg(feature = "editor-parser")]
 pub use syntax::{
     MAX_ANALYSIS_MESSAGE_BYTES, MAX_SYNTAX_DOCUMENTS, MAX_SYNTAX_REQUEST_BYTES,
-    MAX_SYNTAX_SOURCE_BYTES, SYNTAX_BATCH_MS, SYNTAX_PROTOCOL_VERSION, SyntaxAdmission,
-    SyntaxAdmissionStatus, SyntaxAnalysis, SyntaxAnalysisData, SyntaxDocument, SyntaxPreparations,
-    SyntaxReply, SyntaxRequest, SyntaxSource, SyntaxStatus, SyntaxWorker,
-    preparation_exceeds_limits,
+    MAX_SYNTAX_SOURCE_BYTES, SYNTAX_BATCH_MS, SYNTAX_PROTOCOL_VERSION, SYNTAX_REQUEST_BATCH_BYTES,
+    SyntaxAdmission, SyntaxAdmissionStatus, SyntaxAnalysis, SyntaxAnalysisData, SyntaxDocument,
+    SyntaxPreparations, SyntaxReply, SyntaxRequest, SyntaxRequestPublication, SyntaxSource,
+    SyntaxStatus, SyntaxWorker, preparation_exceeds_limits,
 };
 #[cfg(feature = "editor-parser")]
 pub use syntax_providers::{

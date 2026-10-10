@@ -5666,3 +5666,47 @@ native core all-target lint pass. Strict WASM frontend all-target lint and all
 uses debug WASM, not the hosted release profile, and does not cover the complete
 browser inventory or prove physical preparation readiness. No latency improvement
 is claimed from these tests. Full hosted CI and production measurements remain open.
+
+### Bounded browser request publication
+
+`SyntaxRequestPublication` retains the immutable current/base sources and uses
+the existing source-publication policy for full/delta selection. Source comparison
+and copying, followed by exact JSON string escaping, advance in bounded batches.
+The frontend shared facade yields between 64 KiB batches and checks current
+ownership before each batch and after completion. Background requests, the
+one-shot missing-base resync, and cooperative structural actions all use it.
+The wire version, delta threshold and worker validation are unchanged.
+
+Native wire-contract tests compare decoded JSON with the existing request builder
+for full/no-op/changed sources, controls, Unicode, escaped document names and
+empty strings under four batch budgets. Unfinished jobs cannot publish messages.
+A browser regression polls a large publication to Pending, replaces source/file/
+project/account ownership in both modes, checks cancellation, and publishes a
+fresh request. Current 635 core tests, 128 native frontend tests and strict native
+core/WASM frontend lint pass. Rebuilt release browser verification now passes
+all 191 editor contracts, including both independent font matrices
+([receipt](editor-performance/request-publication-full-browser.json)). A
+preliminary release build saw a mismatched dependency after the batch constant
+changed during compilation; no browser tests ran from that build. Rebuild final
+sources before accepting artifact evidence.
+
+This does not bound metadata/capacity allocation or the final JavaScript string
+conversion, worker message decoding, reply-source validation and DOM publication.
+It still copies the published source into an intermediate wire source. Repeat
+actual facade/input latency and memory workloads before crediting responsiveness.
+
+The first release browser run reports 148 passes and one failure, with 42 tests
+without terminal results ([failure receipt](editor-performance/request-publication-browser-failure.json)).
+The failed fixture left its animation-frame hook paused; the owned container was
+stopped after later tests stopped progressing. An isolated unchanged-artifact
+run reproduces the assertion that a changed-source request is already queued
+after one task yield. The test now waits for observable transport readiness under
+the ordinary 3 s deadline, captures geometry-in-flight before the reply, and
+restores animation frames before its assertions. Geometry/source checks and
+the final completion deadline remain unchanged. Rebuilt full verification passes all 191 tests with zero failures. These
+functional contracts do not establish production responsiveness or complete
+release reliability. The three preceding checkpoints also pass all five hosted
+jobs ([7ff2462](editor-performance/grouped-ci-7ff2462.json),
+[211574d](editor-performance/grouped-ci-211574d.json),
+[81d2d78](editor-performance/grouped-ci-81d2d78.json)); hosted CI for this publisher
+and the outstanding production/device gates still need verification.

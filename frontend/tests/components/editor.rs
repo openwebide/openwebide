@@ -11155,15 +11155,31 @@ async fn rejected_wrapped_geometry_restarts_when_syntax_completes_in_both_modes(
         actions.paste("changed ", Selection::caret(0)).unwrap();
         openwebide_frontend::util::yield_task().await;
         settle().await;
-        assert!(!transport.pending.borrow().is_empty());
+        // Publication yields in bounded batches. Wait for the observable wire
+        // request under the ordinary 3 s deadline, keeping geometry suspended.
+        let deadline = js_sys::Date::now() + 3_000.0;
+        while transport.pending.borrow().is_empty() && js_sys::Date::now() < deadline {
+            openwebide_frontend::util::sleep_ms(10).await;
+            settle().await;
+        }
+        let request_ready = !transport.pending.borrow().is_empty();
+        let geometry_pending = actions.row_geometry_is_pending();
+        if request_ready {
+            reject();
+            openwebide_frontend::util::yield_task().await;
+            settle().await;
+        }
+        // Restore the hook before assertions: WASM panics do not unwind the
+        // Rust guard, and a failed check must not suspend later tests' frames.
+        drop(frames);
         assert!(
-            actions.row_geometry_is_pending(),
+            request_ready,
+            "{mode:?}: timed out waiting for changed-source request"
+        );
+        assert!(
+            geometry_pending,
             "{mode:?}: geometry must be in flight before the reply"
         );
-        reject();
-        openwebide_frontend::util::yield_task().await;
-        settle().await;
-        drop(frames);
         wait_until(
             "wrapped geometry completes after syntax revision changes",
             || {

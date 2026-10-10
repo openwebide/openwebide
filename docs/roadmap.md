@@ -78,7 +78,9 @@ tracks the remaining work rather than every optimization already shipped.
   ([receipt](editor-performance/input-clock-focused-browser.json)). All 190 editor browser
   contracts, including both font matrices, pass
   ([receipt](editor-performance/input-clock-full-browser.json)); physical
-  readiness/latency and hosted CI are not established by those contracts.
+  readiness/latency are not established by those contracts. That checkpoint's
+  hosted CI passed all five jobs
+  ([receipt](editor-performance/grouped-ci-7ff2462.json)).
   The earlier full candidate run passed 76 tests, failed held Markdown pairing
   and left 112 tests unexecuted
   ([record](editor-performance/input-structure-full-failure.json)). Instrumented
@@ -89,8 +91,8 @@ tracks the remaining work rather than every optimization already shipped.
   before context is available. Native debug fallback edit medians improved from
   50–96 ms to below 0.5 ms
   ([comparison](editor-performance/typing-preparation-native-comparison.json));
-  real browser/release latency, hard per-phase bounds and candidate hosted CI
-  remain open. The native/WASM input harness now passes strict lint and all
+  real browser/release latency and hard per-phase bounds remain open.
+  The native/WASM input harness now passes strict lint and all
   16 source/selection checks per output variant
   ([first release samples](editor-performance/input-preparation-release-samples.json)).
   Single samples show cold browser preparation exceeding the budget and a
@@ -108,6 +110,9 @@ tracks the remaining work rather than every optimization already shipped.
   native/WASM lint and twelve focused debug-WASM both-mode browser contracts pass
   ([receipt](editor-performance/input-bounded-preparation.json)). Repeat release
   and physical latency measurements before crediting the responsiveness gate.
+  Both follow-on checkpoints passed all five hosted jobs
+  ([early admission](editor-performance/grouped-ci-211574d.json),
+  [budgeted input](editor-performance/grouped-ci-81d2d78.json)).
 
 - [ ] **Cold startup and native input:** remove remaining full-source shaping in
   touch and unsupported-layout fallbacks. Desktop startup now uses bounded native
@@ -232,8 +237,13 @@ tracks the remaining work rather than every optimization already shipped.
 - [ ] **Source ownership and storage:** finish external parser snapshots,
   remaining changed-revision paint/transport comparisons, metadata materialization
   and transport serialization, message decoding, diff shaping and native-text
-  materialization. Browser request source publication and oversized-message fallback
-  still run synchronously. Combined row scans retain the geometry contracts, but
+  materialization. Browser request source comparison, copying and JSON escaping
+  now advance in bounded Rust batches through the shared facade. All 191 release
+  editor browser contracts, including both font matrices, pass
+  ([receipt](editor-performance/request-publication-full-browser.json)); measure
+  actual publication/input latency and memory before crediting responsiveness. Header and
+  capacity allocation, JavaScript string conversion, message decoding and
+  oversized-message fallback still need bounded preparation. Combined row scans retain the geometry contracts, but
   current production repeats still show 125–178 ms cold source-publication tasks
   and 64–69 ms input tasks; these
   source/controller costs remain responsiveness targets. Bound remaining
@@ -288,8 +298,13 @@ tracks the remaining work rather than every optimization already shipped.
   that checkpoint (`8cb111c`) passed all five hosted jobs
   ([receipt](editor-performance/grouped-ci-8cb111c.json)). The subsequent embedded-input checkpoint
   passes the complete 188-test editor inventory
-  ([receipt](editor-performance/held-typing-full-browser.json)); its own hosted CI
-  and the remaining reliability checks remain required.
+  ([receipt](editor-performance/held-typing-full-browser.json)) and passed all five
+  hosted jobs ([receipt](editor-performance/grouped-ci-ed1c8ca.json)). The subsequent
+  preparation checkpoints also passed all five jobs
+  ([7ff2462](editor-performance/grouped-ci-7ff2462.json),
+  [211574d](editor-performance/grouped-ci-211574d.json),
+  [81d2d78](editor-performance/grouped-ci-81d2d78.json)). These successful
+  checkpoints do not close the outstanding production and reliability gates.
 
   Investigate intermittent hosted readiness failures before declaring reliability.
   `9d4f888` published the typed parser-budget fallback but did not finish paint
