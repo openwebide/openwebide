@@ -426,7 +426,9 @@ capability.
   feature switch with a plugin-owned implementation and retire legacy dispatch.
   Require the same public SDK, interfaces and privileges as community plugins:
   no first-party identity dispatch, built-in feature proxy or fallback. Keep host
-  primitives general and feature policy in plugin code. Verify local/remote
+  primitives general and feature policy in plugin code. Wire the shared read-only
+  plugin skill loader into both execution paths so skill-only plugins remain
+  discoverable when Skill Authoring is disabled. Verify local/remote
   execution, cancellation, failures, disablement and updates before declaring
   these behavior migrations complete.
 - Extend the existing skills and optional platform tool-group contributions with

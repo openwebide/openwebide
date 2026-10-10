@@ -611,6 +611,61 @@ pub fn package_snapshot(data: &ProjectSkills) -> Vec<openwebide_core::ProjectSki
         .collect()
 }
 
+/// Read-only access to the package contributions captured for a run. This loader
+/// needs neither an authoring plugin nor live account persistence.
+pub struct PackageSkillStore {
+    entries: Vec<openwebide_core::ProjectSkill>,
+}
+impl PackageSkillStore {
+    pub fn new(data: &ProjectSkills) -> Self {
+        Self {
+            entries: package_snapshot(data),
+        }
+    }
+}
+impl SkillStore for PackageSkillStore {
+    async fn execute(&self, command: &SkillCommand) -> Result<ProjectSkills, String> {
+        command.validate()?;
+        let entries = match command {
+            SkillCommand::List { query } => {
+                let query = query.to_lowercase();
+                self.entries
+                    .iter()
+                    .filter(|entry| {
+                        entry.draft.name.to_lowercase().contains(&query)
+                            || entry.draft.description.to_lowercase().contains(&query)
+                    })
+                    .cloned()
+                    .collect()
+            }
+            SkillCommand::Read { id, resource } => {
+                let entry = self
+                    .entries
+                    .iter()
+                    .find(|entry| entry.id == *id)
+                    .ok_or("This package skill was not enabled when the run started.")?;
+                if resource.as_ref().is_some_and(|name| {
+                    !entry
+                        .draft
+                        .resources
+                        .iter()
+                        .any(|asset| asset.name == *name)
+                }) {
+                    return Err("Skill resource not found".into());
+                }
+                vec![entry.clone()]
+            }
+            _ => {
+                return Err("Package skill loading is read-only. Manage plugins in Plugins.".into());
+            }
+        };
+        Ok(ProjectSkills {
+            enabled: true,
+            entries,
+        })
+    }
+}
+
 /// Package contributions are pinned once at run planning; user-authored skills stay live.
 pub async fn pinned_command(
     command: &SkillCommand,
@@ -694,6 +749,71 @@ mod plugin_run_tests {
                 metadata: Default::default(),
             },
         }
+    }
+    #[test]
+    fn package_loader_is_independent_read_only_and_pinned() {
+        futures::executor::block_on(async {
+            let mut disabled = entry(2, true);
+            disabled.draft.enabled = false;
+            let mut data = ProjectSkills {
+                enabled: true,
+                entries: vec![entry(1, true), disabled, entry(3, false)],
+            };
+            let store = PackageSkillStore::new(&data);
+            data.entries.clear();
+            data.enabled = false;
+            let list = store
+                .execute(&SkillCommand::List {
+                    query: "REVIEW".into(),
+                })
+                .await
+                .unwrap();
+            assert_eq!(list.entries, vec![entry(1, true)]);
+            let read = store
+                .execute(&SkillCommand::Read {
+                    id: 1,
+                    resource: Some("references/check.md".into()),
+                })
+                .await
+                .unwrap();
+            assert_eq!(read.entries, list.entries);
+            for command in [
+                SkillCommand::Read {
+                    id: 2,
+                    resource: None,
+                },
+                SkillCommand::Read {
+                    id: 3,
+                    resource: None,
+                },
+                SkillCommand::Read {
+                    id: 1,
+                    resource: Some("missing.md".into()),
+                },
+                SkillCommand::Create {
+                    draft: entry(4, false).draft,
+                },
+                SkillCommand::Update {
+                    id: 1,
+                    revision: 1,
+                    draft: entry(1, true).draft,
+                },
+                SkillCommand::Delete { id: 1, revision: 1 },
+            ] {
+                assert!(store.execute(&command).await.is_err(), "{command:?}");
+            }
+            let disabled = PackageSkillStore::new(&data);
+            assert!(
+                disabled
+                    .execute(&SkillCommand::List {
+                        query: String::new()
+                    })
+                    .await
+                    .unwrap()
+                    .entries
+                    .is_empty()
+            );
+        });
     }
     #[test]
     fn running_package_reads_remain_pinned_after_update_disable_or_uninstall() {

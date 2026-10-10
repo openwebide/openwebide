@@ -9,6 +9,8 @@ for what's still ahead.
 
 ## [Unreleased]
 
+- Add a shared read-only loader for pinned plugin skill instructions and resources. It excludes personal and disabled skills and rejects mutations; integration into the execution paths remains in progress.
+
 - Verify Scheduling updates during streamed agent execution on both deployed hosts. Plugin-owned reconciliation invalidates the prior generation, cancels its active run, retains one terminal history snapshot with the original message and avoids requeueing an accepted one-time prompt.
 
 - Verify interrupted Scheduling delivery on deployed server and paired hosts: restart during an actual streamed response, recover the expired lease as interrupted, preserve one history result with the original message, and avoid replaying the accepted prompt.
