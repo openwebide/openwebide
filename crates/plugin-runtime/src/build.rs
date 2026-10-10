@@ -155,12 +155,36 @@ fn sandbox(
     if !Path::new("/usr/bin/sandbox-exec").is_file() {
         bail!("Install the host build sandbox");
     }
+    // xcrun may use a full Xcode installation under /Applications rather than
+    // Command Line Tools under /Library. Permit only the selected installation,
+    // including its shared frameworks, without exposing unrelated applications.
+    let selected = Command::new("/usr/bin/xcode-select")
+        .arg("--print-path")
+        .output()?;
+    if !selected.status.success() {
+        bail!("Install and select the host's Apple developer tools");
+    }
+    let developer = PathBuf::from(std::str::from_utf8(&selected.stdout)?.trim())
+        .canonicalize()
+        .context("Locate the selected Apple developer tools")?;
+    let developer = if developer
+        .file_name()
+        .is_some_and(|name| name == "Developer")
+        && developer
+            .parent()
+            .is_some_and(|parent| parent.file_name().is_some_and(|name| name == "Contents"))
+    {
+        developer.parent().expect("selected Xcode contents")
+    } else {
+        developer.as_path()
+    };
     let profile = format!(
-        "(version 1)(deny default)(allow process*)(allow file-read-metadata)(allow sysctl-read)(allow mach-lookup)(allow file-read* (literal \"/\") (literal \"/private/etc/ssl/openssl.cnf\") (literal \"/private/etc/ssl/cert.pem\") (literal \"/private/etc/resolv.conf\") (literal \"/private/etc/hosts\") (subpath \"/System\") (subpath \"/usr\") (subpath \"/Library\") (subpath \"/bin\") (subpath \"/dev\") (subpath {}) (subpath {}) (subpath {}) (subpath {}))(allow file-write* (subpath {}) (literal \"/dev/null\")){}",
+        "(version 1)(deny default)(allow process*)(allow file-read-metadata)(allow sysctl-read)(allow mach-lookup)(allow file-read* (literal \"/\") (literal \"/private/etc/ssl/openssl.cnf\") (literal \"/private/etc/ssl/cert.pem\") (literal \"/private/etc/resolv.conf\") (literal \"/private/etc/hosts\") (subpath \"/System\") (subpath \"/usr\") (subpath \"/Library\") (subpath \"/bin\") (subpath \"/dev\") (subpath {}) (subpath {}) (subpath {}) (subpath {}) (subpath {}))(allow file-write* (subpath {}) (literal \"/dev/null\")){}",
         quote(source),
         quote(staging),
         quote(rustup),
         quote(sdk),
+        quote(developer),
         quote(staging),
         if network { "(allow network*)" } else { "" }
     );
