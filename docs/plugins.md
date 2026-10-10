@@ -148,6 +148,15 @@ tool handlers still live in the app. Discovery/read tools remain available.
 Both run adapters apply one contribution policy, and scheduled host adaptation
 preserves the selected tool set.
 
+Skill-only contributions do not require Skill Authoring. When no enabled authoring
+tool group or executable plugin supplies both skill discovery and reading, shared
+run preparation advertises `plugin_skill_list` and `plugin_skill_read` and includes
+a bounded catalog of enabled plugin skills. Server, bridge and browser executors
+read the snapshot captured when the run started, including named resources; later
+updates, disablement or removal cannot replace those instructions mid-run. This
+generic loader excludes personal skills and provides no authoring operations.
+Executable skill handlers continue to use their own SDK implementation.
+
 These tool-group manifests are transitional feature switches, not completed
 migrations of executable behavior. The pinned default subset is Web, Project
 Memory, Scheduling and Skill Authoring; PR Review remains optional.

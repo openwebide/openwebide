@@ -9,7 +9,7 @@ for what's still ahead.
 
 ## [Unreleased]
 
-- Add a shared read-only loader for pinned plugin skill instructions and resources. It excludes personal and disabled skills and rejects mutations; integration into the execution paths remains in progress.
+- Keep plugin-contributed skills discoverable when Skill Authoring is disabled. Server, bridge and browser runs share read-only loading of pinned instructions and resources, excluding personal and disabled skills without enabling authoring tools.
 
 - Verify Scheduling updates during streamed agent execution on both deployed hosts. Plugin-owned reconciliation invalidates the prior generation, cancels its active run, retains one terminal history snapshot with the original message and avoids requeueing an accepted one-time prompt.
 

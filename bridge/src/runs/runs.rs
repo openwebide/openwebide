@@ -900,7 +900,7 @@ impl<B: RunBackend> openwebide_agent::skills::SkillStore for BridgeSkillPersiste
 type BridgeBuiltinTaskExecutor<B> =
     openwebide_agent::skills::SkillTools<BridgeScheduledExecutor<B>, BridgeSkillPersistence<B>>;
 type BridgeBaseTaskExecutor<B> = openwebide_agent::plugins::execution::PluginTools<
-    BridgeBuiltinTaskExecutor<B>,
+    openwebide_agent::skills::packages::PackageSkillTools<BridgeBuiltinTaskExecutor<B>>,
     crate::plugins::transport::NativePluginTransport,
     openwebide_agent::plugins::execution::GrantedServices<BridgePluginServices<B>>,
 >;
@@ -966,7 +966,10 @@ impl<B: RunBackend + 'static> BridgeTaskFactory<B> {
     }
     fn base_executor(&self) -> BridgeBaseTaskExecutor<B> {
         openwebide_agent::plugins::execution::PluginTools {
-            executor: self.builtin_executor(),
+            executor: openwebide_agent::skills::packages::PackageSkillTools::new(
+                self.builtin_executor(),
+                &self.plugin_skills,
+            ),
             transport: self.plugin_transport.clone(),
             services: openwebide_agent::plugins::execution::GrantedServices {
                 grants: self.plugin_grants.clone(),

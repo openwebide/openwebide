@@ -66,6 +66,29 @@ pub fn configure(
         "skill_creator" => false,
         _ => true,
     });
+    let sdk_skill_reader = context.bindings.iter().any(|plugin| {
+        plugin.enabled
+            && plugin.prepared.manifest.executable.is_some()
+            && plugin
+                .prepared
+                .manifest
+                .contributions
+                .tools
+                .iter()
+                .any(|tool| tool.name == "skill_read")
+            && plugin
+                .prepared
+                .manifest
+                .contributions
+                .tools
+                .iter()
+                .any(|tool| tool.name == "skill_list")
+    });
+    if !groups.contains(&PluginToolGroup::SkillAuthoring) && !sdk_skill_reader {
+        crate::skills::packages::configure(tools, prompt, context.skills, context.context_limit);
+    } else {
+        tools.retain(|tool| !crate::skills::packages::TOOL_NAMES.contains(&tool.name.as_str()));
+    }
 }
 
 #[cfg(test)]

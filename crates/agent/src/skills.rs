@@ -5,6 +5,7 @@ use openwebide_core::{
 };
 use serde::Deserialize;
 use std::future::Future;
+pub mod packages;
 
 pub const TOOL_NAMES: &[&str] = &[
     "skill_list",
@@ -28,6 +29,15 @@ pub fn configure(
         return;
     }
     tools.extend(TOOL_NAMES.iter().map(|name| definition(name)));
+    append_catalog(tools, prompt, data, context_limit, false);
+}
+fn append_catalog(
+    tools: &[ToolDefinition],
+    prompt: &mut Option<String>,
+    data: &ProjectSkills,
+    context_limit: Option<usize>,
+    packages_only: bool,
+) {
     let limit = context_limit.unwrap_or(32768);
     let fixed = openwebide_core::context::tool_schema_tokens(tools)
         .saturating_add(prompt.as_ref().map_or(0, |text| text.len().div_ceil(3)));
@@ -44,7 +54,21 @@ pub fn configure(
             )
             .saturating_mul(3),
     );
+    let budget = if packages_only {
+        budget
+            .min(openwebide_core::skills::CONTEXT_BYTES)
+            .saturating_sub(2 * "plugin_".len())
+    } else {
+        budget
+    };
     if let Some(context) = openwebide_core::skills::skills_context(data, budget) {
+        let context = if packages_only {
+            context
+                .replacen("skill_read", "plugin_skill_read", 1)
+                .replacen("skill_list", "plugin_skill_list", 1)
+        } else {
+            context
+        };
         prompt
             .get_or_insert_with(String::new)
             .push_str(&format!("\n\n{context}"));
@@ -656,7 +680,9 @@ impl SkillStore for PackageSkillStore {
                 vec![entry.clone()]
             }
             _ => {
-                return Err("Package skill loading is read-only. Manage plugins in Plugins.".into());
+                return Err(
+                    "Package skill loading is read-only. Manage plugins in Plugins.".into(),
+                );
             }
         };
         Ok(ProjectSkills {

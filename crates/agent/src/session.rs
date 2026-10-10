@@ -978,7 +978,13 @@ pub fn projectless_tools() -> Vec<ToolDefinition> {
 pub fn is_projectless_tool(name: &str) -> bool {
     matches!(
         name,
-        "search_web" | "fetch_web_page" | "host_info" | "todo_write" | "ask_user_question"
+        "search_web"
+            | "fetch_web_page"
+            | "host_info"
+            | "todo_write"
+            | "ask_user_question"
+            | "plugin_skill_list"
+            | "plugin_skill_read"
     )
 }
 

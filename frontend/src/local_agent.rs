@@ -1297,7 +1297,7 @@ impl openwebide_agent::skills::SkillStore for BrowserSkillPersistence {
 type BrowserBuiltinTaskExecutor =
     openwebide_agent::skills::SkillTools<BrowserScheduledExecutor, BrowserSkillPersistence>;
 type BrowserBaseTaskExecutor = openwebide_agent::plugins::execution::PluginTools<
-    BrowserBuiltinTaskExecutor,
+    openwebide_agent::skills::packages::PackageSkillTools<BrowserBuiltinTaskExecutor>,
     BrowserPluginTransport,
     openwebide_agent::plugins::execution::GrantedServices<BrowserPluginServices>,
 >;
@@ -1410,7 +1410,10 @@ impl BrowserTaskFactory {
     }
     fn base_executor(&self) -> BrowserBaseTaskExecutor {
         openwebide_agent::plugins::execution::PluginTools {
-            executor: self.builtin_executor(),
+            executor: openwebide_agent::skills::packages::PackageSkillTools::new(
+                self.builtin_executor(),
+                &self.plugin_skills,
+            ),
             transport: BrowserPluginTransport(self.plugin_bridge.clone()),
             services: openwebide_agent::plugins::execution::GrantedServices {
                 grants: self.plugin_grants.clone(),

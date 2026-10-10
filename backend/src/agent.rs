@@ -1308,7 +1308,7 @@ impl openwebide_agent::skills::SkillStore for SpinSkillPersistence {
 type SpinBuiltinTaskExecutor =
     openwebide_agent::skills::SkillTools<SpinScheduledExecutor, SpinSkillPersistence>;
 type SpinBaseTaskExecutor = openwebide_agent::plugins::execution::PluginTools<
-    SpinBuiltinTaskExecutor,
+    openwebide_agent::skills::packages::PackageSkillTools<SpinBuiltinTaskExecutor>,
     crate::api::plugins::PlanningHost<'static>,
     openwebide_agent::plugins::execution::GrantedServices<
         crate::api::plugins::PlanningHost<'static>,
@@ -1346,7 +1346,10 @@ impl SpinTaskFactory {
         let host =
             crate::api::plugins::PlanningHost::owned(self.store.clone(), self.user, self.session);
         openwebide_agent::plugins::execution::PluginTools {
-            executor: self.builtin_executor(),
+            executor: openwebide_agent::skills::packages::PackageSkillTools::new(
+                self.builtin_executor(),
+                &self.plugin_skills,
+            ),
             transport: host.clone(),
             services: openwebide_agent::plugins::execution::GrantedServices {
                 host,
