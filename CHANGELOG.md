@@ -9,6 +9,8 @@ for what's still ahead.
 
 ## [Unreleased]
 
+- Verify compiled defaults through deployed server and paired-host HTTP flows: plugin-owned Memory and Skill CRUD, configured Memory/Scheduling naming, scheduled agent execution and bounded monitors. Pending scheduled work survives full deployment restarts. Monitor cancellation remains conversation-scoped, and completed checks leave the active flyout state. Browser lifecycle verification remains in progress.
+
 - Make copied Rust source and embedded SDK inputs readable by the isolated Linux compiler identity, preserving private account-cache permissions during source installation. Verify public Git source compilation and plugin-owned execution in the production image, cancellation during preparation, cache reuse, and server installation with inherited project enablement.
 
 - Allow the selected Apple developer toolchain in the Rust plugin compiler sandbox, supporting hosts with a full Xcode installation as well as Command Line Tools.

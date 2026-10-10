@@ -397,9 +397,10 @@ Extend agent and editor capabilities through versioned plugin packages that user
 and the agent can manage, without requiring changes to the app for each new
 capability.
 
-- Activate the executable Scheduling release, complete paired-host CRUD
-  verification, and verify delivered agent work, monitors, restart recovery and
-  source-version handoff on server and paired hosts. Verify history retention and
+- Activate the executable Scheduling release and verify interrupted-run recovery
+  and source-version handoff on server and paired hosts, extending deployed CRUD,
+  configured naming, delivered agent work and bounded monitor verification.
+  Verify history retention and
   quota recovery through the browser lifecycle before removing transitional
   built-in handlers.
 - Extend authenticated, run-pinned private record callbacks with shared collection
@@ -414,9 +415,10 @@ capability.
 - Verify asynchronous installation through deployed server and paired-host
   browsers, including compiler cancellation and deadline/error recovery through
   installation, cold action caches and bundled initialization.
-- Complete installation and run verification of the plugin-owned Web, Memory and
-  Skill Authoring sources. Route existing Memory UI automatic naming through its
-  plugin-owned completion workflow through a deployed executable default. Verify
+- Complete deployed browser installation and run verification of the plugin-owned
+  Web, Memory and Skill Authoring sources, extending verified Memory/Skill CRUD
+  through both host transports and configured plugin-owned Memory naming. Verify
+  existing Memory UI automatic naming through its executable default. Verify
   cold-cache preparation through the deployed browser HTTP lifecycle; native
   server and paired caches already share validated preparation and offline reuse.
   Replace the transitional Scheduling tool-group
