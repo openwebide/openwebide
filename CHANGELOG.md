@@ -9,109 +9,17 @@ for what's still ahead.
 
 ## [Unreleased]
 
-- Add optional plugin icons as structured JSON drawing metadata with a shared schema and bounded validation, fixed sizing and theme color. First-party icon publication and browser verification remain in progress.
+- Compile Git-pinned Rust plugins to WASM on bridge hosts using the public SDK, locked dependencies and an isolated compiler. Cache validated components by source, SDK and toolchain; bound execution, memory, host calls and errors without ambient WASI access.
+- Provide capability-gated HTTP, scoped records/shared collections, clocks, model completion, durable jobs and raw prompt runs. Grants retain authenticated account/project/conversation scope and the selected source; executing components keep their original version across updates. Plugin HTTP cannot bypass grants through Open WebIDE control APIs.
+- Replace first-party Web, Memory, Scheduling and Skill Authoring tool-group switches with genuine Rust handlers and context hooks. Compile the four selected defaults during distribution builds and embed validated components for offline initialization on server and paired hosts. Preserve existing versions, removals, project opt-outs and Notify preferences; historical API 2 tool groups require an update before activation.
+- Route Memory, Tasks and monitor mutations through the same SDK action facade as agent tools in both project modes. Preserve shared UI records, revisions, resources and managed-skill provenance; keep naming, search, context, scheduling and monitor policy in plugin source. Paired plugin access works independently of workspace folder mapping.
+- Share asynchronous preparation with start/status/cancel requests across installation, cold action caches and bundled initialization. Show preparation progress, bound queued work and deadlines, stop compiler descendants on cancellation, reject stale owner/account/project results and retain installed versions after failures.
+- Deliver durable plugin events and raw agent work through shared host workers with leases, idempotency, cancellation and pinned completion callbacks. Preserve terminal history snapshots, recover interrupted deliveries without replaying consumed prompts and retain active work during cleanup.
+- Implement Scheduling reconciliation in Rust: repair timers and source-version handoffs, journal preflight failures, recover quota, bound history retention and cleanup, and preserve original messages after cancellation or interruption. Deployed checks exercise configured naming and actual streamed agent completion on both hosts.
+- Keep contributed skills discoverable through shared read-only, run-pinned loaders when Skill Authoring is disabled. Exclude personal/disabled skills without enabling authoring handlers; SDK context hooks remain read-only and respect prompt budgets and model tool selection.
+- Add schema-defined JSON plugin icons with typed drawing primitives, bounded geometry, fixed sizing and theme color. Share validation across manifests and catalog listings; use the puzzle fallback for omitted or invalid cached icons.
+- Document the pinned public Git SDK and custom-marketplace authoring. Marketplace CI validates catalogs and tests, lints and compiles executable sources against that SDK. Official catalog promotion and remaining manual PWA verification are tracked on the roadmap.
 
-- Retire built-in agent dispatch for plugin tool groups. Web, Memory, Scheduling and Skill Authoring tools now require executable SDK handlers; historical tool-group receipts show Update required and cannot be prepared or re-enabled. Preserve stored data, project overrides and update preferences.
-
-- Keep plugin-contributed skills discoverable when Skill Authoring is disabled. Server, bridge and browser runs share read-only loading of pinned instructions and resources, excluding personal and disabled skills without enabling authoring tools.
-
-- Verify Scheduling updates during streamed agent execution on both deployed hosts. Plugin-owned reconciliation invalidates the prior generation, cancels its active run, retains one terminal history snapshot with the original message and avoids requeueing an accepted one-time prompt.
-
-- Verify interrupted Scheduling delivery on deployed server and paired hosts: restart during an actual streamed response, recover the expired lease as interrupted, preserve one history result with the original message, and avoid replaying the accepted prompt.
-
-- Verify Scheduling quota recovery through both deployed host transports. Fill history through the public collections capability, journal a real delivery preflight failure at quota, and invoke bounded Rust reconciliation to free space and flush that journal exactly once. Browser lifecycle verification remains in progress.
-
-- Share bounded plugin host error decoding between server and paired transports. Preserve public validation messages, including invocation capacity errors, while returning generic messages for malformed responses and internal failures. Deployed checks verify validation-failure recovery, bounded admission and capacity reclamation after cancellation on both hosts.
-
-- Verify executable version pinning during deployed plugin updates on both hosts: an executing Rust invocation resumes with its original component and grant, while subsequent invocations use the updated source.
-
-- Verify Scheduling source-version handoff through deployed server and paired hosts using two Git-pinned, host-compiled executable versions. Periodic reconciliation advances the pending occurrence's generation; the updated plugin delivers it once and preserves its durable history. Scheduled agent interruption and concurrent delivery failure recovery remain under verification.
-
-- Verify compiled defaults through deployed server and paired-host HTTP flows: plugin-owned Memory and Skill CRUD, configured Memory/Scheduling naming, scheduled agent execution and bounded monitors. Pending scheduled work survives full deployment restarts. Monitor cancellation remains conversation-scoped, and completed checks leave the active flyout state. Browser lifecycle verification remains in progress.
-
-- Make copied Rust source and embedded SDK inputs readable by the isolated Linux compiler identity, preserving private account-cache permissions during source installation. Verify public Git source compilation and plugin-owned execution in the production image, cancellation during preparation, cache reuse, and server installation with inherited project enablement.
-
-- Allow the selected Apple developer toolchain in the Rust plugin compiler sandbox, supporting hosts with a full Xcode installation as well as Command Line Tools.
-
-- Publish the Rust plugin SDK through a pinned public Git checkout, with a capability reference and source-authoring instructions. Marketplace CI validates catalog content and tests, lints and compiles executable references against that exact SDK; registry publication remains planned.
-
-- Share plugin preparation policy across browser, Spin and native bridge clients. Use short start/status requests, common deadlines and cancellation cleanup for installation, cold action caches and bundled initialization. Reclaim completed results under queue pressure so repeated tool calls do not exhaust preparation capacity.
-
-- Show host preparation progress and a Cancel installation action in Plugins. Installation and frontend cold-cache actions share asynchronous preparation through server and paired transports; cancel pending requests and reject stale account/project results before recording receipts. Bound requests and preparation time, and preserve installed versions when preparation fails. Deployed lifecycle verification remains in progress.
-
-- Add authenticated asynchronous host preparation with start, status and cancel endpoints. Bound queued work and retained results, enforce owner isolation and a preparation deadline, and stop compiler work on cancellation or runtime shutdown.
-
-- Add cancellation to the isolated Rust compiler primitive. Stop dependency retrieval and compilation with their child processes when cancelled, including before process startup.
-
-- Clean up terminal Scheduling runs and event jobs through plugin-owned SDK handlers. Save run history before deletion, retain pending results and active work, and rotate bounded cleanup cursors past blocked records. History retention frees quota before raw cleanup retries; deployment remains in progress.
-
-- Bound Scheduling's completed task history in plugin source. Scan one page and remove at most three old entries per reconciliation tick; keep 128 recent entries plus current task results, active history and legacy records. Persist scan progress and recover interrupted cleanup through scoped SDK revisions. Deployment remains in progress.
-
-- Record Scheduling preflight failures in task history when a conversation or model is unavailable. The Rust plugin advances recurring tasks, stops failed monitors and journals interrupted history writes for bounded reconciliation. Preserve prompts already accepted before configuration changes; deployment remains in progress.
-
-- Recover failed Scheduling completion deliveries from retained terminal callback snapshots, including after raw-run deletion. The Rust plugin saves task state and history before removing the callback; live deliveries remain with their worker. Deployment remains in progress.
-
-- Select real Rust Web, Memory, Scheduling and Skill Authoring implementations for new bundled defaults. Distribution builds compile them through the normal compiler sandbox, verify public exports and embed source/SDK/toolchain-pinned WASM for offline server and paired-host installation. Preserve existing version choices, removals and project opt-outs; existing transitional installations require a reviewed update. Production image/browser rollout remains in progress.
-
-- Route Tasks create, edit, pause/resume and delete, plus monitor mutations, through declared SDK tools in the shared host facade. Preserve projectless scope, titles on enablement and conversation-scoped monitor cancellation. Monitor flyout refreshes only read owned data; local unattended work uses the shared host folder binding. Deployed paired-host verification remains in progress.
-
-- Deliver declared periodic plugin background events through the shared leased queue on both host modes, using current enabled source bindings and sessionless grants. Preserve deadlines across restarts, revoke replaced background actors and reserve recovery capacity even when the user job queue is full. The unlisted Scheduling source repairs interrupted timers, run bookkeeping, deletion and source-version handoffs; retention and deployment remain in progress.
-
-- Project SDK raw-run progress into existing task history through scoped immutable bindings. Preserve legacy history IDs and final snapshots after raw-run cleanup; Scheduling source records bindings through the public SDK. Lifecycle recovery and deployment remain in progress.
-
-- Expose current account model preferences and shared public server metadata through read-only SDK collections, without choosing models or exporting endpoints. The unlisted Scheduling Rust source now owns CRUD, due delivery, recurrence, cancellation and monitor-result handlers; lifecycle recovery and deployment remain in progress.
-
-- Expose existing task and monitor data through scoped SDK collection CRUD with revisions and plugin ownership. Preserve task IDs/history and keep plugin-owned tasks out of legacy dispatch. Add atomic record prerequisites to raw prompt submissions so stale handlers cannot queue new work after an edit or deletion; Scheduling handlers and deployment remain in progress.
-
-- Let executable plugins choose origin-bound or project-scoped durable events, preserving model pins while allowing saved work to outlive its creating chat. Add bounded, read-only conversation metadata through the shared collections SDK; target selection remains in plugin source. Executable Scheduling and deployed defaults remain in progress.
-
-- Deliver declared plugin completion events atomically with terminal raw-run status, including cancellation, preflight failures and interrupted-host recovery. Reserve event capacity on submission, pin the submitting source version, preserve released callbacks during history cleanup and reuse shared leased event delivery. Executable Scheduling and deployed defaults remain in progress.
-
-- Dispatch raw plugin prompts automatically through the shared host runner on server and paired hosts. Renew leases during preparation and execution, release busy claims, retry status acknowledgements and cancel deliveries on lease loss or shutdown. Executable Scheduling remains in progress.
-
-- Add host-bound raw plugin run claims, renewable leases, status acknowledgements and recovery that never replays consumed prompts. Cancel dropped agent preparations and release their reservations; executable Scheduling remains in progress.
-
-- Add capability-gated durable raw plugin prompt submissions with owned conversations, idempotency keys, bounded history, model pins and atomic queue delivery guards. Keep plugin prompts out of browser queue draining; Scheduling remains in progress.
-
-- Deliver durable plugin events automatically through a shared worker with bounded concurrency, lease renewal during preparation/execution, sessionless grants and actor cancellation on lease loss. Executable Scheduling remains in progress.
-
-- Prevent plugin HTTP from bootstrapping bridge credentials or bypassing SDK grants through Open WebIDE control APIs, preserving ordinary public and LAN HTTP access.
-
-- Add capability-gated durable plugin jobs with immutable source snapshots, idempotency keys, bounded pages, renewable leases and terminal-job cleanup. Scope callbacks to the current delivery and stop new claims for disabled plugins. The Scheduling migration remains in progress.
-
-- Prepare pinned Rust plugins on the selected execution host before agent tools, context hooks and event callbacks. Validate source, manifest and digest before execution, supporting cold caches and offline reuse through the same shared workflow.
-
-- Route Memory UI mutations through declared executable-plugin actions, sharing grants, validation, cancellation and stale-result guards with agent execution. Preserve explicit manual editing while automatic Memory context is disabled. Deployment remains in progress.
-
-- Select paired plugin hosts independently of local workspace folder mapping, allowing plugin installation and execution when only the browser can access the project folder. Command and Git operations retain their existing mapping checks.
-
-- Add authenticated plugin execution contexts without chat sessions, sharing project records and collection callbacks with chat runs. Pin selected primary models in local and remote run grants; durable job delivery remains in progress.
-
-- Add declared Rust SDK event handlers through the shared host invocation workflow, with manifest/export matching, bounded payloads and normal capability grants. Durable scheduling and background delivery remain in progress.
-
-- Add capability-gated text completion through configured primary/fast models, with shared input/context/output limits, a 30-second deadline and no tools. Memory Rust source owns its automatic-title prompt, profile fallback and content-derived fallback; UI naming integration and deployment remain in progress.
-
-- Preserve full existing Skills resources during plugin edits, including JSON-escaped data beyond the private-record limit. Bound shared collection pages by serialized bytes and retain the smaller private-record quota.
-
-- Prepare legacy skill tools and catalog context only for enabled API 2 authoring contributions, allowing SDK plugins to own all six skill handlers and context without tool collisions. The unlisted first-party Rust source now implements this behavior; deployment and default migration remain in progress.
-
-- Expose existing Skills UI records through capability-gated collection CRUD, preserving resources, metadata, revisions and plugin provenance. Protect managed and disabled skills and keep authoring policy in plugin code; the executable Skill Authoring migration remains in progress.
-
-- Run read-only Rust SDK context hooks through shared planning before model tool selection in local and remote sessions. Enforce prompt budgets, grant scope and disabling only the plugin's own tools, including when model tools are disabled.
-
-- Route backend SSE tools and child tasks through the shared SDK executor and approval gate, preventing failed SDK tools from falling back to built-in behavior. Expire abandoned host invocations without waiting for another request.
-
-- Add capability-gated CRUD for existing Memory UI records and read-only Rust SDK context hooks on the host protocol. Keep search and context policy in Memory plugin source; default migration and full lifecycle verification remain in progress.
-
-- Compile plugin source in normal Linux containers using an unprivileged compiler launcher with filesystem and syscall restrictions. Isolate dependency retrieval, retain macOS/native Linux build adapters, and package the pinned compiler and launcher. Production verification and first-party migration rollout remain in progress.
-
-- Authorize executable plugin callbacks with account/session/project grants pinned to the selected source and capabilities. Verify real compiled WASM record writes and reads on server and paired hosts; share plugin planning before model tool selection. Browser HTTP lifecycle verification and first-party migrations remain in progress.
-
-- Keep capability-expanding plugin updates pending for explicit review, including automatic compatible updates. Preserve the active version until the exact prepared update is approved.
-
-- Add transactional plugin-owned record storage with account/project/plugin namespaces, revision checks, bounded pages and quotas, plus an isolated Rust source authoring checker. Shared collection adapters and first-party migrations remain in progress.
-
-- Add Rust plugin SDK and isolated source-to-WASM preparation foundations, with a shared executable-tool workflow for server and paired hosts. First-party deployment and complete lifecycle verification remain unfinished.
 - Use current embedded-language context for pairing, paired deletion and Enter while background syntax is pending, retaining ordinary lexical editing when immediate analysis is unavailable.
 
 - Prepare explicit selection expansion and bracket jumps through the same guarded syntax service as Reindent and embedded comments. Preserve immediate lexical navigation for unsupported grammars; cancel pending structural actions after newer navigation or selection intent, including unchanged selections.

@@ -525,38 +525,20 @@ Extend agent and editor capabilities through versioned plugin packages that user
 and the agent can manage, without requiring changes to the app for each new
 capability.
 
-- Finish first-party JSON icon publication and browser verification of installed and available listings, extending the shared structured drawing schema.
-- Activate the executable Scheduling release after deployed browser lifecycle
-  verification, extending server and paired-host HTTP checks for CRUD, configured
-  naming, delivered agent work, bounded monitors, pending-occurrence handoff,
-  active invocation pinning, updates during streamed execution, interrupted-run
-  recovery and full-quota preflight journaling/retention. Verify history retention
-  and quota recovery through the browser before publishing the marketplace release.
-- Extend authenticated, run-pinned private record callbacks with shared collection
-  adapters for further app data and workspace primitives. Verify compiled-default
-  initialization through deployed browser flows, extending the verified server
-  and paired-host HTTP bootstrap. Marketplaces ship pinned Rust source and Cargo.lock;
-  hosts compile against the declared SDK version and validate the WASM component
-  before activation. Cache artifacts by source, SDK and toolchain. Publish a
-  registry release of the SDK, extending the available pinned public Git SDK and
-  verified source-authoring/custom-marketplace workflow. Verify the complete
-  install/run/update lifecycle through both host adapters.
-- Verify asynchronous installation through deployed server and paired-host
-  browsers, including compiler cancellation and deadline/error recovery through
-  installation, cold action caches and bundled initialization.
-- Complete deployed browser installation and run verification of the plugin-owned
-  Web, Memory and Skill Authoring sources, extending verified Memory/Skill CRUD
-  through both host transports and configured plugin-owned Memory naming. Verify
-  existing Memory UI automatic naming through its executable default. Verify
-  cold-cache preparation through the deployed browser HTTP lifecycle; native
-  server and paired caches already share validated preparation and offline reuse.
-  Verify adoption of retained legacy tasks through deployed browsers when applying
-  the executable Scheduling release.
-  Require the same public SDK, interfaces and privileges as community plugins:
-  no first-party identity dispatch, built-in feature proxy or fallback. Keep host
-  primitives general and feature policy in plugin code. Verify local/remote
-  execution, cancellation, failures, disablement and updates before declaring
-  these behavior migrations complete.
+- Promote the pinned executable first-party releases and drawings from the
+  candidate catalog after remaining manual PWA checks on server and paired hosts:
+  installed/available icon rendering, asynchronous install/cancel and failure
+  recovery, cold action caches, compiled-default initialization, and
+  install/run/update/disable/uninstall flows. Verify automatic naming through the
+  deployed Memory UI; host naming and SDK browser action contracts are verified.
+- Complete manual Scheduling browser checks for CRUD and bounded monitors,
+  retained legacy task adoption, pending-occurrence handoff, active invocation
+  pinning and updates during streamed work, interrupted-run recovery, history
+  retention and full-quota journaling/recovery. These extend verified production
+  SDK flows through both host transports; retain active work and existing data.
+- Extend authenticated, run-pinned collection callbacks with further app data
+  and workspace primitives. Publish a registry release of the SDK, extending the
+  available pinned public Git SDK and verified custom-marketplace authoring flow.
 - Extend executable contributions with MCP servers and dependency/configuration
   validation, using the existing versioned schemas and capability grants.
   Build on the MCP client and [database-backed project skills](agent-skills.md);
