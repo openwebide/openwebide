@@ -40,6 +40,11 @@ struct EmbeddedBody {
     checks_at_start: usize,
 }
 
+pub(super) enum PreparationOutput {
+    Input,
+    Decorations { tab_width: usize },
+}
+
 pub(super) struct SourceComparison {
     base: Arc<String>,
     source: Arc<String>,
@@ -168,6 +173,23 @@ impl SyntaxDocument {
         should_yield: &mut impl FnMut() -> bool,
         change: Option<(&Arc<String>, &crate::editor::TextChange)>,
     ) -> Option<(SyntaxStatus, Option<Arc<SyntaxAnalysis>>)> {
+        self.prepare_output_cooperative(
+            source,
+            PreparationOutput::Decorations { tab_width },
+            should_continue,
+            should_yield,
+            change,
+        )
+    }
+
+    pub(super) fn prepare_output_cooperative(
+        &mut self,
+        source: Arc<String>,
+        output: PreparationOutput,
+        should_continue: &mut impl FnMut() -> bool,
+        should_yield: &mut impl FnMut() -> bool,
+        change: Option<(&Arc<String>, &crate::editor::TextChange)>,
+    ) -> Option<(SyntaxStatus, Option<Arc<SyntaxAnalysis>>)> {
         if self
             .pending
             .as_ref()
@@ -245,8 +267,20 @@ impl SyntaxDocument {
                 prepared_edit,
             )
             .or_else(|| self.advance_update(should_continue, should_yield))?;
-        let status = self.advance_lexical(status, should_continue, should_yield, change)?;
-        self.finish_preparation_cooperative(status, tab_width, should_continue, should_yield)
+        match output {
+            PreparationOutput::Input => {
+                self.finish_input_cooperative(status, should_continue, should_yield)
+            }
+            PreparationOutput::Decorations { tab_width } => {
+                let status = self.advance_lexical(status, should_continue, should_yield, change)?;
+                self.finish_preparation_cooperative(
+                    status,
+                    tab_width,
+                    should_continue,
+                    should_yield,
+                )
+            }
+        }
     }
 
     fn prepare_rows_cooperative(

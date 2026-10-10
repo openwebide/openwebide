@@ -257,10 +257,24 @@ impl SyntaxDocument {
         source: Arc<String>,
         mut should_continue: impl FnMut() -> bool,
     ) -> (SyntaxStatus, Option<Arc<SyntaxAnalysis>>) {
-        let status = self.update_source(&source, &mut should_continue, || source.clone(), None);
-        let (status, structure) = self
-            .finish_structure_cooperative(status, &mut should_continue, &mut || false)
-            .expect("synchronous input preparation does not yield");
+        self.prepare_output_cooperative(
+            source,
+            preparation::PreparationOutput::Input,
+            &mut should_continue,
+            &mut || false,
+            None,
+        )
+        .expect("synchronous input preparation does not yield")
+    }
+
+    fn finish_input_cooperative(
+        &mut self,
+        status: SyntaxStatus,
+        should_continue: &mut impl FnMut() -> bool,
+        should_yield: &mut impl FnMut() -> bool,
+    ) -> Option<(SyntaxStatus, Option<Arc<SyntaxAnalysis>>)> {
+        let (status, structure) =
+            self.finish_structure_cooperative(status, should_continue, should_yield)?;
         let analysis = matches!(status, SyntaxStatus::Ready { .. }).then(|| {
             Arc::new(SyntaxAnalysis {
                 source: self.text.clone(),
@@ -274,9 +288,9 @@ impl SyntaxDocument {
             .is_some_and(|analysis| analysis.record_count() > transfer::MAX_ANALYSIS_RECORDS)
         {
             self.clear();
-            return (SyntaxStatus::TooLarge, None);
+            return Some((SyntaxStatus::TooLarge, None));
         }
-        (status, analysis)
+        Some((status, analysis))
     }
 
     fn finish_structure_cooperative(
@@ -1739,6 +1753,57 @@ mod tests {
             ));
             assert!(first.matches_source(source));
         }
+    }
+
+    #[test]
+    fn input_preparation_checks_budget_during_admission_and_reuses_cooperative_rows() {
+        let source = Arc::new(format!("// {}\nfn main() {{}}\n", "x".repeat(128 * 1024)));
+        let mut syntax = SyntaxDocument::new(Language::Rust).unwrap();
+        let mut checks = 0;
+        let (status, rejected) = syntax.prepare_input_shared(source.clone(), || {
+            checks += 1;
+            checks < 3
+        });
+        assert_eq!(status, SyntaxStatus::Cancelled);
+        assert!(rejected.is_none());
+        assert!(!syntax.ready);
+        assert!(syntax.source_lines.len() <= 1);
+        assert!(syntax.input_structure.is_none());
+
+        let mut yields = 0;
+        let input = loop {
+            let mut batches = 0;
+            let result = syntax.prepare_output_cooperative(
+                source.clone(),
+                preparation::PreparationOutput::Input,
+                &mut || true,
+                &mut || {
+                    batches += 1;
+                    batches > 1
+                },
+                None,
+            );
+            if let Some((status, result)) = result {
+                assert!(matches!(status, SyntaxStatus::Ready { .. }));
+                break result.unwrap();
+            }
+            yields += 1;
+            assert!(yields < 10_000, "input preparation must finish");
+        };
+        assert!(yields > 1);
+        assert!(Arc::ptr_eq(input.source_snapshot(), &source));
+        assert!(input.highlights().is_none());
+        assert!(input.folds().is_empty());
+        assert_eq!(syntax.source_lines, super::super::lines::lines(&source));
+        let changed = Arc::new(source.replace("main", "changed"));
+        let (_, current) = syntax.prepare_input_shared(changed.clone(), || true);
+        assert!(current.unwrap().matches_source(&changed));
+        assert!(input.matches_source(&source));
+        assert_eq!(syntax.source_lines, super::super::lines::lines(&changed));
+        let (status, result) = syntax.prepare_input_shared(Arc::new("\n".repeat(50_000)), || true);
+        assert_eq!(status, SyntaxStatus::TooLarge);
+        assert!(result.is_none());
+        assert!(syntax.input_structure.is_none());
     }
 
     #[test]

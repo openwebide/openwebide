@@ -1,0 +1,51 @@
+{
+  "base": "211574db8f11f9ca0dde2a30936d834d5cbdf83d",
+  "change": "Shared cooperative source phases for editing-context preparation",
+  "profile": "debug WASM; native dev/test",
+  "artifactSha256": "dd697f182d5b44ef29bc4f450400c8694fc17b34a5da53536c01aa371ebd9d9d",
+  "sourceSha256": {
+    "crates/core/src/editor/syntax.rs": "cafe92f7a47d86e841b6578b09cc66a949b46009b94c1be2350cc40770b637f2",
+    "crates/core/src/editor/syntax/preparation.rs": "9483e1296dbe1ae27776cf28be3609fa9fd1f7f618b2dc48bbe332a145a7fdd0",
+    "frontend/src/state_actions/editor.rs": "b4bddd907bb197dc447cc877849421e1093f1c4951a73e33b18243191635b1df",
+    "frontend/tests/components/editor.rs": "1ceb92e2029322fe4797efa33c6362d3ce23963fadf664ae238a3efa21ff2178"
+  },
+  "nativeCore": {
+    "passed": 634,
+    "features": [
+      "editor-parser"
+    ]
+  },
+  "nativeFrontend": {
+    "passed": 128
+  },
+  "lint": [
+    "native core all-targets -D warnings",
+    "WASM frontend all-targets -D warnings"
+  ],
+  "browser": {
+    "passed": 12,
+    "failed": 0,
+    "editorComponentInventory": 168,
+    "fixture": "Linux arm64 Chromium; 2 CPUs; 10 GiB; existing openwebide:editor-view-measurements image",
+    "tests": [
+      "editor::selection_policy_and_multi_commands_share_both_modes_and_reject_stale_targets",
+      "editor::rust_editor_commands_history_and_stale_dom_share_both_modes",
+      "editor::parser_budget_rejection_preserves_source_and_recovers_in_both_modes",
+      "editor::parsed_typing_contexts_share_modes_mixed_cursors_and_stale_guards",
+      "editor::literal_fallback_preserves_unicode_history_and_large_documents_in_both_modes",
+      "editor::held_syntax_keeps_embedded_typing_and_post_edit_context_in_both_modes",
+      "editor::expired_input_budget_preserves_literal_input_history_and_stale_guards_in_both_modes",
+      "editor::embedded_comment_actions_wait_for_scopes_and_commit_once_in_both_modes",
+      "editor::deferred_decorations_reject_replaced_source_selection_and_scope_in_both_modes",
+      "editor::cold_structural_navigation_prepares_context_and_rejects_superseded_actions_in_both_modes",
+      "editor::cold_structural_commands_reject_superseded_requests_in_both_modes",
+      "editor::block_indentation_pairs_and_mobile_input_share_both_workspace_modes"
+    ]
+  },
+  "limits": [
+    "Focused functional contracts only; not the complete browser inventory",
+    "Controlled input clocks do not establish physical preparation readiness",
+    "Debug profile is not the hosted release profile",
+    "No responsiveness or memory measurement; hosted CI pending"
+  ]
+}

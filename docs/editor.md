@@ -307,6 +307,9 @@ publication rather than starting this input work. Ordinary-input preparation
 requests editing structure without generating highlights and folds; completed
 full analysis reuses that same structure. Characters with unconditional literal
 behavior reuse the existing caret transaction without scanning lexical context.
+Input preparation also uses the background engine's bounded source admission,
+comparison and row-index phases, checking cancellation between batches before
+parsing and structure extraction.
 The facade accepts a runtime input clock while retaining the browser clock and
 12 ms budget by default. Readiness/history and explicit budget-expiry contracts
 use controlled clocks; they do not establish physical readiness within 12 ms.

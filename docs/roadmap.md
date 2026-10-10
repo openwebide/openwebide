@@ -102,6 +102,12 @@ tracks the remaining work rather than every optimization already shipped.
   cached document. Its 633 native core tests and strict native/WASM library lint
   pass. This avoids unnecessary parser setup above the syntax limit;
   admitted-source preparation and physical cold readiness still need improvement.
+  Editing-context preparation now uses the same cooperative source admission,
+  comparison and row-index phases as background analysis, with continuation
+  checks between batches. Its 634 core tests, 128 native frontend tests, strict
+  native/WASM lint and twelve focused debug-WASM both-mode browser contracts pass
+  ([receipt](editor-performance/input-bounded-preparation.json)). Repeat release
+  and physical latency measurements before crediting the responsiveness gate.
 
 - [ ] **Cold startup and native input:** remove remaining full-source shaping in
   touch and unsupported-layout fallbacks. Desktop startup now uses bounded native

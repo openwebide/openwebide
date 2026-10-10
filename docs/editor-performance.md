@@ -5646,3 +5646,23 @@ test dependency configuration; it is not counted as successful browser
 verification. No new frontend browser run or latency measurement was performed
 for this guard. This is a construction-order change, not evidence of admitted-source
 cold readiness or frontend latency improvement.
+
+### Budgeted editing-context source preparation
+
+Editing-context preparation previously entered `begin_update` directly, whose
+source comparison and row-index replacement ran synchronously before parser
+continuation checks. It now selects input output from the same cooperative
+source admission, comparison, row preparation and parsing engine used by
+background decoration preparation. Input output still omits lexical decoration
+assembly, highlights and folds; completed structure is shared with full analysis.
+
+The new regression cancels during bounded admission before building full rows,
+resumes input preparation one batch at a time, compares final row indexes with
+the complete scanner, verifies changed-source ownership, and checks the shared
+newline limit. All 634 native core tests, 128 native frontend tests and strict
+native core all-target lint pass. Strict WASM frontend all-target lint and all
+12 focused both-mode browser contracts also pass
+([receipt](editor-performance/input-bounded-preparation.json)). This browser run
+uses debug WASM, not the hosted release profile, and does not cover the complete
+browser inventory or prove physical preparation readiness. No latency improvement
+is claimed from these tests. Full hosted CI and production measurements remain open.
