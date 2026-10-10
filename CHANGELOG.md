@@ -9,6 +9,10 @@ for what's still ahead.
 
 ## [Unreleased]
 
+- Verify interrupted Scheduling delivery on deployed server and paired hosts: restart during an actual streamed response, recover the expired lease as interrupted, preserve one history result with the original message, and avoid replaying the accepted prompt.
+
+- Verify Scheduling quota recovery through both deployed host transports. Fill history through the public collections capability, journal a real delivery preflight failure at quota, and invoke bounded Rust reconciliation to free space and flush that journal exactly once. Browser lifecycle verification remains in progress.
+
 - Share bounded plugin host error decoding between server and paired transports. Preserve public validation messages, including invocation capacity errors, while returning generic messages for malformed responses and internal failures. Deployed checks verify validation-failure recovery, bounded admission and capacity reclamation after cancellation on both hosts.
 
 - Verify executable version pinning during deployed plugin updates on both hosts: an executing Rust invocation resumes with its original component and grant, while subsequent invocations use the updated source.
