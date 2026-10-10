@@ -1,5 +1,7 @@
 use openwebide_core::editor::{Document, Edit, Selection};
 use std::hint::black_box;
+#[cfg(feature = "input-preparation")]
+pub mod input;
 #[derive(Clone, Debug)]
 pub struct Measurement {
     pub operation: &'static str,

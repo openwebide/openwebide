@@ -117,6 +117,7 @@ pub struct EditorActions {
     typing: RwSignal<TypingState>,
     native_binding: RwSignal<Option<EditorNativeContext>>,
     native_binding_generation: StoredValue<u64>,
+    input_clock: StoredValue<std::rc::Rc<dyn Fn() -> f64>, LocalStorage>,
 }
 
 impl EditorActions {
@@ -135,6 +136,15 @@ impl EditorActions {
     }
 
     pub fn new(workspace: WorkspaceState) -> Self {
+        Self::with_input_clock(workspace, std::rc::Rc::new(js_sys::Date::now))
+    }
+
+    /// Runtime clock in milliseconds. Preparation policy and its 12 ms budget
+    /// stay shared; adapters supply time independently of filesystem mode.
+    pub fn with_input_clock(
+        workspace: WorkspaceState,
+        input_clock: std::rc::Rc<dyn Fn() -> f64>,
+    ) -> Self {
         let preferences = use_context::<crate::state::settings::SettingsState>();
         let capacity_documents = ArcRwSignal::from(workspace.editor_documents);
         Self {
@@ -167,6 +177,7 @@ impl EditorActions {
             typing: RwSignal::new(None),
             native_binding: workspace.editor_native_binding,
             native_binding_generation: workspace.editor_native_generation,
+            input_clock: StoredValue::new_local(input_clock),
         }
     }
 
@@ -1061,17 +1072,28 @@ impl EditorActions {
                 && openwebide_core::editor::syntax_provider(language)
                     .is_some_and(|provider| provider.injection.is_some()));
         let result = if prepare {
-            let deadline = js_sys::Date::now() + 12.0;
+            let clock = self.input_clock.get_value();
+            let deadline = clock() + 12.0;
             self.workspace
                 .editor_syntax
                 .try_update(|documents| {
-                    let (status, prepared) = documents.prepare_shared(
-                        key.clone(),
-                        language,
-                        source.clone(),
-                        tab_width,
-                        || js_sys::Date::now() <= deadline && should_continue(),
-                    );
+                    let continuation = || clock() <= deadline && should_continue();
+                    let (status, prepared) = if pending_input {
+                        documents.prepare_input_shared(
+                            key.clone(),
+                            language,
+                            source.clone(),
+                            continuation,
+                        )
+                    } else {
+                        documents.prepare_shared(
+                            key.clone(),
+                            language,
+                            source.clone(),
+                            tab_width,
+                            continuation,
+                        )
+                    };
                     Some(result_for(prepared.as_deref(), status))
                 })
                 .flatten()

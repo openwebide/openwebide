@@ -1,5 +1,5 @@
 //! Shared preparation retention policy, independent of worker or UI runtimes.
-use super::{SyntaxAnalysis, SyntaxDocument, SyntaxStatus};
+use super::{MAX_STRUCTURE_BYTES, SyntaxAnalysis, SyntaxDocument, SyntaxStatus};
 use crate::highlight::Language;
 use std::{collections::VecDeque, sync::Arc};
 
@@ -88,6 +88,18 @@ impl<K: Eq> SyntaxPreparations<K> {
         })
     }
 
+    pub fn prepare_input_shared(
+        &mut self,
+        key: K,
+        language: Language,
+        source: Arc<String>,
+        should_continue: impl FnMut() -> bool,
+    ) -> (SyntaxStatus, Option<Arc<SyntaxAnalysis>>) {
+        self.prepare_with(key, language, source.len(), |document| {
+            document.prepare_input_shared(source, should_continue)
+        })
+    }
+
     fn prepare_with(
         &mut self,
         key: K,
@@ -95,6 +107,10 @@ impl<K: Eq> SyntaxPreparations<K> {
         source_len: usize,
         prepare: impl FnOnce(&mut SyntaxDocument) -> (SyntaxStatus, Option<Arc<SyntaxAnalysis>>),
     ) -> (SyntaxStatus, Option<Arc<SyntaxAnalysis>>) {
+        if source_len > MAX_STRUCTURE_BYTES {
+            self.remove(&key);
+            return (SyntaxStatus::TooLarge, None);
+        }
         let Some(mut document) = self.take_document(&key, language) else {
             return (SyntaxStatus::Cancelled, None);
         };
@@ -137,6 +153,55 @@ impl<K: Eq> SyntaxPreparations<K> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn oversized_source_rejects_before_preparation_and_releases_only_its_cached_owner() {
+        let mut cache = SyntaxPreparations::default();
+        let source = Arc::new("fn main() {}".to_owned());
+        for key in [1, 2] {
+            assert!(
+                cache
+                    .prepare_shared(key, Language::Rust, source.clone(), 4, || true)
+                    .1
+                    .is_some()
+            );
+        }
+        let (status, analysis) =
+            cache.prepare_with(1, Language::Python, MAX_STRUCTURE_BYTES + 1, |_| {
+                panic!("oversized source must not reach parser preparation")
+            });
+        assert_eq!(status, SyntaxStatus::TooLarge);
+        assert!(analysis.is_none());
+        assert!(
+            cache
+                .cached_analysis(&1, Language::Rust, &source, 4)
+                .is_none()
+        );
+        assert!(
+            cache
+                .cached_analysis(&2, Language::Rust, &source, 4)
+                .is_some()
+        );
+        assert_eq!(cache.retained_source_bytes(), source.len());
+
+        let oversized = Arc::new("x".repeat(MAX_STRUCTURE_BYTES + 1));
+        let results = [
+            cache.prepare(3, Language::Rust, &oversized, 4, || {
+                panic!("size precedes cancellation")
+            }),
+            cache.prepare_shared(3, Language::Rust, oversized.clone(), 4, || {
+                panic!("size precedes cancellation")
+            }),
+            cache.prepare_input_shared(3, Language::Rust, oversized, || {
+                panic!("size precedes cancellation")
+            }),
+        ];
+        for (status, analysis) in results {
+            assert_eq!(status, SyntaxStatus::TooLarge);
+            assert!(analysis.is_none());
+        }
+        assert_eq!(cache.len(), 1);
+    }
+
     #[test]
     fn cached_analysis_requires_exact_prepared_ownership_without_changing_retention() {
         let mut cache = SyntaxPreparations::default();

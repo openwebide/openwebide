@@ -8,6 +8,21 @@ use crate::highlight::Language;
 
 impl Document {
     pub fn type_character(&mut self, ch: char, language: Language) -> Result<bool, EditError> {
+        let bracket =
+            supports_brackets(language) && (closing(ch).is_some() || matches!(ch, ')' | ']' | '}'));
+        let quote =
+            !matches!(language, Language::Html | Language::Xml) && supports_quote(language, ch);
+        if !bracket && !quote {
+            // Context cannot change this character's literal behavior. Reuse
+            // the ordinary transaction path without scanning/copying the source
+            // into a lexical structure, including after parser budget fallback.
+            let changes = self
+                .selections
+                .iter()
+                .map(|selection| typed_character(*selection, ch))
+                .collect();
+            return self.apply_caret_edits(changes);
+        }
         let syntax = Structure::new(&self.text, language);
         self.type_character_in(ch, &syntax)
     }
@@ -109,10 +124,7 @@ impl Document {
                 };
                 changes.push((Edit::replace(range, text), Selection { anchor, head }));
             } else {
-                changes.push((
-                    Edit::replace(range, ch.to_string()),
-                    Selection::caret(ch.len_utf8()),
-                ));
+                changes.push(typed_character(*selection, ch));
             }
         }
         self.apply_caret_edits(changes)
@@ -162,6 +174,13 @@ impl Document {
     }
 }
 
+fn typed_character(selection: Selection, ch: char) -> (Edit, Selection) {
+    (
+        Edit::replace(selection.range(), ch.to_string()),
+        Selection::caret(ch.len_utf8()),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -174,6 +193,68 @@ mod tests {
     }
 
     use super::*;
+    #[test]
+    fn literal_markup_typing_preserves_directional_cursors_and_one_undo_step() {
+        let source = "alpha 😀 omega\nbeta";
+        let selections = vec![
+            Selection {
+                anchor: 10,
+                head: 6,
+            },
+            Selection::caret(source.len()),
+        ];
+        for language in [
+            Language::Html,
+            Language::Xml,
+            Language::Markdown,
+            Language::MarkdownInline,
+            Language::Ini,
+            Language::Plain,
+        ] {
+            let mut document = Document::new(source);
+            document.set_selections(selections.clone()).unwrap();
+            let saved = document.shared_text();
+            document.type_character('(', language).unwrap();
+            assert_eq!(document.text(), "alpha ( omega\nbeta(");
+            assert_eq!(
+                document.selections(),
+                &[Selection::caret(7), Selection::caret(19)]
+            );
+            assert_eq!(saved.as_str(), source);
+            assert!(document.undo());
+            assert_eq!(document.text(), source);
+            assert_eq!(document.selections(), selections);
+            assert!(document.redo());
+            assert_eq!(document.text(), "alpha ( omega\nbeta(");
+        }
+    }
+
+    #[test]
+    fn literal_typing_preserves_opaque_context_and_admitted_large_sources() {
+        for source in ["// ordinary comment ", "\"unfinished string "] {
+            let mut document = Document::new(source);
+            document
+                .set_selections(vec![Selection::caret(source.len())])
+                .unwrap();
+            document.type_character('文', Language::Rust).unwrap();
+            assert_eq!(document.text(), format!("{source}文"));
+            assert!(document.undo());
+            assert_eq!(document.text(), source);
+        }
+        let source = format!("{}\n", "x".repeat(64)).repeat(40_000);
+        assert!(source.len() > super::super::MAX_STRUCTURE_BYTES);
+        let mut document = Document::for_editor(source.as_str()).unwrap();
+        let saved = document.shared_text();
+        document
+            .set_selections(vec![Selection::caret(source.len())])
+            .unwrap();
+        document.type_character('(', Language::Html).unwrap();
+        assert_eq!(document.text().len(), source.len() + 1);
+        assert!(document.text().ends_with('('));
+        assert_eq!(saved.as_str(), source);
+        assert!(document.undo());
+        assert_eq!(document.text(), source);
+    }
     #[test]
     fn pairs_surround_directional_unicode_selection_skip_and_delete() {
         let mut doc = Document::new("😀");

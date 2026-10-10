@@ -3235,6 +3235,227 @@ async fn built_in_language_parser_folds_share_local_remote_and_wasm_contracts() 
 }
 
 #[wasm_bindgen_test]
+async fn literal_fallback_preserves_unicode_history_and_large_documents_in_both_modes() {
+    use openwebide_core::{
+        WorkspaceMode,
+        editor::{Document, Indentation, Selection},
+    };
+    use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        for path in [
+            "notes.txt",
+            "literal.html",
+            "literal.xml",
+            "config.ini",
+            "literal.md",
+        ] {
+            let source = "alpha 😀 omega\nbeta";
+            let selections = vec![
+                Selection {
+                    anchor: 10,
+                    head: 6,
+                },
+                Selection::caret(source.len()),
+            ];
+            let initial = selections.clone();
+            let slot = std::rc::Rc::new(std::cell::Cell::new(None::<EditorActions>));
+            let capture = slot.clone();
+            let mounted = mount_test(move |state| {
+                state.seed_project();
+                state
+                    .projects
+                    .projects
+                    .update(|projects| projects[0].mode = mode);
+                state.workspace.open_file.set(Some(path.into()));
+                state.workspace.content.set(source.into());
+                let mut document = Document::for_editor(source).unwrap();
+                document.set_selections(initial).unwrap();
+                state.workspace.editor_documents.update(|documents| {
+                    documents.insert((1, path.into()), document);
+                });
+                let actions = EditorActions::new(state.workspace);
+                actions.install_syntax_transport(std::rc::Rc::new(DeferredSyntax::default()));
+                capture.set(Some(actions));
+                view! { <div/> }
+            });
+            let actions = slot.get().unwrap();
+            let selection = actions
+                .command(
+                    EditorCommand::TypeCharacter('('),
+                    selections[0],
+                    Indentation::default(),
+                )
+                .unwrap()
+                .unwrap();
+            assert_eq!(
+                actions.source(),
+                "alpha ( omega\nbeta(",
+                "{mode:?} {path}: literal multi-cursor input"
+            );
+            assert_eq!(
+                actions.selections(&actions.source()),
+                vec![Selection::caret(7), Selection::caret(19)]
+            );
+            let selection = actions
+                .command(EditorCommand::Undo, selection, Indentation::default())
+                .unwrap()
+                .unwrap();
+            assert_eq!(actions.source(), source);
+            assert_eq!(actions.selections(source), selections);
+            actions
+                .command(EditorCommand::Redo, selection, Indentation::default())
+                .unwrap()
+                .unwrap();
+            assert_eq!(actions.source(), "alpha ( omega\nbeta(");
+            assert!(mounted.state.workspace.dirty.get_untracked());
+        }
+        let source = format!("{}\n", "x".repeat(64)).repeat(40_000);
+        assert!(source.len() > openwebide_core::editor::MAX_STRUCTURE_BYTES);
+        let original = source.clone();
+        let slot = std::rc::Rc::new(std::cell::Cell::new(None::<EditorActions>));
+        let capture = slot.clone();
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            state.workspace.open_file.set(Some("large.html".into()));
+            let document = Document::for_editor(source.as_str()).unwrap();
+            state.workspace.content.set(source.into());
+            state.workspace.editor_documents.update(|documents| {
+                documents.insert((1, "large.html".into()), document);
+            });
+            let actions = EditorActions::new(state.workspace);
+            actions.install_syntax_transport(std::rc::Rc::new(DeferredSyntax::default()));
+            capture.set(Some(actions));
+            view! { <div/> }
+        });
+        let actions = slot.get().unwrap();
+        let selection = actions
+            .command(
+                EditorCommand::TypeCharacter('('),
+                Selection::caret(original.len()),
+                Indentation::default(),
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(actions.source().len(), original.len() + 1);
+        assert!(actions.source().ends_with('('));
+        assert!(mounted.state.workspace.dirty.get_untracked());
+        actions
+            .command(EditorCommand::Undo, selection, Indentation::default())
+            .unwrap()
+            .unwrap();
+        assert!(actions.source().as_str() == original);
+        assert!(!mounted.state.workspace.dirty.get_untracked());
+    }
+}
+
+#[wasm_bindgen_test]
+async fn expired_input_budget_preserves_literal_input_history_and_stale_guards_in_both_modes() {
+    use openwebide_core::{
+        WorkspaceMode,
+        editor::{Indentation, Selection},
+    };
+    use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        for (path, source) in [
+            ("budget.html", "<script>function run() {}</script>"),
+            ("budget.md", "```javascript\nfunction run() {}\n```"),
+        ] {
+            let time = std::rc::Rc::new(std::cell::Cell::new(0.0));
+            let expires = std::rc::Rc::new(std::cell::Cell::new(true));
+            let clock_time = time.clone();
+            let clock_expires = expires.clone();
+            let clock = std::rc::Rc::new(move || {
+                let now = clock_time.get();
+                if clock_expires.get() {
+                    clock_time.set(now + 13.0);
+                }
+                now
+            });
+            let saved = std::rc::Rc::new(std::cell::Cell::new(None::<EditorActions>));
+            let capture = saved.clone();
+            let transport = std::rc::Rc::new(DeferredSyntax::default());
+            let installed = transport.clone();
+            let mounted = mount_test(move |state| {
+                state.seed_project();
+                state
+                    .projects
+                    .projects
+                    .update(|projects| projects[0].mode = mode);
+                state.workspace.open_file.set(Some(path.into()));
+                state.workspace.content.set(source.into());
+                let actions = EditorActions::with_input_clock(state.workspace, clock);
+                actions.install_syntax_transport(installed);
+                capture.set(Some(actions));
+                view! { <div/> }
+            });
+            let actions = saved.get().unwrap();
+            wait_until("held budget syntax request", || {
+                !transport.pending.borrow().is_empty()
+            })
+            .await;
+            let inside = source.find("{}").unwrap() + 1;
+            let selection = actions
+                .command(
+                    EditorCommand::TypeCharacter('('),
+                    Selection::caret(inside),
+                    Indentation::default(),
+                )
+                .unwrap()
+                .unwrap();
+            assert_eq!(
+                actions.source(),
+                source.replace("{}", "{(}"),
+                "{mode:?} {path}: expired budget must preserve literal input"
+            );
+            assert_eq!(selection, Selection::caret(inside + 1));
+            assert!(mounted.state.workspace.dirty.get_untracked());
+            let selection = actions
+                .command(EditorCommand::Undo, selection, Indentation::default())
+                .unwrap()
+                .unwrap();
+            assert_eq!(actions.source(), source);
+            assert!(!mounted.state.workspace.dirty.get_untracked());
+            expires.set(false);
+            let selection = actions
+                .command(
+                    EditorCommand::TypeCharacter('('),
+                    selection,
+                    Indentation::default(),
+                )
+                .unwrap()
+                .unwrap();
+            let expected = source.replace("{}", "{()}");
+            assert_eq!(
+                actions.source(),
+                expected,
+                "{mode:?} {path}: available context restores pairing"
+            );
+            transport.respond(true);
+            settle().await;
+            assert_eq!(
+                actions.source(),
+                expected,
+                "old syntax reply must not overwrite input"
+            );
+            let selection = actions
+                .command(EditorCommand::Undo, selection, Indentation::default())
+                .unwrap()
+                .unwrap();
+            assert_eq!(actions.source(), source);
+            actions
+                .command(EditorCommand::Redo, selection, Indentation::default())
+                .unwrap()
+                .unwrap();
+            assert_eq!(actions.source(), expected);
+        }
+    }
+}
+
+#[wasm_bindgen_test]
 async fn held_syntax_keeps_embedded_typing_and_post_edit_context_in_both_modes() {
     use openwebide_core::{
         WorkspaceMode,
@@ -3266,7 +3487,10 @@ async fn held_syntax_keeps_embedded_typing_and_post_edit_context_in_both_modes()
                     .update(|projects| projects[0].mode = mode);
                 state.workspace.open_file.set(Some(path.into()));
                 state.workspace.content.set(source.into());
-                let actions = EditorActions::new(state.workspace);
+                // Exercise context/history independent of host scheduling. The
+                // expiring-budget contract below covers the fallback separately.
+                let actions =
+                    EditorActions::with_input_clock(state.workspace, std::rc::Rc::new(|| 0.0));
                 actions.install_syntax_transport(installed);
                 capture.set(Some(actions));
                 view! { <div/> }

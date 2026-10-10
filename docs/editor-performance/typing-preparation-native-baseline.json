@@ -1,0 +1,203 @@
+{
+  "scope": "Native debug-core diagnostic of immediate preparation and subsequent typing fallback, not browser or release responsiveness",
+  "base": "ed1c8caa96fb357528b57cd118c3b0c3d30b561e",
+  "runtime": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "toolchain": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "profile": "Core Rust dev profile, tree-sitter and configured grammar packages optimized at level 2; editor-parser and test-support features",
+  "parserContinuationBudgetMs": 12,
+  "document": "Document::new with default editor_limits=false; document construction and initial selection setup excluded from timing",
+  "sourceSha256": {
+    "crates/core/src/editor/syntax.rs": "5701c237ed0b31d71fda139dec152ae037d6c5e6194b87f4b9638eea8e493507",
+    "crates/core/src/editor/syntax/cache.rs": "5cf33534931794fc64bda8f9bb0caa90eb57827f4ca08ded75920c9aa5d21170",
+    "crates/core/src/editor/pairs.rs": "8dcdf6bd681cd81649db2464d67891d46cfa11ee7c29ac062102d977c7231c35",
+    "crates/core/src/editor/structure.rs": "78ea1ab7e0c903b567c59bd5f692bdbc06fc5cbf0e1ec6b5874c22bea1ca183a",
+    "crates/core/src/editor/mod.rs": "a54da7fdaafcb47a94217a45beb319e1228355f1131a2594360233779855fcbe"
+  },
+  "probeSourceSha256": "7c9546c93868c29d18eb7a402738450f7d81eea0efc10ff89131f2c210a69744",
+  "probeBinarySha256": "35ef0c809479e07f6f345ccc62f006853b52d10589a30afa332a1d18caba70f4",
+  "logSha256": "fd6e4a8344303b255aba5f6ec64ac392ff36c6b77b2587e4163d00f2c0434828",
+  "probeSource": "use openwebide_core::{editor::{Document, Selection, SyntaxPreparations}, highlight::Language};\nuse std::{sync::Arc, time::{Instant, Duration}};\nfn main() {\n    for repeat in [1usize, 256, 2048, 8192, 32768] {\n        for kind in [\"html-code\", \"html-comment\", \"html-bodies\", \"markdown-code\"] {\n            let (language, source) = match kind {\n                \"html-code\" => (Language::Html, format!(\"<script>\\n{}\\n</script>\", \"function run() {}\\n\".repeat(repeat))),\n                \"html-comment\" => (Language::Html, format!(\"<script>/*{}*/ function run() {{}}\\n</script>\", \"opaque text and words\\n\".repeat(repeat))),\n                \"html-bodies\" => (Language::Html, \"<script>function run() {}</script>\\n\".repeat(repeat)),\n                _ => (Language::Markdown, format!(\"```javascript\\n{}\\n```\", \"function run() {}\\n\".repeat(repeat))),\n            };\n            let source = Arc::new(source);\n            let mut document = Document::new(source.as_str());\n            document.set_selections(vec![Selection::caret(source.find(\"{}\").unwrap() + 1)]).unwrap();\n            let mut cache = SyntaxPreparations::<u8>::default();\n            let started = Instant::now();\n            let deadline = started + Duration::from_millis(12);\n            let (status, prepared) = cache.prepare_shared(1, language, source.clone(), 4, || Instant::now() <= deadline);\n            let preparation = started.elapsed().as_secs_f64() * 1000.0;\n            let structure = prepared.as_ref().and_then(|analysis| analysis.structure());\n            let started = Instant::now();\n            if let Some(structure) = structure {\n                document.type_character_with_context('(', structure).unwrap();\n            } else {\n                document.type_character('(', language).unwrap();\n            }\n            let edit = started.elapsed().as_secs_f64() * 1000.0;\n            println!(r#\"{{\"kind\":\"{}\",\"bytes\":{},\"repeat\":{},\"status\":\"{:?}\",\"context\":{},\"preparationMs\":{},\"editMs\":{}}}\"#,kind,source.len(),repeat,status,structure.is_some(),preparation,edit);\n        }\n    }\n}\n",
+  "samples": [
+    {
+      "kind": "html-code",
+      "bytes": 37,
+      "repeat": 1,
+      "status": "Ready { incremental: false }",
+      "context": true,
+      "preparationMs": 0.8712080000000001,
+      "editMs": 0.061583
+    },
+    {
+      "kind": "html-comment",
+      "bytes": 62,
+      "repeat": 1,
+      "status": "Ready { incremental: false }",
+      "context": true,
+      "preparationMs": 0.19179200000000002,
+      "editMs": 0.022167
+    },
+    {
+      "kind": "html-bodies",
+      "bytes": 35,
+      "repeat": 1,
+      "status": "Ready { incremental: false }",
+      "context": true,
+      "preparationMs": 0.136375,
+      "editMs": 0.015709
+    },
+    {
+      "kind": "markdown-code",
+      "bytes": 36,
+      "repeat": 1,
+      "status": "Ready { incremental: false }",
+      "context": true,
+      "preparationMs": 0.387375,
+      "editMs": 0.014375
+    },
+    {
+      "kind": "html-code",
+      "bytes": 4627,
+      "repeat": 256,
+      "status": "Ready { incremental: false }",
+      "context": true,
+      "preparationMs": 9.676041999999999,
+      "editMs": 0.017917000000000002
+    },
+    {
+      "kind": "html-comment",
+      "bytes": 5672,
+      "repeat": 256,
+      "status": "Ready { incremental: false }",
+      "context": true,
+      "preparationMs": 2.48475,
+      "editMs": 0.013917
+    },
+    {
+      "kind": "html-bodies",
+      "bytes": 8960,
+      "repeat": 256,
+      "status": "TooLarge",
+      "context": false,
+      "preparationMs": 0.9429590000000001,
+      "editMs": 1.03725
+    },
+    {
+      "kind": "markdown-code",
+      "bytes": 4626,
+      "repeat": 256,
+      "status": "Ready { incremental: false }",
+      "context": true,
+      "preparationMs": 12.787958999999999,
+      "editMs": 0.026209
+    },
+    {
+      "kind": "html-code",
+      "bytes": 36883,
+      "repeat": 2048,
+      "status": "Cancelled",
+      "context": false,
+      "preparationMs": 15.918791000000002,
+      "editMs": 3.373291
+    },
+    {
+      "kind": "html-comment",
+      "bytes": 45096,
+      "repeat": 2048,
+      "status": "Ready { incremental: false }",
+      "context": true,
+      "preparationMs": 13.614667,
+      "editMs": 0.01325
+    },
+    {
+      "kind": "html-bodies",
+      "bytes": 71680,
+      "repeat": 2048,
+      "status": "TooLarge",
+      "context": false,
+      "preparationMs": 3.759875,
+      "editMs": 5.87125
+    },
+    {
+      "kind": "markdown-code",
+      "bytes": 36882,
+      "repeat": 2048,
+      "status": "Cancelled",
+      "context": false,
+      "preparationMs": 12.780958,
+      "editMs": 2.9711659999999998
+    },
+    {
+      "kind": "html-code",
+      "bytes": 147475,
+      "repeat": 8192,
+      "status": "Cancelled",
+      "context": false,
+      "preparationMs": 12.619250000000001,
+      "editMs": 11.762708
+    },
+    {
+      "kind": "html-comment",
+      "bytes": 180264,
+      "repeat": 8192,
+      "status": "Cancelled",
+      "context": false,
+      "preparationMs": 12.388542000000001,
+      "editMs": 13.927209
+    },
+    {
+      "kind": "html-bodies",
+      "bytes": 286720,
+      "repeat": 8192,
+      "status": "Cancelled",
+      "context": false,
+      "preparationMs": 12.4855,
+      "editMs": 22.253709
+    },
+    {
+      "kind": "markdown-code",
+      "bytes": 147474,
+      "repeat": 8192,
+      "status": "Cancelled",
+      "context": false,
+      "preparationMs": 12.515875,
+      "editMs": 11.731250000000001
+    },
+    {
+      "kind": "html-code",
+      "bytes": 589843,
+      "repeat": 32768,
+      "status": "Cancelled",
+      "context": false,
+      "preparationMs": 12.414542,
+      "editMs": 46.238
+    },
+    {
+      "kind": "html-comment",
+      "bytes": 720936,
+      "repeat": 32768,
+      "status": "Cancelled",
+      "context": false,
+      "preparationMs": 12.15025,
+      "editMs": 58.326875
+    },
+    {
+      "kind": "html-bodies",
+      "bytes": 1146880,
+      "repeat": 32768,
+      "status": "Cancelled",
+      "context": false,
+      "preparationMs": 12.258542,
+      "editMs": 92.486875
+    },
+    {
+      "kind": "markdown-code",
+      "bytes": 589842,
+      "repeat": 32768,
+      "status": "Cancelled",
+      "context": false,
+      "preparationMs": 12.405375,
+      "editMs": 47.28375
+    }
+  ],
+  "limits": "Single native debug run; excludes the frontend facade, native DOM, paint, browser/WASM, release optimization and editor admission during construction. It identifies phases to investigate rather than proving production latency or a mode adapter contract."
+}

@@ -20,6 +20,15 @@ for what's still ahead.
 - Add schema-defined JSON plugin icons with typed drawing primitives, bounded geometry, fixed sizing and theme color. Share validation across manifests and catalog listings; use the puzzle fallback for omitted or invalid cached icons.
 - Document the pinned public Git SDK and custom-marketplace authoring. Marketplace CI validates catalogs and tests, lints and compiles executable sources against that SDK. Official catalog promotion and remaining manual PWA verification are tracked on the roadmap.
 
+- Check ordinary-input syntax budgets during source admission, comparison and row-index preparation through the same cooperative engine used by background analysis, without preparing decoration output.
+
+- Reject oversized syntax requests before constructing a grammar parser in the shared preparation cache, releasing stale analysis while preserving ordinary editing above the syntax limit.
+
+- Add shared native/WASM measurements for admitted-document input preparation, comparing editing context with full decoration output and recording budget fallbacks.
+
+- Prepare ordinary-input editing context without also generating syntax highlights and folds, sharing the same parser structure and source validation.
+- Skip full-file lexical structure scanning for characters that cannot trigger pairing, while preserving multi-cursor transactions, Unicode selections and undo/redo.
+
 - Use current embedded-language context for pairing, paired deletion and Enter while background syntax is pending, retaining ordinary lexical editing when immediate analysis is unavailable.
 
 - Prepare explicit selection expansion and bracket jumps through the same guarded syntax service as Reindent and embedded comments. Preserve immediate lexical navigation for unsupported grammars; cancel pending structural actions after newer navigation or selection intent, including unchanged selections.

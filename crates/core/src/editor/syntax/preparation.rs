@@ -40,6 +40,11 @@ struct EmbeddedBody {
     checks_at_start: usize,
 }
 
+pub(super) enum PreparationOutput {
+    Input,
+    Decorations { tab_width: usize },
+}
+
 pub(super) struct SourceComparison {
     base: Arc<String>,
     source: Arc<String>,
@@ -96,6 +101,7 @@ impl SyntaxDocument {
             return Some(SyntaxStatus::Ready { incremental: true });
         }
         self.prepared = None;
+        self.input_structure = None;
         self.structure_progress = None;
         self.lexical_pending = None;
         self.outer_fallback = None;
@@ -163,6 +169,23 @@ impl SyntaxDocument {
         &mut self,
         source: Arc<String>,
         tab_width: usize,
+        should_continue: &mut impl FnMut() -> bool,
+        should_yield: &mut impl FnMut() -> bool,
+        change: Option<(&Arc<String>, &crate::editor::TextChange)>,
+    ) -> Option<(SyntaxStatus, Option<Arc<SyntaxAnalysis>>)> {
+        self.prepare_output_cooperative(
+            source,
+            PreparationOutput::Decorations { tab_width },
+            should_continue,
+            should_yield,
+            change,
+        )
+    }
+
+    pub(super) fn prepare_output_cooperative(
+        &mut self,
+        source: Arc<String>,
+        output: PreparationOutput,
         should_continue: &mut impl FnMut() -> bool,
         should_yield: &mut impl FnMut() -> bool,
         change: Option<(&Arc<String>, &crate::editor::TextChange)>,
@@ -244,8 +267,20 @@ impl SyntaxDocument {
                 prepared_edit,
             )
             .or_else(|| self.advance_update(should_continue, should_yield))?;
-        let status = self.advance_lexical(status, should_continue, should_yield, change)?;
-        self.finish_preparation_cooperative(status, tab_width, should_continue, should_yield)
+        match output {
+            PreparationOutput::Input => {
+                self.finish_input_cooperative(status, should_continue, should_yield)
+            }
+            PreparationOutput::Decorations { tab_width } => {
+                let status = self.advance_lexical(status, should_continue, should_yield, change)?;
+                self.finish_preparation_cooperative(
+                    status,
+                    tab_width,
+                    should_continue,
+                    should_yield,
+                )
+            }
+        }
     }
 
     fn prepare_rows_cooperative(
@@ -270,6 +305,7 @@ impl SyntaxDocument {
                 return Some(Err(SyntaxStatus::TooLarge));
             };
             self.prepared = None;
+            self.input_structure = None;
             self.row_preparation = Some(RowPreparation {
                 base: self.text.clone(),
                 source: source.clone(),
@@ -338,6 +374,7 @@ impl SyntaxDocument {
             .is_some_and(|job| Arc::ptr_eq(job.source_snapshot(), source))
         {
             self.prepared = None;
+            self.input_structure = None;
             self.admission = Some(SyntaxAdmission::new(source.clone()));
         }
         loop {
@@ -371,6 +408,7 @@ impl SyntaxDocument {
             Arc::ptr_eq(&pending.source, source) && Arc::ptr_eq(&pending.base, &self.text)
         }) {
             self.prepared = None;
+            self.input_structure = None;
             self.source_comparison = Some(SourceComparison {
                 base: self.text.clone(),
                 source: source.clone(),

@@ -1262,7 +1262,7 @@ mod tests {
         let output = worker
             .handle_message(
                 &serde_json::to_string(&request(&"x".repeat(MAX_STRUCTURE_BYTES + 1))).unwrap(),
-                || true,
+                || panic!("byte admission precedes cancellation and parser preparation"),
             )
             .unwrap();
         assert!(matches!(
