@@ -1839,6 +1839,85 @@ impl EditorActions {
                 .is_some_and(|provider| provider.injection.is_some()))
     }
 
+    /// Reactive eligibility query. Reuse complete syntax only; opening a menu or
+    /// moving a selection must not start grammar work on the UI thread.
+    pub fn command_supported(self, command: EditorCommand) -> bool {
+        self.workspace.active_project.track();
+        self.workspace.open_file.track();
+        self.workspace.content.track();
+        self.workspace.editor_documents.track();
+        self.workspace.editor_preparation.track();
+        self.workspace.editor_syntax.track();
+        self.workspace.editor_source_revision.track();
+        self.workspace.editor_read_revision.track();
+        self.workspace.pending_epoch.track();
+        self.workspace.editor_rules.track();
+        self.workspace.editor_indentation.track();
+        self.preparation_revision();
+        if let Some(auth) = self.auth {
+            auth.generation.track();
+        }
+        let Some(key) = self.key() else {
+            return false;
+        };
+        let language = openwebide_core::highlight::language_from_path(&key.1);
+        let supported: fn(openwebide_core::highlight::Language) -> bool = match command {
+            EditorCommand::LineComment => openwebide_core::editor::supports_line_comment,
+            EditorCommand::BlockComment => openwebide_core::editor::supports_block_comment,
+            EditorCommand::Reindent => return openwebide_core::editor::supports_reindent(language),
+            _ => return true,
+        };
+        if !self.command_requires_structure(command) {
+            return supported(language);
+        }
+        let prepared = self
+            .workspace
+            .editor_preparation
+            .get_untracked()
+            .filter(|prepared| self.syntax_scope_current(&prepared.scope));
+        if prepared.as_ref().is_some_and(|prepared| {
+            matches!(
+                prepared.status,
+                openwebide_core::editor::SyntaxStatus::TooLarge
+            )
+        }) {
+            return false;
+        }
+        let structure = prepared
+            .as_ref()
+            .and_then(|prepared| prepared.analysis.as_ref())
+            .and_then(|analysis| analysis.structure().cloned())
+            .or_else(|| {
+                let source = self
+                    .workspace
+                    .editor_syntax_scope
+                    .get_untracked()
+                    .filter(|scope| self.syntax_scope_current(scope))
+                    .map_or_else(|| self.source().shared(), |scope| scope.source);
+                self.workspace.editor_syntax.with_untracked(|cache| {
+                    cache
+                        .cached_analysis(
+                            &key,
+                            language,
+                            &source,
+                            self.rules_untracked().indentation.tab_width(),
+                        )
+                        .and_then(|analysis| analysis.structure().cloned())
+                })
+            });
+        let Some(structure) = structure else {
+            // Pending container actions can prepare their context on demand.
+            return supported(language);
+        };
+        let selections = self.current_selections();
+        if selections.is_empty() {
+            return supported(structure.language_at(0));
+        }
+        selections
+            .iter()
+            .all(|selection| supported(structure.language_at(selection.range().start)))
+    }
+
     pub fn command_when_ready(
         self,
         command: EditorCommand,

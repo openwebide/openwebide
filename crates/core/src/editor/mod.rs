@@ -97,7 +97,7 @@ pub use syntax_providers::{
     SyntaxContextScope, SyntaxHighlightScope, SyntaxProvider, syntax_provider,
 };
 mod comments;
-pub use comments::{block_comment, line_comment};
+pub use comments::{block_comment, line_comment, supports_block_comment, supports_line_comment};
 mod coordinates;
 mod index;
 mod lines;

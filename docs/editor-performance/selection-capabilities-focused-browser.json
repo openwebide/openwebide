@@ -1,0 +1,28 @@
+{
+  "scope": "Focused selection-aware comment menu and parser budget fallback; Local and Remote",
+  "runner": "Linux arm64 Chromium 154; two CPUs; existing 300-second runner and three-second readiness deadlines",
+  "plannedEditorTests": 184,
+  "executedTests": 2,
+  "passedTests": 2,
+  "failedTests": 0,
+  "fullSuite": "Running; not established by this focused result",
+  "manifest": {
+    "base": "cc019c19cb99f085999f4f78b193a99a6486bdf7",
+    "sourceSha256": {
+      "crates/core/src/editor/comments.rs": "2c730f8cee84db894310aa7e69c184194f7be4cd30c26a4398f37d7281b939fa",
+      "crates/core/src/editor/mod.rs": "a54da7fdaafcb47a94217a45beb319e1228355f1131a2594360233779855fcbe",
+      "crates/core/src/editor/syntax/cache.rs": "5cf33534931794fc64bda8f9bb0caa90eb57827f4ca08ded75920c9aa5d21170",
+      "frontend/src/state_actions/editor.rs": "dcc6f493cae4cecd0d8d5a5eb870ae08618e6d692531c0204548ecb25262b56d",
+      "frontend/src/components/editor.rs": "30b37dab8135899b94d87d84ce13d1627fbd783d4514ba6cf701cafca4a3cb51",
+      "frontend/tests/components/editor.rs": "82ccaa80c4c53a7cebb5b78585daeeda1b5dd6d34f64ac87c8336d93f1c55add",
+      "frontend/src/state_actions/editor/preparation.rs": "d0fb8fb102d4f12f3bb952f1ccd323ddcc3914309b469394450f6e5747068289",
+      "tools/run-editor-browser-tests.py": "81a3cce570c0448a4a3493e899b3ae6922bff0704b656a12d85de42f2881378b"
+    },
+    "artifactSha256": {
+      "components.wasm": "1eb3b99a3a7dafaba62970271f5f96ae62ef819b867a56455277fc58cda2641b",
+      "editor-library.wasm": "d3f3f75e9df47d01db2a57bbee6ebc2b167daf366ae48b1554d4288f00451891"
+    }
+  },
+  "logSha256": "922de8a1c2d4e53d26369868940d7b974534e7aa37f322ae45452d812241b45c",
+  "result": "{\"focusedTests\": 2, \"totalEditorTests\": 184}\nSet timeout to 300 seconds...\nRunning headless tests in Chrome on `http://127.0.0.1:37641/`\nTry find `webdriver.json` for configure browser's capabilities:\nOk\nLoading Wasm module...\n\nrunning 2 tests\ntest editor::parser_budget_rejection_preserves_source_and_recovers_in_both_modes ... ok\ntest editor::embedded_comment_menu_follows_selection_languages_without_reparsing_in_both_modes ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 535 filtered out; finished in 9.17s\n\n"
+}

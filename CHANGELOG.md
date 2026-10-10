@@ -9,6 +9,8 @@ for what's still ahead.
 
 ## [Unreleased]
 
+- Enable line/block comment menu actions from the selected embedded languages, including mixed selections, while reusing completed analysis without parsing when the menu opens. Discard stale source/account capabilities.
+
 - Prepare line/block comment actions against parsed embedded-language scopes before applying them, while preserving immediate single-language comments and unsupported-grammar fallbacks. Capture command ownership before queuing and cancel superseded actions, including after a newer command that leaves the text unchanged.
 
 - Retry an editor caret reveal when navigation precedes prepared paint, while cancelling the retry after newer source, selection, account, file or scroll intent.

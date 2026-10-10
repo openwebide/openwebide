@@ -307,6 +307,11 @@ another file or newer source. Single-language comments retain immediate behavior
 including SQL and admitted files above the structure budget. Other parser-aware
 commands still retain their existing fallback while their readiness policy remains
 on the roadmap.
+Comment menu eligibility uses completed embedded-language structure and requires
+support at every selection's start. Mixed selections therefore disable actions
+that cannot apply atomically. Reading eligibility never starts parsing; pending
+container actions can prepare their context when invoked, while capacity-rejected
+containers disable those actions.
 JSON/JSONC, TOML, YAML/YML, INI/EditorConfig, XML build configuration and Markdown
 use registered Rust/WASM grammars through the same preparation cache and worker.
 Markdown has separate block/inline parsing and declared fenced-code languages;

@@ -3389,15 +3389,7 @@ pub fn Editor(
                                             ("Toggle block comment", EditorCommand::BlockComment, "Ctrl/Cmd+Shift+/", IconName::Brackets),
                                             ("Reindent selected lines", EditorCommand::Reindent, "", IconName::ListIndentIncrease),
                                         ].into_iter().map(move |(label, command, shortcut, icon)| view! {
-                                            <button type="button" role="menuitem" class="ui-dropdown-item recent-item" title=shortcut disabled=move || read_only.get() || {
-                                                let language = openwebide_core::highlight::language_from_path(&open_file.get().unwrap_or_default());
-                                                match command {
-                                                    EditorCommand::LineComment => openwebide_core::editor::line_comment(language).is_none() && openwebide_core::editor::block_comment(language).is_none(),
-                                                    EditorCommand::BlockComment => openwebide_core::editor::block_comment(language).is_none(),
-                                                    EditorCommand::Reindent => !openwebide_core::editor::supports_reindent(language),
-                                                    _ => false,
-                                                }
-                                            } on:click=move |_| {
+                                            <button type="button" role="menuitem" class="ui-dropdown-item recent-item" title=shortcut disabled=move || read_only.get() || !editor_actions.command_supported(command) on:click=move |_| {
                                                 if let Some(textarea) = ta.get() && !read_only.get_untracked() && current_editor_target(editor_actions, &textarea) { apply_editor_command(editor_actions, command, &textarea, action_error); let _ = textarea.focus(); }
                                             }><Icon name=icon /><span>{label}</span></button>
                                         }).collect_view()}

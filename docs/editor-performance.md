@@ -5292,3 +5292,42 @@ The same sources pass 128 native frontend tests, strict WASM lint and formatting
 Current-head hosted CI remains required. Selection-specific menu capabilities and
 other structural-command readiness remain roadmap work, alongside the broader
 responsiveness, memory, device and release checks.
+
+## Hosted parser fallback failure
+
+The `9d4f888` checkpoint subsequently failed its hosted editor browser partition
+([receipt](editor-performance/grouped-ci-9d4f888.json)). The first two editor
+groups passed all 105 tests; the third passed 46 and failed six. The two font
+matrices and 22 library tests were not reached. The other four CI jobs passed.
+
+The first failure was the existing parser-budget fallback contract. Its diagnostic
+showed `TooLarge`, no pending syntax, a bound native input and one mounted editor,
+but no ready paint within the unchanged three-second deadline. This proves typed
+rejection reached publication; it does not establish why presentation stalled.
+Five later layout/navigation checks also failed, and contamination from the first
+failed fixture is still unproven. Earlier green runs and isolated local passes
+do not close this reliability requirement. Failure-only diagnostics now include
+native geometry, fallback publication, measured rows and in-progress row jobs.
+
+## Selection-aware comment capabilities
+
+The shared editor facade now computes line/block comment eligibility from every
+selection's start language in completed embedded-language structure. Mixed
+selections require support everywhere, matching atomic core comment semantics.
+Pending containers retain provisional outer-language eligibility; invoking their
+actions still uses cooperative preparation. Capacity-rejected container actions
+are disabled. Single-language actions reuse the existing marker registry.
+
+The cache read requires the exact immutable source allocation, language, key and
+tab width, without parsing or changing retention order. Core coverage checks
+unprepared and mismatched entries, equal bytes with different ownership and
+unchanged retention. Browser coverage exercises Python, Rust, JSON and prose,
+mixed/reversed selections and stale account ownership, without new worker requests.
+The capability check and existing parser-budget fallback both pass in Local and
+Remote ([focused evidence](editor-performance/selection-capabilities-focused-browser.json)).
+All 628 parser-enabled core tests, 128 native frontend tests, strict core/WASM/WASI
+lint and formatting pass. All 184 current editor browser tests pass in complete,
+disjoint groups of 22/54/53/53/1/1, including both font matrices
+([complete evidence](editor-performance/selection-capabilities-full-browser.json)).
+This local success does not establish the earlier CI failure's cause or close
+the hosted reliability, responsiveness and physical-device gates.

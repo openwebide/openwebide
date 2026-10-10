@@ -74,8 +74,12 @@ tracks the remaining work rather than every optimization already shipped.
   cancellation contracts; its evidence is in [performance verification](editor-performance.md).
   Embedded comment actions now share that preparation path, with request-time
   ownership and newer-command cancellation; all 183 editor browser contracts and
-  128 native frontend tests pass. Finish selection-specific action capabilities and the
-  readiness policy for other structural commands without delaying ordinary input.
+  128 native frontend tests pass. Selection-specific comment capabilities now
+  reuse complete analysis, with mixed-selection and stale-account checks passing
+  in both modes ([focused evidence](editor-performance/selection-capabilities-focused-browser.json)).
+  All 184 current editor browser tests, including both font matrices, pass
+  ([complete evidence](editor-performance/selection-capabilities-full-browser.json)). Finish
+  the readiness policy for other structural commands without delaying ordinary input.
 
 - [ ] **Cold startup and native input:** remove remaining full-source shaping in
   touch and unsupported-layout fallbacks. Desktop startup now uses bounded native
@@ -315,8 +319,13 @@ tracks the remaining work rather than every optimization already shipped.
   ([navigation](editor-performance/grouped-ci-3d7eb5d.json),
   [decoding](editor-performance/grouped-ci-2b1e482.json),
   [validation](editor-performance/grouped-ci-be926f5.json)). Current Reindent,
-  reveal-retry and prepared-index undo changes still require their own complete
-  hosted verification; these green checkpoints do not prove the earlier failures' causes.
+  reveal-retry and prepared-index undo checkpoint `9d4f888` failed its hosted
+  browser job ([receipt](editor-performance/grouped-ci-9d4f888.json)). The first
+  failure published the typed parser-capacity fallback but did not finish paint
+  readiness within the existing deadline; five subsequent editor checks also
+  failed. The cause and possible fixture contamination remain unproven. The
+  subsequent embedded-comment checkpoint still requires complete hosted
+  verification; earlier green checkpoints do not prove these failures' causes.
   Validate bounded browser setup retries after the upstream Chrome download HTTP 502 failure. Repeat near-limit Linux
   readiness and the complete suites; a local run or one green checkpoint is insufficient.
   Cold queued-input checks explicitly defer neighborhood paint while preserving

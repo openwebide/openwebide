@@ -400,6 +400,114 @@ async fn cold_single_language_comments_keep_immediate_fallbacks_in_both_modes() 
 }
 
 #[wasm_bindgen_test]
+async fn embedded_comment_menu_follows_selection_languages_without_reparsing_in_both_modes() {
+    use openwebide_core::{WorkspaceMode, editor::Selection};
+    use openwebide_frontend::state_actions::editor::EditorActions;
+    let source = "# Guide\n\n```python\npython_call()\n```\n\n```rust\nrust_call();\n```\n\n```json\n{\"value\": 1}\n```\n";
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let transport = std::rc::Rc::new(DeferredSyntax::default());
+        let installed = transport.clone();
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            state
+                .workspace
+                .open_file
+                .set(Some("capabilities.md".into()));
+            state.workspace.content.set(source.into());
+            EditorActions::new(state.workspace).install_syntax_transport(installed);
+            editor_view(state)
+        });
+        let actions = EditorActions::new(mounted.state.workspace);
+        wait_until("capability grammar request", || {
+            !transport.pending.borrow().is_empty()
+        })
+        .await;
+        transport.respond(true);
+        wait_until("capability grammar ready", || {
+            actions.syntax_structure(|| true).is_some()
+        })
+        .await;
+        mounted.click("button[aria-label='Editor actions']");
+        settle().await;
+        let button = |label: &str| {
+            let items = mounted
+                .root
+                .query_selector_all("[role='menuitem']")
+                .unwrap();
+            (0..items.length())
+                .filter_map(|index| items.item(index))
+                .filter_map(|node| node.dyn_into::<web_sys::HtmlButtonElement>().ok())
+                .find(|node| node.text_content().as_deref() == Some(label))
+                .unwrap()
+        };
+        let calls = transport.calls.get();
+        let python = source.find("python_call").unwrap();
+        let rust = source.find("rust_call").unwrap();
+        let json = source.find("{\"value").unwrap();
+        for (selections, line, block) in [
+            (vec![Selection::caret(python)], true, false),
+            (vec![Selection::caret(rust)], true, true),
+            (vec![Selection::caret(json)], false, false),
+            (vec![Selection::caret(0)], true, true),
+            (
+                vec![Selection::caret(python), Selection::caret(rust)],
+                true,
+                false,
+            ),
+            (
+                vec![Selection::caret(rust), Selection::caret(json)],
+                false,
+                false,
+            ),
+            (
+                vec![Selection {
+                    anchor: python + 4,
+                    head: python,
+                }],
+                true,
+                false,
+            ),
+        ] {
+            mounted
+                .state
+                .workspace
+                .editor_documents
+                .update(|documents| {
+                    documents
+                        .get_mut(&(1, "capabilities.md".into()))
+                        .unwrap()
+                        .set_selections(selections)
+                        .unwrap();
+                });
+            wait_until("selection-specific comment eligibility", || {
+                button("Toggle line comment").disabled() != line
+                    && button("Toggle block comment").disabled() != block
+            })
+            .await;
+            assert_eq!(
+                transport.calls.get(),
+                calls,
+                "Selection/menu queries must not request parsing"
+            );
+        }
+        // A stale ready publication must not keep another account's body eligibility.
+        mounted
+            .state
+            .auth
+            .generation
+            .update(|generation| *generation += 1);
+        wait_until("stale account capability is discarded", || {
+            !button("Toggle block comment").disabled()
+        })
+        .await;
+    }
+}
+
+#[wasm_bindgen_test]
 async fn embedded_comment_actions_wait_for_scopes_and_commit_once_in_both_modes() {
     use openwebide_core::WorkspaceMode;
     use openwebide_frontend::state_actions::editor::EditorActions;
@@ -10218,6 +10326,16 @@ async fn parser_budget_rejection_preserves_source_and_recovers_in_both_modes() {
                     transport.calls.get(), transport.pending.borrow().len(),
                     mounted.element(".editor-textarea").get_attribute("data-editor-native-bound"),
                     web_sys::window().unwrap().document().unwrap().query_selector_all(".editor-code").unwrap().length()
+                );
+                let code = mounted.element(".editor-code");
+                let input = mounted.element(".editor-textarea");
+                wasm_bindgen_test::console_log!(
+                    "parser fallback geometry: pointer_ready={:?} native_geometry_pending={} full_row_ready={} code_size=({}, {}) input_size=({}, {}) fallback={:?} rows_revision={:?} row_job={:?}",
+                    code.get_attribute("data-editor-pointer-ready"), actions.native_geometry_pending(), actions.full_row_paint_ready(),
+                    code.client_width(), code.client_height(), input.client_width(), input.client_height(),
+                    mounted.state.workspace.editor_fallback_paint.with_untracked(|paint| paint.as_ref().map(|paint| (paint.prepared_source, paint.tokens.len()))),
+                    mounted.state.workspace.editor_rows.with_untracked(|rows| rows.as_ref().map(|rows| rows.revision)),
+                    mounted.state.workspace.editor_row_preparation.with_untracked(|job| job.as_ref().map(|job| (job.revision, job.completed, job.total, job.paint.is_some(), job.prefix.is_some())))
                 );
             }
             ready
