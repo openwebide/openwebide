@@ -74,6 +74,8 @@ pub struct CatalogPlugin {
     #[serde(rename = "displayName")]
     pub display_name: String,
     pub description: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
     pub categories: Vec<String>,
     pub releases: Vec<CatalogRelease>,
 }
@@ -144,6 +146,7 @@ impl MarketplaceCatalog {
                     version: release.version.clone(),
                     display_name: plugin.display_name.clone(),
                     description: plugin.description.clone(),
+                    icon: plugin.icon.clone(),
                     license: "unspecified".into(),
                     readme: None,
                     compatibility: super::PluginCompatibility { plugin_api: 1 },

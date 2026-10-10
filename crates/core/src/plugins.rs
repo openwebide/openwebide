@@ -1,6 +1,7 @@
 //! Host-only plugin preparation policy, shared by every bridge transport.
 pub mod completion;
 pub mod execution;
+pub mod icon;
 pub mod jobs;
 pub mod marketplace;
 pub mod preparation;
@@ -91,6 +92,8 @@ pub struct PluginManifest {
     #[serde(rename = "displayName")]
     pub display_name: String,
     pub description: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
     pub license: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub readme: Option<String>,
@@ -168,6 +171,9 @@ impl PluginManifest {
         Ok(())
     }
     pub fn validate(&self) -> Result<(), PluginError> {
+        if let Some(icon) = &self.icon {
+            icon::render(icon)?;
+        }
         static VERSION: LazyLock<Regex> = LazyLock::new(|| {
             Regex::new(
             r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$"
@@ -828,6 +834,7 @@ pub mod testing {
                     name: receipt.manifest.name,
                     display_name: receipt.manifest.display_name,
                     description: receipt.manifest.description,
+                    icon: receipt.manifest.icon,
                     categories: vec!["skills".into()],
                     releases: vec![marketplace::CatalogRelease {
                         version: receipt.manifest.version,

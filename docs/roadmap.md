@@ -520,6 +520,7 @@ Extend agent and editor capabilities through versioned plugin packages that user
 and the agent can manage, without requiring changes to the app for each new
 capability.
 
+- Finish first-party SVG icon publication and browser verification of installed and available listings, extending the shared bounded SVG metadata contract.
 - Activate the executable Scheduling release after deployed browser lifecycle
   verification, extending server and paired-host HTTP checks for CRUD, configured
   naming, delivered agent work, bounded monitors, pending-occurrence handoff,

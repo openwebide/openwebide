@@ -1341,3 +1341,97 @@ async fn plugins_notify_updates_in_status_bar_and_update_all_from_the_same_facad
         );
     }
 }
+
+#[wasm_bindgen_test]
+async fn plugins_render_static_icons_and_fall_back_without_executing_markup_in_both_modes() {
+    use openwebide_core::plugins::{PluginInstallation, PluginUpdatePolicy, testing::catalog};
+    let drawing = r#"<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>"#;
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let fake = Rc::new(FakeBackend::default());
+        let captured = Rc::new(Cell::new(None));
+        let slot = captured.clone();
+        let mounted = mount_test_with_backend(fake, move |state| {
+            state.seed_project();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            let plugins = PluginsState::default();
+            let host = ProjectHost::new(state.api, state.projects, state.settings, state.auth);
+            let actions = ProjectPluginActions::new(
+                state.api,
+                plugins,
+                host,
+                state.auth,
+                state.projects,
+                state.chat,
+                state.settings,
+            );
+            slot.set(Some(plugins));
+            provide_context(plugins);
+            provide_context(actions);
+            view! {<openwebide_frontend::components::Plugins/>}
+        });
+        settle().await;
+        let plugins = captured.get().unwrap();
+        let mut prepared = receipt();
+        prepared.manifest.icon = Some(drawing.into());
+        plugins.installations.set(vec![PluginInstallation {
+            hosts: vec![prepared.host_id.clone()],
+            prepared,
+            revision: 1,
+            installed_at: 0,
+            default_enabled: true,
+            update_policy: PluginUpdatePolicy::Notify,
+        }]);
+        let mut marketplace = catalog();
+        let listing = &mut marketplace.catalog.plugins[0];
+        listing.name = "available-icon".into();
+        listing.icon = Some(drawing.into());
+        let mut malformed = listing.clone();
+        malformed.name = "malformed-icon".into();
+        malformed.icon = Some("<svg><script>throw new Error('must not run')</script></svg>".into());
+        let mut omitted = listing.clone();
+        omitted.name = "fallback-icon".into();
+        omitted.icon = None;
+        marketplace.catalog.plugins.push(malformed);
+        marketplace.catalog.plugins.push(omitted);
+        plugins
+            .marketplaces
+            .update(|state| state.catalogs = vec![marketplace]);
+        settle().await;
+        assert_eq!(
+            mounted
+                .root
+                .query_selector_all(".plugin-symbol svg")
+                .unwrap()
+                .length(),
+            4
+        );
+        assert_eq!(
+            mounted
+                .root
+                .query_selector_all(".plugin-symbol circle")
+                .unwrap()
+                .length(),
+            2
+        );
+        assert_eq!(
+            mounted
+                .root
+                .query_selector_all(
+                    ".plugin-symbol script, .plugin-symbol [onload], .plugin-symbol use"
+                )
+                .unwrap()
+                .length(),
+            0
+        );
+        let svg = mounted
+            .root
+            .query_selector(".plugin-symbol svg")
+            .unwrap()
+            .unwrap();
+        assert_eq!(svg.get_attribute("viewBox").as_deref(), Some("0 0 24 24"));
+        assert_eq!(svg.get_attribute("stroke").as_deref(), Some("currentColor"));
+    }
+}

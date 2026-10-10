@@ -236,6 +236,7 @@ fn PluginRow(
     name: String,
     description: String,
     publisher: String,
+    #[prop(optional_no_strip)] icon: Option<String>,
     #[prop(into)] source: Signal<String>,
     #[prop(into)] version: Signal<String>,
     #[prop(into)] status: Signal<String>,
@@ -243,8 +244,14 @@ fn PluginRow(
     children: Children,
 ) -> impl IntoView {
     let description_title = description.clone();
+    let symbol = icon
+        .as_deref()
+        .and_then(|svg| openwebide_core::plugins::icon::render(svg).ok());
     view! {<div class="plugin-row">
-        <span class="plugin-symbol"><Icon name=IconName::Puzzle/></span>
+        <span class="plugin-symbol" aria-hidden="true">{match symbol {
+            Some(svg) => view! {<span class="ui-icon-glyph" inner_html=svg/>}.into_any(),
+            None => view! {<Icon name=IconName::Puzzle/>}.into_any(),
+        }}</span>
         <div class="plugin-info">
             <button type="button" class="btn ghost plugin-name" on:click=move |_|on_details.run(())>{name}</button>
             <p class="plugin-description" title=description_title>{description}</p>
@@ -299,7 +306,7 @@ fn CatalogPackage(catalog: CachedMarketplace, plugin: CatalogPlugin) -> impl Int
         });
     });
     view! {<div class="plugin-entry">
-        <PluginRow name=plugin.display_name description=plugin.description publisher=plugin.publisher source=Signal::derive(move ||inspect.with_value(|(catalog,_)|marketplace_name(catalog))) version=version.read_only()
+        <PluginRow name=plugin.display_name description=plugin.description publisher=plugin.publisher icon=plugin.icon source=Signal::derive(move ||inspect.with_value(|(catalog,_)|marketplace_name(catalog))) version=version.read_only()
             status=Signal::derive(move ||if installed.get(){"Installed".into()}else{String::new()}) on_details=Callback::new(move |()|details.update(|open| *open = !*open))>
             <Button size=ButtonSize::Sm disabled=Signal::derive(move ||state.busy.get()||installed.get()) on_click=install><Icon name=IconName::Download/>{move ||if installed.get(){"Installed"}else{"Install"}}</Button>
             <ActionMenu aria_label="Available plugin actions" icon=IconName::Settings>
@@ -383,7 +390,7 @@ fn InstalledPackage(entry: PluginInstallation) -> impl IntoView {
         })
     });
     view! {<div class="plugin-entry">
-        <PluginRow name=manifest.display_name description=manifest.description publisher=manifest.publisher
+        <PluginRow name=manifest.display_name description=manifest.description publisher=manifest.publisher icon=manifest.icon
             source=Signal::derive(move ||state.marketplaces.with(|marketplaces|entry.with_value(|entry|marketplaces.catalogs.iter().find(|catalog|catalog.source.repository==entry.prepared.source.repository).map(marketplace_name).unwrap_or_default())))
             version=Signal::derive(move ||entry.with_value(|e|e.prepared.manifest.version.clone()))
             status=Signal::derive(move ||if requires_update.get(){"Update required".into()}else{binding.get().map_or_else(||entry.with_value(|entry|if entry.default_enabled{"Enabled by default"}else{"Activation pending"}.into()),|b|format!("{} in this project: {}",if b.enabled{"Enabled"}else{"Disabled"},b.prepared.manifest.version))})
