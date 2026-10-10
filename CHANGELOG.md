@@ -9,7 +9,7 @@ for what's still ahead.
 
 ## [Unreleased]
 
-- Add optional inline SVG plugin icon metadata with shared static-drawing validation, fixed sizing and theme color. First-party icon publication and browser verification remain in progress.
+- Add optional plugin icons as structured JSON drawing metadata with a shared schema and bounded validation, fixed sizing and theme color. First-party icon publication and browser verification remain in progress.
 
 - Retire built-in agent dispatch for plugin tool groups. Web, Memory, Scheduling and Skill Authoring tools now require executable SDK handlers; historical tool-group receipts show Update required and cannot be prepared or re-enabled. Preserve stored data, project overrides and update preferences.
 

@@ -1345,7 +1345,7 @@ async fn plugins_notify_updates_in_status_bar_and_update_all_from_the_same_facad
 #[wasm_bindgen_test]
 async fn plugins_render_static_icons_and_fall_back_without_executing_markup_in_both_modes() {
     use openwebide_core::plugins::{PluginInstallation, PluginUpdatePolicy, testing::catalog};
-    let drawing = r#"<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>"#;
+    let drawing = serde_json::json!({"elements":[{"type":"circle","cx":12,"cy":12,"r":10}]});
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let fake = Rc::new(FakeBackend::default());
         let captured = Rc::new(Cell::new(None));
@@ -1375,7 +1375,7 @@ async fn plugins_render_static_icons_and_fall_back_without_executing_markup_in_b
         settle().await;
         let plugins = captured.get().unwrap();
         let mut prepared = receipt();
-        prepared.manifest.icon = Some(drawing.into());
+        prepared.manifest.icon = Some(serde_json::from_value(drawing.clone()).unwrap());
         plugins.installations.set(vec![PluginInstallation {
             hosts: vec![prepared.host_id.clone()],
             prepared,
@@ -1387,10 +1387,15 @@ async fn plugins_render_static_icons_and_fall_back_without_executing_markup_in_b
         let mut marketplace = catalog();
         let listing = &mut marketplace.catalog.plugins[0];
         listing.name = "available-icon".into();
-        listing.icon = Some(drawing.into());
+        listing.icon = Some(serde_json::from_value(drawing.clone()).unwrap());
         let mut malformed = listing.clone();
         malformed.name = "malformed-icon".into();
-        malformed.icon = Some("<svg><script>throw new Error('must not run')</script></svg>".into());
+        malformed.icon = Some(
+            serde_json::from_value(
+                serde_json::json!({"elements":[{"type":"path","d":"<script>"}]}),
+            )
+            .unwrap(),
+        );
         let mut omitted = listing.clone();
         omitted.name = "fallback-icon".into();
         omitted.icon = None;

@@ -236,7 +236,7 @@ fn PluginRow(
     name: String,
     description: String,
     publisher: String,
-    #[prop(optional_no_strip)] icon: Option<String>,
+    #[prop(optional_no_strip)] icon: Option<openwebide_core::plugins::icon::PluginIcon>,
     #[prop(into)] source: Signal<String>,
     #[prop(into)] version: Signal<String>,
     #[prop(into)] status: Signal<String>,
@@ -245,7 +245,7 @@ fn PluginRow(
 ) -> impl IntoView {
     let description_title = description.clone();
     let symbol = icon
-        .as_deref()
+        .as_ref()
         .and_then(|svg| openwebide_core::plugins::icon::render(svg).ok());
     view! {<div class="plugin-row">
         <span class="plugin-symbol" aria-hidden="true">{match symbol {

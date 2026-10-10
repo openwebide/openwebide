@@ -75,7 +75,7 @@ pub struct CatalogPlugin {
     pub display_name: String,
     pub description: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub icon: Option<String>,
+    pub icon: Option<crate::plugins::icon::PluginIcon>,
     pub categories: Vec<String>,
     pub releases: Vec<CatalogRelease>,
 }

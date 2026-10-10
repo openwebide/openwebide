@@ -93,7 +93,7 @@ pub struct PluginManifest {
     pub display_name: String,
     pub description: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub icon: Option<String>,
+    pub icon: Option<crate::plugins::icon::PluginIcon>,
     pub license: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub readme: Option<String>,
