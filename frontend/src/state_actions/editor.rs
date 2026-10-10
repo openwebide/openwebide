@@ -981,7 +981,7 @@ impl EditorActions {
                 .update(|cache| cache.remove(&key));
             return Some((openwebide_core::editor::SyntaxStatus::TooLarge, Vec::new()));
         }
-        self.analyze_syntax(should_continue, |document, status| {
+        self.analyze_syntax(false, should_continue, |document, status| {
             (
                 status,
                 document.map_or_else(Vec::new, |document| document.folds().to_vec()),
@@ -993,7 +993,15 @@ impl EditorActions {
         self,
         should_continue: impl FnMut() -> bool,
     ) -> Option<std::sync::Arc<openwebide_core::editor::Structure>> {
-        self.analyze_syntax(should_continue, |document, _| {
+        self.structure_for_input(false, should_continue)
+    }
+
+    fn structure_for_input(
+        self,
+        pending_input: bool,
+        should_continue: impl FnMut() -> bool,
+    ) -> Option<std::sync::Arc<openwebide_core::editor::Structure>> {
+        self.analyze_syntax(pending_input, should_continue, |document, _| {
             document.and_then(|document| document.structure().cloned())
         })
         .flatten()
@@ -1010,6 +1018,7 @@ impl EditorActions {
         self,
     ) -> Option<std::sync::Arc<openwebide_core::highlight::TokenRows>> {
         self.analyze_syntax(
+            false,
             || true,
             |document, _| document.and_then(|document| document.highlights().cloned()),
         )
@@ -1018,6 +1027,7 @@ impl EditorActions {
 
     fn analyze_syntax<T>(
         self,
+        pending_input: bool,
         mut should_continue: impl FnMut() -> bool,
         result_for: impl FnOnce(
             Option<&openwebide_core::editor::SyntaxAnalysis>,
@@ -1032,28 +1042,25 @@ impl EditorActions {
         let worker_active = self.workspace.editor_worker_active.get_untracked();
         let worker_prepared = worker_active
             .then(|| self.workspace.editor_preparation.get_untracked())
-            .flatten();
+            .flatten()
+            .filter(|prepared| self.syntax_scope_current(&prepared.scope));
         let shared_source = worker_prepared
             .as_ref()
-            .filter(|prepared| self.syntax_scope_current(&prepared.scope))
             .map(|prepared| prepared.scope.source.clone());
         let source =
             shared_source.unwrap_or_else(|| self.workspace.content.get_untracked().shared());
         let text = source.as_str();
         let tab_width = self.rules_untracked().indentation.tab_width();
-        let result = if worker_active {
-            if !should_continue() {
-                Some(result_for(
-                    None,
-                    openwebide_core::editor::SyntaxStatus::Cancelled,
-                ))
-            } else {
-                worker_prepared
-                    .as_ref()
-                    .filter(|prepared| self.syntax_scope_current(&prepared.scope))
-                    .map(|prepared| result_for(prepared.analysis.as_deref(), prepared.status))
-            }
-        } else {
+        // Embedded bodies need their parsed language even before a background
+        // reply arrives. Ordinary typing stays synchronous and uses the same
+        // bounded preparation/cache as the inactive-worker path; passive views
+        // and single-language lexical fallbacks do not trigger this work.
+        let prepare = !worker_active
+            || (pending_input
+                && worker_prepared.is_none()
+                && openwebide_core::editor::syntax_provider(language)
+                    .is_some_and(|provider| provider.injection.is_some()));
+        let result = if prepare {
             let deadline = js_sys::Date::now() + 12.0;
             self.workspace
                 .editor_syntax
@@ -1068,6 +1075,15 @@ impl EditorActions {
                     Some(result_for(prepared.as_deref(), status))
                 })
                 .flatten()
+        } else if !should_continue() {
+            Some(result_for(
+                None,
+                openwebide_core::editor::SyntaxStatus::Cancelled,
+            ))
+        } else {
+            worker_prepared
+                .as_ref()
+                .map(|prepared| result_for(prepared.analysis.as_deref(), prepared.status))
         };
         (self.key() == Some(key)
             && self.workspace.pending_epoch.get_untracked() == epoch
@@ -1724,7 +1740,15 @@ impl EditorActions {
                 | EditorCommand::BlockComment
                 | EditorCommand::LineComment
         ) {
-            self.syntax_structure(|| true)
+            self.structure_for_input(
+                matches!(
+                    command,
+                    EditorCommand::TypeCharacter(_)
+                        | EditorCommand::DeletePair
+                        | EditorCommand::Newline
+                ),
+                || true,
+            )
         } else {
             None
         };

@@ -5372,3 +5372,34 @@ checkpoint. The production changes pass strict WASM lint, formatting and 128
 native frontend tests. Its own hosted CI remains pending. This section does not
 claim completion of ordinary-input readiness, responsiveness, hosted reliability
 or device gates.
+
+
+## Held-worker embedded typing readiness
+
+A new compiled browser contract holds an actual background worker reply while
+performing synchronous paired typing, paired deletion and block Enter. The
+baseline failed at the first HTML/Local pairing assertion: inserting `(` inside
+an empty script block produced `{(}` instead of `{()}`
+([record](editor-performance/held-typing-initial-browser.json)). Later operations,
+Markdown and Remote did not execute in that baseline result.
+
+Ordinary embedded-language input now routes through the facade's
+existing immediate parser/cache path when no current worker preparation exists.
+Provider injection capabilities select this behavior; passive consumers and
+single-language lexical fallbacks retain their current paths. Both inactive and
+pending-worker preparation use one shared implementation and existing ownership
+checks. The expanded regression includes mixed JavaScript/CSS cursors in HTML
+and Markdown, successive edits and rejection of the old background reply.
+
+All six focused contracts passed (7.68 seconds)
+([record](editor-performance/held-typing-focused-browser.json)); strict WASM lint
+and formatting also pass, along with all 128 native frontend tests. The
+independently inventoried complete editor suite subsequently passed all 188 tests
+in six disjoint runs (22/55/55/54/1/1), including both font matrices
+([record](editor-performance/held-typing-full-browser.json)). The terminal runner
+exit is successful and frozen source/artifact hashes match this checkpoint.
+Its own hosted CI remains required. The existing 12 ms continuation deadline controls
+parser work; this is not evidence of a hard bound on every final preparation or
+editing phase. Admitted boundary workloads, responsiveness, source-copy costs,
+retained decorations and physical/release gates still require verification. This checkpoint does not complete the ordinary-input or performance
+gates.

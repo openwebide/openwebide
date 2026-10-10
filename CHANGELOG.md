@@ -9,6 +9,8 @@ for what's still ahead.
 
 ## [Unreleased]
 
+- Use current embedded-language context for pairing, paired deletion and Enter while background syntax is pending, retaining ordinary lexical editing when immediate analysis is unavailable.
+
 - Prepare explicit selection expansion and bracket jumps through the same guarded syntax service as Reindent and embedded comments. Preserve immediate lexical navigation for unsupported grammars; cancel pending structural actions after newer navigation or selection intent, including unchanged selections.
 
 - Enable line/block comment menu actions from the selected embedded languages, including mixed selections, while reusing completed analysis without parsing when the menu opens. Discard stale source/account capabilities.

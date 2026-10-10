@@ -65,17 +65,19 @@ tracks the remaining work rather than every optimization already shipped.
 
 **Remaining implementation**:
 
-- [ ] **Parser-aware ordinary input and decorations:** audit pending-analysis
-  behavior without delaying input. Cover HTML and Markdown body pairing,
-  deletion and Enter with a held worker reply and immediately after an edit;
-  the existing parsed-typing contract exercises completed analysis. Audit
-  retained structural decorations for current-source ownership. Explicit
-  Reindent, embedded comment actions, selection expansion and bracket jumps now
-  share cooperative preparation and request-time cancellation across keyboard
-  and menu entry points. All 187 editor browser contracts, including both font
-  matrices, pass in both modes
-  ([complete evidence](editor-performance/structural-navigation-full-browser.json));
-  this does not establish ordinary-input readiness or finish the remaining gates.
+- [ ] **Parser-aware ordinary input and decorations:** verify admitted
+  HTML/Markdown input costs and budget fallbacks without delaying ordinary input;
+  audit retained structural decorations for current-source ownership. Pending
+  embedded-language typing now reuses the shared immediate parser/cache path.
+  Held-worker pairing, paired deletion, Enter, mixed JavaScript/CSS cursors and
+  stale-reply preservation pass in both modes. All 188 editor browser contracts,
+  including both font matrices, pass
+  ([receipt](editor-performance/held-typing-full-browser.json)), as do strict
+  WASM lint, formatting and 128 native frontend tests. These contracts do not
+  establish hard per-phase input bounds or admitted-boundary responsiveness.
+  Explicit Reindent, embedded comments, selection expansion and bracket jumps
+  already share cooperative preparation and request-time cancellation across
+  keyboard and menu entry points.
 
 - [ ] **Cold startup and native input:** remove remaining full-source shaping in
   touch and unsupported-layout fallbacks. Desktop startup now uses bounded native
@@ -253,7 +255,10 @@ tracks the remaining work rather than every optimization already shipped.
   checkpoint `71997bc` passed all 184 editor browser tests locally and all five
   hosted jobs ([receipt](editor-performance/grouped-ci-71997bc.json)). New structural navigation passes all 187 editor browser contracts and 128
   native frontend tests ([receipt](editor-performance/structural-navigation-full-browser.json));
-  its own hosted CI remains required.
+  its own hosted CI remains required. The subsequent embedded-input checkpoint
+  passes the complete 188-test editor inventory
+  ([receipt](editor-performance/held-typing-full-browser.json)); its own hosted CI
+  and the remaining reliability checks remain required.
 
   Investigate intermittent hosted readiness failures before declaring reliability.
   `9d4f888` published the typed parser-budget fallback but did not finish paint

@@ -299,6 +299,11 @@ UTF-8 ranges, folds, token coverage and bracket links are validated without pars
 the document again on the UI thread. Transport/startup failures use the same
 preparation engine synchronously with a 12 ms parser budget; unavailable contexts
 retain ordinary lexical editing. Worker parsing has a 100 ms budget.
+When background syntax is pending, paired typing/deletion and Enter in registered
+embedded-language containers can reuse the same immediate preparation/cache
+path. Only current-source context is used; unavailable immediate analysis keeps
+ordinary lexical editing. Passive syntax consumers still wait for background
+publication rather than starting this input work.
 Explicit Reindent requests and comments in registered embedded-language containers
 use a yielding browser task adapter for the same Rust syntax service when no
 current structure is ready, then apply through the shared editor command facade.
