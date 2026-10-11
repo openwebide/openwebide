@@ -1,5 +1,7 @@
 # Plugins and marketplaces
 
+To build a plugin, start with the [contributor guide](plugin-authoring.md).
+
 The **Plugins** button beside **Output** in the status bar opens discovery and
 plugin management. Browse the official marketplace and any custom public Git
 marketplaces configured for your account. Installed and available plugins appear
@@ -165,8 +167,8 @@ Memory, Scheduling and Skill Authoring; PR Review remains optional.
 
 First-party plugins must own their behavior and use the same public Rust SDK,
 versioned host interfaces and lifecycle as community plugins. They may use general
-host capabilities such as workspace access, namespaced persistence, HTTP,
-approved process execution and durable job dispatch. Feature-specific policy,
+host capabilities such as namespaced persistence, HTTP, model completion
+and durable job dispatch. Workspace and process interfaces remain future work. Feature-specific policy,
 orchestration and result shaping must live in the plugin; a built-in feature
 hidden behind a host API does not satisfy this requirement. There must be no
 first-party identity dispatch, privileged feature endpoint or built-in fallback
@@ -183,8 +185,7 @@ Publisher CI should validate source builds, but installing a plugin does not
 require a publisher-hosted WASM artifact. Bundled plugins receive the same
 interfaces and privileges.
 
-The SDK, source preparation and shared execution workflow are foundations in
-progress. HTTP and clock primitives run on the bridge. Plugin HTTP carries a host-added
+The SDK, source preparation and shared execution workflow ship in the alpha. HTTP and clock primitives run on the bridge. Plugin HTTP carries a host-added
 transport marker that plugin headers cannot remove. Open WebIDE rejects marked
 requests to its authenticated backend and bridge control endpoints, including
 credential bootstrap and WebSocket upgrades. Ordinary HTTP access to public and
@@ -206,7 +207,7 @@ plugin code cannot opt itself into this authority. Plugins on a paired host do
 not require that host to see a local project's browser folder. Workspace commands
 and Git retain their separate folder mapping requirement. Background runs use
 shared leased delivery; compiled defaults have verified server and paired-host
-HTTP bootstrap, with deployed browser verification still pending.
+HTTP bootstrap, with remaining lifecycle checks tracked in the roadmap.
 The separate `completion` grant exposes bounded text generation through the
 session's configured primary or fast model. Plugins supply prompts and interpret
 the results; the host supplies model selection and credentials. Inputs are limited
@@ -244,10 +245,10 @@ completion or lease replacement. Terminal jobs can be deleted to release quota
 and their idempotency keys. The bridge polls for due events and runs them through the shared execution
 workflow, renewing leases during compilation and execution. Delivery is at least
 once; plugin code must use stable keys and revision checks for repeatable effects.
-The Scheduling source owns recurrence and event policy; marketplace activation
-and deployed browser verification remain pending.
+The published Scheduling source owns recurrence and event policy; remaining
+browser lifecycle checks are tracked in the roadmap.
 
-The prototype `runs` capability exposes durable raw prompt submissions through
+The `runs` capability exposes durable raw prompt submissions through
 `list`, `read`, `submit`, `cancel` and terminal `delete`. Submissions use stable
 keys and owned conversations in the grant's project, including a job's retained
 origin conversation. A source may request a new conversation with its own title
@@ -324,7 +325,7 @@ and `updated_at` is 0. Values are limited to 64 KiB and 256 servers. The host do
 not choose a default model. Source can use this metadata at delivery time rather
 than silently retaining the creating chat's primary model.
 
-The unlisted Scheduling source now exports five SDK tools and two durable event
+The published Scheduling source exports five SDK tools and two durable event
 handlers. Native workflow tests cover its CRUD, recurrence, model/target selection,
 generation invalidation, bounded monitors and callback interpretation. An explicit
 cross-repository component contract uses `OPENWEBIDE_SCHEDULING_COMPONENT` and
@@ -372,12 +373,8 @@ The source-to-WASM/runtime contract runs in CI on macOS and in a default Linux
 container, including attempts to read host files, alter source metadata and use
 the network during compilation.
 
-Web's source reference implementation now lives in the plugins repository and
-uses only the public SDK HTTP primitive. Its API 3 release remains unlisted while
-installation and migration verification continue. Memory's source implementation
-now owns search, CRUD formatting and bounded context selection over the public
-collection primitive; it remains unlisted pending planning and lifecycle
-integration. Continue Scheduling and Skill Authoring. Verify the same behavior in
-local and remote modes, including cancellation, crashes, disablement and updates,
-before calling those migrations complete. Completion of executable plugins, MCP
-servers, dependencies, language, UI and editor contributions remains on the roadmap.
+Web, Project Memory, Scheduling and Skill Authoring ship as API 3 source
+plugins in the official marketplace and compiled default bundle. They own their
+behavior through the same public SDK as community plugins. Remaining lifecycle
+verification, registry SDK publication and future MCP, language, UI and editor
+contribution contracts are tracked in [the roadmap](roadmap.md).
