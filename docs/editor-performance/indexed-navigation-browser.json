@@ -1,0 +1,31 @@
+{
+  "baseHead": "93ec875c1a09adea5b1b806576ef24460bb8c2b1",
+  "profile": "release",
+  "terminalExitCode": 0,
+  "test": "editor::wrapping_whitespace_fold_geometry_and_navigation_share_both_modes",
+  "passed": 1,
+  "failed": 0,
+  "seconds": 0.4,
+  "modes": [
+    "Local",
+    "Remote"
+  ],
+  "componentsWasmSha256": "ec11ab162986e47e7d32f7adaf1f01c118996dfd4cfcdc966d7f8f6c44eda0ff",
+  "sourceManifestSha256": "22b6dbaf488ac696d5f1fa9f7bde20e9607a408a42eb3fae8418ca1e51944f27",
+  "logSha256": "fcca1454391f4652507aeb94ca1c100893451ae7b5e8842575f1c0b12c92c440",
+  "allManifestSourcesMatch": true,
+  "coreTestsPassed": 638,
+  "strictNativeCoreLint": "passed",
+  "strictWasmFrontendAllTargetsLint": "passed",
+  "initialAttempt": {
+    "terminalExitCode": 1,
+    "failure": "Ownership checks altered the fixture cursor before the existing go-to dialog click; missing go-to input.",
+    "logSha256": "02b1402e275b2a238526b5d2805599346b1e39dcfadac5b846ba428670efaeb9",
+    "correction": "Moved ownership checks after the complete existing UI sequence; retained all original bounds and deadlines."
+  },
+  "scope": "Retained Unicode/CRLF line navigation, wrapped UI behavior and stale source/project fallback; full current hosted CI still pending.",
+  "limitations": [
+    "Does not resolve cold fallback indexing or long-word motion.",
+    "Does not prove paragraph responsiveness or physical PWA/accessibility gates."
+  ]
+}

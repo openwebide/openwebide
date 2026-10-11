@@ -562,6 +562,15 @@ impl Document {
     pub fn line_column(&self, offset: usize) -> (usize, usize) {
         self.line_index.line_column(&self.text, offset)
     }
+    /// Resolve source coordinates using retained logical rows and sparse character checkpoints.
+    pub fn navigation_target(&self, query: &str) -> Option<usize> {
+        let (line, column) = navigation::navigation_coordinates(query)?;
+        Some(
+            self.line_index
+                .offset_at_line_column(&self.text, line, column),
+        )
+    }
+
     /// One-based source row and zero-based native UTF-16 column for DOM paint.
     /// Reuse sparse row coordinates instead of rescanning preceding source.
     pub fn native_line_column(&self, offset: usize) -> Result<(usize, usize), EditError> {

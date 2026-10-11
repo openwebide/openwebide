@@ -123,6 +123,12 @@ tracks the remaining work rather than every optimization already shipped.
   when bounded geometry cannot be proved. Basic direct and queued keyboard
   motion now uses editor admission instead of the separate 2 MiB structure
   budget; measured neighborhoods retain source and validate only measured rows.
+  Go-to-line now uses retained logical rows and sparse character coordinates for
+  current prepared documents, with source-only fallback when no current document
+  exists. All 638 core tests and strict native core/WASM frontend lint pass;
+  the release both-mode navigation and stale source/project regression passes
+  ([receipt](editor-performance/indexed-navigation-browser.json)). Hosted CI
+  for this candidate remains pending.
   Complete projection/native normalization, long word/context traversal and
   remaining synchronous selection publication still require bounded preparation.
 - [ ] **Tabbed, wrapped and bidirectional layout:** extend bounded preparation

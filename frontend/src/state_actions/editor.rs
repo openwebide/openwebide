@@ -1226,9 +1226,18 @@ impl EditorActions {
     }
 
     pub fn navigation_target(self, query: &str) -> Option<usize> {
-        self.workspace
-            .content
-            .with_untracked(|source| openwebide_core::editor::navigation_target(source, query))
+        self.workspace.content.with_untracked(|source| {
+            self.key()
+                .and_then(|key| {
+                    self.workspace.editor_documents.with_untracked(|documents| {
+                        documents
+                            .get(&key)
+                            .filter(|document| document.matches_text(source))
+                            .map(|document| document.navigation_target(query))
+                    })
+                })
+                .unwrap_or_else(|| openwebide_core::editor::navigation_target(source, query))
+        })
     }
 
     pub fn matching_bracket(self, offset: usize) -> Option<(usize, usize)> {

@@ -197,6 +197,18 @@ impl LineCoordinates {
             .map_or_else(Coordinate::default, |index| self.checkpoints()[index]);
         start.byte + super::textarea_to_byte(&text[start.byte..], offset - start.native)
     }
+    pub fn char_to_byte(&self, text: &str, offset: usize) -> usize {
+        let start = self
+            .checkpoints()
+            .partition_point(|point| point.chars <= offset)
+            .checked_sub(1)
+            .map_or_else(Coordinate::default, |index| self.checkpoints()[index]);
+        text[start.byte..]
+            .char_indices()
+            .nth(offset - start.chars)
+            .map_or(text.len(), |(byte, _)| start.byte + byte)
+    }
+
     pub fn chars_before(&self, text: &str, offset: usize) -> usize {
         let start = self.byte_start(offset);
         start.chars + text[start.byte..offset].chars().count()

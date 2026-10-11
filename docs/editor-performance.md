@@ -5866,3 +5866,27 @@ WASM frontend lint also passes after the cursor assertion change. Hosted CI for
 this candidate remains pending. No production latency
 improvement or completion of remaining message decoding/publication work is
 claimed yet.
+
+
+### Indexed go-to-line preparation
+
+Go-to-line previously rebuilt logical rows and counted characters from the
+requested row's beginning for every query. Prepared documents now resolve the
+same shared query syntax through retained logical rows and sparse character
+checkpoints. Character columns preserve Unicode scalar semantics, tabs and CRLF
+clamping; the scan starts at the closest retained checkpoint. The frontend facade
+uses this path only for a current source-owned document and keeps the existing
+source-only fallback when no current document exists. No mode check is added.
+
+All 638 core tests pass, including a regression against the complete source
+coordinate oracle for long Unicode rows, boundary/overflow coordinates, invalid
+queries, edits, undo and redo. The existing both-mode browser navigation contract
+also checks replacement source and project ownership. Strict native core and WASM frontend all-target lint pass. The release browser
+contract passes in both modes (0.40 s), including stale source/project checks
+([receipt](editor-performance/indexed-navigation-browser.json)). The initial
+fixture attempt altered the cursor before its existing go-to click and failed
+to open that input; moving ownership checks after the original UI sequence
+corrected the fixture without changing its bounds or deadlines. Hosted CI for
+this candidate remains pending. This avoids repeated row rebuilding
+for prepared navigation; it does not resolve cold fallback indexing, long word
+motion or the remaining paragraph layout costs.

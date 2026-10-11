@@ -7345,6 +7345,10 @@ async fn wrapping_whitespace_fold_geometry_and_navigation_share_both_modes() {
             textarea.scroll_height(),
             full_height
         );
+        assert_eq!(
+            actions.navigation_target("2:220"),
+            openwebide_core::editor::navigation_target(&expected, "2:220")
+        );
         mounted.click_text("Ln 1, Col 1");
         settle().await;
         let go: web_sys::HtmlInputElement = mounted
@@ -7447,6 +7451,18 @@ async fn wrapping_whitespace_fold_geometry_and_navigation_share_both_modes() {
         );
         assert_eq!(actions.source(), expected);
         assert!(!mounted.state.workspace.dirty.get_untracked());
+        // A cached document from the same path must not resolve replacement
+        // source, and a different project must not use the previous file index.
+        mounted.state.workspace.content.set("changed\r\nx".into());
+        assert_eq!(actions.navigation_target("2:220"), Some(10));
+        mounted.state.workspace.active_project.set(Some(2));
+        assert_eq!(actions.navigation_target("2:220"), Some(10));
+        mounted.state.workspace.active_project.set(Some(1));
+        mounted.state.workspace.content.set(expected.clone().into());
+        assert_eq!(
+            actions.navigation_target("2:220"),
+            openwebide_core::editor::navigation_target(&expected, "2:220")
+        );
     }
 }
 
