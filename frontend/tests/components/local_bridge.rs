@@ -62,6 +62,7 @@ export function fakeBridgeHttp() {
         const body = JSON.parse((await request.text()) || '{}');
         const path = new URL(request.url).pathname;
         mock.calls.push({ path, body, authorization: request.headers.get('Authorization') });
+        if (path === '/mcp/open') return new Response(JSON.stringify({id:'', tools:[], failures:[]}));
         if (path.startsWith('/plugins/prepare/')) {
             if (mock.invalid) return new Response(JSON.stringify({error:'preparation failed'}), {status:400});
             const id = body.id || 'a'.repeat(32);

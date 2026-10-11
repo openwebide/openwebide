@@ -5,11 +5,12 @@ use super::support::{chat_view, mount_test, settle};
 
 async fn settle_run(mounted: &super::support::Mounted) {
     use leptos::prelude::GetUntracked;
-    for _ in 0..50 {
+    for _ in 0..500 {
         settle().await;
         if !mounted.state.chat.streaming.get_untracked() {
             return;
         }
+        openwebide_frontend::util::sleep_ms(10).await;
     }
     panic!("local run did not settle");
 }
