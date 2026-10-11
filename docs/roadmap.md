@@ -640,12 +640,12 @@ Extend agent and editor capabilities through versioned plugin packages that user
 and the agent can manage, without requiring changes to the app for each new
 capability.
 
-- Promote the pinned executable first-party releases and drawings from the
-  candidate catalog after remaining manual PWA checks on server and paired hosts:
-  asynchronous install/cancel and failure recovery, cold action caches,
-  compiled-default initialization, and install/run/update/disable/uninstall flows.
+- Finish manual PWA lifecycle checks on server and paired hosts: asynchronous
+  install/cancel and failure recovery, cold action caches, compiled-default
+  initialization, and install/run/update/disable/uninstall flows.
 - Complete remaining Scheduling browser checks for deletion and bounded monitor
-  lifecycle, retained legacy task adoption, pending-occurrence handoff, active invocation
+  lifecycle, retained legacy task adoption, pending-occurrence handoff, active
+  invocation
   pinning and updates during streamed work, interrupted-run recovery, history
   retention and full-quota journaling/recovery. These extend verified production
   SDK flows through both host transports; retain active work and existing data.

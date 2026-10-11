@@ -19,7 +19,7 @@ for what's still ahead.
 - Keep contributed skills discoverable through shared read-only, run-pinned loaders when Skill Authoring is disabled. Exclude personal/disabled skills without enabling authoring handlers; SDK context hooks remain read-only and respect prompt budgets and model tool selection.
 - Preserve workspace-root mappings when binding local projects for unattended Scheduling and monitor execution. Verify automatic naming and task creation, pause, edit and resume through both deployed PWAs.
 - Add schema-defined JSON plugin icons with typed drawing primitives, bounded geometry, fixed sizing and theme color. Share validation across manifests and catalog listings; use the puzzle fallback for omitted or invalid cached icons. Verify installed/available rendering and search in both deployed PWAs.
-- Document the pinned public Git SDK and custom-marketplace authoring. Marketplace CI validates catalogs and tests, lints and compiles executable sources against that SDK. Official catalog promotion and remaining manual PWA verification are tracked on the roadmap.
+- Document the pinned public Git SDK and custom-marketplace authoring. Marketplace CI validates catalogs and tests, lints and compiles executable sources against that SDK. Publish the official catalog releases with immutable source pins; remaining manual PWA verification is tracked on the roadmap.
 
 - Reuse immutable source identity in editor text, cursor queue, decoration and indentation-guide checks while preserving complete equality for external text.
 
