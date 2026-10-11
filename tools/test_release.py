@@ -133,6 +133,11 @@ with open(os.environ['COMMAND_LOG'], 'a') as stream:
         self.assertEqual(release.validate(self.root, "v1.0.0"), ("1.0.0", "- Shipped.\n"))
         self.assertEqual(release.validate(self.root), ("1.0.0", "- Future.\n"))
 
+    def test_oversized_publication_notes_fail_before_building_release_artifacts(self):
+        (self.root / "CHANGELOG.md").write_text('## [Unreleased]\n\n## [1.0.0]\n\n' + 'x' * 125000)
+        with self.assertRaisesRegex(ValueError, "125000-character limit"):
+            release.validate(self.root, "v1.0.0")
+
     def test_rejects_tag_mismatch_and_injected_tag(self):
         for tag in ["v0.1.0", "v1.0.0; echo bad", "v1.0.0-rc.1"]:
             with self.subTest(tag=tag), self.assertRaises(ValueError):

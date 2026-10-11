@@ -3,12 +3,23 @@
 All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-The first alpha is prepared as `1.0.0-alpha.1`. See
+The first alpha is prepared as `1.0.0-alpha.2`. See
 [docs/roadmap.md](docs/roadmap.md) for what is still ahead.
 
 ## [Unreleased]
 
-## [1.0.0-alpha.1] - 2026-10-10
+## [1.0.0-alpha.2] - 2026-10-10
+
+- First alpha distribution of the self-hosted browser IDE, with persistent projects, sessions and preferences in SQLite.
+- Local and remote workspaces, code editing, Git review, terminals and resumable coding-agent runs using local model servers.
+- Host-installed Rust plugins through a public SDK and Git marketplaces, with official Web, Project Memory, Scheduling and Skill Authoring defaults, per-project opt-outs and Notify updates.
+- Versioned amd64/arm64 container images, Linux/macOS bridge archives, checksums and download-only Compose/Podman Quadlet installation assets.
+- Alpha builds publish to the `alpha` channel and leave stable `latest` unchanged. Pin `ghcr.io/openwebide/openwebide:v1.0.0-alpha.2` for a fixed installation.
+- Keep the public plugin SDK independently versioned and validate release notes before artifact builds.
+
+See [installation and upgrades](https://github.com/openwebide/openwebide/blob/v1.0.0-alpha.2/docs/releases.md), [Podman/systemd setup](https://github.com/openwebide/openwebide/blob/v1.0.0-alpha.2/docs/podman-quadlet.md), and the [roadmap](https://github.com/openwebide/openwebide/blob/v1.0.0-alpha.2/docs/roadmap.md) for remaining verification and development work.
+
+## [Pre-alpha development]
 
 - Compile Git-pinned Rust plugins to WASM on bridge hosts using the public SDK, locked dependencies and an isolated compiler. Cache validated components by source, SDK and toolchain; bound execution, memory, host calls and errors without ambient WASI access.
 - Provide capability-gated HTTP, scoped records/shared collections, clocks, model completion, durable jobs and raw prompt runs. Grants retain authenticated account/project/conversation scope and the selected source; executing components keep their original version across updates. Plugin HTTP cannot bypass grants through Open WebIDE control APIs.

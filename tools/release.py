@@ -71,7 +71,10 @@ def validate(root, tag=None):
     if tag is not None and tag != f"v{current}":
         raise ValueError(f"Tag must match workspace version v{current}")
     section = current if tag is not None else "Unreleased"
-    return current, notes((root / "CHANGELOG.md").read_text(), section, allow_empty=tag is None)
+    body = notes((root / "CHANGELOG.md").read_text(), section, allow_empty=tag is None)
+    if tag is not None and len(body) > 125000:
+        raise ValueError("Release notes exceed GitHub's 125000-character limit; link to the full changelog instead")
+    return current, body
 
 
 def package_bridge(root, target, binary, output):
