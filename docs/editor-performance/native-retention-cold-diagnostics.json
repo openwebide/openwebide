@@ -1,0 +1,546 @@
+{
+  "scope": "Diagnostic pre-plugin native-retention production bundle; compiler active; profiler/fetch-wrapper timings are not completion gates",
+  "artifact": {
+    "cohort": "candidate",
+    "frontendWasmSha256": {
+      "openwebide-frontend-f530af466bb21898_bg.wasm": "fbb2fe67a83b0b4af9e32003d7bcd8c3fd3938da9347d20c4b5baec41ed97ffa"
+    },
+    "backendWasmSha256": "7497ecb31f4e44e3b4e28b154965f137b2ee43e02089c5ba81ce5205d367c0fa",
+    "browser": "Chromium 154.0.8037.92 built on Debian GNU/Linux 12 (bookworm)",
+    "hostConstraints": {
+      "cpuCount": 14,
+      "cgroupMemoryMax": "10737418240",
+      "cgroupCpuMax": "400000 100000"
+    }
+  },
+  "cpuProfileRawSha256": "5b7f6e1cfca1428831fa2444509eccbf6a690d8b8f7767688892aacfa202e173",
+  "networkTraceRawSha256": "ca8ad755ca20e952b14dfd641ce5ba2d29a9f5be29a4c648436a3ae30597b4e2",
+  "topSelfCpuMs": [
+    [
+      "(idle)",
+      2173.0
+    ],
+    [
+      "(program)",
+      377.3
+    ],
+    [
+      "refresh_editor_scroll",
+      53.1
+    ],
+    [
+      "editor_scroll_element",
+      50.8
+    ],
+    [
+      "get",
+      49.5
+    ],
+    [
+      "__wbg_clientWidth_669677d957e958c7",
+      38.9
+    ],
+    [
+      "wasm-function[13212]",
+      38.9
+    ],
+    [
+      "",
+      33.9
+    ],
+    [
+      "__wbg_set_scrollTop_b3415c583d838fe6",
+      26.4
+    ],
+    [
+      "observe_element_width",
+      23.9
+    ],
+    [
+      "wasm-function[24251]",
+      21.4
+    ],
+    [
+      "wasm-function[1401]",
+      16.2
+    ],
+    [
+      "wasm-function[2451]",
+      14.5
+    ],
+    [
+      "wasm-to-js",
+      13.8
+    ],
+    [
+      "(garbage collector)",
+      13.7
+    ],
+    [
+      "browserPreferences",
+      12.8
+    ],
+    [
+      "wasm-function[678]",
+      11.7
+    ],
+    [
+      "wasm-function[5725]",
+      10.8
+    ],
+    [
+      "Element.getBoundingClientRect",
+      10.1
+    ],
+    [
+      "yield_browser_task",
+      9.9
+    ]
+  ],
+  "profileSummary": {
+    "coldViewportPaintMs": 1741.6000000014901,
+    "coldCompleteGeometryMs": 1741.6000000014901,
+    "inputToPaintMs": 125.30000000447035,
+    "completeSourceAfterInputVerified": true,
+    "nativeEvents": [
+      {
+        "at": 1430.7000000029802,
+        "bound": false,
+        "elapsedMs": 0.5,
+        "kind": "scrollWidth",
+        "phase": "cold"
+      },
+      {
+        "at": 1431.2000000029802,
+        "bound": false,
+        "elapsedMs": 0,
+        "kind": "scrollHeight",
+        "phase": "cold"
+      },
+      {
+        "at": 1439.7000000029802,
+        "bound": false,
+        "elapsedMs": 0,
+        "kind": "scrollWidth",
+        "phase": "cold"
+      },
+      {
+        "at": 1439.8000000044703,
+        "bound": false,
+        "elapsedMs": 0,
+        "kind": "scrollHeight",
+        "phase": "cold"
+      },
+      {
+        "at": 1441.3000000044703,
+        "bound": false,
+        "elapsedMs": 3.1999999955296516,
+        "kind": "value",
+        "nativeLength": 12288,
+        "phase": "cold"
+      },
+      {
+        "at": 1997.2000000029802,
+        "bound": true,
+        "elapsedMs": 2.1999999955296516,
+        "kind": "beforeinput",
+        "phase": "input"
+      },
+      {
+        "at": 2008.6000000014901,
+        "bound": true,
+        "elapsedMs": 13,
+        "kind": "input",
+        "phase": "input"
+      }
+    ],
+    "preparationBatches": [
+      {
+        "at": 1679.3000000044703,
+        "fontFaces": [
+          {
+            "family": "Monaspace Neon",
+            "status": "loaded"
+          },
+          {
+            "family": "Monaspace Argon",
+            "status": "unloaded"
+          },
+          {
+            "family": "Monaspace Xenon",
+            "status": "unloaded"
+          },
+          {
+            "family": "Monaspace Radon",
+            "status": "unloaded"
+          },
+          {
+            "family": "Monaspace Krypton",
+            "status": "unloaded"
+          }
+        ],
+        "geometry": {
+          "elapsedMs": 0.10000000149011612,
+          "units": 128
+        },
+        "install": {
+          "elapsedMs": 1.1000000014901161,
+          "units": 14612
+        },
+        "layout": {
+          "elapsedMs": 9.799999997019768,
+          "units": 128
+        },
+        "phase": "cold",
+        "render": {
+          "elapsedMs": 0.3999999985098839,
+          "units": 256
+        },
+        "scope": {
+          "data-measure-account": "0",
+          "data-measure-font": "0",
+          "data-measure-layout": "0",
+          "data-measure-prepared": "false",
+          "data-measure-read": "3",
+          "data-measure-source": "0",
+          "data-measure-view": "1"
+        }
+      },
+      {
+        "at": 1698.8999999985099,
+        "fontFaces": [
+          {
+            "family": "Monaspace Neon",
+            "status": "loaded"
+          },
+          {
+            "family": "Monaspace Argon",
+            "status": "unloaded"
+          },
+          {
+            "family": "Monaspace Xenon",
+            "status": "unloaded"
+          },
+          {
+            "family": "Monaspace Radon",
+            "status": "unloaded"
+          },
+          {
+            "family": "Monaspace Krypton",
+            "status": "unloaded"
+          }
+        ],
+        "geometry": {
+          "elapsedMs": 0,
+          "units": 1
+        },
+        "install": {
+          "elapsedMs": 0,
+          "units": 116
+        },
+        "layout": {
+          "elapsedMs": 0.29999999701976776,
+          "units": 1
+        },
+        "phase": "cold",
+        "render": {
+          "elapsedMs": 0,
+          "units": 0
+        },
+        "scope": {
+          "data-measure-account": "0",
+          "data-measure-font": "0",
+          "data-measure-layout": "0",
+          "data-measure-prepared": "false",
+          "data-measure-read": "3",
+          "data-measure-source": "0",
+          "data-measure-view": "1"
+        }
+      },
+      {
+        "at": 2067.89999999851,
+        "fontFaces": [
+          {
+            "family": "Monaspace Neon",
+            "status": "loaded"
+          },
+          {
+            "family": "Monaspace Argon",
+            "status": "unloaded"
+          },
+          {
+            "family": "Monaspace Xenon",
+            "status": "unloaded"
+          },
+          {
+            "family": "Monaspace Radon",
+            "status": "unloaded"
+          },
+          {
+            "family": "Monaspace Krypton",
+            "status": "unloaded"
+          }
+        ],
+        "geometry": {
+          "elapsedMs": 0,
+          "units": 1
+        },
+        "install": {
+          "elapsedMs": 0.10000000149011612,
+          "units": 114
+        },
+        "layout": {
+          "elapsedMs": 0.3999999985098839,
+          "units": 1
+        },
+        "phase": "input",
+        "render": {
+          "elapsedMs": 0,
+          "units": 3
+        },
+        "scope": {
+          "data-measure-account": "0",
+          "data-measure-font": "0",
+          "data-measure-layout": "0",
+          "data-measure-prepared": "false",
+          "data-measure-read": "3",
+          "data-measure-source": "0",
+          "data-measure-view": "2"
+        }
+      }
+    ],
+    "fontEvents": [
+      {
+        "at": 1643.6000000014901,
+        "faces": [],
+        "kind": "loading",
+        "phase": "cold"
+      },
+      {
+        "at": 1707.1000000014901,
+        "faces": [
+          {
+            "family": "Monaspace Neon",
+            "status": "loaded"
+          }
+        ],
+        "kind": "loadingdone",
+        "phase": "cold"
+      }
+    ],
+    "longTaskEvents": [
+      {
+        "at": 919.7000000029802,
+        "durationMs": 119,
+        "observedAt": 1047.2000000029802,
+        "phase": "cold",
+        "scope": null
+      },
+      {
+        "at": 1050.3999999985099,
+        "durationMs": 126,
+        "observedAt": 1191,
+        "phase": "cold",
+        "scope": null
+      },
+      {
+        "at": 1406.3000000044703,
+        "durationMs": 137,
+        "observedAt": 1645.2000000029802,
+        "phase": "cold",
+        "scope": "1"
+      },
+      {
+        "at": 1543.8999999985099,
+        "durationMs": 95,
+        "observedAt": 1645.3000000044703,
+        "phase": "cold",
+        "scope": "1"
+      }
+    ]
+  },
+  "apiTrace": [
+    {
+      "at": 1575.1000000014901,
+      "completeAt": 1584.6000000014901,
+      "path": "/api/scheduled-tasks",
+      "status": 200
+    },
+    {
+      "at": 1575.8999999985099,
+      "completeAt": 1585.3999999985099,
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "at": 1673.6000000014901,
+      "completeAt": 1722.3999999985099,
+      "path": "/api/health",
+      "status": 200
+    },
+    {
+      "at": 1735.7999999970198,
+      "completeAt": 1742.6000000014901,
+      "path": "/api/bridge/token",
+      "status": 502
+    },
+    {
+      "at": 1737.6000000014901,
+      "completeAt": 1743.6000000014901,
+      "path": "/api/settings",
+      "status": 200
+    },
+    {
+      "at": 1739.2000000029802,
+      "completeAt": 1750,
+      "path": "/api/projects",
+      "status": 200
+    },
+    {
+      "at": 1739.6000000014901,
+      "completeAt": 1748.7999999970198,
+      "path": "/api/connections",
+      "status": 200
+    },
+    {
+      "at": 1740.3999999985099,
+      "completeAt": 1750.2000000029802,
+      "path": "/api/sessions",
+      "status": 200
+    },
+    {
+      "at": 1740.7999999970198,
+      "completeAt": 1750.7999999970198,
+      "path": "/api/system-prompts",
+      "status": 200
+    },
+    {
+      "at": 1741,
+      "completeAt": 1750.6000000014901,
+      "path": "/api/model-setup",
+      "status": 200
+    },
+    {
+      "at": 1803.1000000014901,
+      "completeAt": 1839.8999999985099,
+      "path": "/api/plugins",
+      "status": 200
+    },
+    {
+      "at": 1805.7999999970198,
+      "completeAt": 1896.8999999985099,
+      "path": "/api/settings",
+      "status": 200
+    },
+    {
+      "at": 1825.1000000014901,
+      "completeAt": 1897.2000000029802,
+      "path": "/api/projects/1/pending-edits",
+      "status": 200
+    },
+    {
+      "at": 1827.2000000029802,
+      "completeAt": 1897.2999999970198,
+      "path": "/api/projects/1/skills",
+      "status": 200
+    },
+    {
+      "at": 1828.2999999970198,
+      "completeAt": 1897.7000000029802,
+      "path": "/api/projects/1/memories",
+      "status": 200
+    },
+    {
+      "at": 1829.1000000014901,
+      "completeAt": 1897.8999999985099,
+      "path": "/api/scheduled-tasks",
+      "status": 200
+    },
+    {
+      "at": 1829.8999999985099,
+      "completeAt": 1898,
+      "path": "/api/projects/1/run-changes",
+      "status": 200
+    },
+    {
+      "at": 1830.5,
+      "completeAt": 1898.7000000029802,
+      "path": "/api/plugins",
+      "status": 200
+    },
+    {
+      "at": 1834.2999999970198,
+      "completeAt": 1898.3999999985099,
+      "path": "/api/settings",
+      "status": 200
+    },
+    {
+      "at": 1834.7999999970198,
+      "completeAt": 1898.3999999985099,
+      "path": "/api/settings",
+      "status": 200
+    },
+    {
+      "at": 1837.8999999985099,
+      "completeAt": 1899.2000000029802,
+      "path": "/api/projects/1/editor-recovery",
+      "status": 200
+    },
+    {
+      "at": 1899.7000000029802,
+      "completeAt": 1907.2000000029802,
+      "path": "/api/bridge/token",
+      "status": 502
+    },
+    {
+      "at": 1906.6000000014901,
+      "completeAt": 2344.2000000029802,
+      "path": "/api/plugin-marketplaces",
+      "status": 200
+    },
+    {
+      "at": 2432,
+      "completeAt": 2439.89999999851,
+      "path": "/api/projects/1/plugins",
+      "status": 200
+    },
+    {
+      "at": 2440.5,
+      "completeAt": 2443.5,
+      "path": "/api/projects/1/plugins",
+      "status": 200
+    },
+    {
+      "at": 2484.7999999970198,
+      "completeAt": 2489.39999999851,
+      "path": "/api/projects/1/skills",
+      "status": 200
+    },
+    {
+      "at": 2485.2999999970198,
+      "completeAt": 2489.2000000029802,
+      "path": "/api/plugin-marketplaces/refresh",
+      "status": 200
+    },
+    {
+      "at": 2490.10000000149,
+      "completeAt": 2495.2999999970198,
+      "path": "/api/projects/1/skills",
+      "status": 200
+    },
+    {
+      "at": 3121.39999999851,
+      "completeAt": 3135.2999999970198,
+      "path": "/api/projects/1/editor-recovery",
+      "status": 200
+    },
+    {
+      "at": 3407.5,
+      "completeAt": 3413.2000000029802,
+      "path": "/api/bridge/token",
+      "status": 502
+    }
+  ],
+  "networkTraceColdViewportMs": 2432.7999999970198,
+  "conclusion": "Initial API activity and editor-recovery arrival precede viewport paint. Retain total startup gate; investigate module/app initialization and recovery/index/projection preparation separately. No exclusive cause or improvement proven."
+}

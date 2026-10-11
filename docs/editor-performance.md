@@ -6074,3 +6074,50 @@ The combined debug component run does not pass
 377 MiB debug artifact emits 15 MiB of reactive warnings. This does not establish
 exclusive causation. Recheck the same contracts and deadlines with the optimized
 artifact used by CI; combined browser completion remains unproven.
+
+The combined optimized editor artifact passes all 194 editor/worker contracts
+(170 component tests in complete disjoint groups, both geometry matrices,
+23 editor library tests and worker routing), with unchanged deadlines
+([receipt](editor-performance/editor-plugin-release-browser.json)).
+The first group, including the failed debug wrapped-row-cache contract, passes
+in 83.22 s. Native frontend tests (129) and strict WASM lints pass. Subsequent
+commit `2a0183aa` changes only error assertions in an unselected paired-plugin
+test; selected editor contracts and production code remain identical.
+Hosted run `38110854960` passes production editor input/history/pointer checks
+and Windows, but fails that paired-plugin assertion; `7968226d` includes the
+correction. Full current CI remains pending.
+
+[Cold diagnostic profiles](editor-performance/native-retention-cold-diagnostics.json)
+retain the preceding release artifact hashes and compiler/profiler/fetch-wrapper
+overhead. Much of observed startup precedes the first editor paint; API arrival,
+recovery/index/projection preparation and module/app initialization need separate
+analysis. These diagnostic timings neither establish exclusive causation nor
+clear the total cold-startup responsiveness gate.
+
+The merged `7968226d` production bundle completes all 24 fresh boundary samples
+(three workloads, local/remote, wrapping on/off, two repeats), each verifying
+the complete source after a beginning edit and collecting Chrome PSS
+([raw results](editor-performance/merged-production-boundaries.jsonl)).
+Near-100,000-row edits paint in 17–47 ms; near-8-MiB edits paint in 62–67 ms.
+All eight near-1-MiB long-line samples verify actual String styling. Unwrapped
+long-line edits take 127–146 ms. Wrapped long-line viewport paint takes
+233–242 ms, but complete geometry takes 1.145–1.167 s; this remains unfinished.
+Cold complete geometry spans 1.14–3.53 s and peak Chrome PSS 645–820 MiB.
+These absolute measurements include the merged backend and do not isolate a
+change against the previous backend. They do not clear the performance gate.
+
+The current host runtime also passes UTF-8/CRLF file write/read/delete through
+both Spin remote file routes and bridge shell execution in a disposable folder
+outside this repository
+([receipt](editor-performance/merged-host-write-check.json)).
+This establishes host write access, not installed-PWA input or folder-permission
+recovery verification.
+
+A current wrapped styled-line diagnostic records 69 fresh paragraph probes
+after the beginning insertion. Their layout costs total 849 ms and rectangle
+extraction 171 ms; rendering totals 1.5 ms
+([diagnostic](editor-performance/merged-wrapped-layout-diagnostic.json)).
+This directs the next investigation toward failed incremental paragraph replay,
+rather than HTML rendering. Profiling/timing hooks add overhead; the diagnostic
+is not an independent production latency gate or proof of the replay failure's
+cause.

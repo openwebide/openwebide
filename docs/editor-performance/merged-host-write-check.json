@@ -1,0 +1,11 @@
+{
+  "status": "passed",
+  "head": "7968226d89bca8f3e1c64989b34d31c684155cc7",
+  "scope": "Fresh backend with disposable SQLite state, actual remote folder outside repo, and running host bridge",
+  "backendWasmSha256": "8efc2579446963f530f5774fdcbe2223bbc6b974eb54d8221a768ff1c43232af",
+  "bridgeBinarySha256": "891ae853c772fa80099a9bd8aaaf9747a7fe1b2eda2342dd3e5aaa14d22aae41",
+  "remoteSpinWriteReadDelete": true,
+  "remoteBridgeWriteReadDelete": true,
+  "utf8AndCrlfPreserved": true,
+  "disposableAccountAndState": true
+}

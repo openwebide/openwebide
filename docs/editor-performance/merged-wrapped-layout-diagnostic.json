@@ -1,0 +1,57 @@
+{
+  "sourceHead": "7968226d89bca8f3e1c64989b34d31c684155cc7",
+  "frontendWasmSha256": {
+    "openwebide-frontend-7edea6a30bbd760e_bg.wasm": "0fc52ccfd53fc5661c62847c96a9f7686e7afcb98912c56a8e18e9d1009609d1"
+  },
+  "backendWasmSha256": "8efc2579446963f530f5774fdcbe2223bbc6b974eb54d8221a768ff1c43232af",
+  "diagnostic": true,
+  "overhead": "DOM timing hooks and CPU profiling; not a production latency gate",
+  "rawSha256": "46771825643e507257dabec25c975e2fb95b495f023435de46f4b4c3f607c70b",
+  "case": "styled-long-line",
+  "mode": "remote",
+  "wrap": true,
+  "completeSourceAfterInputVerified": true,
+  "traceTruncated": false,
+  "phases": {
+    "cold": {
+      "batches": 77,
+      "timing": {
+        "paragraph-render": {
+          "count": 77,
+          "totalMs": 1.3000000044703484,
+          "maxMs": 0.10000000149011612
+        },
+        "paragraph-layout": {
+          "count": 77,
+          "totalMs": 1006.1999999657273,
+          "maxMs": 17
+        },
+        "paragraph-geometry": {
+          "count": 77,
+          "totalMs": 206.49999998509884,
+          "maxMs": 4.100000001490116
+        }
+      }
+    },
+    "input": {
+      "batches": 69,
+      "timing": {
+        "paragraph-render": {
+          "count": 69,
+          "totalMs": 1.5,
+          "maxMs": 0.10000000149011612
+        },
+        "paragraph-layout": {
+          "count": 69,
+          "totalMs": 848.5999999940395,
+          "maxMs": 17.69999999552965
+        },
+        "paragraph-geometry": {
+          "count": 69,
+          "totalMs": 170.6000000089407,
+          "maxMs": 4.0999999940395355
+        }
+      }
+    }
+  }
+}

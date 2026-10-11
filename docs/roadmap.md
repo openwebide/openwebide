@@ -63,6 +63,14 @@ tracks the remaining work rather than every optimization already shipped.
 | Selection and browser input | Multiple/rectangular selections and clipboard transactions; scoped native windows with bounded desktop startup for unwrapped, wrapped and nonuniform views, including long tabbed/bidirectional rows; automated Chromium composition and pointer checks. The recorded line-end caret bug is fixed and user-verified in the localhost PWA. |
 | Preparation and ownership | Rust/WASM worker and cooperative fallback; retained source/token/structure allocations; bounded worker delta reconstruction/reply-source publication and final structure metadata, parsed/lexical region reconciliation and retained fallback collection; bounded eligible unwrapped and wrapped paragraph probes, retained paint-run clipping and cooperative sampled cold-row glyph measurements, exact overlap validation, exact carets from retained anchors/current painted coverage and conservative complete-layout fallback. Current-file progress is shown during preparation. Matching trusted font notifications retain current in-flight work and ordinary-row replay after edits. |
 
+**Current measured bottleneck:** the merged production build preserves complete
+source in all 24 boundary samples, but styled wrapped near-1-MiB edits take
+233–242 ms to paint and 1.145–1.167 s to finish geometry. Cold complete geometry
+takes 1.14–3.53 s across the workloads; peak Chrome PSS is 645–820 MiB
+([results](editor-performance/merged-production-boundaries.jsonl)).
+The next performance investigation is wrapped long-line preparation and replay;
+these measurements do not complete the requirements below.
+
 **Remaining implementation**:
 
 - [ ] **Parser-aware ordinary input and decorations:** verify admitted
@@ -398,8 +406,12 @@ tracks the remaining work rather than every optimization already shipped.
 - [ ] **Reliable CI and release/PWA checks:** pass the complete native/WASI/WASM,
   platform and release checks on the combined editor/plugin tree. The combined
   debug browser run fails wrapped exact-row-cache readiness and cannot establish
-  completion ([record](editor-performance/editor-plugin-debug-failure.json));
-  optimized browser verification and hosted CI for `1bd0c30` remain pending.
+  completion ([record](editor-performance/editor-plugin-debug-failure.json)).
+  The combined optimized artifact passes all 194 editor/worker browser contracts
+  with unchanged assertions and deadlines
+  ([receipt](editor-performance/editor-plugin-release-browser.json)). Current
+  hosted CI for `7968226d`, including the paired-plugin error assertion
+  correction, remains pending.
   The embedded-comment
   checkpoint `cc019c1` passed all five hosted jobs
   ([receipt](editor-performance/grouped-ci-cc019c1.json)). Selection-capability
