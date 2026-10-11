@@ -1,0 +1,69 @@
+{
+  "scope": "Immutable core-built FoldProjection row ranges eliminate repeated frontend body-range sweeps; planning/reuse/grouping still use bounded stages and source/font/layout/file/project/account ownership checks",
+  "sourceSha256": {
+    "frontend/src/state_actions/editor/rows.rs": "df44bba2645634d95ccb5f8b128459a1aee704c4261e2df13a990681f6334d3e",
+    "crates/core/src/editor/projection.rs": "b509879fc611a69da5775fc1fffc3e0779fb072f7792786b1a4e89328a155b4f"
+  },
+  "coreTests": {
+    "passed": 717,
+    "failed": 0,
+    "ignored": 1
+  },
+  "strictLint": {
+    "nativeCore": true,
+    "wasmFrontendAllTargets": true
+  },
+  "browser": [
+    {
+      "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+      "console": "Invoking test: editor::wrapping_whitespace_fold_geometry_and_navigation_share_both_modes\nInvoking test: editor::primary_caret_and_selection_follow_source_motion_and_scroll_in_both_modes\nInvoking test: editor::prepared_source_extents_ignore_native_dimensions_and_reject_stale_scopes_in_both_modes\nInvoking test: editor::localized_wrapped_edits_reuse_exact_row_heights_in_both_modes\nInvoking test: editor::cooperative_worker_row_index_preserves_dense_rows_in_both_modes\n",
+      "output": "\nrunning 5 tests\ntest editor::wrapping_whitespace_fold_geometry_and_navigation_share_both_modes ... ok\ntest editor::primary_caret_and_selection_follow_source_motion_and_scroll_in_both_modes ... ok\ntest editor::prepared_source_extents_ignore_native_dimensions_and_reject_stale_scopes_in_both_modes ... ok\ntest editor::localized_wrapped_edits_reuse_exact_row_heights_in_both_modes ... ok\ntest editor::cooperative_worker_row_index_preserves_dense_rows_in_both_modes ... ok\n\ntest result: ok. 5 passed; 0 failed; 0 ignored; 0 filtered out; finished in 3.98s\n\n",
+      "passed": true,
+      "tests": [
+        "__wbgt__components::editor::cooperative_worker_row_index_preserves_dense_rows_in_both_modes",
+        "__wbgt__components::editor::localized_wrapped_edits_reuse_exact_row_heights_in_both_modes",
+        "__wbgt__components::editor::prepared_source_extents_ignore_native_dimensions_and_reject_stale_scopes_in_both_modes",
+        "__wbgt__components::editor::primary_caret_and_selection_follow_source_motion_and_scroll_in_both_modes",
+        "__wbgt__components::editor::wrapping_whitespace_fold_geometry_and_navigation_share_both_modes"
+      ],
+      "servedFonts": {
+        "/fonts/MonaspaceNeon-v1.400.woff2": "6569968f448ae856ab5b57dff1f13b109b220ca8e3f664169e135fcb5c4f0721"
+      },
+      "libraryStartSuppressed": false,
+      "testModuleRoute": "/tests.js"
+    },
+    {
+      "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+      "console": "Invoking test: editor::source_slice_measurement_failure_restores_full_source_in_both_modes\nInvoking test: editor::paragraph_overlap_failure_uses_complete_measurement_in_both_modes\nInvoking test: editor::cooperative_row_planning_rejects_stale_owners_in_both_modes\n",
+      "output": "\nrunning 3 tests\ntest editor::source_slice_measurement_failure_restores_full_source_in_both_modes ... ok\ntest editor::paragraph_overlap_failure_uses_complete_measurement_in_both_modes ... ok\ntest editor::cooperative_row_planning_rejects_stale_owners_in_both_modes ... ok\n\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 filtered out; finished in 1.71s\n\n",
+      "passed": true,
+      "tests": [
+        "__wbgt__components::editor::cooperative_row_planning_rejects_stale_owners_in_both_modes",
+        "__wbgt__components::editor::paragraph_overlap_failure_uses_complete_measurement_in_both_modes",
+        "__wbgt__components::editor::source_slice_measurement_failure_restores_full_source_in_both_modes"
+      ],
+      "servedFonts": {
+        "/fonts/MonaspaceNeon-v1.400.woff2": "6569968f448ae856ab5b57dff1f13b109b220ca8e3f664169e135fcb5c4f0721"
+      },
+      "libraryStartSuppressed": false,
+      "testModuleRoute": "/tests.js"
+    }
+  ],
+  "productionCases": 8,
+  "fullSourceChecks": 8,
+  "observations": {
+    "wrappedDenseInputViewportPaintMs": [
+      78.70000000298023,
+      78.29999999701977,
+      73.20000000298023,
+      80
+    ],
+    "wrappedHtmlInputViewportPaintMs": [
+      23.200000002980232,
+      20.700000002980232,
+      24.700000002980232,
+      22.799999997019768
+    ]
+  },
+  "interpretation": "The planner no longer traverses every immutable row body before its own reuse/grouping traversal. Native invariants and both-mode ownership/fallback contracts pass. Current wrapped timings remain material and these differing-artifact observations do not prove a general latency improvement. Broader traversal, allocation, geometry and startup work stays open."
+}

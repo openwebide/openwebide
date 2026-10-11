@@ -267,6 +267,15 @@ prepared only one token row per unit. Small rows now share the existing 64-recor
   ([receipt](editor-performance/cooperative-row-reuse-browser.json)). Total
   unchanged-row traversal, single-key byte costs, allocations and final row-table
   publication still need bounded work and production measurements.
+  Current/retained planning now trusts immutable core-built projection row ranges
+  rather than traversing every row body again before reuse and grouping. Core
+  invariants cover edits, folded Unicode LF/CRLF and bounded windows; 717 core
+  tests, eight ownership/fallback/geometry browser contracts and strict lint pass
+  ([receipt](editor-performance/row-key-proof-browser.json)). Eight production
+  edits preserve full source in both modes. Wrapped dense paint remains 73–80 ms
+  and wrapped HTML paint 21–25 ms; these observations use differing artifacts and
+  leave general latency, remaining traversal and allocation work open
+  ([samples](editor-performance/row-key-proof-production.jsonl)).
 - [ ] **Source, worker transport and storage:** finish external parser snapshots,
   changed-revision comparisons, header/capacity allocation,
   JavaScript string conversion, complete message decoding/publication,

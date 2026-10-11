@@ -808,6 +808,59 @@ mod tests {
     }
 
     #[test]
+    fn immutable_projection_bodies_remain_valid_through_edits_folds_and_windows() {
+        use crate::editor::{Document, Edit, FoldCommand, FoldRange, Selection};
+        fn check(projection: &super::FoldProjection) {
+            let mut expected = projection
+                .text()
+                .split_inclusive('\n')
+                .map(|row| {
+                    row.strip_suffix("\r\n")
+                        .or_else(|| row.strip_suffix('\n'))
+                        .unwrap_or(row)
+                })
+                .collect::<Vec<_>>();
+            if projection.text().is_empty() || projection.text().ends_with('\n') {
+                expected.push("");
+            }
+            let actual = (0..projection.lines().len())
+                .map(|row| projection.line_body(row).unwrap())
+                .collect::<Vec<_>>();
+            assert_eq!(actual, expected);
+            assert!(projection.line_body(projection.lines().len()).is_none());
+        }
+        for ending in ["\n", "\r\n"] {
+            let source = format!("文🦀\tend{ending}").repeat(1024);
+            let mut document = Document::new(source.clone());
+            let retained = document.projection();
+            document.set_fold_ranges(vec![FoldRange {
+                start_line: 40,
+                end_line: 60,
+            }]);
+            document.fold_command(FoldCommand::Toggle(40));
+            check(&document.projection());
+            document
+                .apply(
+                    vec![Edit::replace(0.."文".len(), "prefix 文\n")],
+                    vec![Selection::caret(0)],
+                    None,
+                )
+                .unwrap();
+            let edited = document.projection();
+            check(&retained);
+            assert_eq!(retained.text(), source);
+            check(&edited);
+            for head in [
+                0,
+                document.text().find("end").unwrap(),
+                document.text().len(),
+            ] {
+                check(&edited.input_context(Selection::caret(head), 4096).unwrap());
+            }
+        }
+    }
+
+    #[test]
     fn windowed_replacements_keep_complete_source_selections_and_line_endings() {
         let source = format!("before\r\n{}after\r\nlast", "row α🦀 kept\r\n".repeat(20));
         let begin = source.find("α").unwrap();

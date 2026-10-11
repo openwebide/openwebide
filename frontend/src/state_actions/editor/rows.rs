@@ -121,27 +121,11 @@ impl Hash for PaintRowKey<'_> {
 #[derive(Clone, Copy)]
 struct PaintRowKeys<'a>(&'a EditorRowPaint);
 impl<'a> PaintRowKeys<'a> {
-    fn new(paint: &'a EditorRowPaint) -> Option<Self> {
-        let rows = Self(paint);
-        rows.valid_range(0..rows.len()).then_some(rows)
-    }
-    fn valid_range(self, rows: std::ops::Range<usize>) -> bool {
-        rows.into_iter()
-            .all(|row| self.0.projection.line_body(row).is_some())
-    }
-    async fn cooperatively(paint: &'a EditorRowPaint, current: &impl Fn() -> bool) -> Option<Self> {
-        let rows = Self(paint);
-        let budget = openwebide_core::editor::MAX_MEASURE_ROWS
-            * openwebide_core::editor::MAX_MEASURE_BATCHES_PER_FRAME;
-        for start in (0..rows.len()).step_by(budget) {
-            if !current() || !rows.valid_range(start..(start + budget).min(rows.len())) {
-                return None;
-            }
-            if start + budget < rows.len() {
-                crate::util::yield_background_task().await;
-            }
-        }
-        current().then_some(rows)
+    fn new(paint: &'a EditorRowPaint) -> Self {
+        // FoldProjection owns immutable, core-built row ranges. Rechecking all
+        // slices here repeats that invariant for each current/retained plan.
+        // Row-key access remains bounded by the planning stages below.
+        Self(paint)
     }
     fn len(self) -> usize {
         self.0.projection.lines().len()
@@ -797,15 +781,18 @@ impl EditorActions {
             return None;
         }
         let eligible = || current() && self.row_paint_current(&paint);
-        let rows = PaintRowKeys::cooperatively(&paint, &eligible).await?;
+        if !eligible() {
+            return None;
+        }
+        let rows = PaintRowKeys::new(&paint);
         let budget = openwebide_core::editor::MAX_MEASURE_ROWS
             * openwebide_core::editor::MAX_MEASURE_BATCHES_PER_FRAME;
         let plan = if let Some(cache) = self.row_reuse_cache(&paint) {
-            let old = PaintRowKeys::cooperatively(&cache.paint, &eligible).await;
+            let old = PaintRowKeys::new(&cache.paint);
             if !eligible() {
                 return None;
             }
-            let reused = old.and_then(|old| {
+            let reused = (|| {
                 cache.rows.width()?;
                 Some((
                     old,
@@ -815,7 +802,7 @@ impl EditorActions {
                         &cache.rows,
                     )?,
                 ))
-            });
+            })();
             if let Some((old, mut reuse)) = reused {
                 while !reuse.is_complete() {
                     if !eligible() {
@@ -867,10 +854,10 @@ impl EditorActions {
         if !self.full_row_paint_ready() || !self.row_paint_current(&paint) {
             return None;
         }
-        let current_rows = PaintRowKeys::new(&paint)?;
+        let current_rows = PaintRowKeys::new(&paint);
         let reused = self.row_reuse_cache(&paint).and_then(|cache| {
             let old = &cache.paint;
-            let previous_rows = PaintRowKeys::new(old)?;
+            let previous_rows = PaintRowKeys::new(old);
             RowMeasurementPlan::reuse_layout_with(
                 previous_rows.len(),
                 current_rows.len(),
