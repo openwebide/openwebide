@@ -174,8 +174,29 @@ impl<D: Db> Store<D> {
         self.db
             .transaction(|tx| async move {
                 let store = Store::new(tx);
+                let base_name = openwebide_core::model_setup::server_name(&probe.base_url);
+                let existing = store.list_connections().await?;
+                let mut generated_name = base_name.clone();
+                let mut suffix = 2;
+                while existing.iter().any(|server| {
+                    Some(server.id) != probe.server_id && server.name == generated_name
+                }) {
+                    generated_name = format!("{base_name} ({suffix})");
+                    suffix += 1;
+                }
                 let server = if let Some(id) = probe.server_id {
                     let mut connection = store.get_connection(id).await?;
+                    if connection.name
+                        == openwebide_core::model_setup::server_name(&connection.base_url)
+                        || connection.name
+                            == format!(
+                                "{} @ {}",
+                                connection.kind.display_name(),
+                                connection.base_url
+                            )
+                    {
+                        connection.name.clone_from(&generated_name);
+                    }
                     connection.kind = probe.kind;
                     connection.base_url.clone_from(&probe.base_url);
                     store.update_connection(&connection).await?;
@@ -183,7 +204,7 @@ impl<D: Db> Store<D> {
                 } else {
                     store
                         .insert_connection(&NewConnection {
-                            name: format!("{} @ {}", probe.kind.display_name(), probe.base_url),
+                            name: generated_name,
                             kind: probe.kind,
                             base_url: probe.base_url.clone(),
                             model: None,

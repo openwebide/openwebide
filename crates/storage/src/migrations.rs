@@ -22,7 +22,7 @@ use crate::StorageError;
 use crate::db::Db;
 
 /// The highest schema version this build knows how to apply.
-pub const SCHEMA_VERSION: i64 = 57;
+pub const SCHEMA_VERSION: i64 = 58;
 
 pub const MIGRATIONS: &[&str] = &[
     "CREATE TABLE IF NOT EXISTS settings (
@@ -683,6 +683,48 @@ async fn apply_step<D: Db>(
         }
         57 => {
             db.execute("CREATE TABLE IF NOT EXISTS plugin_update_checks (user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, checked_at INTEGER, next_due INTEGER NOT NULL DEFAULT 0, host_id TEXT NOT NULL DEFAULT '', lease TEXT NOT NULL DEFAULT '', lease_expires_at INTEGER NOT NULL DEFAULT 0, failures TEXT NOT NULL DEFAULT '[]', failures_count INTEGER NOT NULL DEFAULT 0)", &[]).await?;
+            Ok(())
+        }
+        58 => {
+            use crate::db::DbValue;
+            let rows = db
+                .execute(
+                    "SELECT id, name, kind, base_url FROM connections ORDER BY id",
+                    &[],
+                )
+                .await?;
+            let mut names: std::collections::BTreeSet<String> = rows
+                .rows
+                .iter()
+                .map(|row| row.get_text(1).map(str::to_owned))
+                .collect::<Result<_, _>>()?;
+            for row in rows.rows {
+                let id = row.get_int(0)?;
+                let name = row.get_text(1)?;
+                let provider = if row.get_text(2)? == "ollama" {
+                    "Ollama"
+                } else {
+                    "OpenAI-compatible"
+                };
+                let url = row.get_text(3)?;
+                if name != format!("{provider} @ {url}") {
+                    continue;
+                }
+                let base = openwebide_core::model_setup::server_name(url);
+                let mut candidate = base.clone();
+                let mut suffix = 2;
+                while names.contains(&candidate) {
+                    candidate = format!("{base} ({suffix})");
+                    suffix += 1;
+                }
+                db.execute(
+                    "UPDATE connections SET name = ? WHERE id = ?",
+                    &[DbValue::Text(candidate.clone()), DbValue::Int(id)],
+                )
+                .await?;
+                names.remove(name);
+                names.insert(candidate);
+            }
             Ok(())
         }
         other => Err(StorageError::Db(format!("unknown migration step {other}"))),

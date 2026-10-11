@@ -3673,6 +3673,59 @@ mod tests {
         });
     }
     #[test]
+    fn generated_server_names_migrate_preserving_custom_names_and_url_identity() {
+        block_on(async {
+            let db = RusqliteDb::open_in_memory().unwrap();
+            migrations::apply_through(&db, 57).await.unwrap();
+            for (name, kind, url) in [
+                (
+                    "OpenAI-compatible @ https://host.containers.internal:8080/v1",
+                    "llamacpp",
+                    "https://host.containers.internal:8080/v1",
+                ),
+                (
+                    "Ollama @ http://localhost:11434",
+                    "ollama",
+                    "http://localhost:11434",
+                ),
+                ("My server", "llamacpp", "https://custom:8080/v1"),
+                (
+                    "OpenAI-compatible @ http://host.containers.internal:8080/v1",
+                    "llamacpp",
+                    "http://host.containers.internal:8080/v1",
+                ),
+            ] {
+                db.execute(
+                    "INSERT INTO connections (name,kind,base_url) VALUES (?,?,?)",
+                    &[
+                        DbValue::Text(name.into()),
+                        DbValue::Text(kind.into()),
+                        DbValue::Text(url.into()),
+                    ],
+                )
+                .await
+                .unwrap();
+            }
+            migrations::apply_through(&db, 58).await.unwrap();
+            let store = Store::new(db);
+            let rows = store.list_connections().await.unwrap();
+            assert!(
+                rows.iter()
+                    .any(|row| row.name == "host.containers.internal:8080/v1"
+                        && row.base_url == "https://host.containers.internal:8080/v1")
+            );
+            assert!(
+                rows.iter()
+                    .any(|row| row.name == "host.containers.internal:8080/v1 (2)")
+            );
+            assert!(rows.iter().any(|row| row.name == "localhost:11434"));
+            assert!(rows.iter().any(|row| row.name == "My server"));
+            migrations::apply_through(&store.db, 58).await.unwrap();
+            assert_eq!(store.list_connections().await.unwrap(), rows);
+        });
+    }
+
+    #[test]
     fn test_migration_dedups_existing_projects() {
         let db = RusqliteDb::open_in_memory().unwrap();
         block_on(async {

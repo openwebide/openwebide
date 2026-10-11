@@ -4,6 +4,16 @@ use std::collections::BTreeMap;
 
 pub const DEFAULT_AUTO_COMPACT_THRESHOLD: u8 = 85;
 
+/// Compact generated server label: authority, optional port, and API path.
+pub fn server_name(base_url: &str) -> String {
+    base_url
+        .strip_prefix("https://")
+        .or_else(|| base_url.strip_prefix("http://"))
+        .unwrap_or(base_url)
+        .trim_end_matches('/')
+        .to_owned()
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModelSelection {
     pub server_id: i64,
