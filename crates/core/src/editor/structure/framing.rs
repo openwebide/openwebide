@@ -179,6 +179,21 @@ impl StructureFrameDecoding {
             {
                 return None;
             }
+            // The aggregate record budget is checked before any reservation.
+            // Appending each bounded fragment then moves only its own records.
+            self.scopes.try_reserve_exact(header.lists[0].count).ok()?;
+            self.selections
+                .try_reserve_exact(header.lists[1].count)
+                .ok()?;
+            self.opaque_starts
+                .try_reserve_exact(header.lists[2].count)
+                .ok()?;
+            self.protected
+                .try_reserve_exact(header.lists[3].count)
+                .ok()?;
+            self.brackets
+                .try_reserve_exact(header.lists[4].count)
+                .ok()?;
             self.header = Some(header);
             return Some(());
         }
@@ -253,5 +268,79 @@ impl StructureFrameDecoding {
                 brackets: self.brackets,
             })
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn admitted_structural_lists_do_not_reallocate_across_fragments() {
+        let count = 193;
+        let expected = StructureData {
+            language: Language::Rust,
+            scopes: (0..count).map(|i| (i..i + 1, Language::Rust)).collect(),
+            selections: (0..count).map(|i| i..i + 1).collect(),
+            opaque_starts: (0..count).collect(),
+            protected: (0..count)
+                .map(|i| (i..i + 1, false, RegionKind::String))
+                .collect(),
+            brackets: (0..count).map(|i| (i, '(', None)).collect(),
+        };
+        let reference = serde_json::to_value(StructurePublication::Full(expected.clone())).unwrap();
+        let mut frames = StructureFrames::new(StructurePublication::Full(expected));
+        let mut decoder = StructureFrameDecoding::default();
+        let mut storage = None;
+        while let Some(frame) = frames.next() {
+            decoder.push(frame, count * 5).unwrap();
+            let capacities = [
+                decoder.scopes.capacity(),
+                decoder.selections.capacity(),
+                decoder.opaque_starts.capacity(),
+                decoder.protected.capacity(),
+                decoder.brackets.capacity(),
+            ];
+            if let Some(previous) = storage {
+                assert_eq!(
+                    capacities, previous,
+                    "accumulated structural lists grew during a bounded append"
+                );
+            }
+            storage = Some(capacities);
+        }
+        assert_eq!(
+            serde_json::to_value(decoder.finish().unwrap()).unwrap(),
+            reference
+        );
+    }
+
+    #[test]
+    fn over_budget_structural_headers_allocate_no_record_storage() {
+        let mut decoder = StructureFrameDecoding::default();
+        let frame = StructureFrame {
+            header: Some(Header {
+                language: Language::Rust,
+                changes: false,
+                lists: std::array::from_fn(|_| ListHeader {
+                    count: usize::MAX,
+                    patch: None,
+                }),
+            }),
+            field: None,
+            records: None,
+        };
+        assert!(decoder.push(frame, 100_000).is_none());
+        assert_eq!(
+            [
+                decoder.scopes.capacity(),
+                decoder.selections.capacity(),
+                decoder.opaque_starts.capacity(),
+                decoder.protected.capacity(),
+                decoder.brackets.capacity()
+            ],
+            [0; 5]
+        );
+        assert!(decoder.finish().is_none());
     }
 }

@@ -300,10 +300,17 @@ prepared only one token row per unit. Small rows now share the existing 64-recor
   ([baseline](editor-performance/framed-transport-current-production-summary.json),
   [samples](editor-performance/framed-transport-current-production.jsonl)). These
   are current-version observations, not evidence of an improvement.
-  Vector/string capacity growth, JavaScript string conversion and per-row
-  immutable allocation/copying still require bounded work and production
-  latency/memory measurements. No end-to-end latency or memory gain is
-  established here.
+  Framed receivers now reserve admitted source/fold/row/span and structural
+  counts once, using fallible allocations before bounded appends. Full/warm,
+  dense/long-row and malformed-header contracts verify stable capacity and
+  rejection before over-budget record allocation
+  ([receipt](editor-performance/frame-capacity-browser.json)).
+  Initial reservation costs, vector/string growth outside frame decoding,
+  JavaScript string conversion and per-row immutable allocation/copying still
+  require bounded work and production latency/memory measurements. Twelve
+  production observations compare against the previous checkpoint without
+  establishing an end-to-end latency or process-memory gain
+  ([comparison](editor-performance/frame-capacity-production-summary.json)).
   Bound folded/bounded projection assembly, row/coordinate copies, changed guide
   copies, storage suffix byte/coordinate shifts and long-row admission scans.
   Revisit measured storage candidates using actual viewport/worker access patterns,

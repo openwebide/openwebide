@@ -1,0 +1,60 @@
+{
+  "scope": "Shared Rust framed transaction decoders; reserve admitted byte/record counts fallibly before bounded fragment appends",
+  "sourceSha256": {
+    "crates/core/src/editor/syntax/transfer/framing.rs": "21e069c3bfd655ea3390cbc7be730b9c2251b35f09138864cbe0d6cc0be15f33",
+    "crates/core/src/editor/structure/framing.rs": "5a3953afc7fdd2bf001a76721ffd43ca737eefe99c7289ecfaac7f13bc5e11ec",
+    "frontend/src/editor_worker.rs": "3f2778cf71b33d7ccad14c267298700fdc5048c767b5637f9a8e80048d18635b",
+    "tools/measure-editor-view.py": "80f8ea5e6e670c294f308dc515d992350acde5bc0c52c63d24861e67f44d9899"
+  },
+  "coreParserTests": {
+    "passed": 710,
+    "failed": 0,
+    "ignored": 1,
+    "command": "cargo test -p openwebide-core --release --features editor-parser"
+  },
+  "capacityContracts": [
+    "Full/warm Rust, HTML and Markdown replies retain capacities across source/fold/row fragments",
+    "Long span rows, dense empty rows, escaped source and source boundary retain capacities across fragments",
+    "All five structural lists retain capacity across multiple fragments",
+    "Over-budget/overflow headers allocate no record storage before rejection",
+    "Existing incomplete, malformed, reordered, duplicate and wrong-owner transactions remain rejected"
+  ],
+  "officialWorkerRunner": {
+    "passed": 3,
+    "failed": 0,
+    "runnerVersion": "0.2.128",
+    "timeoutSeconds": 300,
+    "tests": [
+      "dropped_framed_requests_release_partial_transactions",
+      "dedicated_framed_worker_and_cooperative_adapter_preserve_language_contracts",
+      "bounded_worker_routing_preserves_complete_reply_validation"
+    ]
+  },
+  "browser": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "console": "Invoking test: editor::worker_source_resync_is_bounded_and_rejects_superseded_ownership_in_both_modes\nInvoking test: editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes\nInvoking test: editor::cooperative_worker_row_index_preserves_dense_rows_in_both_modes\nInvoking test: editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes\nInvoking test: editor::config_worker_paint_is_cached_lossless_and_source_guarded_in_both_modes\n",
+    "output": "\nrunning 5 tests\ntest editor::worker_source_resync_is_bounded_and_rejects_superseded_ownership_in_both_modes ... ok\ntest editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes ... ok\ntest editor::cooperative_worker_row_index_preserves_dense_rows_in_both_modes ... ok\ntest editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes ... ok\ntest editor::config_worker_paint_is_cached_lossless_and_source_guarded_in_both_modes ... ok\n\ntest result: ok. 5 passed; 0 failed; 0 ignored; 0 filtered out; finished in 3.89s\n\n",
+    "passed": true,
+    "tests": [
+      "__wbgt__components::editor::config_worker_paint_is_cached_lossless_and_source_guarded_in_both_modes",
+      "__wbgt__components::editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes",
+      "__wbgt__components::editor::cooperative_worker_row_index_preserves_dense_rows_in_both_modes",
+      "__wbgt__components::editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes",
+      "__wbgt__components::editor::worker_source_resync_is_bounded_and_rejects_superseded_ownership_in_both_modes"
+    ],
+    "servedFonts": {},
+    "libraryStartSuppressed": false,
+    "testModuleRoute": "/tests.js"
+  },
+  "strictLint": {
+    "nativeCore": true,
+    "wasmFrontendAllTargets": true
+  },
+  "productionBuild": "NO_COLOR=true spin build; all components completed successfully",
+  "productionSamples": 12,
+  "remaining": [
+    "Initial allocator costs and capacity growth outside framed decoders",
+    "Token/string materialization, source/storage/history, geometry and browser-wide performance",
+    "Full final CI, physical PWA input, permission and accessibility gates"
+  ]
+}

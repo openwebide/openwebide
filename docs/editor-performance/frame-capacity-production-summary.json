@@ -1,0 +1,160 @@
+{
+  "scope": "Admitted framed decoder capacity reservations; production observations against the preceding viewport checkpoint",
+  "baseline": "viewport-row-layout-production.jsonl",
+  "candidate": "frame-capacity-production.jsonl",
+  "matchedConditions": {
+    "backendWasmSha256": true,
+    "measurementImage": true,
+    "measurementScriptSha256": true,
+    "browser": true,
+    "cgroupCpuMax": true,
+    "cgroupMemoryMax": true
+  },
+  "summaries": [
+    {
+      "case": "dense-rows",
+      "mode": "local",
+      "samplesPerVersion": 2,
+      "beforeMedian": {
+        "inputViewportPaintMs": 15.100000001490116,
+        "inputSyntaxReadyMs": 46.25,
+        "coldSyntaxReadyMs": 1332.4999999925494,
+        "peakChromePssKiB": 701077.0,
+        "wasmCommittedBytes": 32178176.0,
+        "afterInputWasmCommittedBytes": 34209792.0,
+        "maxLongTaskMs": 123.5
+      },
+      "afterMedian": {
+        "inputViewportPaintMs": 15.149999998509884,
+        "inputSyntaxReadyMs": 46.900000005960464,
+        "coldSyntaxReadyMs": 1339.8999999985099,
+        "peakChromePssKiB": 699399.0,
+        "wasmCommittedBytes": 32178176.0,
+        "afterInputWasmCommittedBytes": 34013184.0,
+        "maxLongTaskMs": 131.0
+      }
+    },
+    {
+      "case": "dense-rows",
+      "mode": "remote",
+      "samplesPerVersion": 2,
+      "beforeMedian": {
+        "inputViewportPaintMs": 15.449999995529652,
+        "inputSyntaxReadyMs": 45.850000001490116,
+        "coldSyntaxReadyMs": 1261.0500000044703,
+        "peakChromePssKiB": 677824.0,
+        "wasmCommittedBytes": 30572544.0,
+        "afterInputWasmCommittedBytes": 34570240.0,
+        "maxLongTaskMs": 97.0
+      },
+      "afterMedian": {
+        "inputViewportPaintMs": 15.300000004470348,
+        "inputSyntaxReadyMs": 47.04999999701977,
+        "coldSyntaxReadyMs": 1285.25,
+        "peakChromePssKiB": 682422.0,
+        "wasmCommittedBytes": 30441472.0,
+        "afterInputWasmCommittedBytes": 34865152.0,
+        "maxLongTaskMs": 94.5
+      }
+    },
+    {
+      "case": "embedded-html",
+      "mode": "local",
+      "samplesPerVersion": 2,
+      "beforeMedian": {
+        "inputViewportPaintMs": 20.549999997019768,
+        "inputSyntaxReadyMs": 43.49999999254942,
+        "coldSyntaxReadyMs": 1169.7000000029802,
+        "peakChromePssKiB": 669224.0,
+        "wasmCommittedBytes": 23527424.0,
+        "afterInputWasmCommittedBytes": 23527424.0,
+        "maxLongTaskMs": 66.5
+      },
+      "afterMedian": {
+        "inputViewportPaintMs": 21.599999994039536,
+        "inputSyntaxReadyMs": 48.1499999910593,
+        "coldSyntaxReadyMs": 2346.8500000089407,
+        "peakChromePssKiB": 705456.5,
+        "wasmCommittedBytes": 23527424.0,
+        "afterInputWasmCommittedBytes": 23527424.0,
+        "maxLongTaskMs": 129.0
+      }
+    },
+    {
+      "case": "embedded-html",
+      "mode": "remote",
+      "samplesPerVersion": 2,
+      "beforeMedian": {
+        "inputViewportPaintMs": 21.700000002980232,
+        "inputSyntaxReadyMs": 46.29999999701977,
+        "coldSyntaxReadyMs": 1241.6000000014901,
+        "peakChromePssKiB": 693752.5,
+        "wasmCommittedBytes": 23592960.0,
+        "afterInputWasmCommittedBytes": 23592960.0,
+        "maxLongTaskMs": 72.5
+      },
+      "afterMedian": {
+        "inputViewportPaintMs": 19.600000001490116,
+        "inputSyntaxReadyMs": 42.400000005960464,
+        "coldSyntaxReadyMs": 1139.25,
+        "peakChromePssKiB": 682416.5,
+        "wasmCommittedBytes": 23461888.0,
+        "afterInputWasmCommittedBytes": 23592960.0,
+        "maxLongTaskMs": 65.0
+      }
+    },
+    {
+      "case": "embedded-markdown",
+      "mode": "local",
+      "samplesPerVersion": 2,
+      "beforeMedian": {
+        "inputViewportPaintMs": 11.899999998509884,
+        "inputSyntaxReadyMs": 58.5,
+        "coldSyntaxReadyMs": 1169.0000000074506,
+        "peakChromePssKiB": 670855.5,
+        "wasmCommittedBytes": 23068672.0,
+        "afterInputWasmCommittedBytes": 23330816.0,
+        "maxLongTaskMs": 64.0
+      },
+      "afterMedian": {
+        "inputViewportPaintMs": 11.799999997019768,
+        "inputSyntaxReadyMs": 61.44999999552965,
+        "coldSyntaxReadyMs": 1213.5999999940395,
+        "peakChromePssKiB": 713225.5,
+        "wasmCommittedBytes": 23068672.0,
+        "afterInputWasmCommittedBytes": 23330816.0,
+        "maxLongTaskMs": 68.0
+      }
+    },
+    {
+      "case": "embedded-markdown",
+      "mode": "remote",
+      "samplesPerVersion": 2,
+      "beforeMedian": {
+        "inputViewportPaintMs": 11.650000005960464,
+        "inputSyntaxReadyMs": 60.30000000447035,
+        "coldSyntaxReadyMs": 1215.1499999985099,
+        "peakChromePssKiB": 662667.0,
+        "wasmCommittedBytes": 23199744.0,
+        "afterInputWasmCommittedBytes": 23429120.0,
+        "maxLongTaskMs": 67.0
+      },
+      "afterMedian": {
+        "inputViewportPaintMs": 11.799999997019768,
+        "inputSyntaxReadyMs": 59.45000000298023,
+        "coldSyntaxReadyMs": 1192.1499999985099,
+        "peakChromePssKiB": 667710.5,
+        "wasmCommittedBytes": 23068672.0,
+        "afterInputWasmCommittedBytes": 23330816.0,
+        "maxLongTaskMs": 65.5
+      }
+    }
+  ],
+  "limits": "Unchanged source, record, frame, readiness, input-paint, browser and font limits; untraced Chrome, four CPU quota, 10 GiB memory quota; process-tree PSS sampled every 200 ms",
+  "limitations": [
+    "Two sequential samples per case/mode/version; nonrandomized noisy observations do not establish an end-to-end latency or process-memory gain",
+    "Stable capacity is proven by frame tests; these production workloads do not close initial allocator, token/string materialization, source/storage/history or geometry work",
+    "Local samples use database recovery without physical directory handles",
+    "Physical PWA input, permission, accessibility and final integrated CI remain full-goal gates"
+  ]
+}

@@ -326,6 +326,11 @@ impl SyntaxReplyFrameDecoding {
                 if self.records > MAX_ANALYSIS_RECORDS {
                     return None;
                 }
+                // Counts are admitted before allocating. Reserve once so later
+                // bounded fragments never recopy an accumulated transaction.
+                self.source.try_reserve_exact(header.source.bytes()).ok()?;
+                self.folds.try_reserve_exact(header.folds).ok()?;
+                self.rows.try_reserve_exact(header.rows.unwrap_or(0)).ok()?;
             }
             self.status = Some(status);
             self.header = analysis;
@@ -403,7 +408,9 @@ impl SyntaxReplyFrameDecoding {
                 if self.records > MAX_ANALYSIS_RECORDS {
                     return None;
                 }
-                self.large = Some((spans, Vec::new()));
+                let mut values = Vec::new();
+                values.try_reserve_exact(spans).ok()?;
+                self.large = Some((spans, values));
             }
             Part::Spans(spans) if self.phase == 4 => {
                 let (count, values) = self.large.as_mut()?;
@@ -484,9 +491,35 @@ mod tests {
     }
     fn decode(messages: &[String], ticket: u32) -> Option<SyntaxReply> {
         let mut decoder = SyntaxReplyFrameDecoding::new(ticket);
+        let mut storage = None;
+        let mut spans = None;
         for (index, message) in messages.iter().enumerate() {
             if decoder.push(message)? && index + 1 != messages.len() {
                 return None;
+            }
+            let capacities = (
+                decoder.source.capacity(),
+                decoder.folds.capacity(),
+                decoder.rows.capacity(),
+            );
+            if let Some(previous) = storage {
+                assert_eq!(
+                    capacities, previous,
+                    "accumulated transaction storage grew during a bounded append"
+                );
+            }
+            storage = Some(capacities);
+            if let Some((_, values)) = &decoder.large {
+                if let Some(previous) = spans {
+                    assert_eq!(
+                        values.capacity(),
+                        previous,
+                        "accumulated long-row storage grew during a bounded append"
+                    );
+                }
+                spans = Some(values.capacity());
+            } else {
+                spans = None;
             }
         }
         decoder.finish()
@@ -631,6 +664,14 @@ mod tests {
         bad["part"]["Begin"]["analysis"]["folds"] = serde_json::json!(MAX_ANALYSIS_RECORDS + 1);
         let mut decoder = SyntaxReplyFrameDecoding::new(43);
         assert!(decoder.push(&bad.to_string()).is_none());
+        assert_eq!(
+            (
+                decoder.source.capacity(),
+                decoder.folds.capacity(),
+                decoder.rows.capacity()
+            ),
+            (0, 0, 0)
+        );
         let mut decoder = SyntaxReplyFrameDecoding::new(43);
         decoder.push(&messages[0]).unwrap();
         let mut bad = serde_json::from_str::<serde_json::Value>(&messages[1]).unwrap();
