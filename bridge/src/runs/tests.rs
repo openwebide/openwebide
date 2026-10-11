@@ -2161,3 +2161,95 @@ async fn mcp_tools_promote_chat_runs_require_approval_and_release_processes() {
     tokio::task::yield_now().await;
     assert!(mcp.invoke("user:1", &catalog, &call).await.is_err());
 }
+
+pub(crate) async fn assert_deferred_mcp_run(
+    transport: crate::mcp::host::NativeTransport,
+    catalog: openwebide_core::mcp::Catalog,
+) {
+    struct Unused;
+    impl openwebide_agent::ToolExecutor for Unused {
+        fn describe(&self, call: &ToolCall) -> String {
+            call.name.clone()
+        }
+        async fn execute(&self, _: &ToolCall) -> openwebide_agent::ToolOutcome {
+            panic!("Discovery must remain inside the agent loop; MCP must use its transport")
+        }
+    }
+    struct Approve(Arc<std::sync::atomic::AtomicUsize>);
+    impl PermissionGate for Approve {
+        async fn approve(&self, _: &ToolCall) -> bool {
+            self.0.fetch_add(1, Ordering::SeqCst);
+            true
+        }
+    }
+    let name = catalog.tools[0].definition.name.clone();
+    let requests = Arc::new(Mutex::new(Vec::new()));
+    let provider = FakeProvider {
+        tool_requests: requests.clone(),
+        tools: Mutex::new(vec![
+            vec![Ok(ToolStreamChunk::Response(ChatResponse::ToolCalls(
+                vec![ToolCall {
+                    id: "discover".into(),
+                    name: "tool_search".into(),
+                    arguments: serde_json::json!({"query":format!("select:{name}")}).to_string(),
+                }],
+            )))],
+            vec![Ok(ToolStreamChunk::Response(ChatResponse::ToolCalls(
+                vec![ToolCall {
+                    id: "invoke".into(),
+                    name: name.clone(),
+                    arguments: r#"{"text":"deferred-result"}"#.into(),
+                }],
+            )))],
+            vec![Ok(ToolStreamChunk::Response(ChatResponse::Text(
+                "done".into(),
+            )))],
+        ]),
+        ..Default::default()
+    };
+    let mut request = plan(RunKind::Chat, "Use the configured MCP tool").request;
+    request.model_settings.context_limit = Some(32768);
+    request.tools = openwebide_agent::vfs_tools();
+    request
+        .tools
+        .extend(catalog.tools.iter().map(|tool| tool.definition.clone()));
+    let approvals = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let events = openwebide_agent::run(
+        provider,
+        openwebide_agent::mcp::McpTools {
+            executor: Unused,
+            transport,
+            catalog: Arc::new(catalog),
+        },
+        request,
+        AgentConfig::default(),
+        openwebide_agent::NoopCancel,
+        Approve(approvals.clone()),
+        1,
+    )
+    .collect::<Vec<_>>()
+    .await;
+    assert_eq!(approvals.load(Ordering::SeqCst), 1);
+    assert!(
+        !events
+            .iter()
+            .any(|event| matches!(event, openwebide_agent::AgentEvent::Error(_)))
+    );
+    assert!(events.iter().any(|event| matches!(event, openwebide_agent::AgentEvent::ToolResult { name: tool, ok:true,.. } if *tool == name)));
+    let requests = requests.lock().unwrap();
+    assert!(
+        requests[0]
+            .tools
+            .iter()
+            .any(|tool| tool.name == "tool_search")
+    );
+    assert!(!requests[0].tools.iter().any(|tool| tool.name == name));
+    assert!(requests[1].tools.iter().any(|tool| tool.name == name));
+    assert!(
+        requests[2]
+            .messages
+            .iter()
+            .any(|message| message.role == Role::Tool
+                && message.content.contains("deferred-result:configured:"))
+    );
+}

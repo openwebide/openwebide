@@ -813,6 +813,13 @@ impl<E: ToolExecutor, W: WebClient, B: BridgeClient> SessionToolExecutor<E, W, B
 impl<E: ToolExecutor + Sync, W: WebClient, B: BridgeClient> ToolExecutor
     for SessionToolExecutor<E, W, B>
 {
+    fn reserve_tool_call(&self) -> Result<(), String> {
+        self.workspace.as_ref().map_or_else(
+            || self.web.reserve_tool_call(),
+            ToolExecutor::reserve_tool_call,
+        )
+    }
+
     fn has_context(&self) -> bool {
         true
     }

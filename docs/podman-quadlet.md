@@ -17,7 +17,7 @@ For Git over SSH, see [agent forwarding and public SSH configuration](git-ssh.md
 Download `openwebide.image` and
 `openwebide.container` from [GitHub Releases](https://github.com/openwebide/openwebide/releases).
 The image unit tracks its release channel (`stable` for stable releases, or
-`alpha`/`preview` for prereleases); no checkout or build is needed.
+`nightly`/`preview` for prereleases); no checkout or build is needed.
 Repository templates in `deploy/` default to `stable`.
 
 ```sh
@@ -121,7 +121,7 @@ See [Podman's automatic-update documentation](https://docs.podman.io/en/latest/m
 
 Keep `stable` to receive new releases automatically. A `v1.0.0` tag or digest stays
 on that version; for manual upgrades, pin the image and remove `AutoUpdate=registry`.
-Choose `alpha` or `preview` to follow [prerelease updates](releases.md#alpha-preview-and-stable-channels).
+Choose `nightly` or `preview` to follow [prerelease updates](releases.md#nightly-preview-and-stable-channels).
 Automatic updates restart the app and may interrupt active runs. Keep regular data
 backups using the [release guide](releases.md#upgrade-and-restore).
 

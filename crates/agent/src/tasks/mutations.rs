@@ -49,6 +49,9 @@ fn mutates(call: &ToolCall) -> bool {
     )
 }
 impl<E: ToolExecutor + Sync> ToolExecutor for MutationExecutor<E> {
+    fn reserve_tool_call(&self) -> Result<(), String> {
+        self.inner.reserve_tool_call()
+    }
     fn has_context(&self) -> bool {
         self.inner.has_context()
     }

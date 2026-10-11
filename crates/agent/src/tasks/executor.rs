@@ -47,6 +47,9 @@ fn error(content: String) -> ToolOutcome {
     }
 }
 impl<E: ToolExecutor + Sync + 'static, H: TaskHost> ToolExecutor for TaskExecutor<E, H> {
+    fn reserve_tool_call(&self) -> Result<(), String> {
+        self.budget.reserve_tool()
+    }
     fn has_context(&self) -> bool {
         self.inner.has_context()
     }

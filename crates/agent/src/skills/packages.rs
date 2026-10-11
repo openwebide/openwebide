@@ -60,6 +60,9 @@ fn reader_call(call: &ToolCall) -> Option<ToolCall> {
     Some(call)
 }
 impl<E: ToolExecutor + Sync> ToolExecutor for PackageSkillTools<E> {
+    fn reserve_tool_call(&self) -> Result<(), String> {
+        self.inner.executor.reserve_tool_call()
+    }
     fn has_context(&self) -> bool {
         self.inner.executor.has_context()
     }

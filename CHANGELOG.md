@@ -8,11 +8,13 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Defer large optional tool schemas through run-scoped `tool_search` in the shared agent loop. Keep core file/search/shell tools loaded, activate selected schemas on the next turn, bound the active optional set, and preserve run authority and mutation approvals in server and paired-host runs.
+- Rename the rolling main-build image channel to `nightly`, alongside `preview` and `stable`. Commit-specific and previously published versioned image tags are unchanged; installations following `alpha` should switch to `nightly`.
 - Validate generated Quadlet services against the `stable` release image channel, matching the deployment configuration.
 
 - Forward one-finger drags in the editable editor to the shared document scroll surface, preserving taps and multi-touch gestures and rejecting stale file/account events in both project modes.
 
-- Publish rolling `alpha` container images from successful main builds, with commit-specific image tags. Share CI checks with release builds, push the exact smoke-tested images, and reserve standalone bridge downloads for tagged releases. Use `preview` for RC tags and `stable` for stable versions, with no legacy channel aliases.
+- Publish rolling `nightly` container images from successful main builds, with commit-specific image tags. Share CI checks with release builds, push the exact smoke-tested images, and reserve standalone bridge downloads for tagged releases. Use `preview` for RC tags and `stable` for stable versions, with no legacy channel aliases.
 
 - Prevent cached API responses and delayed unauthorized file/chat requests from expiring a fresh login. Clear the expired-session notice after sign-in and display the shared logo and Open WebIDE branding on the account page.
 

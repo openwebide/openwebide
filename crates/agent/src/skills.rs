@@ -233,6 +233,9 @@ impl<E, S: SkillStore> SkillTools<E, S> {
     }
 }
 impl<E: ToolExecutor + Sync, S: SkillStore> ToolExecutor for SkillTools<E, S> {
+    fn reserve_tool_call(&self) -> Result<(), String> {
+        self.executor.reserve_tool_call()
+    }
     fn has_context(&self) -> bool {
         self.executor.has_context()
     }

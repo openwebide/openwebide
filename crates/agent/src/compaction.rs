@@ -12,6 +12,32 @@ impl CompactionSource for NoopCompactionSource {}
 pub fn conservative_tokens(request: &ChatRequest) -> usize {
     openwebide_core::context::conservative_tokens(request)
 }
+pub(crate) async fn resolve_limit<P: LlmProvider, S: CompactionSource>(
+    provider: &P,
+    source: &S,
+    request: &mut ChatRequest,
+) -> Option<usize> {
+    if let Some(limit) = request
+        .model_settings
+        .context_limit
+        .filter(|limit| *limit > 0)
+    {
+        return Some(limit);
+    }
+    let detected = if source.available() {
+        source.context_limit(request).await
+    } else {
+        provider
+            .context_limit(request.model.as_deref())
+            .await
+            .ok()
+            .flatten()
+    }
+    .filter(|limit| *limit > 0);
+    request.model_settings.context_limit = detected;
+    detected
+}
+
 fn response_reserve(request: &ChatRequest, limit: usize) -> usize {
     request
         .model_settings
@@ -79,31 +105,12 @@ async fn prepare_with<P: LlmProvider, S: CompactionSource>(
     } else {
         request.model_settings.auto_compact_threshold.unwrap_or(85)
     };
-    let limit = match request.model_settings.context_limit {
-        Some(limit) => limit,
-        None => {
-            let detected = if source.available() {
-                source.context_limit(request).await
-            } else {
-                provider
-                    .context_limit(request.model.as_deref())
-                    .await
-                    .ok()
-                    .flatten()
-            };
-            let Some(limit) = detected.filter(|limit| *limit > 0) else {
-                return if manual {
-                    Err(
-                        "Cannot compact until the model context limit is configured or detected."
-                            .into(),
-                    )
-                } else {
-                    Ok(None)
-                };
-            };
-            request.model_settings.context_limit = Some(limit);
-            limit
-        }
+    let Some(limit) = resolve_limit(provider, source, request).await else {
+        return if manual {
+            Err("Cannot compact until the model context limit is configured or detected.".into())
+        } else {
+            Ok(None)
+        };
     };
     let reserve = response_reserve(request, limit);
     if reserve >= limit {

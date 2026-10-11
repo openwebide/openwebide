@@ -179,6 +179,11 @@ async fn mcp_http_contract_on_server_and_paired_hosts() {
     use http_body_util::{BodyExt, Full};
     for paired in [false, true] {
         let (dir, mcp) = fixture();
+        let script = SERVER.replace(
+            "Echo input",
+            &format!("Echo input {}", "details ".repeat(1500)),
+        );
+        std::fs::write(dir.path().join("server.py"), script).unwrap();
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let port = listener.local_addr().unwrap().port();
         let secret: Arc<str> = "this_is_a_very_long_dummy_secret_32_bytes_min".into();
@@ -187,7 +192,7 @@ async fn mcp_http_contract_on_server_and_paired_hosts() {
             secret.clone(),
             paired.then(|| "paired-token".into()),
         );
-        config.mcp = mcp;
+        config.mcp = mcp.clone();
         config.backend_url = "http://127.0.0.1:9/api".into();
         let (stop, stopped) = tokio::sync::oneshot::channel();
         let server = tokio::spawn(crate::run_server_until(listener, config, async {
@@ -232,6 +237,15 @@ async fn mcp_http_contract_on_server_and_paired_hosts() {
         assert_eq!(status, 200, "{value}");
         let catalog: openwebide_core::mcp::Catalog = serde_json::from_value(value).unwrap();
         assert!(catalog.failures.is_empty(), "{:?}", catalog.failures);
+        let transport = mcp.transport(
+            if paired {
+                "paired".into()
+            } else {
+                "user:7".into()
+            },
+            catalog.id.clone(),
+        );
+        crate::runs::assert_deferred_mcp_run(transport.clone(), catalog.clone()).await;
         let result = rpc(
             "call",
             json!({"user":7,"catalog":catalog,"call":call(&catalog,"transport")}),

@@ -272,6 +272,9 @@ async fn invoke_inner<T: PluginTransport, S: PluginServices>(
 impl<E: ToolExecutor + Sync, T: PluginTransport, S: PluginServices> ToolExecutor
     for PluginTools<E, T, S>
 {
+    fn reserve_tool_call(&self) -> Result<(), String> {
+        self.executor.reserve_tool_call()
+    }
     fn has_context(&self) -> bool {
         self.executor.has_context()
     }

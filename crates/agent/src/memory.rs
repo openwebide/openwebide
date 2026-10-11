@@ -56,6 +56,9 @@ impl<E, S> MemoryTools<E, S> {
     }
 }
 impl<E: ToolExecutor + Sync, S: MemoryStore> ToolExecutor for MemoryTools<E, S> {
+    fn reserve_tool_call(&self) -> Result<(), String> {
+        self.executor.reserve_tool_call()
+    }
     fn has_context(&self) -> bool {
         self.executor.has_context()
     }
