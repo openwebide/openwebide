@@ -6454,3 +6454,22 @@ The last pushed checkpoint `cdc8a23` passes all five hosted CI jobs
 ([receipt](editor-performance/editor-ci-cdc8a23-success.json)). This verifies that
 checkpoint only, not the uncommitted retained-paint candidate or the full editor
 goal.
+
+Bounded pending-syntax paint now uses the existing early native-publication path
+when the current native source is installed. The shared facade requires owned
+retained tokens, an unwrapped/uniform projection and the existing row/byte paint
+bounds; composition, stale owners and unsupported layouts remain ineligible.
+Six focused browser contracts pass, including copied-token/invalid-row rejection
+and exact shifted-suffix geometry in both modes
+([receipt](editor-performance/early-pending-browser.json)).
+
+Two fresh 64-KiB Markdown visibility samples show current text at about 16–17 ms,
+versus 28–33 ms at the retained-span checkpoint
+([visibility](editor-performance/early-pending-visibility.json)). All 16 fresh
+HTML/Markdown 64/512-KiB prefix-insertion samples preserve complete edited source.
+Small Remote Markdown input paint is about 17 ms; the matrix ranges from
+10.3–28.5 ms, with peak Chrome PSS of 607–703 MiB
+([samples](editor-performance/early-pending-production.jsonl),
+[hashes](editor-performance/early-pending-production-manifest.json)). Four additional composition and queued-cursor ownership browser contracts pass
+([receipt](editor-performance/early-pending-input-contracts.json)). This does
+not finish the 12 ms budget, broad boundary workloads or memory gate.

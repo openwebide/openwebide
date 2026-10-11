@@ -57,7 +57,7 @@ tracks the remaining work rather than every optimization already shipped.
 | Area | Available now |
 | --- | --- |
 | Editing and history | Tab/space and indent/outdent; block-aware Enter; paired typing/deletion; grouped undo/redo; line move/duplicate/delete; comments; selected-line reindent; indentation-matching paste; EditorConfig save policies. |
-| Structure and languages | Syntax highlighting, parser-backed folding, bracket matching and structural navigation; extensible Rust/WASM language support including Rust, TypeScript/TSX, Python, JavaScript/JSX, Java, C#, C++, PHP, Shell, C, Go, HTML, CSS, JSON/JSONC, YAML/YML, TOML, INI/EditorConfig, XML ecosystem configs and Markdown with inline/fenced code. Pending and unsupported source stays plain. |
+| Structure and languages | Syntax highlighting, parser-backed folding, bracket matching and structural navigation; extensible Rust/WASM language support including Rust, TypeScript/TSX, Python, JavaScript/JSX, Java, C#, C++, PHP, Shell, C, Go, HTML, CSS, JSON/JSONC, YAML/YML, TOML, INI/EditorConfig, XML ecosystem configs and Markdown with inline/fenced code. Pending text uses current source and valid retained spans; unsupported source stays plain. |
 | Navigation and review | Find/Replace; line numbers; horizontal scrolling and linked split scrolling; Edit/Inline/Split diffs; supported previews and Markdown change gutters/word differences; pending-edit review and agent context. |
 | Tabs, appearance and recovery | Tab context actions; consistent editor action-menu icons and labels; five Monaspace families; texture healing and ligature toggles enabled by default; retained caret/selection/scroll and database-backed editor recovery. Real folder-permission recovery still needs device verification. |
 | Selection and browser input | Multiple/rectangular selections and clipboard transactions; scoped native windows with bounded desktop startup for unwrapped, wrapped and nonuniform views, including long tabbed/bidirectional rows; automated Chromium composition and pointer checks. The recorded line-end caret bug is fixed and user-verified in the localhost PWA. |
@@ -97,27 +97,11 @@ the partition fix passes all five jobs
   retained-fold/current-source ownership. Keep ordinary literal input independent
   of unnecessary lexical scans; preserve pairing once current context is ready.
   Verify explicit structural commands, cancellation and large fenced-code input.
-  Sixteen current production prefix-insertion samples preserve full source;
-  small Remote Markdown publication still takes 159–173 ms
-  ([samples](editor-performance/embedded-literal-prefix-production.jsonl)). A
-  shared command facade skips parser context for literal characters; its
-  held-parser both-mode regression passes. Neither closes readiness or
-  the observed publication-delay requirement.
-  A frame-sampled visibility probe confirms stale visible Remote Markdown text
-  until about 177 ms despite native input changing by about 7 ms
-  ([evidence](editor-performance/embedded-markdown-visibility.json)). Publish
-  current text during pending analysis while retaining valid styles/decorations.
-  A repaint candidate retains matching cached rows and borrows changed-row text;
-  its held-parser browser regression now passes in both modes
-  ([receipt](editor-performance/retained-spans-handoff-browser.json)). Borrowed span retention now also passes the held-parser regression for edits
-  inside a keyword, preserving unchanged fragments and later string colors.
-  The provisional-to-final measurement handoff now passes the existing shifted-
-  suffix geometry contract, including emoji and combining-character insertion,
-  in both modes ([receipt](editor-performance/retained-spans-handoff-browser.json)).
-  Sixteen fresh production samples preserve full source, with small Remote
-  Markdown input paint at 24.5–25 ms
-  ([samples](editor-performance/retained-spans-embedded-production.jsonl)); the
-  12 ms budget and broader boundary/memory requirements remain unfinished.
+  Current-source paint and valid syntax fragments now publish while analysis is
+  pending. Bounded early publication passes six focused browser contracts and
+  sixteen production samples; small Remote Markdown input paint is about 17 ms
+  ([samples](editor-performance/early-pending-production.jsonl)). Finish the
+  12 ms budget, remaining boundary workloads and retained decoration ownership.
 - [ ] **Cold startup and native input:** bound remaining complete-source shaping,
   projection/native normalization, long word/context traversal and synchronous
   selection publication. Finish source-owned touch caret/selection and native

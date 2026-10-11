@@ -253,6 +253,20 @@ impl EditorActions {
         !paint.0 && paint.1.is_empty() && self.bounded_viewport_paint_ready(source_rows)
     }
 
+    /// Current native text can publish retained grammar spans before the next
+    /// animation frame when the complete visible paint has a bounded source proof.
+    pub fn pending_viewport_paint_ready(
+        self,
+        source_rows: &[usize],
+        paint: &(bool, std::sync::Arc<openwebide_core::highlight::TokenRows>),
+    ) -> bool {
+        !paint.0
+            && self
+                .retained_paint()
+                .is_some_and(|retained| std::sync::Arc::ptr_eq(&retained, &paint.1))
+            && self.bounded_viewport_paint_ready(source_rows)
+    }
+
     fn bounded_viewport_paint_ready(self, source_rows: &[usize]) -> bool {
         if self.is_composing() || self.preferences().word_wrap {
             return false;

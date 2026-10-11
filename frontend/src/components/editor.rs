@@ -2002,7 +2002,7 @@ fn HighlightOverlay(
                     .as_ref()
                     .is_none_or(|(prepared, _)| !prepared && !painted_complete_source.get_value())
             });
-        let neutral = mounted
+        let native_current = mounted
             && textarea_ref.get_untracked().is_some_and(|input| {
                 current_editor_target(actions, &input)
                     && input
@@ -2011,7 +2011,8 @@ fn HighlightOverlay(
                         == Some(actions.projection_revision())
                     && crate::viewport::editor_scroll(&input).client_width() > 0
                     && crate::viewport::editor_scroll(&input).client_height() > 0
-            })
+            });
+        let neutral = native_current
             && prepared_paint.with_untracked(|(prepared, tokens)| {
                 actions.initial_viewport_paint_ready(&visible.get_untracked(), (*prepared, tokens))
             });
@@ -2048,6 +2049,19 @@ fn HighlightOverlay(
             }
         }
         neutral_frame.set_value(None);
+        if native_current
+            && prepared_paint.with_untracked(|paint| {
+                actions.pending_viewport_paint_ready(&visible.get_untracked(), paint)
+            })
+        {
+            if let Some(id) = request.get_value() {
+                let _ = window().cancel_animation_frame(id);
+            }
+            request.set_value(None);
+            queued_generation.set_value(generation.get_value());
+            paint.run(true);
+            return;
+        }
         if mounted && request.get_value().is_none() {
             queued_generation.set_value(generation.get_value());
             let id = callback.with_value(|callback| {

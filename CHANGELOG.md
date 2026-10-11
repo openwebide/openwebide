@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Publish bounded, unwrapped pending-syntax editor paint without waiting for an animation-frame callback once current native text is installed. Retain shared ownership, composition and source-size guards.
+
 - Paint current editor text while grammar analysis is pending, retaining unchanged syntax fragments through a shared borrowed-span model. Promote matching provisional paragraph measurements when final grammar arrives, preserving exact caret geometry in both project modes.
 
 - Restore strict project-site builds by listing the archived editor checkpoint history in navigation and correcting its moved relative links.

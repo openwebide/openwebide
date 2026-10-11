@@ -22465,6 +22465,15 @@ async fn pending_grammar_paints_current_text_and_retains_matching_colors_in_both
                 actions.syntax_is_pending(),
                 "{mode:?} {path}: parser must remain held"
             );
+            let pending_paint = actions.syntax_paint();
+            assert!(actions.pending_viewport_paint_ready(&[0, 1, 2], &pending_paint));
+            assert!(!actions.pending_viewport_paint_ready(
+                &[0, 1, 2],
+                &(false, std::sync::Arc::new((*pending_paint.1).clone())),
+            ));
+            assert!(!actions.pending_viewport_paint_ready(&[], &pending_paint));
+            assert!(!actions.pending_viewport_paint_ready(&[usize::MAX], &pending_paint));
+            assert!(!actions.pending_viewport_paint_ready(&[0; 129], &pending_paint));
             assert_eq!(actions.source(), updated);
             assert!(
                 mounted
@@ -22524,6 +22533,7 @@ async fn pending_grammar_paints_current_text_and_retains_matching_colors_in_both
                 actions.syntax_paint().1.is_empty(),
                 "{mode:?} {path}: reject stale account colors"
             );
+            assert!(!actions.pending_viewport_paint_ready(&[0, 1, 2], &pending_paint));
             mounted
                 .state
                 .auth
@@ -22538,6 +22548,7 @@ async fn pending_grammar_paints_current_text_and_retains_matching_colors_in_both
                 actions.syntax_paint().1.is_empty(),
                 "{mode:?} {path}: reject stale read colors"
             );
+            assert!(!actions.pending_viewport_paint_ready(&[0, 1, 2], &pending_paint));
         }
     }
 }
