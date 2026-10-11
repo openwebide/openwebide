@@ -1,0 +1,20 @@
+{
+  "baseHead": "db1a301f5867fb8f02a7fbd508e088049b62a5fa",
+  "profile": "release",
+  "componentsWasmSha256": "e59f2f404b598df510e47f247cf0c79bbea4cf4e11ac227870062a57084b076e",
+  "sourceSha256": "72ac16a6c2a0e39a74bc91eaca32db2c358c967c96e7fcd6da8f3f5044d69f5b",
+  "tests": [
+    "wrapped_origin_paint_precedes_complete_geometry_in_both_modes",
+    "bounded_wrapped_paragraphs_preserve_complete_styled_geometry_in_both_modes",
+    "wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes",
+    "wrapped_chunk_cancellation_discards_old_geometry_in_both_modes",
+    "rejected_wrapped_geometry_restarts_when_syntax_completes_in_both_modes"
+  ],
+  "passed": 5,
+  "failed": 0,
+  "terminalExitCode": 0,
+  "wasmFrontendAllTargetsClippyExitCode": 0,
+  "productionBuildExitCode": 0,
+  "scope": "Five existing exact-geometry, early-paint, source-reuse, cancellation and rejected-geometry contracts, each covering local and remote. Not the complete browser inventory or physical PWA verification.",
+  "initialHarnessFailure": "Missing /wasm-tools runner mount; no tests executed. Same frozen artifact rerun with the established Linux tools mount."
+}

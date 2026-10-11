@@ -9,6 +9,8 @@ for what's still ahead.
 
 ## [Unreleased]
 
+- Yield a browser frame when long wrapped-row preparation first publishes proved viewport coverage, allowing visible paint before continuing background geometry probes.
+
 - Encode syntax requests directly from retained immutable source ranges, sharing full/delta selection with worker replies and avoiding an intermediate plaintext copy.
 
 - Publish syntax request deltas and JSON source text in bounded batches, yielding between batches and cancelling superseded background, resync and structural-action requests.

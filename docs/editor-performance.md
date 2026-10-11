@@ -5765,3 +5765,31 @@ reconnection for changed wrapping phases, while preserving exact renderer
 geometry and current-source ownership. Further request-copy optimizations alone
 cannot account for this measured layout cost. Parser, allocation and device
 gates remain independently open.
+
+### Frame yield after first wrapped viewport coverage
+
+The shared DOM measurement loop now yields a frame immediately after first
+publishing source-owned wrapped viewport coverage. Previously it could continue
+additional shaping probes through task yields until its periodic frame boundary.
+The change preserves the existing geometry admission, source ownership,
+cancellation and complete-extent requirements. Both project modes use the same
+facade and measurement primitive; no adapter or transport policy changes.
+
+Five existing release browser contracts pass: early paint before complete
+geometry, exact styled geometry, source-owned edit reuse, stale-work cancellation
+and rejected-geometry restart after syntax completes
+([receipt](editor-performance/coverage-frame-browser.json)). Strict WASM frontend
+all-target lint, formatting and the production Spin build pass. The initial
+container invocation omitted the Linux runner mount and executed no tests; the
+corrected invocation used the same frozen artifact. This focused run does not
+replace the complete browser inventory or hosted CI.
+
+Four isolated current production samples use the same styled 1,048,567-byte row,
+beginning insertion, both modes and two repeats, with complete-source verification
+in every sample ([results](editor-performance/coverage-frame-production.jsonl)).
+Viewport paint takes 231–247 ms and complete geometry 1.11–1.14 s. The preceding
+cohort measured 246–261 ms and 1.18–1.27 s, respectively. These are sequential
+cohorts with uncontrolled host/background load, so their difference does not
+establish a controlled causal improvement. The scheduling change prioritizes
+the first proved viewport; the substantial fresh shaping cost and full
+responsiveness, memory, device and CI gates remain open.

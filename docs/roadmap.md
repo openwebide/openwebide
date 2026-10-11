@@ -169,7 +169,15 @@ tracks the remaining work rather than every optimization already shipped.
   71 probes, compared with 1.4 ms of paragraph rendering
   ([profile summary](editor-performance/borrowed-request-layout-profile.json));
   reduce fresh browser shaping/reflow rather than treating source-copy removal
-  as completion of this gate. Extend
+  as completion of this gate.
+  Preparation now yields a frame immediately after first publishing proved
+  viewport coverage, before continuing background probes. Five focused release
+  browser contracts pass in both modes
+  ([receipt](editor-performance/coverage-frame-browser.json)). Four current
+  production samples show 231–247 ms viewport paint and 1.11–1.14 s complete
+  geometry ([samples](editor-performance/coverage-frame-production.jsonl));
+  these remain above the responsiveness goal, and a full browser/hosted CI pass
+  for this scheduling change still needs verification. Extend
   shifted suffix reuse to changed long-token and plain-run boundaries; avoid repeated prefix
   segmentation for over-limit styled run tables. Eligible styled measurement paths
   now prepare run tables in yielding batches, including uncapped unwrapped

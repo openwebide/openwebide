@@ -368,16 +368,23 @@ async fn measure_wrapped_paragraph(
                 targets.len(),
             );
         }
+        let mut published_coverage = false;
         if !coverage_published
             && current()
             && let Some(prefix) = line_height.and_then(|height| plan.viewport_coverage(height))
         {
             coverage(prefix);
             coverage_published = true;
+            published_coverage = true;
         }
         paint.set_inner_html("");
         probes += 1;
-        if probes % openwebide_core::editor::MAX_MEASURE_BATCHES_PER_FRAME == 0 {
+        // Let the newly proved viewport reach the screen before measuring more
+        // of this long row. Task yields alone can run additional shaping probes
+        // ahead of the animation-frame callback that publishes visible paint.
+        if published_coverage
+            || probes % openwebide_core::editor::MAX_MEASURE_BATCHES_PER_FRAME == 0
+        {
             crate::util::yield_frame().await;
         } else {
             crate::util::yield_task().await;
