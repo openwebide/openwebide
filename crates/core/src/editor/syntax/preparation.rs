@@ -23,6 +23,7 @@ pub(super) struct SyntaxWork {
     fallback: LexicalScan,
 }
 struct EmbeddedWork {
+    nodes: usize,
     selected: std::vec::IntoIter<(Language, Range)>,
     old: std::vec::IntoIter<EmbeddedSyntax>,
     retained: Option<std::vec::IntoIter<EmbeddedSyntax>>,
@@ -526,12 +527,13 @@ impl SyntaxDocument {
             }
         }
     }
-    fn begin_embedded(&mut self, selected: Vec<(Language, Range)>) -> EmbeddedWork {
+    fn begin_embedded(&mut self, selected: Vec<(Language, Range)>, nodes: usize) -> EmbeddedWork {
         #[cfg(test)]
         {
             self.embedded_parses = 0;
         }
         EmbeddedWork {
+            nodes,
             next: Vec::with_capacity(selected.len()),
             selected: selected.into_iter(),
             old: Vec::new().into_iter(),
@@ -632,7 +634,7 @@ impl SyntaxWork {
                     return Ok(false);
                 }
                 let selected = std::mem::take(&mut self.selection.selected);
-                self.embedded = Some(document.begin_embedded(selected));
+                self.embedded = Some(document.begin_embedded(selected, self.selection.visited));
                 continue;
             }
             let embedded = self.embedded.as_mut().unwrap();
@@ -661,7 +663,14 @@ impl SyntaxWork {
                         .iter()
                         .position(|body| body.provider.language == language && body.range == range)
                 {
-                    embedded.next.push(bodies.swap_remove(index));
+                    let body = bodies.swap_remove(index);
+                    if let Some(tree) = &body.tree {
+                        super::subtrees::charge_visits(
+                            &mut embedded.nodes,
+                            tree.root_node().descendant_count(),
+                        )?;
+                    }
+                    embedded.next.push(body);
                     continue;
                 }
                 let provider = syntax_provider(language).ok_or(SyntaxStatus::Cancelled)?;
@@ -725,6 +734,10 @@ impl SyntaxWork {
                 else {
                     return Ok(false);
                 };
+                super::subtrees::charge_visits(
+                    &mut embedded.nodes,
+                    tree.root_node().descendant_count(),
+                )?;
                 current.body.tree = Some(tree);
                 current.previous = None;
                 #[cfg(test)]
@@ -836,6 +849,60 @@ mod tests {
             .prepare_publication(work.job.take().unwrap().finish().unwrap());
         while !publication.advance(&document.source_lines, 256) {}
         work.publication = Some(publication);
+    }
+
+    #[test]
+    fn aggregate_embedded_nodes_charge_new_and_reused_trees_before_publication() {
+        let original = "<script>call();</script>";
+        for warm in [false, true] {
+            let mut document = SyntaxDocument::new(Language::Html).unwrap();
+            if warm {
+                assert!(matches!(
+                    document.update(original, || true),
+                    SyntaxStatus::Ready { .. }
+                ));
+            }
+            let source = Arc::new(format!("\n{original}"));
+            let mut ready_for_body = false;
+            for _ in 0..1000 {
+                let mut checks = 0;
+                assert!(
+                    document
+                        .prepare_cooperative(
+                            source.clone(),
+                            4,
+                            || true,
+                            || {
+                                checks += 1;
+                                checks >= 2
+                            }
+                        )
+                        .is_none()
+                );
+                if let Some(embedded) = document
+                    .pending
+                    .as_mut()
+                    .and_then(|work| work.embedded.as_mut())
+                    && embedded.retained.is_none()
+                    && embedded.current.is_none()
+                    && embedded.next.is_empty()
+                {
+                    assert_eq!(!embedded.unchanged.is_empty(), warm);
+                    embedded.nodes = super::super::MAX_FOLD_NODES;
+                    ready_for_body = true;
+                    break;
+                }
+            }
+            assert!(ready_for_body);
+            let result = document
+                .prepare_cooperative(source, 4, || true, || false)
+                .unwrap();
+            assert_eq!(result.0, SyntaxStatus::TooLarge);
+            assert!(result.1.is_none());
+            assert!(document.tree.is_none());
+            assert!(document.embedded.is_empty());
+            assert!(document.pending.is_none());
+        }
     }
 
     #[test]

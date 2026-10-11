@@ -28,7 +28,6 @@ use tree_sitter::{InputEdit, Node, Parser, Point, Range, Tree};
 
 const MAX_PROGRESS_CHECKS: usize = 4_096;
 const MAX_FOLD_NODES: usize = 100_000;
-const MAX_INJECTIONS: usize = 64;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum SyntaxStatus {
@@ -619,7 +618,6 @@ fn visit_node_with_parent<'tree>(
 struct InjectionSelection {
     next_node: usize,
     visited: usize,
-    code_bodies: usize,
     selected: Vec<(Language, Range)>,
     complete: bool,
 }
@@ -663,14 +661,9 @@ impl InjectionSelection {
             subtrees::charge_visits(&mut self.visited, 1)?;
             let node = cursor.node();
             if let Some((language, range)) = select(node, text) {
-                // Inline Markdown is ordinary prose syntax, not a separately configured
-                // code body. Its count remains bounded by the shared node/record budgets.
-                if language != Language::MarkdownInline {
-                    if self.code_bodies == MAX_INJECTIONS {
-                        return Err(SyntaxStatus::TooLarge);
-                    }
-                    self.code_bodies += 1;
-                }
+                // Every selected body already charges the shared outer-node budget.
+                // Embedded parsing and extraction retain their aggregate work/record
+                // guards; a separate block-count limit rejects ordinary documents.
                 if range.start_byte > range.end_byte
                     || !text.is_char_boundary(range.start_byte)
                     || !text.is_char_boundary(range.end_byte)
@@ -2802,11 +2795,121 @@ mod tests {
     }
 
     #[test]
+    fn many_code_bodies_yield_reuse_parsers_and_keep_exact_changed_scopes() {
+        for (language, row, embedded_language, parser_count, bodies) in [
+            (
+                Language::Html,
+                "<script>\nfunction block() { call(); }\n</script>\n<style>\np { color: red; }\n</style>\n",
+                Language::JavaScript,
+                2,
+                200,
+            ),
+            (
+                Language::Markdown,
+                "```rust\nfn block() { call(); }\n```\n\n",
+                Language::Rust,
+                1,
+                100,
+            ),
+        ] {
+            for ending in ["\n", "\r\n"] {
+                let source = row.replace('\n', ending).repeat(100);
+                let mut warm = SyntaxDocument::new(language).unwrap();
+                for (revision, source) in
+                    [source.clone(), source.replacen("call()", "changed()", 1)]
+                        .into_iter()
+                        .enumerate()
+                {
+                    let source = Arc::new(source);
+                    let mut checks = 0;
+                    let mut slices = 0;
+                    let (status, analysis) = loop {
+                        slices += 1;
+                        assert!(slices < 20_000);
+                        if let Some(result) = warm.prepare_cooperative(
+                            source.clone(),
+                            4,
+                            || true,
+                            || {
+                                checks += 1;
+                                checks % 13 == 0
+                            },
+                        ) {
+                            break result;
+                        }
+                    };
+                    assert!(slices > 1);
+                    assert!(
+                        matches!(status, SyntaxStatus::Ready { .. }),
+                        "{language:?}: {status:?}"
+                    );
+                    let analysis = analysis.unwrap();
+                    assert!(Arc::ptr_eq(analysis.source_snapshot(), &source));
+                    assert_eq!(warm.embedded.len(), bodies);
+                    assert_eq!(warm.embedded_parsers.len(), parser_count);
+                    assert_eq!(warm.embedded_parses, if revision == 0 { bodies } else { 1 });
+                    for (offset, _) in source
+                        .match_indices("call(")
+                        .chain(source.match_indices("changed("))
+                    {
+                        assert_eq!(
+                            analysis.structure().unwrap().language_at(offset),
+                            embedded_language
+                        );
+                    }
+                    for (offset, _) in source.match_indices("color:") {
+                        assert_eq!(
+                            analysis.structure().unwrap().language_at(offset),
+                            Language::Css
+                        );
+                    }
+                    let fresh = SyntaxDocument::new(language)
+                        .unwrap()
+                        .prepare_shared(source, 4, || true)
+                        .1
+                        .unwrap();
+                    assert_eq!(
+                        serde_json::to_vec(&analysis.transfer_data()).unwrap(),
+                        serde_json::to_vec(&fresh.transfer_data()).unwrap()
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn injection_selection_preserves_aggregate_node_budget() {
+        let source = "<script>call();</script>".repeat(100);
+        let mut document = SyntaxDocument::new(Language::Html).unwrap();
+        assert!(matches!(
+            document.update(&source, || true),
+            SyntaxStatus::Ready { .. }
+        ));
+        let mut selection = InjectionSelection {
+            visited: MAX_FOLD_NODES,
+            ..InjectionSelection::default()
+        };
+        assert_eq!(
+            selection.advance(
+                document.tree.as_ref().unwrap(),
+                document.provider,
+                &source,
+                &document.source_lines,
+                &mut || true,
+                &mut || false
+            ),
+            Err(SyntaxStatus::TooLarge)
+        );
+        assert!(selection.selected.is_empty());
+        assert!(!selection.complete);
+    }
+
+    #[test]
     fn injection_limits_invalid_ranges_and_mid_parse_cancellation_discard_all_trees() {
         let small = "<script>let value = 1;</script>";
         let mut syntax = SyntaxDocument::new(Language::Html).unwrap();
         syntax.update(small, || true);
-        let oversized = small.repeat(MAX_INJECTIONS + 1);
+        let oversized = small.repeat(MAX_FOLD_NODES / 2);
         assert_eq!(syntax.update(&oversized, || true), SyntaxStatus::TooLarge);
         assert!(syntax.tree.is_none());
         assert!(syntax.embedded.is_empty());

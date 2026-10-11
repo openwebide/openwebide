@@ -150,11 +150,14 @@ Final integrated CI remains a completion gate as the remaining implementation sh
   adjacent sections. All 671 core tests, four local/remote browser contracts and
   strict native/WASM lint pass
   ([receipt](editor-performance/pending-fold-boundary-browser.json)).
+  More than 64 embedded code bodies now use the shared source, parser-work,
+  aggregate AST-node and record budgets. Cold/warm preparation supports 200 HTML
+  script/style bodies and 100 Markdown fences, including LF/CRLF, yielding,
+  language-parser reuse and exact changed scopes. New and retained trees charge
+  the same aggregate AST-node budget before publication
+  ([receipt](editor-performance/many-code-bodies-browser.json)).
   Full physical timing, remaining boundary workloads and
-  broader retained decoration ownership remain unfinished. Investigate the
-  `TooLarge` preparation result for 100 repeated adjacent HTML script/style pairs
-  below the source-byte limit; payload verification must not imply that parser
-  readiness gap is resolved.
+  broader retained decoration ownership remain unfinished.
 - [ ] **Cold startup and native input:** bound remaining complete-source shaping,
   projection/native normalization, remaining word/context traversal and synchronous
   selection publication. Finish source-owned touch caret/selection and native

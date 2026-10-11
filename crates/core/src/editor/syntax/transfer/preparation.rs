@@ -309,11 +309,11 @@ mod tests {
             ),
             (
                 Language::Html,
-                "<script>let x = 1;</script><style>p {color:red}</style>\n".repeat(8),
+                "<script>let x = 1;</script><style>p {color:red}</style>\n".repeat(100),
             ),
             (
                 Language::Markdown,
-                "# Header\n\ntext 文😀\n\n```rust\nfn main() {}\n```\n".repeat(8),
+                "# Header\n\ntext 文😀\n\n```rust\nfn main() {}\n```\n".repeat(100),
             ),
             (Language::Yaml, "key: value\nlist: [one, two]\n".repeat(200)),
             (Language::Sql, "SELECT 1;\n".repeat(200)),

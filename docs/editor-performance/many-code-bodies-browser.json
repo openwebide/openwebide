@@ -1,0 +1,57 @@
+{
+  "scope": "Admit larger HTML/Markdown embedded-code collections through shared source/parser-work/node/record budgets; remove the independent 64-code-body cap. No end-to-end latency or memory improvement is claimed.",
+  "sourceFilesSha256": {
+    "crates/core/src/editor/syntax.rs": "51f7be1ff8c5f075d8bc1ca51f08c7fb3cd26b49e7d1158509000c90a9caeb65",
+    "crates/core/src/editor/syntax/preparation.rs": "61cd93548407a01008dc2ed9772dd7b073e371c82aa4081b5b77bfbfcbaebf7e",
+    "crates/core/src/editor/syntax/transfer/preparation.rs": "2465e54943862c3832037b8eb1629c99cced9ed1f84cfb8d485e5eed253a7fc3",
+    "frontend/tests/components/editor.rs": "67aef1e2cc411860e75c83466032757623d6cd1f44a16fcaafc69dadb9480ad2"
+  },
+  "executedBindingsWasmSha256": "0659b7b1e45e23de52bf91bfd7d7d5477b73c5bf806e0ee2169dcddf44316590",
+  "coreTests": {
+    "features": [
+      "editor-parser"
+    ],
+    "passed": 690,
+    "failed": 0
+  },
+  "browserContracts": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "console": "Invoking test: editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes\nInvoking test: editor::parser_budget_rejection_preserves_source_and_recovers_in_both_modes\nInvoking test: editor::many_embedded_code_bodies_publish_complete_scopes_and_warm_edits_in_both_modes\nInvoking test: editor::large_markdown_worker_publications_color_all_paragraphs_in_both_modes\nInvoking test: editor::html_embedded_folds_share_workspace_modes_and_discard_stale_bodies\nInvoking test: editor::cooperative_worker_parser_source_comparison_preserves_warm_paint_in_both_modes\nInvoking test: editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes\nInvoking test: editor::cold_structural_commands_reject_superseded_requests_in_both_modes\n",
+    "output": "\nrunning 8 tests\ntest editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes ... ok\ntest editor::parser_budget_rejection_preserves_source_and_recovers_in_both_modes ... ok\ntest editor::many_embedded_code_bodies_publish_complete_scopes_and_warm_edits_in_both_modes ... ok\ntest editor::large_markdown_worker_publications_color_all_paragraphs_in_both_modes ... ok\ntest editor::html_embedded_folds_share_workspace_modes_and_discard_stale_bodies ... ok\ntest editor::cooperative_worker_parser_source_comparison_preserves_warm_paint_in_both_modes ... ok\ntest editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes ... ok\ntest editor::cold_structural_commands_reject_superseded_requests_in_both_modes ... ok\n\ntest result: ok. 8 passed; 0 failed; 0 ignored; 0 filtered out; finished in 7.69s\n\n",
+    "passed": true,
+    "tests": [
+      "__wbgt__components::editor::cold_structural_commands_reject_superseded_requests_in_both_modes",
+      "__wbgt__components::editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes",
+      "__wbgt__components::editor::cooperative_worker_parser_source_comparison_preserves_warm_paint_in_both_modes",
+      "__wbgt__components::editor::html_embedded_folds_share_workspace_modes_and_discard_stale_bodies",
+      "__wbgt__components::editor::large_markdown_worker_publications_color_all_paragraphs_in_both_modes",
+      "__wbgt__components::editor::many_embedded_code_bodies_publish_complete_scopes_and_warm_edits_in_both_modes",
+      "__wbgt__components::editor::parser_budget_rejection_preserves_source_and_recovers_in_both_modes",
+      "__wbgt__components::editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes"
+    ],
+    "servedFonts": {
+      "/fonts/MonaspaceNeon-v1.400.woff2": "6569968f448ae856ab5b57dff1f13b109b220ca8e3f664169e135fcb5c4f0721"
+    },
+    "libraryStartSuppressed": false
+  },
+  "strictLint": [
+    "core --features editor-parser --all-targets",
+    "release WASM frontend --features test-support --all-targets"
+  ],
+  "contracts": [
+    "Cold and warm LF/CRLF analysis completes across cooperative yields for 200 HTML script/style bodies and 100 Markdown Rust fences",
+    "Every code scope retains its embedded language; shared immutable source and complete transfer data match fresh preparation after a length-changing edit",
+    "Parser instances are reused by language (two for HTML JavaScript/CSS, one for Markdown Rust); warm edits parse only the changed body",
+    "Outer selection visits and new/reused embedded tree descendants share the aggregate 100000 node budget; failure clears trees and partial preparation before publication",
+    "Existing parser progress, node/record/source limits, invalid-injection ranges, cancellation, stale scopes, source fallback and recovery remain covered",
+    "The independent metadata byte oracle now includes the originally rejected 100 adjacent HTML script/style pairs and 100 Markdown fences",
+    "The old 65-empty-script failure expectation now checks successful folds preparation; a source beyond MAX_STRUCTURE_BYTES retains its rejection check in both modes"
+  ],
+  "sharedImplementation": "SyntaxDocument/SyntaxWork/InjectionSelection are shared by synchronous and cooperative drivers. Existing browser worker/cooperative adapters continue supplying transport and clock/yield primitives; filesystem mode never selects syntax policy.",
+  "remaining": [
+    "Full physical timing and larger admitted boundary workloads",
+    "Broader retained decoration ownership",
+    "Capacity and receive decoding/publication costs",
+    "Final integrated CI and physical PWA verification"
+  ]
+}

@@ -4096,7 +4096,7 @@ async fn parsed_typing_contexts_share_modes_mixed_cursors_and_stale_guards() {
 async fn html_embedded_folds_share_workspace_modes_and_discard_stale_bodies() {
     use openwebide_core::{
         WorkspaceMode,
-        editor::{FoldRange, SyntaxDocument, SyntaxStatus},
+        editor::{FoldRange, MAX_STRUCTURE_BYTES, SyntaxDocument, SyntaxStatus},
         highlight::Language,
     };
     use openwebide_frontend::state_actions::editor::EditorActions;
@@ -4150,6 +4150,15 @@ async fn html_embedded_folds_share_workspace_modes_and_discard_stale_bodies() {
             .workspace
             .content
             .set("<script></script>\n".repeat(65).into());
+        assert_eq!(
+            actions.syntax_folds(|| true).unwrap(),
+            (SyntaxStatus::Ready { incremental: false }, vec![])
+        );
+        mounted
+            .state
+            .workspace
+            .content
+            .set("x".repeat(MAX_STRUCTURE_BYTES + 1).into());
         assert_eq!(
             actions.syntax_folds(|| true).unwrap(),
             (SyntaxStatus::TooLarge, vec![])
@@ -11227,6 +11236,138 @@ async fn cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_mo
                     serde_json::to_value(analysis.transfer_data()).unwrap(),
                     serde_json::to_value(fresh.unwrap().transfer_data()).unwrap()
                 );
+            }
+        }
+    }
+}
+
+#[wasm_bindgen_test]
+async fn many_embedded_code_bodies_publish_complete_scopes_and_warm_edits_in_both_modes() {
+    use openwebide_core::{
+        WorkspaceMode,
+        editor::{SyntaxDocument, SyntaxStatus, SyntaxWorker},
+        highlight::Language,
+    };
+    use openwebide_frontend::state_actions::editor::EditorActions;
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        for (path, language, row, code_language) in [
+            (
+                "many.html",
+                Language::Html,
+                "<script>\nfunction block() { call(); }\n</script>\n<style>\np { color: red; }\n</style>\n",
+                Language::JavaScript,
+            ),
+            (
+                "many.md",
+                Language::Markdown,
+                "```rust\nfn block() { call(); }\n```\n\n",
+                Language::Rust,
+            ),
+        ] {
+            for ending in ["\n", "\r\n"] {
+                let source = row.replace('\n', ending).repeat(100);
+                let changed = source.replacen("call()", "changed()", 1);
+                let initial = source.clone();
+                let transport = std::rc::Rc::new(DeferredSyntax::default());
+                let installed = transport.clone();
+                let mounted = mount_test(move |state| {
+                    state.seed_project();
+                    state
+                        .projects
+                        .projects
+                        .update(|projects| projects[0].mode = mode);
+                    state.workspace.open_file.set(Some(path.into()));
+                    state.workspace.content.set(initial.into());
+                    let actions = EditorActions::new(state.workspace);
+                    actions.install_syntax_transport(installed);
+                    view! { <span>{move || actions.syntax_is_pending().to_string()}</span> }
+                });
+                let actions = EditorActions::new(mounted.state.workspace);
+                let mut worker = SyntaxWorker::default();
+                for (revision, expected) in [&source, &changed].into_iter().enumerate() {
+                    if revision > 0 {
+                        mounted.state.workspace.content.set(expected.clone().into());
+                    }
+                    wait_until("many-body syntax request", || {
+                        !transport.pending.borrow().is_empty()
+                    })
+                    .await;
+                    let DeferredSyntaxReply { message, sender } =
+                        transport.pending.borrow_mut().pop_front().unwrap();
+                    assert!(worker.enqueue(&message).is_none());
+                    let mut batches = 0;
+                    let reply = loop {
+                        batches += 1;
+                        assert!(batches < 20_000);
+                        let mut checks = 0;
+                        if let Some(reply) = worker.advance(
+                            || true,
+                            || {
+                                checks += 1;
+                                checks >= 2
+                            },
+                        ) {
+                            break reply;
+                        }
+                        assert!(actions.syntax_is_pending());
+                        if revision > 0 {
+                            assert_eq!(
+                                mounted
+                                    .state
+                                    .workspace
+                                    .editor_preparation
+                                    .get_untracked()
+                                    .unwrap()
+                                    .analysis
+                                    .unwrap()
+                                    .source(),
+                                source
+                            );
+                        }
+                        if batches % 32 == 0 {
+                            openwebide_frontend::util::yield_task().await;
+                        }
+                    };
+                    assert!(batches > 100, "many-body analysis must yield");
+                    sender.send(Ok(reply)).unwrap();
+                    wait_until("complete many-body scopes", || !actions.syntax_is_pending()).await;
+                    let prepared = mounted
+                        .state
+                        .workspace
+                        .editor_preparation
+                        .get_untracked()
+                        .unwrap();
+                    assert!(
+                        matches!(prepared.status, SyntaxStatus::Ready { .. }),
+                        "{mode:?}: {language:?}: {:?}",
+                        prepared.status
+                    );
+                    let analysis = prepared.analysis.unwrap();
+                    assert_eq!(analysis.source(), expected);
+                    assert!(std::sync::Arc::ptr_eq(
+                        analysis.source_snapshot(),
+                        &prepared.scope.source
+                    ));
+                    let structure = analysis.structure().unwrap();
+                    for (offset, _) in expected
+                        .match_indices("call(")
+                        .chain(expected.match_indices("changed("))
+                    {
+                        assert_eq!(structure.language_at(offset), code_language);
+                    }
+                    for (offset, _) in expected.match_indices("color:") {
+                        assert_eq!(structure.language_at(offset), Language::Css);
+                    }
+                    let fresh = SyntaxDocument::new(language)
+                        .unwrap()
+                        .prepare_shared(std::sync::Arc::new(expected.clone()), 4, || true)
+                        .1
+                        .unwrap();
+                    assert_eq!(
+                        serde_json::to_vec(&analysis.transfer_data()).unwrap(),
+                        serde_json::to_vec(&fresh.transfer_data()).unwrap()
+                    );
+                }
             }
         }
     }
