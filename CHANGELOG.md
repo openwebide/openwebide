@@ -8,6 +8,10 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Verify the indexed-scope and dense-worker publication checkpoint against all five hosted CI jobs, preserving the existing dense-row batch bound.
+
+- Reconstruct worker token text and validate retained rows in cancellable byte/record batches, including long lines and dense files. Batch wire-record admission and preserve header accounting, expanded limits, Unicode/CRLF text and shared row ownership; reject stale editor owners during reconstruction.
+
 - Validate worker reply sources and count logical lines in bounded byte batches; validate folds with bounded record and ancestor-stack work. Recheck editor ownership across receiver yields in both project modes and expose only complete validated results.
 
 - Index embedded language/body lookups while preserving insertion and bracket-boundary behavior; reuse ordered fold validation without cloning and sorting receiver lists. Batch small token rows within the existing metadata budget so dense files retain their cooperative publication bound.

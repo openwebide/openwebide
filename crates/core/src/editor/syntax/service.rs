@@ -10,12 +10,15 @@ pub const SYNTAX_BATCH_MS: u32 = 100;
 pub const SYNTAX_INPUT_BUDGET_MS: u32 = 12;
 pub const MAX_SYNTAX_REQUEST_BYTES: usize = MAX_STRUCTURE_BYTES * 6 + 8192;
 
-/// Receiver source and fold proofs retained across adapter yields. No partial
-/// analysis escapes; JSON decoding and remaining reconstruction are synchronous.
+/// Receiver admission, source/fold proofs and token reconstruction retained
+/// across adapter yields. JSON decoding and structure validation are synchronous;
+/// no partial analysis escapes.
 pub struct SyntaxReplyReception<'a> {
     status: SyntaxStatus,
     data: Option<SyntaxAnalysisData>,
     source: Option<super::transfer::SourceValidation>,
+    reconstruction: Option<super::transfer::AnalysisReconstruction>,
+    admission: Option<super::transfer::RecordAdmission>,
     previous: Option<(u32, &'a super::SyntaxAnalysis)>,
     folds: crate::editor::folds::FoldValidation,
     valid: bool,
@@ -25,6 +28,29 @@ pub struct SyntaxReplyReception<'a> {
 impl SyntaxReplyReception<'_> {
     pub fn advance(&mut self) -> bool {
         if self.complete {
+            return true;
+        }
+        if let Some(admission) = self.admission.as_mut() {
+            match admission.advance(self.data.as_ref().expect("analysis admission")) {
+                Some(false) => return false,
+                Some(true) => {
+                    self.admission = None;
+                    return false;
+                }
+                None => {
+                    self.valid = false;
+                    self.complete = true;
+                    return true;
+                }
+            }
+        }
+        if let Some(work) = self.reconstruction.as_mut() {
+            match work.advance() {
+                Some(false) => return false,
+                Some(true) => {}
+                None => self.valid = false,
+            }
+            self.complete = true;
             return true;
         }
         if let Some(source) = self.source.as_mut() {
@@ -46,6 +72,24 @@ impl SyntaxReplyReception<'_> {
                 None => self.valid = false,
             }
         }
+        if self.valid
+            && let Some(data) = self.data.take()
+        {
+            let Some((source, lines)) = self
+                .source
+                .take()
+                .and_then(super::transfer::SourceValidation::finish)
+            else {
+                self.valid = false;
+                self.complete = true;
+                return true;
+            };
+            self.reconstruction = data.prepare_reconstruction(source, lines, self.previous);
+            if self.reconstruction.is_some() {
+                return false;
+            }
+            self.valid = false;
+        }
         self.complete = true;
         true
     }
@@ -54,11 +98,8 @@ impl SyntaxReplyReception<'_> {
         if !self.valid || !self.complete {
             return None;
         }
-        let analysis = match self.data {
-            Some(data) => {
-                let (source, lines) = self.source?.finish()?;
-                Some(data.validate_verified(source, lines, self.previous)?)
-            }
+        let analysis = match self.reconstruction {
+            Some(work) => Some(work.finish()?),
             None => None,
         };
         Some((self.status, analysis))
@@ -593,8 +634,8 @@ impl SyntaxReply {
         reception.finish()
     }
 
-    /// Decode the envelope, then prepare a cancellable source proof using the
-    /// same validation policy as synchronous receivers. Adapters check ownership
+    /// Decode the envelope, then prepare cancellable admission and reconstruction
+    /// using the same validation policy as synchronous receivers. Adapters check ownership
     /// before each advance and before finish; finish exposes only complete data.
     pub fn prepare_receive_shared<'a>(
         message: &str,
@@ -629,10 +670,16 @@ impl SyntaxReply {
             ) => (None, None),
             _ => return None,
         };
+        let admission = match &data {
+            Some(data) => Some(super::transfer::RecordAdmission::new(data)?),
+            None => None,
+        };
         Some(SyntaxReplyReception {
             status: reply.status,
             data,
             source,
+            reconstruction: None,
+            admission,
             previous,
             folds: crate::editor::folds::FoldValidation::default(),
             valid: true,

@@ -115,22 +115,21 @@ the partition fix passes all five jobs
 ([receipts](editor-performance/editor-ci-d26-success.json),
 [receipt](editor-performance/editor-ci-f251-success.json)).
 
-Latest verified integrated checkpoint `97d1e424` passes all five hosted jobs, including the full
+Latest verified integrated checkpoint `764873b8` passes all five hosted jobs, including the full
 browser partition on combined editor/plugin source
-([receipt](editor-performance/editor-ci-97-success.json)). Post-frame owner
+([receipt](editor-performance/editor-ci-764-success.json)). Post-frame owner
 cancellation now releases wrapped probes before accessing disposed state; two
 consecutive affected 58-test groups and an accepted-coverage unmount regression
 pass both project modes
 ([group](editor-performance/wrapped-unmount-group-browser.json),
 [repeat](editor-performance/wrapped-unmount-group-browser-repeat.json),
-[unmount](editor-performance/wrapped-unmount-browser.json)). The later `c353f63c`
+[unmount](editor-performance/wrapped-unmount-browser.json)). The `c353f63c`
 checkpoint failed the cold-command cancellation browser test, which assumed
 preparation could not finish during its first 12 ms slice. That regression now
 uses the shared injectable clock, and `97d1e424` verifies its correction. The later
 `307bc045` and `d2238505` checkpoints failed the dense-row browser contract because metadata
 prepared only one token row per unit. Small rows now share the existing 64-record/
-8 KiB budget; the 2,000-batch bound is unchanged. Hosted verification of this
-correction is pending. Final integrated CI remains a completion gate.
+8 KiB budget; the 2,000-batch bound is unchanged. Checkpoint `764873b8` verifies this correction across all five hosted jobs. Final integrated CI remains a completion gate.
 
 **Remaining implementation** (all items remain part of this editor goal):
 
@@ -262,8 +261,15 @@ correction is pending. Final integrated CI remains a completion gate.
   records and ancestor pops together. The shared receiver retains private proofs
   across adapter yields and rechecks account/project/file/source ownership before
   reconstructing or publishing a result
-  ([receipt](editor-performance/cooperative-receiver-browser.json)). Complete JSON decoding, record admission,
-  structural reconstruction and token-row reconstruction remain synchronous.
+  ([receipt](editor-performance/cooperative-receiver-browser.json)). Receiver wire
+  record admission and declared-row counting now use 64-header batches. Source-line
+  scanning, token materialization and retained-row byte validation share 8 KiB
+  byte and 64-record work budgets; only complete reconstructed rows are published.
+  Initial header accounting and expanded record limits preserve the original policy
+  ([receipt](editor-performance/cooperative-token-receiver-browser.json)).
+  Complete JSON decoding and structural reconstruction remain synchronous;
+  vector/string capacity growth and per-row immutable allocation/copying still
+  require bounded work and production measurements.
   Capacity growth, JavaScript string conversion and complete receiver
   decoding/publication still need bounded work and production latency/memory
   measurements. No end-to-end latency or memory gain is established here.
@@ -302,8 +308,8 @@ correction is pending. Final integrated CI remains a completion gate.
   file-switch cancellation, cold queued-input source/selection ownership,
   host-plugin focus/layout and explicit Output/terminal targeting. Validate bounded
   setup retries after upstream Chrome download failures. Latest verified checkpoint
-  `97d1e424` passes all five hosted jobs on integrated editor/plugin source
-  ([receipt](editor-performance/editor-ci-97-success.json)), with the historical
+  `764873b8` passes all five hosted jobs on integrated editor/plugin source
+  ([receipt](editor-performance/editor-ci-764-success.json)), with the historical
   probe-cleanup/navigation failures corrected. Repeat this gate for the final
   integrated editor implementation before closing.
 

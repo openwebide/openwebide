@@ -972,6 +972,95 @@ mod tests {
     }
 
     #[wasm_bindgen_test::wasm_bindgen_test]
+    async fn token_reception_yields_and_rejects_replaced_owners_in_both_modes() {
+        use crate::state::projects::ProjectsState;
+        use openwebide_core::{Project, WorkspaceMode};
+        for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+            for change in 0..6 {
+                let owner = Owner::new();
+                let (actions, workspace, auth) = owner.with(|| {
+                    let workspace = WorkspaceState::new();
+                    let auth = AuthState::new();
+                    provide_context(auth);
+                    let projects = ProjectsState::with_active_project(workspace.active_project);
+                    projects.projects.set(vec![Project {
+                        id: 1,
+                        name: "one".into(),
+                        mode,
+                        path: Some("one".into()),
+                        user_id: None,
+                        created_at: 1,
+                    }]);
+                    provide_context(projects);
+                    workspace.active_project.set(Some(1));
+                    workspace.open_file.set(Some("long.txt".into()));
+                    workspace.content.set("文😀".repeat(40_000).into());
+                    (EditorActions::new(workspace), workspace, auth)
+                });
+                let scope = actions.syntax_scope().unwrap();
+                let message = serde_json::json!({
+                    "version": openwebide_core::editor::SYNTAX_PROTOCOL_VERSION,
+                    "ticket": 9, "status": {"Ready": {"incremental": false}},
+                    "analysis": {"source": scope.source.as_str(), "folds": [], "structure": null,
+                        "highlights": [[[scope.source.len(), "Plain"]]]}
+                })
+                .to_string();
+                let checks = Cell::new(0);
+                // Source proof consumes one 8 KiB unit per check. Interrupt later,
+                // while the long token's line scan/materialization is still pending.
+                let interrupt_after = scope.source.len().div_ceil(8 * 1024) + 8;
+                let reception =
+                    SyntaxReply::prepare_receive_shared(&message, 9, scope.source.clone(), None)
+                        .unwrap();
+                let result = receive_syntax_reply(reception, || {
+                    checks.set(checks.get() + 1);
+                    if checks.get() == interrupt_after {
+                        match change {
+                            0 => workspace.content.set("replacement".into()),
+                            1 => workspace.open_file.set(Some("other.txt".into())),
+                            2 => workspace.active_project.set(Some(2)),
+                            3 => auth.generation.update(|generation| *generation += 1),
+                            4 => workspace
+                                .editor_read_revision
+                                .update(|revision| *revision += 1),
+                            _ => workspace.pending_epoch.update(|epoch| *epoch += 1),
+                        }
+                    }
+                    actions.syntax_scope_current(&scope)
+                })
+                .await;
+                assert!(
+                    checks.get() >= interrupt_after,
+                    "token reconstruction must yield after source proof"
+                );
+                assert!(result.is_none());
+                let fresh = actions.syntax_scope().unwrap();
+                let message = serde_json::json!({
+                    "version": openwebide_core::editor::SYNTAX_PROTOCOL_VERSION,
+                    "ticket": 10, "status": {"Ready": {"incremental": false}},
+                    "analysis": {"source": fresh.source.as_str(), "folds": [], "structure": null,
+                        "highlights": [[[fresh.source.len(), "Plain"]]]}
+                })
+                .to_string();
+                let reception =
+                    SyntaxReply::prepare_receive_shared(&message, 10, fresh.source.clone(), None)
+                        .unwrap();
+                let analysis =
+                    receive_syntax_reply(reception, || actions.syntax_scope_current(&fresh))
+                        .await
+                        .unwrap()
+                        .1
+                        .unwrap();
+                assert!(Arc::ptr_eq(analysis.source_snapshot(), &fresh.source));
+                assert_eq!(
+                    analysis.highlights().unwrap()[0][0].text,
+                    fresh.source.as_str()
+                );
+            }
+        }
+    }
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
     fn syntax_requests_share_source_across_pending_queries_and_tab_settings() {
         Owner::new().with(|| {
             let workspace = WorkspaceState::new();

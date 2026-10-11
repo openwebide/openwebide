@@ -1,0 +1,83 @@
+{
+  "scope": "Cooperative receiver wire-record admission, declared-row counting, source-line scanning, token materialization and retained-row byte validation. Structural reconstruction, full JSON decoding and allocation costs remain unfinished.",
+  "sourceFilesSha256": {
+    "crates/core/src/editor/syntax/service.rs": "3d64753a11bbebe7a79bf9182e872ea8e429965782d6fcc1778aa0193bd3da3c",
+    "crates/core/src/editor/syntax/transfer.rs": "3dfb5be9b00626d0c530b0c92c2703785eb7f4d5a115b6fec4993b0301d29d01",
+    "crates/core/src/editor/syntax/transfer/reception.rs": "c826918e3b3e042debb7661357c5c94b689a25b734b2ed3f71822b7bf52e2ad5",
+    "frontend/src/state_actions/editor/preparation.rs": "893d9f1c796798fd3460f12fc76aff7e7067c5d7191172ae7ce16abe6b40686e"
+  },
+  "executedBindingsWasmSha256": {
+    "component": "2e0b0c4eb77d22288ee7ef39fdd17beef8d92608f7fd2c1362ea018a7d35dd56",
+    "library": "865540376c6eda56106f17d42c7945db394c9bd439e7407624504893b139de45"
+  },
+  "coreTests": {
+    "features": [
+      "editor-parser"
+    ],
+    "passed": 699,
+    "failed": 0,
+    "ignored": 1,
+    "ignoredPurpose": "Unchanged native release query measurement"
+  },
+  "independentOracles": [
+    "Original wire-record count retains row-header accounting and exact limit acceptance/rejection",
+    "Original token reconstruction checks malformed spans/ranges, Unicode/CRLF text, retained row ownership and expanded record limits"
+  ],
+  "bounds": {
+    "rowHeadersAndTokenOperationsPerUnit": 64,
+    "sourceLineScanAndTokenBytesPerUnit": 8192,
+    "protocolVersion": 6,
+    "sourceMessageAndRecordLimits": "unchanged"
+  },
+  "browserComponents": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "console": "Invoking test: editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes\nInvoking test: editor::many_embedded_code_bodies_publish_complete_scopes_and_warm_edits_in_both_modes\nInvoking test: editor::cooperative_worker_row_index_preserves_dense_rows_in_both_modes\nInvoking test: editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes\n",
+    "output": "\nrunning 4 tests\ntest editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes ... ok\ntest editor::many_embedded_code_bodies_publish_complete_scopes_and_warm_edits_in_both_modes ... ok\ntest editor::cooperative_worker_row_index_preserves_dense_rows_in_both_modes ... ok\ntest editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes ... ok\n\ntest result: ok. 4 passed; 0 failed; 0 ignored; 0 filtered out; finished in 3.24s\n\n",
+    "passed": true,
+    "tests": [
+      "__wbgt__components::editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes",
+      "__wbgt__components::editor::cooperative_worker_row_index_preserves_dense_rows_in_both_modes",
+      "__wbgt__components::editor::many_embedded_code_bodies_publish_complete_scopes_and_warm_edits_in_both_modes",
+      "__wbgt__components::editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes"
+    ],
+    "servedFonts": {},
+    "libraryStartSuppressed": false
+  },
+  "browserOwnership": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "console": "Invoking test: state_actions::editor::preparation::tests::token_reception_yields_and_rejects_replaced_owners_in_both_modes\nInvoking test: state_actions::editor::preparation::tests::request_publication_yields_and_rejects_replaced_owners_in_both_modes\n",
+    "output": "\nrunning 2 tests\ntest state_actions::editor::preparation::tests::token_reception_yields_and_rejects_replaced_owners_in_both_modes ... ok\ntest state_actions::editor::preparation::tests::request_publication_yields_and_rejects_replaced_owners_in_both_modes ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.12s\n\n",
+    "passed": true,
+    "tests": [
+      "__wbgt__openwebide_frontend::state_actions::editor::preparation::tests::request_publication_yields_and_rejects_replaced_owners_in_both_modes",
+      "__wbgt__openwebide_frontend::state_actions::editor::preparation::tests::token_reception_yields_and_rejects_replaced_owners_in_both_modes"
+    ],
+    "servedFonts": {},
+    "libraryStartSuppressed": true
+  },
+  "ownershipCases": [
+    "Account",
+    "Project",
+    "File",
+    "Content",
+    "Read revision",
+    "Reload epoch"
+  ],
+  "ownershipPhase": "Interrupt after source proof while long-token reconstruction is pending; verify subsequent current-owner text and exact source identity in local and remote modes",
+  "lint": {
+    "nativeCoreAllTargets": "passed with -D warnings",
+    "releaseWasmFrontendAllTargetsTestSupport": "passed with -D warnings"
+  },
+  "hostedBaseline": {
+    "commit": "764873b8d979796a52a8981c72d332072f9018f5",
+    "run": 38161623511,
+    "result": "all five jobs succeeded",
+    "receipt": "editor-ci-764-success.json"
+  },
+  "limitations": [
+    "No end-to-end latency or memory improvement established",
+    "Complete JSON decoding and structural reconstruction remain synchronous",
+    "Vector/string capacity growth and immutable row allocation/copying remain synchronous",
+    "Final integrated hosted CI and physical PWA/accessibility verification remain required"
+  ]
+}

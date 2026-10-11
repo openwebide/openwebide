@@ -5,12 +5,11 @@ pub(super) use preparation::AnalysisTransferPreparation;
 mod reception;
 mod reply;
 use super::{super::structure::StructurePublication, SyntaxAnalysis};
-use crate::{
-    editor::*,
-    highlight::{Token, TokenKind},
-};
+#[cfg(test)]
+use crate::highlight::Token;
+use crate::{editor::*, highlight::TokenKind};
 pub(super) use publication::{SourcePublication, SourceSelection};
-pub(super) use reception::SourceValidation;
+pub(super) use reception::{AnalysisReconstruction, RecordAdmission, SourceValidation};
 pub(super) use reply::ReplyPublication;
 use std::sync::Arc;
 
@@ -330,6 +329,7 @@ impl SyntaxAnalysis {
 }
 
 impl SyntaxAnalysisData {
+    #[cfg(test)]
     fn record_count(&self) -> usize {
         self.folds
             .len()
@@ -365,6 +365,8 @@ impl SyntaxAnalysisData {
         expected_source: Arc<String>,
         previous: Option<(u32, &SyntaxAnalysis)>,
     ) -> Option<Arc<SyntaxAnalysis>> {
+        let mut admission = RecordAdmission::new(&self)?;
+        while !admission.advance(&self)? {}
         let mut validation = self.prepare_validation(expected_source, previous)?;
         while !validation.advance() {}
         let (source, line_count) = validation.finish()?;
@@ -385,9 +387,6 @@ impl SyntaxAnalysisData {
         {
             return None;
         }
-        if self.record_count() > MAX_ANALYSIS_RECORDS {
-            return None;
-        }
         if matches!(self.source, SyntaxSource::Replace { .. }) && self.base_ticket.is_none() {
             return None;
         }
@@ -399,7 +398,64 @@ impl SyntaxAnalysisData {
     }
 
     /// Only the shared source/fold proof drivers may enter reconstruction here.
+    pub(super) fn prepare_reconstruction(
+        self,
+        source: Arc<String>,
+        line_count: usize,
+        previous: Option<(u32, &SyntaxAnalysis)>,
+    ) -> Option<AnalysisReconstruction> {
+        let structure = match self.structure {
+            Some(data) => {
+                if data.needs_base() && self.base_ticket.is_none() {
+                    return None;
+                }
+                let budget = MAX_ANALYSIS_RECORDS.checked_sub(self.folds.len())?;
+                Some(Arc::new(data.validate(
+                    source.clone(),
+                    previous.and_then(|(_, old)| old.structure.as_deref()),
+                    budget,
+                )?))
+            }
+            None => None,
+        };
+        let records = self
+            .folds
+            .len()
+            .checked_add(structure.as_ref().map_or(0, |value| value.record_count()))?;
+        if records > MAX_ANALYSIS_RECORDS {
+            return None;
+        }
+        let rows = self.highlights.map(|lines| {
+            reception::TokenReconstruction::new(
+                lines,
+                source.clone(),
+                line_count,
+                records,
+                self.base_ticket
+                    .and_then(|_| previous.and_then(|(_, old)| old.highlights.clone())),
+            )
+        });
+        Some(AnalysisReconstruction {
+            source,
+            folds: self.folds,
+            structure,
+            rows,
+        })
+    }
+
     pub(super) fn validate_verified(
+        self,
+        source: Arc<String>,
+        line_count: usize,
+        previous: Option<(u32, &SyntaxAnalysis)>,
+    ) -> Option<Arc<SyntaxAnalysis>> {
+        let mut work = self.prepare_reconstruction(source, line_count, previous)?;
+        while !work.advance()? {}
+        work.finish()
+    }
+
+    #[cfg(test)]
+    fn validate_verified_reference(
         self,
         source: Arc<String>,
         line_count: usize,
