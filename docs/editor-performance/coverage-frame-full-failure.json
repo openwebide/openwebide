@@ -1,0 +1,21 @@
+{
+  "testedHead": "f86dd7bb853b5b1dbfdc67eba7b97d39e65d7c96",
+  "componentsWasmSha256": "e59f2f404b598df510e47f247cf0c79bbea4cf4e11ac227870062a57084b076e",
+  "libraryWasmSha256": "eba3d7c49352186992ca72af24d79a4323031706e49ce13a9b147922e111bfaa",
+  "profile": "release",
+  "inventory": 191,
+  "passed": 133,
+  "failed": [
+    "editor::horizontal_fragments_preserve_tabs_scroll_extent_and_native_hits_in_both_modes"
+  ],
+  "unexecuted": 57,
+  "terminalExitCode": 1,
+  "assertion": "frontend/tests/components/editor.rs:16535: initial horizontal paint must reuse cold anchors: 130011",
+  "isolatedSameArtifact": {
+    "passed": 1,
+    "failed": 0,
+    "terminalExitCode": 0,
+    "seconds": 1.5
+  },
+  "diagnosis": "Unresolved timing/order dependency; isolated pass does not resolve the full-suite failure. No deadline or paint bound changed."
+}

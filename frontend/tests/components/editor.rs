@@ -16441,7 +16441,7 @@ async fn horizontal_fragments_preserve_tabs_scroll_extent_and_native_hits_in_bot
         let normalized: Vec<_> = source.replace("\r\n", "\n").encode_utf16().collect();
         let initial_source = js_sys::Function::new_no_args(
             r#"
-            const state = {cold: 0, paint: 0};
+            const state = {cold: 0, paint: 0, unboundedPaint: null};
             const old = Range.prototype.getClientRects;
             Range.prototype.getClientRects = function(...args) {
                 const node = this.startContainer;
@@ -16450,6 +16450,15 @@ async fn horizontal_fragments_preserve_tabs_scroll_extent_and_native_hits_in_bot
                 if (row) {
                     const kind = row.closest('.editor-height-measure') ? 'cold' : 'paint';
                     state[kind] = Math.max(state[kind], row.textContent.length);
+                    if (kind === 'paint' && row.textContent.length > 65536 && !state.unboundedPaint) {
+                        const probe = row.closest('.editor-row-measure');
+                        state.unboundedPaint = {
+                            row: Object.fromEntries(Array.from(row.attributes).map(attribute => [attribute.name, attribute.value])),
+                            scope: Object.fromEntries(Array.from(probe.attributes).filter(attribute => attribute.name.startsWith('data-measure-')).map(attribute => [attribute.name, attribute.value])),
+                            fonts: Array.from(document.fonts).map(font => ({family:font.family,status:font.status})),
+                            stack: new Error().stack,
+                        };
+                    }
                 }
                 return old.apply(this, args);
             };
@@ -16522,6 +16531,12 @@ async fn horizontal_fragments_preserve_tabs_scroll_extent_and_native_hits_in_bot
         };
         let cold = measured("cold");
         let paint = measured("paint");
+        let diagnostic = js_sys::JSON::stringify(
+            &js_sys::Reflect::get(&initial_source, &"unboundedPaint".into()).unwrap(),
+        )
+        .unwrap()
+        .as_string()
+        .unwrap();
         js_sys::Reflect::get(&initial_source, &"restore".into())
             .unwrap()
             .dyn_into::<js_sys::Function>()
@@ -16534,7 +16549,7 @@ async fn horizontal_fragments_preserve_tabs_scroll_extent_and_native_hits_in_bot
         );
         assert!(
             paint > 0.0 && paint <= 65_536.0,
-            "initial horizontal paint must reuse cold anchors: {paint}"
+            "initial horizontal paint must reuse cold anchors: {paint}; {mode:?}; {diagnostic}"
         );
         // Audit the source extent after initial geometry and native-window
         // installation settle, rather than a transient cold native extent.

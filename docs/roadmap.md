@@ -176,8 +176,11 @@ tracks the remaining work rather than every optimization already shipped.
   ([receipt](editor-performance/coverage-frame-browser.json)). Four current
   production samples show 231–247 ms viewport paint and 1.11–1.14 s complete
   geometry ([samples](editor-performance/coverage-frame-production.jsonl));
-  these remain above the responsiveness goal, and a full browser/hosted CI pass
-  for this scheduling change still needs verification. Extend
+  these remain above the responsiveness goal. Its full release browser run passed
+  133 tests, failed the initial tabbed horizontal paint bound, and left 57
+  unexecuted ([failure](editor-performance/coverage-frame-full-failure.json)).
+  The same frozen test passes alone; resolve the timing/order dependency and
+  verify the complete inventory and hosted CI before crediting this gate. Extend
   shifted suffix reuse to changed long-token and plain-run boundaries; avoid repeated prefix
   segmentation for over-limit styled run tables. Eligible styled measurement paths
   now prepare run tables in yielding batches, including uncapped unwrapped
@@ -258,6 +261,9 @@ tracks the remaining work rather than every optimization already shipped.
   editor browser contracts, including both font matrices, pass
   ([receipt](editor-performance/request-publication-full-browser.json)); measure
   actual publication/input latency and memory before crediting responsiveness.
+  That request-publication checkpoint also passed all five hosted jobs
+  ([receipt](editor-performance/grouped-ci-f208bde.json)); newer checkpoints and
+  the remaining production/device gates still require verification.
   Request encoding now borrows retained source ranges without an intermediate
   plaintext copy, sharing full/delta selection with replies. Its 636 core tests,
   strict native/WASM lint and all 191 release browser contracts pass

@@ -5708,8 +5708,10 @@ functional contracts do not establish production responsiveness or complete
 release reliability. The three preceding checkpoints also pass all five hosted
 jobs ([7ff2462](editor-performance/grouped-ci-7ff2462.json),
 [211574d](editor-performance/grouped-ci-211574d.json),
-[81d2d78](editor-performance/grouped-ci-81d2d78.json)); hosted CI for this publisher
-and the outstanding production/device gates still need verification.
+[81d2d78](editor-performance/grouped-ci-81d2d78.json)). This publisher checkpoint
+also passed all five hosted jobs
+([f208bde](editor-performance/grouped-ci-f208bde.json)); the outstanding
+production/device gates still need verification.
 
 ### Borrowed request source ranges
 
@@ -5793,3 +5795,17 @@ cohorts with uncontrolled host/background load, so their difference does not
 establish a controlled causal improvement. The scheduling change prioritizes
 the first proved viewport; the substantial fresh shaping cost and full
 responsiveness, memory, device and CI gates remain open.
+
+The full release follow-up passed 133 editor tests, failed one initial tabbed
+horizontal paint bound and left 57 tests unexecuted
+([failure record](editor-performance/coverage-frame-full-failure.json)). The
+failed assertion observes a 130,011-character row in a paint probe where the
+existing contract requires at most 65,536. An isolated run of the same frozen
+artifact passes. That does not resolve the full-run failure or establish its
+cause. The assertion now captures the first oversized paint's row attributes,
+measurement scope, font states and call stack for diagnosis; its original
+paint bounds and deadlines remain unchanged. No full-suite pass is claimed.
+The rebuilt diagnostic artifact passes the same 56-test group with zero failures
+([receipt](editor-performance/horizontal-diagnostic-group.json)). This establishes
+that the diagnostics preserve the contracts, but leaves the intermittent failure
+unresolved; it is not a renderer fix or a complete-inventory pass.
