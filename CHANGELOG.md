@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Write suggested follow-up prompts from the user's perspective, addressing the assistant rather than asking the user questions.
+
 - Reuse cooperatively prepared long-row category summaries for exact word navigation, avoiding repeated scans through long identifiers, punctuation, whitespace and Unicode clusters. Preserve existing grapheme rules and source ownership through edits and undo.
 
 - Keep a changed fold open when its parsed end no longer matches the collapsed range rebased through an edit. Removing a Markdown heading no longer silently hides the following section; unchanged folds retain their collapse state.

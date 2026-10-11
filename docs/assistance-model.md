@@ -15,7 +15,9 @@ updates preserve titles you assigned yourself.
 Completed chats show a collapsible **Where you left off** recap, a short result
 summary marked with a **↪** recap indicator and suggested next prompts as inline
 composer hints. Summaries describe the topic or concrete result directly,
-mentioning failures or blockers only when relevant. A hint completes matching
+mentioning failures or blockers only when relevant. Follow-up suggestions are
+prompts you can send to the assistant, rather than questions addressed to you.
+A hint completes matching
 text as you type. Press **Right Arrow** at the end of the input to accept
 it; acceptance fills the composer without submitting. Cursor movement, text
 selection and modified arrow keys keep their normal behavior. Follow-up choices
