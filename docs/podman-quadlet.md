@@ -14,7 +14,7 @@ For Git over SSH, see [agent forwarding and public SSH configuration](git-ssh.md
 
 ## Install a published release
 
-After the first public release, download `openwebide.image` and
+Download `openwebide.image` and
 `openwebide.container` from [GitHub Releases](https://github.com/openwebide/openwebide/releases).
 The image unit tracks its release channel (`latest` for stable releases, or
 `alpha`/`beta`/`rc` for prereleases); no checkout or build is needed.

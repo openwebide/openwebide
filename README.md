@@ -40,9 +40,11 @@ Hosting and administration, Development, or Project.
 
 ## Run with Docker
 
-The first public image release is being prepared. Once published, download the
-versioned Compose file from [GitHub Releases](https://github.com/openwebide/openwebide/releases)
-and run `docker compose up -d` without cloning or building. See
+The alpha image is published as `ghcr.io/openwebide/openwebide:v1.0.0-alpha.5`
+for Linux amd64 and arm64. Download the versioned Compose or Podman Quadlet files
+from [the alpha release](https://github.com/openwebide/openwebide/releases/tag/v1.0.0-alpha.5)
+and run without cloning or building. Registry authentication is currently required;
+the package owner can enable anonymous pulls by making the GHCR package public. See
 [releases, configuration and upgrades](docs/releases.md) for installation and backup
 instructions. The source-build path below remains available now.
 

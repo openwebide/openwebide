@@ -926,7 +926,8 @@ Release automation, download-only Compose/Quadlet files, support issue forms,
 configuration/upgrade/backup guidance, architecture diagrams and font credits are
 prepared. See [releases and upgrades](releases.md). Version/changelog gates,
 archive/checksum contracts, workflow lint and Compose configuration checks cover
-this preparation; publication and release-host verification remain outstanding.
+this preparation. Alpha images and release assets are published; anonymous pull
+and release-host verification remain outstanding.
 Documentation now has [section overviews](index.md), first-session/workspace guides
 and curated site navigation. Complete the remaining task guides and installation
 walkthroughs against the final app before public launch.
@@ -942,23 +943,22 @@ walkthroughs against the final app before public launch.
   workflows, sessions, Git, commands/output and troubleshooting into task guides.
   Validate them on a clean installation and on both workspace modes; refresh
   editor and mobile walkthroughs after the ongoing UI work lands.
-- **Release rehearsal:** run the Release workflow's nonpublishing manual build and
-  verify its native Linux amd64/arm64 images and Linux/macOS bridge archives. Exercise
-  download-only Compose, rootless Quadlet (including registry auto-updates), HTTPS,
-  database backup/restore/upgrade and both workspace modes. CI validates generated
-  Quadlet services; actual systemd service and update-timer checks remain hands-on.
-- **Prerelease publication:** the prepared pipeline also accepts `-alpha.N`, `-beta.N`
-  and `-rc.N`, publishes versioned images plus the matching rolling channel, and marks
-  GitHub Releases as prereleases. Validate a first prerelease install and make GHCR
-  public before using alpha/beta distribution for feedback; this does not complete 1.0.
+- **Installation and upgrade rehearsal:** exercise download-only Compose and rootless
+  Quadlet (including registry auto-updates), database backup/restore/upgrade and both
+  workspace modes on release hosts. CI verifies both native image architectures,
+  bridge archives, HTTPS transport and generated Quadlet services; actual systemd
+  service and update-timer checks remain hands-on.
+- **Prerelease installation verification:** make the GHCR package public and verify
+  anonymous pulls on both architectures, then validate a clean prerelease install
+  before using alpha/beta distribution for feedback; this does not complete 1.0.
 - **First stable publication:** move shipped changelog entries to `[1.0.0]`, bump workspace,
   Spin and lockfile versions together, and publish `v1.0.0` after rehearsal passes.
   The prepared workflow runs CI, merges native platform images into
   `ghcr.io/openwebide/openwebide:v1.0.0` and `latest`, and publishes changelog-derived
   notes, archives, install files and checksums using `GITHUB_TOKEN`. Make the GHCR
   package public and verify anonymous pulls and clean installs on both architectures.
-  The workspace currently remains `0.1.0`; a prerelease version can be adopted before
-  the stable-release gates pass.
+  The published alpha is `1.0.0-alpha.5`; alpha publication does not complete
+  the stable-release gates.
 - **Public launch:** update the [site landing page](project-site.md) and pre-release
   documentation wording for the actual release, then prepare community announcements
   and directory submissions. Support uses the new GitHub issue forms; an optional

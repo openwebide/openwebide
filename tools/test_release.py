@@ -133,6 +133,11 @@ with open(os.environ['COMMAND_LOG'], 'a') as stream:
         self.assertEqual(release.validate(self.root, "v1.0.0"), ("1.0.0", "- Shipped.\n"))
         self.assertEqual(release.validate(self.root), ("1.0.0", "- Future.\n"))
 
+    def test_oversized_publication_notes_fail_before_building_release_artifacts(self):
+        (self.root / "CHANGELOG.md").write_text('## [Unreleased]\n\n## [1.0.0]\n\n' + 'x' * 125000)
+        with self.assertRaisesRegex(ValueError, "125000-character limit"):
+            release.validate(self.root, "v1.0.0")
+
     def test_rejects_tag_mismatch_and_injected_tag(self):
         for tag in ["v0.1.0", "v1.0.0; echo bad", "v1.0.0-rc.1"]:
             with self.subTest(tag=tag), self.assertRaises(ValueError):
@@ -151,6 +156,19 @@ with open(os.environ['COMMAND_LOG'], 'a') as stream:
                 with self.assertRaises(ValueError):
                     release.validate(self.root)
                 path.write_text(previous)
+
+    def test_public_plugin_sdk_keeps_its_independent_locked_version(self):
+        cargo = self.root / "Cargo.toml"
+        cargo.write_text(cargo.read_text().replace('["bridge"]', '["bridge", "crates/plugin-sdk"]'))
+        sdk = self.root / "crates/plugin-sdk/Cargo.toml"
+        sdk.parent.mkdir(parents=True)
+        sdk.write_text('[package]\nname = "openwebide-plugin-sdk"\nversion = "0.1.0"\n')
+        lock = self.root / "Cargo.lock"
+        lock.write_text(lock.read_text() + '\n[[package]]\nname = "openwebide-plugin-sdk"\nversion = "0.1.0"\n')
+        self.assertEqual(release.version(self.root), "1.0.0")
+        sdk.write_text(sdk.read_text().replace('"0.1.0"', '"0.2.0"'))
+        with self.assertRaises(ValueError):
+            release.version(self.root)
 
     def test_missing_empty_or_duplicate_notes_block_release(self):
         for changelog in ["## [Unreleased]\n- Only unreleased.\n", "## [1.0.0]\n\n", "## [1.0.0]\n- One.\n## [1.0.0]\n- Two.\n"]:
