@@ -6121,3 +6121,27 @@ This directs the next investigation toward failed incremental paragraph replay,
 rather than HTML rendering. Profiling/timing hooks add overhead; the diagnostic
 is not an independent production latency gate or proof of the replay failure's
 cause.
+
+### Required fonts in the standalone component harness
+
+The preceding ordinary component fixture lacked `/fonts` assets. Its explicit
+font matrices load embedded Monaspace separately, but ordinary contracts could
+use a fallback font. The recorded 194 passes therefore do not establish ordinary
+geometry with production Monaspace. The standalone harness now requires all five
+shipped font files, serves their CSS URLs, and reports served-font hashes. Missing
+font assets fail before a browser run rather than silently substituting fonts.
+
+The expanded near-limit replay regression passes its previous fallback-font
+fixture (11.12 s) but fails with the actual Neon font at the second beginning
+insertion (14.03 s): `Local styled=true reconnect=true width=420 change=2 reused=0`
+([receipt](editor-performance/monaspace-wrapped-replay-regression.json)). Complete
+geometry preparation finishes; the positive-replay assertion fails. This exposes
+a performance case, not proof of corrupted geometry. The failing candidate test
+remains uncommitted while the shared wrapped replay policy is investigated.
+Remote and the narrow-width variant are not reached in that failed run.
+
+The focused both-mode bounded-wrapped complete-geometry contract passes with
+all five actual font files served (42.83 s)
+([receipt](editor-performance/monaspace-wrapped-complete-geometry.json)).
+This validates the corrected harness and complete-geometry comparison, not the
+full ordinary component suite or the failing replay performance candidate.

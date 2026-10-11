@@ -432,5 +432,6 @@
   },
   "fullComponentLogSha256": "d1f5fb4db15f4eb5b26e2dc2af82cad628e982017164eec4bb393fe6b4dd8997",
   "strictWasmLintLogSha256": "bbcad3146670366664fb291b92df40768400c678f1fc94519a1314ecaa29f61d",
-  "hostedCi": "pending"
+  "hostedCi": "pending",
+  "fontAssetCoverageLimitation": "Standalone ordinary component test fixture did not serve CSS font assets; the explicit font matrices separately install embedded Monaspace. The 194 recorded passes do not establish ordinary geometry with production fonts. Rerun with required shipped assets."
 }

@@ -409,7 +409,12 @@ these measurements do not complete the requirements below.
   completion ([record](editor-performance/editor-plugin-debug-failure.json)).
   The combined optimized artifact passes all 194 editor/worker browser contracts
   with unchanged assertions and deadlines
-  ([receipt](editor-performance/editor-plugin-release-browser.json)). Current
+  ([receipt](editor-performance/editor-plugin-release-browser.json)). Ordinary
+  component fixtures lacked shipped CSS font assets; the explicit font matrices
+  load them separately. Repeat ordinary contracts with required production fonts.
+  An expanded near-limit replay candidate fails its positive-reuse assertion with
+  Monaspace on a second beginning insertion; complete geometry finishes
+  ([failure](editor-performance/monaspace-wrapped-replay-regression.json)). Current
   hosted CI for `7968226d`, including the paired-plugin error assertion
   correction, remains pending.
   The embedded-comment

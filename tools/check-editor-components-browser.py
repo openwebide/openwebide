@@ -8,6 +8,7 @@ existing editor measurement image with read-only bindings and repository mounts.
 """
 import argparse
 import functools
+import hashlib
 import http.server
 import json
 from pathlib import Path
@@ -25,8 +26,17 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("bindings", type=Path)
     parser.add_argument("filters", nargs="+")
+    parser.add_argument("--fonts", type=Path, default=ROOT / "frontend/fonts")
     args = parser.parse_args()
     assert (args.bindings / "tests.js").is_file(), "Missing generated tests.js"
+    # Ordinary geometry contracts use the CSS font URLs, while font matrices
+    # also install embedded faces. Never silently substitute a fallback font.
+    fonts = {
+        f"/fonts/Monaspace{family}-v1.400.woff2":
+        (args.fonts / f"Monaspace{family}-v1.400.woff2").read_bytes()
+        for family in ["Neon", "Argon", "Xenon", "Radon", "Krypton"]
+    }
+    served_fonts = {}
     script = """
         import init, * as bindings from '/tests.js';
         window.__wbg_test_invoke = callback => callback();
@@ -62,6 +72,10 @@ def main():
             elif self.path == "/runner.js":
                 body = script.encode()
                 content_type = "text/javascript; charset=utf-8"
+            elif self.path in fonts:
+                body = fonts[self.path]
+                content_type = "font/woff2"
+                served_fonts[self.path] = hashlib.sha256(body).hexdigest()
             else:
                 return super().do_GET()
             self.send_response(200)
@@ -87,12 +101,14 @@ def main():
                 while True:
                     result = browser.script("return {passed:window.editorComponentResult ?? null, tests:window.editorComponentNames, output:document.getElementById('output').textContent, console:document.getElementById('console_output').textContent, browser:navigator.userAgent}")
                     if result["passed"] is not None:
+                        result["servedFonts"] = served_fonts.copy()
                         print(json.dumps(result), flush=True)
                         assert result["passed"] is True, "WASM component tests failed"
                         break
                     if time.monotonic() >= deadline:
                         # Preserve the executed-test output and first failure even
                         # when a later contract prevents the run from completing.
+                        result["servedFonts"] = served_fonts.copy()
                         print(json.dumps(result), flush=True)
                         raise AssertionError("WASM component tests timed out")
                     time.sleep(0.2)
