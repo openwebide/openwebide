@@ -1295,53 +1295,29 @@ pub(super) fn sync_highlight_scroll(
     overlay: &web_sys::HtmlElement,
 ) {
     crate::viewport::refresh_editor_scroll(textarea);
-    // Scrollbars can settle between the observer and source paint.
-    let _ = overlay.style().set_property(
-        "--editor-text-width",
-        &format!(
-            "{}px",
-            crate::viewport::editor_scroll(textarea).client_width()
-        ),
-    );
-    let _ = overlay.style().set_property(
-        "--editor-viewport-height",
-        &format!(
-            "{}px",
-            crate::viewport::editor_scroll(textarea).client_height()
-        ),
-    );
-    let _ = overlay.style().set_property(
-        "--editor-scroll-x",
-        &format!(
-            "{}px",
-            -crate::viewport::editor_scroll(textarea).scroll_left()
-        ),
-    );
-    let _ = overlay.style().set_property(
-        "--editor-scroll-y",
-        &format!(
-            "{}px",
-            -crate::viewport::editor_scroll(textarea).scroll_top()
-        ),
-    );
+    // Scrollbars can settle between the observer and source paint. Snapshot the
+    // settled viewport before any paint style writes can invalidate layout.
+    let scroll = crate::viewport::editor_scroll(textarea);
+    let width = format!("{}px", scroll.client_width());
+    let height = format!("{}px", scroll.client_height());
+    let x = format!("{}px", -scroll.scroll_left());
+    let y = format!("{}px", -scroll.scroll_top());
+    let set = |element: &web_sys::HtmlElement, name: &str, value: &str| {
+        let style = element.style();
+        if style.get_property_value(name).ok().as_deref() != Some(value) {
+            let _ = style.set_property(name, value);
+        }
+    };
+    set(overlay, "--editor-text-width", &width);
+    set(overlay, "--editor-viewport-height", &height);
+    set(overlay, "--editor-scroll-x", &x);
+    set(overlay, "--editor-scroll-y", &y);
     if let Some(parent) = textarea
         .parent_element()
         .and_then(|parent| parent.dyn_into::<web_sys::HtmlElement>().ok())
     {
-        let _ = parent.style().set_property(
-            "--editor-scroll-x",
-            &format!(
-                "{}px",
-                -crate::viewport::editor_scroll(textarea).scroll_left()
-            ),
-        );
-        let _ = parent.style().set_property(
-            "--editor-scroll-y",
-            &format!(
-                "{}px",
-                -crate::viewport::editor_scroll(textarea).scroll_top()
-            ),
-        );
+        set(&parent, "--editor-scroll-x", &x);
+        set(&parent, "--editor-scroll-y", &y);
     }
     overlay.set_scroll_top(0.0);
     overlay.set_scroll_left(0.0);

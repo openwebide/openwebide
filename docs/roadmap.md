@@ -119,7 +119,11 @@ the partition fix passes all five jobs
   across admitted boundaries, including unsupported layouts. Repeated scroll getters now resolve the mounted
   surface once; row-limit comparison samples still reach 100 ms, so native
   dimension/layout publication and row-table costs remain
-  ([comparison](editor-performance/scroll-reference-line-comparison.jsonl)).
+  ([comparison](editor-performance/scroll-reference-line-comparison.jsonl)). Scroll-paint
+  synchronization now snapshots viewport reads before CSS writes and skips
+  unchanged values; eight scroll/caret/geometry contracts pass in both modes
+  ([receipt](editor-performance/scroll-paint-browser.json)). Native range
+  measurement and full cold/input costs remain unfinished.
 - [ ] **Tabbed, wrapped and bidirectional geometry:** extend bounded preparation
   beyond eligible source-monotonic paragraphs with complete-word seams. Finish
   bidirectional visual-run windows, fine long-row paint, incremental glyph
@@ -183,8 +187,8 @@ the partition fix passes all five jobs
   file-switch cancellation, cold queued-input source/selection ownership,
   host-plugin focus/layout and explicit Output/terminal targeting. Validate bounded
   setup retries after upstream Chrome download failures. Last fully green checkpoint
-  `f251d89` passes all five jobs
-  ([receipt](editor-performance/editor-ci-f251-success.json)); the retained-span checkpoint passes six focused browser contracts, ten WASM
+  `120ea5c` passes all five jobs
+  ([receipt](editor-performance/editor-ci-120-success.json)); the retained-span checkpoint passes six focused browser contracts, ten WASM
   library geometry/ownership contracts, strict WASM frontend lint and 16 fresh
   production samples. Hosted UI CI at `b4c9aa7` failed the wrapped-origin crop-rejection contract.
   Its wait correction passes in isolation with the original scroll adapter
@@ -197,8 +201,8 @@ the partition fix passes all five jobs
   localized wrapped-row probe limits
   ([receipt](editor-performance/pending-frame-browser.json)). Full hosted CI for
   the pending-paint correction (`d26efa9`) and repeated-row planning (`f251d89`)
-  passes all five jobs. At the latest check, `120ea5c` passes frontend, native/backend,
-  Windows and Docker; its browser job is still running. This gate remains open
+  passes all five jobs. `120ea5c` now passes all five jobs, including the full browser partition
+  ([receipt](editor-performance/editor-ci-120-success.json)). This gate remains open
   for the final integrated editor implementation.
 - [ ] **Physical Chrome/Edge PWA input:** verify real input-method commit/cancel,
   Unicode and LF/CRLF undo/redo, multiple-cursor clipboard transactions and touch

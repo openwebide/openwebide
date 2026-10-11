@@ -1,0 +1,42 @@
+[
+  {
+    "mode": "local",
+    "case": "small",
+    "completeSourceAfterInputVerified": true,
+    "coldCompleteGeometryMs": 1191.1000000014901,
+    "inputToPaintMs": 28.600000001490116,
+    "sampledClientWidthMs": 0.0,
+    "sampledRangeRectanglesMs": 0.0,
+    "scope": "Diagnostic CPU profiling and DOM hooks add overhead. All samples use same 120ea5c release artifact; not an uninstrumented responsiveness gate."
+  },
+  {
+    "mode": "local",
+    "case": "styled-long-line",
+    "completeSourceAfterInputVerified": true,
+    "coldCompleteGeometryMs": 1626,
+    "inputToPaintMs": 233,
+    "sampledClientWidthMs": 144.174,
+    "sampledRangeRectanglesMs": 207.28,
+    "scope": "Diagnostic CPU profiling and DOM hooks add overhead. All samples use same 120ea5c release artifact; not an uninstrumented responsiveness gate."
+  },
+  {
+    "mode": "remote",
+    "case": "small",
+    "completeSourceAfterInputVerified": true,
+    "coldCompleteGeometryMs": 1268.2000000029802,
+    "inputToPaintMs": 25.399999998509884,
+    "sampledClientWidthMs": 2.097,
+    "sampledRangeRectanglesMs": 0.0,
+    "scope": "Diagnostic CPU profiling and DOM hooks add overhead. All samples use same 120ea5c release artifact; not an uninstrumented responsiveness gate."
+  },
+  {
+    "mode": "remote",
+    "case": "styled-long-line",
+    "completeSourceAfterInputVerified": true,
+    "coldCompleteGeometryMs": 1617.7999999970198,
+    "inputToPaintMs": 219.60000000149012,
+    "sampledClientWidthMs": 143.126,
+    "sampledRangeRectanglesMs": 185.721,
+    "scope": "Diagnostic CPU profiling and DOM hooks add overhead. All samples use same 120ea5c release artifact; not an uninstrumented responsiveness gate."
+  }
+]

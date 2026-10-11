@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Snapshot editor viewport geometry before scroll-paint style updates and skip unchanged CSS values, keeping the shared scroll/caret alignment path in both project modes.
+
 - Attribute editor browser memory to owned process roles, preserving complete PSS coverage and recording the breakdown at the same total-peak sample.
 
 - Document plugin authoring from working examples through SDK checks, host testing and immutable marketplace publishing; correct retired API and future-contribution claims in both repositories.

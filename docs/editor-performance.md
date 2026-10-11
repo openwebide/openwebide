@@ -6666,3 +6666,50 @@ therefore warrant profiling before another row-table memory experiment. These
 are one sample per mode/source size, not a stable performance distribution;
 RSS/PSS include browser infrastructure and do not equal live Rust heap usage.
 No responsiveness or memory completion gate is closed by this attribution.
+
+
+### Batch scroll-paint reads before style updates
+
+Four fresh diagnostic profiles use the same production build for 1,000 plain
+rows and a near-1-MiB styled long line in both modes
+([summary](editor-performance/renderer-startup-profile-summary.json),
+[compressed profiles](editor-performance/renderer-startup-profiles.jsonl.gz),
+[fixture entry point](editor-performance/renderer-startup-profile-sample.py)).
+All inputs preserve complete source. The long-line profiles spend approximately
+143–144 ms of sampled CPU time in client-width reads and 186–207 ms in native
+text-range rectangles; the diagnostic JavaScript heap is about 4–5 MiB.
+CPU profiling and DOM hooks add overhead, and these figures span startup,
+scrolling and input rather than isolating a single input handler.
+
+The shared scroll-paint synchronizer now resolves the current scroll surface
+once and reads width, height and both offsets before writing any paint styles.
+It skips unchanged CSS property values and applies the same coordinate snapshot
+to the overlay and parent. Scroll extent refresh still precedes the snapshot;
+resize and font ownership rules, geometry fallbacks and adapters are unchanged.
+
+Eight combined release browser contracts pass with the shipped Monaspace fonts:
+scroll-surface replacement/reparenting, wheel/native navigation, caret/selection
+motion, early wrapped-origin paint, exact unwrapped replay, tabbed horizontal
+fragments, complete styled wrapped geometry and pending grammar paint
+([receipt](editor-performance/scroll-paint-browser.json),
+[source and component identity](editor-performance/scroll-paint-browser-manifest.json)).
+Strict release WASM frontend lint passes with test support and all targets.
+This checkpoint does not finish range measurement, cold startup, memory or
+large-file responsiveness.
+
+
+Eight isolated, interleaved baseline/candidate release samples preserve complete
+edited source in both modes, with wrapping on/off
+([samples](editor-performance/scroll-paint-production-comparison.jsonl),
+[candidate identity](editor-performance/scroll-paint-production-manifest.json)).
+Candidate long-line input is 191–475 ms and peak PSS is 685–726 MiB,
+versus 206–453 ms and 673–708 MiB in these baseline samples. These are
+single samples per mode/wrap setting, not proof of a latency or memory
+improvement. The higher candidate PSS requires repeat verification alongside
+the remaining performance work. Batching removes the avoidable read/write alternation; native range
+measurement and the remaining long-line stalls still require further work.
+
+The previous row-reuse implementation checkpoint `120ea5c` now passes all five
+hosted jobs, including the full browser partition
+([receipt](editor-performance/editor-ci-120-success.json)). The new scroll-paint
+checkpoint still requires its own hosted CI verification.
