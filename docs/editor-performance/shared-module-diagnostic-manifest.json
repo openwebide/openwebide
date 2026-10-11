@@ -1,0 +1,46 @@
+{
+  "baseline": {
+    "sourceHead": "1745f068049675a255e1599f0b072e6664da34b1",
+    "sourceFilesSha256": {
+      "crates/core/src/editor/visual_motion.rs": "21e8aaebb2841836251d702627862d312579dea5bdf69441a70874152430e284",
+      "crates/core/src/editor/mod.rs": "552c68362ee8f0628977c349bab7c5874d4cbfd1af2bae4dfa4d275ae16824e4",
+      "frontend/src/components/editor_geometry.rs": "2fd158e1a070bfeea30b0a1f925395240d6df4861e70a604aa08cf1f1c4de809",
+      "frontend/src/components/editor_rows.rs": "be22390f64521e3db85da55dbe935dea1ee72891dd4e65543c9b5d9a6084027f"
+    },
+    "frontendWasmSha256": {
+      "openwebide-frontend-92bf8193126be12a_bg.wasm": "cadd91dd63b3608b3d2c3ca686cfdb571441a560339d490db8b7741bc9424a18"
+    },
+    "backendWasmSha256": "8efc2579446963f530f5774fdcbe2223bbc6b974eb54d8221a768ff1c43232af",
+    "measurementScriptSha256": "ff54ba45a0759813853211e55fda72b39a14decf0ab4015df7ff9c1d3917bd99",
+    "scope": "Private module-sharing diagnostic: unchanged Rust/WASM binary, same input/source contract, verified module clone and worker readiness; not production implementation.",
+    "diagnostic": "baseline",
+    "diagnosticAssetSha256": {
+      "editor-worker.js": "0cbea217369c40324ca9f59e29bda79fa46795af2115de185aab3185c352cec3",
+      "openwebide-frontend-92bf8193126be12a.js": "eaf5c40ccbecbc6acdddae846860182576a2a039b8784884f0f262002365f66c"
+    }
+  },
+  "candidate": {
+    "sourceHead": "1745f068049675a255e1599f0b072e6664da34b1",
+    "sourceFilesSha256": {
+      "crates/core/src/editor/visual_motion.rs": "21e8aaebb2841836251d702627862d312579dea5bdf69441a70874152430e284",
+      "crates/core/src/editor/mod.rs": "552c68362ee8f0628977c349bab7c5874d4cbfd1af2bae4dfa4d275ae16824e4",
+      "frontend/src/components/editor_geometry.rs": "2fd158e1a070bfeea30b0a1f925395240d6df4861e70a604aa08cf1f1c4de809",
+      "frontend/src/components/editor_rows.rs": "be22390f64521e3db85da55dbe935dea1ee72891dd4e65543c9b5d9a6084027f"
+    },
+    "frontendWasmSha256": {
+      "openwebide-frontend-92bf8193126be12a_bg.wasm": "cadd91dd63b3608b3d2c3ca686cfdb571441a560339d490db8b7741bc9424a18"
+    },
+    "backendWasmSha256": "8efc2579446963f530f5774fdcbe2223bbc6b974eb54d8221a768ff1c43232af",
+    "measurementScriptSha256": "48531231639075519d6baf39b0ee1889db8016ac776613bf21ecfff4a11516f9",
+    "scope": "Private module-sharing diagnostic: unchanged Rust/WASM binary, same input/source contract, verified module clone and worker readiness; not production implementation.",
+    "diagnostic": "candidate",
+    "diagnosticAssetSha256": {
+      "editor-worker.js": "83db45038938cc736e9b2104a877ebfbc73abd09a415bdf8c9c00848b5a2badb",
+      "openwebide-frontend-92bf8193126be12a.js": "3655bc0f53c55b92626058b76fd9a84def71f47f36cbb290954bdd8d019301f3"
+    },
+    "diagnosticIndexHtmlSha256": "236880cbdce4dbd50295d3364bc2414deaa5895c1bba153411bb7e8c636475f1",
+    "diagnosticSRI": "sha384-JkyLbg8pxnYdPi9ojea/q03a0Fg+09kNxmbIqQSfLCZuY3W83kWPZ65YoNMix36U",
+    "diagnosticRevision": "Syntax-checked event-driven bootstrap with dynamic fallback imports."
+  },
+  "interpretation": "One pair per project mode, unwrapped near-byte-limit source. Compiled module handoff and worker readiness verified, full source preserved, but no consistent PSS reduction; do not ship as a memory optimization or infer latency gains from the outlying local baseline."
+}

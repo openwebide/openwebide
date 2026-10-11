@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Verify the paragraph-setup and unmount-cancellation checkpoint against all five hosted CI jobs on integrated editor/plugin source. Record a compiled-module-sharing diagnostic that preserved source without establishing memory gains.
+
 ## [1.0.0-alpha.6] - 2026-10-11
 
 - Add host-side stdio MCP discovery and tool execution for server runs and paired local hosts, with run-pinned catalogs, normal approvals, bounded requests and process cleanup.

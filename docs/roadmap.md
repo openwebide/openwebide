@@ -77,6 +77,16 @@ startup cost next; total Chrome PSS includes a substantial browser baseline.
 An isolated worker-bundle experiment did not reduce process
 memory and increased the WASM download from roughly 27 to 42 MiB; it was rejected
 ([comparison](editor-performance/rejected-worker-split-comparison.jsonl)).
+Passing the main compiled module to the existing worker also preserves full
+source and worker readiness, but paired unwrapped samples show no PSS reduction
+([diagnostic](editor-performance/shared-module-diagnostic.jsonl)); this candidate
+remains unshipped. Profile native allocations rather than assuming duplicate
+compilation explains the renderer increase. A clock-marked native allocation
+diagnostic follows the same app renderer from 41.9 MiB before navigation to
+276.8 MiB at cold readiness and 283.6 MiB after input; anonymous writable
+mappings dominate ([summary](editor-performance/native-allocator-diagnostic.json)).
+The allocator buckets do not yet establish which subsystem owns that increase;
+this remains investigation, not a shipped memory improvement.
 
 The preceding 24-sample boundary matrix preserves complete edited source, with
 byte-limit edits at 59–69 ms and row-limit edits at 32–60 ms
@@ -99,17 +109,16 @@ the partition fix passes all five jobs
 ([receipts](editor-performance/editor-ci-d26-success.json),
 [receipt](editor-performance/editor-ci-f251-success.json)).
 
-The newer `2cca9be` checkpoint passes all five hosted jobs
-([receipt](editor-performance/editor-ci-2cca-success.json)). Latest checkpoint
-`1745f06` fails two browser contracts: horizontal-fragment probe cleanup and
-navigation paint-count isolation. The other four jobs pass; reliable combined CI
-remains open while post-frame owner cancellation and probe cleanup are corrected
-and reverified in the affected group and hosted CI. An accepted-coverage held-frame unmount
-regression passes both modes with post-frame owner rejection and complete probe
-cleanup ([receipt](editor-performance/wrapped-unmount-browser.json)). Two consecutive affected
-58-test groups pass without disposed-signal panics after the cancellation fix
-([receipt](editor-performance/wrapped-unmount-group-browser.json)); hosted CI
-still needs verification.
+Latest checkpoint `0475d16` passes all five hosted jobs, including the full
+browser partition on combined editor/plugin source
+([receipt](editor-performance/editor-ci-0475-success.json)). Post-frame owner
+cancellation now releases wrapped probes before accessing disposed state; two
+consecutive affected 58-test groups and an accepted-coverage unmount regression
+pass both project modes
+([group](editor-performance/wrapped-unmount-group-browser.json),
+[repeat](editor-performance/wrapped-unmount-group-browser-repeat.json),
+[unmount](editor-performance/wrapped-unmount-browser.json)). Final integrated CI
+remains a completion gate as the remaining implementation ships.
 
 **Remaining implementation** (all items remain part of this editor goal):
 
@@ -214,16 +223,11 @@ still needs verification.
   matrices and every other UI partition. Repeat warm highlight/row reuse,
   file-switch cancellation, cold queued-input source/selection ownership,
   host-plugin focus/layout and explicit Output/terminal targeting. Validate bounded
-  setup retries after upstream Chrome download failures. Latest fully green
-  checkpoint `2cca9be` passes all five jobs
-  ([receipt](editor-performance/editor-ci-2cca-success.json)). `1745f06` fails
-  horizontal-fragment probe cleanup and navigation paint-count isolation. The
-  post-frame owner-cancellation fix passes two consecutive affected 58-test runs and an
-  accepted-coverage wrapped-unmount regression in both modes
-  ([group](editor-performance/wrapped-unmount-group-browser.json),
-  [repeat](editor-performance/wrapped-unmount-group-browser-repeat.json),
-  [unmount](editor-performance/wrapped-unmount-browser.json)). Verify hosted CI
-  for this fix and the final integrated editor implementation before closing.
+  setup retries after upstream Chrome download failures. Latest checkpoint
+  `0475d16` passes all five hosted jobs on integrated editor/plugin source
+  ([receipt](editor-performance/editor-ci-0475-success.json)), with the historical
+  probe-cleanup/navigation failures corrected. Repeat this gate for the final
+  integrated editor implementation before closing.
 
 - [ ] **Physical Chrome/Edge PWA input:** verify real input-method commit/cancel,
   Unicode and LF/CRLF undo/redo, multiple-cursor clipboard transactions and touch
