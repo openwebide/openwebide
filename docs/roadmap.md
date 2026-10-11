@@ -85,8 +85,14 @@ compilation explains the renderer increase. A clock-marked native allocation
 diagnostic follows the same app renderer from 41.9 MiB before navigation to
 276.8 MiB at cold readiness and 283.6 MiB after input; anonymous writable
 mappings dominate ([summary](editor-performance/native-allocator-diagnostic.json)).
-The allocator buckets do not yet establish which subsystem owns that increase;
-this remains investigation, not a shipped memory improvement.
+A staged diagnostic in both modes now measures 124–126 MiB of renderer growth
+before the main WASM entry point runs, with no editor or worker mounted. Main
+linear capacity at that point is about 20 MiB; app/editor and worker startup add
+another 109–114 MiB before readiness
+([receipt](editor-performance/startup-memory-attribution.json)). The pre-start
+stage includes module loading/compilation/instantiation and page preloads; native
+stacks remain mostly unnamed. Investigate that runtime/module-load cost separately
+from document allocations. This is attribution, not a shipped memory improvement.
 
 The preceding 24-sample boundary matrix preserves complete edited source, with
 byte-limit edits at 59–69 ms and row-limit edits at 32–60 ms
@@ -109,9 +115,9 @@ the partition fix passes all five jobs
 ([receipts](editor-performance/editor-ci-d26-success.json),
 [receipt](editor-performance/editor-ci-f251-success.json)).
 
-Latest verified integrated checkpoint `0475d16` passes all five hosted jobs, including the full
+Latest verified integrated checkpoint `55dc8f4` passes all five hosted jobs, including the full
 browser partition on combined editor/plugin source
-([receipt](editor-performance/editor-ci-0475-success.json)). Post-frame owner
+([receipt](editor-performance/editor-ci-55dc-success.json)). Post-frame owner
 cancellation now releases wrapped probes before accessing disposed state; two
 consecutive affected 58-test groups and an accepted-coverage unmount regression
 pass both project modes
@@ -246,8 +252,8 @@ remains a completion gate as the remaining implementation ships.
   file-switch cancellation, cold queued-input source/selection ownership,
   host-plugin focus/layout and explicit Output/terminal targeting. Validate bounded
   setup retries after upstream Chrome download failures. Latest checkpoint
-  `0475d16` passes all five hosted jobs on integrated editor/plugin source
-  ([receipt](editor-performance/editor-ci-0475-success.json)), with the historical
+  `55dc8f4` passes all five hosted jobs on integrated editor/plugin source
+  ([receipt](editor-performance/editor-ci-55dc-success.json)), with the historical
   probe-cleanup/navigation failures corrected. Repeat this gate for the final
   integrated editor implementation before closing.
 

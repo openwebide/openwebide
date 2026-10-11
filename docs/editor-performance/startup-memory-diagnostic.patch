@@ -1,0 +1,104 @@
+--- a/tools/measure-editor-view.py
++++ b/tools/measure-editor-view.py
+@@ -242,7 +242,9 @@
+         result = self.command("Tracing.requestMemoryDump", {"levelOfDetail":"detailed"})
+         self.command("Tracing.recordClockSyncMarker", {"syncId":phase + ":end"})
+         assert result.get("success"), result
+-        self.phases.append({"phase":phase, "rendererMaps":renderer_maps(self.driver), **result})
++        snapshot = self.browser.call("POST", "/execute/async", {"script":"const done=arguments[arguments.length-1]; if (!globalThis.__editorDiagnosticSnapshot) done({mainLinearBytes:null,workers:[]}); else globalThis.__editorDiagnosticSnapshot().then(done, error=>done({error:String(error)}));", "args":[]})
++        profile = self.browser.call("POST", "/goog/cdp/execute", {"cmd":"Memory.getAllTimeSamplingProfile", "params":{}})
++        self.phases.append({"phase":phase, "nativeSampling":profile, "linearMemory":snapshot, "rendererMaps":renderer_maps(self.driver), **result})
+     def finish(self):
+         self.command("Tracing.end", {})
+         while not self.complete: self.receive()
+@@ -293,6 +295,8 @@
+                 browser.call("POST", "/cookie", {"cookie": {"name": cookie.name, "value": cookie.value,
+                              "domain": "127.0.0.1", "path": cookie.path, "httpOnly": True}})
+             allocator_trace = AllocatorTrace(state, browser.process.pid)
++            allocator_trace.browser = browser
++            browser.call("POST", "/goog/cdp/execute", {"cmd":"Memory.startSampling", "params":{"samplingInterval":65536,"suppressRandomness":True}})
+             allocator_trace.dump("before-app")
+             samples = MemorySamples(browser.process.pid)
+             if profile:
+@@ -518,6 +522,12 @@
+             started = time.monotonic()
+             phase = "cold paint"
+             browser.call("POST", "/url", {"url": runtime.url + "/"})
++            deadline = time.monotonic() + 30
++            while not browser.call("POST", "/execute/sync", {"script":"return typeof globalThis.__editorDiagnosticStart === 'function';", "args":[]}):
++                if time.monotonic() > deadline: raise RuntimeError("deferred module initialization deadline")
++                time.sleep(0.05)
++            allocator_trace.dump("compiled-before-app-start")
++            browser.call("POST", "/execute/sync", {"script":"globalThis.__editorDiagnosticStart();", "args":[]})
+             deadline = time.monotonic() + 60
+             while not browser.call("POST", "/execute/sync", {"script": READY, "args": [native_length, require_styled]}):
+                 assert time.monotonic() < deadline, "Editor view readiness timed out"
+--- a/frontend/dist/editor-worker.js
++++ b/frontend/dist/editor-worker.js
+@@ -1,2 +1,4 @@
+ import init from "./openwebide-frontend-92bf8193126be12a.js";
+ await init({module_or_path: new URL("./openwebide-frontend-92bf8193126be12a_bg.wasm", import.meta.url)});
++
++self.addEventListener('message', event => { if (event.data?.kind === 'editor-linear-memory-request') self.postMessage({kind:'editor-linear-memory-diagnostic',sequence:event.data.sequence,bytes:self.__editorDiagnosticMemory.buffer.byteLength}); });
+--- a/frontend/dist/openwebide-frontend-92bf8193126be12a.js
++++ b/frontend/dist/openwebide-frontend-92bf8193126be12a.js
+@@ -2641,12 +2641,47 @@
+ function __wbg_finalize_init(instance, module) {
+     wasmInstance = instance;
+     wasm = instance.exports;
++
++    globalThis.__editorDiagnosticMemory = wasm.memory;
++    if (typeof window !== 'undefined') {
++        const workers = new Set();
++        const NativeWorker = globalThis.Worker;
++        globalThis.Worker = class extends NativeWorker {
++            constructor(url, options) {
++                super(url, options);
++                if (new URL(String(url), location.href).pathname.endsWith('/editor-worker.js')) {
++                    const entry = {worker:this, bytes:null, sequence:0};
++                    workers.add(entry);
++                    this.addEventListener('message', event => {
++                        if (event.data?.kind === 'editor-linear-memory-diagnostic') {
++                            entry.bytes = event.data.bytes;
++                            entry.sequence = event.data.sequence;
++                        }
++                    });
++                    this.__diagnosticEntry = entry;
++                }
++            }
++            terminate() { workers.delete(this.__diagnosticEntry); super.terminate(); }
++        };
++        let sequence = 0;
++        globalThis.__editorDiagnosticSnapshot = async () => {
++            const next = ++sequence;
++            const entries = Array.from(workers);
++            for (const entry of entries) entry.worker.postMessage({kind:'editor-linear-memory-request', sequence:next});
++            const deadline = performance.now() + 1000;
++            while (entries.some(entry => entry.sequence !== next) && performance.now() < deadline)
++                await new Promise(resolve => setTimeout(resolve, 5));
++            return {mainLinearBytes:globalThis.__editorDiagnosticMemory.buffer.byteLength,
++                workers:entries.map(entry => ({linearBytes:entry.bytes, responded:entry.sequence === next}))};
++        };
++    }
++
+     wasmModule = module;
+     cachedDataViewMemory0 = null;
+     cachedFloat64ArrayMemory0 = null;
+     cachedUint32ArrayMemory0 = null;
+     cachedUint8ArrayMemory0 = null;
+-    wasm.__wbindgen_start();
++    if (typeof window !== "undefined") { let started = false; globalThis.__editorDiagnosticStart = () => { if (!started) { started = true; wasm.__wbindgen_start(); } }; } else { wasm.__wbindgen_start(); }
+     return wasm;
+ }
+ 
+--- a/frontend/dist/index.html
++++ b/frontend/dist/index.html
+@@ -16,7 +16,7 @@
+     <script src="/api/theme.js"></script>
+     
+     <link rel="stylesheet" href="/styles-b49a4c5cb15ca4f.css" integrity="sha384-X4mxwRCjQHnS2ySOmWaCdMK3eYXoSVaFwGj4ovXN7LSUuF7cQigMqc0GlEoLU1dd"/>
+-  <link rel="modulepreload" href="/openwebide-frontend-92bf8193126be12a.js" crossorigin="anonymous" integrity="sha384-CKYZe+v60ED/deZtUi5t3BLZ+i91y8zT/VRs8cfqkLk+r2CHoQVp3o8NBuNSCrBk"><link rel="modulepreload" href="/snippets/openwebide-frontend-30f5314d39ae456d/inline11.js" crossorigin="anonymous" integrity="sha384-paYKJSnoqzWFjWzjUOaIbhrXw0mJgqLJtfQ/Co9NJlKEBjzq+3w7WMNskmn1Jqq2"><link rel="modulepreload" href="/snippets/openwebide-frontend-30f5314d39ae456d/inline6.js" crossorigin="anonymous" integrity="sha384-UMCocRFk5BFa5aZ7StPmeUsWSQOMzX9ZgtWhZzIHEajytKUlJBqbZKZT6VyB23AD"><link rel="modulepreload" href="/snippets/openwebide-frontend-30f5314d39ae456d/inline2.js" crossorigin="anonymous" integrity="sha384-KjnnewkakZbthrigjL12w4h4ro95mfkelL+T4Mv7OmBbLdqH/4cfmmdj42969iMa"><link rel="modulepreload" href="/snippets/openwebide-frontend-30f5314d39ae456d/inline4.js" crossorigin="anonymous" integrity="sha384-yNA4p2SFMVtyxrczr+1iVaX199ljesY0GFeChrMfzpomyYeRrAmsNzsGS4E5a8ph"><link rel="modulepreload" href="/snippets/openwebide-frontend-30f5314d39ae456d/inline5.js" crossorigin="anonymous" integrity="sha384-RB3eOARdlTl0TQzbKy9md4JJOsJmf0AOvoVSVQ83SRk7EuNUVFpIVlpRg4k/hMMw"><link rel="modulepreload" href="/snippets/openwebide-frontend-30f5314d39ae456d/inline7.js" crossorigin="anonymous" integrity="sha384-aU0zNBYH8zFxH7MSxrvTC8Byro11yY8aiyf4UXIo4t+sdo0oAFdz+1v/fU2vUclE"><link rel="modulepreload" href="/snippets/openwebide-frontend-30f5314d39ae456d/inline9.js" crossorigin="anonymous" integrity="sha384-9TLZ6s5zoErwnZxEHXbEUvmSJBIykpYLzi2HrBagPsNkyn04K9U2hQXB9Sq42Af7"><link rel="modulepreload" href="/snippets/openwebide-frontend-30f5314d39ae456d/inline10.js" crossorigin="anonymous" integrity="sha384-jCFZVufp+4GkWFuq5AK81auIlj+V4XeCkFuKMR8e6Zx17WBVweuMeCOaQjROBk6T"><link rel="modulepreload" href="/snippets/openwebide-frontend-30f5314d39ae456d/inline1.js" crossorigin="anonymous" integrity="sha384-2bvno7CRVlj1itHBxNpfgAx6xwDSFMAuAZrC3S6P5iaTfuHnYMCg8kYgQZ6C8Lfz"><link rel="modulepreload" href="/snippets/openwebide-frontend-30f5314d39ae456d/inline8.js" crossorigin="anonymous" integrity="sha384-bG0pXW1x/OuZ52Gs+LbIT6kJ9xR/61WIIEn4vHe2+w2+hHapJm6R0F4DR/YqWu3s"><link rel="modulepreload" href="/snippets/openwebide-frontend-30f5314d39ae456d/inline0.js" crossorigin="anonymous" integrity="sha384-YNdTFVsvZrbKVUsc1jHoDhoEDCetncd77cemZnrXRaApq/X3s8X3qbgs5br6pzX8"><link rel="modulepreload" href="/snippets/openwebide-frontend-30f5314d39ae456d/inline3.js" crossorigin="anonymous" integrity="sha384-8UAsxpihtrhY06PUmdm6m9kNM+ruisWBgQW25imURwY4LgWFatr53xWD9Qs27x0B"><link rel="preload" href="/openwebide-frontend-92bf8193126be12a_bg.wasm" crossorigin="anonymous" integrity="sha384-kEb7pPir5+pMj+0QOtbH12qq/BeHnym8kgYPgy2KLjgkXWK2CaVuOT0WGaIi7CPV" as="fetch" type="application/wasm"></head>
++  <link rel="modulepreload" href="/openwebide-frontend-92bf8193126be12a.js" crossorigin="anonymous" integrity="sha384-jHtxpBw3taStcZslSz4IbA4vmcfAFpIAlJizXXGFgSSOxj6Zk90vrvQQM4XkzCyY"><link rel="modulepreload" href="/snippets/openwebide-frontend-30f5314d39ae456d/inline11.js" crossorigin="anonymous" integrity="sha384-paYKJSnoqzWFjWzjUOaIbhrXw0mJgqLJtfQ/Co9NJlKEBjzq+3w7WMNskmn1Jqq2"><link rel="modulepreload" href="/snippets/openwebide-frontend-30f5314d39ae456d/inline6.js" crossorigin="anonymous" integrity="sha384-UMCocRFk5BFa5aZ7StPmeUsWSQOMzX9ZgtWhZzIHEajytKUlJBqbZKZT6VyB23AD"><link rel="modulepreload" href="/snippets/openwebide-frontend-30f5314d39ae456d/inline2.js" crossorigin="anonymous" integrity="sha384-KjnnewkakZbthrigjL12w4h4ro95mfkelL+T4Mv7OmBbLdqH/4cfmmdj42969iMa"><link rel="modulepreload" href="/snippets/openwebide-frontend-30f5314d39ae456d/inline4.js" crossorigin="anonymous" integrity="sha384-yNA4p2SFMVtyxrczr+1iVaX199ljesY0GFeChrMfzpomyYeRrAmsNzsGS4E5a8ph"><link rel="modulepreload" href="/snippets/openwebide-frontend-30f5314d39ae456d/inline5.js" crossorigin="anonymous" integrity="sha384-RB3eOARdlTl0TQzbKy9md4JJOsJmf0AOvoVSVQ83SRk7EuNUVFpIVlpRg4k/hMMw"><link rel="modulepreload" href="/snippets/openwebide-frontend-30f5314d39ae456d/inline7.js" crossorigin="anonymous" integrity="sha384-aU0zNBYH8zFxH7MSxrvTC8Byro11yY8aiyf4UXIo4t+sdo0oAFdz+1v/fU2vUclE"><link rel="modulepreload" href="/snippets/openwebide-frontend-30f5314d39ae456d/inline9.js" crossorigin="anonymous" integrity="sha384-9TLZ6s5zoErwnZxEHXbEUvmSJBIykpYLzi2HrBagPsNkyn04K9U2hQXB9Sq42Af7"><link rel="modulepreload" href="/snippets/openwebide-frontend-30f5314d39ae456d/inline10.js" crossorigin="anonymous" integrity="sha384-jCFZVufp+4GkWFuq5AK81auIlj+V4XeCkFuKMR8e6Zx17WBVweuMeCOaQjROBk6T"><link rel="modulepreload" href="/snippets/openwebide-frontend-30f5314d39ae456d/inline1.js" crossorigin="anonymous" integrity="sha384-2bvno7CRVlj1itHBxNpfgAx6xwDSFMAuAZrC3S6P5iaTfuHnYMCg8kYgQZ6C8Lfz"><link rel="modulepreload" href="/snippets/openwebide-frontend-30f5314d39ae456d/inline8.js" crossorigin="anonymous" integrity="sha384-bG0pXW1x/OuZ52Gs+LbIT6kJ9xR/61WIIEn4vHe2+w2+hHapJm6R0F4DR/YqWu3s"><link rel="modulepreload" href="/snippets/openwebide-frontend-30f5314d39ae456d/inline0.js" crossorigin="anonymous" integrity="sha384-YNdTFVsvZrbKVUsc1jHoDhoEDCetncd77cemZnrXRaApq/X3s8X3qbgs5br6pzX8"><link rel="modulepreload" href="/snippets/openwebide-frontend-30f5314d39ae456d/inline3.js" crossorigin="anonymous" integrity="sha384-8UAsxpihtrhY06PUmdm6m9kNM+ruisWBgQW25imURwY4LgWFatr53xWD9Qs27x0B"><link rel="preload" href="/openwebide-frontend-92bf8193126be12a_bg.wasm" crossorigin="anonymous" integrity="sha384-kEb7pPir5+pMj+0QOtbH12qq/BeHnym8kgYPgy2KLjgkXWK2CaVuOT0WGaIi7CPV" as="fetch" type="application/wasm"></head>
+   <body>
+     
+ <script type="module">
