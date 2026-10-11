@@ -5,7 +5,9 @@ use super::{
     lines::Line,
     selections::{byte_at_column, display_column},
 };
-use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
+use unicode_segmentation::GraphemeCursor;
+#[cfg(test)]
+use unicode_segmentation::UnicodeSegmentation;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SelectionMotion {
@@ -45,11 +47,63 @@ pub(super) fn category(grapheme: &str) -> u8 {
         2
     }
 }
+// A run of ASCII whitespace consists entirely of category-zero clusters, except
+// where its endpoint joins a neighboring Unicode cluster (e.g. Prepend or Extend).
+// Prove that seam before bypassing per-grapheme classification. Newlines and
+// CRLF stay part of the same run; the cursor sees the original sliced source.
+fn whitespace_end(text: &str, at: usize, left: bool) -> Option<usize> {
+    let offset = if left {
+        at - text.as_bytes()[..at]
+            .iter()
+            .rev()
+            .take_while(|byte| byte.is_ascii_whitespace())
+            .count()
+    } else {
+        at + text.as_bytes()[at..]
+            .iter()
+            .take_while(|byte| byte.is_ascii_whitespace())
+            .count()
+    };
+    if offset == at {
+        return None;
+    }
+    let mut seam = GraphemeCursor::new(offset, text.len(), true);
+    let end = if seam
+        .is_boundary(text, 0)
+        .expect("complete source supplies whitespace seam context")
+    {
+        offset
+    } else if left {
+        seam.next_boundary(text, 0)
+            .expect("complete source supplies whitespace seam context")?
+    } else {
+        seam.prev_boundary(text, 0)
+            .expect("complete source supplies whitespace seam context")?
+    };
+    // Leave a joined endpoint cluster to ordinary classification, without
+    // rescanning the entire run once for each preceding whitespace character.
+    ((left && end < at) || (!left && end > at)).then_some(end)
+}
+
 fn word_left(text: &str, at: usize) -> usize {
+    let text = &text[..at];
     let mut result = at;
     let mut kind = None;
-    for (offset, grapheme) in text[..at].grapheme_indices(true).rev() {
-        let current = category(grapheme);
+    let mut cursor = GraphemeCursor::new(at, text.len(), true);
+    while cursor.cur_cursor() > 0 {
+        let end = cursor.cur_cursor();
+        if kind.is_none()
+            && let Some(offset) = whitespace_end(text, end, true)
+        {
+            result = offset;
+            cursor = GraphemeCursor::new(offset, text.len(), true);
+            continue;
+        }
+        let offset = cursor
+            .prev_boundary(text, 0)
+            .expect("complete source supplies word cursor context")
+            .unwrap_or(0);
+        let current = category(&text[offset..end]);
         if kind.is_some_and(|kind| kind != current) {
             break;
         }
@@ -61,21 +115,30 @@ fn word_left(text: &str, at: usize) -> usize {
     result
 }
 fn word_right(text: &str, at: usize) -> usize {
-    let mut result = at;
+    let text = &text[at..];
+    let mut result = 0;
     let mut kind = None;
-    for (offset, grapheme) in text[at..].grapheme_indices(true) {
-        let current = category(grapheme);
+    let mut cursor = GraphemeCursor::new(0, text.len(), true);
+    while cursor.cur_cursor() < text.len() {
+        let offset = cursor.cur_cursor();
+        if let Some(end) = whitespace_end(text, offset, false) {
+            result = end;
+            kind = Some(0);
+            cursor = GraphemeCursor::new(end, text.len(), true);
+            continue;
+        }
+        let end = cursor
+            .next_boundary(text, 0)
+            .expect("complete source supplies word cursor context")
+            .unwrap_or(text.len());
+        let current = category(&text[offset..end]);
         if kind.is_some_and(|kind| kind != current) && current != 0 {
             break;
         }
-        result = at + offset + grapheme.len();
-        if current == 0 {
-            kind = Some(0);
-        } else {
-            kind = Some(current);
-        }
+        result = end;
+        kind = Some(current);
     }
-    result
+    at + result
 }
 
 impl Document {
@@ -294,6 +357,104 @@ impl Document {
 
 #[cfg(test)]
 mod tests {
+
+    fn reference_word(text: &str, at: usize, left: bool) -> usize {
+        let mut result = at;
+        let mut kind = None;
+        let graphemes: Box<dyn Iterator<Item = (usize, &str)> + '_> = if left {
+            Box::new(text[..at].grapheme_indices(true).rev())
+        } else {
+            Box::new(text[at..].grapheme_indices(true))
+        };
+        for (offset, grapheme) in graphemes {
+            let current = category(grapheme);
+            if kind.is_some_and(|kind| kind != current) && (left || current != 0) {
+                break;
+            }
+            result = if left {
+                offset
+            } else {
+                at + offset + grapheme.len()
+            };
+            if !left || current != 0 {
+                kind = Some(current);
+            }
+        }
+        result
+    }
+
+    #[test]
+    fn whitespace_word_jumps_match_grapheme_reference_at_every_scalar_boundary() {
+        let sources = [
+            "",
+            " ",
+            "a ",
+            "a \t\r\n b",
+            "!  word + tail",
+            "a\u{00a0} b",
+            "a \u{0301} b",
+            "\u{0600}  a",
+            "a\u{0600}  \u{0301}b",
+            "a\r\n\t \r b",
+            "👩‍💻  文_\n  fin",
+            "🇺🇸 \u{0301} 🇨🇦",
+            "a \u{200d}👩  b",
+            "\u{0600}\r\n  z",
+        ];
+        for text in sources {
+            for at in text.char_indices().map(|(at, _)| at).chain([text.len()]) {
+                assert_eq!(
+                    word_left(text, at),
+                    reference_word(text, at, true),
+                    "left {text:?} @{at}"
+                );
+                assert_eq!(
+                    word_right(text, at),
+                    reference_word(text, at, false),
+                    "right {text:?} @{at}"
+                );
+            }
+        }
+    }
+
+    proptest::proptest! {
+        #[test]
+        fn word_cursor_matches_reference_through_arbitrary_unicode_seams(
+            parts in proptest::collection::vec(
+                proptest::sample::select(vec![
+                    'a', '_', '+', ' ', '\t', '\r', '\n', '\u{000b}', '\u{000c}',
+                    '\u{0301}', '\u{0600}', '\u{200d}', '\u{00a0}', '\u{2028}',
+                    '文', '🇺', '🇸', '👩', '💻', '\u{1100}', '\u{1161}', '\u{11a8}',
+                ]), 0..32,
+            )
+        ) {
+            let text: String = parts.into_iter().collect();
+            for at in text.char_indices().map(|(at, _)| at).chain([text.len()]) {
+                proptest::prop_assert_eq!(word_left(&text, at), reference_word(&text, at, true));
+                proptest::prop_assert_eq!(word_right(&text, at), reference_word(&text, at, false));
+            }
+        }
+    }
+
+    #[test]
+    fn cross_row_whitespace_jumps_preserve_joined_endpoint_clusters() {
+        for ending in ["\n", "\r\n"] {
+            let spaces = format!(" \t{ending}").repeat(20_000);
+            for (before, after) in [("word", "next"), ("\u{0600}", "\u{0301}word"), ("", "")] {
+                let text = format!("{before}{spaces}{after}");
+                for at in [0, before.len(), before.len() + spaces.len(), text.len()] {
+                    assert_eq!(word_left(&text, at), reference_word(&text, at, true));
+                    assert_eq!(word_right(&text, at), reference_word(&text, at, false));
+                }
+            }
+        }
+        let text = format!("\u{0600}{}\u{0301}word", " ".repeat(100_000));
+        for at in [0, "\u{0600}".len(), text.len()] {
+            assert_eq!(word_left(&text, at), reference_word(&text, at, true));
+            assert_eq!(word_right(&text, at), reference_word(&text, at, false));
+        }
+    }
+
     #[test]
     fn indexed_word_motion_matches_complete_grapheme_traversal() {
         for body in [

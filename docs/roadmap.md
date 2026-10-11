@@ -161,8 +161,14 @@ remains a completion gate as the remaining implementation ships.
   same prepared category steps rather than scanning from the row start. All 522
   core tests, three local/remote browser contracts and strict lint pass
   ([receipt](editor-performance/indexed-word-pointer.json)).
-  Cross-row whitespace
-  and unindexed/noncanonical traversal still need bounded work. Preserve
+  Cross-row ASCII whitespace now skips per-grapheme classification through
+  boundary-proved byte runs, retaining joined Unicode endpoint clusters. All 525
+  core tests, four local/remote browser contracts and strict native/WASM lint pass
+  ([receipt](editor-performance/cross-row-whitespace-browser.json)). Native
+  release traversal measurements improve from 12–36 ms to 0.23–0.25 ms across
+  near-limit whitespace runs; these exclude browser paint and startup. Byte scans
+  remain linear. Unicode-context and unindexed/noncanonical traversal still need
+  bounded work. Preserve
   composition mapping and complete-native fallback when
   bounded geometry cannot be proved. Finish startup and memory measurements
   across admitted boundaries, including unsupported layouts. Repeated scroll getters now resolve the mounted

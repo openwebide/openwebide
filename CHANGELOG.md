@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Skip per-grapheme scans when moving by words across long ASCII whitespace and blank-line runs, preserving CRLF and Unicode clusters at the endpoints. Shared movement and stale queued-input behavior are verified in both project modes.
+
 - Verify the parser-budget checkpoint against all five hosted CI jobs. Record staged startup-memory attribution in both project modes, separating pre-entry-point runtime costs from subsequent editor and worker startup; no memory reduction is claimed.
 
 - Write suggested follow-up prompts from the user's perspective, addressing the assistant rather than asking the user questions.

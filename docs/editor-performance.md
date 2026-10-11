@@ -6801,3 +6801,32 @@ loading and subsequent editor/worker allocations still need separate investigati
 The parser-budget checkpoint `55dc8f4` passes all five hosted CI jobs
 ([receipt](editor-performance/editor-ci-55dc-success.json)). Final integrated
 verification remains required after the remaining editor implementation ships.
+
+
+### Word movement across whitespace rows
+
+The shared `Document` word traversal now skips contiguous ASCII whitespace as
+a byte run after proving its Unicode seam. If a run joins a preceding Prepend
+or following Extend cluster, it leaves that endpoint cluster for ordinary
+classification and skips the remaining whitespace. This avoids repeatedly
+rescanning an unproved run and preserves the original sliced-source behavior
+for carets inside a grapheme or CRLF. Prepared long-row category indexes still
+handle their existing eligible paths; no mode-specific movement was introduced.
+
+All 525 default core tests pass, including an independent original-grapheme
+oracle at every scalar boundary and randomized Unicode seams. Four release
+Chromium contracts pass through the same `EditorActions`/`MotionQueue` facade in
+both project modes, including 19,000 CRLF whitespace rows, extension, edits/undo,
+ordered keys and stale account/file/ticket rejection
+([receipt](editor-performance/cross-row-whitespace-browser.json)). Strict native
+core and release WASM frontend lint pass.
+
+Twenty interleaved native release samples per case/direction compare the original
+and candidate traversals with complete result equality. Roughly 800 KiB LF/CRLF
+whitespace and joined Unicode-seam cases move from 12–36 ms to 0.23–0.25 ms;
+ordinary-word costs remain sub-microsecond
+([benchmark and source](editor-performance/cross-row-whitespace-native.json)).
+These timings exclude document preparation, selection publication, browser input,
+paint and startup. ASCII byte scans remain linear; Unicode context, unindexed
+non-whitespace traversal and publication still need bounded work. This does not
+close the overall responsiveness gate.

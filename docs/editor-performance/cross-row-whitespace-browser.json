@@ -1,0 +1,31 @@
+{
+  "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+  "console": "Invoking test: editor::queued_motion_cannot_cross_accounts_files_or_newer_tickets_in_both_modes\nInvoking test: editor::pending_paint_motion_preserves_key_order_and_flushes_before_edits_in_both_modes\nInvoking test: editor::long_word_motion_retains_exact_source_after_edits_and_undo_in_both_modes\nInvoking test: editor::cross_row_word_motion_preserves_source_and_queue_ownership_in_both_modes\n",
+  "output": "\nrunning 4 tests\ntest editor::queued_motion_cannot_cross_accounts_files_or_newer_tickets_in_both_modes ... ok\ntest editor::pending_paint_motion_preserves_key_order_and_flushes_before_edits_in_both_modes ... ok\ntest editor::long_word_motion_retains_exact_source_after_edits_and_undo_in_both_modes ... ok\ntest editor::cross_row_word_motion_preserves_source_and_queue_ownership_in_both_modes ... ok\n\ntest result: ok. 4 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.39s\n\n",
+  "passed": true,
+  "tests": [
+    "__wbgt__components::editor::cross_row_word_motion_preserves_source_and_queue_ownership_in_both_modes",
+    "__wbgt__components::editor::long_word_motion_retains_exact_source_after_edits_and_undo_in_both_modes",
+    "__wbgt__components::editor::pending_paint_motion_preserves_key_order_and_flushes_before_edits_in_both_modes",
+    "__wbgt__components::editor::queued_motion_cannot_cross_accounts_files_or_newer_tickets_in_both_modes"
+  ],
+  "servedFonts": {
+    "/fonts/MonaspaceNeon-v1.400.woff2": "6569968f448ae856ab5b57dff1f13b109b220ca8e3f664169e135fcb5c4f0721"
+  },
+  "libraryStartSuppressed": false,
+  "scope": "Shared Document word navigation through EditorActions and MotionQueue, both project modes. New regression uses 19000 CRLF whitespace rows and verifies complete source, extension and edit-stale queue rejection. Existing contracts verify word edits/undo, ordered motion and account/file/ticket ownership. No mode adapter changes or native folder access are involved.",
+  "sourceFilesSha256": {
+    "crates/core/src/editor/motion.rs": "5dd2830bdf43788232d0710e6645920743a70dcf2ed4249e79a464b832a79ce2",
+    "frontend/tests/components/editor.rs": "66729feb6e371530876f3c77a7c6927642fa260888a3ab3b4f56cbd511b0896e"
+  },
+  "testWasmSha256": "9ce44c8e98d4adec7efd7ab17832545e43e54aafc4321130ee79fd70d94663b3",
+  "nativeCore": {
+    "passed": 525,
+    "failed": 0
+  },
+  "strictLint": [
+    "native core --all-targets",
+    "release WASM frontend --features test-support --all-targets"
+  ],
+  "nativeBenchmark": "cross-row-whitespace-native.json"
+}

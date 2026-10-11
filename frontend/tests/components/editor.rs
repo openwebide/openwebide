@@ -7,6 +7,68 @@ use wasm_bindgen_test::*;
 use super::support::{Mounted, editor_view, mount_test, settle, wait_until};
 
 #[wasm_bindgen_test]
+async fn cross_row_word_motion_preserves_source_and_queue_ownership_in_both_modes() {
+    use openwebide_core::{
+        WorkspaceMode,
+        editor::{Selection, SelectionMotion},
+    };
+    use openwebide_frontend::state_actions::editor::EditorActions;
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let whitespace = "                                        \r\n".repeat(19_000);
+        let source = format!("word{whitespace}next");
+        let initial = source.clone();
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            state.workspace.open_file.set(Some("cross-row.txt".into()));
+            state.workspace.content.set(initial.clone().into());
+            view! { <div/> }
+        });
+        let actions = EditorActions::new(mounted.state.workspace);
+        let project = mounted
+            .state
+            .workspace
+            .active_project
+            .get_untracked()
+            .unwrap();
+        actions.record_selection(Selection::caret(1)).unwrap();
+        let (ticket, _) = actions
+            .queue_current_motion(project, "cross-row.txt", SelectionMotion::WordRight, false)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            actions.apply_queued_motion(ticket, None).unwrap().unwrap(),
+            [Selection::caret(4 + whitespace.len())]
+        );
+        let (ticket, _) = actions
+            .queue_current_motion(project, "cross-row.txt", SelectionMotion::WordLeft, true)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            actions.apply_queued_motion(ticket, None).unwrap().unwrap(),
+            [Selection {
+                anchor: 4 + whitespace.len(),
+                head: 0
+            }]
+        );
+        assert_eq!(actions.source().as_str(), source);
+        let (ticket, _) = actions
+            .queue_current_motion(project, "cross-row.txt", SelectionMotion::WordRight, false)
+            .unwrap()
+            .unwrap();
+        actions
+            .record_selection(Selection::caret(source.len()))
+            .unwrap();
+        actions.insert_native_text("!", 1.0).unwrap();
+        assert!(actions.apply_queued_motion(ticket, None).unwrap().is_none());
+        assert_eq!(actions.source().as_str(), format!("{source}!"));
+    }
+}
+
+#[wasm_bindgen_test]
 async fn indexed_word_pointer_units_and_drag_reject_stale_edits_in_both_modes() {
     use openwebide_core::{WorkspaceMode, editor::Selection};
     use openwebide_frontend::state_actions::editor::EditorActions;
