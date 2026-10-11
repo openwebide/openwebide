@@ -9,6 +9,8 @@ for what's still ahead.
 
 ## [Unreleased]
 
+- Reuse immutable source identity in editor text, cursor queue, decoration and indentation-guide checks while preserving complete equality for external text.
+
 - Resolve editor go-to-line queries from retained line and character indexes, avoiding full-file row rebuilding for prepared documents.
 
 - Route syntax-worker replies from a bounded ticket header instead of scanning the entire analysis payload twice; complete reply validation remains in the shared editor facade.

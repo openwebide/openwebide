@@ -1,0 +1,46 @@
+{
+  "baseHead": "cf66d9e0bc52db8bc5978503cc2bec6303051b81",
+  "profile": "release",
+  "terminalExitCode": 0,
+  "tests": [
+    {
+      "name": "editor::queued_motion_cannot_cross_accounts_files_or_newer_tickets_in_both_modes",
+      "seconds": 0.07,
+      "modes": [
+        "Local",
+        "Remote"
+      ]
+    },
+    {
+      "name": "editor::deferred_decorations_reject_replaced_source_selection_and_scope_in_both_modes",
+      "seconds": 0.14,
+      "modes": [
+        "Local",
+        "Remote"
+      ]
+    },
+    {
+      "name": "editor::indexed_indent_guides_preserve_paint_config_and_source_in_both_modes",
+      "seconds": 0.17,
+      "modes": [
+        "Local",
+        "Remote"
+      ]
+    }
+  ],
+  "passed": 3,
+  "failed": 0,
+  "nativeFrontendTestsPassed": 129,
+  "strictNativeFrontendAllTargetsLint": "passed",
+  "strictWasmFrontendAllTargetsLint": "passed",
+  "componentsWasmSha256": "a3031d8bafc02fa45fed6f2cff3b0eada0cc00a0a2596a7e75794c8a3070e4fc",
+  "sourceManifestSha256": "5d804b2ffde9286f3f1377e729529e52e65c69de8dac76f2e822e75c5bf1103e",
+  "allManifestSourcesMatch": true,
+  "logSha256": "27d269a2cf4d23655f27278e2431dde3bad7f5a7bbacad612d82cc9e54bad95a",
+  "scope": "Cursor queue, decoration and indentation-guide source/project/account ownership contracts. Native regression verifies immutable-source equality and external changed revisions.",
+  "limitations": [
+    "Targeted browser contracts, not a fresh complete editor inventory.",
+    "No measured production latency claim.",
+    "Hosted CI and physical PWA gates remain open."
+  ]
+}

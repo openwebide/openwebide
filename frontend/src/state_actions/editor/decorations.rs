@@ -27,7 +27,7 @@ impl EditorActions {
             self.workspace.editor_documents.with_untracked(|documents| {
                 let document = documents
                     .get(&(scope.project, scope.path.clone()))
-                    .filter(|document| document.text() == source);
+                    .filter(|document| document.matches_text(source));
                 let position = |offset| {
                     document
                         .and_then(|document| document.native_line_column(offset).ok())

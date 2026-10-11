@@ -282,6 +282,13 @@ tracks the remaining work rather than every optimization already shipped.
   remaining changed-revision paint/transport comparisons, metadata materialization
   and transport serialization, message decoding, diff shaping and native-text
   materialization.
+  Editor text equality and motion/decoration/guide ownership checks now accept
+  borrowed references to the same immutable source without scanning bytes;
+  external values retain complete equality validation. All 129 native frontend
+  tests and strict native/WASM lint pass; all three release both-mode motion,
+  decoration and guide ownership contracts pass
+  ([receipt](editor-performance/source-equality-browser.json)). Complete hosted
+  CI and measured production latency remain open.
   The browser worker client now routes replies through a shared core header
   reader capped at 256 bytes, avoiding a full payload parse solely for the ticket.
   Shared producers serialize routing metadata first; complete facade validation

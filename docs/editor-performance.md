@@ -5890,3 +5890,28 @@ corrected the fixture without changing its bounds or deadlines. Hosted CI for
 this candidate remains pending. This avoids repeated row rebuilding
 for prepared navigation; it does not resolve cold fallback indexing, long word
 motion or the remaining paragraph layout costs.
+
+
+### Shared immutable-source equality
+
+`EditorText` equality now shares one borrowed-source comparison: references to
+exactly the same immutable allocation and length return immediately, while
+independent strings retain complete byte equality. Every string equality overload
+uses that policy. Motion queue, decoration and indentation-guide ownership checks
+also use the core document's existing `matches_text` primitive. This preserves
+external equal values and rejects equal-prefix or equal-length changed revisions;
+it adds no project-mode branch and changes no source acceptance contract.
+
+A native regression covers a large Unicode/CRLF document, borrowed aliases,
+independent equal strings through each overload, shortened views, an equal-length
+last-byte edit and retained old snapshots. All 129 native frontend tests and strict native/WASM all-target frontend lint
+pass. All three targeted release browser contracts pass in both modes: queued motion
+account/file/ticket ownership, deferred decoration source/selection/scope
+rejection and indexed guide ownership
+([receipt](editor-performance/source-equality-browser.json)). These targeted
+results do not replace the complete hosted suite, which remains pending. No measured input latency
+improvement or completion of remaining source materialization is claimed.
+
+A real PWA inspection was attempted through computer use. Chrome and Open WebIDE
+processes were listed as running, but neither exposed an accessible window
+(`cgWindowNotFound`); no physical interaction gate is credited from that attempt.
