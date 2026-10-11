@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Resolve worker structural patches and validate ordered ranges, bracket links and embedded bodies in cancellable record batches. Share the copy budget across structural lists, preserve expanded limits and expose only complete source-bound analysis in both project modes.
+
 - Verify the indexed-scope and dense-worker publication checkpoint against all five hosted CI jobs, preserving the existing dense-row batch bound.
 
 - Reconstruct worker token text and validate retained rows in cancellable byte/record batches, including long lines and dense files. Batch wire-record admission and preserve header accounting, expanded limits, Unicode/CRLF text and shared row ownership; reject stale editor owners during reconstruction.

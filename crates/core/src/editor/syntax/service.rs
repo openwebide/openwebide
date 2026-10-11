@@ -11,13 +11,13 @@ pub const SYNTAX_INPUT_BUDGET_MS: u32 = 12;
 pub const MAX_SYNTAX_REQUEST_BYTES: usize = MAX_STRUCTURE_BYTES * 6 + 8192;
 
 /// Receiver admission, source/fold proofs and token reconstruction retained
-/// across adapter yields. JSON decoding and structure validation are synchronous;
+/// across adapter yields. JSON decoding and allocation costs remain synchronous;
 /// no partial analysis escapes.
 pub struct SyntaxReplyReception<'a> {
     status: SyntaxStatus,
     data: Option<SyntaxAnalysisData>,
     source: Option<super::transfer::SourceValidation>,
-    reconstruction: Option<super::transfer::AnalysisReconstruction>,
+    reconstruction: Option<super::transfer::AnalysisReconstruction<'a>>,
     admission: Option<super::transfer::RecordAdmission>,
     previous: Option<(u32, &'a super::SyntaxAnalysis)>,
     folds: crate::editor::folds::FoldValidation,

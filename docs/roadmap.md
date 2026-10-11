@@ -267,7 +267,11 @@ prepared only one token row per unit. Small rows now share the existing 64-recor
   byte and 64-record work budgets; only complete reconstructed rows are published.
   Initial header accounting and expanded record limits preserve the original policy
   ([receipt](editor-performance/cooperative-token-receiver-browser.json)).
-  Complete JSON decoding and structural reconstruction remain synchronous;
+  Structural patch copies now share a 64-record budget across all five lists.
+  Ordered coordinate validation and bracket/link/body proofs also yield between
+  64-record batches, preserving complete-only publication and expanded limits
+  ([receipt](editor-performance/cooperative-structure-receiver-browser.json)).
+  Complete JSON decoding remains synchronous;
   vector/string capacity growth and per-row immutable allocation/copying still
   require bounded work and production measurements.
   Capacity growth, JavaScript string conversion and complete receiver

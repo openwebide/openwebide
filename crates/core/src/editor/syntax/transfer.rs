@@ -4,7 +4,10 @@ mod publication;
 pub(super) use preparation::AnalysisTransferPreparation;
 mod reception;
 mod reply;
-use super::{super::structure::StructurePublication, SyntaxAnalysis};
+use super::{
+    super::structure::{StructurePublication, StructureReception},
+    SyntaxAnalysis,
+};
 #[cfg(test)]
 use crate::highlight::Token;
 use crate::{editor::*, highlight::TokenKind};
@@ -398,30 +401,32 @@ impl SyntaxAnalysisData {
     }
 
     /// Only the shared source/fold proof drivers may enter reconstruction here.
-    pub(super) fn prepare_reconstruction(
+    pub(super) fn prepare_reconstruction<'a>(
         self,
         source: Arc<String>,
         line_count: usize,
-        previous: Option<(u32, &SyntaxAnalysis)>,
-    ) -> Option<AnalysisReconstruction> {
+        previous: Option<(u32, &'a SyntaxAnalysis)>,
+    ) -> Option<AnalysisReconstruction<'a>> {
         let structure = match self.structure {
             Some(data) => {
                 if data.needs_base() && self.base_ticket.is_none() {
                     return None;
                 }
                 let budget = MAX_ANALYSIS_RECORDS.checked_sub(self.folds.len())?;
-                Some(Arc::new(data.validate(
+                Some(StructureReception::new(
+                    data,
                     source.clone(),
                     previous.and_then(|(_, old)| old.structure.as_deref()),
                     budget,
-                )?))
+                )?)
             }
             None => None,
         };
-        let records = self
-            .folds
-            .len()
-            .checked_add(structure.as_ref().map_or(0, |value| value.record_count()))?;
+        let records = self.folds.len().checked_add(
+            structure
+                .as_ref()
+                .map_or(0, StructureReception::record_count),
+        )?;
         if records > MAX_ANALYSIS_RECORDS {
             return None;
         }
@@ -438,7 +443,8 @@ impl SyntaxAnalysisData {
         Some(AnalysisReconstruction {
             source,
             folds: self.folds,
-            structure,
+            structural: structure,
+            structure: None,
             rows,
         })
     }

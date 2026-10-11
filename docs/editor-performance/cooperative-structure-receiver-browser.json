@@ -1,0 +1,82 @@
+{
+  "scope": "Cooperative structural patch resolution and coordinate/bracket proofs in the shared syntax receiver. Complete JSON decoding and allocation/capacity costs remain unfinished.",
+  "sourceFilesSha256": {
+    "crates/core/src/editor/structure.rs": "6594da12927255f091164bf0fd7028be96a433f356e68c76d5be298374e7d816",
+    "crates/core/src/editor/structure/reception.rs": "dad5697081fcfaea73fd79192e56080d241963e62f0bd59ff9f5092a1b41c400",
+    "crates/core/src/editor/syntax/service.rs": "2699fb8f408b7fec91a9627a08457cca076841fcb160ca00fa9eead0c502a6d1",
+    "crates/core/src/editor/syntax/transfer.rs": "25b1b4a3f520ed20e9d8e87a4d017a7e6de03b901b5554eb61d00a47a7f72185",
+    "crates/core/src/editor/syntax/transfer/reception.rs": "2ca13a5d4968e3bba7070cd5b32f71fe42cfe478f468b9896291c539aa2a3b37",
+    "frontend/src/state_actions/editor/preparation.rs": "32e80ce19fc2036956ae6a42b773bf69d6423649193d4ed2d0d0394d894e7012"
+  },
+  "executedBindingsWasmSha256": {
+    "component": "c4b712eb4040333eed6195594a6fb533a44ac04a44db9ba86c483cea9a7869c5",
+    "library": "bc013028aface8a970c7c2af18e522d678b8eda2951df4a4f1a10f722cdd5390"
+  },
+  "coreTests": {
+    "features": [
+      "editor-parser"
+    ],
+    "passed": 702,
+    "failed": 0,
+    "ignored": 1,
+    "ignoredPurpose": "Unchanged native release query measurement"
+  },
+  "independentOracles": [
+    "Original synchronous structural validator accepts/rejects full and retained Rust/HTML/Markdown publications identically",
+    "Original splice resolver matches five lists sharing one copy budget; instrumented record clones and output growth never exceed 64 per unit",
+    "Original validator rejects malformed UTF-8 coordinates, ordering, protected ranges, bracket limits/links and patch ranges identically"
+  ],
+  "bounds": {
+    "recordCopiesAcrossAllFiveListsPerUnit": 64,
+    "coordinateOrBracketProofRecordsPerUnit": 64,
+    "expandedRecordAndBracketLimits": "unchanged",
+    "protocolVersion": 6
+  },
+  "browserComponents": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "console": "Invoking test: editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes\nInvoking test: editor::many_embedded_code_bodies_publish_complete_scopes_and_warm_edits_in_both_modes\nInvoking test: editor::html_embedded_folds_share_workspace_modes_and_discard_stale_bodies\nInvoking test: editor::cooperative_worker_row_index_preserves_dense_rows_in_both_modes\nInvoking test: editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes\n",
+    "output": "\nrunning 5 tests\ntest editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes ... ok\ntest editor::many_embedded_code_bodies_publish_complete_scopes_and_warm_edits_in_both_modes ... ok\ntest editor::html_embedded_folds_share_workspace_modes_and_discard_stale_bodies ... ok\ntest editor::cooperative_worker_row_index_preserves_dense_rows_in_both_modes ... ok\ntest editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes ... ok\n\ntest result: ok. 5 passed; 0 failed; 0 ignored; 0 filtered out; finished in 3.54s\n\n",
+    "passed": true,
+    "tests": [
+      "__wbgt__components::editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes",
+      "__wbgt__components::editor::cooperative_worker_row_index_preserves_dense_rows_in_both_modes",
+      "__wbgt__components::editor::html_embedded_folds_share_workspace_modes_and_discard_stale_bodies",
+      "__wbgt__components::editor::many_embedded_code_bodies_publish_complete_scopes_and_warm_edits_in_both_modes",
+      "__wbgt__components::editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes"
+    ],
+    "servedFonts": {},
+    "libraryStartSuppressed": false
+  },
+  "browserOwnership": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "console": "Invoking test: state_actions::editor::preparation::tests::token_reception_yields_and_rejects_replaced_owners_in_both_modes\nInvoking test: state_actions::editor::preparation::tests::structure_reception_yields_and_rejects_replaced_owners_in_both_modes\nInvoking test: state_actions::editor::preparation::tests::request_publication_yields_and_rejects_replaced_owners_in_both_modes\n",
+    "output": "\nrunning 3 tests\ntest state_actions::editor::preparation::tests::token_reception_yields_and_rejects_replaced_owners_in_both_modes ... ok\ntest state_actions::editor::preparation::tests::structure_reception_yields_and_rejects_replaced_owners_in_both_modes ... ok\ntest state_actions::editor::preparation::tests::request_publication_yields_and_rejects_replaced_owners_in_both_modes ... ok\n\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.24s\n\n",
+    "passed": true,
+    "tests": [
+      "__wbgt__openwebide_frontend::state_actions::editor::preparation::tests::request_publication_yields_and_rejects_replaced_owners_in_both_modes",
+      "__wbgt__openwebide_frontend::state_actions::editor::preparation::tests::structure_reception_yields_and_rejects_replaced_owners_in_both_modes",
+      "__wbgt__openwebide_frontend::state_actions::editor::preparation::tests::token_reception_yields_and_rejects_replaced_owners_in_both_modes"
+    ],
+    "servedFonts": {},
+    "libraryStartSuppressed": true
+  },
+  "ownershipCases": [
+    "Account",
+    "Project",
+    "File",
+    "Content",
+    "Read revision",
+    "Reload epoch"
+  ],
+  "ownershipPhase": "Interrupt after source proof while structural selection validation or long-token reconstruction is pending; verify subsequent current-owner analysis and source identity in local and remote modes",
+  "lint": {
+    "nativeCoreAllTargets": "passed with -D warnings",
+    "releaseWasmFrontendAllTargetsTestSupport": "passed with -D warnings"
+  },
+  "limitations": [
+    "No end-to-end latency or memory improvement established",
+    "Complete JSON decoding remains synchronous",
+    "Vector/string capacity growth and immutable row allocation/copying remain synchronous",
+    "Final integrated hosted CI and physical PWA/accessibility verification remain required"
+  ]
+}

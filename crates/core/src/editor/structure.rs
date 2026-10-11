@@ -9,7 +9,11 @@ mod ordering;
 #[cfg(feature = "editor-parser")]
 mod publication;
 #[cfg(feature = "editor-parser")]
+mod reception;
+#[cfg(feature = "editor-parser")]
 mod reconciliation;
+#[cfg(feature = "editor-parser")]
+pub(super) use reception::StructureReception;
 pub(super) mod scanning;
 #[cfg(feature = "editor-parser")]
 mod serialization;
@@ -1326,6 +1330,7 @@ impl<T: Clone + PartialEq> StructuralRecords<T> {
             }
         }
     }
+    #[cfg(test)]
     fn resolve(self, previous: &[T]) -> Vec<T> {
         match self {
             Self::Full(items) => items,
@@ -1385,7 +1390,20 @@ impl StructurePublication {
                 .saturating_add(changes.brackets.transmitted_records()),
         }
     }
+    #[cfg(test)]
     pub(super) fn validate(
+        self,
+        source: Arc<String>,
+        previous: Option<&Structure>,
+        budget: usize,
+    ) -> Option<Structure> {
+        let mut work = StructureReception::new(self, source, previous, budget)?;
+        while !work.advance()? {}
+        work.finish()
+    }
+
+    #[cfg(test)]
+    fn validate_reference(
         self,
         source: Arc<String>,
         previous: Option<&Structure>,
@@ -1421,7 +1439,7 @@ impl StructurePublication {
                 }
             }
         };
-        data.validate(source)
+        data.validate_reference(source)
     }
 }
 
@@ -1458,7 +1476,8 @@ impl StructureData {
             .saturating_add(self.protected.len())
             .saturating_add(self.brackets.len())
     }
-    pub(super) fn validate(self, source: Arc<String>) -> Option<Structure> {
+    #[cfg(test)]
+    fn validate_reference(self, source: Arc<String>) -> Option<Structure> {
         let valid_range = |range: &Range<usize>| {
             range.start < range.end
                 && source.is_char_boundary(range.start)

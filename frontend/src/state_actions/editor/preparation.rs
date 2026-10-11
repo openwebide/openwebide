@@ -971,8 +971,33 @@ mod tests {
         }
     }
 
+    fn reconstruction_message(source: &str, ticket: u32, structural: bool) -> String {
+        let structure = structural.then(|| {
+            let selections = source
+                .char_indices()
+                .step_by(8)
+                .map(|(start, ch)| start..start + ch.len_utf8())
+                .collect::<Vec<_>>();
+            serde_json::json!({"language":"Rust", "scopes":[], "selections": selections,
+                "opaque_starts":[], "protected":[], "brackets":[]})
+        });
+        let highlights = (!structural).then(|| serde_json::json!([[[source.len(), "Plain"]]]));
+        serde_json::json!({"version": openwebide_core::editor::SYNTAX_PROTOCOL_VERSION,
+            "ticket": ticket, "status": {"Ready": {"incremental": false}},
+            "analysis": {"source": source, "folds":[], "structure": structure, "highlights": highlights}}).to_string()
+    }
+
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn token_reception_yields_and_rejects_replaced_owners_in_both_modes() {
+        reconstruction_rejects_replaced_owners_in_both_modes(false).await;
+    }
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    async fn structure_reception_yields_and_rejects_replaced_owners_in_both_modes() {
+        reconstruction_rejects_replaced_owners_in_both_modes(true).await;
+    }
+
+    async fn reconstruction_rejects_replaced_owners_in_both_modes(structural: bool) {
         use crate::state::projects::ProjectsState;
         use openwebide_core::{Project, WorkspaceMode};
         for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
@@ -998,16 +1023,10 @@ mod tests {
                     (EditorActions::new(workspace), workspace, auth)
                 });
                 let scope = actions.syntax_scope().unwrap();
-                let message = serde_json::json!({
-                    "version": openwebide_core::editor::SYNTAX_PROTOCOL_VERSION,
-                    "ticket": 9, "status": {"Ready": {"incremental": false}},
-                    "analysis": {"source": scope.source.as_str(), "folds": [], "structure": null,
-                        "highlights": [[[scope.source.len(), "Plain"]]]}
-                })
-                .to_string();
+                let message = reconstruction_message(&scope.source, 9, structural);
                 let checks = Cell::new(0);
                 // Source proof consumes one 8 KiB unit per check. Interrupt later,
-                // while the long token's line scan/materialization is still pending.
+                // while token materialization or structural proof is still pending.
                 let interrupt_after = scope.source.len().div_ceil(8 * 1024) + 8;
                 let reception =
                     SyntaxReply::prepare_receive_shared(&message, 9, scope.source.clone(), None)
@@ -1031,17 +1050,11 @@ mod tests {
                 .await;
                 assert!(
                     checks.get() >= interrupt_after,
-                    "token reconstruction must yield after source proof"
+                    "reconstruction must yield after source proof"
                 );
                 assert!(result.is_none());
                 let fresh = actions.syntax_scope().unwrap();
-                let message = serde_json::json!({
-                    "version": openwebide_core::editor::SYNTAX_PROTOCOL_VERSION,
-                    "ticket": 10, "status": {"Ready": {"incremental": false}},
-                    "analysis": {"source": fresh.source.as_str(), "folds": [], "structure": null,
-                        "highlights": [[[fresh.source.len(), "Plain"]]]}
-                })
-                .to_string();
+                let message = reconstruction_message(&fresh.source, 10, structural);
                 let reception =
                     SyntaxReply::prepare_receive_shared(&message, 10, fresh.source.clone(), None)
                         .unwrap();
@@ -1052,10 +1065,17 @@ mod tests {
                         .1
                         .unwrap();
                 assert!(Arc::ptr_eq(analysis.source_snapshot(), &fresh.source));
-                assert_eq!(
-                    analysis.highlights().unwrap()[0][0].text,
-                    fresh.source.as_str()
-                );
+                if structural {
+                    assert_eq!(
+                        analysis.structure().unwrap().language_at(0),
+                        openwebide_core::highlight::Language::Rust
+                    );
+                } else {
+                    assert_eq!(
+                        analysis.highlights().unwrap()[0][0].text,
+                        fresh.source.as_str()
+                    );
+                }
             }
         }
     }

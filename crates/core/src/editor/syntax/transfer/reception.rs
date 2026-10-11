@@ -125,19 +125,30 @@ impl SourceValidation {
     }
 }
 
-pub(in crate::editor::syntax) struct AnalysisReconstruction {
+pub(in crate::editor::syntax) struct AnalysisReconstruction<'a> {
     pub(super) source: Arc<String>,
     pub(super) folds: Vec<crate::editor::FoldRange>,
     pub(super) structure: Option<Arc<crate::editor::Structure>>,
+    pub(super) structural: Option<super::StructureReception<'a>>,
     pub(super) rows: Option<TokenReconstruction>,
 }
-impl AnalysisReconstruction {
+impl AnalysisReconstruction<'_> {
     pub fn advance(&mut self) -> Option<bool> {
+        if let Some(structural) = self.structural.as_mut() {
+            if !structural.advance()? {
+                return Some(false);
+            }
+            self.structure = Some(Arc::new(self.structural.take()?.finish()?));
+            return Some(false);
+        }
         self.rows
             .as_mut()
             .map_or(Some(true), TokenReconstruction::advance)
     }
     pub fn finish(self) -> Option<Arc<super::SyntaxAnalysis>> {
+        if self.structural.is_some() {
+            return None;
+        }
         let highlights = match self.rows {
             Some(rows) => Some(Arc::new(rows.finish()?)),
             None => None,
