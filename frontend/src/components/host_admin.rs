@@ -63,7 +63,7 @@ pub fn HostPanel() -> impl IntoView {
                     <p class="form-hint">{format!("{} logical CPUs · {} / {} MiB RAM available",environment.info.logical_cores,environment.info.ram_available_bytes/1048576,environment.info.ram_total_bytes/1048576)}</p>
                     {environment.notes.into_iter().map(|note|view!{<p class="form-hint">{note}</p>}).collect::<Vec<_>>()}
                 })}
-                <input class="form-input" type="search" aria-label="Filter host resources" placeholder="Filter services, processes, ports, storage…" prop:value=move||filter.get() on:input=move|event|filter.set(event_target_value(&event))/>
+                <super::ui::PanelSearchRow unpadded=true><input class="form-input" type="search" aria-label="Filter host resources" placeholder="Filter services, processes, ports, storage…" prop:value=move||filter.get() on:input=move|event|filter.set(event_target_value(&event))/></super::ui::PanelSearchRow>
                 <div class="host-resources"><For each=move || {
                     let query = filter.get().to_lowercase();
                     environment.with(|value| value.as_ref().map(|environment| environment.resources.iter().filter(|resource| format!("{} {} {}", resource.name, resource.detail, resource.status).to_lowercase().contains(&query)).take(100).map(|resource| resource.id.clone()).collect::<Vec<_>>()).unwrap_or_default())
