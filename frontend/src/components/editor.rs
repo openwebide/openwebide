@@ -1585,7 +1585,7 @@ fn HighlightOverlay(
                 actions.end_row_preparation(ticket);
                 return;
             }
-            let Some((paint, plan)) = actions.prepare_row_measurements(
+            let Some(paint) = actions.row_paint_snapshot(
                 metrics.clone(),
                 projection.clone(),
                 prepared_tokens.clone(),
@@ -1593,6 +1593,20 @@ fn HighlightOverlay(
                 tab,
                 whitespace,
             ) else {
+                actions.end_row_preparation(ticket);
+                return;
+            };
+            if !actions.retain_row_preparation(ticket, &paint) {
+                actions.end_row_preparation(ticket);
+                return;
+            }
+            let Some((paint, plan)) = actions
+                .prepare_row_measurements_cooperatively(paint, || {
+                    batch_key.try_get_value().as_ref().and_then(Option::as_ref) == Some(&key)
+                        && actions.row_preparation_current(ticket)
+                })
+                .await
+            else {
                 actions.end_row_preparation(ticket);
                 return;
             };

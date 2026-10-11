@@ -127,6 +127,11 @@ the partition fix passes all five jobs
   remove the complete paint-descriptor vectors; row-limit WASM memory after input
   drops to about 41 MiB from 54–56 MiB, but full traversal and input spikes remain
   ([samples](editor-performance/indexed-row-comparison.jsonl)).
+  Repeated-key grouping and measurement propagation now yield between bounded
+  row batches and reject stale owners in both modes
+  ([receipt](editor-performance/cooperative-row-browser.json)). Complete row
+  validation, prefix/suffix comparison, single-key byte costs and final row-table
+  publication still need bounded work and production measurements.
 - [ ] **Source, worker transport and storage:** finish external parser snapshots,
   changed-revision comparisons, metadata materialization, header/capacity allocation,
   JavaScript string conversion, complete message decoding/publication,

@@ -1,0 +1,13 @@
+{
+  "baseHead": "d26efa9bb88f0d3d8cfd7d75cd958352c43d2a74",
+  "sourceHashes": {
+    "crates/core/src/editor/mod.rs": "417b3a8d793f00b1503738d66f8068a1b8c5b8fc55d3b86d109790c492f3557d",
+    "crates/core/src/editor/viewport.rs": "f349525ab75d7786ab52047f6af0090da47272f5fcb89c4aa204cd44aceb2334",
+    "frontend/src/state_actions/editor/rows.rs": "e10ba0f8ea6b7d828c8d5b91bd6a1135713ce7412c79d9a5238157680323f843",
+    "frontend/src/components/editor.rs": "de6e407fac19dd6b817942db8c3580ff5f44adf6b457a200ab6415755f1c88ab",
+    "frontend/tests/components/editor.rs": "8d4dd03ba07e304588a1f330b8aaf258823680a5886b62f0fd1dfadeee85e027"
+  },
+  "browserWasmSha256": "63617ec45b87ad9c70a3b70a133d4cc5dc22b4ef5e8a6d94a21b09f3aec379d7",
+  "workBudgetRows": 1024,
+  "note": "Bounds repeated-key grouping and propagation by row count. Single-key byte costs, complete row validation and prefix/suffix reuse remain outside this bound. No production latency or memory claim."
+}

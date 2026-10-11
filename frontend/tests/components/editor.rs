@@ -6,6 +6,92 @@ use wasm_bindgen_test::*;
 
 use super::support::{Mounted, editor_view, mount_test, settle, wait_until};
 
+#[wasm_bindgen_test]
+async fn cooperative_row_planning_rejects_stale_owners_in_both_modes() {
+    use openwebide_core::{WorkspaceMode, editor::Selection};
+    use openwebide_frontend::state_actions::editor::EditorActions;
+    use std::{
+        cell::Cell,
+        future::Future,
+        rc::Rc,
+        sync::Arc,
+        task::{Context, Poll, Waker},
+    };
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        for change in 0..9 {
+            let slot = Rc::new(Cell::new(None::<EditorActions>));
+            let captured = slot.clone();
+            let mounted = mount_test(move |state| {
+                state.seed_project();
+                state
+                    .projects
+                    .projects
+                    .update(|projects| projects[0].mode = mode);
+                state
+                    .workspace
+                    .open_file
+                    .set(Some("cooperative-rows.txt".into()));
+                state
+                    .workspace
+                    .content
+                    .set("row 文😀\t words\n".repeat(4096).into());
+                captured.set(Some(EditorActions::new(state.workspace)));
+                view! { <div/> }
+            });
+            let actions = slot.get().unwrap();
+            actions.prepare_edit(Selection::caret(0)).unwrap();
+            let paint = actions
+                .row_paint_snapshot(
+                    "fixture metrics".into(),
+                    actions.projection().unwrap(),
+                    (false, Arc::new(Vec::new())),
+                    Arc::from([]),
+                    actions.rules().indentation,
+                    false,
+                )
+                .unwrap();
+            let current = Cell::new(true);
+            let mut future =
+                Box::pin(actions.prepare_row_measurements_cooperatively(paint, || current.get()));
+            assert!(matches!(
+                future
+                    .as_mut()
+                    .poll(&mut Context::from_waker(Waker::noop())),
+                Poll::Pending
+            ));
+            let workspace = mounted.state.workspace;
+            match change {
+                0 => {
+                    actions.paste("changed ", Selection::caret(0)).unwrap();
+                }
+                1 => {
+                    workspace.begin_editor_read();
+                }
+                2 => workspace.pending_epoch.update(|epoch| *epoch += 1),
+                3 => mounted
+                    .state
+                    .auth
+                    .generation
+                    .update(|generation| *generation += 1),
+                4 => mounted.state.projects.active_project.set(Some(2)),
+                5 => workspace.open_file.set(Some("other.txt".into())),
+                6 => actions.invalidate_measured_font(),
+                7 => current.set(false),
+                _ => {}
+            }
+            assert_eq!(
+                future.await.is_some(),
+                change == 8,
+                "{mode:?}: owner change {change}"
+            );
+            assert!(
+                actions.measured_rows().is_none(),
+                "planning must not publish partial geometry"
+            );
+        }
+    }
+}
+
 fn mount_editor(content: String) -> Mounted {
     mount_test(move |state| {
         state.seed_project();

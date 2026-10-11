@@ -6561,3 +6561,22 @@ All seven combined pending-paint and geometry browser contracts pass
 strict WASM frontend lint and 129 native frontend tests pass. Full hosted CI
 must still verify the combined checkpoint. These checks do not close the broader
 performance, physical-input or recovery gates.
+
+Repeated-row indexing and initial measurement propagation now use one resumable
+Rust preparation shared by synchronous tests and the live editor facade. The
+browser yields at background priority after at most 1,024 key/propagation rows
+and rechecks source/file/project/account/read/font ownership and its preparation
+ticket after every boundary. Every retained sample is validated before any
+missing measurements propagate. Complete reused geometry skips duplicate indexing
+entirely. Native contracts compare independent complete layouts across work
+budgets, reject a conflicting final-row sample, and require zero key calls when
+all geometry is already known.
+
+Nine combined browser contracts pass, including staged cancellation for both
+project modes, font ownership, pending paint and exact wrapped reuse
+([receipt](editor-performance/cooperative-row-browser.json),
+[source and WASM hashes](editor-performance/cooperative-row-browser-manifest.json)).
+Strict native core and WASM frontend lint pass. Complete row validation,
+prefix/suffix reuse, single-key byte costs, allocations and final row-table
+publication remain unbounded; the admitted-boundary production performance
+requirements and full hosted CI still need verification.

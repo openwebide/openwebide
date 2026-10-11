@@ -729,7 +729,7 @@ impl EditorActions {
         })
     }
 
-    fn row_paint_snapshot(
+    pub fn row_paint_snapshot(
         self,
         metrics: String,
         projection: FoldProjection,
@@ -765,11 +765,49 @@ impl EditorActions {
         indentation: Indentation,
         whitespace: bool,
     ) -> Option<(EditorRowPaint, RowMeasurementPlan)> {
-        if !self.full_row_paint_ready() {
-            return None;
-        }
         let paint =
             self.row_paint_snapshot(metrics, projection, tokens, guides, indentation, whitespace)?;
+        let (paint, mut plan) = self.row_measurement_plan(paint)?;
+        let rows = PaintRowKeys(&paint);
+        plan.share_repeated_with(rows.len(), |row| rows.key(row))
+            .then_some((paint, plan))
+    }
+    /// Shared planning with browser scheduling as a primitive. Revalidate the
+    /// immutable paint and preparation ticket after every cooperative boundary.
+    pub async fn prepare_row_measurements_cooperatively(
+        self,
+        paint: EditorRowPaint,
+        current: impl Fn() -> bool,
+    ) -> Option<(EditorRowPaint, RowMeasurementPlan)> {
+        let (paint, plan) = self.row_measurement_plan(paint)?;
+        let rows = PaintRowKeys(&paint);
+        let mut preparation = openwebide_core::editor::RepeatedRowPreparation::new(plan)?;
+        while !preparation.is_complete() {
+            if !current() || !self.row_paint_current(&paint) {
+                return None;
+            }
+            preparation.advance(
+                openwebide_core::editor::MAX_MEASURE_ROWS
+                    * openwebide_core::editor::MAX_MEASURE_BATCHES_PER_FRAME,
+                |row| rows.key(row),
+            );
+            if !preparation.is_complete() {
+                crate::util::yield_background_task().await;
+            }
+        }
+        if !current() || !self.row_paint_current(&paint) {
+            return None;
+        }
+        let plan = preparation.finish()?;
+        Some((paint, plan))
+    }
+    fn row_measurement_plan(
+        self,
+        paint: EditorRowPaint,
+    ) -> Option<(EditorRowPaint, RowMeasurementPlan)> {
+        if !self.full_row_paint_ready() || !self.row_paint_current(&paint) {
+            return None;
+        }
         let current_rows = PaintRowKeys::new(&paint)?;
         let reused = self.workspace.editor_row_cache.with_untracked(|cache| {
             let cache = cache.as_ref()?;
@@ -786,11 +824,7 @@ impl EditorActions {
                 &cache.rows,
             )
         });
-        let mut plan =
-            reused.or_else(|| RowMeasurementPlan::new(paint.projection.lines().len()))?;
-        if !plan.share_repeated_with(current_rows.len(), |row| current_rows.key(row)) {
-            return None;
-        }
+        let plan = reused.or_else(|| RowMeasurementPlan::new(paint.projection.lines().len()))?;
         Some((paint, plan))
     }
     /// Keep the original measurement environment until this ticket ends. Native

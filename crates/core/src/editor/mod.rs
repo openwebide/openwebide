@@ -70,8 +70,9 @@ pub use paint::{PaintCoverage, PaintPosition, PaintSelection, retained_paint_ran
 mod viewport;
 pub use viewport::{
     DocumentExtent, EditorViewport, MAX_MEASURE_BATCHES_PER_FRAME, MAX_MEASURE_BYTES,
-    MAX_MEASURE_FONT_WAIT_MS, MAX_MEASURE_ROWS, MeasuredRows, RowMeasurementPlan, RowPaintWindow,
-    horizontal_paint_bounds, needs_measured_batches, row_measurement_batch, wrapped_paint_window,
+    MAX_MEASURE_FONT_WAIT_MS, MAX_MEASURE_ROWS, MeasuredRows, RepeatedRowPreparation,
+    RowMeasurementPlan, RowPaintWindow, horizontal_paint_bounds, needs_measured_batches,
+    row_measurement_batch, wrapped_paint_window,
 };
 mod projection;
 pub use projection::{FoldProjection, ProjectionError, VisibleLine};

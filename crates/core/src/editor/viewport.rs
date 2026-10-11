@@ -153,6 +153,128 @@ pub struct RowMeasurementPlan {
     completed: usize,
     repeated: Option<RepeatedRows>,
 }
+
+enum RepeatedRowSeen {
+    First(usize),
+    Group(usize),
+}
+
+/// Cooperatively group exact paint keys and validate every retained sample
+/// before propagating measurements. Hosts provide keys and scheduling only.
+pub struct RepeatedRowPreparation<T> {
+    plan: RowMeasurementPlan,
+    seen: HashMap<T, RepeatedRowSeen>,
+    rows: Vec<Option<usize>>,
+    groups: Vec<RepeatedRowGroup>,
+    next: usize,
+    applying: bool,
+    has_repeated: bool,
+}
+impl<T: Eq + Hash> RepeatedRowPreparation<T> {
+    pub fn new(plan: RowMeasurementPlan) -> Option<Self> {
+        if plan.repeated.is_some() {
+            return None;
+        }
+        let complete = plan.completed == plan.heights.len();
+        Some(Self {
+            rows: if complete {
+                Vec::new()
+            } else {
+                vec![None; plan.heights.len()]
+            },
+            plan,
+            seen: HashMap::new(),
+            groups: Vec::new(),
+            next: 0,
+            applying: complete,
+            has_repeated: false,
+        })
+    }
+    pub fn is_complete(&self) -> bool {
+        self.applying && self.next == self.rows.len()
+    }
+    /// Count both key comparisons and propagation rows against the work budget.
+    /// A single key's byte cost remains the host's admission responsibility.
+    pub fn advance(&mut self, budget: usize, key: impl Fn(usize) -> T) -> usize {
+        let mut worked = 0;
+        while worked < budget && !self.is_complete() {
+            let row = self.next;
+            if self.applying {
+                if let Some(group) = self.rows[row] {
+                    let group = &mut self.groups[group];
+                    group.consistent &= group.rows.len() >= 3;
+                    if group.rows.len() >= 3 && group.consistent && group.samples >= 2 {
+                        group.applied = true;
+                        if self.plan.heights[row].is_none() {
+                            let (height, width) = group.sample.expect("matching layout samples");
+                            self.plan.heights[row] = Some(height);
+                            self.plan.widths[row] = Some(width);
+                            self.plan.completed += 1;
+                        }
+                    }
+                }
+            } else {
+                match self.seen.entry(key(row)) {
+                    std::collections::hash_map::Entry::Vacant(entry) => {
+                        entry.insert(RepeatedRowSeen::First(row));
+                    }
+                    std::collections::hash_map::Entry::Occupied(mut entry) => {
+                        let group = match entry.get() {
+                            RepeatedRowSeen::First(first) => {
+                                let group = self.groups.len();
+                                self.rows[*first] = Some(group);
+                                let sample =
+                                    self.plan.heights[*first].zip(self.plan.widths[*first]);
+                                self.groups.push(RepeatedRowGroup {
+                                    rows: vec![*first],
+                                    sample,
+                                    samples: usize::from(sample.is_some()),
+                                    consistent: true,
+                                    applied: false,
+                                });
+                                entry.insert(RepeatedRowSeen::Group(group));
+                                group
+                            }
+                            RepeatedRowSeen::Group(group) => *group,
+                        };
+                        self.rows[row] = Some(group);
+                        let group = &mut self.groups[group];
+                        group.rows.push(row);
+                        self.has_repeated |= group.rows.len() >= 3;
+                        if let Some(sample) = self.plan.heights[row].zip(self.plan.widths[row]) {
+                            if let Some(previous) = group.sample {
+                                group.consistent &= previous.0.to_bits() == sample.0.to_bits()
+                                    && previous.1.to_bits() == sample.1.to_bits();
+                            } else {
+                                group.sample = Some(sample);
+                            }
+                            group.samples += 1;
+                        }
+                    }
+                }
+            }
+            self.next += 1;
+            worked += 1;
+            if !self.applying && self.next == self.rows.len() {
+                self.applying = true;
+                self.next = 0;
+            }
+        }
+        worked
+    }
+    pub fn finish(mut self) -> Option<RowMeasurementPlan> {
+        if !self.is_complete() {
+            return None;
+        }
+        if self.has_repeated {
+            self.plan.repeated = Some(RepeatedRows {
+                rows: self.rows,
+                groups: self.groups,
+            });
+        }
+        Some(self.plan)
+    }
+}
 impl RowMeasurementPlan {
     pub fn new(rows: usize) -> Option<Self> {
         (rows <= super::MAX_EDITOR_LINES).then(|| Self {
@@ -269,48 +391,12 @@ impl RowMeasurementPlan {
         if count != self.heights.len() || self.repeated.is_some() {
             return false;
         }
-        enum Seen {
-            First(usize),
-            Group(usize),
-        }
-        let mut seen = HashMap::new();
-        let mut rows = vec![None; count];
-        let mut groups: Vec<RepeatedRowGroup> = Vec::new();
-        for row in 0..count {
-            match seen.entry(key(row)) {
-                std::collections::hash_map::Entry::Vacant(entry) => {
-                    entry.insert(Seen::First(row));
-                }
-                std::collections::hash_map::Entry::Occupied(mut entry) => {
-                    let group = match entry.get() {
-                        Seen::First(first) => {
-                            let group = groups.len();
-                            rows[*first] = Some(group);
-                            groups.push(RepeatedRowGroup {
-                                rows: vec![*first],
-                                sample: None,
-                                samples: 0,
-                                consistent: true,
-                                applied: false,
-                            });
-                            entry.insert(Seen::Group(group));
-                            group
-                        }
-                        Seen::Group(group) => *group,
-                    };
-                    rows[row] = Some(group);
-                    groups[group].rows.push(row);
-                }
-            }
-        }
-        if groups.iter().all(|group| group.rows.len() < 3) {
-            return true;
-        }
-        for group in &mut groups {
-            group.consistent = group.rows.len() >= 3;
-        }
-        self.repeated = Some(RepeatedRows { rows, groups });
-        self.observe_repeated(0..count);
+        let plan = std::mem::replace(self, Self::new(0).expect("empty measurement plan"));
+        let mut preparation = RepeatedRowPreparation::new(plan).expect("unshared measurements");
+        preparation.advance(usize::MAX, key);
+        *self = preparation
+            .finish()
+            .expect("complete repeated-row preparation");
         true
     }
 
@@ -619,6 +705,65 @@ impl EditorViewport {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn repeated_preparation_is_partition_independent_and_checks_late_conflicts() {
+        let count = 4096;
+        for budget in [1, 7, MAX_MEASURE_ROWS, 1024, usize::MAX] {
+            for conflict in [false, true] {
+                let measured = MeasuredRows::layout(
+                    [20.0, 20.0, 10.0, if conflict { 30.0 } else { 20.0 }],
+                    [90.0; 4],
+                )
+                .unwrap();
+                let plan =
+                    RowMeasurementPlan::reuse_layout(&[1, 1, 9, 1], &vec![1; count], &measured)
+                        .unwrap();
+                let mut preparation = RepeatedRowPreparation::new(plan).unwrap();
+                assert_eq!(preparation.advance(0, |_| 1), 0);
+                assert!(!preparation.is_complete());
+                while !preparation.is_complete() {
+                    assert!(preparation.advance(budget, |_| 1) <= budget);
+                    // No propagation is allowed before every retained sample
+                    // has been checked, including conflicts in later batches.
+                    if !preparation.applying {
+                        assert_eq!(preparation.plan.completed(), 3);
+                    }
+                }
+                let mut plan = preparation.finish().unwrap();
+                assert_eq!(plan.completed(), if conflict { 3 } else { count });
+                while let Some(rows) = plan.pending_batch(&vec![1; count]) {
+                    assert!(plan.record_layout(
+                        rows.clone(),
+                        &vec![20.0; rows.len()],
+                        &vec![90.0; rows.len()]
+                    ));
+                }
+                let expected = MeasuredRows::layout(
+                    (0..count).map(|row| {
+                        if conflict && row == count - 1 {
+                            30.0
+                        } else {
+                            20.0
+                        }
+                    }),
+                    vec![90.0; count],
+                )
+                .unwrap();
+                assert_eq!(plan.finish(), Some(expected.clone()));
+                let plan =
+                    RowMeasurementPlan::reuse_layout(&vec![1; count], &vec![1; count], &expected)
+                        .unwrap();
+                let mut preparation = RepeatedRowPreparation::<usize>::new(plan).unwrap();
+                assert!(preparation.is_complete());
+                assert_eq!(
+                    preparation.advance(budget, |_| panic!("complete geometry must not hash keys")),
+                    0
+                );
+                assert_eq!(preparation.finish().unwrap().finish(), Some(expected));
+            }
+        }
+    }
+
     #[test]
     fn indexed_owned_keys_preserve_exact_reuse_and_reject_hash_collisions() {
         #[derive(PartialEq, Eq)]
