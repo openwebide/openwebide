@@ -69,7 +69,12 @@ still take 191–545 ms, cold complete geometry takes 1.1–1.7 seconds across t
 row/long-line workloads, and peak Chrome PSS remains 657–730 MiB
 ([samples](editor-performance/row-planner-production-comparison.jsonl)).
 Cooperative row planning is shipped, but these results leave responsiveness and
-memory unfinished. An isolated worker-bundle experiment did not reduce process
+memory unfinished. Controlled source-size attribution identifies renderer startup as the dominant
+process-memory increase: renderer PSS is about 133 MiB before app load, 378 MiB
+with 1,000 rows, and 412–421 MiB near the row limit
+([samples](editor-performance/source-size-memory-by-role.jsonl)). Profile that
+startup cost next; total Chrome PSS includes a substantial browser baseline.
+An isolated worker-bundle experiment did not reduce process
 memory and increased the WASM download from roughly 27 to 42 MiB; it was rejected
 ([comparison](editor-performance/rejected-worker-split-comparison.jsonl)).
 

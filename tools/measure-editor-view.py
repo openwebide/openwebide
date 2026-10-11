@@ -50,6 +50,21 @@ def process_memory(driver):
     return result
 
 
+def chrome_process_role(pid):
+    """Classify only owned processes; never publish command-line arguments."""
+    try:
+        # Chromium can rewrite its process title into one space-separated argv.
+        args = Path(f"/proc/{pid}/cmdline").read_bytes().replace(b"\0", b" ").split()
+    except OSError:
+        return "unknown"
+    roles = {b"renderer": "renderer", b"gpu-process": "gpu", b"utility": "utility",
+             b"zygote": "zygote"}
+    for arg in args:
+        if arg.startswith(b"--type="):
+            return roles.get(arg.removeprefix(b"--type="), "other")
+    return "browser" if args and b"chrome" in args[0] else "other"
+
+
 def process_memory_snapshot(driver):
     records = {}
     for line in subprocess.check_output(["ps", "-axo", "pid=,ppid=,rss="], text=True).splitlines():
@@ -63,15 +78,24 @@ def process_memory_snapshot(driver):
         owned |= children
     owned.discard(driver)
     pss = []
-    for pid in owned:
+    by_role = {}
+    for pid in sorted(owned):
+        role = chrome_process_role(pid)
+        group = by_role.setdefault(role, {"processes": 0, "rssKiB": 0, "pssKiB": 0})
+        group["processes"] += 1
+        group["rssKiB"] += records[pid][1]
         try:
             fields = Path(f"/proc/{pid}/smaps_rollup").read_text().splitlines()
-            pss.append(int(next(line for line in fields if line.startswith("Pss:")).split()[1]))
+            value = int(next(line for line in fields if line.startswith("Pss:")).split()[1])
+            pss.append(value)
+            if group["pssKiB"] is not None:
+                group["pssKiB"] += value
         except (OSError, StopIteration):
-            pass
+            group["pssKiB"] = None
     return {"chrome_processes": len(owned),
             "chrome_summed_rss_kib": sum(records[pid][1] for pid in owned),
-            "chrome_pss_kib": sum(pss) if len(pss) == len(owned) and owned else None}
+            "chrome_pss_kib": sum(pss) if len(pss) == len(owned) and owned else None,
+            "chrome_memory_by_role": by_role}
 
 
 def source_for(case):
@@ -103,6 +127,7 @@ class MemorySamples:
         self.initial = process_memory(driver)
         self.peak_rss = self.initial["chrome_summed_rss_kib"]
         self.peak_pss = self.initial["chrome_pss_kib"]
+        self.peak_roles = self.initial["chrome_memory_by_role"]
         self.count = 1
         self.error = None
         self.stopped = threading.Event()
@@ -115,6 +140,8 @@ class MemorySamples:
                 value = process_memory(self.driver)
                 self.peak_rss = max(self.peak_rss, value["chrome_summed_rss_kib"])
                 if value["chrome_pss_kib"] is not None:
+                    if self.peak_pss is None or value["chrome_pss_kib"] > self.peak_pss:
+                        self.peak_roles = value["chrome_memory_by_role"]
                     self.peak_pss = max(self.peak_pss or 0, value["chrome_pss_kib"])
                 self.count += 1
             except (OSError, ValueError) as error:
@@ -128,10 +155,13 @@ class MemorySamples:
         final = process_memory(self.driver)
         self.peak_rss = max(self.peak_rss, final["chrome_summed_rss_kib"])
         if final["chrome_pss_kib"] is not None:
+            if self.peak_pss is None or final["chrome_pss_kib"] > self.peak_pss:
+                self.peak_roles = final["chrome_memory_by_role"]
             self.peak_pss = max(self.peak_pss or 0, final["chrome_pss_kib"])
         self.count += 1
         return {"beforeLoadMemory": self.initial, "peakChromeSummedRssKiB": self.peak_rss,
                 "peakChromePssKiB": self.peak_pss, "memorySamples": self.count,
+                "peakChromeMemoryByRole": self.peak_roles,
                 "memorySampleIntervalMs": 200}
 
 

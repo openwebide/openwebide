@@ -6638,3 +6638,31 @@ Hosted CI passes all five jobs for `d26efa9` and `f251d89`
 [row-planning receipt](editor-performance/editor-ci-f251-success.json)).
 These checks establish checkpoint correctness, not completion of the full
 editor responsiveness, device-input or recovery gates.
+
+
+### Source-size and renderer memory attribution
+
+A controlled source-size diagnostic uses the same release artifact with 1,000 or
+99,999 identical `x` rows, both modes, worker enabled/disabled
+([eight samples](editor-performance/source-size-memory-diagnostic.jsonl),
+[source override](editor-performance/source-size-memory-sample.py)).
+Every input preserves complete source. The pre-app Chrome baseline is about
+388–393 MiB when readable; two baseline snapshots remain unavailable and must
+not be used to calculate memory deltas. Worker disabling is diagnostic only.
+
+The measurement harness now classifies owned Chrome processes without reporting
+command-line arguments, retaining per-role RSS/PSS and the role breakdown from
+the same sample that records total peak PSS. Missing PSS in any group remains
+unavailable. Seven unit contracts cover descendant isolation, churn, unreadable
+snapshots, rewritten process titles and role classification.
+
+Four fresh production-worker samples preserve complete source in both modes
+([samples](editor-performance/source-size-memory-by-role.jsonl),
+[artifact and harness identity](editor-performance/source-size-memory-by-role-manifest.json)).
+The renderer group starts around 133 MiB before app load and peaks around 378 MiB
+for 1,000 rows versus 412–421 MiB for 99,999 rows. Total peaks are 641–654 MiB
+and 675–681 MiB respectively. Renderer startup and worker/runtime allocations
+therefore warrant profiling before another row-table memory experiment. These
+are one sample per mode/source size, not a stable performance distribution;
+RSS/PSS include browser infrastructure and do not equal live Rust heap usage.
+No responsiveness or memory completion gate is closed by this attribution.
