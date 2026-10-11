@@ -839,6 +839,7 @@ walkthroughs against the final app before public launch.
   `ghcr.io/openwebide/openwebide:v1.0.0` and `stable`, and publishes changelog-derived
   notes, archives, install files and checksums using `GITHUB_TOKEN`. Make the GHCR
   package public and verify anonymous pulls and clean installs on both architectures.
+  Shared CI checks generated Quadlet services against the `stable` image channel.
   The pinned alpha is `1.0.0-alpha.6`; main builds publish rolling `alpha` images. Alpha publication does not complete
   the stable-release gates.
 - **Public launch:** update the [site landing page](project-site.md) and pre-release

@@ -235,7 +235,7 @@ jobs:
           QUADLET_UNIT_DIRS="$PWD/deploy" /usr/lib/systemd/system-generators/podman-system-generator --user --dryrun > "$RUNNER_TEMP/quadlet-services"
           grep -F 'openwebide.service' "$RUNNER_TEMP/quadlet-services"
           grep -F 'openwebide-image.service' "$RUNNER_TEMP/quadlet-services"
-          grep -F 'ghcr.io/openwebide/openwebide:latest' "$RUNNER_TEMP/quadlet-services"
+          grep -F 'ghcr.io/openwebide/openwebide:stable' "$RUNNER_TEMP/quadlet-services"
 
       - name: Load the same image into rootless Podman
         run: docker save openwebide:ci | podman load
