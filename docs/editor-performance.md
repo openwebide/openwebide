@@ -6294,3 +6294,17 @@ frontend all-targets lint and formatting pass. Shared `EditorActions` owns
 coverage eligibility; the browser adapter only supplies prioritized task yielding.
 Both mode paths use that policy and retain current source/account checks.
 Hosted CI for the new checkpoint remains pending.
+
+The pushed `4fb3c637` production artifact completes all 24 disjoint boundary
+samples (three workloads × both modes × wrapping on/off × two repeats), with
+complete edited source and non-null peak Chrome PSS in every sample
+([raw results](editor-performance/background-priority-boundaries.jsonl),
+[ranges](editor-performance/background-priority-boundary-summary.json)). Byte-limit
+edits paint in 59–69 ms and row-limit edits in 32–60 ms. Cold unwrapped styled
+long-line geometry takes 2.84–3.45 seconds; this remains a measured blocker to
+the responsiveness gate. The matrix uses the same retained backend and verified
+frontend/measurement-script manifest as the prior candidate samples.
+The roadmap now separates remaining requirements from checkpoint history,
+preserving the historical text in a linked archive without marking remaining
+implementation or device gates complete. The installed PWA still reports
+`cgWindowNotFound`, so physical input/permission checks remain unverified.

@@ -1,0 +1,117 @@
+{
+  "checkpoint": "4fb3c637",
+  "samples": 24,
+  "inventoryComplete": true,
+  "completeSourceAfterInputVerified": true,
+  "ranges": {
+    "byte-limit/wrap=False": {
+      "inputViewportPaintMs": [
+        59.2,
+        61.6
+      ],
+      "inputCompleteGeometryMs": [
+        59.2,
+        61.6
+      ],
+      "coldCompleteGeometryMs": [
+        1294.3,
+        1394
+      ],
+      "peakChromePssKiB": [
+        793225,
+        853857
+      ]
+    },
+    "byte-limit/wrap=True": {
+      "inputViewportPaintMs": [
+        60.8,
+        68.9
+      ],
+      "inputCompleteGeometryMs": [
+        60.8,
+        68.9
+      ],
+      "coldCompleteGeometryMs": [
+        1362.7,
+        1595.6
+      ],
+      "peakChromePssKiB": [
+        781475,
+        826592
+      ]
+    },
+    "line-limit/wrap=False": {
+      "inputViewportPaintMs": [
+        32,
+        34.6
+      ],
+      "inputCompleteGeometryMs": [
+        32,
+        34.6
+      ],
+      "coldCompleteGeometryMs": [
+        1073.2,
+        1105.8
+      ],
+      "peakChromePssKiB": [
+        700834,
+        704286
+      ]
+    },
+    "line-limit/wrap=True": {
+      "inputViewportPaintMs": [
+        39.1,
+        59.6
+      ],
+      "inputCompleteGeometryMs": [
+        39.1,
+        59.6
+      ],
+      "coldCompleteGeometryMs": [
+        1130.6,
+        1203.8
+      ],
+      "peakChromePssKiB": [
+        696496,
+        706712
+      ]
+    },
+    "styled-long-line/wrap=False": {
+      "inputViewportPaintMs": [
+        118.5,
+        131.1
+      ],
+      "inputCompleteGeometryMs": [
+        118.6,
+        131.1
+      ],
+      "coldCompleteGeometryMs": [
+        2837.4,
+        3454.2
+      ],
+      "peakChromePssKiB": [
+        682629,
+        744921
+      ]
+    },
+    "styled-long-line/wrap=True": {
+      "inputViewportPaintMs": [
+        131.2,
+        145
+      ],
+      "inputCompleteGeometryMs": [
+        383.8,
+        409.4
+      ],
+      "coldCompleteGeometryMs": [
+        1491.6,
+        1561.3
+      ],
+      "peakChromePssKiB": [
+        702356,
+        740169
+      ]
+    }
+  },
+  "manifest": "background-priority-production-manifest.json"
+}
