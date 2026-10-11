@@ -73,11 +73,20 @@ SELinux, and choose the workspace scope deliberately. The bundled entrypoint
 keeps Spin's host-write mount flags and runs the bridge against `/workspace`.
 Its persistent secret lives in the mounted data directory.
 
-Open <http://localhost:8080/> and register the first account. Both ports bind to
-loopback; use [private HTTPS via Tailscale](tailscale.md) for other devices.
-If explicitly exposing ports on the LAN, change the bindings and configure the
-bridge's allowed hostnames/origins as described in the [bridge reference](execution-bridge.md).
-`/api/health` requires authentication; an unsigned 401 is expected.
+Open <http://localhost:8080/> and register the first account.
+
+### Networking and port configuration
+
+- **IPv6 and `localhost` resolution**: On systems where `localhost` resolves to `::1` (IPv6), binding only `127.0.0.1` can result in connection failures when accessing `http://localhost:8080/`. To support both IPv4 and IPv6 loopbacks, specify both `PublishPort=127.0.0.1:8080:3000` and `PublishPort=[::1]:8080:3000` (and port 3001), or bind without an IP prefix (`PublishPort=8080:3000` and `PublishPort=3001:3001`) to listen on all interfaces.
+- **Port conflicts**: If port 8080 is already in use by another service on the host (such as a local `llama.cpp` or Ollama instance), map to an alternate host port such as `PublishPort=8081:3000`.
+- **Connecting to host model servers**: Because Open WebIDE runs in its own network namespace, `localhost` inside the container refers to the container itself. In **Servers**, point to model servers running on the Linux host using `http://host.containers.internal:<port>/v1`.
+- **Tailscale and LAN access**: When accessing Open WebIDE over a LAN IP or Tailscale domain, configure the bridge allowed hostnames and origins in `openwebide.container`:
+  ```ini
+  Environment=OPENWEBIDE_BRIDGE_ALLOWED_HOSTS=<device>.<tailnet>.ts.net
+  Environment=OPENWEBIDE_BRIDGE_ALLOWED_ORIGINS=https://<device>.<tailnet>.ts.net
+  ```
+  For private HTTPS via Tailscale Serve running on the host, see the [Tailscale guide](tailscale.md#host-tailscale-serve-with-container-deployments-podman-quadlet-or-docker).
+- **Health check**: `/api/health` requires authentication; an unsigned 401 is expected.
 
 ```sh
 systemctl --user status openwebide.service
