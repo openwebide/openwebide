@@ -100,6 +100,47 @@ impl<K: Eq> SyntaxPreparations<K> {
         })
     }
 
+    /// Continue the shared engine with an immutable in-process source. Hosts
+    /// supply cancellation and task deadlines; no wire encoding is required.
+    /// Pending documents obey the same retention limits as complete documents.
+    pub fn prepare_cooperative(
+        &mut self,
+        key: K,
+        language: Language,
+        source: Arc<String>,
+        tab_width: usize,
+        should_continue: impl FnMut() -> bool,
+        should_yield: impl FnMut() -> bool,
+    ) -> Option<(SyntaxStatus, Option<Arc<SyntaxAnalysis>>)> {
+        let source_len = source.len();
+        let mut document = match self.take_admitted_document(&key, language, source_len) {
+            Ok(document) => document,
+            Err(status) => return Some((status, None)),
+        };
+        let result = document.prepare_cooperative(source, tab_width, should_continue, should_yield);
+        if result
+            .as_ref()
+            .is_none_or(|(_, analysis)| analysis.is_some())
+        {
+            self.install_document(key, language, document, source_len);
+        }
+        result
+    }
+
+    fn take_admitted_document(
+        &mut self,
+        key: &K,
+        language: Language,
+        source_len: usize,
+    ) -> Result<SyntaxDocument, SyntaxStatus> {
+        if source_len > MAX_STRUCTURE_BYTES {
+            self.remove(key);
+            return Err(SyntaxStatus::TooLarge);
+        }
+        self.take_document(key, language)
+            .ok_or(SyntaxStatus::Cancelled)
+    }
+
     fn prepare_with(
         &mut self,
         key: K,
@@ -107,12 +148,9 @@ impl<K: Eq> SyntaxPreparations<K> {
         source_len: usize,
         prepare: impl FnOnce(&mut SyntaxDocument) -> (SyntaxStatus, Option<Arc<SyntaxAnalysis>>),
     ) -> (SyntaxStatus, Option<Arc<SyntaxAnalysis>>) {
-        if source_len > MAX_STRUCTURE_BYTES {
-            self.remove(&key);
-            return (SyntaxStatus::TooLarge, None);
-        }
-        let Some(mut document) = self.take_document(&key, language) else {
-            return (SyntaxStatus::Cancelled, None);
+        let mut document = match self.take_admitted_document(&key, language, source_len) {
+            Ok(document) => document,
+            Err(status) => return (status, None),
         };
         let result = prepare(&mut document);
         if result.1.is_some() {
@@ -153,6 +191,122 @@ impl<K: Eq> SyntaxPreparations<K> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cooperative_cache_retains_exact_sources_and_matches_complete_analysis() {
+        for (language, text) in [
+            (Language::Rust, "fn main() { let value = 1; }\n".repeat(200)),
+            (
+                Language::Html,
+                "<main><script>let value = 1;</script></main>\n".repeat(32),
+            ),
+            (
+                Language::Markdown,
+                "# Heading\n\n```rust\nfn main() {}\n```\n".repeat(32),
+            ),
+        ] {
+            let source = Arc::new(text);
+            let mut reference = SyntaxPreparations::default();
+            let expected = reference.prepare_shared(1, language, source.clone(), 4, || true);
+            let mut cache = SyntaxPreparations::default();
+            let mut turns = 0;
+            let actual = loop {
+                let mut checkpoints = 0;
+                let result = cache.prepare_cooperative(
+                    1,
+                    language,
+                    source.clone(),
+                    4,
+                    || true,
+                    || {
+                        checkpoints += 1;
+                        checkpoints > 4
+                    },
+                );
+                if let Some(result) = result {
+                    break result;
+                }
+                turns += 1;
+                assert!(turns < 100_000);
+                assert_eq!(cache.len(), 1);
+                assert_eq!(cache.retained_source_bytes(), source.len());
+            };
+            assert!(turns > 0);
+            assert_eq!(actual.0, expected.0);
+            let actual = actual.1.unwrap();
+            assert!(Arc::ptr_eq(actual.source_snapshot(), &source));
+            assert!(Arc::ptr_eq(
+                &cache.cached_analysis(&1, language, &source, 4).unwrap(),
+                &actual
+            ));
+            assert_eq!(
+                serde_json::to_value(actual.transfer_data()).unwrap(),
+                serde_json::to_value(expected.1.unwrap().transfer_data()).unwrap(),
+            );
+        }
+    }
+
+    #[test]
+    fn cooperative_cache_cancellation_admission_and_pending_retention_share_limits() {
+        let source = Arc::new("fn main() {}\n".repeat(100));
+        let mut cache = SyntaxPreparations::default();
+        let saved = cache
+            .prepare_shared(99, Language::Rust, source.clone(), 4, || true)
+            .1
+            .unwrap();
+        assert!(
+            cache
+                .prepare_cooperative(1, Language::Html, source.clone(), 4, || true, || true)
+                .is_none()
+        );
+        let cancelled = cache
+            .prepare_cooperative(1, Language::Html, source.clone(), 4, || false, || false)
+            .unwrap();
+        assert_eq!(cancelled.0, SyntaxStatus::Cancelled);
+        assert!(cancelled.1.is_none());
+        assert_eq!(cache.len(), 1);
+        assert!(Arc::ptr_eq(
+            &cache
+                .cached_analysis(&99, Language::Rust, &source, 4)
+                .unwrap(),
+            &saved
+        ));
+        let oversized = Arc::new("x".repeat(MAX_STRUCTURE_BYTES + 1));
+        let rejected = cache
+            .prepare_cooperative(
+                99,
+                Language::Rust,
+                oversized,
+                4,
+                || panic!("size admission precedes cancellation"),
+                || panic!("rejected source must not reach parser"),
+            )
+            .unwrap();
+        assert_eq!(rejected.0, SyntaxStatus::TooLarge);
+        assert!(rejected.1.is_none());
+        assert!(cache.is_empty());
+        for key in 0..MAX_SYNTAX_DOCUMENTS + 2 {
+            assert!(
+                cache
+                    .prepare_cooperative(key, Language::Rust, source.clone(), 4, || true, || true)
+                    .is_none()
+            );
+            assert!(cache.len() <= MAX_SYNTAX_DOCUMENTS);
+            assert!(cache.retained_source_bytes() <= MAX_SYNTAX_SOURCE_BYTES);
+        }
+        assert_eq!(cache.len(), MAX_SYNTAX_DOCUMENTS);
+        assert_eq!(
+            cache.retained_source_bytes(),
+            MAX_SYNTAX_DOCUMENTS * source.len()
+        );
+        assert!(
+            !cache
+                .entries
+                .iter()
+                .any(|entry| entry.0 == 0 || entry.0 == 1)
+        );
+    }
+
     #[test]
     fn oversized_source_rejects_before_preparation_and_releases_only_its_cached_owner() {
         let mut cache = SyntaxPreparations::default();

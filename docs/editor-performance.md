@@ -6830,3 +6830,34 @@ These timings exclude document preparation, selection publication, browser input
 paint and startup. ASCII byte scans remain linear; Unicode context, unindexed
 non-whitespace traversal and publication still need bounded work. This does not
 close the overall responsiveness gate.
+
+
+### In-process structural commands without wire copies
+
+Explicit structural navigation, comments and reindent previously escaped a full
+request to JSON, decoded it into a new source string in the in-process parser,
+serialized an analysis reply, then decoded and validated that reply on the same
+thread. These commands now pass their existing immutable source directly through
+`SyntaxPreparations::prepare_cooperative` and retain the resulting analysis.
+The core facade shares admission, cache selection and retention policy with
+synchronous preparation, and uses the same `SyntaxDocument` continuation engine
+as the worker. Pending documents obey existing document/source retention limits.
+The browser adapter supplies task yields and the existing input deadline.
+
+The structural-action facade retains its source/account/project/read/selection/
+command/rule guards and rechecks them after preparation. Its redundant frontend
+admission scan is removed; the shared core engine owns that validation. Dedicated
+worker wire transport retains its existing protocol and validation.
+
+All 679 parser-enabled core tests pass. Added cache contracts compare complete
+Rust/HTML/Markdown analysis against the synchronous engine, verify exact source
+pointer ownership and pending LRU limits, and check cancellation/oversized-source
+precedence without discarding another owner. Six release Chromium workflow
+contracts pass in both project modes: structural navigation from keyboard/menu,
+superseded actions, comments, atomic undo, reindent and oversized-source rejection
+([receipt](editor-performance/in-process-structure-browser.json)). Controlled
+clock tests verify input-budget yielding, stop-in-flight, complete analysis across
+slices and exact source ownership. Strict native/parser and release WASM frontend
+lint pass. This establishes removal of the in-process wire copies, not a measured
+end-to-end latency or process-memory improvement. Background worker decoding,
+metadata publication and other full-source paths remain unfinished.

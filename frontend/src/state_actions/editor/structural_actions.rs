@@ -2,10 +2,7 @@
 use super::EditorActions;
 use crate::state::workspace::EditorSyntaxScope;
 use leptos::prelude::*;
-use openwebide_core::editor::{
-    Document, EditError, Indentation, Selection, Structure, SyntaxAdmission, SyntaxAdmissionStatus,
-    SyntaxReply, SyntaxRequest,
-};
+use openwebide_core::editor::{Document, EditError, Indentation, Selection, Structure};
 use std::sync::Arc;
 
 pub(super) struct StructuralAction {
@@ -82,42 +79,19 @@ impl StructuralAction {
         }
         let mut syntax = actions.syntax_structure(|| true);
         if syntax.is_none() {
-            let mut admission = SyntaxAdmission::new(self.scope.source.clone());
-            while admission.status() == SyntaxAdmissionStatus::Pending {
-                if !current() {
-                    return Ok(None);
-                }
-                admission.advance(openwebide_core::highlight::LEXICAL_BATCH_BYTES);
-                if admission.status() == SyntaxAdmissionStatus::Pending {
-                    crate::util::yield_task().await;
-                }
-            }
-            if admission.status() == SyntaxAdmissionStatus::TooLarge {
-                return Err(EditError::StructureUnavailable);
-            }
-            let publication = SyntaxRequest::publication_shared(
-                1,
-                "editor-command".into(),
-                openwebide_core::highlight::language_from_path(&self.scope.key.1),
-                self.scope.source.clone(),
-                indentation.tab_width(),
-                None,
-            );
-            let Some(message) =
-                super::preparation::publish_syntax_request(publication, current).await
-            else {
-                return Ok(None);
-            };
-            let reply = crate::editor_worker::CooperativeClient::default()
-                .request_while(message, current)
+            let (_, analysis) = crate::editor_worker::CooperativeClient::default()
+                .analyze_shared_while(
+                    openwebide_core::highlight::language_from_path(&self.scope.key.1),
+                    self.scope.source.clone(),
+                    indentation.tab_width(),
+                    current,
+                )
                 .await
                 .map_err(|_| EditError::StructureUnavailable)?;
             if !current() {
                 return Ok(None);
             }
-            syntax = SyntaxReply::receive_shared(&reply, 1, self.scope.source.clone(), None)
-                .and_then(|(_, analysis)| analysis)
-                .and_then(|analysis| analysis.structure().cloned());
+            syntax = analysis.and_then(|analysis| analysis.structure().cloned());
         }
         if !current() {
             return Ok(None);

@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Prepare explicit editor structural commands directly from shared immutable source and analysis, removing an in-process JSON round trip and redundant admission scan. Preserve cooperative input deadlines, cancellation, cache limits and stale-command rejection in both project modes.
+
 - Skip per-grapheme scans when moving by words across long ASCII whitespace and blank-line runs, preserving CRLF and Unicode clusters at the endpoints. Shared movement and stale queued-input behavior are verified in both project modes.
 
 - Verify the parser-budget checkpoint against all five hosted CI jobs. Record staged startup-memory attribution in both project modes, separating pre-entry-point runtime costs from subsequent editor and worker startup; no memory reduction is claimed.

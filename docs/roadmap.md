@@ -115,9 +115,9 @@ the partition fix passes all five jobs
 ([receipts](editor-performance/editor-ci-d26-success.json),
 [receipt](editor-performance/editor-ci-f251-success.json)).
 
-Latest verified integrated checkpoint `55dc8f4` passes all five hosted jobs, including the full
+Latest verified integrated checkpoint `e4508a17` passes all five hosted jobs, including the full
 browser partition on combined editor/plugin source
-([receipt](editor-performance/editor-ci-55dc-success.json)). Post-frame owner
+([receipt](editor-performance/editor-ci-e450-success.json)). Post-frame owner
 cancellation now releases wrapped probes before accessing disposed state; two
 consecutive affected 58-test groups and an accepted-coverage unmount regression
 pass both project modes
@@ -223,6 +223,13 @@ remains a completion gate as the remaining implementation ships.
   changed-revision comparisons, metadata materialization, header/capacity allocation,
   JavaScript string conversion, complete message decoding/publication,
   oversized-message fallback, diff shaping and native-text materialization.
+  In-process structural commands now retain shared source/analysis through the
+  cooperative core facade, removing their request/reply JSON round trip and
+  duplicate frontend admission pass. Cache limits, cancellation, exact analysis
+  and shared source ownership have contracts; navigation, comments and reindent
+  are verified in both modes
+  ([receipt](editor-performance/in-process-structure-browser.json)). Dedicated
+  worker payload decoding and publication still need bounded work.
   Bound folded/bounded projection assembly, row/coordinate copies, changed guide
   copies, storage suffix byte/coordinate shifts and long-row admission scans.
   Revisit measured storage candidates using actual viewport/worker access patterns,
@@ -258,8 +265,8 @@ remains a completion gate as the remaining implementation ships.
   file-switch cancellation, cold queued-input source/selection ownership,
   host-plugin focus/layout and explicit Output/terminal targeting. Validate bounded
   setup retries after upstream Chrome download failures. Latest checkpoint
-  `55dc8f4` passes all five hosted jobs on integrated editor/plugin source
-  ([receipt](editor-performance/editor-ci-55dc-success.json)), with the historical
+  `e4508a17` passes all five hosted jobs on integrated editor/plugin source
+  ([receipt](editor-performance/editor-ci-e450-success.json)), with the historical
   probe-cleanup/navigation failures corrected. Repeat this gate for the final
   integrated editor implementation before closing.
 

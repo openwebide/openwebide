@@ -4134,6 +4134,94 @@ mod tests {
     }
 
     #[wasm_bindgen_test::wasm_bindgen_test]
+    async fn in_process_syntax_keeps_shared_source_and_yield_cancellation() {
+        use crate::editor_worker::{CooperativeClient, SyntaxTransport, WorkerError};
+        use openwebide_core::{editor::SyntaxPreparations, highlight::Language};
+        use std::future::Future;
+        use std::{
+            cell::Cell,
+            sync::Arc,
+            task::{Context, Poll, Waker},
+        };
+        for (language, text) in [
+            (
+                Language::Html,
+                format!(
+                    "<script>{}</script>",
+                    "function run() { return 1; }\n".repeat(128)
+                ),
+            ),
+            (
+                Language::Markdown,
+                format!(
+                    "```javascript\n{}```\n",
+                    "function run() { return 1; }\n".repeat(128)
+                ),
+            ),
+        ] {
+            let source = Arc::new(text);
+            let client = CooperativeClient::default();
+            let now = Cell::new(0.0_f64);
+            let mut request = Box::pin(client.analyze_shared_while_with_clock(
+                language,
+                source.clone(),
+                4,
+                || true,
+                || {
+                    let value = now.get();
+                    now.set((value + 4.0).min(12.0));
+                    value
+                },
+            ));
+            assert!(matches!(
+                request
+                    .as_mut()
+                    .poll(&mut Context::from_waker(Waker::noop())),
+                Poll::Pending
+            ));
+            assert!((now.get() - 12.0).abs() < f64::EPSILON);
+            client.stop();
+            assert!(matches!(request.await, Err(WorkerError::Unavailable)));
+            assert!(matches!(
+                client
+                    .analyze_shared_while(language, source.clone(), 4, || true)
+                    .await,
+                Err(WorkerError::Unavailable)
+            ));
+            let now = Cell::new(0.0);
+            let actual = CooperativeClient::default()
+                .analyze_shared_while_with_clock(
+                    language,
+                    source.clone(),
+                    4,
+                    || true,
+                    || {
+                        let value = now.get();
+                        now.set(value + 4.0);
+                        value
+                    },
+                )
+                .await
+                .unwrap();
+            assert!(now.get() > 24.0);
+            let expected = SyntaxPreparations::default().prepare_shared(
+                (),
+                language,
+                source.clone(),
+                4,
+                || true,
+            );
+            assert_eq!(actual.0, expected.0);
+            let actual = actual.1.unwrap();
+            assert!(Arc::ptr_eq(actual.source_snapshot(), &source));
+            assert_eq!(
+                serde_json::to_value(actual.transfer_data()).unwrap(),
+                serde_json::to_value(expected.1.unwrap().transfer_data()).unwrap()
+            );
+        }
+    }
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
     async fn main_thread_embedded_parsing_completes_across_input_budget_yields() {
         use crate::editor_worker::CooperativeClient;
         use openwebide_core::{

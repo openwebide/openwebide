@@ -87,6 +87,69 @@ pub struct CooperativeClient {
     stopped: Cell<bool>,
 }
 impl CooperativeClient {
+    /// In-process commands retain their immutable source and analysis. The same
+    /// core facade owns preparation and retention; this adapter only yields tasks.
+    pub async fn analyze_shared_while(
+        &self,
+        language: openwebide_core::highlight::Language,
+        source: std::sync::Arc<String>,
+        tab_width: usize,
+        should_continue: impl FnMut() -> bool,
+    ) -> Result<
+        (
+            openwebide_core::editor::SyntaxStatus,
+            Option<std::sync::Arc<openwebide_core::editor::SyntaxAnalysis>>,
+        ),
+        WorkerError,
+    > {
+        self.analyze_shared_while_with_clock(
+            language,
+            source,
+            tab_width,
+            should_continue,
+            js_sys::Date::now,
+        )
+        .await
+    }
+
+    pub(crate) async fn analyze_shared_while_with_clock(
+        &self,
+        language: openwebide_core::highlight::Language,
+        source: std::sync::Arc<String>,
+        tab_width: usize,
+        mut should_continue: impl FnMut() -> bool,
+        mut clock: impl FnMut() -> f64,
+    ) -> Result<
+        (
+            openwebide_core::editor::SyntaxStatus,
+            Option<std::sync::Arc<openwebide_core::editor::SyntaxAnalysis>>,
+        ),
+        WorkerError,
+    > {
+        let mut service = openwebide_core::editor::SyntaxPreparations::default();
+        loop {
+            if self.stopped.get() {
+                return Err(WorkerError::Unavailable);
+            }
+            let deadline = clock() + f64::from(SYNTAX_INPUT_BUDGET_MS);
+            if let Some(result) = service.prepare_cooperative(
+                (),
+                language,
+                source.clone(),
+                tab_width,
+                || !self.stopped.get() && should_continue(),
+                || clock() >= deadline,
+            ) {
+                return if self.stopped.get() {
+                    Err(WorkerError::Unavailable)
+                } else {
+                    Ok(result)
+                };
+            }
+            crate::util::yield_task().await;
+        }
+    }
+
     pub async fn request_while(
         &self,
         message: String,

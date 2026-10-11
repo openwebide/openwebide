@@ -1,0 +1,52 @@
+{
+  "scope": "Explicit structural commands use the shared cooperative parser facade with immutable source/analysis instead of an in-process JSON round trip. No mode adapters change; both project modes exercise the same facade. Dedicated worker serialization and browser-wide latency/memory remain unfinished.",
+  "sourceFilesSha256": {
+    "crates/core/src/editor/syntax/cache.rs": "8bb75580474f3f20aea030e624010812d3d4138ae1353991dd3eafdd6c48c2b8",
+    "frontend/src/editor_worker.rs": "0caff36cb8aa21824350c933b062f2521967b3d54ed03d156c98640ccf62ef75",
+    "frontend/src/state_actions/editor/structural_actions.rs": "1e132b2b759b63d9244c4d1df1dd09c1c11ec83a4505182952542e42663445d3",
+    "frontend/src/components/editor.rs": "71d9d041eebbff871835b282e14a83b4315cfe6f7d3b1fed236ac07945cbc5b1"
+  },
+  "componentArtifactSha256": "9a29c916dc7accf06bf1faa411ac6b9cb3d8c083e9ce82e2f26ba7902556687c",
+  "libraryArtifactSha256": "e849e92da8f7aa9163b74d608fb2afcef132bad5063cc7668772945d4c193650",
+  "componentContracts": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "console": "Invoking test: editor::parser_line_comments_share_modes_mixed_syntax_and_one_undo_step\nInvoking test: editor::parser_block_comments_share_modes_embedded_cursors_and_atomic_undo\nInvoking test: editor::embedded_html_reindent_menu_prepares_and_commits_once_in_both_modes\nInvoking test: editor::cold_structural_navigation_prepares_context_and_rejects_superseded_actions_in_both_modes\nInvoking test: editor::cold_structural_navigation_keyboard_and_menu_share_preparation_in_both_modes\nInvoking test: editor::cold_reindent_rejects_structure_limits_without_changing_source_in_both_modes\n",
+    "output": "\nrunning 6 tests\ntest editor::parser_line_comments_share_modes_mixed_syntax_and_one_undo_step ... ok\ntest editor::parser_block_comments_share_modes_embedded_cursors_and_atomic_undo ... ok\ntest editor::embedded_html_reindent_menu_prepares_and_commits_once_in_both_modes ... ok\ntest editor::cold_structural_navigation_prepares_context_and_rejects_superseded_actions_in_both_modes ... ok\ntest editor::cold_structural_navigation_keyboard_and_menu_share_preparation_in_both_modes ... ok\ntest editor::cold_reindent_rejects_structure_limits_without_changing_source_in_both_modes ... ok\n\ntest result: ok. 6 passed; 0 failed; 0 ignored; 0 filtered out; finished in 1.20s\n\n",
+    "passed": true,
+    "tests": [
+      "__wbgt__components::editor::cold_reindent_rejects_structure_limits_without_changing_source_in_both_modes",
+      "__wbgt__components::editor::cold_structural_navigation_keyboard_and_menu_share_preparation_in_both_modes",
+      "__wbgt__components::editor::cold_structural_navigation_prepares_context_and_rejects_superseded_actions_in_both_modes",
+      "__wbgt__components::editor::embedded_html_reindent_menu_prepares_and_commits_once_in_both_modes",
+      "__wbgt__components::editor::parser_block_comments_share_modes_embedded_cursors_and_atomic_undo",
+      "__wbgt__components::editor::parser_line_comments_share_modes_mixed_syntax_and_one_undo_step"
+    ],
+    "servedFonts": {},
+    "libraryStartSuppressed": false
+  },
+  "clockAndSourceContracts": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "console": "Invoking test: components::editor::tests::main_thread_embedded_parsing_completes_across_input_budget_yields\nInvoking test: components::editor::tests::in_process_syntax_keeps_shared_source_and_yield_cancellation\nInvoking test: components::editor::tests::cooperative_syntax_transport_stops_in_flight_and_rejects_new_requests\n",
+    "output": "\nrunning 3 tests\ntest components::editor::tests::main_thread_embedded_parsing_completes_across_input_budget_yields ... ok\ntest components::editor::tests::in_process_syntax_keeps_shared_source_and_yield_cancellation ... ok\ntest components::editor::tests::cooperative_syntax_transport_stops_in_flight_and_rejects_new_requests ... ok\n\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.23s\n\n",
+    "passed": true,
+    "tests": [
+      "__wbgt__openwebide_frontend::components::editor::tests::cooperative_syntax_transport_stops_in_flight_and_rejects_new_requests",
+      "__wbgt__openwebide_frontend::components::editor::tests::in_process_syntax_keeps_shared_source_and_yield_cancellation",
+      "__wbgt__openwebide_frontend::components::editor::tests::main_thread_embedded_parsing_completes_across_input_budget_yields"
+    ],
+    "servedFonts": {},
+    "libraryStartSuppressed": true
+  },
+  "coreTests": {
+    "features": [
+      "editor-parser"
+    ],
+    "passed": 679,
+    "failed": 0
+  },
+  "strictLint": [
+    "core --features editor-parser --all-targets",
+    "release WASM frontend --features test-support --all-targets"
+  ],
+  "sharedImplementation": "SyntaxPreparations::prepare_cooperative -> SyntaxDocument::prepare_cooperative; cache admission/retention shared with synchronous preparation. CooperativeClient supplies clock/task-yield primitives. StructuralAction retains scope/selection/revision/rule checks."
+}
