@@ -257,7 +257,13 @@ correction is pending. Final integrated CI remains a completion gate.
   record/text budget across small rows, preserving the existing browser batch bound
   ([receipt](editor-performance/indexed-scopes-browser.json)). Native query-only
   measurements compare against the original linear oracle; browser-wide latency
-  and receive reconstruction remain unfinished.
+  and receive reconstruction remain unfinished. Receiver source comparisons and
+  logical-line counting now use 8 KiB batches; ordered fold validation budgets
+  records and ancestor pops together. The shared receiver retains private proofs
+  across adapter yields and rechecks account/project/file/source ownership before
+  reconstructing or publishing a result
+  ([receipt](editor-performance/cooperative-receiver-browser.json)). Complete JSON decoding, record admission,
+  structural reconstruction and token-row reconstruction remain synchronous.
   Capacity growth, JavaScript string conversion and complete receiver
   decoding/publication still need bounded work and production latency/memory
   measurements. No end-to-end latency or memory gain is established here.

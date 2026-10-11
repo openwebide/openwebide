@@ -2,7 +2,10 @@
 use super::EditorActions;
 use crate::state::workspace::{EditorFallbackPaint, EditorSyntaxScope, PreparedEditorSyntax};
 use leptos::prelude::*;
-use openwebide_core::editor::{SyntaxReply, SyntaxRequest, SyntaxRequestPublication};
+use openwebide_core::editor::{
+    SyntaxAnalysis, SyntaxReply, SyntaxReplyReception, SyntaxRequest, SyntaxRequestPublication,
+    SyntaxStatus,
+};
 use std::{cell::Cell, rc::Rc};
 
 pub(super) async fn publish_syntax_request(
@@ -15,6 +18,21 @@ pub(super) async fn publish_syntax_request(
         }
         if publication.advance(openwebide_core::editor::SYNTAX_REQUEST_BATCH_BYTES) {
             return current().then(|| publication.finish()).flatten();
+        }
+        crate::util::yield_task().await;
+    }
+}
+
+async fn receive_syntax_reply(
+    mut reception: SyntaxReplyReception<'_>,
+    mut current: impl FnMut() -> bool,
+) -> Option<(SyntaxStatus, Option<std::sync::Arc<SyntaxAnalysis>>)> {
+    loop {
+        if !current() {
+            return None;
+        }
+        if reception.advance() {
+            return current().then(|| reception.finish()).flatten();
         }
         crate::util::yield_task().await;
     }
@@ -708,8 +726,8 @@ impl EditorActions {
                     if ticket.get_value() != request_ticket || !self.syntax_scope_current(&scope) {
                         continue;
                     }
-                    let mut result = reply.ok().and_then(|message| {
-                        SyntaxReply::receive_shared(
+                    let reception = reply.ok().and_then(|message| {
+                        SyntaxReply::prepare_receive_shared(
                             &message,
                             request_ticket,
                             scope.source.clone(),
@@ -718,6 +736,22 @@ impl EditorActions {
                                 .map(|previous| (previous.ticket, previous.analysis.as_ref())),
                         )
                     });
+                    let mut result = if let Some(reception) = reception {
+                        receive_syntax_reply(reception, || {
+                            !pending.is_disposed()
+                                && ticket.get_value() == request_ticket
+                                && self.syntax_scope_current(&scope)
+                        })
+                        .await
+                    } else {
+                        None
+                    };
+                    if pending.is_disposed() {
+                        break;
+                    }
+                    if ticket.get_value() != request_ticket || !self.syntax_scope_current(&scope) {
+                        continue;
+                    }
                     if matches!(
                         result,
                         Some((openwebide_core::editor::SyntaxStatus::NeedsSource, None))
@@ -751,19 +785,35 @@ impl EditorActions {
                         {
                             continue;
                         }
-                        result = reply
-                            .ok()
-                            .and_then(|message| {
-                                SyntaxReply::receive_shared(
-                                    &message,
-                                    request_ticket,
-                                    scope.source.clone(),
-                                    None,
-                                )
+                        let reception = reply.ok().and_then(|message| {
+                            SyntaxReply::prepare_receive_shared(
+                                &message,
+                                request_ticket,
+                                scope.source.clone(),
+                                None,
+                            )
+                        });
+                        result = if let Some(reception) = reception {
+                            receive_syntax_reply(reception, || {
+                                !pending.is_disposed()
+                                    && ticket.get_value() == request_ticket
+                                    && self.syntax_scope_current(&scope)
                             })
-                            .filter(|(status, _)| {
-                                *status != openwebide_core::editor::SyntaxStatus::NeedsSource
-                            });
+                            .await
+                        } else {
+                            None
+                        };
+                        if pending.is_disposed() {
+                            break;
+                        }
+                        if ticket.get_value() != request_ticket
+                            || !self.syntax_scope_current(&scope)
+                        {
+                            continue;
+                        }
+                        result = result.filter(|(status, _)| {
+                            *status != openwebide_core::editor::SyntaxStatus::NeedsSource
+                        });
                     }
                     if let Some((status, analysis)) = result {
                         published.set_value(analysis.as_ref().map(|analysis| PublishedSyntax {
@@ -806,7 +856,7 @@ mod tests {
         use crate::state::projects::ProjectsState;
         use openwebide_core::{Project, WorkspaceMode, highlight::Language};
         for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-            for change in 0..4 {
+            for change in 0..6 {
                 let owner = Owner::new();
                 let (actions, workspace, auth) = owner.with(|| {
                     let workspace = WorkspaceState::new();
@@ -845,13 +895,36 @@ mod tests {
                     futures::poll!(&mut pending).is_pending(),
                     "large publication must yield"
                 );
+                let message = serde_json::json!({
+                    "version": openwebide_core::editor::SYNTAX_PROTOCOL_VERSION,
+                    "ticket": 9,
+                    "status": {"Ready": {"incremental": false}},
+                    "analysis": {"source": scope.source.as_str(), "folds": [],
+                        "structure": null, "highlights": null}
+                })
+                .to_string();
+                let reception =
+                    SyntaxReply::prepare_receive_shared(&message, 9, scope.source.clone(), None)
+                        .unwrap();
+                let mut receiving = Box::pin(receive_syntax_reply(reception, || {
+                    actions.syntax_scope_current(&scope)
+                }));
+                assert!(
+                    futures::poll!(&mut receiving).is_pending(),
+                    "large source proof must yield"
+                );
                 match change {
                     0 => workspace.content.set("new source".into()),
                     1 => workspace.open_file.set(Some("other.rs".into())),
                     2 => workspace.active_project.set(Some(2)),
-                    _ => auth.generation.update(|generation| *generation += 1),
+                    3 => auth.generation.update(|generation| *generation += 1),
+                    4 => workspace
+                        .editor_read_revision
+                        .update(|revision| *revision += 1),
+                    _ => workspace.pending_epoch.update(|epoch| *epoch += 1),
                 }
                 assert!(pending.await.is_none());
+                assert!(receiving.await.is_none());
                 let current = actions.syntax_scope().unwrap();
                 let publication = SyntaxRequest::publication_shared(
                     10,
@@ -877,6 +950,23 @@ mod tests {
                     serde_json::from_str::<serde_json::Value>(&message).unwrap(),
                     serde_json::to_value(expected).unwrap()
                 );
+                let reply = serde_json::json!({
+                    "version": openwebide_core::editor::SYNTAX_PROTOCOL_VERSION,
+                    "ticket": 10, "status": {"Ready": {"incremental": false}},
+                    "analysis": {"source": current.source.as_str(), "folds": [],
+                        "structure": null, "highlights": null}
+                })
+                .to_string();
+                let reception =
+                    SyntaxReply::prepare_receive_shared(&reply, 10, current.source.clone(), None)
+                        .unwrap();
+                let analysis =
+                    receive_syntax_reply(reception, || actions.syntax_scope_current(&current))
+                        .await
+                        .unwrap()
+                        .1
+                        .unwrap();
+                assert!(Arc::ptr_eq(analysis.source_snapshot(), &current.source));
             }
         }
     }

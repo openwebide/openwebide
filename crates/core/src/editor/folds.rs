@@ -10,25 +10,68 @@ pub struct FoldRange {
 /// Validate already ordered persisted ranges without cloning and sorting them.
 /// The ancestor stack retains only end lines, bounded by nesting depth.
 pub(super) fn are_normalized(ranges: &[FoldRange], line_count: usize) -> bool {
-    let mut ancestors = Vec::new();
-    let mut previous_start = None;
-    for range in ranges {
-        if range.start_line >= range.end_line
-            || range.end_line >= line_count
-            || previous_start.is_some_and(|start| start >= range.start_line)
-        {
-            return false;
+    let mut validation = FoldValidation::default();
+    loop {
+        match validation.advance(ranges, line_count, 64) {
+            Some(true) => return true,
+            Some(false) => {}
+            None => return false,
         }
-        previous_start = Some(range.start_line);
-        while ancestors.last().is_some_and(|end| *end < range.start_line) {
-            ancestors.pop();
-        }
-        if ancestors.last().is_some_and(|end| range.end_line > *end) {
-            return false;
-        }
-        ancestors.push(range.end_line);
     }
-    true
+}
+
+/// Both records and ancestor pops consume work: leaving a deeply nested region
+/// cannot turn one otherwise bounded record into an unbounded stack traversal.
+#[derive(Default)]
+pub(super) struct FoldValidation {
+    ancestors: Vec<usize>,
+    previous_start: Option<usize>,
+    index: usize,
+}
+
+impl FoldValidation {
+    pub fn advance(
+        &mut self,
+        ranges: &[FoldRange],
+        line_count: usize,
+        mut budget: usize,
+    ) -> Option<bool> {
+        while self.index < ranges.len() && budget > 0 {
+            let range = &ranges[self.index];
+            if range.start_line >= range.end_line
+                || range.end_line >= line_count
+                || self
+                    .previous_start
+                    .is_some_and(|start| start >= range.start_line)
+            {
+                return None;
+            }
+            while self
+                .ancestors
+                .last()
+                .is_some_and(|end| *end < range.start_line)
+                && budget > 0
+            {
+                self.ancestors.pop();
+                budget -= 1;
+            }
+            if budget == 0 {
+                return Some(false);
+            }
+            if self
+                .ancestors
+                .last()
+                .is_some_and(|end| range.end_line > *end)
+            {
+                return None;
+            }
+            self.previous_start = Some(range.start_line);
+            self.ancestors.push(range.end_line);
+            self.index += 1;
+            budget -= 1;
+        }
+        Some(self.index == ranges.len())
+    }
 }
 
 /// Keep one control per header and nested/disjoint ranges only.
@@ -337,6 +380,30 @@ impl FoldState {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn cooperative_fold_validation_budgets_deep_ancestor_pops() {
+        let mut ranges = (0..128)
+            .map(|start| super::FoldRange {
+                start_line: start,
+                end_line: 512 - start,
+            })
+            .collect::<Vec<_>>();
+        ranges.push(super::FoldRange {
+            start_line: 600,
+            end_line: 601,
+        });
+        for budget in [1, 2, 64] {
+            let mut work = super::FoldValidation::default();
+            let mut units = 1;
+            while !work.advance(&ranges, 700, budget).unwrap() {
+                units += 1;
+            }
+            assert_eq!(units, (ranges.len() + 128).div_ceil(budget));
+        }
+        ranges.last_mut().unwrap().end_line = 700;
+        assert!(!super::are_normalized(&ranges, 700));
+    }
+
     #[cfg(feature = "editor-parser")]
     #[test]
     fn markdown_section_growth_cannot_reuse_a_collapsed_preceding_section() {

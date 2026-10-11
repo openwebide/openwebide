@@ -10,6 +10,61 @@ pub const SYNTAX_BATCH_MS: u32 = 100;
 pub const SYNTAX_INPUT_BUDGET_MS: u32 = 12;
 pub const MAX_SYNTAX_REQUEST_BYTES: usize = MAX_STRUCTURE_BYTES * 6 + 8192;
 
+/// Receiver source and fold proofs retained across adapter yields. No partial
+/// analysis escapes; JSON decoding and remaining reconstruction are synchronous.
+pub struct SyntaxReplyReception<'a> {
+    status: SyntaxStatus,
+    data: Option<SyntaxAnalysisData>,
+    source: Option<super::transfer::SourceValidation>,
+    previous: Option<(u32, &'a super::SyntaxAnalysis)>,
+    folds: crate::editor::folds::FoldValidation,
+    valid: bool,
+    complete: bool,
+}
+
+impl SyntaxReplyReception<'_> {
+    pub fn advance(&mut self) -> bool {
+        if self.complete {
+            return true;
+        }
+        if let Some(source) = self.source.as_mut() {
+            if !source.advance() {
+                return false;
+            }
+            let Some(lines) = source.completed_lines() else {
+                self.valid = false;
+                self.complete = true;
+                return true;
+            };
+            match self.folds.advance(
+                &self.data.as_ref().expect("analysis source").folds,
+                lines,
+                64,
+            ) {
+                Some(false) => return false,
+                Some(true) => {}
+                None => self.valid = false,
+            }
+        }
+        self.complete = true;
+        true
+    }
+
+    pub fn finish(self) -> Option<(SyntaxStatus, Option<std::sync::Arc<super::SyntaxAnalysis>>)> {
+        if !self.valid || !self.complete {
+            return None;
+        }
+        let analysis = match self.data {
+            Some(data) => {
+                let (source, lines) = self.source?.finish()?;
+                Some(data.validate_verified(source, lines, self.previous)?)
+            }
+            None => None,
+        };
+        Some((self.status, analysis))
+    }
+}
+
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SyntaxRequest {
@@ -533,6 +588,29 @@ impl SyntaxReply {
         source: impl FnOnce() -> std::sync::Arc<String>,
         previous: Option<(u32, &super::SyntaxAnalysis)>,
     ) -> Option<(SyntaxStatus, Option<std::sync::Arc<super::SyntaxAnalysis>>)> {
+        let mut reception = Self::prepare_receive(message, ticket, source, previous)?;
+        while !reception.advance() {}
+        reception.finish()
+    }
+
+    /// Decode the envelope, then prepare a cancellable source proof using the
+    /// same validation policy as synchronous receivers. Adapters check ownership
+    /// before each advance and before finish; finish exposes only complete data.
+    pub fn prepare_receive_shared<'a>(
+        message: &str,
+        ticket: u32,
+        source: std::sync::Arc<String>,
+        previous: Option<(u32, &'a super::SyntaxAnalysis)>,
+    ) -> Option<SyntaxReplyReception<'a>> {
+        Self::prepare_receive(message, ticket, || source, previous)
+    }
+
+    fn prepare_receive<'a>(
+        message: &str,
+        ticket: u32,
+        source: impl FnOnce() -> std::sync::Arc<String>,
+        previous: Option<(u32, &'a super::SyntaxAnalysis)>,
+    ) -> Option<SyntaxReplyReception<'a>> {
         if message.len() > MAX_ANALYSIS_MESSAGE_BYTES {
             return None;
         }
@@ -540,23 +618,113 @@ impl SyntaxReply {
         if reply.version != SYNTAX_PROTOCOL_VERSION || reply.ticket != ticket {
             return None;
         }
-        let analysis = match (reply.status, reply.analysis) {
-            (SyntaxStatus::Ready { .. }, Some(data)) => {
-                Some(data.validate_shared(source(), previous)?)
+        let (data, source) = match (reply.status, reply.analysis) {
+            (SyntaxStatus::Ready { .. }, Some(mut data)) => {
+                let validation = data.prepare_validation(source(), previous)?;
+                (Some(data), Some(validation))
             }
             (
                 SyntaxStatus::Cancelled | SyntaxStatus::TooLarge | SyntaxStatus::NeedsSource,
                 None,
-            ) => None,
+            ) => (None, None),
             _ => return None,
         };
-        Some((reply.status, analysis))
+        Some(SyntaxReplyReception {
+            status: reply.status,
+            data,
+            source,
+            previous,
+            folds: crate::editor::folds::FoldValidation::default(),
+            valid: true,
+            complete: false,
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cooperative_reception_preserves_full_delta_and_private_completion() {
+        use std::sync::Arc;
+        for newline in ["\n", "\r\n"] {
+            let source = format!("// 文😀{newline}").repeat(3_000);
+            let mut service = SyntaxPreparations::default();
+            let old = service
+                .prepare(
+                    "source-proof".to_string(),
+                    Language::Rust,
+                    &source,
+                    4,
+                    || true,
+                )
+                .1
+                .unwrap();
+            let revised = source.replacen("文😀", "😀字", 1);
+            let current = service
+                .prepare(
+                    "source-proof".to_string(),
+                    Language::Rust,
+                    &revised,
+                    4,
+                    || true,
+                )
+                .1
+                .unwrap();
+            for base in [None, Some((42, old.as_ref()))] {
+                let message = serde_json::to_string(&SyntaxReply {
+                    version: SYNTAX_PROTOCOL_VERSION,
+                    ticket: 43,
+                    status: SyntaxStatus::Ready { incremental: false },
+                    analysis: current.transfer_data_reusing(base),
+                })
+                .unwrap();
+                let expected = Arc::new(revised.clone());
+                let mut reception =
+                    SyntaxReply::prepare_receive_shared(&message, 43, expected.clone(), base)
+                        .unwrap();
+                assert!(
+                    !reception.advance(),
+                    "source length {}, delta {}",
+                    expected.len(),
+                    base.is_some()
+                );
+                assert!(reception.finish().is_none());
+                let mut reception =
+                    SyntaxReply::prepare_receive_shared(&message, 43, expected.clone(), base)
+                        .unwrap();
+                let mut units = 1;
+                while !reception.advance() {
+                    units += 1;
+                }
+                assert!(units >= expected.len().div_ceil(8 * 1024));
+                let analysis = reception.finish().unwrap().1.unwrap();
+                assert!(Arc::ptr_eq(analysis.source_snapshot(), &expected));
+                assert_eq!(analysis.highlights(), current.highlights());
+                assert_eq!(analysis.folds(), current.folds());
+                assert!(
+                    SyntaxReply::prepare_receive_shared(&message, 44, expected.clone(), base)
+                        .is_none()
+                );
+                if base.is_some() {
+                    assert!(
+                        SyntaxReply::prepare_receive_shared(&message, 43, expected.clone(), None)
+                            .is_none()
+                    );
+                    assert!(
+                        SyntaxReply::prepare_receive_shared(
+                            &message,
+                            43,
+                            expected.clone(),
+                            Some((41, old.as_ref()))
+                        )
+                        .is_none()
+                    );
+                }
+            }
+        }
+    }
 
     #[test]
     fn cancellation_during_reply_encoding_never_publishes_partial_analysis() {

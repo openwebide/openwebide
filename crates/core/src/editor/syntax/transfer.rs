@@ -2,6 +2,7 @@
 mod preparation;
 mod publication;
 pub(super) use preparation::AnalysisTransferPreparation;
+mod reception;
 mod reply;
 use super::{super::structure::StructurePublication, SyntaxAnalysis};
 use crate::{
@@ -9,6 +10,7 @@ use crate::{
     highlight::{Token, TokenKind},
 };
 pub(super) use publication::{SourcePublication, SourceSelection};
+pub(super) use reception::SourceValidation;
 pub(super) use reply::ReplyPublication;
 use std::sync::Arc;
 
@@ -19,7 +21,7 @@ pub(super) const MAX_ANALYSIS_RECORDS: usize = 100_000;
 #[serde(deny_unknown_fields)]
 pub struct SyntaxAnalysisData {
     source: SyntaxSource,
-    folds: Vec<FoldRange>,
+    pub(super) folds: Vec<FoldRange>,
     structure: Option<StructurePublication>,
     // Per-line UTF-8 end offsets, avoiding another copy of every token's text.
     highlights: Option<Vec<TokenRowData>>,
@@ -167,6 +169,7 @@ impl SyntaxSource {
         })
     }
 
+    #[cfg(test)]
     fn validate(
         self,
         expected: Arc<String>,
@@ -358,10 +361,24 @@ impl SyntaxAnalysisData {
         self.validate_shared(Arc::new(expected_source.to_owned()), previous)
     }
     pub(super) fn validate_shared(
-        self,
+        mut self,
         expected_source: Arc<String>,
         previous: Option<(u32, &SyntaxAnalysis)>,
     ) -> Option<Arc<SyntaxAnalysis>> {
+        let mut validation = self.prepare_validation(expected_source, previous)?;
+        while !validation.advance() {}
+        let (source, line_count) = validation.finish()?;
+        if !super::super::folds::are_normalized(&self.folds, line_count) {
+            return None;
+        }
+        self.validate_verified(source, line_count, previous)
+    }
+
+    pub(super) fn prepare_validation(
+        &mut self,
+        expected_source: Arc<String>,
+        previous: Option<(u32, &SyntaxAnalysis)>,
+    ) -> Option<SourceValidation> {
         if self
             .base_ticket
             .is_some_and(|ticket| previous.is_none_or(|(base, _)| base != ticket))
@@ -374,13 +391,20 @@ impl SyntaxAnalysisData {
         if matches!(self.source, SyntaxSource::Replace { .. }) && self.base_ticket.is_none() {
             return None;
         }
-        let source = self
-            .source
-            .validate(expected_source, previous.map(|(_, analysis)| analysis))?;
-        let line_count = source.split('\n').count();
-        if !super::super::folds::are_normalized(&self.folds, line_count) {
-            return None;
-        }
+        SourceValidation::new(
+            std::mem::replace(&mut self.source, SyntaxSource::Full(String::new())),
+            expected_source,
+            previous.map(|(_, analysis)| analysis.source_snapshot().clone()),
+        )
+    }
+
+    /// Only the shared source/fold proof drivers may enter reconstruction here.
+    pub(super) fn validate_verified(
+        self,
+        source: Arc<String>,
+        line_count: usize,
+        previous: Option<(u32, &SyntaxAnalysis)>,
+    ) -> Option<Arc<SyntaxAnalysis>> {
         let structure = match self.structure {
             Some(data) => {
                 if data.needs_base() && self.base_ticket.is_none() {

@@ -1,0 +1,70 @@
+{
+  "scope": "Cooperative receiver source comparison, logical-line counting and ordered fold validation. Complete JSON decoding, record admission, structural/token reconstruction and final publication remain synchronous.",
+  "sourceFilesSha256": {
+    "crates/core/src/editor/folds.rs": "64356cbca295df2d4dc488c7009169f16e3bcd8d5cd498dfb217021e3256b742",
+    "crates/core/src/editor/syntax/service.rs": "1691135d0d015544597842fe5a227e956a724d6f7a3704c46df2009d82a21338",
+    "crates/core/src/editor/syntax/transfer.rs": "acea1c8c47c3d2fe0674fe791cdbda19872ea08c0adaa66e3d49df4010e10625",
+    "crates/core/src/editor/syntax/transfer/reception.rs": "01d951a79b54c41d65563fa96acab1f5519cd5ce92732fadd5e8c79b43d65feb",
+    "frontend/src/state_actions/editor/preparation.rs": "50de125540194cc5fb344f0d9958c01ba8020d1b150ebbe598993af78fb8d80b"
+  },
+  "executedBindingsWasmSha256": {
+    "component": "d5286f5dbbef04d930d7ff7e5a89d4a77f3e4c740100917739e75286fba645a3",
+    "library": "de8d1cc5088f81e1c222056d2873b0ab90b0b9f52c896853ace9088a62f32e50"
+  },
+  "coreTests": {
+    "features": [
+      "editor-parser"
+    ],
+    "passed": 696,
+    "failed": 0,
+    "ignored": 1,
+    "ignoredPurpose": "Existing native-only release query measurement; unchanged by this checkpoint"
+  },
+  "contracts": [
+    "Source validation compared with the original independent validator across Unicode and CRLF splice boundaries",
+    "Full and retained publications preserve exact source ownership, folds and highlights; wrong ticket/base and unfinished proofs are rejected",
+    "Fold validation counts both records and deep ancestor pops against each unit, including budgets 1, 2 and 64",
+    "Account, project, file, source, read revision and reload epoch changes reject pending source proof in both modes"
+  ],
+  "browserComponents": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "console": "Invoking test: editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes\nInvoking test: editor::many_embedded_code_bodies_publish_complete_scopes_and_warm_edits_in_both_modes\nInvoking test: editor::cooperative_worker_row_index_preserves_dense_rows_in_both_modes\nInvoking test: editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes\n",
+    "output": "\nrunning 4 tests\ntest editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes ... ok\ntest editor::many_embedded_code_bodies_publish_complete_scopes_and_warm_edits_in_both_modes ... ok\ntest editor::cooperative_worker_row_index_preserves_dense_rows_in_both_modes ... ok\ntest editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes ... ok\n\ntest result: ok. 4 passed; 0 failed; 0 ignored; 0 filtered out; finished in 3.53s\n\n",
+    "passed": true,
+    "tests": [
+      "__wbgt__components::editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes",
+      "__wbgt__components::editor::cooperative_worker_row_index_preserves_dense_rows_in_both_modes",
+      "__wbgt__components::editor::many_embedded_code_bodies_publish_complete_scopes_and_warm_edits_in_both_modes",
+      "__wbgt__components::editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes"
+    ],
+    "servedFonts": {},
+    "libraryStartSuppressed": false
+  },
+  "browserReceiverOwnership": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "console": "Invoking test: state_actions::editor::preparation::tests::request_publication_yields_and_rejects_replaced_owners_in_both_modes\n",
+    "output": "\nrunning 1 test\ntest state_actions::editor::preparation::tests::request_publication_yields_and_rejects_replaced_owners_in_both_modes ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.06s\n\n",
+    "passed": true,
+    "tests": [
+      "__wbgt__openwebide_frontend::state_actions::editor::preparation::tests::request_publication_yields_and_rejects_replaced_owners_in_both_modes"
+    ],
+    "servedFonts": {},
+    "libraryStartSuppressed": true
+  },
+  "lint": {
+    "nativeCoreAllTargets": "passed with -D warnings",
+    "releaseWasmFrontendAllTargetsTestSupport": "passed with -D warnings"
+  },
+  "limits": {
+    "sourceBytesPerUnit": 8192,
+    "foldRecordsAndPopsPerUnit": 64,
+    "protocolVersion": 6,
+    "sourceAndRecordLimits": "unchanged"
+  },
+  "limitations": [
+    "No end-to-end latency or memory improvement established",
+    "Complete JSON decoding and initial record-count scan are still synchronous",
+    "Structural and token-row reconstruction and allocations remain synchronous",
+    "Final integrated hosted CI and physical PWA/accessibility verification remain required"
+  ]
+}

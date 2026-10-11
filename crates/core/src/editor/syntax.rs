@@ -13,7 +13,7 @@ mod service;
 mod subtrees;
 pub use service::{
     MAX_SYNTAX_REQUEST_BYTES, SYNTAX_BATCH_MS, SYNTAX_INPUT_BUDGET_MS, SYNTAX_PROTOCOL_VERSION,
-    SyntaxReply, SyntaxRequest, SyntaxWorker,
+    SyntaxReply, SyntaxReplyReception, SyntaxRequest, SyntaxWorker,
 };
 mod transfer;
 use super::structure::fallback::FallbackContexts;
