@@ -3740,5 +3740,5 @@ button.browser-item {
 .about-content:has(.release-notes) { text-align: start; }
 .release-notes { overflow-wrap: anywhere; }
 
-.phone-layout .tui-host-status .ui-dropdown-label > span { display: none; }
+.phone-layout .tui-host-status .ui-dropdown-label > span:not(.ui-icon-glyph) { display: none; }
 .phone-layout .tui-host-status .ui-dropdown-trigger { padding-inline: var(--space-2); }
