@@ -6504,3 +6504,60 @@ style work, but these timings do not prove the responsiveness or memory gate
 [artifact hashes](editor-performance/scroll-reference-production-manifest.json)).
 Continue tracing the remaining row-table, native dimension and layout publication
 costs; do not use the median improvement to claim the editor performance work is complete.
+
+Row measurement policy now accepts indexed keys. Existing slice APIs delegate to
+the same implementation; the frontend validates immutable projections and supplies
+borrowed row keys, materializing descriptors only for comparisons/hashes. Complete
+previous/current descriptor vectors are no longer allocated. Exact source/style
+equality, rounded duplicate rejection and two matching samples remain required.
+All 513 core library tests pass, including deliberately colliding owned keys and
+complete-layout oracles. Five browser contracts pass for both modes: repeated and
+localized wrapped rows, failed-crop coverage rejection, pending syntax and exact
+shifted-suffix geometry
+([receipt](editor-performance/indexed-row-browser.json)). Strict core/WASM
+frontend lint and standalone WASM frontend test-support compilation pass; that
+feature now explicitly enables the core diagnostics it uses.
+
+The indexed-row production build below precedes pending-frame deduplication;
+its manifest identifies that exact source and artifact. Twelve interleaved
+100,000-line baseline/candidate production samples preserve
+complete source. Committed editor WASM memory drops from about 43 MiB cold and
+54–56 MiB after input to 35–36 MiB cold and 41 MiB after input. Candidate input
+still ranges from 16.7–130.5 ms; total Chrome PSS remains uneven at 677–704 MiB.
+This is a proven editor allocation reduction, not completed input/memory work
+([samples](editor-performance/indexed-row-comparison.jsonl),
+[hashes](editor-performance/indexed-row-production-manifest.json)).
+
+Eight interleaved near-1-MiB String samples, wrapping on/off in both modes,
+preserve full edited source with similar baseline/candidate timings. Candidate
+unwrapped input is 122–124 ms; wrapped input is 132–385 ms and complete geometry
+is 445–694 ms
+([samples](editor-performance/indexed-row-long-comparison.jsonl)). Full row-key
+validation/traversal, changed row/index tables and native/layout publication still
+need bounded incremental work. No performance completion gate is closed by this
+checkpoint.
+
+The latest pushed `e40e3cc` CI run passes four jobs but fails pending-source
+newline paint, burst coalescing and localized wrapped reuse. The three failures
+reproduce together in Chromium
+([before](editor-performance/pending-frame-before-browser.json)). Wrapped reuse
+passes in isolation with the same artifact
+([isolated](editor-performance/pending-frame-wrapped-isolated.json)): an aborted
+earlier test leaves active measurement fixtures in the shared browser.
+
+Pending paint now retains a frame keyed by current source revision, account/file
+scope, native input, font metrics, visible rows, guides and fragment windows.
+Unchanged native/preparation notifications update ownership tags and scroll
+alignment without rendering duplicate HTML. The newline contract checks the
+current blank first row and retained syntax on the remaining visible rows.
+The burst contract checks current visible text after every eligible input,
+exactly ten pending paints for ten eligible inputs, zero eager paints outside
+the existing admission guard, one final grammar paint and at most one changed-row
+probe. Probe limits and readiness/browser deadlines remain unchanged.
+
+All seven combined pending-paint and geometry browser contracts pass
+([receipt](editor-performance/pending-frame-browser.json),
+[source and WASM hashes](editor-performance/pending-frame-browser-manifest.json));
+strict WASM frontend lint and 129 native frontend tests pass. Full hosted CI
+must still verify the combined checkpoint. These checks do not close the broader
+performance, physical-input or recovery gates.

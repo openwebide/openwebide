@@ -87,7 +87,7 @@ Cold preparation and memory remain unfinished. The prior hosted browser groups
 hit their 300-second deadline after the long wrapped replay contract passed;
 independent replay partitions now preserve coverage and deadlines. Hosted CI for
 the partition fix passes all five jobs
-([receipt](editor-performance/grouped-ci-2bdd9a8-success.json)); the latest pushed checkpoint `cdc8a23` also passes all five jobs
+([receipt](editor-performance/grouped-ci-2bdd9a8-success.json)); the last fully green checkpoint `cdc8a23` also passes all five jobs
 ([receipt](editor-performance/editor-ci-cdc8a23-success.json)).
 
 **Remaining implementation** (all items remain part of this editor goal):
@@ -119,11 +119,14 @@ the partition fix passes all five jobs
   nonreconnecting wrapped updates and changed long-token/plain-run boundaries.
   Preserve exact browser extents and anchors; approximate widths are insufficient.
 - [ ] **Incremental syntax, structure and paint:** finish retained-container reuse,
-  warm semantic lists, paint-table iteration, shifted suffix metadata, parser
+  warm semantic lists, bounded incremental row-key traversal, shifted suffix metadata, parser
   context/selection-list extraction, larger fenced-code workloads, changed plain
   row-table reconstruction and final paint publication. Bound cache-missing scans,
   whole-row capacity growth, scratch allocations and changed long-row coordinate/
-  visual index construction. Keep retained immutable tables exact through edits.
+  visual index construction. Keep retained immutable tables exact through edits. Indexed measurement keys
+  remove the complete paint-descriptor vectors; row-limit WASM memory after input
+  drops to about 41 MiB from 54–56 MiB, but full traversal and input spikes remain
+  ([samples](editor-performance/indexed-row-comparison.jsonl)).
 - [ ] **Source, worker transport and storage:** finish external parser snapshots,
   changed-revision comparisons, metadata materialization, header/capacity allocation,
   JavaScript string conversion, complete message decoding/publication,
@@ -162,14 +165,21 @@ the partition fix passes all five jobs
   matrices and every other UI partition. Repeat warm highlight/row reuse,
   file-switch cancellation, cold queued-input source/selection ownership,
   host-plugin focus/layout and explicit Output/terminal targeting. Validate bounded
-  setup retries after upstream Chrome download failures. Latest pushed checkpoint
+  setup retries after upstream Chrome download failures. Last fully green checkpoint
   `cdc8a23` passes all five jobs
   ([receipt](editor-performance/editor-ci-cdc8a23-success.json)); the retained-span checkpoint passes six focused browser contracts, ten WASM
   library geometry/ownership contracts, strict WASM frontend lint and 16 fresh
   production samples. Hosted UI CI at `b4c9aa7` failed the wrapped-origin crop-rejection contract.
   Its wait correction passes in isolation with the original scroll adapter
   ([receipt](editor-performance/wrapped-crop-wait-regression.json)); full hosted
-  CI after that correction remains to be verified.
+  CI at the latest pushed checkpoint `e40e3cc` passes backend/crates, frontend,
+  Windows bridge and Docker, but fails three browser contracts: pending-source
+  newline paint, burst highlight coalescing and localized wrapped-row reuse.
+  The candidate fixes pass all seven combined pending-paint/geometry contracts,
+  including exact per-input pending paint, one final grammar paint and unchanged
+  localized wrapped-row probe limits
+  ([receipt](editor-performance/pending-frame-browser.json)). Full hosted CI for
+  the combined checkpoint remains required.
 - [ ] **Physical Chrome/Edge PWA input:** verify real input-method commit/cancel,
   Unicode and LF/CRLF undo/redo, multiple-cursor clipboard transactions and touch
   without rewriting unrelated source. Automated Chromium composition/pointer

@@ -4505,9 +4505,9 @@ async fn measure_highlight_bursts() {
         let mut latency = Vec::new();
         let mut frames = Vec::new();
         let mut counts = Vec::new();
+        let mut pending_counts = Vec::new();
         for run in 0..5 {
             let before = openwebide_frontend::components::viewport_highlight_count();
-            let all_before = highlight_count();
             let start = now();
             for event in 0..10 {
                 let text = format!("// burst {run} input {event}\n");
@@ -4533,31 +4533,51 @@ async fn measure_highlight_bursts() {
                 settle().await;
                 latency.push(now() - start);
                 assert_eq!(actions.source(), format!("{source}{text}"));
+                if lines == 1000 {
+                    assert_eq!(
+                        mounted
+                            .element(&format!(".editor-source-line[data-line='{}']", lines + 1))
+                            .text_content()
+                            .unwrap(),
+                        text,
+                        "each eligible pending input must reach the visible overlay"
+                    );
+                }
             }
             // Resolve obsolete requests as canceled, then publish real parsed
             // syntax for the coalesced source through the production facade.
-            loop {
+            let (final_before, all_before) = loop {
                 wait_until("coalesced Rust syntax request", || {
                     !transport.pending.borrow().is_empty()
                 })
                 .await;
                 let current = transport.source() == format!("{source}// burst {run} input 9\n");
+                let final_before = openwebide_frontend::components::viewport_highlight_count();
+                let all_before = highlight_count();
                 transport.respond(current);
                 if current {
-                    break;
+                    break (final_before, all_before);
                 }
-            }
+            };
+            pending_counts.push(final_before - before);
             wait_until("coalesced current syntax paint", || {
                 !actions.syntax_is_pending()
-                    && openwebide_frontend::components::viewport_highlight_count() > before
+                    && openwebide_frontend::components::viewport_highlight_count() > final_before
             })
             .await;
             frame().await;
             frames.push(now() - start);
-            let visible = openwebide_frontend::components::viewport_highlight_count() - before;
+            let visible =
+                openwebide_frontend::components::viewport_highlight_count() - final_before;
             counts.push(visible);
             probes.push(highlight_count() - all_before - visible);
         }
+        assert!(
+            pending_counts
+                .iter()
+                .all(|count| *count == if lines == 1000 { 10 } else { 0 }),
+            "eligible pending paint must publish once per input; larger sources remain coalesced: {pending_counts:?}"
+        );
         assert!(
             counts.iter().all(|count| *count == 1),
             "visible generations={counts:?}"
@@ -4569,7 +4589,7 @@ async fn measure_highlight_bursts() {
         latency.sort_by(f64::total_cmp);
         frames.sort_by(f64::total_cmp);
         console_log!(
-            "editor {lines} lines: visible generations/10 inputs={counts:?}, changed-row probes={probes:?}, input+microtasks median={:.3}ms p95={:.3}ms, burst-to-paint median={:.3}ms p95={:.3}ms",
+            "editor {lines} lines: pending generations/10 inputs={pending_counts:?}, final grammar generations={counts:?}, changed-row probes={probes:?}, input+microtasks median={:.3}ms p95={:.3}ms, burst-to-paint median={:.3}ms p95={:.3}ms",
             latency[25],
             latency[47],
             frames[2],
@@ -11630,11 +11650,6 @@ async fn pending_worker_paints_requested_source_rows_without_full_file_lexical_t
                     .is_none()
         })
         .await;
-        let styled = mounted
-            .root
-            .query_selector_all(".editor-source-line .tok-keyword")
-            .unwrap()
-            .length();
         actions
             .command(
                 openwebide_frontend::state_actions::editor::EditorCommand::Newline,
@@ -11665,7 +11680,19 @@ async fn pending_worker_paints_requested_source_rows_without_full_file_lexical_t
                 .query_selector_all(".editor-source-line .tok-keyword")
                 .unwrap()
                 .length(),
-            styled
+            mounted
+                .root
+                .query_selector_all(".editor-source-line")
+                .unwrap()
+                .length()
+                - 1
+        );
+        assert_eq!(
+            mounted
+                .element(".editor-source-line[data-line='1']")
+                .text_content()
+                .unwrap(),
+            "\n"
         );
         wait_until("changed styled source restored", || {
             if !transport.pending.borrow().is_empty() {

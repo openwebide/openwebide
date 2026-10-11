@@ -1,0 +1,15 @@
+{
+  "sourceHead": "e40e3cca9fa4d215e0fd89a77facaafffeeec01e",
+  "sourceFilesSha256": {
+    "crates/core/src/editor/viewport.rs": "2997837cda76a312951ea7382bcf5b95e63b6fedc903c36de20f702737bfb908",
+    "frontend/src/state_actions/editor/rows.rs": "0c71062c499b9335ad1111c9195d1c6dc58053ddd40fc5881b47d348f467126f",
+    "frontend/src/viewport.rs": "778596fe4036d47b4542509c4dd54862402401791ea9d1a7fc1ae6f7b22bdfcc",
+    "frontend/Cargo.toml": "1f40a8be06c3f3c3d1935108e7b9d56e08abbf256ecdb63828b5ac109ed21081"
+  },
+  "backendWasmSha256": "8efc2579446963f530f5774fdcbe2223bbc6b974eb54d8221a768ff1c43232af",
+  "measurementScriptSha256": "8e810dc178ce0a2469a6b6f315d92896ed81cdc51a359c17fe521af4596d001e",
+  "frontendWasmSha256": {
+    "openwebide-frontend-583265a974a20500_bg.wasm": "762aa8000d672f9c9bca2a8daaae74216c9b3515b2e2ac7f02055e70290425c0"
+  },
+  "scope": "Uncommitted indexed paint-row measurement keys on e40e3cc; unchanged retained backend and measurement harness."
+}

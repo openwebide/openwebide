@@ -1,0 +1,13 @@
+{
+  "baseHead": "e40e3cca9fa4d215e0fd89a77facaafffeeec01e",
+  "sourceHashes": {
+    "crates/core/src/editor/viewport.rs": "2997837cda76a312951ea7382bcf5b95e63b6fedc903c36de20f702737bfb908",
+    "frontend/src/state_actions/editor/rows.rs": "0c71062c499b9335ad1111c9195d1c6dc58053ddd40fc5881b47d348f467126f",
+    "frontend/src/state_actions/editor.rs": "8aa519abf89e85e721cfadca4b1188982113ad6f9d61f47089d2f136dd98160f",
+    "frontend/src/components/editor.rs": "523b278b5bdd8369da1b00b934256ad0ce33378a161a6be51d5437baf46bdf18",
+    "frontend/tests/components/editor.rs": "c3a1ee02513c471067b62bf9890cf1890a6124b8055c030a62328a36987ef0e2",
+    "frontend/Cargo.toml": "1f40a8be06c3f3c3d1935108e7b9d56e08abbf256ecdb63828b5ac109ed21081"
+  },
+  "browserWasmSha256": "0e58acb5eb169a9a38e0ac6c37bd537a96f579cd3c79217e2d3e481c800083f5",
+  "productionNote": "Indexed-row production samples precede pending-frame deduplication. They identify their own exact source and artifact hashes; this component receipt verifies the subsequent combined runtime."
+}

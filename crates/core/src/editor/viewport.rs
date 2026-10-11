@@ -168,41 +168,48 @@ impl RowMeasurementPlan {
         current: &[T],
         measured: &MeasuredRows,
     ) -> Option<Self> {
-        if previous.len() != measured.len() {
+        Self::reuse_with(
+            previous.len(),
+            current.len(),
+            |row| &previous[row],
+            |row| &current[row],
+            measured,
+        )
+    }
+    fn reuse_with<T: Eq + Hash>(
+        previous_rows: usize,
+        current_rows: usize,
+        previous: impl Fn(usize) -> T,
+        current: impl Fn(usize) -> T,
+        measured: &MeasuredRows,
+    ) -> Option<Self> {
+        if previous_rows != measured.len() {
             return None;
         }
-        let mut plan = Self::new(current.len())?;
-        let prefix = previous
-            .iter()
-            .zip(current)
-            .take_while(|(a, b)| a == b)
+        let mut plan = Self::new(current_rows)?;
+        let prefix = (0..previous_rows.min(current_rows))
+            .take_while(|row| previous(*row) == current(*row))
             .count();
-        let suffix = previous
-            .iter()
-            .rev()
-            .zip(current.iter().rev())
-            .take(previous.len().min(current.len()) - prefix)
-            .take_while(|(a, b)| a == b)
+        let suffix = (0..previous_rows.min(current_rows) - prefix)
+            .take_while(|offset| {
+                previous(previous_rows - 1 - offset) == current(current_rows - 1 - offset)
+            })
             .count();
         for row in 0..prefix {
             plan.heights[row] = Some(measured.top(row + 1)? - measured.top(row)?);
             plan.widths[row] = measured.row_width(row);
         }
         for offset in 0..suffix {
-            let old = previous.len() - 1 - offset;
-            plan.heights[current.len() - 1 - offset] =
+            let old = previous_rows - 1 - offset;
+            plan.heights[current_rows - 1 - offset] =
                 Some(measured.top(old + 1)? - measured.top(old)?);
-            plan.widths[current.len() - 1 - offset] = measured.row_width(old);
+            plan.widths[current_rows - 1 - offset] = measured.row_width(old);
         }
         plan.completed = prefix + suffix;
-        if current.len() - plan.completed > MAX_MEASURE_ROWS {
-            let mut known = HashMap::<&T, Option<(f64, Option<f64>)>>::new();
-            for (row, key) in previous
-                .iter()
-                .enumerate()
-                .take(previous.len() - suffix)
-                .skip(prefix)
-            {
+        if current_rows - plan.completed > MAX_MEASURE_ROWS {
+            let mut known = HashMap::<T, Option<(f64, Option<f64>)>>::new();
+            for row in prefix..previous_rows - suffix {
+                let key = previous(row);
                 let height = measured.top(row + 1)? - measured.top(row)?;
                 known
                     .entry(key)
@@ -218,13 +225,8 @@ impl RowMeasurementPlan {
                     })
                     .or_insert(Some((height, measured.row_width(row))));
             }
-            for (row, key) in current
-                .iter()
-                .enumerate()
-                .take(current.len() - suffix)
-                .skip(prefix)
-            {
-                if let Some(Some((height, width))) = known.get(key) {
+            for row in prefix..current_rows - suffix {
+                if let Some(Some((height, width))) = known.get(&current(row)) {
                     plan.heights[row] = Some(*height);
                     plan.widths[row] = *width;
                     plan.completed += 1;
@@ -242,10 +244,29 @@ impl RowMeasurementPlan {
         measured.width()?;
         Self::reuse(previous, current, measured)
     }
+    /// Hosts can compare source-owned row keys without allocating complete
+    /// descriptor tables. Reuse and ambiguity policy is shared with slice keys.
+    pub fn reuse_layout_with<T: Eq + Hash>(
+        previous_rows: usize,
+        current_rows: usize,
+        previous: impl Fn(usize) -> T,
+        current: impl Fn(usize) -> T,
+        measured: &MeasuredRows,
+    ) -> Option<Self> {
+        measured.width()?;
+        Self::reuse_with(previous_rows, current_rows, previous, current, measured)
+    }
     /// Share repeated current paint only after two matching layout observations.
     /// Disagreeing samples disable that group before any dimensions are propagated.
     pub fn share_repeated<T: Eq + Hash>(&mut self, keys: &[T]) -> bool {
-        if keys.len() != self.heights.len() || self.repeated.is_some() {
+        self.share_repeated_with(keys.len(), |row| &keys[row])
+    }
+    pub fn share_repeated_with<T: Eq + Hash>(
+        &mut self,
+        count: usize,
+        key: impl Fn(usize) -> T,
+    ) -> bool {
+        if count != self.heights.len() || self.repeated.is_some() {
             return false;
         }
         enum Seen {
@@ -253,10 +274,10 @@ impl RowMeasurementPlan {
             Group(usize),
         }
         let mut seen = HashMap::new();
-        let mut rows = vec![None; keys.len()];
+        let mut rows = vec![None; count];
         let mut groups: Vec<RepeatedRowGroup> = Vec::new();
-        for (row, key) in keys.iter().enumerate() {
-            match seen.entry(key) {
+        for row in 0..count {
+            match seen.entry(key(row)) {
                 std::collections::hash_map::Entry::Vacant(entry) => {
                     entry.insert(Seen::First(row));
                 }
@@ -289,7 +310,7 @@ impl RowMeasurementPlan {
             group.consistent = group.rows.len() >= 3;
         }
         self.repeated = Some(RepeatedRows { rows, groups });
-        self.observe_repeated(0..keys.len());
+        self.observe_repeated(0..count);
         true
     }
 
@@ -598,6 +619,83 @@ impl EditorViewport {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn indexed_owned_keys_preserve_exact_reuse_and_reject_hash_collisions() {
+        #[derive(PartialEq, Eq)]
+        struct Key(usize);
+        impl std::hash::Hash for Key {
+            fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+                0_u8.hash(state);
+            }
+        }
+        let count = 300;
+        let heights = (0..count)
+            .map(|row| 13.125 + (row % 3) as f64)
+            .collect::<Vec<_>>();
+        let widths = (0..count)
+            .map(|row| 100.0 + (row % 3) as f64)
+            .collect::<Vec<_>>();
+        let measured = MeasuredRows::layout(heights, widths).unwrap();
+        let current = |row| Key(if row == 0 { 999 } else { (row + 1) % 3 });
+        let mut plan = RowMeasurementPlan::reuse_layout_with(
+            count,
+            count,
+            |row| Key(row % 3),
+            current,
+            &measured,
+        )
+        .unwrap();
+        assert_eq!(plan.pending_batch(&vec![1; count]), Some(0..1));
+        assert!(plan.record_layout(0..1, &[21.5], &[200.0]));
+        let expected = MeasuredRows::layout(
+            (0..count).map(|row| {
+                if row == 0 {
+                    21.5
+                } else {
+                    13.125 + ((row + 1) % 3) as f64
+                }
+            }),
+            (0..count).map(|row| {
+                if row == 0 {
+                    200.0
+                } else {
+                    100.0 + ((row + 1) % 3) as f64
+                }
+            }),
+        )
+        .unwrap();
+        assert_eq!(plan.finish(), Some(expected));
+
+        let conflicting = MeasuredRows::layout(
+            (0..count).map(|row| 13.0 + (row % 5) as f64),
+            vec![100.0; count],
+        )
+        .unwrap();
+        let plan = RowMeasurementPlan::reuse_layout_with(
+            count,
+            count,
+            |row| Key(row % 3),
+            current,
+            &conflicting,
+        )
+        .unwrap();
+        assert!(plan.finish().is_none());
+        assert!(
+            RowMeasurementPlan::reuse_layout_with(count + 1, count, Key, Key, &measured).is_none()
+        );
+
+        let mut repeated = RowMeasurementPlan::new(count).unwrap();
+        assert!(repeated.share_repeated_with(count, |row| Key(row % 3)));
+        let heights = (0..MAX_MEASURE_ROWS)
+            .map(|row| 13.125 + (row % 3) as f64)
+            .collect::<Vec<_>>();
+        let widths = (0..MAX_MEASURE_ROWS)
+            .map(|row| 100.0 + (row % 3) as f64)
+            .collect::<Vec<_>>();
+        assert!(repeated.record_layout(0..MAX_MEASURE_ROWS, &heights, &widths));
+        assert_eq!(repeated.finish(), Some(measured));
+    }
+
     #[test]
     fn measured_prefix_is_bounded_exact_and_never_bridges_unknown_rows() {
         let total = 3 * MAX_MEASURE_ROWS;

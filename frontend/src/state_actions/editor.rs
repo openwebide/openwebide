@@ -359,6 +359,9 @@ impl EditorActions {
     pub fn projection_revision(self) -> u64 {
         self.workspace.editor_projection_revision.get()
     }
+    pub fn source_revision(self) -> u64 {
+        self.workspace.editor_source_revision.get()
+    }
     pub fn view_revision(self) -> u64 {
         self.workspace.editor_view_revision.get()
     }

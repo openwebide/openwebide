@@ -1957,6 +1957,14 @@ fn HighlightOverlay(
         input: web_sys::HtmlTextAreaElement,
     }
     let neutral_frame = StoredValue::new_local(None::<NeutralFrame>);
+    #[derive(Clone, PartialEq)]
+    struct PendingFrame {
+        native: NeutralFrame,
+        tokens: usize,
+        guides: Vec<usize>,
+        windows: Vec<(usize, openwebide_core::editor::RowPaintWindow)>,
+    }
+    let pending_frame = StoredValue::new_local(None::<PendingFrame>);
 
     Effect::new(move || {
         content.track();
@@ -2058,10 +2066,49 @@ fn HighlightOverlay(
                 let _ = window().cancel_animation_frame(id);
             }
             request.set_value(None);
+            let input = textarea_ref.get_untracked().unwrap();
+            let rows = visible.get_untracked();
+            let frame = PendingFrame {
+                native: NeutralFrame {
+                    scope: presentation_scope.get_untracked(),
+                    // Native-window ownership can advance without changing the
+                    // source or paint. Only actual input needs another HTML frame.
+                    projection: actions.source_revision(),
+                    font: actions.font_epoch(),
+                    metrics: super::editor_rows::metrics_identity(&input),
+                    indentation: indentation.get_untracked(),
+                    whitespace: show_whitespace.get_untracked(),
+                    rows: rows.clone(),
+                    input: input.clone(),
+                },
+                tokens: prepared_paint.with_untracked(|(_, tokens)| {
+                    std::sync::Arc::as_ptr(tokens) as *const () as usize
+                }),
+                guides: guides.with_untracked(|guides| {
+                    rows.iter()
+                        .map(|row| guides.get(*row).copied().unwrap_or(0))
+                        .collect()
+                }),
+                windows: fragment_windows.get_untracked(),
+            };
+            if pending_frame.with_value(|previous| previous.as_ref() == Some(&frame)) {
+                let scope = actions.projection_revision();
+                rendered_scope.set(scope);
+                if let Some(overlay) = node_ref.get_untracked() {
+                    if let Ok(Some(content)) = overlay.query_selector(".editor-highlight-content") {
+                        let _ = content.set_attribute("data-editor-scope", &scope.to_string());
+                    }
+                    sync_highlight_scroll(&input, &overlay);
+                }
+                ready.set(true);
+                return;
+            }
+            pending_frame.set_value(Some(frame));
             queued_generation.set_value(generation.get_value());
             paint.run(true);
             return;
         }
+        pending_frame.set_value(None);
         if mounted && request.get_value().is_none() {
             queued_generation.set_value(generation.get_value());
             let id = callback.with_value(|callback| {

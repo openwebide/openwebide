@@ -8,6 +8,11 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Reuse identical pending-syntax editor frames across native-window and preparation notifications, while publishing each eligible source edit immediately. Preserve a single coalesced final grammar paint and exact localized wrapped-row reuse.
+
+- Prepare editor row measurements from indexed, borrowed paint keys instead of materializing complete descriptor tables. Keep exact style comparison, conflicting duplicate rejection and repeated-row sampling in the shared measurement policy for both project modes.
+- Enable required core diagnostics explicitly when building the frontend with its test-support feature.
+
 - Reuse the mounted editor scroll surface in the browser adapter to avoid repeated style resolution, retaining native fallback and replacement/reparenting checks.
 
 - Keep the wrapped editor crop-failure regression waiting for injected failure and coverage rejection when retained syntax paints early, preserving its assertions and timeout.

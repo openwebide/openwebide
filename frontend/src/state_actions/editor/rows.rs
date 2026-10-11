@@ -97,10 +97,44 @@ fn paint_row(paint: &EditorRowPaint, index: usize) -> Option<PaintRow<'_>> {
         ending: index + 1 < paint.projection.lines().len(),
     })
 }
-fn paint_rows(paint: &EditorRowPaint) -> Option<Vec<PaintRow<'_>>> {
-    (0..paint.projection.lines().len())
-        .map(|index| paint_row(paint, index))
-        .collect()
+#[derive(Clone, Copy)]
+struct PaintRowKey<'a> {
+    paint: &'a EditorRowPaint,
+    row: usize,
+}
+impl<'a> PaintRowKey<'a> {
+    fn descriptor(self) -> PaintRow<'a> {
+        paint_row(self.paint, self.row).expect("validated complete paint row")
+    }
+}
+impl PartialEq for PaintRowKey<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.descriptor() == other.descriptor()
+    }
+}
+impl Eq for PaintRowKey<'_> {}
+impl Hash for PaintRowKey<'_> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.descriptor().hash(state);
+    }
+}
+#[derive(Clone, Copy)]
+struct PaintRowKeys<'a>(&'a EditorRowPaint);
+impl<'a> PaintRowKeys<'a> {
+    fn new(paint: &'a EditorRowPaint) -> Option<Self> {
+        // Validate once without allocating descriptors; the projection and
+        // source remain immutable through every indexed comparison.
+        for row in 0..paint.projection.lines().len() {
+            paint.projection.line_body(row)?;
+        }
+        Some(Self(paint))
+    }
+    fn len(self) -> usize {
+        self.0.projection.lines().len()
+    }
+    fn key(self, row: usize) -> PaintRowKey<'a> {
+        PaintRowKey { paint: self.0, row }
+    }
 }
 fn paint_prefix_end(old: &PaintRow<'_>, new: &PaintRow<'_>) -> usize {
     if old.guide != new.guide || old.ending != new.ending {
@@ -736,18 +770,25 @@ impl EditorActions {
         }
         let paint =
             self.row_paint_snapshot(metrics, projection, tokens, guides, indentation, whitespace)?;
-        let current_rows = paint_rows(&paint)?;
+        let current_rows = PaintRowKeys::new(&paint)?;
         let reused = self.workspace.editor_row_cache.with_untracked(|cache| {
             let cache = cache.as_ref()?;
             let old = &cache.paint;
             if !same_measurement_environment(old, &paint) {
                 return None;
             }
-            RowMeasurementPlan::reuse_layout(&paint_rows(old)?, &current_rows, &cache.rows)
+            let previous_rows = PaintRowKeys::new(old)?;
+            RowMeasurementPlan::reuse_layout_with(
+                previous_rows.len(),
+                current_rows.len(),
+                |row| previous_rows.key(row),
+                |row| current_rows.key(row),
+                &cache.rows,
+            )
         });
         let mut plan =
             reused.or_else(|| RowMeasurementPlan::new(paint.projection.lines().len()))?;
-        if !plan.share_repeated(&current_rows) {
+        if !plan.share_repeated_with(current_rows.len(), |row| current_rows.key(row)) {
             return None;
         }
         Some((paint, plan))
