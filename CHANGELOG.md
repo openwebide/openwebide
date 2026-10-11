@@ -17,6 +17,7 @@ for what's still ahead.
 - Deliver durable plugin events and raw agent work through shared host workers with leases, idempotency, cancellation and pinned completion callbacks. Preserve terminal history snapshots, recover interrupted deliveries without replaying consumed prompts and retain active work during cleanup.
 - Implement Scheduling reconciliation in Rust: repair timers and source-version handoffs, journal preflight failures, recover quota, bound history retention and cleanup, and preserve original messages after cancellation or interruption. Deployed checks exercise configured naming and actual streamed agent completion on both hosts.
 - Keep contributed skills discoverable through shared read-only, run-pinned loaders when Skill Authoring is disabled. Exclude personal/disabled skills without enabling authoring handlers; SDK context hooks remain read-only and respect prompt budgets and model tool selection.
+- Preserve workspace-root mappings when binding local projects for unattended Scheduling and monitor execution.
 - Add schema-defined JSON plugin icons with typed drawing primitives, bounded geometry, fixed sizing and theme color. Share validation across manifests and catalog listings; use the puzzle fallback for omitted or invalid cached icons.
 - Document the pinned public Git SDK and custom-marketplace authoring. Marketplace CI validates catalogs and tests, lints and compiles executable sources against that SDK. Official catalog promotion and remaining manual PWA verification are tracked on the roadmap.
 

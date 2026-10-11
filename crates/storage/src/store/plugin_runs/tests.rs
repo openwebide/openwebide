@@ -1127,14 +1127,13 @@ fn run_claims_are_host_bound_and_recover_only_unconsumed_prompts_in_both_modes()
             let f = Fixture::new(mode).await;
             if mode == WorkspaceMode::Local {
                 f.store
-                    .set_user_setting(
+                    .bind_background_host(
                         f.user,
-                        &format!("scheduled_host_{}", f.project),
-                        &encode(&openwebide_core::scheduled::HostBinding {
-                            host_id: f.plugin.host_id.clone(),
-                            path: "repos/local".into(),
-                        })
-                        .unwrap(),
+                        f.project,
+                        &openwebide_core::scheduled::HostBinding::new(
+                            f.plugin.host_id.clone(),
+                            String::new(),
+                        ),
                     )
                     .await
                     .unwrap();
@@ -1168,7 +1167,10 @@ fn run_claims_are_host_bound_and_recover_only_unconsumed_prompts_in_both_modes()
                 .remove(0);
             assert_eq!(first.run.id, submitted.id);
             assert_eq!(first.prompt.revision, original.revision + 1);
-            assert_eq!(first.host_path.is_some(), mode == WorkspaceMode::Local);
+            assert_eq!(
+                first.host_path.as_deref(),
+                (mode == WorkspaceMode::Local).then_some("."),
+            );
             assert!(
                 f.store
                     .claim_plugin_runs(&f.plugin.host_id, 0, &"c".repeat(32), 4)

@@ -644,8 +644,10 @@ capability.
   candidate catalog after remaining manual PWA checks on server and paired hosts:
   installed/available icon rendering, asynchronous install/cancel and failure
   recovery, cold action caches, compiled-default initialization, and
-  install/run/update/disable/uninstall flows. Verify automatic naming through the
-  deployed Memory UI; host naming and SDK browser action contracts are verified.
+  install/run/update/disable/uninstall flows. Memory automatic naming is verified
+  in both deployed PWAs, with server CRUD checks complete. Remaining paired
+  Scheduling checks include workspace-root mappings; host naming and SDK browser
+  action contracts are verified.
 - Complete manual Scheduling browser checks for CRUD and bounded monitors,
   retained legacy task adoption, pending-occurrence handoff, active invocation
   pinning and updates during streamed work, interrupted-run recovery, history

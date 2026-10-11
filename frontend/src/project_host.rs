@@ -112,10 +112,7 @@ impl ProjectHost {
         if !current() {
             return Err("Project access changed".into());
         }
-        Ok(openwebide_core::scheduled::HostBinding {
-            host_id: host.id,
-            path,
-        })
+        Ok(openwebide_core::scheduled::HostBinding::new(host.id, path))
     }
     pub async fn discover_servers(self) -> Result<Vec<openwebide_core::ServerDiscovery>, String> {
         let local = self

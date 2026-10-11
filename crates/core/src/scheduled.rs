@@ -242,6 +242,15 @@ pub struct HostBinding {
     pub host_id: String,
     pub path: String,
 }
+impl HostBinding {
+    /// Preserve a mapped workspace root as an explicit working directory.
+    pub fn new(host_id: String, path: String) -> Self {
+        Self {
+            host_id,
+            path: if path.is_empty() { ".".into() } else { path },
+        }
+    }
+}
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ScheduledTask {
     pub id: i64,
@@ -334,6 +343,17 @@ pub fn weekly_cron(time: &str, weekdays: &[u8]) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn execution_host_binding_preserves_root_and_nested_workspace_mappings() {
+        for (mapped, expected) in [("", "."), (".", "."), ("repos/project", "repos/project")] {
+            let binding = HostBinding::new("paired-host".into(), mapped.into());
+            assert_eq!(binding.host_id, "paired-host");
+            assert_eq!(binding.path, expected);
+            let restored: HostBinding =
+                serde_json::from_str(&serde_json::to_string(&binding).unwrap()).unwrap();
+            assert_eq!(restored, binding);
+        }
+    }
     #[test]
     fn task_ui_commands_preserve_public_sdk_shapes_without_feature_dispatch() {
         let call = TaskCommand::SetEnabled {
