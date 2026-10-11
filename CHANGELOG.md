@@ -9,6 +9,9 @@ for what's still ahead.
 
 ## [Unreleased]
 
+- Validate prepared offline plugin manifests against their pinned source instead of a hard-coded version in CI.
+
+- Use complete current document indexes to prepare neutral editor paint without allocating redundant plain-token rows; preserve bounded cold paint and cooperative fallback when geometry or a current index is unavailable. Keep current bounded native input through empty layout waits, and restore complete native fallback when geometry preparation fails.
 - Compile Git-pinned Rust plugins to WASM on bridge hosts using the public SDK, locked dependencies and an isolated compiler. Cache validated components by source, SDK and toolchain; bound execution, memory, host calls and errors without ambient WASI access.
 - Provide capability-gated HTTP, scoped records/shared collections, clocks, model completion, durable jobs and raw prompt runs. Grants retain authenticated account/project/conversation scope and the selected source; executing components keep their original version across updates. Plugin HTTP cannot bypass grants through Open WebIDE control APIs.
 - Replace first-party Web, Memory, Scheduling and Skill Authoring tool-group switches with genuine Rust handlers and context hooks. Compile the four selected defaults during distribution builds and embed validated components for offline initialization on server and paired hosts. Preserve existing versions, removals, project opt-outs and Notify preferences; historical API 2 tool groups require an update before activation.

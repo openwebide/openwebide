@@ -1,0 +1,77 @@
+{
+  "buildHead": "9dce60c98aa1d2a7937e48a760fbfffe00372162",
+  "diagnosticOnly": true,
+  "terminalExitCode": 0,
+  "mode": "local",
+  "case": "line-limit",
+  "wrap": true,
+  "completeSourceAfterInputVerified": true,
+  "traceTruncated": false,
+  "inputCompleteGeometryMs": 245.29999999701977,
+  "inputWindowMethod": "CDP NavigationStart plus first input-phase beforeinput trace timestamp, through inputCompleteGeometryMs; approximate sampling attribution.",
+  "inputIdleSelfSampleMs": 185.595,
+  "inputTotalSampleMs": 244.367,
+  "inputMeasurementBatches": [
+    {
+      "at": 1709.300000000745,
+      "fontFaces": [
+        {
+          "family": "Monaspace Neon",
+          "status": "loaded"
+        },
+        {
+          "family": "Monaspace Argon",
+          "status": "unloaded"
+        },
+        {
+          "family": "Monaspace Xenon",
+          "status": "unloaded"
+        },
+        {
+          "family": "Monaspace Radon",
+          "status": "unloaded"
+        },
+        {
+          "family": "Monaspace Krypton",
+          "status": "unloaded"
+        }
+      ],
+      "geometry": {
+        "elapsedMs": 0.09999999776482582,
+        "units": 1
+      },
+      "install": {
+        "elapsedMs": 0,
+        "units": 114
+      },
+      "layout": {
+        "elapsedMs": 0.10000000149011612,
+        "units": 1
+      },
+      "phase": "input",
+      "render": {
+        "elapsedMs": 0,
+        "units": 3
+      },
+      "scope": {
+        "data-measure-account": "0",
+        "data-measure-font": "1",
+        "data-measure-layout": "1",
+        "data-measure-prepared": "false",
+        "data-measure-read": "3",
+        "data-measure-source": "0",
+        "data-measure-view": "3"
+      }
+    }
+  ],
+  "sourceManifestSha256": "1f778fd39aca976f8ddc6bc23cc518e553c4296b3f2b2834ce6d57b8f32bad4a",
+  "frontendWasmSha256": {
+    "openwebide-frontend-de2cfc1a8c8a6169_bg.wasm": "e6e80df681cbbeef40fed4d7bc954f416c6a5f6f2153a5797538ac99e5ffe31f"
+  },
+  "backendWasmSha256": "7497ecb31f4e44e3b4e28b154965f137b2ee43e02089c5ba81ce5205d367c0fa",
+  "rawLogSha256": "d8735f0dfd33bcea1285cad3114dfa184d36ed3a38c555b033c32e30f356a2f5",
+  "limitations": [
+    "One instrumented local sample; not proof of a timer cause or a performance improvement.",
+    "Physical input/permission gates remain unverified."
+  ]
+}

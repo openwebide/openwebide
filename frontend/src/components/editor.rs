@@ -1403,7 +1403,7 @@ fn HighlightOverlay(
     let presentation_scope = Memo::new(move |_| actions.presentation_scope());
     let presented_scope = StoredValue::new(None);
     let painted_whitespace = StoredValue::new(false);
-    let painted_complete_rows = StoredValue::new(false);
+    let painted_complete_source = StoredValue::new(false);
     let painted_syntax =
         StoredValue::new(None::<(bool, std::sync::Arc<openwebide_core::highlight::TokenRows>)>);
     let layout_callback = StoredValue::new_local(Closure::<dyn FnMut(bool, bool)>::new(
@@ -1457,6 +1457,10 @@ fn HighlightOverlay(
         actions.syntax_paint()
     });
     let tokens = Memo::new(move |_| EditorActions::render_paint(prepared_paint.get()));
+    let viewport_paint_ready = Memo::new(move |_| {
+        actions.preparation_revision();
+        actions.viewport_paint_ready(&visible.get())
+    });
     let guides = Memo::new(move |_| {
         content.track();
         actions.presentation_scope();
@@ -1466,7 +1470,7 @@ fn HighlightOverlay(
     let retain_style = Callback::new(move |()| {
         painted_syntax.with_value(|syntax| {
             syntax.as_ref().is_some_and(|syntax| {
-                actions.retain_pending_paint(syntax.0, painted_complete_rows.get_value())
+                actions.retain_pending_paint(syntax.0, painted_complete_source.get_value())
             })
         }) && presented_scope.get_value() == presentation_scope.get_untracked()
     });
@@ -1830,7 +1834,8 @@ fn HighlightOverlay(
         }
         painted_whitespace.set_value(show_whitespace.get_untracked());
         painted_syntax.set_value(Some(tokens.get_untracked()));
-        painted_complete_rows.set_value(!prepared_paint.get_untracked().1.is_empty());
+        painted_complete_source
+            .set_value(actions.source_paint_complete(!prepared_paint.get_untracked().1.is_empty()));
         rendered_scope.set(actions.projection_revision());
         rendered.set(html);
         presented_scope.set_value(presentation_scope.get_untracked());
@@ -1960,6 +1965,10 @@ fn HighlightOverlay(
         if presented_scope.get_value() != presentation_scope.get() {
             presentation.set(false);
         }
+        // Readiness changes retry deferred paint even when source row indices
+        // stay equal. The memo suppresses unchanged geometry notifications so
+        // typing keeps its existing paint coalescing.
+        viewport_paint_ready.track();
         let current_path = open_file.get();
         let mounted = node_ref.get().is_some();
         if current_path != path.get_value() || !mounted {
@@ -1974,13 +1983,13 @@ fn HighlightOverlay(
         // Native restoration stamps the installed source before this shortcut.
         // A pending neutral frame does not need to wait for rAF. Layout/native
         // binding notifications can revalidate that frame before the first rAF.
-        let initial = mounted
-            && (presented_scope.get_value() != presentation_scope.get_untracked()
-                || painted_syntax.with_value(|paint| {
-                    paint
-                        .as_ref()
-                        .is_none_or(|(prepared, _)| !prepared && !painted_complete_rows.get_value())
-                }))
+        let initial = presented_scope.get_value() != presentation_scope.get_untracked()
+            || painted_syntax.with_value(|paint| {
+                paint
+                    .as_ref()
+                    .is_none_or(|(prepared, _)| !prepared && !painted_complete_source.get_value())
+            });
+        let neutral = mounted
             && textarea_ref.get_untracked().is_some_and(|input| {
                 current_editor_target(actions, &input)
                     && input
@@ -1993,11 +2002,7 @@ fn HighlightOverlay(
             && prepared_paint.with_untracked(|(prepared, tokens)| {
                 actions.initial_viewport_paint_ready(&visible.get_untracked(), (*prepared, tokens))
             });
-        if initial {
-            if let Some(id) = request.get_value() {
-                let _ = window().cancel_animation_frame(id);
-            }
-            request.set_value(None);
+        if neutral {
             let input = textarea_ref.get_untracked().unwrap();
             let frame = NeutralFrame {
                 scope: presentation_scope.get_untracked(),
@@ -2010,13 +2015,24 @@ fn HighlightOverlay(
                 input,
             };
             if neutral_frame.with_value(|previous| previous.as_ref() == Some(&frame)) {
+                if let Some(id) = request.get_value() {
+                    let _ = window().cancel_animation_frame(id);
+                }
+                request.set_value(None);
+                painted_complete_source.set_value(actions.source_paint_complete(false));
                 ready.set(true);
                 return;
             }
-            neutral_frame.set_value(Some(frame));
-            queued_generation.set_value(generation.get_value());
-            paint.run(true);
-            return;
+            if initial {
+                if let Some(id) = request.get_value() {
+                    let _ = window().cancel_animation_frame(id);
+                }
+                request.set_value(None);
+                neutral_frame.set_value(Some(frame));
+                queued_generation.set_value(generation.get_value());
+                paint.run(true);
+                return;
+            }
         }
         neutral_frame.set_value(None);
         if mounted && request.get_value().is_none() {

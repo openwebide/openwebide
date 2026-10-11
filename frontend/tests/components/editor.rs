@@ -10141,6 +10141,132 @@ async fn cooperative_terminal_plain_paint_preserves_source_and_rejects_stale_sco
 }
 
 #[wasm_bindgen_test]
+async fn indexed_plain_fallback_borrows_source_and_rejects_stale_documents_in_both_modes() {
+    use openwebide_core::WorkspaceMode;
+    use openwebide_frontend::state_actions::editor::EditorActions;
+    let source = "plain 文😀\r\n".repeat(60_000);
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let slot = std::rc::Rc::new(std::cell::RefCell::new(None));
+        let mounted = mount_test({
+            let source = source.clone();
+            let slot = slot.clone();
+            move |state| {
+                state.seed_project();
+                state
+                    .projects
+                    .projects
+                    .update(|projects| projects[0].mode = mode);
+                state.workspace.open_file.set(Some("indexed.txt".into()));
+                state.workspace.content.set(source.into());
+                let actions = EditorActions::new(state.workspace);
+                assert!(actions.prepare_projection().is_some());
+                actions.install_syntax_worker();
+                *slot.borrow_mut() = Some(actions);
+                view! { <div /> }
+            }
+        });
+        let actions = slot.borrow_mut().take().unwrap();
+        wait_until("indexed fallback is ready", || !actions.syntax_is_pending()).await;
+        let paint = mounted
+            .state
+            .workspace
+            .editor_fallback_paint
+            .get_untracked()
+            .unwrap();
+        assert!(!paint.prepared_source);
+        assert!(paint.tokens.is_empty() && paint.lexical.is_none());
+        assert_eq!(actions.source_line_count(), Some(60_001));
+        assert!(actions.full_row_paint_ready());
+        assert!(std::sync::Arc::ptr_eq(
+            &paint.tokens,
+            &EditorActions::render_paint(actions.syntax_paint()).1
+        ));
+
+        mounted
+            .state
+            .workspace
+            .editor_documents
+            .update(std::collections::HashMap::clear);
+        assert!(actions.source_line_count().is_none());
+        assert!(actions.syntax_is_pending());
+        assert!(
+            !actions.full_row_paint_ready(),
+            "removed indexes cannot prove readiness"
+        );
+        assert!(actions.prepare_projection().is_some());
+        wait_until("restored current index proves readiness", || {
+            !actions.syntax_is_pending()
+        })
+        .await;
+
+        let revised = format!("changed\n{source}");
+        mounted.state.workspace.content.set(revised.clone().into());
+        assert!(
+            actions.source_line_count().is_none(),
+            "old source index is not readiness proof"
+        );
+        wait_until(
+            "replacement without index uses cooperative fallback",
+            || actions.syntax_is_pending(),
+        )
+        .await;
+        assert!(!actions.full_row_paint_ready());
+        assert!(actions.prepare_projection().is_some());
+        wait_until("new index resolves pending fallback", || {
+            mounted
+                .state
+                .workspace
+                .editor_fallback_paint
+                .with_untracked(|paint| {
+                    paint.as_ref().is_some_and(|paint| {
+                        paint.scope.source.as_str() == revised
+                            && paint.tokens.is_empty()
+                            && paint.lexical.is_none()
+                    })
+                })
+        })
+        .await;
+        let current = mounted
+            .state
+            .workspace
+            .editor_fallback_paint
+            .get_untracked()
+            .unwrap();
+        assert!(std::sync::Arc::ptr_eq(&paint.tokens, &current.tokens));
+        assert_eq!(actions.source_line_count(), Some(60_002));
+        for _ in 0..3 {
+            frame().await;
+        }
+        assert!(
+            mounted
+                .state
+                .workspace
+                .editor_fallback_paint
+                .get_untracked()
+                .unwrap()
+                .lexical
+                .is_none(),
+            "superseded lexical job cannot replace indexed readiness"
+        );
+
+        mounted
+            .state
+            .workspace
+            .open_file
+            .set(Some("different.txt".into()));
+        assert!(
+            actions.source_line_count().is_none(),
+            "another file cannot borrow the old index"
+        );
+        wait_until("new file remains pending without index", || {
+            actions.syntax_is_pending()
+        })
+        .await;
+        assert!(!actions.full_row_paint_ready());
+    }
+}
+
+#[wasm_bindgen_test]
 async fn syntax_consumers_share_immutable_preparation_and_invalidate_it_in_both_modes() {
     use openwebide_core::{
         WorkspaceMode,
@@ -10943,7 +11069,9 @@ async fn neutral_edits_paint_before_pending_worker_reply_in_both_modes() {
                 let (prepared, tokens) = actions.syntax_paint();
                 !actions.syntax_is_pending()
                     && !prepared
-                    && !tokens.is_empty()
+                    && tokens.is_empty()
+                    && actions.source_line_count() == Some(1)
+                    && actions.source() == source
                     && mounted
                         .element(".editor-code")
                         .class_list()
@@ -13175,6 +13303,125 @@ async fn cold_unwrapped_native_windows_preserve_extents_pointer_and_edits_in_bot
 }
 
 #[wasm_bindgen_test]
+fn empty_geometry_wait_retains_edited_native_mapping_and_rejects_invalid_proofs_in_both_modes() {
+    use openwebide_core::{WorkspaceMode, editor::Selection};
+    use openwebide_frontend::state_actions::editor::EditorActions;
+    let source = "row 文😀\r\n".repeat(10_000);
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        for boundary in 0..8 {
+            let initial = source.clone();
+            let slot = std::rc::Rc::new(std::cell::Cell::new(None::<EditorActions>));
+            let captured = slot.clone();
+            let mounted = mount_test(move |state| {
+                state.seed_project();
+                state
+                    .projects
+                    .projects
+                    .update(|projects| projects[0].mode = mode);
+                state
+                    .workspace
+                    .open_file
+                    .set(Some("geometry-wait.txt".into()));
+                state.workspace.content.set(initial.into());
+                state
+                    .settings
+                    .editor_preferences
+                    .update(|preferences| preferences.word_wrap = true);
+                captured.set(Some(EditorActions::new(state.workspace)));
+                view! { <div/> }
+            });
+            let actions = slot.get().unwrap();
+            actions.prepare_projection().unwrap();
+            assert!(actions.bind_native_context());
+            assert!(!actions.native_geometry_pending());
+            let native = actions
+                .bound_native_context()
+                .unwrap()
+                .projection()
+                .textarea_text()
+                .to_owned();
+            actions
+                .projected_input(format!("x{native}"), Selection::caret(1), "insertText", 1.0)
+                .unwrap();
+            assert_eq!(actions.source(), format!("x{source}"));
+            let context = actions.bound_native_context().unwrap();
+            assert!(context.projection().textarea_text().len() <= 12 * 1024);
+            assert_eq!(
+                context
+                    .source_selection(context.native_selection().unwrap())
+                    .unwrap(),
+                Selection::caret(1)
+            );
+            assert!(actions.measured_rows().is_none());
+            assert!(actions.defer_viewport_paint(&[]));
+            assert!(
+                actions.bound_native_context().is_some(),
+                "{mode:?}: edited source mapping survives a geometry wait"
+            );
+            match boundary {
+                0 => mounted
+                    .state
+                    .workspace
+                    .pending_epoch
+                    .update(|epoch| *epoch += 1),
+                1 => mounted
+                    .state
+                    .workspace
+                    .editor_read_revision
+                    .update(|revision| *revision += 1),
+                2 => mounted
+                    .state
+                    .auth
+                    .generation
+                    .update(|generation| *generation += 1),
+                3 => mounted
+                    .state
+                    .workspace
+                    .content
+                    .set("replacement source".into()),
+                4 => mounted
+                    .state
+                    .workspace
+                    .editor_documents
+                    .update(std::collections::HashMap::clear),
+                5 => mounted
+                    .state
+                    .workspace
+                    .open_file
+                    .set(Some("other.txt".into())),
+                6 => mounted.state.workspace.active_project.set(Some(2)),
+                _ => {
+                    let projection = actions.projection().unwrap();
+                    let ticket = actions
+                        .begin_row_preparation(actions.view_revision(), projection.lines().len())
+                        .unwrap();
+                    let (paint, _) = actions
+                        .prepare_row_measurements(
+                            "fixture metrics".into(),
+                            projection,
+                            (false, std::sync::Arc::new(Vec::new())),
+                            std::sync::Arc::from([]),
+                            openwebide_core::editor::Indentation::default(),
+                            false,
+                        )
+                        .unwrap();
+                    assert!(
+                        actions
+                            .finish_row_preparation(ticket, paint, Err(()))
+                            .is_some()
+                    );
+                }
+            }
+            assert!(actions.defer_viewport_paint(&[]));
+            assert!(
+                actions.bound_native_context().is_none(),
+                "{mode:?}: invalid boundary {boundary} requires complete native input"
+            );
+        }
+    }
+}
+
+#[wasm_bindgen_test]
 async fn pending_wheel_intent_reaches_complete_measured_width_in_both_modes() {
     use openwebide_core::WorkspaceMode;
     use openwebide_frontend::state_actions::editor::EditorActions;
@@ -13209,12 +13456,16 @@ async fn pending_wheel_intent_reaches_complete_measured_width_in_both_modes() {
         assert!(actions.measured_rows().is_none());
         let output = mounted.element(".statusbar [aria-label='Toggle Output']");
         let before = output.get_bounding_client_rect().x();
-        assert_eq!(
+        // The indexed plain source is ready while its geometry tasks are paused.
+        // Geometry waiting alone must not report syntax work that already ended.
+        assert!(!actions.syntax_is_pending());
+        assert_eq!(actions.source_line_count(), Some(12_001));
+        assert!(
             mounted
-                .element(".statusbar .ui-loading-status")
-                .text_content()
-                .as_deref(),
-            Some("Preparing syntax…")
+                .root
+                .query_selector(".statusbar .ui-loading-status")
+                .unwrap()
+                .is_none()
         );
         assert!(
             mounted
@@ -13322,7 +13573,7 @@ impl Drop for ResumeTasks {
 }
 
 #[wasm_bindgen_test]
-async fn pending_terminal_fallback_paints_bounded_unwrapped_input_in_both_modes() {
+async fn indexed_terminal_fallback_paints_bounded_unwrapped_input_in_both_modes() {
     use openwebide_core::{WorkspaceMode, editor::Selection};
     use openwebide_frontend::state_actions::editor::EditorActions;
     let source = (0..12_000)
@@ -13355,9 +13606,9 @@ async fn pending_terminal_fallback_paints_bounded_unwrapped_input_in_both_modes(
             }
         });
         let actions = saved.get().unwrap();
-        wait_until("initial bounded frame before lexical completion", || {
-            actions.syntax_is_pending()
-                && !actions.full_row_paint_ready()
+        wait_until("initial bounded frame before geometry completion", || {
+            !actions.syntax_is_pending()
+                && actions.full_row_paint_ready()
                 && actions.bound_native_context().is_some()
                 && mounted
                     .element(".editor-code")
@@ -13393,7 +13644,7 @@ async fn pending_terminal_fallback_paints_bounded_unwrapped_input_in_both_modes(
             "clicks past the initial neutral row retain the source line end"
         );
         drop(frames);
-        assert!(!actions.full_row_paint_ready());
+        assert!(actions.full_row_paint_ready());
         assert!(actions.measured_rows().is_none());
         assert!(
             mounted
@@ -13401,13 +13652,14 @@ async fn pending_terminal_fallback_paints_bounded_unwrapped_input_in_both_modes(
                 .workspace
                 .editor_row_preparation
                 .get_untracked()
-                .is_none()
+                .is_some_and(|preparation| preparation.completed == 0)
         );
-        assert!(actions.syntax_paint().1.is_empty());
-        assert!(actions.viewport_paint_ready(&[0, 1, 2]));
-        assert!(!actions.viewport_paint_ready(&[]));
-        assert!(!actions.viewport_paint_ready(&[100_001]));
-        assert!(!actions.viewport_paint_ready(&[0; 129]));
+        let neutral = actions.syntax_paint().1;
+        assert!(neutral.is_empty());
+        assert!(actions.initial_viewport_paint_ready(&[0, 1, 2], (false, &neutral)));
+        assert!(!actions.initial_viewport_paint_ready(&[], (false, &neutral)));
+        assert!(!actions.initial_viewport_paint_ready(&[100_001], (false, &neutral)));
+        assert!(!actions.initial_viewport_paint_ready(&[0; 129], (false, &neutral)));
         let textarea: web_sys::HtmlTextAreaElement =
             mounted.element(".editor-textarea").unchecked_into();
         assert!(textarea.value().len() <= 16 * 1024);
@@ -13482,13 +13734,13 @@ async fn pending_terminal_fallback_paints_bounded_unwrapped_input_in_both_modes(
             0.0,
             0.0,
         );
-        assert!(!actions.viewport_paint_ready(&[12_000]));
+        assert!(!actions.initial_viewport_paint_ready(&[12_000], (false, &neutral)));
         mounted
             .state
             .settings
             .editor_preferences
             .update(|preferences| preferences.word_wrap = true);
-        assert!(!actions.viewport_paint_ready(&[0]));
+        assert!(!actions.initial_viewport_paint_ready(&[0], (false, &neutral)));
         mounted
             .state
             .settings
@@ -13517,7 +13769,7 @@ async fn pending_terminal_fallback_paints_bounded_unwrapped_input_in_both_modes(
         .await;
         actions.begin_composition();
         assert!(actions.is_composing());
-        assert!(!actions.viewport_paint_ready(&[0]));
+        assert!(!actions.initial_viewport_paint_ready(&[0], (false, &neutral)));
         assert!(!actions.defer_viewport_paint(&[12_000]));
         assert!(actions.bound_native_context().is_some());
         actions.cancel_composition();
@@ -14722,7 +14974,7 @@ async fn unwrapped_startup_uses_bounded_initial_input_in_both_modes() {
         });
         let actions = saved.get().unwrap();
         super::support::wait_until_with_timeout(
-            "bounded initial unwrapped source geometry",
+            &format!("bounded initial unwrapped source geometry {mode:?}/{case}"),
             30_000,
             || {
                 actions.measured_rows().is_some()

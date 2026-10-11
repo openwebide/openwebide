@@ -1,0 +1,487 @@
+{
+  "case": "line-limit",
+  "mode": "local",
+  "wrap": true,
+  "repetition": 1,
+  "sourceBytes": 199998,
+  "inputToPaintMs": 1210.9000000022352,
+  "completeSourceAfterInputVerified": true,
+  "coldViewportPaintMs": 1270.4000000022352,
+  "coldCompleteGeometryMs": 1270.4000000022352,
+  "inputViewportPaintMs": 1188.800000000745,
+  "inputCompleteGeometryMs": 1188.800000000745,
+  "nativeEvents": [
+    {
+      "at": 1093.5,
+      "bound": false,
+      "elapsedMs": 0.4000000022351742,
+      "kind": "scrollWidth",
+      "phase": "cold"
+    },
+    {
+      "at": 1093.9000000022352,
+      "bound": false,
+      "elapsedMs": 0,
+      "kind": "scrollHeight",
+      "phase": "cold"
+    },
+    {
+      "at": 1101.7000000029802,
+      "bound": false,
+      "elapsedMs": 0,
+      "kind": "scrollWidth",
+      "phase": "cold"
+    },
+    {
+      "at": 1101.7000000029802,
+      "bound": false,
+      "elapsedMs": 0,
+      "kind": "scrollHeight",
+      "phase": "cold"
+    },
+    {
+      "at": 1103.2000000029802,
+      "bound": false,
+      "elapsedMs": 2.099999997764826,
+      "kind": "value",
+      "nativeLength": 12288,
+      "phase": "cold"
+    },
+    {
+      "at": 1359.7000000029802,
+      "bound": true,
+      "elapsedMs": 1.0999999977648258,
+      "kind": "beforeinput",
+      "phase": "input"
+    },
+    {
+      "at": 1365.9000000022352,
+      "bound": true,
+      "elapsedMs": 7.300000000745058,
+      "kind": "input",
+      "phase": "input"
+    },
+    {
+      "at": 1375,
+      "bound": true,
+      "elapsedMs": 44.20000000298023,
+      "kind": "value",
+      "nativeLength": 199999,
+      "phase": "input"
+    },
+    {
+      "at": 2100.300000000745,
+      "bound": false,
+      "elapsedMs": 0,
+      "kind": "scrollWidth",
+      "phase": "input"
+    },
+    {
+      "at": 2100.400000002235,
+      "bound": false,
+      "elapsedMs": 0,
+      "kind": "scrollHeight",
+      "phase": "input"
+    },
+    {
+      "at": 2100.60000000149,
+      "bound": false,
+      "elapsedMs": 0,
+      "kind": "scrollWidth",
+      "phase": "input"
+    },
+    {
+      "at": 2100.60000000149,
+      "bound": false,
+      "elapsedMs": 0,
+      "kind": "scrollHeight",
+      "phase": "input"
+    },
+    {
+      "at": 2100.7000000029802,
+      "bound": false,
+      "elapsedMs": 0,
+      "kind": "scrollWidth",
+      "phase": "input"
+    },
+    {
+      "at": 2100.7000000029802,
+      "bound": false,
+      "elapsedMs": 0,
+      "kind": "scrollHeight",
+      "phase": "input"
+    },
+    {
+      "at": 2357.900000002235,
+      "bound": false,
+      "elapsedMs": 0,
+      "kind": "scrollWidth",
+      "phase": "input"
+    },
+    {
+      "at": 2357.900000002235,
+      "bound": false,
+      "elapsedMs": 0,
+      "kind": "scrollHeight",
+      "phase": "input"
+    },
+    {
+      "at": 2452.2000000029802,
+      "bound": false,
+      "elapsedMs": 51.30000000074506,
+      "kind": "value",
+      "nativeLength": 12288,
+      "phase": "input"
+    }
+  ],
+  "preparationBatches": [
+    {
+      "at": 1242.4000000022352,
+      "fontFaces": [
+        {
+          "family": "Monaspace Neon",
+          "status": "loaded"
+        },
+        {
+          "family": "Monaspace Argon",
+          "status": "unloaded"
+        },
+        {
+          "family": "Monaspace Xenon",
+          "status": "unloaded"
+        },
+        {
+          "family": "Monaspace Radon",
+          "status": "unloaded"
+        },
+        {
+          "family": "Monaspace Krypton",
+          "status": "unloaded"
+        }
+      ],
+      "geometry": {
+        "elapsedMs": 0.09999999776482582,
+        "units": 128
+      },
+      "install": {
+        "elapsedMs": 0.19999999925494194,
+        "units": 14612
+      },
+      "layout": {
+        "elapsedMs": 4.300000004470348,
+        "units": 128
+      },
+      "phase": "cold",
+      "render": {
+        "elapsedMs": 0.3999999985098839,
+        "units": 256
+      },
+      "scope": {
+        "data-measure-account": "0",
+        "data-measure-font": "0",
+        "data-measure-layout": "0",
+        "data-measure-prepared": "false",
+        "data-measure-read": "3",
+        "data-measure-source": "0",
+        "data-measure-view": "1"
+      }
+    },
+    {
+      "at": 1250.2000000029802,
+      "fontFaces": [
+        {
+          "family": "Monaspace Neon",
+          "status": "loaded"
+        },
+        {
+          "family": "Monaspace Argon",
+          "status": "unloaded"
+        },
+        {
+          "family": "Monaspace Xenon",
+          "status": "unloaded"
+        },
+        {
+          "family": "Monaspace Radon",
+          "status": "unloaded"
+        },
+        {
+          "family": "Monaspace Krypton",
+          "status": "unloaded"
+        }
+      ],
+      "geometry": {
+        "elapsedMs": 0,
+        "units": 1
+      },
+      "install": {
+        "elapsedMs": 0,
+        "units": 116
+      },
+      "layout": {
+        "elapsedMs": 0.19999999925494194,
+        "units": 1
+      },
+      "phase": "cold",
+      "render": {
+        "elapsedMs": 0,
+        "units": 0
+      },
+      "scope": {
+        "data-measure-account": "0",
+        "data-measure-font": "0",
+        "data-measure-layout": "0",
+        "data-measure-prepared": "false",
+        "data-measure-read": "3",
+        "data-measure-source": "0",
+        "data-measure-view": "1"
+      }
+    },
+    {
+      "at": 2347.5,
+      "fontFaces": [
+        {
+          "family": "Monaspace Neon",
+          "status": "loaded"
+        },
+        {
+          "family": "Monaspace Argon",
+          "status": "unloaded"
+        },
+        {
+          "family": "Monaspace Xenon",
+          "status": "unloaded"
+        },
+        {
+          "family": "Monaspace Radon",
+          "status": "unloaded"
+        },
+        {
+          "family": "Monaspace Krypton",
+          "status": "unloaded"
+        }
+      ],
+      "geometry": {
+        "elapsedMs": 0,
+        "units": 1
+      },
+      "install": {
+        "elapsedMs": 0.10000000149011612,
+        "units": 114
+      },
+      "layout": {
+        "elapsedMs": 0.29999999701976776,
+        "units": 1
+      },
+      "phase": "input",
+      "render": {
+        "elapsedMs": 0.09999999776482582,
+        "units": 3
+      },
+      "scope": {
+        "data-measure-account": "0",
+        "data-measure-font": "0",
+        "data-measure-layout": "0",
+        "data-measure-prepared": "false",
+        "data-measure-read": "3",
+        "data-measure-source": "0",
+        "data-measure-view": "2"
+      }
+    }
+  ],
+  "longTaskEvents": [
+    {
+      "at": 743.1000000014901,
+      "durationMs": 73,
+      "observedAt": 822.9000000022352,
+      "phase": "cold",
+      "scope": null
+    },
+    {
+      "at": 824.2000000029802,
+      "durationMs": 84,
+      "observedAt": 915.4000000022352,
+      "phase": "cold",
+      "scope": null
+    },
+    {
+      "at": 1075.6000000014901,
+      "durationMs": 86,
+      "observedAt": 1228,
+      "phase": "cold",
+      "scope": "1"
+    },
+    {
+      "at": 1162.800000000745,
+      "durationMs": 61,
+      "observedAt": 1228,
+      "phase": "cold",
+      "scope": "1"
+    },
+    {
+      "at": 1374.800000000745,
+      "durationMs": 958,
+      "observedAt": 2541.2000000029802,
+      "phase": "input",
+      "scope": "2"
+    },
+    {
+      "at": 2360.7000000029802,
+      "durationMs": 180,
+      "observedAt": 2541.2000000029802,
+      "phase": "input",
+      "scope": "2"
+    }
+  ],
+  "peakChromePssKiB": 1032952,
+  "cpuProfileMetrics": [
+    {
+      "name": "Timestamp",
+      "value": 32819.395163
+    },
+    {
+      "name": "AudioHandlers",
+      "value": 0
+    },
+    {
+      "name": "AudioWorkletProcessors",
+      "value": 0
+    },
+    {
+      "name": "Documents",
+      "value": 2
+    },
+    {
+      "name": "Frames",
+      "value": 1
+    },
+    {
+      "name": "JSEventListeners",
+      "value": 378
+    },
+    {
+      "name": "LayoutObjects",
+      "value": 337815
+    },
+    {
+      "name": "MediaKeySessions",
+      "value": 0
+    },
+    {
+      "name": "MediaKeys",
+      "value": 0
+    },
+    {
+      "name": "Nodes",
+      "value": 226365
+    },
+    {
+      "name": "Resources",
+      "value": 73
+    },
+    {
+      "name": "ContextLifecycleStateObservers",
+      "value": 18
+    },
+    {
+      "name": "V8PerContextDatas",
+      "value": 1
+    },
+    {
+      "name": "WorkerGlobalScopes",
+      "value": 2
+    },
+    {
+      "name": "UACSSResources",
+      "value": 0
+    },
+    {
+      "name": "RTCPeerConnections",
+      "value": 0
+    },
+    {
+      "name": "ResourceFetchers",
+      "value": 6
+    },
+    {
+      "name": "AdSubframes",
+      "value": 0
+    },
+    {
+      "name": "DetachedScriptStates",
+      "value": 0
+    },
+    {
+      "name": "ArrayBufferContents",
+      "value": 15
+    },
+    {
+      "name": "LayoutCount",
+      "value": 57
+    },
+    {
+      "name": "RecalcStyleCount",
+      "value": 237
+    },
+    {
+      "name": "LayoutDuration",
+      "value": 0.650468
+    },
+    {
+      "name": "RecalcStyleDuration",
+      "value": 0.422253
+    },
+    {
+      "name": "DevToolsCommandDuration",
+      "value": 0.018448
+    },
+    {
+      "name": "ScriptDuration",
+      "value": 0.377308
+    },
+    {
+      "name": "V8CompileDuration",
+      "value": 0.000123
+    },
+    {
+      "name": "TaskDuration",
+      "value": 1.84185
+    },
+    {
+      "name": "TaskOtherDuration",
+      "value": 0.37325
+    },
+    {
+      "name": "ThreadTime",
+      "value": 1.838592
+    },
+    {
+      "name": "ProcessTime",
+      "value": 2.56
+    },
+    {
+      "name": "JSHeapUsedSize",
+      "value": 4413400
+    },
+    {
+      "name": "JSHeapTotalSize",
+      "value": 9232384
+    },
+    {
+      "name": "FirstMeaningfulPaint",
+      "value": 0
+    },
+    {
+      "name": "DomContentLoaded",
+      "value": 32815.715298
+    },
+    {
+      "name": "NavigationStart",
+      "value": 32815.566932
+    }
+  ],
+  "component": "readiness-memo candidate; diagnostic profile adds overhead",
+  "frontendWasmSha256": {
+    "openwebide-frontend-eeafa52ac70c1363_bg.wasm": "a902a6e151966ab4e0f23a1ccf5f679a44669b8c6a5925d7fb2d6cb00765aed6"
+  }
+}

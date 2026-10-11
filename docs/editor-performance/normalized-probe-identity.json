@@ -1,0 +1,48 @@
+{
+  "diagnosticOnly": true,
+  "terminalExitCode": 0,
+  "frontendBaseline": "f86dd7b production bundle; predates routing/indexed navigation/source-equality changes",
+  "backendBaseline": "Frozen 2e934df artifact; disposable database and projects only",
+  "frontendWasmSha256": {
+    "openwebide-frontend-9ac918c7fe68f4ea_bg.wasm": "938572480ec89146df1c7562fc31088939ca85df803d6df57b05ca8452ce1179"
+  },
+  "backendWasmSha256": "e15661c00f9b8d42efb10b5287ff2cc28c2549649534854a36851d84b213b0f1",
+  "scriptSha256": "a74181bfa5248e13ba280ecfbb031978192b200f450edaa81b0e89a3a8fe780d",
+  "logSha256": "cccf5b2933a9789951ed853030af422eaa87fc0f569cd2f1e1546cb2e86ba06b",
+  "samples": [
+    {
+      "mode": "local",
+      "sourceBytes": 1048567,
+      "completeSourceAfterInputVerified": true,
+      "probeIdentities": {
+        "extentDisagreements": 0,
+        "previousPhaseMatches": 0,
+        "samples": [],
+        "unique": 152,
+        "withinPhaseMatches": 0
+      },
+      "instrumentedViewportPaintMs": 259.8999999985099,
+      "instrumentedCompleteGeometryMs": 1256.0999999977648
+    },
+    {
+      "mode": "remote",
+      "sourceBytes": 1048567,
+      "completeSourceAfterInputVerified": true,
+      "probeIdentities": {
+        "extentDisagreements": 0,
+        "previousPhaseMatches": 0,
+        "samples": [],
+        "unique": 144,
+        "withinPhaseMatches": 0
+      },
+      "instrumentedViewportPaintMs": 271.0999999977648,
+      "instrumentedCompleteGeometryMs": 1289.800000000745
+    }
+  ],
+  "interpretation": "No identical normalized markup/style probe was observed within a phase or across startup/input in either mode. Source-position attributes alone do not explain missing identical probes in this workload.",
+  "limitations": [
+    "One diagnostic sample per mode from the earlier frozen production renderer; not verification of current runtime changes.",
+    "Clone/signature/map instrumentation adds overhead; timings are not performance improvement evidence.",
+    "No cached geometry was authorized, no fallback/measurement limit changed, and no completion gate is cleared."
+  ]
+}

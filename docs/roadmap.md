@@ -128,7 +128,32 @@ tracks the remaining work rather than every optimization already shipped.
   exists. All 638 core tests and strict native core/WASM frontend lint pass;
   the release both-mode navigation and stale source/project regression passes
   ([receipt](editor-performance/indexed-navigation-browser.json)). Hosted CI
-  for this candidate remains pending.
+  for `cf66d9e` passes all five jobs
+  ([receipt](editor-performance/grouped-ci-cf66d9e.json)).
+  Neutral fallback now uses a complete current source-owned document index
+  instead of allocating a second plain-token table; no-index callers retain
+  cooperative preparation. Logical readiness is separate from geometry proof:
+  unmeasured oversized rows retain complete native input, while source-owned
+  measured prefixes and paragraph coverage permit partial paint.
+  Deferred paint subscribes to memoized viewport readiness, and unchanged neutral
+  frames reuse their HTML. The complete 193-test editor/worker browser inventory,
+  129 native frontend tests and strict native/WASM lints pass; the previously
+  failing 55-test group passes twice without viewport diagnostics
+  ([receipt](editor-performance/indexed-neutral-browser.json)). Its production
+  comparison exposes a wrapped row-limit regression: median input-to-paint rises
+  from 247 ms to 1.12 s, with greater memory use
+  ([record](editor-performance/indexed-neutral-production-comparison.jsonl)).
+  The follow-up retains current source-owned native mappings through empty
+  geometry viewports, while stale ownership and preparation errors restore
+  complete native fallback. All 194 current editor/worker browser contracts,
+  129 native frontend tests and strict native/WASM lints pass
+  ([receipt](editor-performance/indexed-neutral-native-retention-browser.json)).
+  All 16 current production samples preserve complete source after edits.
+  Wrapped row-limit input improves from a 247 ms control median to 47 ms;
+  memory returns near the control range
+  ([comparison](editor-performance/indexed-neutral-native-retention-production.jsonl)).
+  Cold startup still takes 1.20–1.28 s, and unwrapped input establishes no gain.
+  Styled-boundary, overall memory and CI reliability gates remain open.
   Complete projection/native normalization, long word/context traversal and
   remaining synchronous selection publication still require bounded preparation.
 - [ ] **Tabbed, wrapped and bidirectional layout:** extend bounded preparation
@@ -154,7 +179,11 @@ tracks the remaining work rather than every optimization already shipped.
   incoming wrapping phases through first-row overflow and dense overlap; the latest
   repeated measurements still require 70 fresh probes and 1.1–1.2 seconds. New
   exact overlap samples have no shared visual-row word starts, and nonadjacent
-  probe markup/layout identities also remain unique. Publish source-owned current
+  probe markup/layout identities also remain unique. Removing absolute source
+  metadata from detached diagnostic signatures still produces no identical probes
+  in either mode ([receipt](editor-performance/normalized-probe-identity.json));
+  a whole-probe identity cache remains unsupported for this workload.
+  Publish source-owned current
   viewport coverage during long-row preparation without claiming complete extents
   or fabricating a caret at a partial endpoint; retain nonorigin and failed-proof
   fallbacks. The shared core now exposes conservative measured coverage with
@@ -202,7 +231,9 @@ tracks the remaining work rather than every optimization already shipped.
   reads during the key. The rebuilt full inventory passes all 191 editor tests
   plus the worker routing regression (192 unique tests), including both font
   matrices ([receipt](editor-performance/reply-routing-full-browser.json)).
-  Reverify hosted CI; cold layout costs and the horizontal-paint failure remain open.
+  Checkpoint `93ec875` also passes all five hosted jobs
+  ([receipt](editor-performance/grouped-ci-93ec875.json)). Cold layout costs
+  and the historical horizontal-paint failure cause remain open.
   The diagnostic-only follow-on passed all five hosted jobs
   ([receipt](editor-performance/grouped-ci-f5ad590.json)); it predates the cursor
   setup change and does not establish that failure's resolution. Extend
@@ -315,7 +346,14 @@ tracks the remaining work rather than every optimization already shipped.
   oversized-message fallback still need bounded preparation. Combined row scans retain the geometry contracts, but
   current production repeats still show 125–178 ms cold source-publication tasks
   and 64–69 ms input tasks; these
-  source/controller costs remain responsiveness targets. Bound remaining
+  source/controller costs remain responsiveness targets. Current `9dce60c` production
+  verifies full source in all 24 both-mode boundary samples
+  ([record](editor-performance/source-equality-production.jsonl)). Wrapped
+  row-count input still takes 241–247 ms versus 17–19 ms unwrapped; its
+  instrumented sample is mostly idle before one cheap measurement batch
+  ([profile](editor-performance/wrapped-row-count-profile.json)). Resolve the
+  neutral readiness path while preserving complete indexed source ownership.
+  Bound remaining
   initial capacity allocation, folded/bounded projection assembly, retained
   row/coordinate copies, changed indentation-guide copies and storage suffix
   byte/coordinate shifts. Long boundary rows still scan for admission. Revisit
