@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Batch editor row measurements before updating fold gutters and skip unchanged viewport/gutter styles. Preserve wrapped resize, scroll and caret behavior in both project modes; startup and memory work remains unfinished.
+
 - Repair the production-worker oracle and official browser-runner fixture for framed replies, including explicit child WASM initialization. Measure dense rows and embedded HTML/Markdown syntax readiness separately from early paint, retaining the existing verification limits.
 
 - Publish editor worker replies as bounded typed frames and route complete transactions directly into shared validation. Use typed replies in the cooperative fallback, retain full/warm language behavior and reject malformed or abandoned transactions without caching partial analysis. Allocation and end-to-end performance work remains on the roadmap.

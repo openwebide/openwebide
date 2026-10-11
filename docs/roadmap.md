@@ -190,6 +190,13 @@ prepared only one token row per unit. Small rows now share the existing 64-recor
   unchanged values; eight scroll/caret/geometry contracts pass in both modes
   ([receipt](editor-performance/scroll-paint-browser.json)). Native range
   measurement and full cold/input costs remain unfinished.
+  The shared viewport observer now applies changed viewport dimensions before
+  measuring wrapped rows, batches row reads before gutter writes, and skips
+  unchanged styles. Eight scroll/caret/wrapped-resize/stale-owner contracts pass
+  in both modes ([receipt](editor-performance/viewport-row-layout-browser.json)).
+  Twelve production observations retain separate paint/readiness/PSS metrics;
+  they do not establish a latency or memory gain
+  ([comparison](editor-performance/viewport-row-layout-production-summary.json)).
 - [ ] **Tabbed, wrapped and bidirectional geometry:** extend bounded preparation
   beyond eligible source-monotonic paragraphs with complete-word seams. Finish
   bidirectional visual-run windows, fine long-row paint, incremental glyph

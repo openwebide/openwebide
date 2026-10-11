@@ -1,0 +1,128 @@
+{
+  "scope": "Batch viewport row reads before gutter writes; production regression observations, not proof of an overall performance improvement",
+  "baseline": "framed-transport-current-production.jsonl",
+  "candidate": "viewport-row-layout-production.jsonl",
+  "summaries": [
+    {
+      "case": "dense-rows",
+      "mode": "local",
+      "samplesPerVersion": 2,
+      "beforeMedian": {
+        "inputViewportPaintMs": 14.100000001490116,
+        "inputSyntaxReadyMs": 44.149999998509884,
+        "coldSyntaxReadyMs": 1279.2000000029802,
+        "peakChromePssKiB": 705155.5,
+        "maxLongTaskMs": 106.5
+      },
+      "afterMedian": {
+        "inputViewportPaintMs": 15.100000001490116,
+        "inputSyntaxReadyMs": 46.25,
+        "coldSyntaxReadyMs": 1332.4999999925494,
+        "peakChromePssKiB": 701077.0,
+        "maxLongTaskMs": 123.5
+      }
+    },
+    {
+      "case": "dense-rows",
+      "mode": "remote",
+      "samplesPerVersion": 2,
+      "beforeMedian": {
+        "inputViewportPaintMs": 14.649999998509884,
+        "inputSyntaxReadyMs": 46.30000000447035,
+        "coldSyntaxReadyMs": 1307.1499999985099,
+        "peakChromePssKiB": 719367.0,
+        "maxLongTaskMs": 95.0
+      },
+      "afterMedian": {
+        "inputViewportPaintMs": 15.449999995529652,
+        "inputSyntaxReadyMs": 45.850000001490116,
+        "coldSyntaxReadyMs": 1261.0500000044703,
+        "peakChromePssKiB": 677824.0,
+        "maxLongTaskMs": 97.0
+      }
+    },
+    {
+      "case": "embedded-html",
+      "mode": "local",
+      "samplesPerVersion": 2,
+      "beforeMedian": {
+        "inputViewportPaintMs": 19.399999998509884,
+        "inputSyntaxReadyMs": 41.649999998509884,
+        "coldSyntaxReadyMs": 1130.7999999970198,
+        "peakChromePssKiB": 689605.0,
+        "maxLongTaskMs": 68.0
+      },
+      "afterMedian": {
+        "inputViewportPaintMs": 20.549999997019768,
+        "inputSyntaxReadyMs": 43.49999999254942,
+        "coldSyntaxReadyMs": 1169.7000000029802,
+        "peakChromePssKiB": 669224.0,
+        "maxLongTaskMs": 66.5
+      }
+    },
+    {
+      "case": "embedded-html",
+      "mode": "remote",
+      "samplesPerVersion": 2,
+      "beforeMedian": {
+        "inputViewportPaintMs": 21.100000001490116,
+        "inputSyntaxReadyMs": 42.50000000745058,
+        "coldSyntaxReadyMs": 1195.9500000029802,
+        "peakChromePssKiB": 689879.5,
+        "maxLongTaskMs": 70.0
+      },
+      "afterMedian": {
+        "inputViewportPaintMs": 21.700000002980232,
+        "inputSyntaxReadyMs": 46.29999999701977,
+        "coldSyntaxReadyMs": 1241.6000000014901,
+        "peakChromePssKiB": 693752.5,
+        "maxLongTaskMs": 72.5
+      }
+    },
+    {
+      "case": "embedded-markdown",
+      "mode": "local",
+      "samplesPerVersion": 2,
+      "beforeMedian": {
+        "inputViewportPaintMs": 10.950000002980232,
+        "inputSyntaxReadyMs": 60.29999999701977,
+        "coldSyntaxReadyMs": 1207.0500000044703,
+        "peakChromePssKiB": 674151.5,
+        "maxLongTaskMs": 66.5
+      },
+      "afterMedian": {
+        "inputViewportPaintMs": 11.899999998509884,
+        "inputSyntaxReadyMs": 58.5,
+        "coldSyntaxReadyMs": 1169.0000000074506,
+        "peakChromePssKiB": 670855.5,
+        "maxLongTaskMs": 64.0
+      }
+    },
+    {
+      "case": "embedded-markdown",
+      "mode": "remote",
+      "samplesPerVersion": 2,
+      "beforeMedian": {
+        "inputViewportPaintMs": 11.850000001490116,
+        "inputSyntaxReadyMs": 60.70000000298023,
+        "coldSyntaxReadyMs": 1170.7000000029802,
+        "peakChromePssKiB": 671837.5,
+        "maxLongTaskMs": 65.5
+      },
+      "afterMedian": {
+        "inputViewportPaintMs": 11.650000005960464,
+        "inputSyntaxReadyMs": 60.30000000447035,
+        "coldSyntaxReadyMs": 1215.1499999985099,
+        "peakChromePssKiB": 662667.0,
+        "maxLongTaskMs": 67.0
+      }
+    }
+  ],
+  "limits": "Unchanged source, record, readiness, input-paint, browser and font limits; untraced Chrome, four CPU quota, 10 GiB memory quota, process-tree PSS every 200 ms",
+  "limitations": [
+    "Two sequential samples per case/mode/version; noisy, nonrandomized timings do not establish a latency or memory gain",
+    "Startup long tasks and high Chrome process-tree memory remain",
+    "Unwrapped production cases do not close wrapped/bidi geometry or physical input/permission/accessibility gates",
+    "Local samples use database recovery rather than a physical directory handle"
+  ]
+}

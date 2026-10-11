@@ -365,11 +365,20 @@ export function observe_editor_viewport(input, overlay, onLayout) {
         frame = 0;
         if (!active || !input.isConnected || !overlay.isConnected) return;
         refresh_editor_scroll(input);
-        overlay.style.setProperty('--editor-viewport-height', `${scroll.clientHeight}px`);
-        overlay.style.setProperty('--editor-text-width', `${scroll.clientWidth}px`);
+        // Apply viewport changes before measuring wrapped rows, then snapshot
+        // all row heights before writing gutters to avoid repeated layout flushes.
+        const height = `${scroll.clientHeight}px`, width = `${scroll.clientWidth}px`;
+        const set = (element, name, value) => {
+            if (element.style.getPropertyValue(name) !== value) element.style.setProperty(name, value);
+        };
+        set(overlay, '--editor-viewport-height', height);
+        set(overlay, '--editor-text-width', width);
         const rows = overlay.querySelectorAll('.editor-source-line');
         const grips = pane.querySelectorAll('.editor-fold-row');
-        rows.forEach((row, index) => grips[index]?.style.setProperty('--editor-row-height', `${row.getBoundingClientRect().height}px`));
+        const heights = Array.from(rows, row => `${row.getBoundingClientRect().height}px`);
+        heights.forEach((height, index) => {
+            if (grips[index]) set(grips[index], '--editor-row-height', height);
+        });
         const changed = fontChanged, loaded = fontLoaded; fontChanged = false; fontLoaded = false;
         onLayout(changed, loaded);
     };
