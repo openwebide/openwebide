@@ -6308,3 +6308,66 @@ The roadmap now separates remaining requirements from checkpoint history,
 preserving the historical text in a linked archive without marking remaining
 implementation or device gates complete. The installed PWA still reports
 `cgWindowNotFound`, so physical input/permission checks remain unverified.
+
+A current production remote cold-unwrapped profile records 89 preparation batches
+and 92 layout probes, without truncated diagnostics
+([summary](editor-performance/cold-unwrapped-profile.json)). Whole-sample self CPU
+includes 1.09 seconds in Range rectangles and 0.91 seconds in client-width reads;
+it covers startup, scrolling and input, not exclusively cold geometry. Instrumented
+cold complete geometry takes 3.275 seconds. A candidate extends `ParagraphReplay`
+and the existing shared facade eligibility check to unwrapped current-source
+repetition; same bytes, paint topology and exact incoming dense overlap remain
+mandatory. Tabs reject replay and terminal extents remain fresh. Two native
+regressions pass exact geometry and rejection checks; production/browser checks
+remain pending, so this candidate is not shipped.
+
+The initial candidate browser run passes overlap fallback and the complete
+five-family font/feature/whitespace matrix, but fails the new positive-reuse
+assertion for plain Local source (zero current replays)
+([record](editor-performance/unwrapped-current-replay-first-browser.json)).
+All 660 native core tests pass. The revised fixture also invokes the retained
+paragraph oracle explicitly, so native uniform-row shortcuts cannot hide whether
+the candidate actually reuses measurements. That revised browser check and
+production candidate measurements remain pending.
+
+The explicit retained-oracle rerun still reports zero plain-source current replay
+([record](editor-performance/unwrapped-current-replay-oracle-browser.json)).
+The next candidate uses the existing shifted-suffix contract: identical source/
+paint topology and exact equality of every incoming overlap rectangle after
+translation, rather than additionally requiring fractional-origin bit identity.
+Terminal extents remain fresh and tabs remain ineligible. Browser verification
+is pending; no performance gain is credited.
+
+The exact-overlap candidate passes the real-browser regression in both modes:
+plain and styled Unicode source reuse completed measurements, preserve complete
+extents/every retained anchor after three beginning/end edits, and reject stale
+account scope
+([receipt](editor-performance/unwrapped-exact-overlap-browser.json)). The test
+takes 30.82 seconds. Strict native all-targets core lint passes. Production cold
+startup measurements and final-source expanded checks remain pending.
+
+The unwrapped candidate production cohort completes eight fresh wrapped/unwrapped
+local/remote samples with full edited source and non-null peak PSS
+([samples](editor-performance/unwrapped-current-production.jsonl),
+[manifest](editor-performance/unwrapped-current-production-manifest.json)). Cold
+unwrapped geometry improves from 2.84–3.45 seconds to 1.35–1.43 seconds;
+unwrapped edit paint remains 117–125 ms. This is still above the overall
+responsiveness target. Final expanded checks remain pending before shipping.
+
+Hosted UI job `114410447815` for `4fb3c637` exhausts its 300-second whole-group
+deadline after the expanded wrapped replay test passes in about 253 seconds.
+The 57-test group reports only eleven completed tests; this does not establish
+full-suite completion. Other preceding UI partitions pass. The runner candidate
+gives near-limit replay contracts independent browser runs, preserving every test,
+readiness assertion, the 300-second deadline, independent font matrices and the
+64-test group cap. Compiled-inventory plan verification remains pending.
+
+The official runner verifies the candidate component partition plan: all 172
+compiled component contracts are assigned exactly once, in three 56-test groups
+and four independent runs (two replay contracts and two font matrices)
+([plan](editor-performance/independent-replay-plan.json)). This verifies selection,
+not execution. Hosted `4fb3c637` finishes with four green jobs and the UI-group
+timeout
+([receipt](editor-performance/grouped-ci-4fb3c637-failure.json)). The partition
+change preserves the 300-second deadline and every assertion; hosted rerun is
+required before claiming CI recovery.

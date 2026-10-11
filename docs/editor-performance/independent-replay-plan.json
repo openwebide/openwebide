@@ -1,0 +1,53 @@
+{
+  "scope": "Compiled candidate components only; library/worker and hosted full execution remain separate requirements.",
+  "plan": [
+    {
+      "editorTests": 172,
+      "browserRuns": 7,
+      "planOnly": true
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/open-webide/target/wasm32-unknown-unknown/release/deps/components-b1689f6811ad5514.wasm",
+      "tests": 56,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/open-webide/target/wasm32-unknown-unknown/release/deps/components-b1689f6811ad5514.wasm",
+      "tests": 56,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/open-webide/target/wasm32-unknown-unknown/release/deps/components-b1689f6811ad5514.wasm",
+      "tests": 56,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/open-webide/target/wasm32-unknown-unknown/release/deps/components-b1689f6811ad5514.wasm",
+      "tests": 1,
+      "matrix": true,
+      "independent": true
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/open-webide/target/wasm32-unknown-unknown/release/deps/components-b1689f6811ad5514.wasm",
+      "tests": 1,
+      "matrix": false,
+      "independent": true
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/open-webide/target/wasm32-unknown-unknown/release/deps/components-b1689f6811ad5514.wasm",
+      "tests": 1,
+      "matrix": true,
+      "independent": true
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/open-webide/target/wasm32-unknown-unknown/release/deps/components-b1689f6811ad5514.wasm",
+      "tests": 1,
+      "matrix": false,
+      "independent": true
+    }
+  ],
+  "exactSelectionAndDisjointInventoryVerified": true
+}

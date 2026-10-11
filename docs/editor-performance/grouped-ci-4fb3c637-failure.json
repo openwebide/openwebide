@@ -1,0 +1,39 @@
+{
+  "status": "completed",
+  "conclusion": "failure",
+  "headSha": "4fb3c63747f333032ded2c18b152e11ca5e5a684",
+  "runId": 38119272666,
+  "jobs": [
+    {
+      "name": "frontend",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38119272666/job/114410447670"
+    },
+    {
+      "name": "backend-and-crates",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38119272666/job/114410447761"
+    },
+    {
+      "name": "bridge-windows",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38119272666/job/114410447774"
+    },
+    {
+      "name": "frontend-ui-tests",
+      "status": "completed",
+      "conclusion": "failure",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38119272666/job/114410447815"
+    },
+    {
+      "name": "docker",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38119272666/job/114410447862"
+    }
+  ],
+  "failure": "Browser group exceeded its unchanged 300-second deadline; expanded wrapped replay passed after about 253 seconds, leaving insufficient time for the remaining group."
+}

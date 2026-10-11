@@ -1,0 +1,10 @@
+{
+  "sourceHead": "2d7e5b970ef9e70beb4a63b2e6613ee14367b483",
+  "sourceDiffSha256": "a8afca5a51382a0bab0fed024ca290b9810534d323b3f9bff60e78da90dfca15",
+  "backendWasmSha256": "8efc2579446963f530f5774fdcbe2223bbc6b974eb54d8221a768ff1c43232af",
+  "measurementScriptSha256": "8e810dc178ce0a2469a6b6f315d92896ed81cdc51a359c17fe521af4596d001e",
+  "frontendWasmSha256": {
+    "openwebide-frontend-40bda3e4eb513288_bg.wasm": "bc705a9e7a544bbda3420b8e33c8f6b709dbd1a97f453d79287651adf4291dee"
+  },
+  "scope": "Uncommitted unwrapped exact-overlap replay candidate; same alpha.5 metadata and retained backend as 4fb3c637 boundary baseline."
+}

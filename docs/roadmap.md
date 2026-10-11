@@ -74,7 +74,20 @@ wrapping on/off. Byte-limit edits paint in 59–69 ms and row-limit edits in
 32–60 ms; styled long-line cold preparation still takes 2.84–3.45 seconds
 without wrapping
 ([boundary summary](editor-performance/background-priority-boundary-summary.json)).
-That cold styled preparation is the next measured target. Hosted CI remains pending.
+That cold styled preparation is the next measured target. Its instrumented
+profile records 89 preparation batches, dominated by browser layout/range reads
+([diagnostic](editor-performance/cold-unwrapped-profile.json)). A candidate extends
+the shared replay contract to unwrapped repeated text with identical source/style
+boundaries and exact incoming measured geometry (the existing suffix-replay
+proof). Native
+anchor/extent and corrupt-overlap/tab rejection regressions pass; the exact-overlap browser regression also passes in both modes, including
+positive plain/styled Unicode reuse and full-renderer checks after edits
+([receipt](editor-performance/unwrapped-exact-overlap-browser.json)). Eight production candidate samples preserve full edited source; cold unwrapped
+geometry improves to 1.35–1.43 seconds
+([samples](editor-performance/unwrapped-current-production.jsonl)). Final-source
+expanded checks remain pending. Hosted UI tests hit their 300-second group
+deadline after the long wrapped replay contract passes; independent replay
+partitions are being verified without changing deadlines or coverage.
 
 **Remaining implementation** (all items remain part of this editor goal):
 

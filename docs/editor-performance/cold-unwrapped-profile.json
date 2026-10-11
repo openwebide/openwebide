@@ -1,0 +1,32 @@
+{
+  "checkpoint": "4fb3c637",
+  "scope": "One instrumented remote cold unwrapped styled near-limit source; whole sample CPU includes startup, scrolling and input.",
+  "rawSha256": "fe80ad7c139026b236e2341e3dc6e29a226f6d45f8447d4ec4f635fdbdc71840",
+  "completeSourceAfterInputVerified": true,
+  "coldViewportPaintMs": 3274.89999999851,
+  "coldCompleteGeometryMs": 3275,
+  "inputViewportPaintMs": 125.89999999850988,
+  "preparationBatchCount": 89,
+  "coldBatches": 87,
+  "layoutProbeCount": 92,
+  "traceTruncated": false,
+  "wholeSampleSelfCpuMs": {
+    "(idle)": 1887.17,
+    "Range.getClientRects": 1087.75,
+    "__wbg_clientWidth_669677d957e958c7": 911.01,
+    "(program)": 267.27,
+    "wasm-function[1214]": 66.73,
+    "(garbage collector)": 46.94,
+    "": 34.44,
+    "paragraphRangeRectangles": 31.6,
+    "passStringToWasm0": 29.02,
+    "get": 26.66,
+    "wasm-function[1219]": 20.96,
+    "wasm-function[24642]": 17.78,
+    "observe_element_width": 16.8,
+    "wasm-function[13272]": 16.54
+  },
+  "frontendWasmSha256": {
+    "openwebide-frontend-226aa795ca8f0b46_bg.wasm": "804d620998027df00f7ddf51ddc20e89148c6d6e5b254c7ae91ac3dc56d21062"
+  }
+}

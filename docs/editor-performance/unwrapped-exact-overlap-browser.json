@@ -1,0 +1,13 @@
+{
+  "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+  "console": "Invoking test: editor::current_unwrapped_replay_preserves_complete_unicode_geometry_in_both_modes\n",
+  "output": "\nrunning 1 test\ntest editor::current_unwrapped_replay_preserves_complete_unicode_geometry_in_both_modes ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 filtered out; finished in 30.82s\n\n",
+  "passed": true,
+  "tests": [
+    "__wbgt__components::editor::current_unwrapped_replay_preserves_complete_unicode_geometry_in_both_modes"
+  ],
+  "servedFonts": {
+    "/fonts/MonaspaceNeon-v1.400.woff2": "6569968f448ae856ab5b57dff1f13b109b220ca8e3f664169e135fcb5c4f0721"
+  },
+  "libraryStartSuppressed": false
+}

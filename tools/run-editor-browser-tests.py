@@ -3,7 +3,8 @@
 
 Use Cargo's current test artifacts and the official runner's test inventory.
 Each group starts a fresh browser with the existing runner/readiness deadlines.
-The expensive font matrices retain their independent runs. --check verifies the
+The expensive font matrices and near-limit replay contracts retain independent
+runs. --check verifies the
 complete selection plan without executing tests; --artifact accepts built WASM.
 """
 import argparse
@@ -16,6 +17,10 @@ import subprocess
 MATRICES = {
     "bounded_paragraph_geometry_preserves_fonts_features_and_whitespace_in_both_modes",
     "paragraph_limit_geometry_matches_complete_rows_in_both_modes",
+}
+LONG_REPLAYS = {
+    "wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes",
+    "current_unwrapped_replay_preserves_complete_unicode_geometry_in_both_modes",
 }
 ROOT = Path(__file__).resolve().parent.parent
 FRONTEND = ROOT / "frontend"
@@ -55,7 +60,10 @@ def plan(runner, files, maximum):
         total += len(names)
         matrices = {name for name in names if name.rsplit("::", 1)[-1] in MATRICES}
         found_matrices.extend(name.rsplit("::", 1)[-1] for name in matrices)
-        ordinary = sorted(names - matrices)
+        independent = matrices | {
+            name for name in names if name.rsplit("::", 1)[-1] in LONG_REPLAYS
+        }
+        ordinary = sorted(names - independent)
         groups = (len(ordinary) + maximum - 1) // maximum
         assigned = set()
         for group in range(groups):
@@ -68,9 +76,9 @@ def plan(runner, files, maximum):
             assert not assigned & actual, "A test was assigned to multiple groups"
             assigned |= actual
             runs.append((artifact, ["editor::", *arguments], len(actual)))
-        for name in sorted(matrices):
+        for name in sorted(independent):
             output = subprocess.check_output([runner, str(artifact), name, "--exact", "--list"], text=True, cwd=FRONTEND)
-            assert output.splitlines() == [f"{name}: test"], f"Matrix selection differs: {name}"
+            assert output.splitlines() == [f"{name}: test"], f"Independent selection differs: {name}"
             assigned.add(name)
             runs.append((artifact, [name, "--exact"], 1))
         assert assigned == names, f"Some editor tests are unassigned in {artifact}"
@@ -93,7 +101,8 @@ def main():
     runs, total = plan(runner, files, args.max_tests)
     print(json.dumps({"editorTests": total, "browserRuns": len(runs), "planOnly": args.check}), flush=True)
     for artifact, arguments, count in runs:
-        print(json.dumps({"artifact": str(artifact), "tests": count, "matrix": "--exact" in arguments}), flush=True)
+        print(json.dumps({"artifact": str(artifact), "tests": count, "matrix": arguments[0].rsplit("::", 1)[-1] in MATRICES,
+                          "independent": "--exact" in arguments}), flush=True)
         if not args.check:
             subprocess.run([runner, str(artifact), *arguments], check=True, cwd=FRONTEND)
 
