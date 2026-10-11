@@ -676,6 +676,7 @@ impl EditorActions {
                     Some((paint.prepared_source, paint.tokens.clone())),
                     paint.whitespace,
                 ) {
+                    self.reconcile_paragraph_measurements(&paint);
                     self.workspace.editor_row_cache.set(Some(
                         crate::state::workspace::EditorRowCache { paint, rows },
                     ));

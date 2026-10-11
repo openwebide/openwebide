@@ -159,11 +159,12 @@ impl EditorActions {
         has_token_rows || (!self.syntax_is_pending() && self.source_line_count().is_some())
     }
 
-    /// Preserve grammar paint across pending analysis, even when the retained
-    /// generation is temporarily neutral. Plain documents can publish current
-    /// text immediately, once terminal fallback has a complete source index.
+    /// Keep the previous frame only when current source cannot yet be painted.
+    /// Owned retained grammar rows can repaint now: matching rows keep colors,
+    /// changed rows borrow current text. Terminal fallback retains its index gate.
     pub fn retain_pending_paint(self, prepared_source: bool, has_rows: bool) -> bool {
         self.syntax_is_pending()
+            && self.retained_paint().is_none()
             && (prepared_source
                 || (has_rows
                     && (!self.full_row_paint_ready()
@@ -329,6 +330,8 @@ impl EditorActions {
             (true, tokens)
         } else if let Some(paint) = self.fallback_paint() {
             paint
+        } else if let Some(tokens) = self.retained_paint() {
+            (false, tokens)
         } else if self.syntax_is_pending() {
             (false, std::sync::Arc::new(Vec::new()))
         } else {
@@ -346,12 +349,38 @@ impl EditorActions {
         }
     }
 
-    /// Neutral rows always borrow the immutable projection. Completing a plain
-    /// token table changes preparation readiness, not row styling or geometry.
+    /// Retain grammar colors within the same document ownership. Consumers must
+    /// validate each row against current source before using these older tokens.
+    fn retained_paint(self) -> Option<std::sync::Arc<openwebide_core::highlight::TokenRows>> {
+        if !self.workspace.editor_worker_active.get_untracked() {
+            return None;
+        }
+        self.workspace
+            .editor_preparation
+            .with_untracked(|prepared| {
+                let prepared = prepared.as_ref()?;
+                let scope = &prepared.scope;
+                (self.key().as_ref() == Some(&scope.key)
+                    && self.workspace.pending_epoch.get_untracked() == scope.epoch
+                    && self.workspace.editor_read_revision.get_untracked() == scope.read_revision
+                    && self.account_generation() == scope.account_generation
+                    && self.rules_untracked().indentation.tab_width() == scope.tab_width)
+                    .then(|| prepared.analysis.as_ref()?.highlights().cloned())
+                    .flatten()
+            })
+    }
+
+    /// Empty neutral rows borrow the immutable projection. Retained grammar
+    /// rows stay provisional and are validated against current source by paint.
     pub fn render_paint(
+        self,
         paint: (bool, std::sync::Arc<openwebide_core::highlight::TokenRows>),
     ) -> (bool, std::sync::Arc<openwebide_core::highlight::TokenRows>) {
-        if paint.0 {
+        if paint.0
+            || self
+                .retained_paint()
+                .is_some_and(|rows| std::sync::Arc::ptr_eq(&rows, &paint.1))
+        {
             paint
         } else {
             (false, Self::neutral_tokens())

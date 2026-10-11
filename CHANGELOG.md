@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Paint current editor text while grammar analysis is pending, retaining unchanged syntax fragments through a shared borrowed-span model. Promote matching provisional paragraph measurements when final grammar arrives, preserving exact caret geometry in both project modes.
+
 - Restore strict project-site builds by listing the archived editor checkpoint history in navigation and correcting its moved relative links.
 
 - Skip parser-context preparation for literal character commands in the shared editor facade, retaining pairing and structural-command preparation in both project modes.

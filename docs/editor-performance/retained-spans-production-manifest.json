@@ -1,0 +1,18 @@
+{
+  "sourceHead": "cdc8a2368cdaf9ef6536ad9cde86523b87a14d5f",
+  "sourceFilesSha256": {
+    "crates/core/src/highlight/paint.rs": "deb322ff9ac37b5c2dbd8502cf819a8f9c1bfb17c761eff7040582be7f92dbe3",
+    "crates/core/src/highlight.rs": "0eafda9e669f5e71f044dbc73f22742b3509493d62840c5d9b68807db1796df1",
+    "crates/core/src/editor/paint_runs.rs": "5f9a6aac419ae7ae5e911e0b3e52b34ef01d118d19e2ff528aa72a76f1ed869f",
+    "frontend/src/components/editor.rs": "174878f935949e7f38a73efcc9eac8a37f0df3513e3e19b03f9d33c71719744d",
+    "frontend/src/state_actions/editor.rs": "296c30103a8e28f563cae1ddfdad4b04b3863df4e50b068adec13322a6580d1c",
+    "frontend/src/state_actions/editor/preparation.rs": "6aac00c0f54a4e8c5745341c85f90e290ee21cacbae5c0d348855f6d2c68f2ba",
+    "frontend/src/state_actions/editor/rows.rs": "8265eec3bc031672a9b7b3ad9938996308e619e2ba7037b5c247dcbe2247ff13"
+  },
+  "backendWasmSha256": "8efc2579446963f530f5774fdcbe2223bbc6b974eb54d8221a768ff1c43232af",
+  "measurementScriptSha256": "8e810dc178ce0a2469a6b6f315d92896ed81cdc51a359c17fe521af4596d001e",
+  "frontendWasmSha256": {
+    "openwebide-frontend-ce70067f350b94db_bg.wasm": "bbb6bc4c5bceef949c0f8787b5a7d0ba7a915dbd3ec9284d49179ad27d8c2993"
+  },
+  "scope": "Uncommitted retained current-source syntax spans and provisional-to-final geometry handoff; same retained backend as recorded visibility baseline."
+}

@@ -2,9 +2,11 @@
 use super::EditorActions;
 use crate::state::workspace::EditorRowPaint;
 use leptos::prelude::*;
+#[cfg(test)]
+use openwebide_core::highlight::Token;
 use openwebide_core::{
     editor::{FoldProjection, Indentation, RowMeasurementPlan},
-    highlight::Token,
+    highlight::{PaintToken, RowPaintTokens},
 };
 use std::{
     hash::{Hash, Hasher},
@@ -12,7 +14,7 @@ use std::{
 };
 
 struct PaintRow<'a> {
-    tokens: &'a [Token],
+    tokens: RowPaintTokens<'a>,
     plain: Option<&'a str>,
     guide: usize,
     normalize_cr: bool,
@@ -27,19 +29,19 @@ impl PartialEq for PaintRow<'_> {
             && self
                 .tokens
                 .iter()
-                .zip(other.tokens)
+                .zip(other.tokens.iter())
                 .enumerate()
                 .all(|(index, (a, b))| {
                     let last = index + 1 == self.tokens.len();
                     let a_text = if last && self.normalize_cr {
-                        a.text.strip_suffix('\r').unwrap_or(&a.text)
+                        a.text.strip_suffix('\r').unwrap_or(a.text)
                     } else {
-                        &a.text
+                        a.text
                     };
                     let b_text = if last && other.normalize_cr {
-                        b.text.strip_suffix('\r').unwrap_or(&b.text)
+                        b.text.strip_suffix('\r').unwrap_or(b.text)
                     } else {
-                        &b.text
+                        b.text
                     };
                     a.kind == b.kind && a_text == b_text
                 })
@@ -55,9 +57,9 @@ impl Hash for PaintRow<'_> {
         for (index, token) in self.tokens.iter().enumerate() {
             std::mem::discriminant(&token.kind).hash(state);
             let text = if self.normalize_cr && index + 1 == self.tokens.len() {
-                token.text.strip_suffix('\r').unwrap_or(&token.text)
+                token.text.strip_suffix('\r').unwrap_or(token.text)
             } else {
-                &token.text
+                token.text
             };
             text.hash(state);
         }
@@ -65,29 +67,28 @@ impl Hash for PaintRow<'_> {
 }
 fn paint_row(paint: &EditorRowPaint, index: usize) -> Option<PaintRow<'_>> {
     let source = paint.projection.lines().get(index)?.source_line;
+    let current = paint.projection.line_body(index)?;
     let mut tokens = match paint.tokens.get(source) {
-        Some(tokens) => tokens.as_ref(),
-        None if !paint.prepared_source => &[],
-        None => return None,
+        Some(tokens) if paint.prepared_source => {
+            RowPaintTokens::prepared(tokens, source + 1 < paint.tokens.len())
+        }
+        Some(tokens) => RowPaintTokens::current(tokens, current, source + 1 < paint.tokens.len()),
+        None => RowPaintTokens::prepared(&[], false),
     };
-    let normalize_cr = paint.prepared_source && source + 1 < paint.tokens.len();
-    let plain = if let [token] = tokens
+    let mut spans = tokens.iter();
+    let first = spans.next();
+    let plain = if let Some(token) = first
         && token.kind == openwebide_core::highlight::TokenKind::Plain
+        && spans.next().is_none()
     {
-        // Both render paths call paint_text once with the same row body. Keep
-        // multiple token runs distinct: their span boundaries can affect shaping.
-        let body = if normalize_cr {
-            token.text.strip_suffix('\r').unwrap_or(&token.text)
-        } else {
-            &token.text
-        };
-        tokens = &[];
-        Some(body)
-    } else if !paint.prepared_source && paint.tokens.get(source).is_none() {
-        Some(paint.projection.line_body(index)?)
+        tokens = RowPaintTokens::prepared(&[], false);
+        Some(token.text)
+    } else if paint.tokens.get(source).is_none() {
+        Some(current)
     } else {
         None
     };
+    let normalize_cr = false;
     Some(PaintRow {
         tokens,
         plain,
@@ -112,7 +113,7 @@ fn paint_prefix_end(old: &PaintRow<'_>, new: &PaintRow<'_>) -> usize {
         return 0;
     }
     let mut end = 0;
-    for (old, new) in old.tokens.iter().zip(new.tokens) {
+    for (old, new) in old.tokens.iter().zip(new.tokens.iter()) {
         if old.kind != new.kind || (old.text.len() > 512) != (new.text.len() > 512) {
             break;
         }
@@ -139,11 +140,11 @@ fn paint_suffix_start(old: &PaintRow<'_>, new: &PaintRow<'_>) -> Option<usize> {
     if old.plain.is_some() || new.plain.is_some() || old.normalize_cr != new.normalize_cr {
         return None;
     }
-    fn text<'a>(row: &PaintRow<'_>, token: &'a Token, last: bool) -> &'a str {
+    fn text<'a>(row: &PaintRow<'_>, token: PaintToken<'a>, last: bool) -> &'a str {
         if row.normalize_cr && last {
-            token.text.strip_suffix('\r').unwrap_or(&token.text)
+            token.text.strip_suffix('\r').unwrap_or(token.text)
         } else {
-            &token.text
+            token.text
         }
     }
     let length = |row: &PaintRow<'_>| {
@@ -215,8 +216,8 @@ fn styled_paint_runs(body: &str, row: &PaintRow<'_>, max_runs: usize) -> Option<
     if row.plain.is_some() {
         return None;
     }
-    let mut preparation = openwebide_core::editor::PaintRunPreparation::new(
-        row.tokens,
+    let mut preparation = openwebide_core::editor::PaintRunPreparation::from_rows(
+        row.tokens.clone(),
         body.len(),
         row.normalize_cr,
         max_runs,
@@ -535,10 +536,11 @@ impl EditorActions {
             return;
         }
         self.workspace.editor_paragraph_cache.update(|cache| {
-            // A pending plain paint must not evict the last styled measurements.
+            // A pending neutral paint must not evict the last styled measurements.
             // Consumers still require exact current source/style ownership; the
             // retained cache is only a candidate for validated incremental replay.
             if !paint.prepared_source
+                && paint.tokens.is_empty()
                 && cache.as_ref().is_some_and(|old| {
                     old.paint.prepared_source && same_measurement_environment(&old.paint, paint)
                 })
@@ -567,6 +569,28 @@ impl EditorActions {
                 paint: paint.clone(),
                 rows,
             });
+        });
+    }
+    /// Final grammar can have exactly the same spans as provisional paint. A
+    /// reused row then needs no DOM probe, but its measurements must acquire the
+    /// new ownership before consumers can use them.
+    pub(super) fn reconcile_paragraph_measurements(self, paint: &EditorRowPaint) {
+        if !self.row_paint_current(paint) || (!paint.prepared_source && paint.tokens.is_empty()) {
+            return;
+        }
+        self.workspace.editor_paragraph_cache.update(|cache| {
+            let Some(previous) = cache.as_mut() else {
+                return;
+            };
+            if !same_measurement_environment(&previous.paint, paint) {
+                return;
+            }
+            previous.rows.retain(|(row, _)| {
+                paint_row(&previous.paint, *row)
+                    .zip(paint_row(paint, *row))
+                    .is_some_and(|(old, new)| old == new)
+            });
+            previous.paint = paint.clone();
         });
     }
     pub fn paint_window(
@@ -1250,8 +1274,8 @@ impl EditorActions {
     ) -> Result<Option<Arc<[usize]>>, ()> {
         #[cfg(feature = "test-support")]
         PAINT_RUN_PREPARATIONS.set(PAINT_RUN_PREPARATIONS.get() + 1);
-        let mut preparation = openwebide_core::editor::PaintRunPreparation::new(
-            style.tokens,
+        let mut preparation = openwebide_core::editor::PaintRunPreparation::from_rows(
+            style.tokens.clone(),
             body.len(),
             style.normalize_cr,
             max_runs,
@@ -1861,7 +1885,7 @@ mod tests {
             text: "a".repeat(openwebide_core::editor::MAX_EDITOR_LINE_BYTES),
         }];
         let row = PaintRow {
-            tokens: &tokens,
+            tokens: RowPaintTokens::prepared(&tokens, false),
             plain: None,
             guide: 0,
             normalize_cr: false,
@@ -1893,7 +1917,7 @@ mod tests {
             .collect::<String>();
         assert!(full.len() < openwebide_core::editor::MAX_EDITOR_LINE_BYTES);
         let limited = PaintRow {
-            tokens: &nearly_full,
+            tokens: RowPaintTokens::prepared(&nearly_full, false),
             ..row
         };
         take_paint_run_segment_bytes();
@@ -1912,7 +1936,7 @@ mod tests {
             .map(|token| token.text.as_str())
             .collect::<String>();
         let row = PaintRow {
-            tokens: &combined,
+            tokens: RowPaintTokens::prepared(&combined, false),
             ..row
         };
         take_paint_run_segment_bytes();
@@ -1938,7 +1962,7 @@ mod tests {
                     text: body.clone() + suffix,
                 }];
                 let row = PaintRow {
-                    tokens: &tokens,
+                    tokens: RowPaintTokens::prepared(&tokens, false),
                     plain: None,
                     guide: 0,
                     normalize_cr: !suffix.is_empty(),
@@ -2022,7 +2046,7 @@ mod tests {
         changed[1].kind = TokenKind::Plain;
         fn row(tokens: &[Token]) -> PaintRow<'_> {
             PaintRow {
-                tokens,
+                tokens: RowPaintTokens::prepared(tokens, false),
                 plain: None,
                 guide: 0,
                 normalize_cr: false,
@@ -2053,16 +2077,21 @@ mod tests {
     #[wasm_bindgen_test::wasm_bindgen_test]
     fn paragraph_prefix_rejects_changed_guides_and_line_ending_paint() {
         let old = PaintRow {
-            tokens: &[],
+            tokens: RowPaintTokens::prepared(&[], false),
             plain: Some("same words"),
             guide: 1,
             normalize_cr: false,
             ending: false,
         };
-        let changed = PaintRow { guide: 2, ..old };
+        let changed = PaintRow {
+            guide: 2,
+            tokens: old.tokens.clone(),
+            ..old
+        };
         assert_eq!(paint_prefix_end(&old, &changed), 0);
         let changed = PaintRow {
             ending: true,
+            tokens: old.tokens.clone(),
             ..old
         };
         assert_eq!(paint_prefix_end(&old, &changed), 0);
@@ -2076,7 +2105,7 @@ mod tests {
         }];
         fn row(tokens: &[Token]) -> PaintRow<'_> {
             PaintRow {
-                tokens,
+                tokens: RowPaintTokens::prepared(tokens, false),
                 plain: None,
                 guide: 0,
                 normalize_cr: false,
@@ -2112,7 +2141,7 @@ mod tests {
                 ..row(&tokens)
             },
             PaintRow {
-                tokens: &[],
+                tokens: RowPaintTokens::prepared(&[], false),
                 plain: Some(&tokens[0].text),
                 ..row(&tokens)
             },

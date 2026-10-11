@@ -87,8 +87,8 @@ Cold preparation and memory remain unfinished. The prior hosted browser groups
 hit their 300-second deadline after the long wrapped replay contract passed;
 independent replay partitions now preserve coverage and deadlines. Hosted CI for
 the partition fix passes all five jobs
-([receipt](editor-performance/grouped-ci-2bdd9a8-success.json)); the new runtime
-checkpoint still needs its browser job to finish.
+([receipt](editor-performance/grouped-ci-2bdd9a8-success.json)); the latest pushed checkpoint `cdc8a23` also passes all five jobs
+([receipt](editor-performance/editor-ci-cdc8a23-success.json)).
 
 **Remaining implementation** (all items remain part of this editor goal):
 
@@ -107,6 +107,17 @@ checkpoint still needs its browser job to finish.
   until about 177 ms despite native input changing by about 7 ms
   ([evidence](editor-performance/embedded-markdown-visibility.json)). Publish
   current text during pending analysis while retaining valid styles/decorations.
+  A repaint candidate retains matching cached rows and borrows changed-row text;
+  its held-parser browser regression now passes in both modes
+  ([receipt](editor-performance/retained-spans-handoff-browser.json)). Borrowed span retention now also passes the held-parser regression for edits
+  inside a keyword, preserving unchanged fragments and later string colors.
+  The provisional-to-final measurement handoff now passes the existing shifted-
+  suffix geometry contract, including emoji and combining-character insertion,
+  in both modes ([receipt](editor-performance/retained-spans-handoff-browser.json)).
+  Sixteen fresh production samples preserve full source, with small Remote
+  Markdown input paint at 24.5–25 ms
+  ([samples](editor-performance/retained-spans-embedded-production.jsonl)); the
+  12 ms budget and broader boundary/memory requirements remain unfinished.
 - [ ] **Cold startup and native input:** bound remaining complete-source shaping,
   projection/native normalization, long word/context traversal and synchronous
   selection publication. Finish source-owned touch caret/selection and native
@@ -164,8 +175,11 @@ checkpoint still needs its browser job to finish.
   matrices and every other UI partition. Repeat warm highlight/row reuse,
   file-switch cancellation, cold queued-input source/selection ownership,
   host-plugin focus/layout and explicit Output/terminal targeting. Validate bounded
-  setup retries after upstream Chrome download failures. Latest pushed predecessor
-  `1b271c81` passed all five jobs; CI for `4fb3c637` is running.
+  setup retries after upstream Chrome download failures. Latest pushed checkpoint
+  `cdc8a23` passes all five jobs
+  ([receipt](editor-performance/editor-ci-cdc8a23-success.json)); the retained-span checkpoint passes six focused browser contracts, ten WASM
+  library geometry/ownership contracts, strict WASM frontend lint and 16 fresh
+  production samples. Hosted CI for that checkpoint remains to be verified.
 - [ ] **Physical Chrome/Edge PWA input:** verify real input-method commit/cancel,
   Unicode and LF/CRLF undo/redo, multiple-cursor clipboard transactions and touch
   without rewriting unrelated source. Automated Chromium composition/pointer

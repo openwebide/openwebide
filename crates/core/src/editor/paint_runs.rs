@@ -1,17 +1,17 @@
 //! Original styled text-run boundaries, prepared without restarting segmentation.
 use super::grapheme_scan::GraphemeScan;
-use crate::highlight::{Token, TokenKind};
+use crate::highlight::{PaintToken, RowPaintIter, RowPaintTokens, Token, TokenKind};
 use std::{ops::Range, sync::Arc};
 
 /// Maximum short-token/bounded-scan operations per cooperative preparation task.
 pub const PAINT_RUN_BATCH_UNITS: usize = 64;
 
 pub struct PaintRunPreparation<'a> {
-    tokens: &'a [Token],
+    tokens: std::iter::Peekable<RowPaintIter<'a>>,
+    current: Option<PaintToken<'a>>,
     body_len: usize,
     normalize_cr: bool,
     max_runs: usize,
-    token: usize,
     offset: usize,
     active: Option<RunScan<'a>>,
     runs: Vec<usize>,
@@ -23,24 +23,39 @@ pub struct PaintRunPreparation<'a> {
 
 impl<'a> PaintRunPreparation<'a> {
     pub fn new(tokens: &'a [Token], body_len: usize, normalize_cr: bool, max_runs: usize) -> Self {
-        Self {
-            tokens,
+        Self::from_rows(
+            RowPaintTokens::prepared(tokens, false),
             body_len,
             normalize_cr,
             max_runs,
-            token: 0,
+        )
+    }
+    pub fn from_rows(
+        rows: RowPaintTokens<'a>,
+        body_len: usize,
+        normalize_cr: bool,
+        max_runs: usize,
+    ) -> Self {
+        let mut tokens = rows.iter().peekable();
+        let current = tokens.next();
+        Self {
+            tokens,
+            current,
+            body_len,
+            normalize_cr,
+            max_runs,
             offset: 0,
             active: None,
             runs: Vec::new(),
             segmented_bytes: 0,
             scan_progress_bytes: 0,
-            done: tokens.is_empty(),
+            done: current.is_none(),
             failed: false,
         }
     }
-    fn text(&self) -> &'a str {
-        let text = self.tokens[self.token].text.as_str();
-        if self.normalize_cr && self.token + 1 == self.tokens.len() {
+    fn text(&mut self) -> &'a str {
+        let text = self.current.unwrap().text;
+        if self.normalize_cr && self.tokens.peek().is_none() {
             text.strip_suffix('\r').unwrap_or(text)
         } else {
             text
@@ -81,10 +96,10 @@ impl<'a> PaintRunPreparation<'a> {
                     continue;
                 }
                 self.active = None;
-            } else if self.tokens[self.token].kind != TokenKind::Plain
+            } else if self.current.unwrap().kind != TokenKind::Plain
                 || self
                     .tokens
-                    .get(self.token + 1)
+                    .peek()
                     .is_none_or(|next| next.kind != TokenKind::Plain || next.text.len() > 512)
             {
                 if self.runs.len() >= self.max_runs {
@@ -95,8 +110,8 @@ impl<'a> PaintRunPreparation<'a> {
                 self.runs.push(self.offset + text.len());
             }
             self.offset += text.len();
-            self.token += 1;
-            self.done = self.token == self.tokens.len();
+            self.current = self.tokens.next();
+            self.done = self.current.is_none();
         }
         self.done
     }

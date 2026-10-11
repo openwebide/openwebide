@@ -4424,9 +4424,7 @@ async fn measure_highlight_bursts() {
                 if actions.syntax_is_pending() {
                     return false;
                 }
-                let paint = openwebide_frontend::state_actions::editor::EditorActions::render_paint(
-                    actions.syntax_paint(),
-                );
+                let paint = actions.render_paint(actions.syntax_paint());
                 actions.measured_rows().is_some_and(|measured| {
                     measured.syntax.as_ref().is_some_and(|syntax| {
                         syntax.0 == paint.0 && std::sync::Arc::ptr_eq(&syntax.1, &paint.1)
@@ -9949,7 +9947,7 @@ async fn cooperative_terminal_plain_paint_preserves_source_and_rejects_stale_sco
                 actions.syntax_paint().1.is_empty(),
                 "pending fallback borrows source instead of lexing synchronously"
             );
-            let pending_render = EditorActions::render_paint(actions.syntax_paint());
+            let pending_render = actions.render_paint(actions.syntax_paint());
             assert!(!pending_render.0 && pending_render.1.is_empty());
             wait_until("cooperative fallback publishes complete plain rows", || {
                 !actions.syntax_is_pending()
@@ -9971,7 +9969,7 @@ async fn cooperative_terminal_plain_paint_preserves_source_and_rejects_stale_sco
             .await;
             let painted = actions.syntax_paint();
             assert!(!painted.0);
-            let completed_render = EditorActions::render_paint(painted.clone());
+            let completed_render = actions.render_paint(painted.clone());
             assert!(
                 std::sync::Arc::ptr_eq(&pending_render.1, &completed_render.1),
                 "plain completion must preserve neutral geometry identity"
@@ -10179,7 +10177,7 @@ async fn indexed_plain_fallback_borrows_source_and_rejects_stale_documents_in_bo
         assert!(actions.full_row_paint_ready());
         assert!(std::sync::Arc::ptr_eq(
             &paint.tokens,
-            &EditorActions::render_paint(actions.syntax_paint()).1
+            &actions.render_paint(actions.syntax_paint()).1
         ));
 
         mounted
@@ -20968,8 +20966,29 @@ async fn shifted_styled_suffix_matches_complete_browser_geometry_in_both_modes()
             );
             assert!(actions.font_measurements_changed(Some("different font metrics")));
             assert!(actions.font_measurements_changed(None));
+            let started = js_sys::Date::now();
+            let reported = std::cell::Cell::new(false);
             super::support::wait_until_with_timeout("shifted suffix geometry", 30_000, || {
-                ready(&changed)
+                let result = ready(&changed);
+                if !result && js_sys::Date::now() - started > 5_000.0 && !reported.replace(true) {
+                    let input = mounted.element(".editor-textarea");
+                    let cache = mounted.state.workspace.editor_paragraph_cache.get_untracked();
+                    let paint = actions.syntax_paint();
+                    wasm_bindgen_test::console_log!("shifted source: projection_rev={} projection_current={} geometry_pending={} viewport_ready={} pointer={:?} prepared_tokens_prefix={:?} input_prefix={:?} overlay_prefix={:?}",
+                        actions.projection_revision(), actions.projection().is_some_and(|projection| projection.line_body(0) == Some(changed.as_str())),
+                        actions.native_geometry_pending(), actions.viewport_paint_ready(&[0]),
+                        mounted.element(".editor-code").get_attribute("data-editor-pointer-ready"),
+                        paint.1.iter().flat_map(|row| row.iter()).flat_map(|token| token.text.chars()).take(30).collect::<String>(),
+                        input.clone().unchecked_into::<web_sys::HtmlTextAreaElement>().value().chars().take(30).collect::<String>(),
+                        mounted.element(".editor-highlight-content").text_content().unwrap_or_default().chars().take(30).collect::<String>());
+                    wasm_bindgen_test::console_log!("shifted diagnostic {mode:?} {inserted:?}: pending={} paint_prepared={} view={} font={} cache={:?} job={:?} input_scope={:?} input_native_scope={:?} overlay_scope={:?}",
+                        actions.syntax_is_pending(), actions.syntax_paint().0, actions.view_revision(), actions.font_epoch(),
+                        cache.as_ref().map(|cache| (cache.paint.prepared_source, cache.paint.view_revision, cache.paint.font_epoch, cache.paint.projection.line_body(0) == Some(changed.as_str()), cache.rows.len())),
+                        mounted.state.workspace.editor_row_preparation.with_untracked(|job| job.as_ref().map(|job| (job.revision, job.completed, job.total))),
+                        input.get_attribute("data-editor-scope"), input.get_attribute("data-editor-native-value-scope"),
+                        mounted.element(".editor-highlight-content").get_attribute("data-editor-scope"));
+                }
+                result
             })
             .await;
             assert!(
@@ -22344,6 +22363,180 @@ fn retained_row_font_metrics_survive_edits_and_reject_stale_scopes_in_both_modes
             assert!(
                 actions.font_measurements_changed(Some(metrics)),
                 "{mode:?}: stale retained font facts change={change}"
+            );
+        }
+    }
+}
+
+#[wasm_bindgen_test]
+async fn pending_grammar_paints_current_text_and_retains_matching_colors_in_both_modes() {
+    use openwebide_core::{
+        WorkspaceMode,
+        editor::{Selection, byte_to_textarea},
+    };
+    use openwebide_frontend::state_actions::editor::EditorActions;
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        for (path, source) in [
+            (
+                "pending-paint.html",
+                "<script>\r\nconst value = \"文😀\";\r\n</script>\r\n",
+            ),
+            (
+                "pending-paint.md",
+                "```javascript\nconst value = \"文😀\";\n```\n",
+            ),
+        ] {
+            let transport = std::rc::Rc::new(DeferredSyntax::default());
+            let installed = transport.clone();
+            let slot = std::rc::Rc::new(std::cell::Cell::new(None));
+            let capture = slot.clone();
+            let mounted = mount_test(move |state| {
+                state.seed_project();
+                state
+                    .projects
+                    .projects
+                    .update(|projects| projects[0].mode = mode);
+                state.workspace.open_file.set(Some(path.into()));
+                state.workspace.content.set(source.into());
+                let actions = EditorActions::new(state.workspace);
+                actions.install_syntax_transport(installed);
+                capture.set(Some(actions));
+                view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:420px;height:320px">{editor_view(state)}</div> }
+            });
+            let actions = slot.get().unwrap();
+            wait_until("initial retained grammar request", || {
+                !transport.pending.borrow().is_empty()
+            })
+            .await;
+            transport.respond(true);
+            wait_until("prepared initial grammar paint", || {
+                !actions.syntax_is_pending()
+                    && mounted
+                        .root
+                        .query_selector(".editor-highlight-content .tok-string")
+                        .unwrap()
+                        .is_some()
+            })
+            .await;
+            let updated = format!("z{source}");
+            let input: web_sys::HtmlTextAreaElement =
+                mounted.element(".editor-textarea").unchecked_into();
+            actions.record_selection(Selection::caret(0)).unwrap();
+            input.focus().unwrap();
+            input.set_selection_range(0, 0).unwrap();
+            let init = web_sys::InputEventInit::new();
+            init.set_bubbles(true);
+            init.set_cancelable(true);
+            init.set_data(Some("z"));
+            init.set_input_type("insertText");
+            let before =
+                web_sys::InputEvent::new_with_event_init_dict("beforeinput", &init).unwrap();
+            input.dispatch_event(&before).unwrap();
+            assert!(!before.default_prevented());
+            editorNativeInput(&input, "z", "insertText", false);
+            assert_eq!(
+                actions.source(),
+                updated,
+                "{mode:?} {path}: browser input source"
+            );
+            wait_until("held changed grammar request", || {
+                !transport.pending.borrow().is_empty()
+            })
+            .await;
+            let started = js_sys::Date::now();
+            let reported = std::cell::Cell::new(false);
+            wait_until("current source before grammar reply", || {
+                if js_sys::Date::now() - started > 1_000.0 && !reported.replace(true) {
+                    let (prepared, tokens) = actions.syntax_paint();
+                    wasm_bindgen_test::console_log!("pending paint: {mode:?} {path} pending={} prepared={prepared} rows={} retain={} full_ready={} native={:?} code={:?} overlay={:?}",
+                        actions.syntax_is_pending(), tokens.len(), actions.retain_pending_paint(true, true), actions.full_row_paint_ready(),
+                        input.value(), mounted.element(".editor-code").outer_html().chars().take(400).collect::<String>(),
+                        mounted.element(".editor-highlight-content").text_content());
+                }
+                mounted
+                    .root
+                    .query_selector(".editor-highlight-content")
+                    .unwrap()
+                    .and_then(|paint| paint.text_content())
+                    .is_some_and(|paint| paint == updated.replace("\r\n", "\n"))
+            })
+            .await;
+            assert!(
+                actions.syntax_is_pending(),
+                "{mode:?} {path}: parser must remain held"
+            );
+            assert_eq!(actions.source(), updated);
+            assert!(
+                mounted
+                    .root
+                    .query_selector(".editor-highlight-content .tok-string")
+                    .unwrap()
+                    .is_some(),
+                "{mode:?} {path}: unchanged row retains grammar colors"
+            );
+            assert!(
+                mounted
+                    .root
+                    .query_selector(".editor-code.highlight-ready")
+                    .unwrap()
+                    .is_some()
+            );
+            // Edit a colored token within the row while the grammar reply stays held.
+            let inside = updated.find("const").unwrap() + 2;
+            let native = u32::try_from(byte_to_textarea(&updated, inside).unwrap()).unwrap();
+            actions.record_selection(Selection::caret(inside)).unwrap();
+            input.set_selection_range(native, native).unwrap();
+            init.set_data(Some("x"));
+            let before =
+                web_sys::InputEvent::new_with_event_init_dict("beforeinput", &init).unwrap();
+            input.dispatch_event(&before).unwrap();
+            assert!(!before.default_prevented());
+            editorNativeInput(&input, "x", "insertText", false);
+            let mut after_inside = updated.clone();
+            after_inside.insert(inside, 'x');
+            assert_eq!(actions.source(), after_inside);
+            wait_until("edited row retains unchanged grammar spans", || {
+                let paint = mounted.element(".editor-highlight-content");
+                let keywords = paint
+                    .query_selector_all(".editor-source-line[data-line='2'] .tok-keyword")
+                    .unwrap();
+                let colored = (0..keywords.length())
+                    .filter_map(|index| keywords.item(index).and_then(|node| node.text_content()))
+                    .collect::<String>();
+                paint.text_content().as_deref() == Some(after_inside.replace("\r\n", "\n").as_str())
+                    && colored == "const"
+                    && paint
+                        .query_selector(".editor-source-line[data-line='2'] .tok-string")
+                        .unwrap()
+                        .and_then(|node| node.text_content())
+                        .as_deref()
+                        == Some("\"文😀\"")
+            })
+            .await;
+            assert!(actions.syntax_is_pending());
+            assert_eq!(actions.selections(&after_inside)[0].head, inside + 1);
+            mounted
+                .state
+                .auth
+                .generation
+                .update(|account| *account += 1);
+            assert!(
+                actions.syntax_paint().1.is_empty(),
+                "{mode:?} {path}: reject stale account colors"
+            );
+            mounted
+                .state
+                .auth
+                .generation
+                .update(|account| *account -= 1);
+            mounted
+                .state
+                .workspace
+                .editor_read_revision
+                .update(|read| *read += 1);
+            assert!(
+                actions.syntax_paint().1.is_empty(),
+                "{mode:?} {path}: reject stale read colors"
             );
         }
     }

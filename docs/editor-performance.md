@@ -6419,3 +6419,38 @@ Initial preparation timing differs between the samples; this does not establish
 a mode-specific policy defect. Retained grammar paint currently defers publication
 while analysis is pending. The remaining implementation must publish current
 text while preserving valid retained styles/decorations and exact geometry.
+
+The retained-paint candidate now uses one borrowed span iterator for DOM paint
+and cooperative geometry run preparation. Unchanged prefix/suffix fragments keep
+their colors; changed text comes from the current source and paints plainly.
+Actual beforeinput/input contracts pass with parser replies held for HTML and
+Markdown in both modes, including an edit inside a keyword and a later unchanged
+string. Neutral/terminal fallback and folding contracts also pass. The provisional measurement cache now promotes exact matching spans when final
+grammar arrives. All six focused browser contracts pass, including the unchanged
+shifted-suffix geometry contract for emoji/combining-character insertion and
+deletion in both modes
+([receipt](editor-performance/retained-spans-handoff-browser.json)).
+Two fresh 64-KiB Markdown production samples publish the inserted marker after
+about 28 ms locally and 33 ms remotely, before final syntax publication. Both
+preserve complete edited source, with peak Chrome PSS of about 649–659 MiB
+([visibility receipt](editor-performance/retained-spans-visibility.json),
+[artifact hashes](editor-performance/retained-spans-production-manifest.json)).
+This improves the recorded Remote delay of about 177 ms, but does not meet the
+12 ms input budget. All 16 fresh HTML/Markdown 64/512-KiB prefix-insertion samples preserve complete
+edited source. Small Remote Markdown input paint is 24.5–25 ms versus the
+recorded 159–173 ms; the wider matrix ranges from 10.8–39.1 ms with peak Chrome
+PSS of 596–709 MiB
+([samples](editor-performance/retained-spans-embedded-production.jsonl)).
+These samples verify this checkpoint, not the remaining boundary, memory or
+12 ms responsiveness requirements.
+
+The span implementation passes 512 core library tests, 129 native frontend
+library tests and ten WASM geometry/run ownership library contracts
+([receipt](editor-performance/retained-spans-library-browser.json)). Strict core
+and WASM frontend lint passes, including the cache-handoff fix. Production visibility,
+memory and broader geometry checks remain open.
+
+The last pushed checkpoint `cdc8a23` passes all five hosted CI jobs
+([receipt](editor-performance/editor-ci-cdc8a23-success.json)). This verifies that
+checkpoint only, not the uncommitted retained-paint candidate or the full editor
+goal.

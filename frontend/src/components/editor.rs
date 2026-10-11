@@ -1150,20 +1150,32 @@ fn highlight_html(
     }
     let mut html = String::new();
     for &idx in rows.indices {
-        let plain = if !prepared_source && lines.get(idx).is_none() {
-            rows.source.and_then(|source| {
-                let row = source
-                    .lines()
-                    .binary_search_by_key(&idx, |line| line.source_line)
-                    .ok()?;
-                source.line_body(row)
-            })
-        } else {
-            None
-        };
+        let current = rows.source.and_then(|source| {
+            let row = source
+                .lines()
+                .binary_search_by_key(&idx, |line| line.source_line)
+                .ok()?;
+            source.line_body(row)
+        });
+        let plain = lines.get(idx).is_none().then_some(current).flatten();
         let line = match lines.get(idx) {
-            Some(line) => line.as_ref(),
-            None if plain.is_some() => &[],
+            Some(line) => {
+                if !prepared_source && let Some(current) = current {
+                    openwebide_core::highlight::RowPaintTokens::current(
+                        line,
+                        current,
+                        idx + 1 < lines.len(),
+                    )
+                } else {
+                    openwebide_core::highlight::RowPaintTokens::prepared(
+                        line,
+                        idx + 1 < lines.len(),
+                    )
+                }
+            }
+            None if plain.is_some() => {
+                openwebide_core::highlight::RowPaintTokens::prepared(&[], false)
+            }
             None => continue,
         };
         html.push_str(&format!(
@@ -1214,12 +1226,8 @@ fn highlight_html(
                 painted_bytes += range.len();
             }
         }
-        for (position, tok) in line.iter().enumerate() {
-            let text = if prepared_source && idx + 1 < lines.len() && position + 1 == line.len() {
-                tok.text.strip_suffix('\r').unwrap_or(&tok.text)
-            } else {
-                &tok.text
-            };
+        for tok in line.iter() {
+            let text = tok.text;
             let token_start = source_offset;
             source_offset += text.len();
             let range = if let Some(slice) = source_slice {
@@ -1461,7 +1469,7 @@ fn HighlightOverlay(
         actions.preparation_revision();
         actions.syntax_paint()
     });
-    let tokens = Memo::new(move |_| EditorActions::render_paint(prepared_paint.get()));
+    let tokens = Memo::new(move |_| actions.render_paint(prepared_paint.get()));
     let viewport_paint_ready = Memo::new(move |_| {
         actions.preparation_revision();
         actions.viewport_paint_ready(&visible.get())
