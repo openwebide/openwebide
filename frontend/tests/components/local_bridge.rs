@@ -2228,19 +2228,13 @@ async fn local_plugin_transport_uses_paired_credentials_and_propagates_host_fail
         serde_json::to_value(&prepared).unwrap()
     );
     bridge_invalid(&http.0);
-    assert!(
-        client
-            .prepare_plugin(&prepared.source)
-            .await
-            .unwrap_err()
-            .contains("HTTP 400")
+    assert_eq!(
+        client.prepare_plugin(&prepared.source).await.unwrap_err(),
+        "preparation failed"
     );
-    assert!(
-        client
-            .plugin_package(&prepared)
-            .await
-            .unwrap_err()
-            .contains("HTTP 400")
+    assert_eq!(
+        client.plugin_package(&prepared).await.unwrap_err(),
+        "preparation failed"
     );
     openwebide_frontend::idb::set_bridge_pairing_token(previous.as_deref().unwrap_or(""))
         .await
