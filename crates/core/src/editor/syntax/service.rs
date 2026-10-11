@@ -271,11 +271,11 @@ impl SyntaxPreparations<String> {
     }
 }
 impl SyntaxTask {
-    fn advance(
+    fn advance_payload(
         &mut self,
         should_continue: &mut impl FnMut() -> bool,
         should_yield: &mut impl FnMut() -> bool,
-    ) -> Option<(SyntaxStatus, Option<std::sync::Arc<super::SyntaxAnalysis>>)> {
+    ) -> Option<SyntaxReply> {
         if self.ready_reply.is_none() {
             let result = self.advance_analysis(should_continue, should_yield)?;
             self.metadata = result.1.as_ref().map(|analysis| {
@@ -287,14 +287,47 @@ impl SyntaxTask {
                     self.reply_source.take(),
                 )
             });
-            if self.metadata.is_none() {
-                self.encoding = Some(super::transfer::ReplyPublication::new(reply_data(
-                    self.ticket,
-                    result.0,
-                    None,
-                )));
-            }
             self.ready_reply = Some(result);
+        }
+        loop {
+            if !should_continue() {
+                self.ready_reply = Some((SyntaxStatus::Cancelled, None));
+                return Some(reply_data(self.ticket, SyntaxStatus::Cancelled, None));
+            }
+            if should_yield() {
+                return None;
+            }
+            let Some(work) = self.metadata.as_mut() else {
+                return Some(reply_data(self.ticket, self.ready_reply.as_ref()?.0, None));
+            };
+            let result = self.ready_reply.as_ref()?;
+            let analysis = result.1.as_ref()?;
+            let previous = (!self.full_retry)
+                .then_some(self.previous.as_ref())
+                .flatten()
+                .map(|(ticket, old)| (*ticket, old.as_ref()));
+            if !work.advance(analysis, previous) {
+                continue;
+            }
+            let data = self.metadata.take()?.finish(analysis, previous);
+            if data.is_none() && !self.full_retry {
+                self.full_retry = true;
+                self.metadata = Some(super::transfer::AnalysisTransferPreparation::new(
+                    analysis, None, None,
+                ));
+                continue;
+            }
+            return Some(reply_data(self.ticket, result.0, data));
+        }
+    }
+    fn advance(
+        &mut self,
+        should_continue: &mut impl FnMut() -> bool,
+        should_yield: &mut impl FnMut() -> bool,
+    ) -> Option<(SyntaxStatus, Option<std::sync::Arc<super::SyntaxAnalysis>>)> {
+        if self.encoding.is_none() {
+            let data = self.advance_payload(should_continue, should_yield)?;
+            self.encoding = Some(super::transfer::ReplyPublication::new(data));
         }
         loop {
             if !should_continue() {
@@ -303,31 +336,6 @@ impl SyntaxTask {
             if should_yield() {
                 return None;
             }
-            if let Some(work) = &mut self.metadata {
-                let result = self.ready_reply.as_ref()?;
-                let analysis = result.1.as_ref()?;
-                let previous = (!self.full_retry)
-                    .then_some(self.previous.as_ref())
-                    .flatten()
-                    .map(|(ticket, old)| (*ticket, old.as_ref()));
-                if !work.advance(analysis, previous) {
-                    continue;
-                }
-                let data = self.metadata.take()?.finish(analysis, previous);
-                if data.is_none() && !self.full_retry {
-                    self.full_retry = true;
-                    self.metadata = Some(super::transfer::AnalysisTransferPreparation::new(
-                        analysis, None, None,
-                    ));
-                    continue;
-                }
-                self.encoding = Some(super::transfer::ReplyPublication::new(reply_data(
-                    self.ticket,
-                    result.0,
-                    data,
-                )));
-                continue;
-            }
             if !self.encoding.as_mut()?.advance(1) {
                 continue;
             }
@@ -335,7 +343,6 @@ impl SyntaxTask {
                 self.encoded_reply = Some(encoded);
                 return self.ready_reply.take();
             }
-            // Preserve the wire's single full-publication retry after overflow.
             if self.full_retry {
                 return self.ready_reply.take();
             }
@@ -345,13 +352,9 @@ impl SyntaxTask {
                 self.metadata = Some(super::transfer::AnalysisTransferPreparation::new(
                     analysis, None, None,
                 ));
-            } else {
-                self.encoding = Some(super::transfer::ReplyPublication::new(reply_data(
-                    self.ticket,
-                    result.0,
-                    None,
-                )));
             }
+            let data = self.advance_payload(should_continue, should_yield)?;
+            self.encoding = Some(super::transfer::ReplyPublication::new(data));
         }
     }
 
@@ -440,13 +443,21 @@ impl SyntaxTask {
             None if prepared.is_none() => (control_reply(self.ticket, status)?, false),
             None => return None,
         };
+        self.install(service, prepared, published);
+        Some(message)
+    }
+    fn install(
+        mut self,
+        service: &mut SyntaxPreparations<String>,
+        prepared: Option<std::sync::Arc<super::SyntaxAnalysis>>,
+        published: bool,
+    ) {
         if let Some(prepared) = prepared {
             if published {
                 self.document.publication = Some((self.ticket, prepared));
             }
             service.install_document(self.key, self.language, self.document, self.source_length);
         }
-        Some(message)
     }
 }
 #[cfg(test)]
@@ -490,13 +501,24 @@ pub struct SyntaxWorker {
     service: SyntaxPreparations<String>,
     queued: std::collections::VecDeque<SyntaxRequest>,
     active: Option<Box<SyntaxTask>>,
+    framed: Option<FramedPublication>,
+}
+struct FramedPublication {
+    frames: super::transfer::SyntaxReplyFrames,
+    task: Option<Box<SyntaxTask>>,
+    published: bool,
 }
 impl SyntaxWorker {
     pub fn has_work(&self) -> bool {
-        self.active.is_some() || !self.queued.is_empty()
+        self.active.is_some() || self.framed.is_some() || !self.queued.is_empty()
     }
     pub fn retained_request_bytes(&self) -> usize {
         self.active.as_ref().map_or(0, |task| task.source_length)
+            + self
+                .framed
+                .as_ref()
+                .and_then(|publication| publication.task.as_ref())
+                .map_or(0, |task| task.source_length)
             + self.queued.iter().map(request_bytes).sum::<usize>()
     }
     pub fn enqueue(&mut self, message: &str) -> Option<String> {
@@ -509,7 +531,10 @@ impl SyntaxWorker {
             self.service.remove(&request.document);
             return control_reply(request.ticket, SyntaxStatus::TooLarge);
         }
-        if self.queued.len() + usize::from(self.active.is_some()) >= super::MAX_SYNTAX_DOCUMENTS
+        if self.queued.len()
+            + usize::from(self.active.is_some())
+            + usize::from(self.framed.is_some())
+            >= super::MAX_SYNTAX_DOCUMENTS
             || self
                 .retained_request_bytes()
                 .saturating_add(request_bytes(&request))
@@ -521,14 +546,10 @@ impl SyntaxWorker {
         self.queued.push_back(request);
         None
     }
-    pub fn advance(
-        &mut self,
-        mut should_continue: impl FnMut() -> bool,
-        mut should_yield: impl FnMut() -> bool,
-    ) -> Option<String> {
+    fn begin_queued(&mut self, should_continue: &mut impl FnMut() -> bool) -> Option<String> {
         if self.active.is_none() {
             let request = self.queued.pop_front()?;
-            match self.service.begin_request(request, &mut should_continue)? {
+            match self.service.begin_request(request, should_continue)? {
                 Start::Reply(reply) => return Some(reply),
                 Start::Task(task) => {
                     let queued_bytes = self.queued.iter().map(request_bytes).sum::<usize>();
@@ -540,6 +561,118 @@ impl SyntaxWorker {
                     self.active = Some(task);
                 }
             }
+        }
+        None
+    }
+    /// Produce the same admitted payload without building a complete JSON reply.
+    pub fn advance_reply(
+        &mut self,
+        mut should_continue: impl FnMut() -> bool,
+        mut should_yield: impl FnMut() -> bool,
+    ) -> Option<SyntaxReply> {
+        if let Some(control) = self.begin_queued(&mut should_continue) {
+            return SyntaxReply::decode(&control);
+        }
+        let reply = self
+            .active
+            .as_mut()?
+            .advance_payload(&mut should_continue, &mut should_yield)?;
+        let mut task = self.active.take()?;
+        let prepared = task.ready_reply.take()?.1;
+        task.install(&mut self.service, prepared, reply.analysis.is_some());
+        Some(reply)
+    }
+    /// Frame publication retains the document until the complete transaction has
+    /// been encoded. Failed publication never becomes a cached delta base.
+    pub fn advance_frame(
+        &mut self,
+        mut should_continue: impl FnMut() -> bool,
+        mut should_yield: impl FnMut() -> bool,
+    ) -> Option<super::transfer::SyntaxFrameProgress> {
+        if self.framed.is_none() {
+            let (reply, task) = if let Some(control) = self.begin_queued(&mut should_continue) {
+                (SyntaxReply::decode(&control)?, None)
+            } else {
+                let reply = self
+                    .active
+                    .as_mut()?
+                    .advance_payload(&mut should_continue, &mut should_yield)?;
+                (reply, self.active.take())
+            };
+            let ticket = reply.ticket;
+            let published = reply.analysis.is_some();
+            let (frames, published) = match super::transfer::SyntaxReplyFrames::new(reply) {
+                Some(frames) => (frames, published),
+                None => (
+                    super::transfer::SyntaxReplyFrames::new(reply_data(
+                        ticket,
+                        SyntaxStatus::TooLarge,
+                        None,
+                    ))?,
+                    false,
+                ),
+            };
+            self.framed = Some(FramedPublication {
+                frames,
+                task,
+                published,
+            });
+        }
+        let cancelled = !should_continue();
+        if cancelled {
+            let publication = self.framed.as_mut()?;
+            if let Some(task) = publication.task.as_mut()
+                && task
+                    .ready_reply
+                    .as_ref()
+                    .is_some_and(|(status, _)| *status != SyntaxStatus::Cancelled)
+            {
+                task.ready_reply = Some((SyntaxStatus::Cancelled, None));
+                publication.published = false;
+                publication.frames = super::transfer::SyntaxReplyFrames::new(reply_data(
+                    task.ticket,
+                    SyntaxStatus::Cancelled,
+                    None,
+                ))?;
+            }
+        }
+        if !cancelled && should_yield() {
+            return Some(super::transfer::SyntaxFrameProgress::Pending);
+        }
+        let progress = self.framed.as_mut()?.frames.advance();
+        match progress {
+            Some(super::transfer::SyntaxFrameProgress::Complete) => {
+                let publication = self.framed.take()?;
+                if let Some(mut task) = publication.task {
+                    let prepared = task.ready_reply.take()?.1;
+                    task.install(&mut self.service, prepared, publication.published);
+                }
+                Some(super::transfer::SyntaxFrameProgress::Complete)
+            }
+            Some(progress) => Some(progress),
+            None => {
+                // If frames were already delivered, a replacement Begin poisons
+                // the receiver transaction. Otherwise it is an ordinary limit
+                // response. Neither case publishes incomplete analysis.
+                let publication = self.framed.as_mut()?;
+                let ticket = publication.task.as_ref()?.ticket;
+                publication.published = false;
+                publication.frames = super::transfer::SyntaxReplyFrames::new(reply_data(
+                    ticket,
+                    SyntaxStatus::TooLarge,
+                    None,
+                ))?;
+                publication.frames.advance()
+            }
+        }
+    }
+    pub fn advance(
+        &mut self,
+        mut should_continue: impl FnMut() -> bool,
+        mut should_yield: impl FnMut() -> bool,
+    ) -> Option<String> {
+        if let Some(reply) = self.begin_queued(&mut should_continue) {
+            return Some(reply);
         }
         let result = self
             .active
@@ -557,6 +690,14 @@ fn request_bytes(request: &SyntaxRequest) -> usize {
 }
 
 impl SyntaxReply {
+    pub fn decode(message: &str) -> Option<Self> {
+        if message.len() > MAX_ANALYSIS_MESSAGE_BYTES {
+            return None;
+        }
+        let reply: Self = serde_json::from_str(message).ok()?;
+        (reply.version == SYNTAX_PROTOCOL_VERSION).then_some(reply)
+    }
+
     /// Read transport metadata without scanning an analysis payload. Shared
     /// producers serialize version/ticket first; routing inspects at most 256
     /// bytes. This is not reply validation: callers must still use `receive`.
@@ -711,6 +852,135 @@ impl SyntaxReply {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn framed_and_typed_workers_match_full_and_warm_language_contracts() {
+        use super::super::transfer::{SyntaxFrameProgress, SyntaxReplyFrameDecoding};
+        for &(path, body, _) in crate::editor::syntax_contracts::LANGUAGE_CASES {
+            let mut framed = SyntaxWorker::default();
+            let mut typed = SyntaxWorker::default();
+            let mut previous = None;
+            for (ticket, source) in [
+                (1, format!("{body}{}", "\n".repeat(80))),
+                (2, format!("{body}{}", "\n".repeat(81))),
+            ] {
+                let request = SyntaxRequest::new(
+                    ticket,
+                    path.into(),
+                    crate::highlight::language_from_path(path),
+                    &source,
+                    4,
+                    previous.as_ref().map(
+                        |(ticket, analysis): &(
+                            u32,
+                            std::sync::Arc<super::super::SyntaxAnalysis>,
+                        )| (*ticket, analysis.as_ref()),
+                    ),
+                );
+                let message = serde_json::to_string(&request).unwrap();
+                assert!(framed.enqueue(&message).is_none());
+                assert!(typed.enqueue(&message).is_none());
+                let mut decoding = SyntaxReplyFrameDecoding::new(ticket);
+                let mut received = None;
+                while framed.has_work() {
+                    if let Some(SyntaxFrameProgress::Frame(frame)) =
+                        framed.advance_frame(|| true, || false)
+                    {
+                        assert!(frame.len() <= super::super::transfer::MAX_SYNTAX_FRAME_BYTES);
+                        assert!(
+                            framed
+                                .service
+                                .previous_publication(&path.to_owned())
+                                .is_none()
+                        );
+                        if decoding.push(&frame).unwrap() {
+                            received = decoding.finish();
+                            break;
+                        }
+                    }
+                }
+                assert!(
+                    framed
+                        .service
+                        .previous_publication(&path.to_owned())
+                        .is_none()
+                );
+                assert!(matches!(
+                    framed.advance_frame(|| true, || false),
+                    Some(SyntaxFrameProgress::Complete)
+                ));
+                assert_eq!(
+                    framed
+                        .service
+                        .previous_publication(&path.to_owned())
+                        .unwrap()
+                        .0,
+                    ticket
+                );
+                let typed_reply = loop {
+                    if let Some(reply) = typed.advance_reply(|| true, || false) {
+                        break reply;
+                    }
+                };
+                let received = received.unwrap();
+                assert_eq!(
+                    serde_json::to_value(&received).unwrap(),
+                    serde_json::to_value(typed_reply).unwrap(),
+                    "{path}"
+                );
+                let mut proof = received
+                    .prepare_received_shared(
+                        ticket,
+                        std::sync::Arc::new(source),
+                        previous
+                            .as_ref()
+                            .map(|(ticket, analysis)| (*ticket, analysis.as_ref())),
+                    )
+                    .unwrap();
+                while !proof.advance() {}
+                let (status, analysis) = proof.finish().unwrap();
+                assert!(matches!(status, SyntaxStatus::Ready { .. }));
+                previous = Some((ticket, analysis.unwrap()));
+            }
+        }
+    }
+
+    #[test]
+    fn cancelled_framed_publication_never_installs_a_delta_base() {
+        use super::super::transfer::{SyntaxFrameProgress, SyntaxReplyFrameDecoding};
+        let mut worker = SyntaxWorker::default();
+        let source = "fn main() {}\n".repeat(100);
+        let request =
+            SyntaxRequest::new(1, "cancelled.rs".into(), Language::Rust, &source, 4, None);
+        assert!(
+            worker
+                .enqueue(&serde_json::to_string(&request).unwrap())
+                .is_none()
+        );
+        let mut decoding = SyntaxReplyFrameDecoding::new(1);
+        loop {
+            if let Some(SyntaxFrameProgress::Frame(frame)) = worker.advance_frame(|| true, || false)
+            {
+                assert_eq!(decoding.push(&frame), Some(false));
+                break;
+            }
+        }
+        let Some(SyntaxFrameProgress::Frame(abort)) = worker.advance_frame(|| false, || true)
+        else {
+            panic!("missing cancellation");
+        };
+        assert!(decoding.push(&abort).is_none());
+        while worker.has_work() {
+            worker.advance_frame(|| false, || false);
+        }
+        assert!(
+            worker
+                .service
+                .previous_publication(&"cancelled.rs".into())
+                .is_none()
+        );
+        assert_eq!(worker.retained_request_bytes(), 0);
+    }
 
     #[test]
     fn cooperative_reception_preserves_full_delta_and_private_completion() {

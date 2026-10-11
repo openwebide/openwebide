@@ -1,0 +1,86 @@
+{
+  "scope": "Live framed syntax reply publication, browser routing and typed cooperative fallback. The shared payload preparation and receiver proof pipeline retain full/warm results and ownership guards. This does not close the full editor performance goal.",
+  "sourceFilesSha256": {
+    "crates/core/src/editor/syntax/service.rs": "7e65e7cc9f1620201217c1307a851952a9a7b08248b6d861a9a0ede61a078e87",
+    "crates/core/src/editor/syntax/transfer/framing.rs": "547da2656b1a5eb55b42f743c35c9b4523db39794150772c6595f6f79ce29c8b",
+    "crates/core/src/editor/structure/framing.rs": "7051b304635ed5644e74b6be3e15269d022e633e6e6be4cb04511cf4b43ee223",
+    "frontend/src/editor_worker.rs": "2600f2eff20b2437b971371b4cd2c415aa1e958db1cea98c9e2cbc73eab850b5",
+    "frontend/src/state_actions/editor/preparation.rs": "33afc68e07c9dc0af03317676a6b2bb7562652d2db720cff4f8c3d6a214faf5b",
+    "frontend/tests/components/editor.rs": "cccb160151105acf8aae5ffe260f1016bdd5c362ec7dd30b61429d87372b0b87"
+  },
+  "coreTests": {
+    "features": [
+      "editor-parser"
+    ],
+    "passed": 708,
+    "failed": 0,
+    "ignored": 1,
+    "ignoredPurpose": "Unchanged native release query measurement"
+  },
+  "browser": {
+    "library": {
+      "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+      "console": "Invoking test: state_actions::editor::preparation::tests::token_reception_yields_and_rejects_replaced_owners_in_both_modes\nInvoking test: state_actions::editor::preparation::tests::structure_reception_yields_and_rejects_replaced_owners_in_both_modes\nInvoking test: state_actions::editor::preparation::tests::request_publication_yields_and_rejects_replaced_owners_in_both_modes\nInvoking test: editor_worker::tests::dropped_framed_requests_release_partial_transactions\nInvoking test: editor_worker::tests::dedicated_framed_worker_and_cooperative_adapter_preserve_language_contracts\nInvoking test: editor_worker::tests::bounded_worker_routing_preserves_complete_reply_validation\nInvoking test: components::editor::tests::in_process_syntax_keeps_shared_source_and_yield_cancellation\n",
+      "output": "\nrunning 7 tests\ntest state_actions::editor::preparation::tests::token_reception_yields_and_rejects_replaced_owners_in_both_modes ... ok\ntest state_actions::editor::preparation::tests::structure_reception_yields_and_rejects_replaced_owners_in_both_modes ... ok\ntest state_actions::editor::preparation::tests::request_publication_yields_and_rejects_replaced_owners_in_both_modes ... ok\ntest editor_worker::tests::dropped_framed_requests_release_partial_transactions ... ok\ntest editor_worker::tests::dedicated_framed_worker_and_cooperative_adapter_preserve_language_contracts ... ok\ntest editor_worker::tests::bounded_worker_routing_preserves_complete_reply_validation ... ok\ntest components::editor::tests::in_process_syntax_keeps_shared_source_and_yield_cancellation ... ok\n\ntest result: ok. 7 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.60s\n\n",
+      "passed": true,
+      "tests": [
+        "__wbgt__openwebide_frontend::components::editor::tests::in_process_syntax_keeps_shared_source_and_yield_cancellation",
+        "__wbgt__openwebide_frontend::editor_worker::tests::bounded_worker_routing_preserves_complete_reply_validation",
+        "__wbgt__openwebide_frontend::editor_worker::tests::dedicated_framed_worker_and_cooperative_adapter_preserve_language_contracts",
+        "__wbgt__openwebide_frontend::editor_worker::tests::dropped_framed_requests_release_partial_transactions",
+        "__wbgt__openwebide_frontend::state_actions::editor::preparation::tests::request_publication_yields_and_rejects_replaced_owners_in_both_modes",
+        "__wbgt__openwebide_frontend::state_actions::editor::preparation::tests::structure_reception_yields_and_rejects_replaced_owners_in_both_modes",
+        "__wbgt__openwebide_frontend::state_actions::editor::preparation::tests::token_reception_yields_and_rejects_replaced_owners_in_both_modes"
+      ],
+      "servedFonts": {},
+      "libraryStartSuppressed": true
+    },
+    "components": {
+      "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+      "console": "Invoking test: editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes\nInvoking test: editor::many_embedded_code_bodies_publish_complete_scopes_and_warm_edits_in_both_modes\nInvoking test: editor::html_embedded_folds_share_workspace_modes_and_discard_stale_bodies\nInvoking test: editor::cooperative_worker_row_index_preserves_dense_rows_in_both_modes\nInvoking test: editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes\n",
+      "output": "\nrunning 5 tests\ntest editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes ... ok\ntest editor::many_embedded_code_bodies_publish_complete_scopes_and_warm_edits_in_both_modes ... ok\ntest editor::html_embedded_folds_share_workspace_modes_and_discard_stale_bodies ... ok\ntest editor::cooperative_worker_row_index_preserves_dense_rows_in_both_modes ... ok\ntest editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes ... ok\n\ntest result: ok. 5 passed; 0 failed; 0 ignored; 0 filtered out; finished in 3.44s\n\n",
+      "passed": true,
+      "tests": [
+        "__wbgt__components::editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes",
+        "__wbgt__components::editor::cooperative_worker_row_index_preserves_dense_rows_in_both_modes",
+        "__wbgt__components::editor::html_embedded_folds_share_workspace_modes_and_discard_stale_bodies",
+        "__wbgt__components::editor::many_embedded_code_bodies_publish_complete_scopes_and_warm_edits_in_both_modes",
+        "__wbgt__components::editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes"
+      ],
+      "servedFonts": {},
+      "libraryStartSuppressed": false
+    }
+  },
+  "runtimeContracts": [
+    "Actual dedicated WASM worker full/warm Rust, HTML and Markdown results match the typed cooperative adapter after source resynchronization",
+    "All supported language core contracts compare framed and typed full/warm payloads and run the shared source-bound proof",
+    "Framed publication retains source-budget accounting and installs a delta base only after complete encoding",
+    "Cancellation takes priority over an expired work budget and never installs a partial delta base",
+    "Oversized and reordered frames and invalid control transaction parts fail transport validation",
+    "Dropped request futures release their pending transaction without exposing an incomplete reply",
+    "Existing local/remote coalescing, stale owner, fallback, dense-row and embedded-language contracts remain unchanged"
+  ],
+  "limits": {
+    "framingVersion": 1,
+    "syntaxProtocolVersion": 6,
+    "sourceBytesPerPublishedFrame": 8192,
+    "recordOperationsPerPublishedBatch": 64,
+    "encodedFrameBytes": 65536,
+    "transactionBytes": 33554432,
+    "workerTaskBudgetMs": 100,
+    "cooperativeTaskBudgetMs": 12,
+    "sourceRecordInventoryFontAndReadinessLimits": "unchanged"
+  },
+  "lint": {
+    "nativeCoreAllTargets": "passed with -D warnings",
+    "wasmFrontendAllTargetsReleaseTestSupport": "passed with -D warnings"
+  },
+  "build": "Current release WASM library and component bundles generated after the final source edits",
+  "limitations": [
+    "No end-to-end production latency or memory improvement is established",
+    "Vector/string capacity growth and per-row immutable allocation/copying remain synchronous",
+    "JavaScript string conversion and external parser/request snapshots remain on the roadmap",
+    "Storage, projection, diff, history and recovery costs and final integrated completion gates remain unfinished",
+    "Latest checkpoint still requires hosted integrated CI; physical Chrome/Edge PWA/device checks remain required"
+  ]
+}

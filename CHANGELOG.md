@@ -8,7 +8,7 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
-- Add the core typed syntax-reply frame codec and direct decoded-reply validation entry point. Frame ordering, version, transaction limits and complete-only assembly are checked; live worker transport integration remains in progress.
+- Publish editor worker replies as bounded typed frames and route complete transactions directly into shared validation. Use typed replies in the cooperative fallback, retain full/warm language behavior and reject malformed or abandoned transactions without caching partial analysis. Allocation and end-to-end performance work remains on the roadmap.
 
 - Resolve worker structural patches and validate ordered ranges, bracket links and embedded bodies in cancellable record batches. Share the copy budget across structural lists, preserve expanded limits and expose only complete source-bound analysis in both project modes.
 

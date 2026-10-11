@@ -276,14 +276,17 @@ prepared only one token row per unit. Small rows now share the existing 64-recor
   payloads. The decoder enforces transaction order and limits and exposes a reply
   only after End; decoded replies enter the shared proof pipeline directly
   ([core receipt](editor-performance/syntax-frame-codec-core.json)).
-  This is preparatory work: migrate worker publication, transport routing and both
-  adapter contracts before claiming framed decoding is active. Complete JSON
-  decoding in the live transport remains synchronous;
-  vector/string capacity growth and per-row immutable allocation/copying still
-  require bounded work and production measurements.
-  Capacity growth, JavaScript string conversion and complete receiver
-  decoding/publication still need bounded work and production latency/memory
-  measurements. No end-to-end latency or memory gain is established here.
+  Live worker publication and routing now use these frames. The cooperative
+  adapter returns the same typed payload; both enter the shared proof pipeline
+  without complete reply JSON encoding/decoding. Worker documents become delta
+  bases only after complete frame publication. Real dedicated-worker full/warm
+  Rust, HTML and Markdown contracts, malformed transactions, dropped requests
+  and existing local/remote stale-owner contracts are tracked in the
+  [transport receipt](editor-performance/live-syntax-frame-transport.json).
+  Vector/string capacity growth, JavaScript string conversion and per-row
+  immutable allocation/copying still require bounded work and production
+  latency/memory measurements. No end-to-end latency or memory gain is
+  established here.
   Bound folded/bounded projection assembly, row/coordinate copies, changed guide
   copies, storage suffix byte/coordinate shifts and long-row admission scans.
   Revisit measured storage candidates using actual viewport/worker access patterns,

@@ -1,5 +1,8 @@
 //! Thin browser worker adapter. Preparation policy and wire validation live in core.
-use openwebide_core::editor::{SYNTAX_BATCH_MS, SYNTAX_INPUT_BUDGET_MS, SyntaxWorker};
+use openwebide_core::editor::{
+    SYNTAX_BATCH_MS, SYNTAX_INPUT_BUDGET_MS, SyntaxFrameProgress, SyntaxReply,
+    SyntaxReplyFrameDecoding, SyntaxReplyFrames, SyntaxWorker,
+};
 use std::{
     cell::{Cell, RefCell},
     collections::HashMap,
@@ -7,7 +10,7 @@ use std::{
 };
 use wasm_bindgen::{JsCast, closure::Closure};
 
-const READY_MESSAGE: &str = "openwebide-editor-ready:6";
+const READY_MESSAGE: &str = "openwebide-editor-ready:6:frames:1";
 
 thread_local! { static ENABLED: Cell<bool> = const { Cell::new(false) }; }
 pub fn enable() {
@@ -24,35 +27,56 @@ pub fn mount_worker() -> bool {
     };
     let service = Rc::new(RefCell::new(SyntaxWorker::default()));
     let running = Rc::new(Cell::new(false));
+    let controls = Rc::new(RefCell::new(
+        std::collections::VecDeque::<SyntaxReplyFrames>::new(),
+    ));
     let send = scope.clone();
     let callback =
         Closure::<dyn FnMut(web_sys::MessageEvent)>::new(move |event: web_sys::MessageEvent| {
             let Some(message) = event.data().as_string() else {
                 return;
             };
-            if let Some(reply) = service.borrow_mut().enqueue(&message) {
-                let _ = send.post_message(&reply.into());
+            if let Some(reply) = service.borrow_mut().enqueue(&message)
+                && let Some(frames) = SyntaxReply::decode(&reply).and_then(SyntaxReplyFrames::new)
+            {
+                controls.borrow_mut().push_back(frames);
             }
-            if !service.borrow().has_work() || running.replace(true) {
+            if (!service.borrow().has_work() && controls.borrow().is_empty())
+                || running.replace(true)
+            {
                 return;
             }
+            let controls = controls.clone();
             let service = service.clone();
             let running = running.clone();
             let send = send.clone();
             wasm_bindgen_futures::spawn_local(async move {
+                let mut deadline = js_sys::Date::now() + f64::from(SYNTAX_BATCH_MS);
                 loop {
-                    let deadline = js_sys::Date::now() + f64::from(SYNTAX_BATCH_MS);
-                    let reply = service
-                        .borrow_mut()
-                        .advance(|| true, || js_sys::Date::now() >= deadline);
-                    if let Some(reply) = reply {
-                        let _ = send.post_message(&reply.into());
+                    let progress = if let Some(frames) = controls.borrow_mut().front_mut() {
+                        frames.advance()
+                    } else {
+                        service
+                            .borrow_mut()
+                            .advance_frame(|| true, || js_sys::Date::now() >= deadline)
+                    };
+                    match progress {
+                        Some(SyntaxFrameProgress::Frame(frame)) => {
+                            let _ = send.post_message(&frame.into());
+                        }
+                        Some(SyntaxFrameProgress::Complete) => {
+                            controls.borrow_mut().pop_front();
+                        }
+                        Some(SyntaxFrameProgress::Pending) | None => {}
                     }
-                    if !service.borrow().has_work() {
+                    if !service.borrow().has_work() && controls.borrow().is_empty() {
                         running.set(false);
                         break;
                     }
-                    crate::util::yield_task().await;
+                    if js_sys::Date::now() >= deadline {
+                        crate::util::yield_task().await;
+                        deadline = js_sys::Date::now() + f64::from(SYNTAX_BATCH_MS);
+                    }
                 }
             });
         });
@@ -68,8 +92,29 @@ pub enum WorkerError {
     Transport,
     Timeout,
 }
-type Pending =
-    Rc<RefCell<HashMap<u32, futures::channel::oneshot::Sender<Result<String, WorkerError>>>>>;
+struct PendingReply {
+    sender: futures::channel::oneshot::Sender<Result<SyntaxReply, WorkerError>>,
+    decoding: SyntaxReplyFrameDecoding,
+    owner: Rc<()>,
+}
+type Pending = Rc<RefCell<HashMap<u32, PendingReply>>>;
+
+struct PendingRequest {
+    pending: Pending,
+    ticket: u32,
+    owner: Rc<()>,
+}
+impl Drop for PendingRequest {
+    fn drop(&mut self) {
+        let mut pending = self.pending.borrow_mut();
+        if pending
+            .get(&self.ticket)
+            .is_some_and(|reply| Rc::ptr_eq(&reply.owner, &self.owner))
+        {
+            pending.remove(&self.ticket);
+        }
+    }
+}
 
 pub trait SyntaxTransport {
     fn request(
@@ -77,6 +122,11 @@ pub trait SyntaxTransport {
         ticket: u32,
         message: String,
     ) -> futures::future::LocalBoxFuture<'_, Result<String, WorkerError>>;
+    fn request_reply(
+        &self,
+        ticket: u32,
+        message: String,
+    ) -> futures::future::LocalBoxFuture<'_, Result<SyntaxReply, WorkerError>>;
     fn stop(&self);
 }
 
@@ -150,6 +200,38 @@ impl CooperativeClient {
         }
     }
 
+    async fn request_reply_while(
+        &self,
+        message: String,
+        mut should_continue: impl FnMut() -> bool,
+    ) -> Result<SyntaxReply, WorkerError> {
+        let mut service = SyntaxWorker::default();
+        if self.stopped.get() {
+            return Err(WorkerError::Unavailable);
+        }
+        if let Some(reply) = service.enqueue(&message) {
+            return SyntaxReply::decode(&reply).ok_or(WorkerError::Transport);
+        }
+        while service.has_work() {
+            if self.stopped.get() {
+                return Err(WorkerError::Unavailable);
+            }
+            let deadline = js_sys::Date::now() + f64::from(SYNTAX_INPUT_BUDGET_MS);
+            if let Some(reply) = service.advance_reply(
+                || !self.stopped.get() && should_continue(),
+                || js_sys::Date::now() >= deadline,
+            ) {
+                return if self.stopped.get() {
+                    Err(WorkerError::Unavailable)
+                } else {
+                    Ok(reply)
+                };
+            }
+            crate::util::yield_task().await;
+        }
+        Err(WorkerError::Transport)
+    }
+
     pub async fn request_while(
         &self,
         message: String,
@@ -199,6 +281,13 @@ impl SyntaxTransport for CooperativeClient {
     ) -> futures::future::LocalBoxFuture<'_, Result<String, WorkerError>> {
         Box::pin(self.request_while(message, || true))
     }
+    fn request_reply(
+        &self,
+        _ticket: u32,
+        message: String,
+    ) -> futures::future::LocalBoxFuture<'_, Result<SyntaxReply, WorkerError>> {
+        Box::pin(self.request_reply_while(message, || true))
+    }
     fn stop(&self) {
         self.stopped.set(true);
     }
@@ -242,13 +331,24 @@ impl WorkerClient {
                     }
                     return;
                 }
-                // Extract only the routing ticket; the shared facade validates the complete reply.
-                let Some(ticket) = openwebide_core::editor::SyntaxReply::routing_ticket(&text)
-                else {
+                let Some(ticket) = SyntaxReply::routing_ticket(&text) else {
                     return;
                 };
-                if let Some(sender) = messages.borrow_mut().remove(&ticket) {
-                    let _ = sender.send(Ok(text));
+                let mut pending = messages.borrow_mut();
+                let Some(reply) = pending.get_mut(&ticket) else {
+                    return;
+                };
+                match reply.decoding.push(&text) {
+                    Some(false) => {}
+                    complete => {
+                        let reply = pending.remove(&ticket).expect("routed pending reply");
+                        let result = if complete == Some(true) {
+                            reply.decoding.finish().ok_or(WorkerError::Transport)
+                        } else {
+                            Err(WorkerError::Transport)
+                        };
+                        let _ = reply.sender.send(result);
+                    }
                 }
             },
         );
@@ -260,8 +360,8 @@ impl WorkerClient {
             if let Some(sender) = wake.borrow_mut().take() {
                 let _ = sender.send(Err(WorkerError::Transport));
             }
-            for (_, sender) in failures.borrow_mut().drain() {
-                let _ = sender.send(Err(WorkerError::Transport));
+            for (_, reply) in failures.borrow_mut().drain() {
+                let _ = reply.sender.send(Err(WorkerError::Transport));
             }
         });
         worker.set_onmessage(Some(message.as_ref().unchecked_ref()));
@@ -287,12 +387,21 @@ impl WorkerClient {
         self.worker.set_onerror(None);
         self.worker.set_onmessageerror(None);
         self.worker.terminate();
-        for (_, sender) in self.pending.borrow_mut().drain() {
-            let _ = sender.send(Err(WorkerError::Unavailable));
+        for (_, reply) in self.pending.borrow_mut().drain() {
+            let _ = reply.sender.send(Err(WorkerError::Unavailable));
         }
     }
 
     pub async fn request(&self, ticket: u32, message: String) -> Result<String, WorkerError> {
+        let reply = self.request_reply(ticket, message).await?;
+        serde_json::to_string(&reply).map_err(|_| WorkerError::Transport)
+    }
+
+    pub async fn request_reply(
+        &self,
+        ticket: u32,
+        message: String,
+    ) -> Result<SyntaxReply, WorkerError> {
         if self.failed.get() {
             return Err(WorkerError::Transport);
         }
@@ -311,15 +420,26 @@ impl WorkerClient {
             }
         }
         let (sender, receiver) = futures::channel::oneshot::channel();
-        self.pending.borrow_mut().insert(ticket, sender);
+        let owner = Rc::new(());
+        let _request = PendingRequest {
+            pending: self.pending.clone(),
+            ticket,
+            owner: owner.clone(),
+        };
+        self.pending.borrow_mut().insert(
+            ticket,
+            PendingReply {
+                sender,
+                decoding: SyntaxReplyFrameDecoding::new(ticket),
+                owner,
+            },
+        );
         if self.worker.post_message(&message.into()).is_err() {
-            self.pending.borrow_mut().remove(&ticket);
             return Err(WorkerError::Transport);
         }
         let received =
             futures::future::select(Box::pin(receiver), Box::pin(crate::util::sleep_ms(10_000)))
                 .await;
-        self.pending.borrow_mut().remove(&ticket);
         match received {
             futures::future::Either::Left((Ok(result), _)) => result,
             futures::future::Either::Left((Err(_), _)) => Err(WorkerError::Transport),
@@ -343,6 +463,13 @@ impl SyntaxTransport for WorkerClient {
     ) -> futures::future::LocalBoxFuture<'_, Result<String, WorkerError>> {
         Box::pin(WorkerClient::request(self, ticket, message))
     }
+    fn request_reply(
+        &self,
+        ticket: u32,
+        message: String,
+    ) -> futures::future::LocalBoxFuture<'_, Result<SyntaxReply, WorkerError>> {
+        Box::pin(WorkerClient::request_reply(self, ticket, message))
+    }
     fn stop(&self) {
         WorkerClient::stop(self);
     }
@@ -351,7 +478,7 @@ impl SyntaxTransport for WorkerClient {
 #[cfg(all(test, target_arch = "wasm32"))]
 mod tests {
     use super::*;
-    use openwebide_core::editor::{SyntaxReply, SyntaxRequest, SyntaxStatus};
+    use openwebide_core::editor::{SyntaxRequest, SyntaxStatus};
     use wasm_bindgen_test::wasm_bindgen_test;
 
     #[wasm_bindgen::prelude::wasm_bindgen(inline_js = r#"
@@ -363,9 +490,15 @@ mod tests {
             }
             postMessage(message) {
                 const request = JSON.parse(message);
-                const reply = {version:request.version,ticket:request.ticket,status:'Cancelled',analysis:null};
-                if (request.ticket === 7) reply.padding = 'x'.repeat(2 * 1024 * 1024);
-                queueMicrotask(() => this.onmessage?.({data:JSON.stringify(reply)}));
+                const begin = {version:request.version,framing:1,ticket:request.ticket,sequence:0,part:{Begin:{status:'Cancelled',analysis:null}}};
+                const end = {version:request.version,framing:1,ticket:request.ticket,sequence:1,part:'End'};
+                if (request.ticket === 7) begin.padding = 'x'.repeat(2 * 1024 * 1024);
+                if (request.ticket === 9) end.sequence = 2;
+                if (request.ticket === 10) end.part = {Source:'unexpected'};
+                queueMicrotask(() => {
+                    this.onmessage?.({data:JSON.stringify(begin)});
+                    if (request.ticket !== 11) this.onmessage?.({data:JSON.stringify(end)});
+                });
             }
             terminate() {}
         };
@@ -376,13 +509,180 @@ mod tests {
         fn installRoutingWorker(ready: &str) -> js_sys::Function;
     }
 
+    #[wasm_bindgen::prelude::wasm_bindgen(js_name = mountSyntaxWorkerContract)]
+    pub fn mount_syntax_worker_contract() -> bool {
+        mount_worker()
+    }
+
+    #[wasm_bindgen::prelude::wasm_bindgen(inline_js = r#"
+    export function installRealSyntaxWorker() {
+        const original = globalThis.Worker;
+        const module = performance.getEntriesByType('resource').map(entry => entry.name)
+            .find(url => /\/(?:tests|wasm-bindgen-test)\.js$/.test(new URL(url).pathname));
+        if (!module) throw new Error('Missing generated WASM test module');
+        const source = `import init, {mountSyntaxWorkerContract} from '${module}';
+            await init();
+            if (!mountSyntaxWorkerContract()) throw new Error('Not in a dedicated worker');`;
+        const url = URL.createObjectURL(new Blob([source], {type:'text/javascript'}));
+        globalThis.Worker = class extends original {
+            constructor(_url, options) { super(url, options); }
+        };
+        return () => { globalThis.Worker = original; URL.revokeObjectURL(url); };
+    }
+    "#)]
+    extern "C" {
+        fn installRealSyntaxWorker() -> js_sys::Function;
+    }
+
+    #[wasm_bindgen_test]
+    async fn dedicated_framed_worker_and_cooperative_adapter_preserve_language_contracts() {
+        use openwebide_core::highlight::Language;
+        use std::sync::Arc;
+        let restore = installRealSyntaxWorker();
+        let result = async {
+            let worker = WorkerClient::new()?;
+            let cooperative = CooperativeClient::default();
+            let mut contracts = Vec::new();
+            for (language, path, body) in [
+                (
+                    Language::Rust,
+                    "worker.rs",
+                    "fn sample() { let word = \"文😀\"; }\n",
+                ),
+                (
+                    Language::Html,
+                    "worker.html",
+                    "<script>const word = '文😀';</script><style>.word { color: red; }</style>\n",
+                ),
+                (
+                    Language::Markdown,
+                    "worker.md",
+                    "# 文😀\n```rust\nfn sample() {}\n```\n",
+                ),
+            ] {
+                let mut previous = None;
+                for (ticket, source) in [
+                    (1, body.repeat(100)),
+                    (2, format!("{}\n", body.repeat(100))),
+                ] {
+                    let request = SyntaxRequest::new(
+                        ticket,
+                        path.into(),
+                        language,
+                        &source,
+                        4,
+                        previous.as_ref().map(
+                            |(ticket, analysis): &(
+                                u32,
+                                Arc<openwebide_core::editor::SyntaxAnalysis>,
+                            )| (*ticket, analysis.as_ref()),
+                        ),
+                    );
+                    let message = serde_json::to_string(&request).unwrap();
+                    let actual = worker.request_reply(ticket, message.clone()).await?;
+                    let mut fallback = cooperative.request_reply(ticket, message).await?;
+                    if fallback.status == SyntaxStatus::NeedsSource {
+                        let full =
+                            SyntaxRequest::new(ticket, path.into(), language, &source, 4, None);
+                        fallback = cooperative
+                            .request_reply(ticket, serde_json::to_string(&full).unwrap())
+                            .await?;
+                    }
+                    let source = Arc::new(source);
+                    let mut proof = actual
+                        .prepare_received_shared(
+                            ticket,
+                            source.clone(),
+                            previous
+                                .as_ref()
+                                .map(|(ticket, analysis)| (*ticket, analysis.as_ref())),
+                        )
+                        .ok_or(WorkerError::Transport)?;
+                    while !proof.advance() {
+                        crate::util::yield_task().await;
+                    }
+                    let actual = proof
+                        .finish()
+                        .ok_or(WorkerError::Transport)?
+                        .1
+                        .ok_or(WorkerError::Transport)?;
+                    let mut proof = fallback
+                        .prepare_received_shared(ticket, source, None)
+                        .ok_or(WorkerError::Transport)?;
+                    while !proof.advance() {
+                        crate::util::yield_task().await;
+                    }
+                    let fallback = proof
+                        .finish()
+                        .ok_or(WorkerError::Transport)?
+                        .1
+                        .ok_or(WorkerError::Transport)?;
+                    contracts.push(
+                        serde_json::to_value(actual.transfer_data()).unwrap()
+                            == serde_json::to_value(fallback.transfer_data()).unwrap(),
+                    );
+                    previous = Some((ticket, actual));
+                }
+            }
+            worker.stop();
+            cooperative.stop();
+            Ok::<_, WorkerError>(contracts)
+        }
+        .await;
+        restore.call0(&wasm_bindgen::JsValue::NULL).unwrap();
+        let contracts = result.unwrap();
+        assert_eq!(contracts.len(), 6);
+        assert!(contracts.into_iter().all(|same| same));
+    }
+
+    #[wasm_bindgen_test]
+    async fn dropped_framed_requests_release_partial_transactions() {
+        use std::{
+            future::Future,
+            task::{Context, Poll, Waker},
+        };
+        let restore = installRoutingWorker(READY_MESSAGE);
+        let result = async {
+            let client = WorkerClient::new()?;
+            client.ready.set(true);
+            let request = SyntaxRequest::new(
+                11,
+                "owner.rs".into(),
+                openwebide_core::highlight::Language::Rust,
+                "fn main() {}",
+                4,
+                None,
+            );
+            let mut future =
+                Box::pin(client.request_reply(11, serde_json::to_string(&request).unwrap()));
+            let started = matches!(
+                future
+                    .as_mut()
+                    .poll(&mut Context::from_waker(Waker::noop())),
+                Poll::Pending
+            );
+            crate::util::yield_task().await;
+            let retained = client.pending.borrow().len();
+            drop(future);
+            let released = client.pending.borrow().is_empty();
+            client.stop();
+            Ok::<_, WorkerError>((started, retained, released))
+        }
+        .await;
+        restore.call0(&wasm_bindgen::JsValue::NULL).unwrap();
+        let (started, retained, released) = result.unwrap();
+        assert!(started);
+        assert_eq!(retained, 1);
+        assert!(released);
+    }
+
     #[wasm_bindgen_test]
     async fn bounded_worker_routing_preserves_complete_reply_validation() {
         let restore = installRoutingWorker(READY_MESSAGE);
         let result = async {
             let client = WorkerClient::new()?;
             let mut replies = Vec::new();
-            for ticket in [7, 8] {
+            for ticket in [7, 8, 9, 10] {
                 let request = SyntaxRequest::new(
                     ticket,
                     "worker.rs".into(),
@@ -393,8 +693,8 @@ mod tests {
                 );
                 replies.push(
                     client
-                        .request(ticket, serde_json::to_string(&request).unwrap())
-                        .await?,
+                        .request_reply(ticket, serde_json::to_string(&request).unwrap())
+                        .await,
                 );
             }
             client.stop();
@@ -405,10 +705,11 @@ mod tests {
         // failures: WASM panics do not unwind test fixture cleanup.
         restore.call0(&wasm_bindgen::JsValue::NULL).unwrap();
         let replies = result.unwrap();
-        assert!(replies[0].len() > 2 * 1024 * 1024);
-        assert!(SyntaxReply::receive(&replies[0], 7, "let value = 1;").is_none());
-        let (status, analysis) = SyntaxReply::receive(&replies[1], 8, "let value = 1;").unwrap();
-        assert_eq!(status, SyntaxStatus::Cancelled);
-        assert!(analysis.is_none());
+        assert!(matches!(replies[0], Err(WorkerError::Transport)));
+        let reply = replies[1].as_ref().unwrap();
+        assert_eq!(reply.status, SyntaxStatus::Cancelled);
+        assert!(reply.analysis.is_none());
+        assert!(matches!(replies[2], Err(WorkerError::Transport)));
+        assert!(matches!(replies[3], Err(WorkerError::Transport)));
     }
 }

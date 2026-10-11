@@ -2,9 +2,10 @@
 use super::EditorActions;
 use crate::state::workspace::{EditorFallbackPaint, EditorSyntaxScope, PreparedEditorSyntax};
 use leptos::prelude::*;
+#[cfg(test)]
+use openwebide_core::editor::SyntaxReply;
 use openwebide_core::editor::{
-    SyntaxAnalysis, SyntaxReply, SyntaxReplyReception, SyntaxRequest, SyntaxRequestPublication,
-    SyntaxStatus,
+    SyntaxAnalysis, SyntaxReplyReception, SyntaxRequest, SyntaxRequestPublication, SyntaxStatus,
 };
 use std::{cell::Cell, rc::Rc};
 
@@ -719,16 +720,15 @@ impl EditorActions {
                     else {
                         continue;
                     };
-                    let reply = client.request(request_ticket, message).await;
+                    let reply = client.request_reply(request_ticket, message).await;
                     if pending.is_disposed() {
                         break;
                     }
                     if ticket.get_value() != request_ticket || !self.syntax_scope_current(&scope) {
                         continue;
                     }
-                    let reception = reply.ok().and_then(|message| {
-                        SyntaxReply::prepare_receive_shared(
-                            &message,
+                    let reception = reply.ok().and_then(|reply| {
+                        reply.prepare_received_shared(
                             request_ticket,
                             scope.source.clone(),
                             previous
@@ -776,7 +776,7 @@ impl EditorActions {
                         else {
                             continue;
                         };
-                        let reply = client.request(request_ticket, message).await;
+                        let reply = client.request_reply(request_ticket, message).await;
                         if pending.is_disposed() {
                             break;
                         }
@@ -785,9 +785,8 @@ impl EditorActions {
                         {
                             continue;
                         }
-                        let reception = reply.ok().and_then(|message| {
-                            SyntaxReply::prepare_receive_shared(
-                                &message,
+                        let reception = reply.ok().and_then(|reply| {
+                            reply.prepare_received_shared(
                                 request_ticket,
                                 scope.source.clone(),
                                 None,

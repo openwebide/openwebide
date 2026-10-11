@@ -12000,6 +12000,23 @@ impl openwebide_frontend::editor_worker::SyntaxTransport for DeferredSyntax {
             ))
         })
     }
+    fn request_reply(
+        &self,
+        ticket: u32,
+        message: String,
+    ) -> futures::future::LocalBoxFuture<
+        '_,
+        Result<
+            openwebide_core::editor::SyntaxReply,
+            openwebide_frontend::editor_worker::WorkerError,
+        >,
+    > {
+        let response = self.request(ticket, message);
+        Box::pin(async move {
+            openwebide_core::editor::SyntaxReply::decode(&response.await?)
+                .ok_or(openwebide_frontend::editor_worker::WorkerError::Transport)
+        })
+    }
     fn stop(&self) {
         self.stopped.set(true);
         for reply in self.pending.borrow_mut().drain(..) {
