@@ -1070,6 +1070,7 @@ mod bundled_tests {
             let installer = NativePluginInstaller::new(Some(root.path().to_path_buf()));
             for source in &sources {
                 let files = bundled_files(source).unwrap();
+                let expected_manifest = openwebide_core::plugins::validate_files(&files).unwrap();
                 assert!(
                     bundled_component(source, &openwebide_core::plugins::package_digest(&files))
                         .unwrap()
@@ -1108,7 +1109,7 @@ mod bundled_tests {
                 assert_eq!(package.prepared, prepared);
                 assert_eq!(prepared.host_id, host);
                 assert!(prepared.manifest.contributions.tool_groups.is_empty());
-                assert_eq!(prepared.manifest.version, "0.2.0");
+                assert_eq!(prepared.manifest, expected_manifest);
                 assert!(
                     !installer
                         .component("owner", &prepared)
