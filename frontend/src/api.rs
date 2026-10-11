@@ -159,7 +159,7 @@ impl BackendApi {
     // -- auth --------------------------------------------------------------
 
     /// Register a new local account (only the first account may register).
-    /// On success the returned token is stored for subsequent requests.
+    /// On success the browser receives an HttpOnly session cookie.
     pub async fn register(&self, username: &str, password: &str) -> Result<User, String> {
         let resp: AuthResponse = self
             .post(
@@ -169,11 +169,12 @@ impl BackendApi {
             .await?;
         self.session_revision
             .update(|revision| *revision = revision.wrapping_add(1));
+        self.session_expired.set(false);
         self.signed_in.set(true);
         Ok(resp.user)
     }
 
-    /// Log in with an existing account. On success the token is stored.
+    /// Log in with an existing account using an HttpOnly session cookie.
     pub async fn login(&self, username: &str, password: &str) -> Result<User, String> {
         let resp: AuthResponse = self
             .post(
@@ -183,16 +184,22 @@ impl BackendApi {
             .await?;
         self.session_revision
             .update(|revision| *revision = revision.wrapping_add(1));
+        self.session_expired.set(false);
         self.signed_in.set(true);
         Ok(resp.user)
     }
 
-    /// The account for the current token.
+    /// The account for the current session cookie.
     pub async fn me(&self) -> Result<User, String> {
+        let revision = self.session_revision.get_untracked();
         let resp: serde_json::Value = self.get("/auth/me").await?;
+        if self.session_revision.get_untracked() != revision {
+            return Err("Account changed during session check".into());
+        }
         let user: User = serde_json::from_value(resp["user"].clone()).map_err(|e| e.to_string())?;
         self.session_revision
             .update(|revision| *revision = revision.wrapping_add(1));
+        self.session_expired.set(false);
         self.signed_in.set(true);
         Ok(user)
     }
@@ -200,10 +207,11 @@ impl BackendApi {
     pub async fn logout(&self) -> Result<(), String> {
         self.session_revision
             .update(|revision| *revision = revision.wrapping_add(1));
+        self.signed_in.set(false);
+        self.session_expired.set(false);
         let _ = self
             .post::<_, serde_json::Value>("/auth/logout", &json!({}))
             .await;
-        self.signed_in.set(false);
         Ok(())
     }
 
@@ -598,12 +606,14 @@ impl BackendApi {
         let builder = self.builder(&url, Method::GET);
         let req = builder.build().map_err(|e| e.to_string())?;
 
-        let is_signed_in = self.signed_in.get_untracked();
+        let session_revision = self
+            .signed_in
+            .get_untracked()
+            .then(|| self.session_revision.get_untracked());
         let resp = req.send().await.map_err(|e| e.to_string())?;
         if !resp.ok() {
-            if resp.status() == 401 && is_signed_in {
-                self.signed_in.set(false);
-                self.session_expired.set(true);
+            if resp.status() == 401 {
+                self.expire_session(session_revision);
             }
             return Err(self.error_from(resp).await);
         }
@@ -655,12 +665,14 @@ impl BackendApi {
             .header("Cache-Control", "no-cache");
         let req = builder.build().map_err(|e| e.to_string())?;
 
-        let is_signed_in = self.signed_in.get_untracked();
+        let session_revision = self
+            .signed_in
+            .get_untracked()
+            .then(|| self.session_revision.get_untracked());
         let resp = req.send().await.map_err(|e| e.to_string())?;
         if !resp.ok() {
-            if resp.status() == 401 && is_signed_in {
-                self.signed_in.set(false);
-                self.session_expired.set(true);
+            if resp.status() == 401 {
+                self.expire_session(session_revision);
             }
             return Err(self.error_from(resp).await);
         }
@@ -686,12 +698,14 @@ impl BackendApi {
             .body(content.to_string())
             .map_err(|e| e.to_string())?;
 
-        let is_signed_in = self.signed_in.get_untracked();
+        let session_revision = self
+            .signed_in
+            .get_untracked()
+            .then(|| self.session_revision.get_untracked());
         let resp = req.send().await.map_err(|e| e.to_string())?;
         if !resp.ok() {
-            if resp.status() == 401 && is_signed_in {
-                self.signed_in.set(false);
-                self.session_expired.set(true);
+            if resp.status() == 401 {
+                self.expire_session(session_revision);
             }
             return Err(self.error_from(resp).await);
         }
@@ -1653,12 +1667,14 @@ impl BackendApi {
             }))
             .map_err(|e| e.to_string())?;
 
-        let is_signed_in = self.signed_in.get_untracked();
+        let session_revision = self
+            .signed_in
+            .get_untracked()
+            .then(|| self.session_revision.get_untracked());
         let resp = req.send().await.map_err(|e| e.to_string())?;
         if !resp.ok() {
-            if resp.status() == 401 && is_signed_in {
-                self.signed_in.set(false);
-                self.session_expired.set(true);
+            if resp.status() == 401 {
+                self.expire_session(session_revision);
             }
             return Err(self.error_from(resp).await);
         }
@@ -1723,9 +1739,22 @@ impl BackendApi {
         self.request(Method::PUT, path, Some(body), false).await
     }
 
+    /// A response from an old account or an already expired session cannot
+    /// invalidate a later login. Advance ownership before notifying the shell.
+    fn expire_session(&self, revision: Option<u64>) {
+        if revision == Some(self.session_revision.get_untracked()) && self.signed_in.get_untracked()
+        {
+            self.session_revision
+                .update(|value| *value = value.wrapping_add(1));
+            self.signed_in.set(false);
+            self.session_expired.set(true);
+        }
+    }
+
     fn builder(&self, url: &str, method: Method) -> RequestBuilder {
         let mut builder = RequestBuilder::new(url)
             .method(method)
+            .cache(web_sys::RequestCache::NoStore)
             .header("x-openwebide", "1");
         if self.cross_origin {
             builder = builder.credentials(web_sys::RequestCredentials::Include);
@@ -1773,20 +1802,17 @@ impl BackendApi {
         }
         .map_err(|e| RequestError::transport(e.to_string()))?;
 
-        let is_signed_in = self.signed_in.get_untracked();
-        let session_revision = self.session_revision.get_untracked();
+        let session_revision = self
+            .signed_in
+            .get_untracked()
+            .then(|| self.session_revision.get_untracked());
         let resp = req
             .send()
             .await
             .map_err(|e| RequestError::transport(e.to_string()))?;
         if !resp.ok() {
-            if resp.status() == 401
-                && is_signed_in
-                && self.session_revision.get_untracked() == session_revision
-                && !path.starts_with("/auth/")
-            {
-                self.signed_in.set(false);
-                self.session_expired.set(true);
+            if resp.status() == 401 && !path.starts_with("/auth/") {
+                self.expire_session(session_revision);
             }
             let status = resp.status();
             return Err(RequestError {
@@ -1970,7 +1996,7 @@ mod recovery_transport_tests {
             const original = window.fetch;
             const requests = [];
             window.fetch = async request => {
-                requests.push({method: request.method, url: request.url, header: request.headers.get('x-openwebide')});
+                requests.push({method: request.method, url: request.url, header: request.headers.get('x-openwebide'), cache: request.cache});
                 return new Response(body, {status, headers: {'Content-Type': 'application/json'}});
             };
             return {requests, restore: () => {window.fetch = original;}};
@@ -1979,11 +2005,13 @@ mod recovery_transport_tests {
             const original = window.fetch;
             let resolve;
             window.fetch = () => new Promise(done => {resolve = done;});
-            return {restore: () => {window.fetch = original;}, finish: () => resolve(new Response('{"error":"expired"}', {status:401}))};
+            return {restore: () => {window.fetch = original;}, finish: (status = 401, body = '{"error":"expired"}') => resolve(new Response(body, {status, headers: {'Content-Type':'application/json'}}))};
         }
         export function recoveryPendingFinish(state) {state.finish();}
+        export function recoveryPendingAccount(state) {state.finish(200, '{"user":{"id":1,"username":"alice","role":"user","created_at":0}}');}
         export function recoveryFetchRestore(state) {state.restore();}
         export function recoveryRequestHeader(state) {return state.requests[0].header;}
+        export function recoveryRequestCache(state) {return state.requests[0].cache;}
     "#)]
     extern "C" {
         #[wasm_bindgen(js_name = recoveryFetch)]
@@ -1994,8 +2022,84 @@ mod recovery_transport_tests {
         fn pending() -> JsValue;
         #[wasm_bindgen(js_name = recoveryPendingFinish)]
         fn finish(state: &JsValue);
+        #[wasm_bindgen(js_name = recoveryPendingAccount)]
+        fn finish_account(state: &JsValue);
         #[wasm_bindgen(js_name = recoveryRequestHeader)]
         fn header(state: &JsValue) -> String;
+        #[wasm_bindgen(js_name = recoveryRequestCache)]
+        fn cache(state: &JsValue) -> String;
+    }
+
+    #[wasm_bindgen_test]
+    async fn login_bypasses_cached_auth_and_clears_expiration() {
+        let owner = leptos::prelude::Owner::new();
+        let api = owner.with(BackendApi::from_location);
+        api.session_expired.set(true);
+        let state = recovery_fetch(
+            200,
+            r#"{"user":{"id":1,"username":"alice","role":"user","created_at":0}}"#,
+        );
+        assert_eq!(
+            api.login("alice", "password").await.unwrap().username,
+            "alice"
+        );
+        assert_eq!(cache(&state), "no-store");
+        assert!(!api.session_expired.get_untracked());
+        assert!(api.signed_in.get_untracked());
+        restore(&state);
+        let state = recovery_fetch(401, r#"{"error":"invalid username or password"}"#);
+        assert!(api.login("alice", "wrong").await.is_err());
+        assert!(!api.session_expired.get_untracked());
+        restore(&state);
+        owner.cleanup();
+    }
+
+    #[wasm_bindgen_test]
+    async fn startup_account_check_cannot_replace_later_login() {
+        let owner = leptos::prelude::Owner::new();
+        let api = owner.with(BackendApi::from_location);
+        let state = pending();
+        let mut request = Box::pin(api.me());
+        assert!(futures::poll!(&mut request).is_pending());
+        restore(&state);
+        let login = recovery_fetch(
+            200,
+            r#"{"user":{"id":2,"username":"bob","role":"user","created_at":0}}"#,
+        );
+        api.login("bob", "password").await.unwrap();
+        restore(&login);
+        finish_account(&state);
+        assert!(request.await.is_err());
+        assert!(api.signed_in.get_untracked());
+        assert!(!api.session_expired.get_untracked());
+        owner.cleanup();
+    }
+
+    #[wasm_bindgen_test]
+    async fn stale_file_unauthorized_response_cannot_expire_new_login() {
+        let owner = leptos::prelude::Owner::new();
+        let api = owner.with(BackendApi::from_location);
+        api.signed_in.set(true);
+        let state = pending();
+        let mut request = Box::pin(api.read_file_bytes(1, "file.txt"));
+        assert!(futures::poll!(&mut request).is_pending());
+        restore(&state);
+        let login = recovery_fetch(
+            200,
+            r#"{"user":{"id":2,"username":"bob","role":"user","created_at":0}}"#,
+        );
+        api.login("bob", "password").await.unwrap();
+        restore(&login);
+        finish(&state);
+        assert!(request.await.is_err());
+        assert!(!api.session_expired.get_untracked());
+        assert!(api.signed_in.get_untracked());
+        let expired = recovery_fetch(401, r#"{"error":"expired"}"#);
+        assert!(api.read_file_bytes(1, "file.txt").await.is_err());
+        assert!(api.session_expired.get_untracked());
+        assert!(!api.signed_in.get_untracked());
+        restore(&expired);
+        owner.cleanup();
     }
 
     #[wasm_bindgen_test]

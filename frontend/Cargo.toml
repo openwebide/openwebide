@@ -25,7 +25,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 wasm-bindgen = { workspace = true }
 wasm-bindgen-futures = { workspace = true }
-web-sys = { workspace = true, features = ["css", "CustomEvent", "Performance", "WheelEvent", "DocumentFragment", "Worker", "WorkerOptions", "WorkerType", "DedicatedWorkerGlobalScope", "MessageEvent", "ErrorEvent", "FocusOptions", "CompositionEvent", "InputEvent", "InputEventInit", "Range", "DomRect", "DomRectList", "VisualViewport", "NodeList", "CssStyleDeclaration", "BlobPropertyBag", "HtmlAnchorElement", "HtmlDocument", "RequestCredentials", "MutationObserver", "MutationObserverInit", "Notification", "NotificationPermission", "NotificationOptions"] }
+web-sys = { workspace = true, features = ["css", "CustomEvent", "Performance", "WheelEvent", "DocumentFragment", "Worker", "WorkerOptions", "WorkerType", "DedicatedWorkerGlobalScope", "MessageEvent", "ErrorEvent", "FocusOptions", "CompositionEvent", "InputEvent", "InputEventInit", "Range", "DomRect", "DomRectList", "VisualViewport", "NodeList", "CssStyleDeclaration", "BlobPropertyBag", "HtmlAnchorElement", "HtmlDocument", "RequestCredentials", "RequestCache", "MutationObserver", "MutationObserverInit", "Notification", "NotificationPermission", "NotificationOptions"] }
 
 [features]
 test-support = ["openwebide-core/test-support"]
