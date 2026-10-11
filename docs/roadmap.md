@@ -86,7 +86,9 @@ core/WASM frontend lint pass
 Cold preparation and memory remain unfinished. The prior hosted browser groups
 hit their 300-second deadline after the long wrapped replay contract passed;
 independent replay partitions now preserve coverage and deadlines. Hosted CI for
-the partition fix is running; the new runtime checkpoint still needs hosted CI.
+the partition fix passes all five jobs
+([receipt](editor-performance/grouped-ci-2bdd9a8-success.json)); the new runtime
+checkpoint still needs its browser job to finish.
 
 **Remaining implementation** (all items remain part of this editor goal):
 
@@ -95,6 +97,12 @@ the partition fix is running; the new runtime checkpoint still needs hosted CI.
   retained-fold/current-source ownership. Keep ordinary literal input independent
   of unnecessary lexical scans; preserve pairing once current context is ready.
   Verify explicit structural commands, cancellation and large fenced-code input.
+  Sixteen current production prefix-insertion samples preserve full source;
+  small Remote Markdown publication still takes 159–173 ms
+  ([samples](editor-performance/embedded-literal-prefix-production.jsonl)). A
+  shared command facade skips parser context for literal characters; its
+  held-parser both-mode regression passes. Neither closes readiness or
+  the observed publication-delay requirement.
 - [ ] **Cold startup and native input:** bound remaining complete-source shaping,
   projection/native normalization, long word/context traversal and synchronous
   selection publication. Finish source-owned touch caret/selection and native

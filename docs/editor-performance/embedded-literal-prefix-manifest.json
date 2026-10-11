@@ -1,0 +1,13 @@
+{
+  "sourceHead": "2d7e5b970ef9e70beb4a63b2e6613ee14367b483",
+  "sourceDiffSha256": "a8afca5a51382a0bab0fed024ca290b9810534d323b3f9bff60e78da90dfca15",
+  "backendWasmSha256": "8efc2579446963f530f5774fdcbe2223bbc6b974eb54d8221a768ff1c43232af",
+  "measurementScriptSha256": "8e810dc178ce0a2469a6b6f315d92896ed81cdc51a359c17fe521af4596d001e",
+  "frontendWasmSha256": {
+    "openwebide-frontend-40bda3e4eb513288_bg.wasm": "bc705a9e7a544bbda3420b8e33c8f6b709dbd1a97f453d79287651adf4291dee"
+  },
+  "scope": "16 ordinary literal prefix insertions into documents containing HTML script / Markdown fenced JavaScript, 64/512 KiB, two repeats in both modes. Checks publication and full source; does not measure interior pairing or enforce preparation-budget readiness.",
+  "fixtureScriptSha256": "bfd4f9e297f702c74a76a1e584fb139cef0804852c1f9a3a36f990cdde11face",
+  "controllerSha256": "d28d133131efb09343c794103e3b56b6699cf3f1388969a699ad3cc9f2172f5f",
+  "fixtureScript": "import runpy,json,pathlib,hashlib,sys,subprocess,os\nroot=pathlib.Path('/workspace/repos/openwebide');manifest=json.loads(pathlib.Path('/fixture/manifest.json').read_text());sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()\nassert {p.name:sha(p) for p in (root/'frontend/dist').glob('*.wasm')}==manifest['frontendWasmSha256']\nassert sha(root/'target/wasm32-wasip2/release/openwebide_backend.wasm')==manifest['backendWasmSha256']\nassert sha(root/'tools/measure-editor-view.py')==manifest['measurementScriptSha256']\nmodule=runpy.run_path(str(root/'tools/measure-editor-view.py'))\nmode=sys.argv[1];wrapped=sys.argv[2]=='true';repetition=int(sys.argv[3]);cohort=sys.argv[4];case=sys.argv[5]\nprint(json.dumps({'cohort':cohort,'frontendWasmSha256':manifest['frontendWasmSha256'],'backendWasmSha256':manifest['backendWasmSha256'],'browser':subprocess.check_output([os.environ['CHROME'],'--version'],text=True).strip(),'hostConstraints':module['host_constraints']()}),flush=True)\ndef embedded_source(case):\n size=int(case.rsplit('-',1)[1])*1024\n prefix,suffix=(\"<script>\\n\",\"</script>\\n\") if case.startswith('html') else (\"```javascript\\n\",\"```\\n\")\n pattern=\"function run() {} // \u6587\ud83d\ude00 padding ................................\\n\"\n return prefix+pattern*((size-len((prefix+suffix).encode()))//len(pattern.encode()))+suffix\nmodule['measure'].__globals__['source_for']=embedded_source\nfile_name='measure.html' if case.startswith('html') else 'measure.md'\nresult=module['measure'](case,mode,wrapped,False,repetition,'beginning',False,file_name)\nassert result['completeSourceAfterInputVerified'] is True\nassert result['peakChromePssKiB'] is not None\nprint(json.dumps({'cohort':cohort,**result}),flush=True)\n"
+}

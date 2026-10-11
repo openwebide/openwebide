@@ -6369,8 +6369,10 @@ and four independent runs (two replay contracts and two font matrices)
 not execution. Hosted `4fb3c637` finishes with four green jobs and the UI-group
 timeout
 ([receipt](editor-performance/grouped-ci-4fb3c637-failure.json)). The partition
-change preserves the 300-second deadline and every assertion; hosted rerun is
-required before claiming CI recovery.
+change preserves the 300-second deadline and every assertion. Hosted checkpoint
+`2bdd9a8` now passes all five jobs, including the full browser job
+([receipt](editor-performance/grouped-ci-2bdd9a8-success.json)). This verifies
+the partition fix; subsequent runtime changes require their own CI result.
 
 Final runtime verification passes five browser regressions with shipped fonts:
 current unwrapped Unicode replay (including a nonempty-plan stale-account check),
@@ -6384,3 +6386,25 @@ plans validate their respective exact geometry and the browser measures actual
 rectangles. Both project modes exercise that same implementation. Hosted CI
 for the new runtime checkpoint remains pending; this does not clear the full
 editor performance, device or integration gates.
+
+Sixteen production baseline samples verify full source after literal prefix
+insertion into HTML script / Markdown fenced-code documents at 64/512 KiB,
+with two fresh repeats in both modes
+([results](editor-performance/embedded-literal-prefix-production.jsonl),
+[fixture/manifest](editor-performance/embedded-literal-prefix-manifest.json)).
+HTML input paints in 10–42 ms; Markdown 512-KiB input in 11–27 ms. Markdown
+64-KiB Remote samples take 159–173 ms versus 12–13 ms Local; the cause remains
+unproven. Prefix insertion invalidates the Markdown opening fence, so these
+measure publication and complete-source preservation rather than interior
+pairing or preparation readiness. The shared command facade now skips parser
+context for unconditional literal characters and shares the character policy
+with the UI. Its held-parser HTML/Markdown regression verifies unchanged full
+source, caret movement and undo without invoking the parser input clock in
+both modes. Existing pairing, expired-budget/history/stale-owner and mobile
+input contracts also pass (four browser tests;
+[receipt](editor-performance/literal-command-context-browser.json)). This
+change is not credited with resolving the observed publication delay.
+Native verification also passes 509 core library tests, 129 frontend library
+tests, strict core all-targets and WASM frontend all-targets lint, formatting
+and diff whitespace checks. The command policy lives in the shared core/facade;
+neither workspace adapter changes.

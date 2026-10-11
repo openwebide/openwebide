@@ -21377,6 +21377,79 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes
 }
 
 #[wasm_bindgen_test]
+async fn literal_embedded_commands_skip_parser_preparation_in_both_modes() {
+    use openwebide_core::{
+        WorkspaceMode,
+        editor::{Indentation, Selection},
+    };
+    use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        for (path, prefix, suffix) in [
+            ("literal.html", "<script>\n", "</script>\n"),
+            ("literal.md", "```javascript\n", "```\n"),
+        ] {
+            let source = format!(
+                "{prefix}{}{suffix}",
+                "function run() {} // 文😀 padding\n".repeat(2_000)
+            );
+            let original = source.clone();
+            let inside = source.find("{}").unwrap() + 1;
+            let calls = std::rc::Rc::new(std::cell::Cell::new(0));
+            let observed = calls.clone();
+            let clock = std::rc::Rc::new(move || {
+                observed.set(observed.get() + 1);
+                0.0
+            });
+            let slot = std::rc::Rc::new(std::cell::Cell::new(None));
+            let capture = slot.clone();
+            let transport = std::rc::Rc::new(DeferredSyntax::default());
+            let installed = transport.clone();
+            let _mounted = mount_test(move |state| {
+                state.seed_project();
+                state
+                    .projects
+                    .projects
+                    .update(|projects| projects[0].mode = mode);
+                state.workspace.open_file.set(Some(path.into()));
+                state.workspace.content.set(source.into());
+                let actions = EditorActions::with_input_clock(state.workspace, clock);
+                actions.install_syntax_transport(installed);
+                capture.set(Some(actions));
+                view! { <div/> }
+            });
+            let actions = slot.get().unwrap();
+            wait_until("held embedded syntax request", || {
+                !transport.pending.borrow().is_empty()
+            })
+            .await;
+            assert_eq!(calls.get(), 0);
+            let selection = actions
+                .command(
+                    EditorCommand::TypeCharacter('x'),
+                    Selection::caret(inside),
+                    Indentation::default(),
+                )
+                .unwrap()
+                .unwrap();
+            assert_eq!(
+                calls.get(),
+                0,
+                "{mode:?} {path}: literal input must never enter parser preparation"
+            );
+            let mut expected = original.clone();
+            expected.insert(inside, 'x');
+            assert_eq!(actions.source(), expected);
+            assert_eq!(selection, Selection::caret(inside + 1));
+            actions
+                .command(EditorCommand::Undo, selection, Indentation::default())
+                .unwrap();
+            assert_eq!(actions.source(), original);
+            assert_eq!(calls.get(), 0);
+        }
+    }
+}
+
+#[wasm_bindgen_test]
 async fn current_unwrapped_replay_preserves_complete_unicode_geometry_in_both_modes() {
     use openwebide_core::{WorkspaceMode, editor::Selection};
     use openwebide_frontend::{

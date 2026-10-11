@@ -2383,8 +2383,7 @@ fn render_markdown_diff(diff: &FileDiff) -> impl IntoView {
 fn pair_character(text: &str) -> Option<char> {
     let mut chars = text.chars();
     let ch = chars.next()?;
-    (chars.next().is_none() && matches!(ch, '(' | ')' | '[' | ']' | '{' | '}' | '\'' | '"' | '`'))
-        .then_some(ch)
+    (chars.next().is_none() && openwebide_core::editor::is_pair_character(ch)).then_some(ch)
 }
 
 fn apply_editor_command(

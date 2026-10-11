@@ -6,6 +6,12 @@ use super::{
 };
 use crate::highlight::Language;
 
+/// Characters whose pairing or closing behavior can depend on syntax context.
+/// Ordinary literal characters do not require parser preparation.
+pub fn is_pair_character(ch: char) -> bool {
+    matches!(ch, '(' | ')' | '[' | ']' | '{' | '}' | '\'' | '"' | '`')
+}
+
 impl Document {
     pub fn type_character(&mut self, ch: char, language: Language) -> Result<bool, EditError> {
         let bracket =

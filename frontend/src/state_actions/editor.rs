@@ -1762,15 +1762,16 @@ impl EditorActions {
         let Some(key) = self.key() else {
             return Ok(None);
         };
-        let syntax = if matches!(
-            command,
-            EditorCommand::TypeCharacter(_)
-                | EditorCommand::DeletePair
-                | EditorCommand::Newline
-                | EditorCommand::Reindent
-                | EditorCommand::BlockComment
-                | EditorCommand::LineComment
-        ) {
+        let context_required = match command {
+            EditorCommand::TypeCharacter(ch) => openwebide_core::editor::is_pair_character(ch),
+            EditorCommand::DeletePair
+            | EditorCommand::Newline
+            | EditorCommand::Reindent
+            | EditorCommand::BlockComment
+            | EditorCommand::LineComment => true,
+            _ => false,
+        };
+        let syntax = if context_required {
             self.structure_for_input(
                 matches!(
                     command,

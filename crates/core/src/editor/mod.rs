@@ -106,6 +106,7 @@ mod reindent;
 pub use lines::LineCommand;
 pub use reindent::supports_reindent;
 mod pairs;
+pub use pairs::is_pair_character;
 mod structure;
 pub use structure::{MAX_STRUCTURE_BYTES, Structure, supports_brackets};
 mod indent;

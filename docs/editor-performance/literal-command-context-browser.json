@@ -1,0 +1,14 @@
+{
+  "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+  "console": "Invoking test: editor::literal_embedded_commands_skip_parser_preparation_in_both_modes\nInvoking test: editor::held_syntax_keeps_embedded_typing_and_post_edit_context_in_both_modes\nInvoking test: editor::expired_input_budget_preserves_literal_input_history_and_stale_guards_in_both_modes\nInvoking test: editor::block_indentation_pairs_and_mobile_input_share_both_workspace_modes\n",
+  "output": "\nrunning 4 tests\ntest editor::literal_embedded_commands_skip_parser_preparation_in_both_modes ... ok\ntest editor::held_syntax_keeps_embedded_typing_and_post_edit_context_in_both_modes ... ok\ntest editor::expired_input_budget_preserves_literal_input_history_and_stale_guards_in_both_modes ... ok\ntest editor::block_indentation_pairs_and_mobile_input_share_both_workspace_modes ... ok\n\ntest result: ok. 4 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.35s\n\n",
+  "passed": true,
+  "tests": [
+    "__wbgt__components::editor::block_indentation_pairs_and_mobile_input_share_both_workspace_modes",
+    "__wbgt__components::editor::expired_input_budget_preserves_literal_input_history_and_stale_guards_in_both_modes",
+    "__wbgt__components::editor::held_syntax_keeps_embedded_typing_and_post_edit_context_in_both_modes",
+    "__wbgt__components::editor::literal_embedded_commands_skip_parser_preparation_in_both_modes"
+  ],
+  "servedFonts": {},
+  "libraryStartSuppressed": false
+}
