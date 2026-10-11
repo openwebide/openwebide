@@ -283,6 +283,16 @@ prepared only one token row per unit. Small rows now share the existing 64-recor
   Rust, HTML and Markdown contracts, malformed transactions, dropped requests
   and existing local/remote stale-owner contracts are tracked in the
   [transport receipt](editor-performance/live-syntax-frame-transport.json).
+  The production-worker oracle and official-runner fixture now understand framed
+  replies and explicit child WASM initialization; both failed CI checks are
+  reproduced and repaired locally, with full hosted follow-up still required
+  ([repair receipt](editor-performance/framed-transport-ci-repair.json)). Twelve
+  unwrapped production samples cover dense rows and 250 repeated embedded-language
+  HTML/Markdown sections in both modes. Early viewport paint and cold/post-edit syntax readiness
+  are distinct metrics; startup long tasks and high process-tree memory remain
+  ([baseline](editor-performance/framed-transport-current-production-summary.json),
+  [samples](editor-performance/framed-transport-current-production.jsonl)). These
+  are current-version observations, not evidence of an improvement.
   Vector/string capacity growth, JavaScript string conversion and per-row
   immutable allocation/copying still require bounded work and production
   latency/memory measurements. No end-to-end latency or memory gain is

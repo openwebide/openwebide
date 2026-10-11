@@ -29,6 +29,8 @@ def main():
     parser.add_argument("--fonts", type=Path, default=ROOT / "frontend/fonts")
     parser.add_argument("--library-tests", action="store_true",
                         help="Suppress generated startup, matching wasm-bindgen-test-runner emit_start(false)")
+    parser.add_argument("--test-module-route", choices=["/tests.js", "/wasm-bindgen-test"], default="/tests.js",
+                        help="Serve the generated module at the custom or official runner URL")
     args = parser.parse_args()
     assert (args.bindings / "tests.js").is_file(), "Missing generated tests.js"
     # Ordinary geometry contracts use the CSS font URLs, while font matrices
@@ -81,6 +83,8 @@ def main():
         }
     """.replace("FILTERS", json.dumps(args.filters))
 
+    script = script.replace("from '/tests.js'", "from " + json.dumps(args.test_module_route))
+
     class Handler(http.server.SimpleHTTPRequestHandler):
         def do_GET(self):
             if self.path == "/":
@@ -89,8 +93,8 @@ def main():
             elif self.path == "/runner.js":
                 body = script.encode()
                 content_type = "text/javascript; charset=utf-8"
-            elif self.path == "/tests.js" and library_js is not None:
-                body = library_js.encode()
+            elif self.path == args.test_module_route:
+                body = (library_js if library_js is not None else (args.bindings / "tests.js").read_text()).encode()
                 content_type = "text/javascript; charset=utf-8"
             elif self.path in fonts:
                 body = fonts[self.path]
@@ -123,6 +127,7 @@ def main():
                     if result["passed"] is not None:
                         result["servedFonts"] = served_fonts.copy()
                         result["libraryStartSuppressed"] = args.library_tests
+                        result["testModuleRoute"] = args.test_module_route
                         print(json.dumps(result), flush=True)
                         assert result["passed"] is True, "WASM component tests failed"
                         break
@@ -131,6 +136,7 @@ def main():
                         # when a later contract prevents the run from completing.
                         result["servedFonts"] = served_fonts.copy()
                         result["libraryStartSuppressed"] = args.library_tests
+                        result["testModuleRoute"] = args.test_module_route
                         print(json.dumps(result), flush=True)
                         raise AssertionError("WASM component tests timed out")
                     time.sleep(0.2)

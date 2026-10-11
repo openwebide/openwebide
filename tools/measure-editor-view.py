@@ -116,6 +116,12 @@ def source_for(case):
         budget = 1024 * 1024 - len((prefix + suffix).encode())
         source = prefix + unit * (budget // len(unit.encode())) + suffix
         return source + "\nlet next = 0;" if case == "styled-long-line-following-row" else source
+    if case == "dense-rows":
+        return "\n" * 49_000
+    if case == "embedded-html":
+        return "<script>const word = '文😀'; function sample() { return word; }</script><style>.word { color: red; }</style>\n" * 250
+    if case == "embedded-markdown":
+        return "# 文😀\n```rust\nfn sample() { let word = \"文😀\"; }\n```\n" * 250
     raise ValueError(case)
 
 
@@ -177,11 +183,12 @@ READY = """
         (getComputedStyle(input).whiteSpace !== 'pre-wrap' ||
             (Number(extent?.dataset.sourceHeight) > 0 && extent.dataset.editorScope === input.dataset.editorScope)) &&
         input.parentElement.classList.contains('highlight-ready') &&
-        (!arguments[1] || !!paint.querySelector('.tok-string'));
+        (!arguments[1] || !!paint.querySelector('.tok-string')) &&
+        (!arguments[2] || document.querySelector('.status-preparation')?.getAttribute('title') === '');
 """
 
 
-def measure(case, mode, wrapped, trace=False, repetition=1, input_position="start", profile=False, file_name="measure.rs"):
+def measure(case, mode, wrapped, trace=False, repetition=1, input_position="start", profile=False, file_name="measure.rs", wait_syntax=False):
     source = source_for(case)
     require_styled = case in {"styled-long-line", "styled-long-line-following-row"}
     native = source.replace("\r\n", "\n")
@@ -236,8 +243,8 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
                         return scroll && getComputedStyle(scroll).position === 'absolute' ? scroll : input;
                     };
                     window.editorViewMeasurement = {maxFrameMs: 0, inputAt: 0,
-                        coldViewportPaintMs: null, coldCompleteGeometryMs: null,
-                        inputViewportPaintMs: null, inputCompleteGeometryMs: null,
+                        coldViewportPaintMs: null, coldCompleteGeometryMs: null, coldSyntaxReadyMs: null,
+                        inputViewportPaintMs: null, inputCompleteGeometryMs: null, inputSyntaxReadyMs: null,
                         coldViewportHadCompleteExtent: null, inputViewportHadCompleteExtent: null,
                         inputPreviousScope: null, inputScrollTop: null, inputScrollLeft: null,
                         longTasks: 0, longTaskMs: 0, maxLongTaskMs: 0, longTaskEvents: [], phase: "cold", probes: [], batches: [], workers: [], fonts: [], nativeEvents: [], traceTruncated: false};
@@ -373,10 +380,15 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
                                     record.messageUtf16Units = typeof event.data === "string" ? event.data.length : null;
                                     try {
                                         const reply = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
-                                        record.status = reply?.status ?? null;
-                                        record.hasAnalysis = !!reply?.analysis;
-                                        record.highlightRows = Array.isArray(reply?.analysis?.highlights)
-                                            ? reply.analysis.highlights.length : null;
+                                        const begin = reply?.part?.Begin;
+                                        record.framing = reply?.framing ?? null;
+                                        record.sequence = reply?.sequence ?? null;
+                                        record.part = typeof reply?.part === "string" ? reply.part
+                                            : reply?.part ? Object.keys(reply.part)[0] : null;
+                                        record.status = begin?.status ?? reply?.status ?? null;
+                                        record.hasAnalysis = !!(begin?.analysis ?? reply?.analysis);
+                                        record.highlightRows = begin?.analysis?.rows ??
+                                            (Array.isArray(reply?.analysis?.highlights) ? reply.analysis.highlights.length : null);
                                     } catch { record.status = "non-JSON control message"; }
                                 });
                             }
@@ -410,6 +422,7 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
                             const complete = extent?.dataset.editorScope === scope &&
                                 Number(extent.dataset.sourceHeight) > 0;
                             const measurement = editorViewMeasurement;
+                            const syntaxReady = document.querySelector('.status-preparation')?.getAttribute('title') === '';
                             if (measurement.phase === 'cold') {
                                 if (measurement.coldViewportPaintMs === null) {
                                     measurement.coldViewportPaintMs = performance.now();
@@ -417,6 +430,8 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
                                 }
                                 if (complete && measurement.coldCompleteGeometryMs === null)
                                     measurement.coldCompleteGeometryMs = performance.now();
+                                if (syntaxReady && measurement.coldSyntaxReadyMs === null)
+                                    measurement.coldSyntaxReadyMs = performance.now();
                             } else if (measurement.phase === 'input' && measurement.inputAt &&
                                 scope !== measurement.inputPreviousScope) {
                                 if (measurement.inputViewportPaintMs === null) {
@@ -426,6 +441,9 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
                                 if (complete && measurement.inputCompleteGeometryMs === null)
                                     measurement.inputCompleteGeometryMs = performance.now() - measurement.inputAt;
                             }
+                            if (['input', 'deferred'].includes(measurement.phase) && measurement.inputAt &&
+                                scope !== measurement.inputPreviousScope && syntaxReady && measurement.inputSyntaxReadyMs === null)
+                                measurement.inputSyntaxReadyMs = performance.now() - measurement.inputAt;
                         }
                     };
                     let last;
@@ -449,7 +467,7 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
             phase = "cold paint"
             browser.call("POST", "/url", {"url": runtime.url + "/"})
             deadline = time.monotonic() + 60
-            while not browser.call("POST", "/execute/sync", {"script": READY, "args": [native_length, require_styled]}):
+            while not browser.call("POST", "/execute/sync", {"script": READY, "args": [native_length, require_styled, wait_syntax]}):
                 assert time.monotonic() < deadline, "Editor view readiness timed out"
                 time.sleep(0.05)
             load_ms = (time.monotonic() - started) * 1000
@@ -564,6 +582,12 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
                         break
                     assert time.monotonic() < deadline, "Boundary input did not preserve complete source"
                     time.sleep(.1)
+            if wait_syntax:
+                phase = "input syntax readiness"
+                deadline = time.monotonic() + 60
+                while not browser.call("POST", "/execute/sync", {"script": READY, "args": [native_length + 1, require_styled, True]}):
+                    assert time.monotonic() < deadline, "Input syntax readiness timed out"
+                    time.sleep(.05)
             sampled = samples.finish()
             samples = None
             tasks = browser.script("return {...window.editorViewMeasurement, wasmBytes: window.editorViewWasmMemory.buffer.byteLength};")
@@ -572,12 +596,12 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
                 metrics = browser.call("POST", "/goog/cdp/execute", {"cmd": "Performance.getMetrics", "params": {}})
                 cpu = browser.call("POST", "/goog/cdp/execute", {"cmd": "Profiler.stop", "params": {}})
                 profiling = {"cpuProfile": cpu["profile"], "cpuProfileMetrics": metrics["metrics"]}
-            return {**profiling, "cpuProfiling": profile, "case": case, "fileName": file_name, "mode": mode, "wrap": wrapped, "repetition": repetition, "sourceBytes": len(source.encode()),
+            return {**profiling, "cpuProfiling": profile, "waitedForSyntax": wait_syntax, "case": case, "fileName": file_name, "mode": mode, "wrap": wrapped, "repetition": repetition, "sourceBytes": len(source.encode()),
                     "inputPosition": input_position, "verifiedSourceCaretBeforeInput": verified_source_caret,
                     "completeSourceAfterInputVerified": input_position in {"beginning", "end"}, "loadToPaintMs": load_ms, **snapshot, **scroll, **edited, **memory,
                     "afterInputMemory": process_memory(browser.process.pid), **sampled,
                     **{key: tasks[key] for key in ["coldViewportPaintMs", "coldCompleteGeometryMs",
-                        "coldViewportHadCompleteExtent", "inputViewportPaintMs", "inputCompleteGeometryMs",
+                        "coldViewportHadCompleteExtent", "coldSyntaxReadyMs", "inputViewportPaintMs", "inputCompleteGeometryMs", "inputSyntaxReadyMs",
                         "inputViewportHadCompleteExtent", "inputScrollTop", "inputScrollLeft"]},
                     "afterInputWasmCommittedBytes": tasks["wasmBytes"],
                     "longTasks": tasks["longTasks"], "longTaskMs": tasks["longTaskMs"],
@@ -629,10 +653,11 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--cases", nargs="+", choices=["small", "medium", "byte-limit", "line-limit", "long-line", "styled-long-line", "styled-long-line-following-row"], default=["small"])
+    parser.add_argument("--cases", nargs="+", choices=["small", "medium", "byte-limit", "line-limit", "long-line", "styled-long-line", "styled-long-line-following-row", "dense-rows", "embedded-html", "embedded-markdown"], default=["small"])
     parser.add_argument("--modes", nargs="+", choices=["local", "remote"], default=["local", "remote"])
     parser.add_argument("--wrap", action="store_true")
     parser.add_argument("--trace", action="store_true", help="Record bounded probe/worker diagnostics; timings include instrumentation overhead")
+    parser.add_argument("--wait-syntax", action="store_true", help="Wait for current-file syntax progress to clear before input and final memory sampling; retain the existing readiness deadline")
     parser.add_argument("--profile", action="store_true", help="Capture a diagnostic main-thread CPU profile; timings and memory include profiler overhead")
     parser.add_argument("--input-position", choices=["start", "beginning", "end"], default="start", help="Use native-window start or verified complete-source Home/End navigation before typing")
     parser.add_argument("--file-name", default="measure.rs", help="Fixture filename selects the production language policy")
@@ -662,7 +687,7 @@ if __name__ == "__main__":
     for case in args.cases:
         for mode in args.modes:
             for repetition in range(1, args.repeat + 1):
-                result = measure(case, mode, args.wrap, args.trace, repetition, args.input_position, args.profile, args.file_name)
+                result = measure(case, mode, args.wrap, args.trace, repetition, args.input_position, args.profile, args.file_name, args.wait_syntax)
                 print(json.dumps(result), flush=True)
                 if args.require_pss:
                     assert result["peakChromePssKiB"] is not None, "Chrome peak PSS was unavailable"

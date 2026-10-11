@@ -31,11 +31,77 @@ def check():
                     const done = arguments[0];
                     const worker = new Worker('/editor-worker.js', {type: 'module'});
                     const waiting = new Map(), bases = new Map(), sources = new Map(), structures = new Map(); let ticket = 0;
+                    // Independent wire oracle for the existing production-worker
+                    // assertions. Runtime validation and feature policy stay in Rust.
+                    function framedReply(text, transactions) {
+                        const frame = JSON.parse(text);
+                        if (frame.version !== 6 || frame.framing !== 1 ||
+                            new TextEncoder().encode(text).length > 65536) throw new Error('Invalid worker frame');
+                        if (frame.part?.Begin) {
+                            if (transactions.has(frame.ticket) || frame.sequence !== 0) throw new Error('Duplicate Begin');
+                            const begin = frame.part.Begin;
+                            transactions.set(frame.ticket, {next:1, bytes:text.length,
+                                status:begin.status, header:begin.analysis,
+                                source:[], folds:[], rows:[], large:null, structure:null});
+                            return null;
+                        }
+                        const value = transactions.get(frame.ticket);
+                        if (!value || value.next++ !== frame.sequence) throw new Error('Out-of-order worker frame');
+                        value.bytes += new TextEncoder().encode(text).length;
+                        if (value.bytes > 33554432) throw new Error('Worker transaction exceeds limit');
+                        if (frame.part === 'End') {
+                            transactions.delete(frame.ticket);
+                            let analysis = null;
+                            if (value.header) {
+                                const header = value.header, text = value.source.join('');
+                                const source = header.source.Full ? text : {start:header.source.Replace.start,end:header.source.Replace.end,text};
+                                const sourceBytes = (header.source.Full ?? header.source.Replace).bytes;
+                                if (new TextEncoder().encode(text).length !== sourceBytes ||
+                                    value.folds.length !== header.folds || value.large ||
+                                    value.rows.length !== (header.rows ?? 0)) throw new Error('Incomplete worker transaction');
+                                let structure = null;
+                                if (header.structure) {
+                                    const publication = value.structure;
+                                    if (!publication) throw new Error('Missing structural header');
+                                    const content = {language:publication.header.language};
+                                    const keys = ['scopes','selections','opaque_starts','protected','brackets'];
+                                    keys.forEach((key, index) => {
+                                        const list = publication.header.lists[index], items = publication.lists[index];
+                                        if (items.length !== list.count) throw new Error('Incomplete structural list');
+                                        content[key] = list.patch ? {...list.patch, items} : items;
+                                    });
+                                    structure = publication.header.changes ? {changes:content} : content;
+                                }
+                                analysis = {source, folds:value.folds, structure,
+                                    highlights:header.rows === null ? null : value.rows, base_ticket:header.base_ticket};
+                            }
+                            return {version:6,ticket:frame.ticket,status:value.status,analysis};
+                        }
+                        const part = frame.part;
+                        if ('Source' in part) value.source.push(part.Source);
+                        else if ('Folds' in part) value.folds.push(...part.Folds);
+                        else if ('Rows' in part) value.rows.push(...part.Rows);
+                        else if ('Row' in part) value.large = {count:part.Row.spans, spans:[]};
+                        else if ('Spans' in part) {
+                            if (!value.large) throw new Error('Missing span header');
+                            value.large.spans.push(...part.Spans);
+                            if (value.large.spans.length === value.large.count) {
+                                value.rows.push(value.large.spans); value.large = null;
+                            }
+                        } else if ('Structure' in part) {
+                            const fragment = part.Structure;
+                            if (fragment.header) value.structure = {header:fragment.header,lists:[[],[],[],[],[]]};
+                            else value.structure.lists[fragment.field].push(...fragment.records);
+                        } else throw new Error('Unexpected worker frame');
+                        return null;
+                    }
+                    const transactions = new Map();
                     let wake; const ready = new Promise(resolve => {wake = resolve;});
                     worker.onerror = e => { worker.terminate(); done({error: e.message || 'Module worker failed to load', eventType: e.type, filename: e.filename || null}); };
                     worker.onmessage = event => {
-                        if (event.data === 'openwebide-editor-ready:6') {wake(); return;}
-                        const reply = JSON.parse(event.data);
+                        if (event.data === 'openwebide-editor-ready:6:frames:1') {wake(); return;}
+                        const reply = framedReply(event.data, transactions);
+                        if (!reply) return;
                         waiting.get(reply.ticket)?.(reply); waiting.delete(reply.ticket);
                     };
                     async function request(document, language, source, span = null) {
@@ -192,11 +258,13 @@ def check():
                         const probe = new Worker(probeUrl, {type:'module'});
                         let yields = 0, readyResolve, readyReject;
                         const probeReady = new Promise((resolve, reject) => {readyResolve = resolve; readyReject = reject;});
-                        const pendingProbe = new Map();
+                        const pendingProbe = new Map(), probeTransactions = new Map();
                         probe.onmessage = event => {
                             if (event.data?.kind === 'syntax-test-yield') {yields++; return;}
-                            if (event.data === 'openwebide-editor-ready:6') {readyResolve(); return;}
-                            const reply = JSON.parse(event.data), waiter = pendingProbe.get(reply.ticket);
+                            if (event.data === 'openwebide-editor-ready:6:frames:1') {readyResolve(); return;}
+                            const reply = framedReply(event.data, probeTransactions);
+                            if (!reply) return;
+                            const waiter = pendingProbe.get(reply.ticket);
                             pendingProbe.delete(reply.ticket); waiter?.resolve(reply);
                         };
                         probe.onerror = event => {

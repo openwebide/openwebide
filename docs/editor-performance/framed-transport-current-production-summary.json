@@ -1,0 +1,118 @@
+{
+  "scope": "Current production Rust/WASM framed transport baseline; unwrapped dense rows and 250 repeated embedded-language HTML/Markdown sections. These are not a previous-version comparison.",
+  "samples": 12,
+  "repetitionsPerCaseAndMode": 2,
+  "summaries": [
+    {
+      "case": "dense-rows",
+      "mode": "local",
+      "samples": 2,
+      "inputViewportPaintMedianMs": 14.100000001490116,
+      "inputSyntaxReadyMedianMs": 44.149999998509884,
+      "coldPaintToSyntaxReadyMedianMs": 159.5,
+      "peakChromePssMiB": [
+        678.29,
+        698.97
+      ],
+      "maxLongTaskMs": [
+        117,
+        96
+      ]
+    },
+    {
+      "case": "dense-rows",
+      "mode": "remote",
+      "samples": 2,
+      "inputViewportPaintMedianMs": 14.649999998509884,
+      "inputSyntaxReadyMedianMs": 46.30000000447035,
+      "coldPaintToSyntaxReadyMedianMs": 144.04999999701977,
+      "peakChromePssMiB": [
+        706.01,
+        699.0
+      ],
+      "maxLongTaskMs": [
+        100,
+        90
+      ]
+    },
+    {
+      "case": "embedded-html",
+      "mode": "local",
+      "samples": 2,
+      "inputViewportPaintMedianMs": 19.399999998509884,
+      "inputSyntaxReadyMedianMs": 41.649999998509884,
+      "coldPaintToSyntaxReadyMedianMs": 113.39999999850988,
+      "peakChromePssMiB": [
+        663.89,
+        682.99
+      ],
+      "maxLongTaskMs": [
+        69,
+        67
+      ]
+    },
+    {
+      "case": "embedded-html",
+      "mode": "remote",
+      "samples": 2,
+      "inputViewportPaintMedianMs": 21.100000001490116,
+      "inputSyntaxReadyMedianMs": 42.50000000745058,
+      "coldPaintToSyntaxReadyMedianMs": 120.29999999701977,
+      "peakChromePssMiB": [
+        652.08,
+        695.34
+      ],
+      "maxLongTaskMs": [
+        63,
+        77
+      ]
+    },
+    {
+      "case": "embedded-markdown",
+      "mode": "local",
+      "samples": 2,
+      "inputViewportPaintMedianMs": 10.950000002980232,
+      "inputSyntaxReadyMedianMs": 60.29999999701977,
+      "coldPaintToSyntaxReadyMedianMs": 117.45000000298023,
+      "peakChromePssMiB": [
+        664.8,
+        651.9
+      ],
+      "maxLongTaskMs": [
+        67,
+        66
+      ]
+    },
+    {
+      "case": "embedded-markdown",
+      "mode": "remote",
+      "samples": 2,
+      "inputViewportPaintMedianMs": 11.850000001490116,
+      "inputSyntaxReadyMedianMs": 60.70000000298023,
+      "coldPaintToSyntaxReadyMedianMs": 74.95000000298023,
+      "peakChromePssMiB": [
+        665.5,
+        646.69
+      ],
+      "maxLongTaskMs": [
+        67,
+        64
+      ]
+    }
+  ],
+  "definitions": {
+    "coldSyntaxReadyMs": "Navigation-relative time when current source paint is present and current-file syntax progress clears",
+    "inputSyntaxReadyMs": "beforeinput-relative time when changed-source paint is present and syntax progress clears, including deferred preparation",
+    "viewportPaint": "Existing paint/extent metric; separate from completed syntax",
+    "memory": "Owned Chrome process-tree PSS sampled every 200ms, including cold and post-edit preparation"
+  },
+  "limits": "Existing source/record, 60-second readiness, 10-second input-paint, 300-second browser, font and probe limits preserved; --wait-syntax adds completed-syntax observation",
+  "limitations": [
+    "No latency or memory improvement is established without a controlled previous-version comparison",
+    "Startup still includes long tasks and substantial process-tree memory",
+    "Local cases use database recovery without a physical directory handle",
+    "Unwrapped fixtures do not close wrapped/tabbed/bidirectional geometry, physical PWA input, permission, accessibility or integrated release gates",
+    "Allocation/capacity, source, storage, history and recovery work remains part of the full goal"
+  ],
+  "nextAction": "Profile the remaining startup and preparation work before selecting capacity/allocation changes; preserve early paint and complete-only, source-bound publication"
+}

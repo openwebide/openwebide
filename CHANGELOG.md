@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Repair the production-worker oracle and official browser-runner fixture for framed replies, including explicit child WASM initialization. Measure dense rows and embedded HTML/Markdown syntax readiness separately from early paint, retaining the existing verification limits.
+
 - Publish editor worker replies as bounded typed frames and route complete transactions directly into shared validation. Use typed replies in the cooperative fallback, retain full/warm language behavior and reject malformed or abandoned transactions without caching partial analysis. Allocation and end-to-end performance work remains on the roadmap.
 
 - Resolve worker structural patches and validate ordered ranges, bracket links and embedded bodies in cancellable record batches. Share the copy budget across structural lists, preserve expanded limits and expose only complete source-bound analysis in both project modes.

@@ -1,0 +1,48 @@
+{
+  "scope": "Repair the two ac1afcfe hosted CI failures without changing worker policy or weakening test inventories and deadlines",
+  "failedHostedRun": 38168615054,
+  "failures": {
+    "frontend": "Production-worker oracle waited for the legacy readiness message and complete reply envelopes",
+    "frontendUi": "Dedicated-worker fixture did not recognize the official extensionless module route; official glue also requires an explicit child WASM module URL"
+  },
+  "sourceFilesSha256": {
+    "frontend/src/editor_worker.rs": "3f2778cf71b33d7ccad14c267298700fdc5048c767b5637f9a8e80048d18635b",
+    "tools/check-editor-worker.py": "eb34fb623469aebf0d6c1aecd3ecb850123b6f554b2e287cbe13567691638e61",
+    "tools/check-editor-components-browser.py": "bab6168482f4b640e3e3dae8d5ca521a610e2bad868fa02185a8606c68f71cce",
+    "tools/measure-editor-view.py": "80f8ea5e6e670c294f308dc515d992350acde5bc0c52c63d24861e67f44d9899"
+  },
+  "productionWorker": {
+    "providers": 15,
+    "config_languages": 6,
+    "plain_fallback_languages": 1,
+    "nested_languages": 6,
+    "incremental": true,
+    "structural_delta": true,
+    "ui_event_during_worker": true,
+    "oversize_fallback": true,
+    "changed_row_records": 3,
+    "cooperative_yields": 2212,
+    "large_literal_bytes": 1043013,
+    "large_literal_yields": 48,
+    "yaml_bytes": 1043026,
+    "yaml_yields": 48
+  },
+  "officialRunner": {
+    "version": "0.2.128",
+    "target": "aarch64-unknown-linux-musl",
+    "browser": "Chromium from the existing editor measurement image",
+    "testFilter": "editor_worker::tests::",
+    "passed": 3,
+    "failed": 0,
+    "durationSeconds": 0.2,
+    "deadlineSeconds": 300,
+    "output": "Set timeout to 300 seconds...\nRunning headless tests in Chrome on `http://127.0.0.1:40215/`\nTry find `webdriver.json` for configure browser's capabilities:\nNot found\nLoading Wasm module...\n\nrunning 3 tests\ntest editor_worker::tests::dropped_framed_requests_release_partial_transactions ... ok\ntest editor_worker::tests::dedicated_framed_worker_and_cooperative_adapter_preserve_language_contracts ... ok\ntest editor_worker::tests::bounded_worker_routing_preserves_complete_reply_validation ... ok\n\ntest result: ok. 3 passed; 0 failed; 0 ignored; 34 filtered out; finished in 0.20s\n\n"
+  },
+  "localHarnessRoute": "/wasm-bindgen-test also passed all three transport fixtures before the official-runner bootstrap correction",
+  "lint": "Current release WASM frontend all targets/test-support passed with -D warnings",
+  "limits": "Existing source/record, browser/readiness, font/probe, dense-row and test-inventory contracts unchanged",
+  "limitations": [
+    "Full hosted follow-up CI is still required",
+    "Production latency/memory baseline does not prove an improvement or close the editor performance goal"
+  ]
+}

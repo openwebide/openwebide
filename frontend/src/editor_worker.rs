@@ -518,14 +518,20 @@ mod tests {
     export function installRealSyntaxWorker() {
         const original = globalThis.Worker;
         const module = performance.getEntriesByType('resource').map(entry => entry.name)
-            .find(url => /\/(?:tests|wasm-bindgen-test)\.js$/.test(new URL(url).pathname));
+            .find(url => /\/(?:tests\.js|wasm-bindgen-test(?:\.js)?)$/.test(new URL(url).pathname));
         if (!module) throw new Error('Missing generated WASM test module');
+        const wasm = new URL(module);
+        wasm.pathname = wasm.pathname.replace(/(?:\.js)?$/, '_bg.wasm');
+        wasm.search = ''; wasm.hash = '';
         const source = `import init, {mountSyntaxWorkerContract} from '${module}';
-            await init();
+            await init({module_or_path: '${wasm.href}'});
             if (!mountSyntaxWorkerContract()) throw new Error('Not in a dedicated worker');`;
         const url = URL.createObjectURL(new Blob([source], {type:'text/javascript'}));
         globalThis.Worker = class extends original {
-            constructor(_url, options) { super(url, options); }
+            constructor(_url, options) {
+                super(url, options);
+                this.addEventListener('error', event => console.error('Syntax fixture worker error:', event.message));
+            }
         };
         return () => { globalThis.Worker = original; URL.revokeObjectURL(url); };
     }
@@ -539,6 +545,7 @@ mod tests {
         use openwebide_core::highlight::Language;
         use std::sync::Arc;
         let restore = installRealSyntaxWorker();
+        let stage = Cell::new("worker creation");
         let result = async {
             let worker = WorkerClient::new()?;
             let cooperative = CooperativeClient::default();
@@ -579,7 +586,9 @@ mod tests {
                         ),
                     );
                     let message = serde_json::to_string(&request).unwrap();
+                    stage.set("dedicated worker request");
                     let actual = worker.request_reply(ticket, message.clone()).await?;
+                    stage.set("cooperative request");
                     let mut fallback = cooperative.request_reply(ticket, message).await?;
                     if fallback.status == SyntaxStatus::NeedsSource {
                         let full =
@@ -589,6 +598,7 @@ mod tests {
                             .await?;
                     }
                     let source = Arc::new(source);
+                    stage.set("dedicated worker proof setup");
                     let mut proof = actual
                         .prepare_received_shared(
                             ticket,
@@ -601,17 +611,20 @@ mod tests {
                     while !proof.advance() {
                         crate::util::yield_task().await;
                     }
+                    stage.set("dedicated worker proof finish");
                     let actual = proof
                         .finish()
                         .ok_or(WorkerError::Transport)?
                         .1
                         .ok_or(WorkerError::Transport)?;
+                    stage.set("cooperative proof setup");
                     let mut proof = fallback
                         .prepare_received_shared(ticket, source, None)
                         .ok_or(WorkerError::Transport)?;
                     while !proof.advance() {
                         crate::util::yield_task().await;
                     }
+                    stage.set("cooperative proof finish");
                     let fallback = proof
                         .finish()
                         .ok_or(WorkerError::Transport)?
@@ -630,7 +643,7 @@ mod tests {
         }
         .await;
         restore.call0(&wasm_bindgen::JsValue::NULL).unwrap();
-        let contracts = result.unwrap();
+        let contracts = result.unwrap_or_else(|error| panic!("{}: {error:?}", stage.get()));
         assert_eq!(contracts.len(), 6);
         assert!(contracts.into_iter().all(|same| same));
     }
