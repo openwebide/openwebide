@@ -126,6 +126,27 @@ These background Serve settings persist in Tailscale's state. Both commands use
 port 443, yielding the same-origin app and bridge routes. Explicit old Bridge URL
 settings still need to be updated as described above.
 
+## Host Tailscale Serve with container deployments (Podman Quadlet or Docker)
+
+If Tailscale is already installed directly on the Linux host (`tailscaled`), you do not need to run a secondary Tailscale container. You can use native `tailscale serve` on the host to terminate HTTPS and reverse-proxy into the containerized Open WebIDE app and execution bridge.
+
+1. Publish the container's app and bridge ports to host loopback (for example, host ports 8080 and 3001, or 8081 and 3001 if port 8080 is used by a local LLM).
+2. Configure the container's environment with your Tailscale MagicDNS hostname:
+   ```ini
+   Environment=OPENWEBIDE_BRIDGE_ALLOWED_HOSTS=<device>.<tailnet>.ts.net
+   Environment=OPENWEBIDE_BRIDGE_ALLOWED_ORIGINS=https://<device>.<tailnet>.ts.net
+   ```
+   *(For Docker Compose, set these under `environment:`).*
+3. On the host, configure background Serve rules for both the root app and the `/bridge` endpoint:
+   ```sh
+   tailscale serve --bg --https=443 http://127.0.0.1:8080
+   tailscale serve --bg --https=443 --set-path=/bridge http://127.0.0.1:3001
+   tailscale serve status
+   ```
+   *(Replace `8080` with your mapped app port if different.)*
+
+Tailscale Serve routes incoming HTTPS requests on port 443 to the app and strips `/bridge` when forwarding to port 3001, preserving the public `Host` and `Origin` headers required by the bridge's security checks. Mobile devices and other clients on your tailnet can then open `https://<device>.<tailnet>.ts.net` directly without opening raw ports. When navigating on mobile browsers, specify `https://` explicitly as port 80 is not served by default.
+
 ## Alternative: Caddy with an internal CA
 
 Clients must trust Caddy's internal CA. Use your chosen hostname in the bridge
