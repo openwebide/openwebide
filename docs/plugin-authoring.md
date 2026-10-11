@@ -17,8 +17,8 @@ then use these references:
   fields, supported contributions, icons and validation limits.
 - [Custom marketplace and capability reference](https://github.com/openwebide/plugins/blob/main/docs/custom-marketplaces.md):
   public Git hosting, immutable release pins, publisher CI and host API payloads.
-- [SDK README](../crates/plugin-sdk/README.md), [Rust interfaces](../crates/plugin-sdk/src/lib.rs)
-  and [component ABI](../crates/plugin-sdk/wit/plugin.wit): the public host contract.
+- [SDK README](https://github.com/openwebide/openwebide/blob/main/crates/plugin-sdk/README.md), [Rust interfaces](https://github.com/openwebide/openwebide/blob/main/crates/plugin-sdk/src/lib.rs)
+  and [component ABI](https://github.com/openwebide/openwebide/blob/main/crates/plugin-sdk/wit/plugin.wit): the public host contract.
 - [Installation and lifecycle](plugins.md): default enablement, project opt-outs,
   capability review, Notify updates and host preparation.
 

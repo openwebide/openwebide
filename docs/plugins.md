@@ -398,3 +398,6 @@ plugins in the official marketplace and compiled default bundle. They own their
 behavior through the same public SDK as community plugins. Remaining lifecycle
 verification, registry SDK publication and future MCP, language, UI and editor
 contribution contracts are tracked in [the roadmap](roadmap.md).
+
+Configured host [MCP servers](mcp.md) are supported independently of plugins.
+Declaring an MCP server in a plugin manifest remains future contribution work.

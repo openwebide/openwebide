@@ -215,6 +215,7 @@ pub fn install_project_effects(context: ProjectEffectContext) {
         layout,
         select_project,
     } = context;
+    let ui = expect_context::<crate::state::ui::UiState>();
     crate::viewport::install();
     let history_loaded = RwSignal::new(None::<u64>);
     let history_pending = RwSignal::new(None::<String>);
@@ -228,6 +229,7 @@ pub fn install_project_effects(context: ProjectEffectContext) {
     on_cleanup(move || resize_listener.remove());
     Effect::new(move |_| {
         let generation = auth.generation.get();
+        ui.whats_new_open.set(false);
         history_loaded.set(None);
         history_pending.set(None);
         history_saving.set(false);
@@ -292,6 +294,11 @@ pub fn install_project_effects(context: ProjectEffectContext) {
             let mut stored_active_project = None;
             let mut chat_was_active = false;
             if let Ok(values) = settings_result {
+                ui.whats_new_open.set(
+                    values
+                        .get("last_seen_release_version")
+                        .is_none_or(|version| version != env!("CARGO_PKG_VERSION")),
+                );
                 chat.approval_mode.set(
                     values
                         .iter()

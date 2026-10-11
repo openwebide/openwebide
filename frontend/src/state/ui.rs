@@ -26,6 +26,8 @@ pub struct PromptRequest {
 /// Signals shared by app-level notices and dialogs.
 #[derive(Clone, Copy)]
 pub struct UiState {
+    pub whats_new_open: RwSignal<bool>,
+    pub about_release_notes: RwSignal<bool>,
     pub about_open: RwSignal<bool>,
     pub plugins_open: RwSignal<bool>,
     pub palette_open: RwSignal<bool>,
@@ -43,6 +45,8 @@ pub struct UiState {
 impl UiState {
     pub fn new() -> Self {
         Self {
+            whats_new_open: RwSignal::new(false),
+            about_release_notes: RwSignal::new(false),
             about_open: RwSignal::new(false),
             plugins_open: RwSignal::new(false),
             palette_open: RwSignal::new(false),

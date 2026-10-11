@@ -222,6 +222,8 @@ pub struct ExecutionEnvironment {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RunPlan {
     #[serde(default)]
+    pub mcp: crate::mcp::Catalog,
+    #[serde(default)]
     pub plugin_grants: std::collections::BTreeMap<String, String>,
     #[serde(default)]
     pub plugin_executables: Vec<crate::plugins::PreparedPlugin>,

@@ -182,6 +182,7 @@ pub struct StartRun {
     pub host_path: Option<String>,
 }
 pub(crate) struct RunHost {
+    pub mcp: crate::mcp::host::Host,
     pub execution: Arc<dyn crate::exec::ToolExecution>,
     pub plugins: crate::plugins::transport::PluginExecutionHost,
 }
@@ -286,6 +287,7 @@ impl RunRegistry {
             backend,
             provider,
             RunHost {
+                mcp: Default::default(),
                 execution: Arc::new(crate::exec::HostExecution),
                 plugins: crate::plugins::transport::PluginExecutionHost::default(),
             },
@@ -347,6 +349,7 @@ impl RunRegistry {
             run.emit(RunEvent::Cancelled);
             return Ok(run);
         }
+        let mut mcp_transport = host.mcp.transport(format!("user:{user_id}"), String::new());
         let mut preparation = PreparationGuard {
             run: run.clone(),
             backend: backend.clone(),
@@ -391,13 +394,42 @@ impl RunRegistry {
             if let Some(path) = &start.host_path {
                 openwebide_agent::scheduled::authorize_host_plan(&mut plan, path);
             }
-            let dir = match &plan.kind {
+            let mut dir = match &plan.kind {
                 RunKind::Chat | RunKind::WebChat => None,
                 RunKind::Agent { project_path } => Some(
                     crate::paths::resolve_in_root(workspace, Some(project_path))
                         .map_err(|e| (RunRejectCode::ProjectUnavailable, e))?,
                 ),
             };
+            if plan.request.model_settings.tools != Some(false)
+                && plan.connection.tool_selection != openwebide_core::ToolSelection::ChatOnly
+            {
+                if dir.is_none()
+                    && let Some(root) = &plan.environment.project_root
+                {
+                    dir = Some(
+                        crate::paths::resolve_in_root(workspace, Some(root))
+                            .map_err(|error| (RunRejectCode::ProjectUnavailable, error))?,
+                    );
+                }
+                let catalog = host
+                    .mcp
+                    .open(
+                        format!("user:{user_id}"),
+                        dir.clone().unwrap_or_else(|| workspace.to_path_buf()),
+                        dir.is_some(),
+                    )
+                    .await
+                    .unwrap_or_else(|error| openwebide_core::mcp::Catalog {
+                        failures: vec![error],
+                        ..Default::default()
+                    });
+                mcp_transport = host
+                    .mcp
+                    .transport(format!("user:{user_id}"), catalog.id.clone());
+                openwebide_agent::mcp::attach(&mut plan, catalog)
+                    .map_err(|error| (RunRejectCode::PlanFailed, error))?;
+            }
             backend
                 .run_lease(
                     user_id,
@@ -489,7 +521,7 @@ impl RunRegistry {
                 plan,
                 dir,
                 message.id,
-                host,
+                (host, mcp_transport),
             )
             .await;
             control.abort();
@@ -516,8 +548,9 @@ async fn run_body<B: RunBackend + 'static, P: LlmProvider + 'static>(
     mut plan: RunPlan,
     dir: Option<PathBuf>,
     anchor_id: i64,
-    host: RunHost,
+    host: (RunHost, crate::mcp::host::NativeTransport),
 ) {
+    let (host, mcp_transport) = host;
     if plan.environment.timestamp == 0 {
         plan.environment.timestamp = i64::try_from(now()).unwrap_or(i64::MAX);
     }
@@ -589,6 +622,8 @@ async fn run_body<B: RunBackend + 'static, P: LlmProvider + 'static>(
                     .get_or_insert(openwebide_core::WorkspaceMode::Remote);
             }
             let factory = BridgeTaskFactory {
+                mcp_catalog: Arc::new(plan.mcp.clone()),
+                mcp_transport,
                 run: run.clone(),
                 backend: backend.clone(),
                 dir,
@@ -840,11 +875,13 @@ type BridgeBuiltinTaskExecutor<B> = openwebide_agent::todo::TodoTools<
     >,
     TodoPersistence<B>,
 >;
-type BridgeBaseTaskExecutor<B> = openwebide_agent::plugins::execution::PluginTools<
+type BridgePluginTaskExecutor<B> = openwebide_agent::plugins::execution::PluginTools<
     openwebide_agent::skills::packages::PackageSkillTools<BridgeBuiltinTaskExecutor<B>>,
     crate::plugins::transport::NativePluginTransport,
     openwebide_agent::plugins::execution::GrantedServices<BridgePluginServices<B>>,
 >;
+type BridgeBaseTaskExecutor<B> =
+    openwebide_agent::mcp::McpTools<BridgePluginTaskExecutor<B>, crate::mcp::host::NativeTransport>;
 struct BridgePluginServices<B> {
     backend: Arc<B>,
     user: i64,
@@ -864,6 +901,8 @@ type BridgeTaskGate<B> = openwebide_agent::plugins::execution::PluginGate<
     openwebide_agent::policy::PolicyGate<BridgeGate, super::backend_client::ApprovalAdapter<B>>,
 >;
 struct BridgeTaskFactory<B> {
+    mcp_catalog: Arc<openwebide_core::mcp::Catalog>,
+    mcp_transport: crate::mcp::host::NativeTransport,
     plugin_grants: Arc<std::collections::BTreeMap<String, String>>,
     plugin_executables: Arc<Vec<openwebide_core::plugins::PreparedPlugin>>,
     plugin_transport: crate::plugins::transport::NativePluginTransport,
@@ -879,6 +918,8 @@ struct BridgeTaskFactory<B> {
 impl<B> Clone for BridgeTaskFactory<B> {
     fn clone(&self) -> Self {
         Self {
+            mcp_catalog: self.mcp_catalog.clone(),
+            mcp_transport: self.mcp_transport.clone(),
             plugin_executables: self.plugin_executables.clone(),
             plugin_grants: self.plugin_grants.clone(),
             plugin_transport: self.plugin_transport.clone(),
@@ -906,6 +947,13 @@ impl<B: RunBackend + 'static> BridgeTaskFactory<B> {
         )
     }
     fn base_executor(&self) -> BridgeBaseTaskExecutor<B> {
+        openwebide_agent::mcp::McpTools {
+            executor: self.plugin_executor(),
+            transport: self.mcp_transport.clone(),
+            catalog: self.mcp_catalog.clone(),
+        }
+    }
+    fn plugin_executor(&self) -> BridgePluginTaskExecutor<B> {
         openwebide_agent::plugins::execution::PluginTools {
             executor: openwebide_agent::skills::packages::PackageSkillTools::new(
                 self.builtin_executor(),

@@ -18,6 +18,7 @@ pub fn TopBar(
     #[prop(default = Callback::new(|_: i64| ()))] on_open_project: Callback<i64>,
     #[prop(default = Callback::new(|_: i64| ()))] on_delete_project: Callback<i64>,
     #[prop(optional)] children: Option<Children>,
+    #[prop(optional, into)] status: Option<ViewFn>,
 ) -> impl IntoView {
     let auth = expect_context::<AuthState>();
     let layout = expect_context::<LayoutState>();
@@ -26,6 +27,7 @@ pub fn TopBar(
     let settings = expect_context::<SettingsState>();
     let menu_open = RwSignal::new(false);
     let account_open = RwSignal::new(false);
+    let status = StoredValue::new(status);
     let close = Callback::new(move |()| menu_open.set(false));
     Effect::new(move |previous: Option<u64>| {
         let epoch = auth.generation.get();
@@ -66,10 +68,17 @@ pub fn TopBar(
                 <super::ui::DialogBody>
                     <p class="form-hint" id="app-drawer-help">"Projects, configuration and help"</p>
                     <nav id="app-drawer" aria-label="App navigation"><AppMenuItems drawer=true on_close=close on_open_local=on_open_local on_open_remote=on_open_remote on_open_project=on_open_project on_delete_project=on_delete_project /></nav>
+                    {status.get_value().map(|status| view! { <DrawerStatus status=status on_close=close /> })}
                 </super::ui::DialogBody>
             </super::modal::Modal>
         </Show>
     }
+}
+
+#[component]
+fn DrawerStatus(status: ViewFn, on_close: Callback<()>) -> impl IntoView {
+    provide_context(super::status_bar::DrawerStatusActions(on_close));
+    view! { <section class="app-drawer-status" aria-label="Workspace status">{status.run()}</section> }
 }
 
 /// The same destinations and actions serve desktop dropdown and phone drawer.

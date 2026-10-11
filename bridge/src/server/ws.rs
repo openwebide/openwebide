@@ -470,6 +470,7 @@ impl Connection {
                         )
                     },
                     crate::runs::RunHost {
+                        mcp: config.mcp.clone(),
                         execution: config.execution.clone(),
                         plugins: crate::plugins::transport::PluginExecutionHost {
                             paired: config.pairing_token.is_some(),

@@ -691,6 +691,10 @@ fn TuiStatusLine(
             <span class="tui-tools-count">
                 {move || format!("{} tools", session_telemetry.with(|telemetry| telemetry.tool_calls_count))}
             </span>
+            {use_context::<crate::host_admin::HostState>().map(|_| {
+                let projects = expect_context::<ProjectsState>();
+                view! { <Show when=move || projects.active_project.get().is_none()><super::host_admin::HostPanel /></Show> }
+            })}
             <super::monitors::ConversationMonitors />
             <super::goal::GoalStatusIndicator />
         </div>
@@ -720,7 +724,6 @@ pub fn ChatPane(
     let projects = expect_context::<ProjectsState>();
     let questions = use_context::<crate::state::questions::QuestionsState>();
     let questions_available = questions.is_some();
-    let host_available = use_context::<crate::host_admin::HostState>().is_some();
     let assistance = crate::state_actions::assistance::ChatAssistance::new(
         expect_context::<crate::backend::Api>(),
         expect_context::<crate::state::auth::AuthState>(),
@@ -927,7 +930,6 @@ pub fn ChatPane(
             style=move || format!("width: {}px; flex: none;", layout.chat_width.get())
         >
             <Show when=move||questions_available><super::questions::QuestionsPanel/></Show>
-            <Show when=move||host_available && projects.active_project.get().is_none()><super::host_admin::HostPanel/></Show>
             <div class="messages tui-stream" node_ref=scroll_ref>
             <Show
                 when=move || !messages.handles.with(Vec::is_empty)

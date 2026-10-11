@@ -276,6 +276,7 @@ fn plan(kind: RunKind, content: &str) -> RunPlan {
         tools.push(openwebide_agent::tasks::executor::definition());
     }
     RunPlan {
+        mcp: Default::default(),
         plugin_executables: Vec::new(),
         plugin_grants: Default::default(),
         plugin_skills: Vec::new(),
@@ -308,6 +309,7 @@ fn plan(kind: RunKind, content: &str) -> RunPlan {
 
 #[derive(Default)]
 struct FakeProvider {
+    tool_requests: Arc<Mutex<Vec<ChatRequest>>>,
     chat: Mutex<Vec<Result<StreamChunk, ProviderError>>>,
     tools: Mutex<Vec<Vec<Result<ToolStreamChunk, ProviderError>>>>,
     pending: bool,
@@ -342,8 +344,9 @@ impl LlmProvider for FakeProvider {
     }
     fn chat_tools_stream(
         &self,
-        _request: &ChatRequest,
+        request: &ChatRequest,
     ) -> Pin<Box<dyn Stream<Item = Result<ToolStreamChunk, ProviderError>> + Send + 'static>> {
+        self.tool_requests.lock().unwrap().push(request.clone());
         let chunks = self.tools.lock().unwrap().remove(0);
         Box::pin(stream::iter(chunks))
     }
@@ -437,6 +440,7 @@ async fn buffered_start_cancel_survives_delayed_start_task() {
                                 panic!("cancelled start must not call the model")
                             },
                             RunHost {
+                                mcp: Default::default(),
                                 execution: Arc::new(crate::exec::HostExecution),
                                 plugins: crate::plugins::transport::PluginExecutionHost::default(),
                             },
@@ -1399,6 +1403,7 @@ async fn http_and_agent_run_use_configured_execution() {
             backend,
             |_| provider,
             RunHost {
+                mcp: Default::default(),
                 execution: config.execution.clone(),
                 plugins: crate::plugins::transport::PluginExecutionHost {
                     paired: false,
@@ -2055,4 +2060,104 @@ mod plugin_run_delivery {
             assert_eq!(terminal.detail, "Build passed");
         }
     }
+}
+
+#[tokio::test]
+async fn mcp_tools_promote_chat_runs_require_approval_and_release_processes() {
+    let (dir, _) = crate::mcp::tests::fixture();
+    let mcp = crate::mcp::host::Host::new(Some(dir.path().join(".openwebide/mcp.json")));
+    let backend = Arc::new(FakeBackend::default());
+    *backend.kind.lock().unwrap() = Some(RunKind::Chat);
+    let registry = RunRegistry::default();
+    let call = ToolCall {
+        id: "mcp-call".into(),
+        name: "mcp__fixture__echo".into(),
+        arguments: r#"{"text":"approved-result"}"#.into(),
+    };
+    let requests = Arc::new(Mutex::new(Vec::new()));
+    let provider = FakeProvider {
+        tool_requests: requests.clone(),
+        tools: Mutex::new(vec![
+            vec![Ok(ToolStreamChunk::Response(ChatResponse::ToolCalls(
+                vec![call.clone()],
+            )))],
+            vec![Ok(ToolStreamChunk::Response(ChatResponse::Text(
+                "done".into(),
+            )))],
+        ]),
+        ..Default::default()
+    };
+    let pinned = Arc::new(Mutex::new(None));
+    let capture = pinned.clone();
+    let request = start("mcp-run");
+    let run = registry.reserve(&user(1), &request).unwrap();
+    let run = registry
+        .prepare(
+            run,
+            request,
+            dir.path(),
+            backend.clone(),
+            move |plan| {
+                assert_eq!(plan.kind, RunKind::WebChat);
+                assert!(
+                    plan.request
+                        .tools
+                        .iter()
+                        .any(|tool| tool.name == "mcp__fixture__echo")
+                );
+                *capture.lock().unwrap() = Some(plan.mcp.clone());
+                provider
+            },
+            RunHost {
+                mcp: mcp.clone(),
+                execution: Arc::new(crate::exec::HostExecution),
+                plugins: Default::default(),
+            },
+        )
+        .await
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(2), async {
+        loop {
+            if let Some(RunEvent::PermissionRequest { id, .. }) = events(&run)
+                .iter()
+                .find(|event| matches!(event, RunEvent::PermissionRequest { .. }))
+            {
+                assert!(
+                    !backend
+                        .messages
+                        .lock()
+                        .unwrap()
+                        .iter()
+                        .any(|message| message.role == Role::Tool)
+                );
+                run.gate.decide(id, true).unwrap();
+                break;
+            }
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap();
+    finished(&run).await;
+    assert!(requests.lock().unwrap().iter().any(|request| {
+        request.messages.iter().any(|message| {
+            message.role == Role::Tool && message.content.contains("approved-result:configured:")
+        })
+    }));
+    assert!(
+        !backend
+            .messages
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|message| message.role == Role::System && message.content.contains("No tools;"))
+    );
+    assert!(
+        !events(&run)
+            .iter()
+            .any(|event| matches!(event, RunEvent::Error { .. }))
+    );
+    let catalog = pinned.lock().unwrap().clone().unwrap();
+    tokio::task::yield_now().await;
+    assert!(mcp.invoke("user:1", &catalog, &call).await.is_err());
 }

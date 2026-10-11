@@ -33,6 +33,7 @@ pub fn HostPanel() -> impl IntoView {
     let host = expect_context::<HostState>();
     let chat = expect_context::<crate::state::chat::ChatState>();
     let filter = RwSignal::new(String::new());
+    let environment = Memo::new(move |_| host.environment.get());
     let ticks = std::cell::Cell::new(0_u8);
     let timer = set_interval_with_handle(
         move || {
@@ -50,29 +51,75 @@ pub fn HostPanel() -> impl IntoView {
         }
     });
     view! {
-        <section class="host-panel">
-            <InlineActions><button class="btn ghost" aria-expanded=move||host.open.get() on:click=move|_|{host.open.update(|value|*value = !*value);if host.open.get_untracked(){host.refresh(true);}}>"Host environment"</button><Show when=move||host.open.get()><button class="btn ghost" disabled=move||host.busy.get() || chat.active_session.get().is_none() on:click=move|_|host.refresh(true)>"Refresh"</button></Show></InlineActions>
+        <super::dropdown::Dropdown class="tui-host-status" trigger_class="btn sm ghost" menu_class="tui-host-menu" menu_role="dialog" aria_label="Host environment" open=host.open above=true hide_caret=true on_open=Callback::new(move |()| host.refresh(true)) label=|| view! { <super::ui::Icon name=super::ui::IconName::Server /><span>"Host"</span> }>
+        <section class="host-panel" aria-label="Host environment details">
+            <InlineActions><strong>"Host environment"</strong><button class="btn ghost" disabled=move||host.busy.get() || chat.active_session.get().is_none() on:click=move|_|host.refresh(true)><super::ui::Icon name=super::ui::IconName::RefreshCw />"Refresh"</button></InlineActions>
             <Show when=move||host.open.get()>
                 <Show when=move||chat.active_session.get().is_none()><p class="form-hint">"Start a project-less chat to inspect and manage the host."</p></Show>
                 <Show when=move||host.error.get().is_some()><p class="form-hint" role="alert">{move||host.error.get().unwrap_or_default()}</p></Show>
-                {move||host.environment.get().map(|environment|view!{
+                {move||environment.get().map(|environment|view!{
                     <p><strong>{environment.target.clone()}</strong>" · "{environment.info.os.clone().unwrap_or_default()}</p>
                     <p class="form-hint">{environment.info.scope.clone()}</p>
                     <p class="form-hint">{format!("{} logical CPUs · {} / {} MiB RAM available",environment.info.logical_cores,environment.info.ram_available_bytes/1048576,environment.info.ram_total_bytes/1048576)}</p>
                     {environment.notes.into_iter().map(|note|view!{<p class="form-hint">{note}</p>}).collect::<Vec<_>>()}
                 })}
                 <input class="form-input" type="search" aria-label="Filter host resources" placeholder="Filter services, processes, ports, storage…" prop:value=move||filter.get() on:input=move|event|filter.set(event_target_value(&event))/>
-                <div class="host-resources">{move||{
-                    let query=filter.get().to_lowercase();
-                    host.environment.get().map(|environment|environment.resources.iter().filter(|resource|format!("{} {} {}",resource.name,resource.detail,resource.status).to_lowercase().contains(&query)).take(100).map(|resource|{
-                        let ask=resource.clone();let id=resource.id.clone();let links=environment.relationships.iter().filter(|relation|relation.from==id || relation.to==id).map(|relation|format!("{} → {} ({})",relation.from,relation.to,relation.description)).collect::<Vec<_>>().join("\n");
-                        view!{<details class="host-resource"><summary>{format!("{:?}: {} · {}",resource.kind,resource.name,resource.status)}</summary><p class="form-hint">{resource.detail.clone()}</p><pre>{links}</pre><button class="btn ghost" on:click=move|_|host.ask(&ask)>"Ask about this"</button></details>}
-                    }).collect::<Vec<_>>()).unwrap_or_default()
-                }}</div>
+                <div class="host-resources"><For each=move || {
+                    let query = filter.get().to_lowercase();
+                    environment.with(|value| value.as_ref().map(|environment| environment.resources.iter().filter(|resource| format!("{} {} {}", resource.name, resource.detail, resource.status).to_lowercase().contains(&query)).take(100).map(|resource| resource.id.clone()).collect::<Vec<_>>()).unwrap_or_default())
+                } key=|id| id.clone() children=move |id| view! { <HostResourceView id=id /> } /></div>
                 <p class="form-hint">"Showing up to 100 matching resources. Filter to narrow the view."</p>
                 <For each=move||host.operations.with(|operations|operations.iter().map(|operation|operation.id).collect::<Vec<_>>()) key=|id|*id children=move|id|view!{<HostOperationView id=id/>}/>
             </Show>
         </section>
+        </super::dropdown::Dropdown>
+    }
+}
+#[component]
+fn HostResourceView(id: String) -> impl IntoView {
+    let host = expect_context::<HostState>();
+    let id = StoredValue::new(id);
+    let resource = Memo::new(move |_| {
+        host.environment.with(|value| {
+            value.as_ref().and_then(|environment| {
+                environment
+                    .resources
+                    .iter()
+                    .find(|resource| resource.id == id.get_value())
+                    .cloned()
+            })
+        })
+    });
+    let links = Memo::new(move |_| {
+        host.environment.with(|value| {
+            value
+                .as_ref()
+                .map(|environment| {
+                    environment
+                        .relationships
+                        .iter()
+                        .filter(|relation| {
+                            relation.from == id.get_value() || relation.to == id.get_value()
+                        })
+                        .map(|relation| {
+                            format!(
+                                "{} → {} ({})",
+                                relation.from, relation.to, relation.description
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                })
+                .unwrap_or_default()
+        })
+    });
+    view! {
+        <details class="host-resource">
+            <summary>{move || resource.get().map(|resource| format!("{:?}: {} · {}", resource.kind, resource.name, resource.status))}</summary>
+            <p class="form-hint">{move || resource.get().map(|resource| resource.detail)}</p>
+            <pre>{move || links.get()}</pre>
+            <button class="btn ghost" on:click=move |_| { if let Some(resource) = resource.get_untracked() { host.ask(&resource); } }>"Ask about this"</button>
+        </details>
     }
 }
 #[component]

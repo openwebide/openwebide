@@ -3727,3 +3727,18 @@ button.browser-item {
 .ui-disclosure-header { display: flex; align-items: center; gap: var(--space-2); }
 .ui-disclosure-header > .ui-disclosure-toggle { flex: 1; min-width: 0; width: auto; }
 .ui-disclosure-header > .btn { flex: none; }
+
+/* Host inspection uses the same statusline flyout as goals and monitors. */
+.tui-statusline .tui-host-status { flex: none; }
+.tui-host-menu { white-space: normal; overflow-y: auto; }
+.tui-host-menu .host-panel { border: 0; max-height: none; padding: var(--space-3); }
+.phone-layout .app-drawer-status { border-top: 1px solid var(--border); margin-top: var(--space-3); padding-top: var(--space-3); }
+.phone-layout .app-drawer-status .statusbar { border: 0; padding: 0; background: transparent; }
+.phone-layout .app-drawer-status .spacer { display: none; }
+.phone-layout .app-drawer-status .editor-footer { flex-wrap: wrap; }
+
+.about-content:has(.release-notes) { text-align: start; }
+.release-notes { overflow-wrap: anywhere; }
+
+.phone-layout .tui-host-status .ui-dropdown-label > span { display: none; }
+.phone-layout .tui-host-status .ui-dropdown-trigger { padding-inline: var(--space-2); }

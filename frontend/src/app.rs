@@ -449,7 +449,14 @@ pub fn App() -> impl IntoView {
                     >
                         <div class="app" class:phone-layout=move || layout.phone.get()>
                             <crate::components::CommandDialogs />
-                            <TopBar on_select_chat=Callback::new(move |()| { select_chat.run(()); layout_actions.show.run(Panel::Chat); }) on_open_settings=on_open_settings on_logout=on_logout on_open_local=on_open_local on_open_remote=on_open_remote on_open_project=on_open_project on_delete_project=on_delete_project>
+                            <TopBar status=move || view! { <StatusBar
+                            health=health.read_only()
+                            on_toggle_terminal=on_toggle_terminal
+                            on_branch_click=on_branch_click
+                            on_load_branches=git_actions.on_load_branches
+                            on_select_branch=git_actions.on_select_branch
+                            on_sync_click=on_sync_click
+                        /> } on_select_chat=Callback::new(move |()| { select_chat.run(()); layout_actions.show.run(Panel::Chat); }) on_open_settings=on_open_settings on_logout=on_logout on_open_local=on_open_local on_open_remote=on_open_remote on_open_project=on_open_project on_delete_project=on_delete_project>
                                 <TabBar show_chat=false on_select_chat=Callback::new(move |()| { select_chat.run(()); layout_actions.show.run(Panel::Chat); }) on_select=select_project on_tab_action=tab_action on_close=close_project />
                             </TopBar>
                             <crate::components::Configuration on_new_connection=on_new_connection on_edit_connection=on_edit_connection on_cancel_connection=on_cancel_connection on_delete_connection=on_delete_connection on_new_prompt=on_new_prompt on_edit_prompt=on_edit_prompt on_save_prompt=on_save_prompt on_cancel_prompt=on_cancel_prompt on_delete_prompt=on_delete_prompt />
@@ -516,6 +523,7 @@ pub fn App() -> impl IntoView {
                                 {move || bridge_connection.get().map(|bridge| view! { <TerminalDock bridge=bridge visible=terminal_visible on_close=Callback::new(move |()| layout_actions.toggle.run(Panel::Terminal)) /> })}
                             </ToolPanel>
                         </div>
+                        <Show when=move || !layout.phone.get()>
                         <StatusBar
                             health=health.read_only()
                             on_toggle_terminal=on_toggle_terminal
@@ -524,6 +532,7 @@ pub fn App() -> impl IntoView {
                             on_select_branch=git_actions.on_select_branch
                             on_sync_click=on_sync_click
                         />
+                        </Show>
                         <Show when=move || ui.plugins_open.get()>
                             <crate::components::PluginsDialog/>
                         </Show>

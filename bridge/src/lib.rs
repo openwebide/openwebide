@@ -3,6 +3,7 @@ pub mod auth;
 mod error;
 pub mod exec;
 pub mod host_admin;
+pub mod mcp;
 pub mod paths;
 pub mod plugins;
 pub mod runs;

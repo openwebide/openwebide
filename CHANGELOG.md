@@ -8,6 +8,11 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Add host-side stdio MCP discovery and tool execution for server runs and paired local hosts, with run-pinned catalogs, normal approvals, bounded requests and process cleanup.
+- Show a per-account What’s new notice after login and bundle the installed version’s release notes in About for offline reading.
+
+- Move phone workspace status controls into the app drawer and host inspection into a chat statusline flyout; poll only while the flyout is open and retain unchanged inventory content.
+
 - Enlarge desktop and Apple PWA icons and provide separate maskable icons for adaptive launchers, with all variants cached for offline use.
 
 - Shorten generated model-server names to host, port and API path; migrate existing generated labels while retaining custom names and handling duplicate endpoints.

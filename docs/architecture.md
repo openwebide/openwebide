@@ -27,6 +27,7 @@ UI actions, slash commands, and background refresh use the same feature entry po
 | Chat and agent runs | `ProjectRuns`, agent `session::plan`, `chat_events`, `events`, agent loop and approval policy | Browser, Spin and bridge persistence, cancellation, permission and HTTP adapters |
 | Agent questions | Core `questions` validation, agent `QuestionTools` waiting workflow, frontend `QuestionsState` and owned SQLite question/result transactions | Browser, bridge and Spin HTTP/database and clock primitives |
 | Host administration | Core `host_request`, `inspect_host`, operation execution/recovery policy, agent host tools and frontend `HostState` | SSH OS/process primitives, resident bridge scheduling, scoped SQLite journal and authenticated API transport; server-only, project-less scope |
+| MCP tools | Agent `mcp::Config`, `prepare_servers`, discovery/call validation, `attach` and `McpTools` facade; normal approval policy and run-pinned catalogs | Bridge filesystem/process/stdio/deadline primitives, server `NativeTransport` and authenticated browser `McpBridge` RPC |
 | Model setup | Frontend `model_setup` connect/discover/apply facade, core detection default merging and shared provider probes | Backend server/model/configuration primitives, execution-host discovery adapters |
 | Model requests | `ModelRuntime::apply_to`, provider wire messages and stream state machines | Protocol parsers and browser/Spin/native HTTP clients |
 | Context compaction | Agent `compaction::prepare`, bounded rolling summaries, separate compaction reserves, per-request remaining-context reply budgets and persisted history reconstruction | `CompactionSource` model runtime/completion/token primitives for browser, Spin and bridge |
@@ -395,3 +396,14 @@ clearing run flags. It checks session ownership and returns the connection, chat
 request with prior history and temporal context, editor-prefixed user content, and
 run kind (`chat` or `agent` with a project path). The SSE message handler uses the
 same builder before persisting the new user message and starting the run.
+
+MCP processes are host-owned for both project modes. Native and browser agent
+factories wrap existing executors in the same MCP facade, including child tasks.
+Authenticated catalogs retain immutable definitions and account/pairing ownership;
+run preparation and teardown own a shared transport lease so errors and early
+returns also close processes. See [MCP tools](mcp.md) for configuration and limits.
+
+The release acknowledgement is an account-scoped database setting,
+`last_seen_release_version`. About bundles only the installed version’s notes;
+login restoration compares that version after loading account settings and ignores
+stale results from another authentication generation.

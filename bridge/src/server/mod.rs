@@ -25,6 +25,7 @@ pub(crate) use ws::WriterCmd;
 pub struct ServerConfig {
     pub workspace_root: PathBuf,
     pub execution: Arc<dyn crate::exec::ToolExecution>,
+    pub mcp: crate::mcp::host::Host,
     pub plugins: crate::plugins::NativePluginInstaller,
     pub plugin_invocations: crate::plugins::invocations::Invocations,
     pub allowed_origins: Vec<String>,
@@ -45,6 +46,7 @@ impl ServerConfig {
         Self {
             workspace_root,
             execution: Arc::new(crate::exec::HostExecution),
+            mcp: Default::default(),
             plugins: crate::plugins::NativePluginInstaller::new(crate::plugins::default_root()),
             plugin_invocations: Default::default(),
             allowed_origins: default_origins(),
@@ -233,6 +235,8 @@ pub async fn run_server_until(
 
     let reap_sessions = session_manager.clone();
     let reap_runs = config.runs.clone();
+    let reap_mcp = config.mcp.clone();
+    let shutdown_mcp = config.mcp.clone();
     let session_ttl = config.session_ttl;
     let reaper = tokio::spawn(async move {
         let mut interval = tokio::time::interval(SESSION_REAP_INTERVAL);
@@ -242,6 +246,7 @@ pub async fn run_server_until(
             reap_sessions.reap(session_ttl);
             reap_sessions.reap_detached(Duration::from_secs(15 * 60));
             reap_runs.reap();
+            reap_mcp.reap().await;
         }
     });
 
@@ -285,6 +290,7 @@ pub async fn run_server_until(
     let _ = stop.send(());
     let _ = accept.await;
     runs.shutdown().await;
+    shutdown_mcp.shutdown().await;
     session_manager.kill_all().await;
 }
 

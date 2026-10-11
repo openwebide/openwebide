@@ -21,6 +21,9 @@ selector. The **…** menu includes Copy path, Reveal in Files, Convert indentat
 and **Discard changes…**. Discard retains confirmation and pending-review guards.
 
 The app footer combines cursor position, indentation, connection, Git and Output.
+On phones these controls live in the app menu drawer, leaving more room for the
+active panel. Project-less chat exposes Host environment through the Host
+statusline flyout; inventory and operations refresh only while it is open.
 Click **Spaces: 4** or **Tabs: 4** for separate indentation/tab widths and the
 configuration source. Layout and tree preferences sync through your account.
 
@@ -40,3 +43,6 @@ configuration source. Layout and tree preferences sync through your account.
 
 The [roadmap](roadmap.md) tracks planned UI changes and capabilities. These guides
 describe the current app; controls may move as the layout evolves.
+
+See [MCP tools](mcp.md) to configure host processes that extend the agent’s tools
+in remote projects and through paired local execution hosts.

@@ -3,6 +3,9 @@ use leptos::prelude::*;
 use crate::api::HealthState;
 use crate::state::{chat::ChatState, git::GitState};
 
+#[derive(Clone, Copy)]
+pub(super) struct DrawerStatusActions(pub Callback<()>);
+
 #[component]
 pub fn StatusBar(
     health: ReadSignal<Option<HealthState>>,
@@ -12,6 +15,7 @@ pub fn StatusBar(
     #[prop(default = Callback::new(|_: String| ()))] on_select_branch: Callback<String>,
     #[prop(default = Callback::new(|_| ()))] on_sync_click: Callback<()>,
 ) -> impl IntoView {
+    let close_drawer = use_context::<DrawerStatusActions>();
     let editor_actions = crate::state_actions::editor::EditorActions::new(expect_context::<
         crate::state::workspace::WorkspaceState,
     >());
@@ -77,7 +81,7 @@ pub fn StatusBar(
             <span class="spacer" />
             <button type="button" class=move || if ui.plugins_open.get() { "status-btn active" } else { "status-btn" }
                 title="Browse and manage plugins" aria-haspopup="dialog" aria-expanded=move || ui.plugins_open.get().to_string()
-                on:click=move |_| ui.plugins_open.update(|open| *open = !*open)>
+                on:click=move |_| { if let Some(close) = close_drawer { close.0.run(()); } ui.plugins_open.update(|open| *open = !*open); }>
                 <super::ui::Icon name=super::ui::IconName::Puzzle />"Plugins"<Show when=move || {updates.get()>0}><span class="plugin-count plugin-update-count" title="Plugin updates available" aria-label=move ||format!("{} plugin updates available",updates.get())>{move ||updates.get()}</span></Show>
             </button>
             <span class="status-preparation" title=move || if preparing.get() { "Preparing syntax…" } else { "" }>
@@ -90,7 +94,7 @@ pub fn StatusBar(
                 aria-label="Toggle Output"
                 disabled=move || !layout.available(crate::state::layout::Panel::Terminal)
                 title=move || if layout.available(crate::state::layout::Panel::Terminal) { "Toggle Output and terminal dock (Ctrl+`)" } else { "Open a project to use Terminal" }
-                on:click=move |_| on_toggle_terminal()
+                on:click=move |_| { if let Some(close) = close_drawer { close.0.run(()); } on_toggle_terminal(); }
             >
                 <super::ui::Icon name=super::ui::IconName::Terminal />"Output"
             </button>

@@ -21,20 +21,27 @@ impl PluginBridgeClient {
         operation: &str,
         payload: serde_json::Value,
     ) -> Result<T, String> {
+        self.host_request(&format!("/plugins/{operation}"), payload)
+            .await
+    }
+    pub(crate) async fn host_request<T: serde::de::DeserializeOwned>(
+        &self,
+        path: &str,
+        payload: serde_json::Value,
+    ) -> Result<T, String> {
         let token = self.credentials.credential().await?;
         let guard = crate::api::CommandFetchGuard(
             web_sys::AbortController::new().map_err(|error| format!("{error:?}"))?,
         );
-        let response =
-            gloo_net::http::Request::post(&format!("{}/plugins/{operation}", self.http_url))
-                .abort_signal(Some(&guard.0.signal()))
-                .header("Content-Type", "application/json")
-                .header("Authorization", &format!("Bearer {token}"))
-                .body(payload.to_string())
-                .map_err(|error| error.to_string())?
-                .send()
-                .await
-                .map_err(|error| format!("Plugin host unavailable: {error}"))?;
+        let response = gloo_net::http::Request::post(&format!("{}{path}", self.http_url))
+            .abort_signal(Some(&guard.0.signal()))
+            .header("Content-Type", "application/json")
+            .header("Authorization", &format!("Bearer {token}"))
+            .body(payload.to_string())
+            .map_err(|error| error.to_string())?
+            .send()
+            .await
+            .map_err(|error| format!("Execution host unavailable: {error}"))?;
         if !response.ok() {
             return Err(openwebide_core::plugins::execution::host_rpc_error(
                 response.status(),

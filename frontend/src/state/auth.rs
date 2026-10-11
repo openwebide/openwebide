@@ -66,6 +66,8 @@ impl AuthState {
                 connection.close();
             }
         });
+        ui.whats_new_open.set(false);
+        ui.about_release_notes.set(false);
         projects.projects_loaded.set(false);
         #[cfg(target_arch = "wasm32")]
         if let Some(controller) = chat.abort.get() {

@@ -825,19 +825,9 @@ impl<E: ToolExecutor + Sync, W: WebClient, B: BridgeClient> ToolExecutor
         if let Some(workspace) = &mut self.workspace {
             workspace.context(tools, call).await
         } else if call.is_none() {
-            let mut available = crate::session::projectless_tools();
-            available.extend(crate::host_admin::definitions());
-            let tools = tools
-                .iter()
-                .filter(|tool| {
-                    tool.name == "task"
-                        || available
-                            .iter()
-                            .any(|available| available.name == tool.name)
-                })
-                .cloned()
-                .collect::<Vec<_>>();
-            let mut text = crate::context::environment_context(&self.environment, &tools);
+            // The request is the authoritative tool catalog, including plugin and MCP
+            // contributions. Filtering to built-ins mislabels extension-only runs as chat.
+            let mut text = crate::context::environment_context(&self.environment, tools);
             if tools
                 .iter()
                 .any(|tool| crate::host_admin::is_host_tool(&tool.name))

@@ -17,7 +17,7 @@ for help, review its changes, and work with Git and a terminal—all in one plac
 [Get started](README.md#run-with-docker){ .btn .send }
 [View on GitHub](https://github.com/openwebide/openwebide){ .btn }
 
-<p class="release-note">Under active development toward 1.0. Try the current source build and share your feedback.</p>
+<p class="release-note">Under active development toward 1.0. Try the published alpha container or a source build and share your feedback.</p>
 
 </div>
 
@@ -68,3 +68,16 @@ Keep the same editor, chat, and review workflow across both.
 [Explore the architecture](docs/architecture.md) ·
 [Read the roadmap](docs/roadmap.md) ·
 [Report a bug or ask a question](https://github.com/openwebide/openwebide/issues)
+
+## Extend your workspace
+
+Discover [plugins](docs/plugins.md) from Git marketplaces, with first-party
+skills, memory, scheduling and monitor plugins included in fresh installs.
+Plugins execute Rust compiled to WebAssembly on your execution host, including
+through a paired host when your files are local. Update notifications let you
+choose when to apply new releases.
+
+Configure [MCP tools](docs/mcp.md) to connect more host services to the agent.
+Use [scheduled tasks](docs/scheduled-tasks.md), [goals](docs/chat-controls.md)
+and [monitors](docs/monitors.md) for ongoing work, or inspect and manage your
+homelab through [host administration](docs/host-administration.md).

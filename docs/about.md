@@ -1,7 +1,7 @@
 # About and open-source software
 
-Open the account menu and choose **About**, or search for
-**About**, **version**, **commit** or **licenses** in the command palette.
+Open the app menu and choose **About**, or search for
+**About**, **version**, **commit** or **licenses** in command search.
 
 The **About** tab shows the running frontend's version and Git commit, including a modified
 source marker for development builds. It uses the same component and bundled
@@ -39,3 +39,10 @@ docker build --build-arg OPENWEBIDE_BUILD_COMMIT="$(git rev-parse HEAD)" -t open
 
 CI and release image builds supply the revision automatically. Source archives
 and image builds without a supplied revision show that the commit is unknown.
+
+The About dialog also includes a scrollable **Release notes** page. Notes for the
+installed build are bundled with the app and remain readable offline. A **What’s
+new** notice appears after login when the account has not acknowledged the current
+version. Dismiss it or choose Release notes to save that acknowledgement in the
+account’s database settings, shared across devices. The pane links to the release
+on GitHub for downloads and the published notes.

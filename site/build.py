@@ -20,6 +20,11 @@ ROOT = Path(__file__).resolve().parent.parent
 REPO_URL = "https://github.com/openwebide/openwebide"
 
 
+def rewrite_readme_links(text):
+    """Only the repository root README becomes the site's getting-started page."""
+    return re.sub(r"\]\(((?:\.\./)*|(?:\./)?)README\.md(?=[)#])", r"](\1getting-started.md", text)
+
+
 class PageLinks(HTMLParser):
     def __init__(self, path):
         super().__init__()
@@ -94,7 +99,7 @@ def build(output, site_url):
         # MkDocs treats README.md as an index; reserve index.md for the homepage.
         (content / "README.md").rename(content / "getting-started.md")
         for path in content.rglob("*.md"):
-            path.write_text(re.sub(r"(\]\([^\s)]*?)README\.md(?=[)#])", r"\1getting-started.md", path.read_text()))
+            path.write_text(rewrite_readme_links(path.read_text()))
 
         navigation = validate_navigation(
             yaml.safe_load((ROOT / "site/navigation.yml").read_text()), content

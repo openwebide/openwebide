@@ -859,7 +859,7 @@ pub async fn run_local_agent(
         .plugin_host(Some(project.id), current.clone())?
         .local_bridge();
     let plugin_transport = BrowserPluginTransport(plugin_bridge.clone());
-    let plan = openwebide_agent::session::plan_with_plugin_context(
+    let mut plan = openwebide_agent::session::plan_with_plugin_context(
         &runtime,
         input,
         &plugin_bindings,
@@ -878,7 +878,19 @@ pub async fn run_local_agent(
         },
     )
     .await?;
-    let mut plan = plan;
+    let (mcp_transport, mcp_catalog) = crate::mcp_bridge::McpBridge::open(
+        plugin_bridge.clone().filter(|_| {
+            runtime.settings.tools != Some(false)
+                && runtime.connection.tool_selection != openwebide_core::ToolSelection::ChatOnly
+        }),
+        cwd.clone(),
+    )
+    .await;
+    if !current() {
+        return Err("Project access changed".into());
+    }
+    openwebide_agent::mcp::attach(&mut plan, mcp_catalog)?;
+
     plan.plugin_skills = openwebide_agent::skills::package_snapshot(&skills);
     if !current() {
         return Err("Project access changed".into());
@@ -995,6 +1007,8 @@ pub async fn run_local_agent(
             .as_ref()
             .and_then(crate::project_host::ProjectExecution::local_bridge);
         let factory = BrowserTaskFactory {
+            mcp_catalog: Arc::new(plan.mcp.clone()),
+            mcp_transport,
             plugin_skills: Arc::new(plan.plugin_skills),
             plugin_executables: Arc::new(plan.plugin_executables),
             plugin_grants: Arc::new(plan.plugin_grants),
@@ -1195,11 +1209,13 @@ type BrowserBuiltinTaskExecutor = openwebide_agent::todo::TodoTools<
     VfsToolExecutor<BrowserFsaVfs, openwebide_agent::NoopWebClient, Option<BrowserBridgeClient>>,
     TodoPersistence,
 >;
-type BrowserBaseTaskExecutor = openwebide_agent::plugins::execution::PluginTools<
+type BrowserPluginTaskExecutor = openwebide_agent::plugins::execution::PluginTools<
     openwebide_agent::skills::packages::PackageSkillTools<BrowserBuiltinTaskExecutor>,
     BrowserPluginTransport,
     openwebide_agent::plugins::execution::GrantedServices<BrowserPluginServices>,
 >;
+type BrowserBaseTaskExecutor =
+    openwebide_agent::mcp::McpTools<BrowserPluginTaskExecutor, crate::mcp_bridge::McpBridge>;
 #[derive(Clone)]
 struct BrowserPluginTransport(Option<crate::plugin_bridge::PluginBridgeClient>);
 impl openwebide_agent::plugins::execution::PluginTransport for BrowserPluginTransport {
@@ -1283,6 +1299,8 @@ type BrowserTaskGate = openwebide_agent::plugins::execution::PluginGate<
 >;
 #[derive(Clone)]
 struct BrowserTaskFactory {
+    mcp_catalog: Arc<openwebide_core::mcp::Catalog>,
+    mcp_transport: crate::mcp_bridge::McpBridge,
     plugin_grants: Arc<std::collections::BTreeMap<String, String>>,
     plugin_executables: Arc<Vec<openwebide_core::plugins::PreparedPlugin>>,
     plugin_skills: Arc<Vec<openwebide_core::ProjectSkill>>,
@@ -1308,6 +1326,13 @@ impl BrowserTaskFactory {
         )
     }
     fn base_executor(&self) -> BrowserBaseTaskExecutor {
+        openwebide_agent::mcp::McpTools {
+            executor: self.plugin_executor(),
+            transport: self.mcp_transport.clone(),
+            catalog: self.mcp_catalog.clone(),
+        }
+    }
+    fn plugin_executor(&self) -> BrowserPluginTaskExecutor {
         openwebide_agent::plugins::execution::PluginTools {
             executor: openwebide_agent::skills::packages::PackageSkillTools::new(
                 self.builtin_executor(),

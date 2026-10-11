@@ -29,9 +29,11 @@
     - Host administration: docs/host-administration.md
     - Git authentication: docs/git-ssh.md
     - Execution bridge: docs/execution-bridge.md
+    - MCP tools: docs/mcp.md
 - Development:
     - Overview: docs/development.md
     - Architecture: docs/architecture.md
+    - Plugin authoring: docs/plugin-authoring.md
     - API examples: docs/api-examples.md
     - Design system: docs/design-system.md
     - Editor performance: docs/editor-performance.md

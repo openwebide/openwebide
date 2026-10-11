@@ -272,6 +272,7 @@ fn plan_with_executables(
         _ => openwebide_core::RunKind::Chat,
     };
     openwebide_core::RunPlan {
+        mcp: Default::default(),
         plugin_executables: plugins,
         plugin_grants: Default::default(),
         plugin_skills: Vec::new(),

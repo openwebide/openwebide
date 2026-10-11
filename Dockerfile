@@ -80,6 +80,7 @@ EXPOSE 3000 3001
 # SQLite data lives in .spin/ (mount a volume here to persist it).
 VOLUME /app/.spin
 ENV OPENWEBIDE_PLUGIN_DIR=/app/.spin/plugins
+ENV OPENWEBIDE_MCP_CONFIG=/app/.spin/mcp.json
 VOLUME /workspace
 
 RUN sed -i 's#source = "../.."#source = "/workspace"#' spin.toml && grep -q 'source = "/workspace"' spin.toml && mkdir -p /workspace

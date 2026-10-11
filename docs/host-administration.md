@@ -30,7 +30,9 @@ default, but need the SSH credentials and connection above before use.
 
 ## Inspect and manage
 
-Open a project-less session and select **Host** to view the machine identity,
+Open a project-less session and select **Host** in the chat statusline to open
+a compact flyout. Inventory and operations refresh while it is open; closing it
+restores the space to chat. Use it to view the machine identity,
 OS/version, CPU and RAM, services, processes, containers, ports, storage and
 configuration. Filter resources and select **Ask about this** to add the observed
 resource to your next message. Missing utilities appear as inventory notes;

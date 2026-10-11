@@ -20,3 +20,6 @@ For a first installation, begin with [the quick start](../README.md#run-with-doc
 For an existing installation using the old deployment name, read the
 [volume migration notes](releases.md#existing-installations-with-the-old-project-name)
 before changing Compose configuration.
+
+See [MCP tools](mcp.md) to configure host processes that extend the agent’s tools
+in remote projects and through paired local execution hosts.

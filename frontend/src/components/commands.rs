@@ -11,6 +11,7 @@ use leptos::prelude::*;
 pub fn CommandDialogs() -> impl IntoView {
     let ui = expect_context::<UiState>();
     view! {
+        <Show when=move || ui.whats_new_open.get()><super::about::WhatsNew /></Show>
         <Show when=move || ui.about_open.get()><super::About /></Show>
         <Show when=move || ui.shortcuts_open.get()><KeyboardShortcuts /></Show>
     }

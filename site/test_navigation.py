@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from navigation import validate_navigation
+from build import rewrite_readme_links
 
 
 class NavigationTests(unittest.TestCase):
@@ -39,6 +40,16 @@ class NavigationTests(unittest.TestCase):
         for navigation in ([], [{"Empty": []}], [{"Bad": None}], [{"": "index.md"}]):
             with self.subTest(navigation=navigation), self.assertRaises(ValueError):
                 validate_navigation(navigation, self.content)
+
+
+class ReadmeLinksTests(unittest.TestCase):
+    def test_root_readme_navigation_preserves_sdk_and_external_source_links(self):
+        text = "[Start](README.md#run) [Up](../README.md) [SDK](../crates/plugin-sdk/README.md) [Source](https://github.com/openwebide/openwebide/blob/main/crates/plugin-sdk/README.md)"
+        rendered = rewrite_readme_links(text)
+        self.assertIn("[Start](getting-started.md#run)", rendered)
+        self.assertIn("[Up](../getting-started.md)", rendered)
+        self.assertIn("[SDK](../crates/plugin-sdk/README.md)", rendered)
+        self.assertIn("[Source](https://github.com/openwebide/openwebide/blob/main/crates/plugin-sdk/README.md)", rendered)
 
 
 if __name__ == "__main__":

@@ -179,3 +179,51 @@ async fn host_settings_load_on_first_mount_and_fit_a_phone_width() {
     settle().await;
     assert_eq!(mounted.state.fake.host_connection.borrow().revision, 5);
 }
+
+#[wasm_bindgen_test]
+async fn host_inspection_is_closed_by_default_and_only_polls_while_open() {
+    let mounted = mount_test(move |state| {
+        state.chat.active_session.set(Some(1));
+        provide_context(HostState::new(
+            state.api,
+            state.auth,
+            state.chat,
+            state.projects,
+        ));
+        view! { <style>{include_str!("../../styles.css")}</style><HostPanel /> }
+    });
+    settle().await;
+    assert!(
+        mounted
+            .root
+            .query_selector(".host-panel")
+            .unwrap()
+            .is_none()
+    );
+    openwebide_frontend::util::sleep_ms(2100).await;
+    assert!(mounted.state.fake.host_requests.borrow().is_empty());
+    mounted.click("[aria-label='Host environment']");
+    settle().await;
+    assert!(
+        mounted
+            .root
+            .query_selector(".host-panel")
+            .unwrap()
+            .is_some()
+    );
+    assert_eq!(mounted.state.fake.host_requests.borrow().len(), 2);
+    openwebide_frontend::util::sleep_ms(2100).await;
+    assert!(mounted.state.fake.host_requests.borrow().len() > 2);
+    mounted.click("[aria-label='Host environment']");
+    settle().await;
+    let requests = mounted.state.fake.host_requests.borrow().len();
+    openwebide_frontend::util::sleep_ms(2100).await;
+    assert_eq!(mounted.state.fake.host_requests.borrow().len(), requests);
+    assert!(
+        mounted
+            .root
+            .query_selector(".host-panel")
+            .unwrap()
+            .is_none()
+    );
+}

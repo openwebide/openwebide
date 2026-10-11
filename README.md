@@ -19,12 +19,20 @@ sessions, and preferences live in SQLite, so you can resume from another browser
   review pending edits with Accept/Reject controls.
 - Choose Manual, Auto-accept edits, Auto, or YOLO approval modes with `Shift+Tab`.
   Auto uses an optional fast model, falling back to the primary model.
-- View build details and bundled license notices through **About** in the account menu or command palette, including from the offline PWA
+- View build details and bundled license notices through **About** in the app menu or command search, including from the offline PWA
   screen. See [About](docs/about.md).
 - Choose personal primary/fast defaults in Settings. Configure shared servers,
   credentials and model settings through the Servers setup wizard. See
   [your first session](docs/first-session.md#connect-a-model) for setup and
   [architecture](docs/architecture.md#shared-feature-boundaries) for context compaction.
+- Discover host-installed [plugins](docs/plugins.md), enable them by default across
+  projects, and review available updates. First-party plugins provide web tools,
+  project memory, scheduling, monitors and skill authoring through the public SDK.
+- Extend agent tools with configured [MCP servers](docs/mcp.md) on server and
+  paired local execution hosts.
+- Run [goals](docs/chat-controls.md), [scheduled tasks](docs/scheduled-tasks.md)
+  and [monitors](docs/monitors.md), and inspect your homelab through
+  [host administration](docs/host-administration.md).
 - Use slash commands such as `/model`, `/test`, `/diff`, `/commit`, and `/sync`,
   with live token/speed telemetry and a context-window gauge.
 

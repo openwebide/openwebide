@@ -121,3 +121,9 @@ mod review_regressions;
 
 #[path = "components/plugins.rs"]
 mod plugins;
+
+#[path = "components/release_notes.rs"]
+mod release_notes;
+
+#[path = "components/mcp.rs"]
+mod mcp;

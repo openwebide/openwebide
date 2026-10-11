@@ -4,6 +4,7 @@ pub mod assistance;
 pub mod questions;
 pub use assistance::{AssistanceKind, AssistanceRequest, BackgroundCompletion};
 pub mod goal;
+pub mod mcp;
 pub mod memory;
 pub mod plugins;
 pub mod skills;
@@ -119,6 +120,7 @@ mod tests {
         ] {
             assert_eq!(serde_json::to_value(&kind).unwrap(), json);
             let plan = RunPlan {
+                mcp: Default::default(),
                 plugin_executables: Vec::new(),
                 plugin_grants: Default::default(),
                 plugin_skills: Vec::new(),

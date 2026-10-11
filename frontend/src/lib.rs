@@ -28,6 +28,8 @@ pub mod local_agent;
 pub mod local_fs;
 pub mod markdown;
 #[cfg(target_arch = "wasm32")]
+mod mcp_bridge;
+#[cfg(target_arch = "wasm32")]
 pub mod model_setup;
 #[cfg(target_arch = "wasm32")]
 pub mod monitors;

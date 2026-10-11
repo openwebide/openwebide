@@ -53,6 +53,7 @@ impl openwebide_agent::plugins::runs::RunHost for Host {
                     )
                 },
                 crate::runs::RunHost {
+                    mcp: self.config.mcp.clone(),
                     execution: self.config.execution.clone(),
                     plugins: super::transport::PluginExecutionHost {
                         installer: self.config.plugins.clone(),

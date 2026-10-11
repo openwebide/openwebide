@@ -10,6 +10,6 @@ For access from a phone or another computer, set up
 [private HTTPS with Tailscale](tailscale.md). Local folder access requires a
 browser that supports the File System Access API and a secure context.
 
-The first public container release is still being prepared. The source-build
-instructions work now; [release installation](releases.md) describes the
-downloadable files and channels that publication will provide.
+Versioned alpha container images and deployment files are available.
+[Release installation](releases.md) covers Compose, Podman, upgrades and backups;
+building from source remains available for development.

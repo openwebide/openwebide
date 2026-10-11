@@ -82,3 +82,11 @@ Every command the bridge spawns (`/exec`, `run_command`, PTY shells, Git subproc
 
 
 [Back to the README](../README.md).
+
+## MCP processes
+
+The bridge also owns configured [MCP servers](mcp.md). Shared agent code handles
+configuration validation, discovery, schema translation, approval previews and
+call results. The native bridge provides filesystem, process, stdio and timeout
+primitives. Both server runs and browser runs through paired hosts use this same
+policy and immutable, authenticated catalog contract.

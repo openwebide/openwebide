@@ -87,7 +87,8 @@ pub(super) async fn route(
         .all(|header| !req.headers().contains_key(*header));
     let path = req.uri().path().to_string();
 
-    let is_api_req = path == "/exec"
+    let is_api_req = path.starts_with("/mcp/")
+        || path == "/exec"
         || path == "/environment"
         || path == "/scheduler/host"
         || path == "/host/info"
@@ -145,6 +146,43 @@ pub(super) async fn route(
 
     match (method.as_str(), path.as_str()) {
         ("OPTIONS", _) => Ok(preflight_response(req.headers(), allowed_origin)),
+        ("POST", "/mcp/open" | "/mcp/call" | "/mcp/close") => {
+            let result = async {
+                #[derive(Deserialize)]
+                #[serde(deny_unknown_fields)]
+                struct Payload {
+                    user: Option<i64>,
+                    cwd: Option<String>,
+                    catalog: Option<openwebide_core::mcp::Catalog>,
+                    call: Option<openwebide_core::ToolCall>,
+                    id: Option<String>,
+                }
+                let payload: Payload = read_json(req.into_body(), 3 * 1024 * 1024).await?;
+                let owner = match principal {
+                    Some(crate::auth::Principal::User { user_id }) => format!("user:{user_id}"),
+                    Some(crate::auth::Principal::Paired) => "paired".into(),
+                    None => format!("user:{}", payload.user.filter(|id| *id > 0).ok_or_else(|| BridgeError::Validation("An authenticated user is required".into()))?),
+                };
+                let value = match path.as_str() {
+                    "/mcp/open" => {
+                        let cwd = crate::paths::resolve_in_root(&config.workspace_root, payload.cwd.as_deref()).map_err(BridgeError::Validation)?;
+                        serde_json::to_value(config.mcp.open(owner, cwd, payload.cwd.is_some()).await.map_err(BridgeError::Execution)?)
+                    }
+                    "/mcp/call" => {
+                        let catalog = payload.catalog.ok_or_else(|| BridgeError::Validation("MCP catalog is required".into()))?;
+                        let call = payload.call.ok_or_else(|| BridgeError::Validation("MCP call is required".into()))?;
+                        let result = config.mcp.invoke(&owner, &catalog, &call).await.map_err(BridgeError::Execution)?;
+                        Ok(serde_json::json!({"ok":result.ok,"content":result.content,"summary":result.summary}))
+                    }
+                    _ => {
+                        config.mcp.close(&owner, &payload.id.ok_or_else(|| BridgeError::Validation("MCP catalog ID is required".into()))?).await.map_err(BridgeError::Execution)?;
+                        Ok(serde_json::json!({}))
+                    }
+                };
+                value.map(|value| value.to_string()).map_err(|error| BridgeError::Execution(error.to_string()))
+            }.await;
+            Ok(execution_response(result, allowed_origin))
+        }
         (
             "POST",
             "/plugins/prepare"

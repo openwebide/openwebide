@@ -390,7 +390,7 @@ complete; preserve the shared document/selection/extension APIs as its foundatio
 
 ### Phone device verification
 
-The compact app/editor rows, universal search, logo drawer, single status footer,
+The compact app/editor rows, universal search, logo drawer, responsive workspace status controls,
 on-demand pane controls, grouped menus, responsive dialogs, nested file groups, automatic tree density, folder-only creation menus, middle-click tab closing, pointer-stable tab scrolling, tree controls and Git icons/counts are implemented in
 both modes, with browser coverage for narrow layouts, focus restoration, keyboard
 navigation, inline header search with viewport-bounded results, stable file-tab geometry across preview availability changes and loading locks, contained tab context-menu controls, non-overlapping tree disclosure touch targets, tooltip dismissal during pointer activation and scroll restoration, and review safeguards. Remaining checks need physical devices:
@@ -424,16 +424,10 @@ mobile focus/keyboard behavior before considering these refinements complete.
 A fully interactive terminal (cursor movement, direct keyboard input and shell/TUI
 programs) is optional later work, pending a concrete need beyond process output.
 
-### Process execution: MCP client & headless browser
+### Process execution: tool discovery and headless browser
 
-The rest of the Phase 11 bridge work that
-isn't built yet — the bridge's PTY sessions, `run_command` tool, and
-terminal pane are done and in the changelog, but:
+Remaining execution-host work:
 
-- **Model Context Protocol (MCP) client:** the bridge spawning configured
-  MCP servers (`~/.openwebide/mcp.json` / `.openwebide/mcp.json`) as host
-  child processes over `stdio`, translating `tools/list` into the agent's
-  `ToolDefinition` schema, and forwarding `tools/call`.
 - **Deferred tool loading (`tool_search`):** once MCP servers push the tool count up, keep the core
   file/search/shell tools always loaded and, when the remaining schemas would exceed a share of the
   connection's context limit, send only their names plus a `tool_search` tool (keyword or `select:`
