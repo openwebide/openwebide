@@ -117,7 +117,12 @@ impl EditorActions {
             .with_untracked(|paint| {
                 paint
                     .as_ref()
-                    .filter(|paint| self.syntax_scope_current(&paint.scope))
+                    .filter(|paint| {
+                        self.syntax_scope_current(&paint.scope)
+                            && (paint.prepared_source
+                                || paint.lexical.is_some()
+                                || self.source_line_count().is_some())
+                    })
                     .map(|paint| (paint.prepared_source, paint.tokens.clone()))
             })
     }
@@ -139,18 +144,24 @@ impl EditorActions {
                 || self.syntax_highlights().is_none())
     }
 
-    /// Keep full-row probes behind cooperative fallback paint. A pending external
-    /// worker may still supply borrowed neutral rows, preserving its visible-source
-    /// contract; terminal/on-thread fallback must not measure and discard that table.
+    /// Full-row probes require current source ownership: a completed document
+    /// index or cooperative fallback paint. Pending workers retain their bounded
+    /// visible-source contract.
     pub fn full_row_paint_ready(self) -> bool {
         !self.workspace.editor_fallback_active.get_untracked()
             || self.worker_syntax_pending()
             || !self.syntax_is_pending()
     }
 
+    /// Completed source ownership can come from token rows or a current index.
+    /// Pending borrowed paint remains distinct so its first frame can be immediate.
+    pub fn source_paint_complete(self, has_token_rows: bool) -> bool {
+        has_token_rows || (!self.syntax_is_pending() && self.source_line_count().is_some())
+    }
+
     /// Preserve grammar paint across pending analysis, even when the retained
     /// generation is temporarily neutral. Plain documents can publish current
-    /// text immediately, once terminal fallback has its complete row table.
+    /// text immediately, once terminal fallback has a complete source index.
     pub fn retain_pending_paint(self, prepared_source: bool, has_rows: bool) -> bool {
         self.syntax_is_pending()
             && (prepared_source
@@ -190,6 +201,45 @@ impl EditorActions {
     /// Initial neutral viewport paint is independent of whole-file fallback tokens.
     /// Wrapped/nonuniform rows and large paint still require complete preparation.
     pub fn viewport_paint_ready(self, source_rows: &[usize]) -> bool {
+        let indexed_neutral = self
+            .workspace
+            .editor_fallback_paint
+            .with_untracked(|paint| {
+                paint.as_ref().is_some_and(|paint| {
+                    !paint.prepared_source
+                        && paint.lexical.is_none()
+                        && self.syntax_scope_current(&paint.scope)
+                })
+            });
+        if indexed_neutral && self.measured_rows().is_none() {
+            // Logical rows permit measurement, not arbitrary native paint. Keep
+            // cold oversized/unsupported rows on complete native input until
+            // their source-owned geometry is actually available.
+            if source_rows.is_empty()
+                || source_rows.len() > openwebide_core::editor::MAX_MEASURE_ROWS
+            {
+                return false;
+            }
+            return self.projection().is_some_and(|projection| {
+                Self::bounded_source_paint_ready(&projection, source_rows)
+            }) || self.measured_prefix().is_some_and(|prefix| {
+                source_rows.iter().all(|source| {
+                    prefix
+                        .paint
+                        .projection
+                        .lines()
+                        .binary_search_by_key(source, |line| line.source_line)
+                        .is_ok_and(|row| row < prefix.rows.len())
+                })
+            }) || self.paragraph_coverage().is_some_and(|coverage| {
+                coverage
+                    .paint
+                    .projection
+                    .lines()
+                    .first()
+                    .is_some_and(|line| source_rows == [line.source_line])
+            });
+        }
         self.full_row_paint_ready() || self.bounded_viewport_paint_ready(source_rows)
     }
 
@@ -203,11 +253,7 @@ impl EditorActions {
     }
 
     fn bounded_viewport_paint_ready(self, source_rows: &[usize]) -> bool {
-        if self.is_composing()
-            || self.preferences().word_wrap
-            || source_rows.is_empty()
-            || source_rows.len() > openwebide_core::editor::MAX_MEASURE_ROWS
-        {
+        if self.is_composing() || self.preferences().word_wrap {
             return false;
         }
         let Some(projection) = self
@@ -216,6 +262,18 @@ impl EditorActions {
         else {
             return false;
         };
+        Self::bounded_source_paint_ready(&projection, source_rows)
+    }
+
+    /// Bounded DOM paint can discover wrapped/folded geometry once logical rows
+    /// are indexed. It does not publish a native mapping or completed extents.
+    fn bounded_source_paint_ready(
+        projection: &openwebide_core::editor::FoldProjection,
+        source_rows: &[usize],
+    ) -> bool {
+        if source_rows.is_empty() || source_rows.len() > openwebide_core::editor::MAX_MEASURE_ROWS {
+            return false;
+        }
         source_rows
             .iter()
             .try_fold(0_usize, |bytes, source| {
@@ -236,20 +294,22 @@ impl EditorActions {
         if self.is_composing() {
             return false;
         }
-        let retain_initial = self.native_geometry_pending()
-            && self.bound_native_context().is_some_and(|context| {
-                source_rows.is_empty()
-                    || source_rows.iter().any(|source| {
+        let retain_native = self.current_native_context().is_some_and(|context| {
+            // An empty viewport is a geometry wait, not evidence that the current
+            // source-owned native mapping is unusable. Keep it through edits.
+            source_rows.is_empty()
+                || (self.native_geometry_pending()
+                    && source_rows.iter().any(|source| {
                         context
                             .projection()
                             .lines()
                             .binary_search_by_key(source, |line| line.source_line)
                             .is_ok()
-                    })
-            });
+                    }))
+        });
         // An initial pending window remains usable at its own source rows. Moving
         // to a cold unpaintable viewport outside it requires complete native input.
-        if !retain_initial {
+        if !retain_native {
             self.release_native_context();
         }
         true
@@ -291,13 +351,17 @@ impl EditorActions {
     pub fn render_paint(
         paint: (bool, std::sync::Arc<openwebide_core::highlight::TokenRows>),
     ) -> (bool, std::sync::Arc<openwebide_core::highlight::TokenRows>) {
-        static NEUTRAL: std::sync::LazyLock<std::sync::Arc<openwebide_core::highlight::TokenRows>> =
-            std::sync::LazyLock::new(|| std::sync::Arc::new(Vec::new()));
         if paint.0 {
             paint
         } else {
-            (false, NEUTRAL.clone())
+            (false, Self::neutral_tokens())
         }
+    }
+
+    fn neutral_tokens() -> std::sync::Arc<openwebide_core::highlight::TokenRows> {
+        static NEUTRAL: std::sync::LazyLock<std::sync::Arc<openwebide_core::highlight::TokenRows>> =
+            std::sync::LazyLock::new(|| std::sync::Arc::new(Vec::new()));
+        NEUTRAL.clone()
     }
 
     pub fn install_syntax_worker(self) {
@@ -329,6 +393,7 @@ impl EditorActions {
             self.workspace.editor_read_revision.track();
             self.workspace.editor_worker_active.track();
             self.workspace.editor_preparation_revision.track();
+            self.workspace.editor_documents.track();
             if let Some(auth) = self.auth {
                 auth.generation.track();
             }
@@ -362,6 +427,21 @@ impl EditorActions {
                             lexical: None,
                         }));
                 }
+                return;
+            }
+            // Neutral rendering borrows source through the projection. An already
+            // complete current index proves readiness without allocating a second
+            // full-file table of plain tokens. Never build an index here: callers
+            // without one retain cooperative fallback and its cancellation checks.
+            if self.source_line_count().is_some() {
+                self.workspace
+                    .editor_fallback_paint
+                    .set(Some(EditorFallbackPaint {
+                        scope,
+                        prepared_source: false,
+                        tokens: Self::neutral_tokens(),
+                        lexical: None,
+                    }));
                 return;
             }
             let mut lexical = openwebide_core::highlight::LexicalPreparation::for_textarea(

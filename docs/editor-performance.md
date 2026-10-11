@@ -5915,3 +5915,140 @@ improvement or completion of remaining source materialization is claimed.
 A real PWA inspection was attempted through computer use. Chrome and Open WebIDE
 processes were listed as running, but neither exposed an accessible window
 (`cgWindowNotFound`); no physical interaction gate is credited from that attempt.
+
+
+### Source-position-normalized wrapped probe identity diagnostic
+
+The earlier no-match probe experiment included absolute source metadata in its
+markup key. A follow-up removes only line/source/native position attributes from
+a detached clone while preserving text, wrappers, inline styles, incoming gap,
+measurement container style and font identity. It changes no live DOM and does
+not authorize geometry reuse. Both modes use the earlier frozen production
+renderer and a frozen backend with disposable accounts/projects; exact artifact
+hashes and scope are in the [receipt](editor-performance/normalized-probe-identity.json),
+and the [script](editor-performance/normalized-probe-identity.py) is retained.
+
+Local observes 152 unique probes and Remote 144, with zero normalized identities
+repeated within a phase or across startup/input. Both verify complete source after
+the beginning edit. Source-position metadata alone therefore does not explain
+the missing identical probes in these samples. The instrumented viewport/complete
+geometry times are 260/1256 ms and 271/1290 ms; cloning/signature work adds overhead,
+so these are diagnostic observations, not responsiveness improvement evidence.
+No cache is adopted and the layout gate remains open. Investigate finer source-
+and style-proved layout reuse rather than assume whole-probe metadata stripping
+will remove changed-wrap shaping.
+
+
+### Hosted verification of bounded reply routing and prepared cursor costs
+
+Checkpoint `93ec875` passes all five hosted jobs, including the complete browser
+suite and production editor checks
+([receipt](editor-performance/grouped-ci-93ec875.json)). This verifies the
+bounded ticket routing and corrected prepared-cursor setup with unchanged read
+limits/deadlines. It does not establish the cause of the historical intermittent
+horizontal-paint failure or clear physical input, layout latency or memory gates.
+The subsequent navigation and source-equality checkpoints still need their own
+hosted results and production measurements.
+
+
+### Current source-equality checkpoint production boundaries
+
+The current `9dce60c` Spin/Trunk production build passes. Twenty-four fresh
+browser/runtime samples cover near-8-MiB source, 99,999 rows and actual near-1-MiB
+String styling, two repetitions per mode with wrapping on/off. Every edit verifies
+complete source and Linux Chrome PSS is available
+([samples](editor-performance/source-equality-production.jsonl)). Source and
+artifact hashes were frozen before measurement; no compiler was active.
+
+Near-byte-limit input completes in 118–132 ms. The row-count case takes 17–19 ms
+unwrapped and 241–247 ms wrapped. Styled long-row viewport paint takes 231–253 ms
+wrapped, with complete geometry at 1.16–1.25 s; unwrapped input takes 128–132 ms.
+Cold readiness remains 1.12–3.42 s and peak Chrome PSS reaches about 831 MiB.
+These are current repeated observations, not a controlled causal comparison or
+a cleared responsiveness/memory gate.
+
+A separate instrumented Local wrapped row-count sample verifies complete source
+and has an untruncated trace. It observes one input measurement batch whose
+render/install/layout/geometry total is about 0.2 ms, while input readiness is
+245 ms. Roughly 186 ms of the aligned input interval is sampled as idle
+([profile summary](editor-performance/wrapped-row-count-profile.json)). This
+points to preparation/readiness waiting rather than expensive changed-row native
+layout in that sample. The baseline plain fallback enumerates token rows which
+neutral rendering then discards; investigate using the complete current document
+index as the source-owned neutral readiness proof, preserving all cancellation,
+geometry and fallback contracts.
+
+
+The indexed navigation checkpoint `cf66d9e` passes all five hosted jobs
+([receipt](editor-performance/grouped-ci-cf66d9e.json)), including its source/
+project ownership regression in the complete browser suite. The source-equality
+checkpoint `9dce60c` also passes all five jobs
+([receipt](editor-performance/grouped-ci-9dce60c.json)).
+
+
+The indexed-neutral candidate uses the complete current document index for
+neutral readiness without allocating plain-token rows which the renderer discards.
+No-index callers retain cooperative preparation. Logical readiness remains
+separate from native geometry proof; cold unsupported paint preserves complete
+native input until the current proof is available. Deferred paint observes a
+memoized viewport-readiness value, and unchanged neutral frames reuse their HTML.
+
+The [readiness-memo browser receipt](editor-performance/indexed-neutral-browser.json)
+verifies all 193 editor/worker browser tests, including disjoint coverage of all
+169 component tests, both independent geometry matrices, 23 editor library tests
+and worker reply routing. All 129 native frontend tests and strict native/WASM
+lints pass. The previously failing 55-test group passes twice without additional
+viewport diagnostics. Source/document replacement, both adapters, exact native
+geometry, coalesced typing and file-switch checks retain their existing limits
+and readiness deadlines.
+
+[Failure diagnostics](editor-performance/indexed-neutral-geometry-failures.json)
+preserve the earlier source-index/geometry/coalescing regressions and the grouped
+wrapped-scroll failure. Viewport reads changed the latter's timing; its diagnostic
+pass alone is not verification. The subsequent readiness memo passes the repeated
+uninstrumented group, but historical hosted failures still require investigation
+and current hosted CI has not yet run for this unpushed change.
+
+The readiness-memo release bundle is built and source/artifact hashes are frozen.
+Its alternating [16-sample row-count comparison](editor-performance/indexed-neutral-production-comparison.jsonl)
+against `9dce60c` completes with full source verified after every edit. Wrapped
+candidate input takes 1.09–1.25 s (median 1.12 s) versus a 247 ms control median;
+one control also takes 1.49 s. Wrapped candidate peak Chrome PSS is 1008–1030 MiB,
+versus 685–691 MiB in three controls and 971 MiB in the slow control. Unwrapped
+results vary and establish no consistent gain. This candidate remains unpushed;
+its passing browser contracts do not clear the production regression. Both cohorts use the same proven backend:
+all 227 backend/shared/config input hashes are unchanged. Native UI control can
+now inspect the installed Chrome PWA, but it shows the localhost offline page;
+ports 3000/3001 have no listeners and the local backend/bridge need builds before
+release-app checks. Physical input-method, touch and assistive-technology gates
+remain unverified.
+
+[Diagnostic profiling](editor-performance/indexed-neutral-native-expansion-profile.json)
+shows a complete 199,999-unit native value installed during the wrapped edit,
+replacing the bounded mapping. A subsequent input task lasts 958 ms; Chromium
+reports 337,815 layout objects. Profiling adds overhead and is not a latency gate.
+The follow-up retains only a current, nonfailed native mapping while the viewport
+is empty for geometry preparation. Nonempty unsupported views and stale source,
+read, account, file or document ownership still use complete native fallback.
+The current follow-up passes all 194 editor/worker browser tests (170 component
+contracts, both geometry matrices, 23 editor library tests and worker routing),
+129 native frontend tests and strict native/WASM lints
+([receipt](editor-performance/indexed-neutral-native-retention-browser.json)).
+The new both-mode regression retains an edited mapping through empty geometry
+and rejects stale epoch, read, account, source, document, file and project
+ownership. A current geometry-preparation error also releases a warm mapping;
+composition retains installed text until commit or cancellation. Existing failed-
+proof and composition contracts pass.
+
+The [current 16-sample production comparison](editor-performance/indexed-neutral-native-retention-production.jsonl)
+alternates the new release bundle against `9dce60c`, with fresh constrained
+containers, local/remote projects and wrapping on/off. Every beginning edit
+verifies the complete source. Wrapped input improves from 245–248 ms (median
+247 ms) to 38–58 ms (median 47 ms); complete edited geometry is available in
+38–45 ms. Peak Chrome PSS is 683–714 MiB, near the control
+686–690 MiB range, rather than the earlier regressed 1008–1030 MiB.
+Unwrapped input takes 42–58 ms versus 30–45 ms in controls, establishing no
+unwrapped gain. Wrapped cold viewport/complete geometry still takes 1.20–1.28 s;
+unwrapped cold startup takes 1.10–1.20 s. This fixes the measured wrapped edit
+regression, but does not clear cold-startup, styled-boundary or overall memory
+gates. Current hosted CI is pending for this checkpoint.

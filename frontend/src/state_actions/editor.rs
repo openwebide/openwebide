@@ -684,7 +684,7 @@ impl EditorActions {
             }
             Ok(None) => None,
             Err(()) => {
-                self.fail_initial_native_context();
+                self.fail_native_geometry();
                 Some(
                     "The highlighted view is unavailable for this layout. You can keep editing the file.",
                 )

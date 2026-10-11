@@ -9,6 +9,8 @@ for what's still ahead.
 
 ## [Unreleased]
 
+- Use complete current document indexes to prepare neutral editor paint without allocating redundant plain-token rows; preserve bounded cold paint and cooperative fallback when geometry or a current index is unavailable. Keep current bounded native input through empty layout waits, and restore complete native fallback when geometry preparation fails.
+
 - Reuse immutable source identity in editor text, cursor queue, decoration and indentation-guide checks while preserving complete equality for external text.
 
 - Resolve editor go-to-line queries from retained line and character indexes, avoiding full-file row rebuilding for prepared documents.

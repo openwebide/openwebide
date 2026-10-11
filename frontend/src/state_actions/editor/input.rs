@@ -141,15 +141,16 @@ impl EditorActions {
         true
     }
 
-    pub(super) fn fail_initial_native_context(self) {
+    pub(super) fn fail_native_geometry(self) {
         let Some(mut context) = self
             .bound_native_context()
-            .filter(|context| context.geometry_pending && context.current(self))
+            .filter(|context| context.current(self))
         else {
             return;
         };
         if self.is_composing() {
             // Keep the installed native value until the input method commits or cancels.
+            context.geometry_pending = true;
             context.geometry_failed = true;
             self.set_native_binding(Some(context));
         } else {
@@ -253,6 +254,13 @@ impl EditorActions {
 
     pub fn bound_native_context(self) -> Option<EditorNativeContext> {
         self.native_binding.get_untracked()
+    }
+
+    /// Retain native text only while source, selection and ownership still match.
+    pub(super) fn current_native_context(self) -> Option<EditorNativeContext> {
+        self.refresh_native_binding();
+        self.bound_native_context()
+            .filter(|context| !context.geometry_failed && context.current(self))
     }
 
     pub(super) fn refresh_native_binding(self) {
