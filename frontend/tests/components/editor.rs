@@ -22314,6 +22314,95 @@ async fn measured_wrapped_prefix_reconnection_matches_complete_geometry_in_both_
 }
 
 #[wasm_bindgen_test]
+async fn cooperative_paragraph_ranges_preserve_geometry_and_reject_stale_probes_in_both_modes() {
+    use openwebide_core::{WorkspaceMode, editor::VisualLineIndex};
+    use openwebide_frontend::components::{
+        paragraph_rectangles_cooperatively, paragraph_rectangles_individual,
+    };
+    use std::{
+        cell::Cell,
+        future::Future,
+        task::{Context, Poll, Waker},
+    };
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        for wrapped in [false, true] {
+            for change in 0..6 {
+                let source = "e\u{301} 文😀 café != -> words ".repeat(40);
+                let rendered = source.clone();
+                let mounted = mount_test(move |state| {
+                    state.seed_project();
+                    state
+                        .projects
+                        .projects
+                        .update(|projects| projects[0].mode = mode);
+                    view! {
+                        <style>{include_str!("../../styles.css")}</style>
+                        <div class="probe-font" style="font-family:monospace;font-size:14px">
+                            <div class="editor-source-line" style=format!("width:240px;white-space:{}", if wrapped { "pre-wrap" } else { "pre" })>
+                                <span class="tok-string">{rendered}</span>
+                            </div>
+                        </div>
+                    }
+                });
+                let row = mounted.element(".editor-source-line");
+                let targets: Vec<_> =
+                    (50..50 + VisualLineIndex::new(&source).unwrap().len() - 1).collect();
+                assert!(targets.len() > openwebide_core::editor::ROW_GEOMETRY_BATCH);
+                let expected =
+                    paragraph_rectangles_individual(&row, &source, 50, &targets).unwrap();
+                let current = Cell::new(true);
+                let current_owner = || current.get();
+                let mut future = Box::pin(paragraph_rectangles_cooperatively(
+                    &row,
+                    &source,
+                    50,
+                    &targets,
+                    &current_owner,
+                ));
+                assert!(matches!(
+                    future
+                        .as_mut()
+                        .poll(&mut Context::from_waker(Waker::noop())),
+                    Poll::Pending
+                ));
+                match change {
+                    1 => current.set(false),
+                    2 => row.set_text_content(Some("changed source")),
+                    3 => row.remove(),
+                    4 => {
+                        row.set_attribute("style", "width:300px;white-space:pre-wrap")
+                            .unwrap();
+                    }
+                    5 => {
+                        mounted
+                            .element(".probe-font")
+                            .set_attribute(
+                                "style",
+                                "font-family:monospace;font-size:14px;font-weight:bold",
+                            )
+                            .unwrap();
+                    }
+                    _ => {}
+                }
+                let actual = future.await;
+                if change == 0 {
+                    assert_eq!(
+                        actual.as_ref(),
+                        Some(&expected),
+                        "{mode:?}: wrapped={wrapped}"
+                    );
+                } else {
+                    assert!(
+                        actual.is_none(),
+                        "{mode:?}: wrapped={wrapped}, change={change}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[wasm_bindgen_test]
 async fn paragraph_batches_match_individual_native_ranges_and_failures_in_both_modes() {
     use openwebide_core::{
         WorkspaceMode,

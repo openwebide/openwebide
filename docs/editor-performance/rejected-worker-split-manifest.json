@@ -1,0 +1,21 @@
+{
+  "sourceHead": "120ea5c30d39c9a1196d1ab703f0b5570d14f6d6",
+  "sourceFilesSha256": {
+    "Cargo.toml": "233bb7dfdefc0fc4e2d38e590ffa10919826ad8feaea648ed0edb778d5e7344e",
+    "Cargo.lock": "590773c32bbfc8db9451d10adc6e057078de5ecae1300b6a90966367bd769018",
+    "crates/editor-worker/Cargo.toml": "6b90af14672e0009d595b11b7c195155f80aaa4a869cb91ddc19ae6d059c1348",
+    "crates/editor-worker/src/main.rs": "7a4cce2e573afec534f85b494751e8cd507a88d8cadff5da01bc475df5b79e7c",
+    "crates/core/src/editor/syntax/service.rs": "1f1d5ddf910945ca6f70c8202f0bb3cd86a4aee3db4eee66b52064f90727339a",
+    "frontend/src/editor_worker.rs": "01cfcd83f372302f29506bce9e11dc70074df9817ae2b90edd717fbc6677d623",
+    "frontend/src/lib.rs": "cd6faf08330c853459e53bf3df03cc1edad324b4538bbec1815e0a6037bcc3d3",
+    "frontend/index.html": "95b7e57ea4da92a8b5a287b4046b328afd1cc4580fc6a595282d2372cd42f853",
+    "frontend/pwa/build.sh": "058463b1625bef567ce6944dea84faab975272d3de126d00c3e26ff921d3653c"
+  },
+  "frontendWasmSha256": {
+    "openwebide-editor-worker-b65e4a7f1955ca25_bg.wasm": "cf981b13268d345f9f5b7aa23e80dcfda3eaae6ae5e3b571018f8fa509470d08",
+    "openwebide-frontend-f64fe30870990e5c_bg.wasm": "bb761607090e09b288a4097e0b17aa6d13ece4767b0252e3e605121ee6275601"
+  },
+  "backendWasmSha256": "8efc2579446963f530f5774fdcbe2223bbc6b974eb54d8221a768ff1c43232af",
+  "measurementScriptSha256": "8e810dc178ce0a2469a6b6f315d92896ed81cdc51a359c17fe521af4596d001e",
+  "scope": "Uncommitted dedicated Rust syntax worker on 120ea5c; worker enabled with the unchanged shared service. Retained backend and measurement harness unchanged."
+}

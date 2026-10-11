@@ -1,0 +1,9 @@
+{
+  "sourceHead": "bcab4bd5c7a9269577d842e544ef96489426d30b",
+  "sourceFilesSha256": {
+    "frontend/src/components/editor.rs": "edbf780f3a50bf076d9e7c22fab27750ac5c93427e9633d2551e4ed93e5ff482"
+  },
+  "componentWasmSha256": "78b42df02256c52a2720ba3011b97bd3c866fd54dea0aeddf2bd2dea86481e73",
+  "bindingsWasmSha256": "3bd746ddeb8946988acfe79de7d358c7be6f758058bacc6e38df9893748b1dc1",
+  "scope": "Uncommitted batched scroll-paint snapshot and unchanged-style suppression; release component tests with test-support."
+}

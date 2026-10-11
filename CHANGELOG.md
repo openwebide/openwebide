@@ -10,7 +10,15 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 - Check plugin marketplaces on server and paired hosts with browsers closed, using shared account leases, persisted results, bounded retries and restart recovery. Restore update indicators and source failures from the database when clients reconnect; keep Notify as the default and existing Automatic activation while a client is open.
 
+- Yield between bounded native glyph-range batches during long-paragraph preparation, rejecting changed source, font, dimensions and canceled owners before publishing complete geometry. Keep critical viewport work ahead of held background preparation.
+
+- Snapshot editor viewport geometry before scroll-paint style updates and skip unchanged CSS values, keeping the shared scroll/caret alignment path in both project modes.
+
+- Attribute editor browser memory to owned process roles, preserving complete PSS coverage and recording the breakdown at the same total-peak sample.
+
 - Document plugin authoring from working examples through SDK checks, host testing and immutable marketplace publishing; correct retired API and future-contribution claims in both repositories.
+
+- Record production measurements for cooperative editor row planning and passing CI checkpoints; retain large-file performance, memory and physical-device verification as unfinished roadmap work.
 
 - Extend cooperative editor row planning through row validation and exact prefix/suffix reuse, preserving conflicting-duplicate rejection. Restart canceled preparations after layout invalidation.
 

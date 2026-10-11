@@ -322,67 +322,127 @@ fn geometry_batch(
         .collect()
 }
 
-/// Exact browser rectangles for one bounded source probe. The shared plan owns
-/// global glyph numbering, overlap requirements and geometry admission.
+/// Prepare immutable source/native coordinates once for a bounded probe.
+/// Synchronous and cooperative batch reads use the same implementation.
+fn paragraph_range_reader<'a>(
+    row: &'a web_sys::Element,
+    body: &'a str,
+    glyph_start: usize,
+) -> Option<impl Fn(&[usize]) -> Option<Vec<openwebide_core::editor::GlyphRectangle>> + 'a> {
+    if row.text_content()?.as_str() != body {
+        return None;
+    }
+    let offsets = openwebide_core::editor::visual_line_offsets(body).ok()?;
+    let nodes = TextNodes::new(row)?;
+    let native_nodes = js_sys::Array::new();
+    for (node, _, _) in &nodes.0 {
+        native_nodes.push(node.as_ref());
+    }
+    let range = document().create_range().ok()?;
+    Some(move |targets: &[usize]| {
+        if row.text_content()?.as_str() != body {
+            return None;
+        }
+        let bounds = row.get_bounding_client_rect();
+        let mut spans = Vec::with_capacity(targets.len().checked_mul(4)?);
+        for glyph in targets {
+            let local = glyph.checked_sub(glyph_start)?;
+            let start = u32::try_from(offsets.get(local)?.1).ok()?;
+            let end = u32::try_from(offsets.get(local.checked_add(1)?)?.1).ok()?;
+            let (start_node, start_at) = nodes.position_index(start)?;
+            let (end_node, end_at) = nodes.position_index(end)?;
+            spans.extend([
+                u32::try_from(start_node).ok()?,
+                start_at,
+                u32::try_from(end_node).ok()?,
+                end_at,
+            ]);
+        }
+        let native_spans = js_sys::Uint32Array::from(spans.as_slice());
+        let rectangles = paragraph_range_rectangles(&range, &native_nodes, &native_spans)
+            .ok()?
+            .to_vec();
+        if rectangles.len() != spans.len() {
+            return None;
+        }
+        let left = bounds.left();
+        let top = bounds.top();
+        Some(
+            targets
+                .iter()
+                .zip(rectangles.as_chunks::<4>().0)
+                .map(|(glyph, rect)| openwebide_core::editor::GlyphRectangle {
+                    glyph: *glyph,
+                    left: rect[0] - left,
+                    top: rect[1] - top,
+                    width: rect[2],
+                    height: rect[3],
+                })
+                .collect(),
+        )
+    })
+}
+
+#[cfg(feature = "test-support")]
 pub(super) fn paragraph_rectangles(
     row: &web_sys::Element,
     body: &str,
     glyph_start: usize,
     targets: &[usize],
 ) -> Option<Vec<openwebide_core::editor::GlyphRectangle>> {
-    if row.text_content()?.as_str() != body {
+    paragraph_range_reader(row, body, glyph_start)?(targets)
+}
+
+/// Bound native range reads per task without publishing a partially measured
+/// probe. Callers retain the source/font/layout ticket across every yield.
+pub async fn paragraph_rectangles_cooperatively(
+    row: &web_sys::Element,
+    body: &str,
+    glyph_start: usize,
+    targets: &[usize],
+    current: &impl Fn() -> bool,
+) -> Option<Vec<openwebide_core::editor::GlyphRectangle>> {
+    if !current() || !row.is_connected() {
         return None;
     }
     let bounds = row.get_bounding_client_rect();
-    let offsets = openwebide_core::editor::visual_line_offsets(body).ok()?;
-    let nodes = TextNodes::new(row)?;
-    let mut spans = Vec::with_capacity(targets.len().checked_mul(4)?);
-    for glyph in targets {
-        let local = glyph.checked_sub(glyph_start)?;
-        let start = u32::try_from(offsets.get(local)?.1).ok()?;
-        let end = u32::try_from(offsets.get(local.checked_add(1)?)?.1).ok()?;
-        let (start_node, start_at) = nodes.position_index(start)?;
-        let (end_node, end_at) = nodes.position_index(end)?;
-        spans.extend([
-            u32::try_from(start_node).ok()?,
-            start_at,
-            u32::try_from(end_node).ok()?,
-            end_at,
-        ]);
+    let font = crate::viewport::editor_font_identity(row);
+    let style = row.get_attribute("style");
+    let valid = || {
+        if !current()
+            || !row.is_connected()
+            || row.get_attribute("style") != style
+            || crate::viewport::editor_font_identity(row) != font
+        {
+            return false;
+        }
+        let latest = row.get_bounding_client_rect();
+        latest.width().to_bits() == bounds.width().to_bits()
+            && latest.height().to_bits() == bounds.height().to_bits()
+    };
+    let read = paragraph_range_reader(row, body, glyph_start)?;
+    let mut rectangles = Vec::with_capacity(targets.len());
+    for (batch, chunk) in targets
+        .chunks(openwebide_core::editor::ROW_GEOMETRY_BATCH)
+        .enumerate()
+    {
+        if batch > 0 {
+            // The caller lowers priority after proving viewport coverage.
+            // Native sub-batches must not park critical first-paint work there.
+            crate::util::yield_task().await;
+        }
+        if !valid() {
+            return None;
+        }
+        rectangles.extend(read(chunk)?);
     }
-    let native_nodes = js_sys::Array::new();
-    for (node, _, _) in &nodes.0 {
-        native_nodes.push(node.as_ref());
-    }
-    let native_spans = js_sys::Uint32Array::from(spans.as_slice());
-    let range = document().create_range().ok()?;
-    let rectangles = paragraph_range_rectangles(&range, &native_nodes, &native_spans)
-        .ok()?
-        .to_vec();
-    if rectangles.len() != spans.len() {
-        return None;
-    }
-    let left = bounds.left();
-    let top = bounds.top();
-    Some(
-        targets
-            .iter()
-            .zip(rectangles.as_chunks::<4>().0)
-            .map(|(glyph, rect)| openwebide_core::editor::GlyphRectangle {
-                glyph: *glyph,
-                left: rect[0] - left,
-                top: rect[1] - top,
-                width: rect[2],
-                height: rect[3],
-            })
-            .collect(),
-    )
+    (valid() && row.text_content()?.as_str() == body).then_some(rectangles)
 }
 
 /// Independent per-range reads keep browser geometry oracles separate from the
 /// production batch primitive, including DOM exceptions and missing rectangles.
 #[cfg(feature = "test-support")]
-pub(super) fn paragraph_rectangles_individual(
+pub fn paragraph_rectangles_individual(
     row: &web_sys::Element,
     body: &str,
     glyph_start: usize,

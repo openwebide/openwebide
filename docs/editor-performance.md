@@ -6599,3 +6599,167 @@ Strict core/WASM frontend lint and standalone WASM frontend compilation pass.
 This bounds row-level work per task, not a key's byte cost or total traversal.
 Unchanged-row rescans, scratch allocations, final row-table publication and
 admitted-boundary production measurements remain unfinished.
+
+
+### Cooperative row planning: production measurements and rejected worker split
+
+The release at `120ea5c` completes all 16 interleaved comparison samples with
+complete source after input in both modes
+([samples](editor-performance/row-planner-production-comparison.jsonl),
+[artifact identity](editor-performance/row-planner-production-manifest.json)).
+Row-limit input times vary from 30–68 ms in the candidate samples; near-1-MiB
+styled long-line input remains 191–545 ms with wrapping on/off. Cold complete
+geometry remains 1.1–1.7 seconds. Candidate peak Chrome PSS is 657–730 MiB.
+The earlier baseline predates pending-frame deduplication as well as cooperative
+row planning, so this comparison does not isolate either individual change.
+There are only two row-limit repetitions per mode: these measurements do not
+establish a stable latency improvement or close a performance gate.
+
+A diagnostic disables the worker constructor in a private measurement fixture
+and exercises the cooperative fallback, preserving complete source in both modes
+([two samples](editor-performance/worker-memory-diagnostic.jsonl),
+[diagnostic manifest](editor-performance/worker-memory-diagnostic-manifest.json)).
+Peak PSS remains about 601–605 MiB. This is attribution evidence only;
+production workers remain enabled.
+
+An uncommitted Rust-only worker bundle was then compared against the unchanged
+shared-bundle worker in eight interleaved row-limit samples
+([samples](editor-performance/rejected-worker-split-comparison.jsonl),
+[candidate identity](editor-performance/rejected-worker-split-manifest.json)).
+Both preserve complete edited source. Peak PSS ranges overlap: roughly 678–688
+MiB for the baseline and 679–696 MiB for the candidate. The separate worker adds
+about 15 MiB to the roughly 27 MiB frontend WASM download, since the frontend
+still needs its cooperative parser fallback. The experiment was rejected and
+its source changes reverted; no worker-splitting behavior shipped. Main-runtime
+memory attribution remains the next investigation.
+
+Hosted CI passes all five jobs for `d26efa9` and `f251d89`
+([pending-paint receipt](editor-performance/editor-ci-d26-success.json),
+[row-planning receipt](editor-performance/editor-ci-f251-success.json)).
+These checks establish checkpoint correctness, not completion of the full
+editor responsiveness, device-input or recovery gates.
+
+
+### Source-size and renderer memory attribution
+
+A controlled source-size diagnostic uses the same release artifact with 1,000 or
+99,999 identical `x` rows, both modes, worker enabled/disabled
+([eight samples](editor-performance/source-size-memory-diagnostic.jsonl),
+[source override](editor-performance/source-size-memory-sample.py)).
+Every input preserves complete source. The pre-app Chrome baseline is about
+388–393 MiB when readable; two baseline snapshots remain unavailable and must
+not be used to calculate memory deltas. Worker disabling is diagnostic only.
+
+The measurement harness now classifies owned Chrome processes without reporting
+command-line arguments, retaining per-role RSS/PSS and the role breakdown from
+the same sample that records total peak PSS. Missing PSS in any group remains
+unavailable. Seven unit contracts cover descendant isolation, churn, unreadable
+snapshots, rewritten process titles and role classification.
+
+Four fresh production-worker samples preserve complete source in both modes
+([samples](editor-performance/source-size-memory-by-role.jsonl),
+[artifact and harness identity](editor-performance/source-size-memory-by-role-manifest.json)).
+The renderer group starts around 133 MiB before app load and peaks around 378 MiB
+for 1,000 rows versus 412–421 MiB for 99,999 rows. Total peaks are 641–654 MiB
+and 675–681 MiB respectively. Renderer startup and worker/runtime allocations
+therefore warrant profiling before another row-table memory experiment. These
+are one sample per mode/source size, not a stable performance distribution;
+RSS/PSS include browser infrastructure and do not equal live Rust heap usage.
+No responsiveness or memory completion gate is closed by this attribution.
+
+
+### Batch scroll-paint reads before style updates
+
+Four fresh diagnostic profiles use the same production build for 1,000 plain
+rows and a near-1-MiB styled long line in both modes
+([summary](editor-performance/renderer-startup-profile-summary.json),
+[compressed profiles](editor-performance/renderer-startup-profiles.jsonl.gz),
+[fixture entry point](editor-performance/renderer-startup-profile-sample.py)).
+All inputs preserve complete source. The long-line profiles spend approximately
+143–144 ms of sampled CPU time in client-width reads and 186–207 ms in native
+text-range rectangles; the diagnostic JavaScript heap is about 4–5 MiB.
+CPU profiling and DOM hooks add overhead, and these figures span startup,
+scrolling and input rather than isolating a single input handler.
+
+The shared scroll-paint synchronizer now resolves the current scroll surface
+once and reads width, height and both offsets before writing any paint styles.
+It skips unchanged CSS property values and applies the same coordinate snapshot
+to the overlay and parent. Scroll extent refresh still precedes the snapshot;
+resize and font ownership rules, geometry fallbacks and adapters are unchanged.
+
+Eight combined release browser contracts pass with the shipped Monaspace fonts:
+scroll-surface replacement/reparenting, wheel/native navigation, caret/selection
+motion, early wrapped-origin paint, exact unwrapped replay, tabbed horizontal
+fragments, complete styled wrapped geometry and pending grammar paint
+([receipt](editor-performance/scroll-paint-browser.json),
+[source and component identity](editor-performance/scroll-paint-browser-manifest.json)).
+Strict release WASM frontend lint passes with test support and all targets.
+This checkpoint does not finish range measurement, cold startup, memory or
+large-file responsiveness.
+
+
+Eight isolated, interleaved baseline/candidate release samples preserve complete
+edited source in both modes, with wrapping on/off
+([samples](editor-performance/scroll-paint-production-comparison.jsonl),
+[candidate identity](editor-performance/scroll-paint-production-manifest.json)).
+Candidate long-line input is 191–475 ms and peak PSS is 685–726 MiB,
+versus 206–453 ms and 673–708 MiB in these baseline samples. These are
+single samples per mode/wrap setting, not proof of a latency or memory
+improvement. The higher candidate PSS requires repeat verification alongside
+the remaining performance work. Batching removes the avoidable read/write alternation; native range
+measurement and the remaining long-line stalls still require further work.
+
+The previous row-reuse implementation checkpoint `120ea5c` now passes all five
+hosted jobs, including the full browser partition
+([receipt](editor-performance/editor-ci-120-success.json)). The new scroll-paint
+checkpoint still requires its own hosted CI verification.
+
+
+### Cooperative native paragraph ranges
+
+Wrapped and unwrapped long-paragraph preparation now share a cooperative native
+range reader. Each batch reads at most the core's 128-glyph geometry budget,
+then yields an ordinary browser task. The existing orchestrator lowers priority
+after viewport coverage is proved. Rectangle coordinates still come from the
+same exact native primitive; partial batches never authorize a geometry record.
+Source matching, mounted-row connection, font identity, dimensions and the caller's
+preparation ticket are checked before publishing the complete result.
+
+The first candidate put native sub-batches at background priority too early.
+The held-background regression detected that this parked first-paint work before
+coverage could publish. Ordinary task yields fix that ordering, preserving the
+original test and its deadline. All eight combined release browser contracts
+now pass in both project modes, including independent per-range geometry,
+cancellation during actual yields, early origin paint, shifted suffix reuse,
+localized wrapped reuse, pending grammar paint and held-background supersession
+([receipt](editor-performance/cooperative-paragraph-ranges-browser.json),
+[source and artifact identity](editor-performance/cooperative-paragraph-ranges-browser-manifest.json)).
+Strict release WASM frontend lint passes with test support and all targets.
+Source offsets and DOM-node references are now prepared once per probe;
+that setup and paragraph layout remain synchronous,
+and a count budget does not prove the 12 ms wall-clock requirement. Native
+pointer/fallback queries and final geometry publication still need bounded work.
+
+
+The initial batching candidate repeated source-offset segmentation and DOM-node
+enumeration for every native sub-batch. Eight interleaved production samples
+preserved complete source but showed slower wrapped input: 518–554 ms versus
+490–491 ms in the paired baseline
+([samples](editor-performance/paragraph-ranges-repeated-setup-comparison.jsonl),
+[initial candidate identity](editor-performance/paragraph-ranges-repeated-setup-manifest.json)).
+That repeated setup was removed before committing: a prepared native reader now
+retains offsets, node references and its range for all batches of one probe.
+The independent per-range oracle remains separate from that reader.
+
+
+The prepared-reader candidate passes eight interleaved production samples in
+both modes with wrapping on/off, preserving complete source after every input
+([samples](editor-performance/cooperative-paragraph-ranges-production.jsonl),
+[release identity](editor-performance/cooperative-paragraph-ranges-production-manifest.json)).
+Candidate input paint is 205–207 ms unwrapped and 458–475 ms wrapped; cold
+complete geometry is 1.44–1.56 seconds. These single samples per mode/wrap setting
+do not establish a stable responsiveness improvement. The local unwrapped
+baseline is an outlier at 324 ms input and 2.21 seconds cold readiness; it must
+not be used alone to claim a speedup. The remaining input, startup and memory
+gates stay open. The shipped property is bounded native target batches with
+cancellation and exact geometry, rather than a completed latency target.

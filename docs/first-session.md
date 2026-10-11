@@ -13,7 +13,9 @@ Open the logo app menu → **Servers** and use the setup wizard to choose a prov
 authentication, and discover models. Open WebIDE supports Ollama and
 OpenAI-compatible servers such as llama.cpp and LM Studio. The server must be
 reachable from the runtime handling the request; `localhost` inside a container
-refers to that container.
+refers to that container. For containerized deployments (Podman or Docker) connecting to
+an inference server on the host machine, use `http://host.containers.internal:<port>/v1`
+(Podman) or `http://host.docker.internal:<port>/v1` (Docker).
 
 Review detected model settings before applying them, including context capacity
 and output limits. Choose a primary model in the user dropdown → **Settings**.

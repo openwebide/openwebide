@@ -1,7 +1,7 @@
 {
   "id": "/",
   "name": "Open WebIDE",
-  "short_name": "WebIDE",
+  "short_name": "Open WebIDE",
   "description": "Your projects and agent conversations, anywhere.",
   "start_url": "/",
   "scope": "/",

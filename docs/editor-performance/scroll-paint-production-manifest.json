@@ -1,0 +1,18 @@
+{
+  "sourceHead": "bcab4bd5c7a9269577d842e544ef96489426d30b",
+  "sourceFilesSha256": {
+    "crates/core/src/editor/mod.rs": "dce348bdcf22af4517641777e9659cf680754aed6d55cc3d915db83e39f78619",
+    "crates/core/src/editor/viewport.rs": "a5ba028481e8f1f1ade370918a6be4dee772aa5cd10722fc844ccbc7c013beca",
+    "frontend/src/state_actions/editor/rows.rs": "42fec5809ca69d978bece8933b845f5d6b652ca0903c211c44bd9fcb057f3002",
+    "frontend/src/components/editor.rs": "edbf780f3a50bf076d9e7c22fab27750ac5c93427e9633d2551e4ed93e5ff482",
+    "frontend/src/viewport.rs": "778596fe4036d47b4542509c4dd54862402401791ea9d1a7fc1ae6f7b22bdfcc",
+    "frontend/Cargo.toml": "1f40a8be06c3f3c3d1935108e7b9d56e08abbf256ecdb63828b5ac109ed21081",
+    "frontend/styles.css": "60a04be458c809fd8f03b87eba37678274e8e4c978a9eb6c7ca62376565cc5ee"
+  },
+  "frontendWasmSha256": {
+    "openwebide-frontend-9a928f2e99e53166_bg.wasm": "a87952affcb576d966457938a417b2736f2286ebdb14a6cad07b861004693a55"
+  },
+  "backendWasmSha256": "8efc2579446963f530f5774fdcbe2223bbc6b974eb54d8221a768ff1c43232af",
+  "measurementScriptSha256": "8459ff387af784a1b4cecd2e6a9b0613cd416245f6a06c6297339db0257b87b2",
+  "scope": "Uncommitted scroll-paint synchronization on bcab4bd: snapshot viewport reads before CSS writes and skip unchanged styles. Same retained backend and role-attribution measurement harness."
+}

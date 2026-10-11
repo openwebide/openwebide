@@ -3,6 +3,9 @@ Image=openwebide.image
 Pull=newer
 AutoUpdate=registry
 ContainerName=openwebide
+# Ports default to IPv4 loopback on 8080/3001. If port 8080 is in use (e.g. by a local LLM),
+# change the host port (e.g. 8081:3000). To listen on IPv6/localhost (::1) or LAN/Tailnet,
+# omit the IP prefix (PublishPort=8080:3000) or specify both 127.0.0.1 and [::1].
 PublishPort=127.0.0.1:8080:3000
 PublishPort=127.0.0.1:3001:3001
 Volume=%h/.local/state/openwebide/data:/app/.spin:Z
@@ -13,8 +16,9 @@ Volume=%h/source:/workspace:Z
 # Volume=%h/.config/openwebide/ssh:/run/openwebide-ssh:ro,Z
 # Environment=SSH_AUTH_SOCK=/run/openwebide-ssh-agent.sock
 # Environment=OPENWEBIDE_BRIDGE=0
-# Environment=OPENWEBIDE_BRIDGE_ALLOWED_HOSTS=webide.example
-# Environment=OPENWEBIDE_BRIDGE_ALLOWED_ORIGINS=http://webide.example:8080
+# When accessing over Tailscale or custom domains, configure bridge allowlists:
+# Environment=OPENWEBIDE_BRIDGE_ALLOWED_HOSTS=webide.example.ts.net
+# Environment=OPENWEBIDE_BRIDGE_ALLOWED_ORIGINS=https://webide.example.ts.net
 
 [Service]
 Restart=always
