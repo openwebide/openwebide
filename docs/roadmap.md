@@ -63,13 +63,16 @@ tracks the remaining work rather than every optimization already shipped.
 | Selection and browser input | Multiple/rectangular selections and clipboard transactions; scoped native windows with bounded desktop startup for unwrapped, wrapped and nonuniform views, including long tabbed/bidirectional rows; automated Chromium composition and pointer checks. The recorded line-end caret bug is fixed and user-verified in the localhost PWA. |
 | Preparation and ownership | Rust/WASM worker and cooperative fallback; retained source/token/structure allocations; bounded worker delta reconstruction/reply-source publication and final structure metadata, parsed/lexical region reconciliation and retained fallback collection; bounded eligible unwrapped and wrapped paragraph probes, retained paint-run clipping and cooperative sampled cold-row glyph measurements, exact overlap validation, exact carets from retained anchors/current painted coverage and conservative complete-layout fallback. Current-file progress is shown during preparation. Matching trusted font notifications retain current in-flight work and ordinary-row replay after edits. |
 
-**Current measured bottleneck:** eight near-1-MiB styled long-line production
-samples preserve complete edited source in both modes, wrapping on/off. Cold
-complete geometry takes 1.35–1.43 seconds unwrapped and 1.49–1.54 seconds wrapped;
-edits paint in 117–125 ms and 129–150 ms respectively. Wrapped complete geometry
-takes 372–415 ms; peak Chrome PSS is 676–725 MiB
-([samples](editor-performance/unwrapped-current-production.jsonl)). These results
-do not finish the responsiveness or memory requirement.
+**Current measured bottleneck:** the latest 16 interleaved production samples
+preserve complete edited source in both modes. Near-1-MiB styled long-line edits
+still take 191–545 ms, cold complete geometry takes 1.1–1.7 seconds across the
+row/long-line workloads, and peak Chrome PSS remains 657–730 MiB
+([samples](editor-performance/row-planner-production-comparison.jsonl)).
+Cooperative row planning is shipped, but these results leave responsiveness and
+memory unfinished. An isolated worker-bundle experiment did not reduce process
+memory and increased the WASM download from roughly 27 to 42 MiB; it was rejected
+([comparison](editor-performance/rejected-worker-split-comparison.jsonl)).
+
 The preceding 24-sample boundary matrix preserves complete edited source, with
 byte-limit edits at 59–69 ms and row-limit edits at 32–60 ms
 ([summary](editor-performance/background-priority-boundary-summary.json)); repeat
@@ -87,8 +90,9 @@ Cold preparation and memory remain unfinished. The prior hosted browser groups
 hit their 300-second deadline after the long wrapped replay contract passed;
 independent replay partitions now preserve coverage and deadlines. Hosted CI for
 the partition fix passes all five jobs
-([receipt](editor-performance/grouped-ci-2bdd9a8-success.json)); the last fully green checkpoint `cdc8a23` also passes all five jobs
-([receipt](editor-performance/editor-ci-cdc8a23-success.json)).
+([receipt](editor-performance/grouped-ci-2bdd9a8-success.json)); the newer checkpoints `d26efa9` and `f251d89` each pass all five jobs
+([receipts](editor-performance/editor-ci-d26-success.json),
+[latest fully green checkpoint](editor-performance/editor-ci-f251-success.json)).
 
 **Remaining implementation** (all items remain part of this editor goal):
 
@@ -174,8 +178,8 @@ the partition fix passes all five jobs
   file-switch cancellation, cold queued-input source/selection ownership,
   host-plugin focus/layout and explicit Output/terminal targeting. Validate bounded
   setup retries after upstream Chrome download failures. Last fully green checkpoint
-  `cdc8a23` passes all five jobs
-  ([receipt](editor-performance/editor-ci-cdc8a23-success.json)); the retained-span checkpoint passes six focused browser contracts, ten WASM
+  `f251d89` passes all five jobs
+  ([receipt](editor-performance/editor-ci-f251-success.json)); the retained-span checkpoint passes six focused browser contracts, ten WASM
   library geometry/ownership contracts, strict WASM frontend lint and 16 fresh
   production samples. Hosted UI CI at `b4c9aa7` failed the wrapped-origin crop-rejection contract.
   Its wait correction passes in isolation with the original scroll adapter
@@ -187,7 +191,10 @@ the partition fix passes all five jobs
   including exact per-input pending paint, one final grammar paint and unchanged
   localized wrapped-row probe limits
   ([receipt](editor-performance/pending-frame-browser.json)). Full hosted CI for
-  the combined checkpoint remains required.
+  the pending-paint correction (`d26efa9`) and repeated-row planning (`f251d89`)
+  passes all five jobs. At the latest check, `120ea5c` passes frontend, native/backend,
+  Windows and Docker; its browser job is still running. This gate remains open
+  for the final integrated editor implementation.
 - [ ] **Physical Chrome/Edge PWA input:** verify real input-method commit/cancel,
   Unicode and LF/CRLF undo/redo, multiple-cursor clipboard transactions and touch
   without rewriting unrelated source. Automated Chromium composition/pointer

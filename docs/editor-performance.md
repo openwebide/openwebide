@@ -6599,3 +6599,42 @@ Strict core/WASM frontend lint and standalone WASM frontend compilation pass.
 This bounds row-level work per task, not a key's byte cost or total traversal.
 Unchanged-row rescans, scratch allocations, final row-table publication and
 admitted-boundary production measurements remain unfinished.
+
+
+### Cooperative row planning: production measurements and rejected worker split
+
+The release at `120ea5c` completes all 16 interleaved comparison samples with
+complete source after input in both modes
+([samples](editor-performance/row-planner-production-comparison.jsonl),
+[artifact identity](editor-performance/row-planner-production-manifest.json)).
+Row-limit input times vary from 30–68 ms in the candidate samples; near-1-MiB
+styled long-line input remains 191–545 ms with wrapping on/off. Cold complete
+geometry remains 1.1–1.7 seconds. Candidate peak Chrome PSS is 657–730 MiB.
+The earlier baseline predates pending-frame deduplication as well as cooperative
+row planning, so this comparison does not isolate either individual change.
+There are only two row-limit repetitions per mode: these measurements do not
+establish a stable latency improvement or close a performance gate.
+
+A diagnostic disables the worker constructor in a private measurement fixture
+and exercises the cooperative fallback, preserving complete source in both modes
+([two samples](editor-performance/worker-memory-diagnostic.jsonl),
+[diagnostic manifest](editor-performance/worker-memory-diagnostic-manifest.json)).
+Peak PSS remains about 601–605 MiB. This is attribution evidence only;
+production workers remain enabled.
+
+An uncommitted Rust-only worker bundle was then compared against the unchanged
+shared-bundle worker in eight interleaved row-limit samples
+([samples](editor-performance/rejected-worker-split-comparison.jsonl),
+[candidate identity](editor-performance/rejected-worker-split-manifest.json)).
+Both preserve complete edited source. Peak PSS ranges overlap: roughly 678–688
+MiB for the baseline and 679–696 MiB for the candidate. The separate worker adds
+about 15 MiB to the roughly 27 MiB frontend WASM download, since the frontend
+still needs its cooperative parser fallback. The experiment was rejected and
+its source changes reverted; no worker-splitting behavior shipped. Main-runtime
+memory attribution remains the next investigation.
+
+Hosted CI passes all five jobs for `d26efa9` and `f251d89`
+([pending-paint receipt](editor-performance/editor-ci-d26-success.json),
+[row-planning receipt](editor-performance/editor-ci-f251-success.json)).
+These checks establish checkpoint correctness, not completion of the full
+editor responsiveness, device-input or recovery gates.

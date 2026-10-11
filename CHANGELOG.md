@@ -10,6 +10,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 - Document plugin authoring from working examples through SDK checks, host testing and immutable marketplace publishing; correct retired API and future-contribution claims in both repositories.
 
+- Record production measurements for cooperative editor row planning and passing CI checkpoints; retain large-file performance, memory and physical-device verification as unfinished roadmap work.
+
 - Extend cooperative editor row planning through row validation and exact prefix/suffix reuse, preserving conflicting-duplicate rejection. Restart canceled preparations after layout invalidation.
 
 - Prepare repeated editor row keys and measurement propagation cooperatively through the shared Rust planner, rejecting stale work after yields. Skip duplicate indexing when all exact dimensions are already reused.
