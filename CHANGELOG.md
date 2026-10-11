@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Restore strict project-site builds by listing the archived editor checkpoint history in navigation and correcting its moved relative links.
+
 - Skip parser-context preparation for literal character commands in the shared editor facade, retaining pairing and structural-command preparation in both project modes.
 
 - Reuse exact current-source unwrapped paragraph measurements through the shared replay facade, preserving source/style topology and every incoming overlap rectangle. Keep tabs on fresh measurement and always measure terminal extents freshly.

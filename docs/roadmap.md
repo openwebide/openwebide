@@ -103,6 +103,10 @@ checkpoint still needs its browser job to finish.
   shared command facade skips parser context for literal characters; its
   held-parser both-mode regression passes. Neither closes readiness or
   the observed publication-delay requirement.
+  A frame-sampled visibility probe confirms stale visible Remote Markdown text
+  until about 177 ms despite native input changing by about 7 ms
+  ([evidence](editor-performance/embedded-markdown-visibility.json)). Publish
+  current text during pending analysis while retaining valid styles/decorations.
 - [ ] **Cold startup and native input:** bound remaining complete-source shaping,
   projection/native normalization, long word/context traversal and synchronous
   selection publication. Finish source-owned touch caret/selection and native

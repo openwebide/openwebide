@@ -6408,3 +6408,14 @@ Native verification also passes 509 core library tests, 129 frontend library
 tests, strict core all-targets and WASM frontend all-targets lint, formatting
 and diff whitespace checks. The command policy lives in the shared core/facade;
 neither workspace adapter changes.
+
+Two fresh 64-KiB Markdown baseline samples now distinguish native value from
+visible source paint ([visibility probe](editor-performance/embedded-markdown-visibility.json)).
+Local publishes the inserted marker at about 10 ms. Remote installs the marker
+in its native input by about 7 ms, but that input is transparent and the visible
+source overlay retains the previous marker-free text until about 177 ms. The
+delay therefore affects visible input, rather than only refreshed styling.
+Initial preparation timing differs between the samples; this does not establish
+a mode-specific policy defect. Retained grammar paint currently defers publication
+while analysis is pending. The remaining implementation must publish current
+text while preserving valid retained styles/decorations and exact geometry.

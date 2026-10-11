@@ -35,6 +35,7 @@
     - API examples: docs/api-examples.md
     - Design system: docs/design-system.md
     - Editor performance: docs/editor-performance.md
+    - Editor checkpoint history: docs/editor-performance/editor-roadmap-checkpoint-history.md
     - Project website: docs/project-site.md
 - Project:
     - Overview: docs/project.md
