@@ -151,7 +151,10 @@ Final integrated CI remains a completion gate as the remaining implementation sh
   strict native/WASM lint pass
   ([receipt](editor-performance/pending-fold-boundary-browser.json)).
   Full physical timing, remaining boundary workloads and
-  broader retained decoration ownership remain unfinished.
+  broader retained decoration ownership remain unfinished. Investigate the
+  `TooLarge` preparation result for 100 repeated adjacent HTML script/style pairs
+  below the source-byte limit; payload verification must not imply that parser
+  readiness gap is resolved.
 - [ ] **Cold startup and native input:** bound remaining complete-source shaping,
   projection/native normalization, remaining word/context traversal and synchronous
   selection publication. Finish source-owned touch caret/selection and native
@@ -223,7 +226,7 @@ Final integrated CI remains a completion gate as the remaining implementation sh
   unchanged-row traversal, single-key byte costs, allocations and final row-table
   publication still need bounded work and production measurements.
 - [ ] **Source, worker transport and storage:** finish external parser snapshots,
-  changed-revision comparisons, metadata materialization, header/capacity allocation,
+  changed-revision comparisons, header/capacity allocation,
   JavaScript string conversion, complete message decoding/publication,
   oversized-message fallback, diff shaping and native-text materialization.
   In-process structural commands now retain shared source/analysis through the
@@ -236,9 +239,15 @@ Final integrated CI remains a completion gate as the remaining implementation sh
   batches, including nested structure lists and token rows. Full and retained
   publications match independent serde bytes, and cancellation discards private
   partial output ([receipt](editor-performance/cooperative-reply-browser.json)).
-  Metadata materialization, output-buffer growth, full-fallback source copies,
-  JavaScript string conversion and complete receiver decoding/publication still
-  need bounded work and production latency/memory measurements.
+  Payload preparation now batches fold copies, structural prefix/suffix comparisons
+  and record copies, token-row reuse comparisons and span construction. Long token
+  comparisons and fallback source copies yield between 8 KiB chunks; record work
+  uses 64-record batches. Independent original-algorithm byte comparisons and
+  exact record-limit/cancellation contracts pass
+  ([receipt](editor-performance/cooperative-metadata-browser.json)).
+  Capacity growth, JavaScript string conversion and complete receiver
+  decoding/publication still need bounded work and production latency/memory
+  measurements. No end-to-end latency or memory gain is established here.
   Bound folded/bounded projection assembly, row/coordinate copies, changed guide
   copies, storage suffix byte/coordinate shifts and long-row admission scans.
   Revisit measured storage candidates using actual viewport/worker access patterns,

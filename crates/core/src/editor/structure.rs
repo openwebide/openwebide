@@ -7,10 +7,14 @@ pub(super) mod fallback;
 #[cfg(feature = "editor-parser")]
 mod ordering;
 #[cfg(feature = "editor-parser")]
+mod publication;
+#[cfg(feature = "editor-parser")]
 mod reconciliation;
 pub(super) mod scanning;
 #[cfg(feature = "editor-parser")]
 mod serialization;
+#[cfg(feature = "editor-parser")]
+pub(super) use publication::StructurePublicationPreparation;
 #[cfg(feature = "editor-parser")]
 pub(super) use serialization::StructureSerialization;
 
@@ -1148,6 +1152,7 @@ enum StructuralRecords<T> {
 
 #[cfg(feature = "editor-parser")]
 impl<T: Clone + PartialEq> StructuralRecords<T> {
+    #[cfg(test)]
     fn publication(current: &[T], previous: &[T]) -> Self {
         let prefix = current
             .iter()
@@ -1209,6 +1214,7 @@ impl<T: Clone + PartialEq> StructuralRecords<T> {
 
 #[cfg(feature = "editor-parser")]
 impl StructurePublication {
+    #[cfg(test)]
     pub(super) fn publication(current: &Structure, previous: Option<&Structure>) -> Self {
         if let Some(previous) = previous.filter(|old| old.language == current.language) {
             let changes = StructureChanges {
@@ -1301,6 +1307,7 @@ impl Structure {
             .saturating_add(self.protected.len())
             .saturating_add(self.brackets.len())
     }
+    #[cfg(test)]
     pub(super) fn transfer_data(&self) -> StructureData {
         StructureData {
             language: self.language,

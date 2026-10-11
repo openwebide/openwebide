@@ -1,5 +1,7 @@
 //! Validated data crossing the worker boundary; parser allocations never cross it.
+mod preparation;
 mod publication;
+pub(super) use preparation::AnalysisTransferPreparation;
 mod reply;
 use super::{super::structure::StructurePublication, SyntaxAnalysis};
 use crate::{
@@ -247,6 +249,16 @@ impl SyntaxAnalysis {
         self.transfer_data_with_source(previous, source)
     }
     pub(super) fn transfer_data_with_source(
+        &self,
+        previous: Option<(u32, &SyntaxAnalysis)>,
+        source: SyntaxSource,
+    ) -> Option<SyntaxAnalysisData> {
+        let mut work = AnalysisTransferPreparation::new(self, previous, Some(source));
+        while !work.advance(self, previous) {}
+        work.finish(self, previous)
+    }
+    #[cfg(test)]
+    pub(super) fn transfer_data_with_source_reference(
         &self,
         previous: Option<(u32, &SyntaxAnalysis)>,
         source: SyntaxSource,

@@ -86,6 +86,7 @@ struct SyntaxTask {
     publication: Option<super::transfer::SourcePublication>,
     prepared: Option<(SyntaxStatus, Option<std::sync::Arc<super::SyntaxAnalysis>>)>,
     reply_source: Option<SyntaxSource>,
+    metadata: Option<super::transfer::AnalysisTransferPreparation>,
     encoding: Option<super::transfer::ReplyPublication>,
     ready_reply: Option<(SyntaxStatus, Option<std::sync::Arc<super::SyntaxAnalysis>>)>,
     encoded_reply: Option<(String, bool)>,
@@ -165,6 +166,7 @@ impl SyntaxPreparations<String> {
             publication: None,
             prepared: None,
             reply_source: None,
+            metadata: None,
             encoding: None,
             ready_reply: None,
             encoded_reply: None,
@@ -180,14 +182,22 @@ impl SyntaxTask {
     ) -> Option<(SyntaxStatus, Option<std::sync::Arc<super::SyntaxAnalysis>>)> {
         if self.ready_reply.is_none() {
             let result = self.advance_analysis(should_continue, should_yield)?;
-            let data = shape_reply_data(
-                self.ticket,
-                result.0,
-                result.1.as_ref(),
-                self.previous.as_ref(),
-                self.reply_source.take(),
-            );
-            self.encoding = Some(super::transfer::ReplyPublication::new(data));
+            self.metadata = result.1.as_ref().map(|analysis| {
+                super::transfer::AnalysisTransferPreparation::new(
+                    analysis,
+                    self.previous
+                        .as_ref()
+                        .map(|(ticket, old)| (*ticket, old.as_ref())),
+                    self.reply_source.take(),
+                )
+            });
+            if self.metadata.is_none() {
+                self.encoding = Some(super::transfer::ReplyPublication::new(reply_data(
+                    self.ticket,
+                    result.0,
+                    None,
+                )));
+            }
             self.ready_reply = Some(result);
         }
         loop {
@@ -196,6 +206,31 @@ impl SyntaxTask {
             }
             if should_yield() {
                 return None;
+            }
+            if let Some(work) = &mut self.metadata {
+                let result = self.ready_reply.as_ref()?;
+                let analysis = result.1.as_ref()?;
+                let previous = (!self.full_retry)
+                    .then_some(self.previous.as_ref())
+                    .flatten()
+                    .map(|(ticket, old)| (*ticket, old.as_ref()));
+                if !work.advance(analysis, previous) {
+                    continue;
+                }
+                let data = self.metadata.take()?.finish(analysis, previous);
+                if data.is_none() && !self.full_retry {
+                    self.full_retry = true;
+                    self.metadata = Some(super::transfer::AnalysisTransferPreparation::new(
+                        analysis, None, None,
+                    ));
+                    continue;
+                }
+                self.encoding = Some(super::transfer::ReplyPublication::new(reply_data(
+                    self.ticket,
+                    result.0,
+                    data,
+                )));
+                continue;
             }
             if !self.encoding.as_mut()?.advance(1) {
                 continue;
@@ -210,8 +245,17 @@ impl SyntaxTask {
             }
             self.full_retry = true;
             let result = self.ready_reply.as_ref()?;
-            let data = shape_reply_data(self.ticket, result.0, result.1.as_ref(), None, None);
-            self.encoding = Some(super::transfer::ReplyPublication::new(data));
+            if let Some(analysis) = &result.1 {
+                self.metadata = Some(super::transfer::AnalysisTransferPreparation::new(
+                    analysis, None, None,
+                ));
+            } else {
+                self.encoding = Some(super::transfer::ReplyPublication::new(reply_data(
+                    self.ticket,
+                    result.0,
+                    None,
+                )));
+            }
         }
     }
 
@@ -309,9 +353,10 @@ impl SyntaxTask {
         Some(message)
     }
 }
+#[cfg(test)]
 fn shape_reply_data(
     ticket: u32,
-    mut status: SyntaxStatus,
+    status: SyntaxStatus,
     prepared: Option<&std::sync::Arc<super::SyntaxAnalysis>>,
     previous: Option<&(u32, std::sync::Arc<super::SyntaxAnalysis>)>,
     source: Option<SyntaxSource>,
@@ -325,6 +370,13 @@ fn shape_reply_data(
             )
             .or_else(|| value.transfer_data())
     });
+    reply_data(ticket, status, analysis)
+}
+fn reply_data(
+    ticket: u32,
+    mut status: SyntaxStatus,
+    analysis: Option<SyntaxAnalysisData>,
+) -> SyntaxReply {
     if matches!(status, SyntaxStatus::Ready { .. }) && analysis.is_none() {
         status = SyntaxStatus::TooLarge;
     }
@@ -547,6 +599,48 @@ mod tests {
         );
         assert!(service.previous_publication(&"owner".to_owned()).is_none());
         assert!(service.previous_publication(&"other".to_owned()).is_some());
+        assert_eq!(service.len(), 1);
+    }
+
+    #[test]
+    fn cancellation_during_metadata_preparation_never_changes_publication_owners() {
+        let mut service = SyntaxPreparations::default();
+        let source = "fn main() { let value = 1; }\n".repeat(2000);
+        let request = |ticket, owner: &str| {
+            SyntaxRequest::new(ticket, owner.into(), Language::Rust, &source, 4, None)
+        };
+        service
+            .handle_message(
+                &serde_json::to_string(&request(1, "other")).unwrap(),
+                || true,
+            )
+            .unwrap();
+        let Start::Task(mut task) = service
+            .begin_request(request(2, "owner"), &mut || true)
+            .unwrap()
+        else {
+            panic!("expected preparation task")
+        };
+        let result = task.advance_analysis(&mut || true, &mut || false).unwrap();
+        let analysis = result.1.as_ref().unwrap();
+        let mut metadata = super::super::transfer::AnalysisTransferPreparation::new(
+            analysis,
+            None,
+            task.reply_source.take(),
+        );
+        assert!(!metadata.advance(analysis, None));
+        task.metadata = Some(metadata);
+        task.ready_reply = Some(result);
+        assert!(task.encoding.is_none());
+        let cancelled = task.advance(&mut || false, &mut || false).unwrap();
+        assert_eq!(cancelled.0, SyntaxStatus::Cancelled);
+        let message = task.finish(&mut service, cancelled).unwrap();
+        assert_eq!(
+            SyntaxReply::receive(&message, 2, &source).unwrap().0,
+            SyntaxStatus::Cancelled
+        );
+        assert!(service.previous_publication(&"owner".into()).is_none());
+        assert!(service.previous_publication(&"other".into()).is_some());
         assert_eq!(service.len(), 1);
     }
 

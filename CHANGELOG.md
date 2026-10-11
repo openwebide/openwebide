@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Prepare worker reply source, fold, structure and token metadata in cancellable batches, including full-publication fallback. Preserve the existing record limits, structural patches and token-row reuse without copying complete lists in one pass.
+
 - Encode worker syntax replies cooperatively, including escaped source strings, structural records and long token rows. Preserve the existing wire format, size limits and cancellation without publishing partial analysis. Make cold-command cancellation tests use the shared injectable input clock rather than runner speed.
 
 - Prepare explicit editor structural commands directly from shared immutable source and analysis, removing an in-process JSON round trip and redundant admission scan. Preserve cooperative input deadlines, cancellation, cache limits and stale-command rejection in both project modes.

@@ -1,0 +1,57 @@
+{
+  "scope": "Cooperative materialization of worker source, fold, structure and token metadata, including full-publication fallback. Existing JSON protocol, record limits, structural patches and row reuse are preserved. No end-to-end latency or memory improvement is claimed.",
+  "sourceFilesSha256": {
+    "crates/core/src/editor/structure.rs": "265970e809cb534ab3b883da6b940bedbd3bcdc80ea2b7ed9d87943836e20986",
+    "crates/core/src/editor/structure/publication.rs": "47ca988f5cbf1f9ab326053935da8d6d7d704d58e980fbf8d419c7412181e678",
+    "crates/core/src/editor/syntax/service.rs": "dc4b9f8c10604f6d092645ee6f8df4ae87a77f4e29af77a405e9ab85db886aae",
+    "crates/core/src/editor/syntax/transfer.rs": "aaada1ff9451f6684a4e7c6916e0d713a204b896a85bc33ff2499f76307d2475",
+    "crates/core/src/editor/syntax/transfer/preparation.rs": "1fbafb63498d2d5135df49eebc4b68cac79d817b417166128f94f6134ca159a1",
+    "crates/core/src/editor/syntax/transfer/publication.rs": "c56212b12612cfea1dd893aec7efb85dd0265c054e00063016d506a9113a5b06"
+  },
+  "executedBindingsWasmSha256": "dbf74ff594fc250cfd60a7507f6bc917f049c6588a6aeccaa87396e92c155443",
+  "browserContracts": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "console": "Invoking test: editor::worker_source_resync_is_bounded_and_rejects_superseded_ownership_in_both_modes\nInvoking test: editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes\nInvoking test: editor::large_markdown_worker_publications_color_all_paragraphs_in_both_modes\nInvoking test: editor::cooperative_worker_plain_rows_publish_complete_sql_in_both_modes\nInvoking test: editor::cooperative_worker_parser_source_comparison_preserves_warm_paint_in_both_modes\nInvoking test: editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes\nInvoking test: editor::config_worker_paint_is_cached_lossless_and_source_guarded_in_both_modes\nInvoking test: editor::cold_structural_commands_reject_superseded_requests_in_both_modes\n",
+    "output": "\nrunning 8 tests\ntest editor::worker_source_resync_is_bounded_and_rejects_superseded_ownership_in_both_modes ... ok\ntest editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes ... ok\ntest editor::large_markdown_worker_publications_color_all_paragraphs_in_both_modes ... ok\ntest editor::cooperative_worker_plain_rows_publish_complete_sql_in_both_modes ... ok\ntest editor::cooperative_worker_parser_source_comparison_preserves_warm_paint_in_both_modes ... ok\ntest editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes ... ok\ntest editor::config_worker_paint_is_cached_lossless_and_source_guarded_in_both_modes ... ok\ntest editor::cold_structural_commands_reject_superseded_requests_in_both_modes ... ok\n\ntest result: ok. 8 passed; 0 failed; 0 ignored; 0 filtered out; finished in 8.26s\n\n",
+    "passed": true,
+    "tests": [
+      "__wbgt__components::editor::cold_structural_commands_reject_superseded_requests_in_both_modes",
+      "__wbgt__components::editor::config_worker_paint_is_cached_lossless_and_source_guarded_in_both_modes",
+      "__wbgt__components::editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes",
+      "__wbgt__components::editor::cooperative_worker_parser_source_comparison_preserves_warm_paint_in_both_modes",
+      "__wbgt__components::editor::cooperative_worker_plain_rows_publish_complete_sql_in_both_modes",
+      "__wbgt__components::editor::large_markdown_worker_publications_color_all_paragraphs_in_both_modes",
+      "__wbgt__components::editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes",
+      "__wbgt__components::editor::worker_source_resync_is_bounded_and_rejects_superseded_ownership_in_both_modes"
+    ],
+    "servedFonts": {},
+    "libraryStartSuppressed": false
+  },
+  "coreTests": {
+    "features": [
+      "editor-parser"
+    ],
+    "passed": 687,
+    "failed": 0
+  },
+  "strictLint": [
+    "core --features editor-parser --all-targets",
+    "release WASM frontend --features test-support --all-targets"
+  ],
+  "contracts": [
+    "Independent original transfer_data_with_source algorithm retained from 97d1e424 under cfg(test); full and delta serde bytes match for Rust, HTML, Markdown, YAML and SQL across unchanged, inserted, renamed and truncated source",
+    "Structural prefix/suffix comparisons and clones share a counted maximum of 64 record operations per unit; full/patch threshold remains unchanged",
+    "Long equal token text is compared in at most 8192 byte slices rather than whole-string equality; both candidate row positions and original coalescing policy are retained",
+    "Initial and transmitted record guards preserve the compressed-empty-row limit boundary; this is a synthetic wire fixture, not a parser admission claim",
+    "Cancellation during metadata preparation publishes only Cancelled and does not change another document owner publication",
+    "Fallback source construction uses the existing source publication policy driven in 8192 byte chunks; fold and span copies use bounded record batches"
+  ],
+  "sharedImplementation": "SyntaxTask -> AnalysisTransferPreparation -> StructurePublicationPreparation / SourcePublication -> ReplyPublication. Synchronous transfer_data_with_source drives the same metadata preparation. Worker and cooperative browser adapters retain existing clock/yield primitives and protocol.",
+  "remaining": [
+    "Capacity growth and final allocations",
+    "JavaScript string conversion",
+    "Complete receiver decoding/validation/publication",
+    "Production latency and memory measurements",
+    "Parser preparation TooLarge for 100 repeated adjacent HTML script/style pairs below source-byte limit"
+  ]
+}
