@@ -98,13 +98,24 @@ impl FoldState {
     }
     pub fn set_ranges(&mut self, ranges: Vec<FoldRange>, line_count: usize) {
         self.ranges = normalize_folds(ranges, line_count);
+        self.collapsed.retain(|line| {
+            let Ok(index) = self
+                .ranges
+                .binary_search_by_key(line, |range| range.start_line)
+            else {
+                return false;
+            };
+            // Pending ranges belong to the unchanged source interval rebased
+            // through edits. A shared header alone cannot prove the new parser
+            // candidate owns that interval (its closing boundary may change).
+            self.pending.is_empty()
+                || self
+                    .pending
+                    .binary_search_by_key(line, |range| range.start_line)
+                    .is_ok_and(|old| self.pending[old] == self.ranges[index])
+        });
         self.pending.clear();
         self.indicators.clear();
-        self.collapsed.retain(|line| {
-            self.ranges
-                .binary_search_by_key(line, |range| range.start_line)
-                .is_ok()
-        });
     }
     pub fn collapsed_at(&self, header: usize) -> Option<FoldRange> {
         if !self.collapsed.contains(&header) {
@@ -326,6 +337,98 @@ impl FoldState {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "editor-parser")]
+    #[test]
+    fn markdown_section_growth_cannot_reuse_a_collapsed_preceding_section() {
+        use crate::{
+            editor::{Document, Edit, Selection, SyntaxDocument},
+            highlight::Language,
+        };
+        let source = "prefix\n# First\none\ntwo\n# Next\nlast\n";
+        let mut parser = SyntaxDocument::new(Language::Markdown).unwrap();
+        let original = parser.prepare(source, 4, || true).1.unwrap();
+        let mut document = Document::new(source);
+        document.set_fold_ranges(original.folds().to_vec());
+        let first = document
+            .fold_state()
+            .ranges()
+            .iter()
+            .find(|range| range.start_line == 1)
+            .copied()
+            .unwrap();
+        assert!(document.fold_state_mut().toggle(first.start_line));
+        let next = source.find("# Next").unwrap();
+        document
+            .apply(
+                vec![Edit::replace(next..next + 2, "")],
+                vec![Selection::caret(next)],
+                None,
+            )
+            .unwrap();
+        assert!(document.fold_state().ranges().is_empty());
+        assert!(document.fold_state().indicator_collapsed(1));
+        let revised = parser.prepare(document.text(), 4, || true).1.unwrap();
+        let expanded = revised
+            .folds()
+            .iter()
+            .find(|range| range.start_line == 1)
+            .copied()
+            .unwrap();
+        assert!(expanded.end_line > first.end_line);
+        document.set_fold_ranges(revised.folds().to_vec());
+        assert!(document.fold_state().collapsed_at(1).is_none());
+        assert_eq!(document.projection().text(), document.text());
+        assert!(document.undo());
+        assert_eq!(document.text(), source);
+        assert!(original.matches_source(source));
+    }
+
+    #[test]
+    fn pending_collapse_requires_the_complete_rebased_range() {
+        let old = "prefix\nheader\nbody\nclose\nlast\nother\nbody\nclose\n";
+        let new = format!("zero\n{old}");
+        for end_line in [3, 4, 5] {
+            let mut state = super::FoldState::default();
+            state.set_ranges(
+                vec![
+                    super::FoldRange {
+                        start_line: 1,
+                        end_line: 3,
+                    },
+                    super::FoldRange {
+                        start_line: 5,
+                        end_line: 7,
+                    },
+                ],
+                9,
+            );
+            state.collapse_all();
+            state.rebase(old, &new);
+            assert!(state.ranges().is_empty());
+            assert!(!state.toggle(2));
+            state.set_ranges(
+                vec![
+                    super::FoldRange {
+                        start_line: 2,
+                        end_line,
+                    },
+                    super::FoldRange {
+                        start_line: 6,
+                        end_line: 8,
+                    },
+                ],
+                10,
+            );
+            assert_eq!(state.collapsed_at(2).is_some(), end_line == 4);
+            assert!(
+                state.collapsed_at(6).is_some(),
+                "unaffected range must stay collapsed"
+            );
+            assert!(state.pending.is_empty());
+            assert!(state.indicators.is_empty());
+        }
+    }
+
     #[test]
     fn persisted_range_validation_matches_normalization_exhaustively() {
         // Include invalid/reversed ranges, duplicate headers, nesting, crossings,

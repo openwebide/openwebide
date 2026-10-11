@@ -7,6 +7,63 @@ use wasm_bindgen_test::*;
 use super::support::{Mounted, editor_view, mount_test, settle, wait_until};
 
 #[wasm_bindgen_test]
+async fn changed_markdown_section_end_opens_retained_collapse_in_both_modes() {
+    use openwebide_core::{
+        WorkspaceMode,
+        editor::{FoldCommand, Indentation, Selection, SyntaxStatus},
+    };
+    use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
+    let source = "prefix\n# First\none\ntwo\n# Next\nlast\n";
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            state.workspace.open_file.set(Some("sections.md".into()));
+            state.workspace.content.set(source.into());
+            editor_view(state)
+        });
+        let actions =
+            EditorActions::with_input_clock(mounted.state.workspace, std::rc::Rc::new(|| 0.0));
+        actions.refresh_fold_ranges(|| true);
+        actions.fold_command(FoldCommand::Toggle(1)).unwrap();
+        assert!(actions.fold_state().unwrap().collapsed_at(1).is_some());
+        let next = source.find("# Next").unwrap();
+        actions
+            .record_selection(Selection {
+                anchor: next,
+                head: next + 2,
+            })
+            .unwrap();
+        actions.insert_native_text("", 1.0).unwrap();
+        let expected = source.replace("# Next", "Next");
+        assert_eq!(actions.source().as_str(), expected);
+        assert!(actions.fold_state().unwrap().indicator_collapsed(1));
+        assert_eq!(
+            actions.refresh_fold_ranges(|| false),
+            Some(SyntaxStatus::Cancelled)
+        );
+        assert!(actions.fold_state().unwrap().ranges().is_empty());
+        actions.refresh_fold_ranges(|| true);
+        assert!(actions.fold_state().unwrap().collapsed_at(1).is_none());
+        assert_eq!(actions.projection().unwrap().text(), expected);
+        settle().await;
+        assert_eq!(actions.source().as_str(), expected);
+        assert!(mounted.state.workspace.dirty.get_untracked());
+        actions
+            .command(
+                EditorCommand::Undo,
+                Selection::caret(next),
+                Indentation::default(),
+            )
+            .unwrap();
+        assert_eq!(actions.source().as_str(), source);
+    }
+}
+
+#[wasm_bindgen_test]
 async fn cooperative_row_planning_rejects_stale_owners_in_both_modes() {
     use openwebide_core::{WorkspaceMode, editor::Selection};
     use openwebide_frontend::state_actions::editor::EditorActions;

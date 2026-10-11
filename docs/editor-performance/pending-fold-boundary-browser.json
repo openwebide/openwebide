@@ -1,0 +1,44 @@
+{
+  "sourceBase": "55dc8f4a3ca05984a3cecdaed5fe6a8a2504cefd",
+  "sourceSha256": {
+    "crates/core/src/editor/folds.rs": "244150eedb82e3213c5ca35413a972f37d7bc1c2b0bff8e724bf216635c7ff1c",
+    "frontend/tests/components/editor.rs": "b628f2827bda5486c4beb9bccd85a51ba12a77aa4d1e97d70f21fc6a8d25fb41"
+  },
+  "artifactSha256": "8dd4afeadb83ffe62be0f217a2c1be39acbe58d121bcac1c3e0c9eb55d7d43f7",
+  "report": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "console": "Invoking test: editor::native_edits_clipboard_commands_and_composition_keep_disjoint_folds_in_both_modes\nInvoking test: editor::incremental_syntax_and_fold_provider_share_both_modes_and_account_reset\nInvoking test: editor::folded_document_commands_projection_and_history_share_both_modes\nInvoking test: editor::changed_markdown_section_end_opens_retained_collapse_in_both_modes\n",
+    "output": "\nrunning 4 tests\ntest editor::native_edits_clipboard_commands_and_composition_keep_disjoint_folds_in_both_modes ... ok\ntest editor::incremental_syntax_and_fold_provider_share_both_modes_and_account_reset ... ok\ntest editor::folded_document_commands_projection_and_history_share_both_modes ... ok\ntest editor::changed_markdown_section_end_opens_retained_collapse_in_both_modes ... ok\n\ntest result: ok. 4 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.21s\n\n",
+    "passed": true,
+    "tests": [
+      "__wbgt__components::editor::changed_markdown_section_end_opens_retained_collapse_in_both_modes",
+      "__wbgt__components::editor::folded_document_commands_projection_and_history_share_both_modes",
+      "__wbgt__components::editor::incremental_syntax_and_fold_provider_share_both_modes_and_account_reset",
+      "__wbgt__components::editor::native_edits_clipboard_commands_and_composition_keep_disjoint_folds_in_both_modes"
+    ]
+  },
+  "checks": {
+    "coreAll": [
+      "test editor::visual_index::tests::probe_anchor_ranges_match_complete_anchor_filtering ... ok",
+      "test editor::coordinates::tests::cooperative_row_coordinates_keep_native_and_admission_contracts_at_every_budget ... ok",
+      "",
+      "test result: ok. 671 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 23.30s",
+      ""
+    ],
+    "coreLint": [
+      "    Checking ppv-lite86 v0.2.21",
+      "    Checking rand_chacha v0.9.0",
+      "    Checking proptest v1.11.0",
+      "    Checking openwebide-core v1.0.0-alpha.6 (/Users/BWestnes/source/repos/open-webide/crates/core)",
+      "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 12.72s"
+    ],
+    "wasmLint": [
+      "    Checking leptos v0.8.20",
+      "    Checking lepticons v0.13.1",
+      "    Finished `release` profile [optimized] target(s) in 3m 45s",
+      "warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1",
+      "note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`"
+    ]
+  },
+  "scope": "Shared FoldState policy. Real Markdown section-boundary edits plus synthetic shorter/unchanged/longer refreshed ranges. Four browser contracts exercise both modes, including cancellation, history, disjoint clipboard/composition and account ownership. This does not close the broader editor performance or device gates."
+}

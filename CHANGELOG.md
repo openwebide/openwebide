@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Keep a changed fold open when its parsed end no longer matches the collapsed range rebased through an edit. Removing a Markdown heading no longer silently hides the following section; unchanged folds retain their collapse state.
+
 - Yield main-thread asynchronous editor parsing at the shared 12 ms input deadline, retaining complete source-bound preparation between slices and cancellation at yields. Dedicated workers keep their existing allowance.
 
 - Verify the paragraph-setup and unmount-cancellation checkpoint against all five hosted CI jobs on integrated editor/plugin source. Record a compiled-module-sharing diagnostic that preserved source without establishing memory gains.

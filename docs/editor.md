@@ -539,7 +539,10 @@ above the transaction's peak size, rather than doubling a large buffer. Affected
 cursors rebuild a shared row once, while distant edits retain interior coordinates.
 
 Fold rebasing uses precise edited boundaries and retains unaffected collapsed ranges
-until providers refresh. Admission reuses indexed break counts for unchanged complete
+until providers refresh. After an edit, a refreshed fold must match the entire
+rebased range to inherit collapse state. Reusing a header with a different end
+opens the new range, so removing a Markdown section boundary cannot silently
+hide the following section. Admission reuses indexed break counts for unchanged complete
 rows in already admitted sources, scanning inserted text and joining boundary rows.
 Non-admitted source retains the full scan and its error order. The index adds a break
 prefix and oversized-row flag per logical row; suffix updates still shift those

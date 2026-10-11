@@ -109,7 +109,7 @@ the partition fix passes all five jobs
 ([receipts](editor-performance/editor-ci-d26-success.json),
 [receipt](editor-performance/editor-ci-f251-success.json)).
 
-Latest checkpoint `0475d16` passes all five hosted jobs, including the full
+Latest verified integrated checkpoint `0475d16` passes all five hosted jobs, including the full
 browser partition on combined editor/plugin source
 ([receipt](editor-performance/editor-ci-0475-success.json)). Post-frame owner
 cancellation now releases wrapped probes before accessing disposed state; two
@@ -130,14 +130,19 @@ remains a completion gate as the remaining implementation ships.
   Current-source paint and valid syntax fragments now publish while analysis is
   pending. Bounded early publication passes six focused browser contracts and
   sixteen production samples; small Remote Markdown input paint is about 17 ms
-  ([samples](editor-performance/early-pending-production.jsonl)). Finish the
+  ([samples](editor-performance/early-pending-production.jsonl)).
   Main-thread asynchronous parser fallback now yields at the shared 12 ms
   deadline rather than using the dedicated worker’s 100 ms allowance. Controlled
   HTML/Markdown transport contracts verify yielding, cancellation and complete
   analysis across slices; five local/remote UI contracts and strict native core/
   WASM lint pass ([receipt](editor-performance/main-thread-parser-budget.json)).
-  Full physical timing, remaining boundary workloads
-  and retained decoration ownership remain unfinished.
+  Refreshed folds now inherit pending collapse state only when their entire
+  rebased range matches, preventing changed Markdown boundaries from hiding
+  adjacent sections. All 671 core tests, four local/remote browser contracts and
+  strict native/WASM lint pass
+  ([receipt](editor-performance/pending-fold-boundary-browser.json)).
+  Full physical timing, remaining boundary workloads and
+  broader retained decoration ownership remain unfinished.
 - [ ] **Cold startup and native input:** bound remaining complete-source shaping,
   projection/native normalization, long word/context traversal and synchronous
   selection publication. Finish source-owned touch caret/selection and native
