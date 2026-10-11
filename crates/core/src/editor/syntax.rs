@@ -5,6 +5,7 @@ mod contexts;
 mod folds;
 mod highlighting;
 mod highlights;
+pub(super) mod json;
 mod preparation;
 mod request;
 pub use request::{SYNTAX_REQUEST_BATCH_BYTES, SyntaxRequestPublication};

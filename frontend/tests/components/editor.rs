@@ -677,7 +677,17 @@ async fn cold_structural_commands_reject_superseded_requests_in_both_modes() {
                         .update(|projects| projects[0].mode = mode);
                     state.workspace.open_file.set(Some(path.into()));
                     state.workspace.content.set(source.into());
-                    let actions = EditorActions::new(state.workspace);
+                    // Force the preparation budget to expire independently of
+                    // runner speed so this exercises cancellation while pending.
+                    let elapsed = std::rc::Rc::new(std::cell::Cell::new(0.0));
+                    let actions = EditorActions::with_input_clock(
+                        state.workspace,
+                        std::rc::Rc::new(move || {
+                            let now = elapsed.get();
+                            elapsed.set(now + 13.0);
+                            now
+                        }),
+                    );
                     actions.install_syntax_transport(std::rc::Rc::new(DeferredSyntax::default()));
                     capture.set(Some(actions));
                     view! { <div/> }

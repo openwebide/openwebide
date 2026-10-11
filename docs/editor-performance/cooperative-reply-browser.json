@@ -1,0 +1,79 @@
+{
+  "scope": "Bounded complete-only worker reply JSON encoding in shared core; existing worker and cooperative transport adapters retain the same protocol. Count budgets are not an end-to-end latency or memory claim.",
+  "sourceFilesSha256": {
+    "crates/core/src/editor/structure/serialization.rs": "e174930e1b6c2d246e6050662fe32599a2f9bafd1c64b8dfe6b4c688d95c9380",
+    "crates/core/src/editor/syntax/json.rs": "2c23181431c8d320ce649815e640102216aba314e702acbfd1255e28558b46ca",
+    "crates/core/src/editor/syntax/request.rs": "892f88f553e011cf98fb6de7c38277cd363db61f2bf4f1c226e937f03b3b9b74",
+    "crates/core/src/editor/syntax/service.rs": "2d696ec8d43df2a31dd837ec20ede07e4023c3de49e83993e91918d97407350c",
+    "crates/core/src/editor/syntax/transfer/reply.rs": "6629d438515097d51b520ad4955b63cf4811c06d9442de6bb82de329d9fc9ce9",
+    "frontend/src/state_actions/editor/structural_actions.rs": "0f6366a22359ccd8fc82a0a940b22e30b511806878d03bac8ac87f08c296b3ee",
+    "frontend/tests/components/editor.rs": "7c8848d65589413463926c8dce71bcc01fcfadec77a5c9cc8a7ea0b9cc350d06"
+  },
+  "browserContracts": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "console": "Invoking test: editor::worker_source_resync_is_bounded_and_rejects_superseded_ownership_in_both_modes\nInvoking test: editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes\nInvoking test: editor::large_markdown_worker_publications_color_all_paragraphs_in_both_modes\nInvoking test: editor::cooperative_worker_parser_source_comparison_preserves_warm_paint_in_both_modes\nInvoking test: editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes\nInvoking test: editor::config_worker_paint_is_cached_lossless_and_source_guarded_in_both_modes\n",
+    "output": "\nrunning 6 tests\ntest editor::worker_source_resync_is_bounded_and_rejects_superseded_ownership_in_both_modes ... ok\ntest editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes ... ok\ntest editor::large_markdown_worker_publications_color_all_paragraphs_in_both_modes ... ok\ntest editor::cooperative_worker_parser_source_comparison_preserves_warm_paint_in_both_modes ... ok\ntest editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes ... ok\ntest editor::config_worker_paint_is_cached_lossless_and_source_guarded_in_both_modes ... ok\n\ntest result: ok. 6 passed; 0 failed; 0 ignored; 0 filtered out; finished in 3.70s\n\n",
+    "passed": true,
+    "tests": [
+      "__wbgt__components::editor::config_worker_paint_is_cached_lossless_and_source_guarded_in_both_modes",
+      "__wbgt__components::editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes",
+      "__wbgt__components::editor::cooperative_worker_parser_source_comparison_preserves_warm_paint_in_both_modes",
+      "__wbgt__components::editor::large_markdown_worker_publications_color_all_paragraphs_in_both_modes",
+      "__wbgt__components::editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes",
+      "__wbgt__components::editor::worker_source_resync_is_bounded_and_rejects_superseded_ownership_in_both_modes"
+    ],
+    "servedFonts": {},
+    "libraryStartSuppressed": false
+  },
+  "coreTests": {
+    "features": [
+      "editor-parser"
+    ],
+    "passed": 682,
+    "failed": 0
+  },
+  "encodingContracts": [
+    "Full and retained publications byte-identical to independent serde serialization for Rust, HTML and Markdown",
+    "Escaped UTF-8 source batches at most 8192 source bytes",
+    "Fixed record and nested long-token-row batches at most 64 records",
+    "Cancellation during private encoding never publishes partial analysis or another owner publication"
+  ],
+  "strictLint": [
+    "core --features editor-parser --all-targets",
+    "release WASM frontend --features test-support --all-targets"
+  ],
+  "remaining": [
+    "Metadata materialization",
+    "Output String capacity growth",
+    "Full-fallback source materialization",
+    "JS/WASM whole-string transfer",
+    "Complete receive decoding and validation",
+    "Production latency and memory measurements"
+  ],
+  "executedBindingsWasmSha256": "7f89e0b5f4ed2f9b2934b97a4389ed5e0c648beb93750dc1c5f5b0ee6b54f463",
+  "coldCommandClockRegression": {
+    "previousHostedCheckpoint": "c353f63c",
+    "previousHostedRun": 38153973551,
+    "failure": "cold_structural_commands_reject_superseded_requests_in_both_modes expected first poll pending based on real elapsed time",
+    "correction": "Structural actions use their existing injected input clock; regression forces expiry without relying on runner speed",
+    "browserContracts": {
+      "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+      "console": "Invoking test: editor::parser_line_comments_share_modes_mixed_syntax_and_one_undo_step\nInvoking test: editor::parser_block_comments_share_modes_embedded_cursors_and_atomic_undo\nInvoking test: editor::large_markdown_worker_publications_color_all_paragraphs_in_both_modes\nInvoking test: editor::embedded_html_reindent_menu_prepares_and_commits_once_in_both_modes\nInvoking test: editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes\nInvoking test: editor::cold_structural_navigation_prepares_context_and_rejects_superseded_actions_in_both_modes\nInvoking test: editor::cold_structural_commands_reject_superseded_requests_in_both_modes\n",
+      "output": "\nrunning 7 tests\ntest editor::parser_line_comments_share_modes_mixed_syntax_and_one_undo_step ... ok\ntest editor::parser_block_comments_share_modes_embedded_cursors_and_atomic_undo ... ok\ntest editor::large_markdown_worker_publications_color_all_paragraphs_in_both_modes ... ok\ntest editor::embedded_html_reindent_menu_prepares_and_commits_once_in_both_modes ... ok\ntest editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes ... ok\ntest editor::cold_structural_navigation_prepares_context_and_rejects_superseded_actions_in_both_modes ... ok\ntest editor::cold_structural_commands_reject_superseded_requests_in_both_modes ... ok\n\ntest result: ok. 7 passed; 0 failed; 0 ignored; 0 filtered out; finished in 2.86s\n\n",
+      "passed": true,
+      "tests": [
+        "__wbgt__components::editor::cold_structural_commands_reject_superseded_requests_in_both_modes",
+        "__wbgt__components::editor::cold_structural_navigation_prepares_context_and_rejects_superseded_actions_in_both_modes",
+        "__wbgt__components::editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes",
+        "__wbgt__components::editor::embedded_html_reindent_menu_prepares_and_commits_once_in_both_modes",
+        "__wbgt__components::editor::large_markdown_worker_publications_color_all_paragraphs_in_both_modes",
+        "__wbgt__components::editor::parser_block_comments_share_modes_embedded_cursors_and_atomic_undo",
+        "__wbgt__components::editor::parser_line_comments_share_modes_mixed_syntax_and_one_undo_step"
+      ],
+      "servedFonts": {},
+      "libraryStartSuppressed": false
+    },
+    "executedBindingsWasmSha256": "1f857cea21e15f56afb2dca851a2c49958dfb8caabbec6e8e750770fa41fc2d3",
+    "hostedVerification": "pending"
+  }
+}

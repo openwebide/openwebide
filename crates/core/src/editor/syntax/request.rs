@@ -88,12 +88,7 @@ impl SyntaxRequestPublication {
             return false;
         }
         let text = &self.source[self.selection.range()];
-        let end = text.floor_char_boundary(text.len().min(self.offset.saturating_add(budget)));
-        let escaped =
-            serde_json::to_string(&text[self.offset..end]).expect("source text is serializable");
-        self.message.push_str(&escaped[1..escaped.len() - 1]);
-        self.offset = end;
-        if end == text.len() {
+        if super::json::text(&mut self.message, text, &mut self.offset, budget) {
             self.message.push('"');
             if self.selection.replacement().is_some() {
                 self.message.push('}');

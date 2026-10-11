@@ -79,12 +79,14 @@ impl StructuralAction {
         }
         let mut syntax = actions.syntax_structure(|| true);
         if syntax.is_none() {
+            let clock = actions.input_clock.get_value();
             let (_, analysis) = crate::editor_worker::CooperativeClient::default()
-                .analyze_shared_while(
+                .analyze_shared_while_with_clock(
                     openwebide_core::highlight::language_from_path(&self.scope.key.1),
                     self.scope.source.clone(),
                     indentation.tab_width(),
                     current,
+                    || clock(),
                 )
                 .await
                 .map_err(|_| EditError::StructureUnavailable)?;

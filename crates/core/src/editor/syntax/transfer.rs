@@ -1,11 +1,13 @@
 //! Validated data crossing the worker boundary; parser allocations never cross it.
 mod publication;
+mod reply;
 use super::{super::structure::StructurePublication, SyntaxAnalysis};
 use crate::{
     editor::*,
     highlight::{Token, TokenKind},
 };
 pub(super) use publication::{SourcePublication, SourceSelection};
+pub(super) use reply::ReplyPublication;
 use std::sync::Arc;
 
 pub const MAX_ANALYSIS_MESSAGE_BYTES: usize = 32 * 1024 * 1024;

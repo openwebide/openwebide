@@ -123,8 +123,11 @@ consecutive affected 58-test groups and an accepted-coverage unmount regression
 pass both project modes
 ([group](editor-performance/wrapped-unmount-group-browser.json),
 [repeat](editor-performance/wrapped-unmount-group-browser-repeat.json),
-[unmount](editor-performance/wrapped-unmount-browser.json)). Final integrated CI
-remains a completion gate as the remaining implementation ships.
+[unmount](editor-performance/wrapped-unmount-browser.json)). The later `c353f63c`
+checkpoint failed the cold-command cancellation browser test, which assumed
+preparation could not finish during its first 12 ms slice. That regression now
+uses the shared injectable clock; hosted verification of the correction is pending.
+Final integrated CI remains a completion gate as the remaining implementation ships.
 
 **Remaining implementation** (all items remain part of this editor goal):
 
@@ -229,7 +232,13 @@ remains a completion gate as the remaining implementation ships.
   and shared source ownership have contracts; navigation, comments and reindent
   are verified in both modes
   ([receipt](editor-performance/in-process-structure-browser.json)). Dedicated
-  worker payload decoding and publication still need bounded work.
+  worker reply JSON encoding now yields between 8 KiB source-string and 64-record
+  batches, including nested structure lists and token rows. Full and retained
+  publications match independent serde bytes, and cancellation discards private
+  partial output ([receipt](editor-performance/cooperative-reply-browser.json)).
+  Metadata materialization, output-buffer growth, full-fallback source copies,
+  JavaScript string conversion and complete receiver decoding/publication still
+  need bounded work and production latency/memory measurements.
   Bound folded/bounded projection assembly, row/coordinate copies, changed guide
   copies, storage suffix byte/coordinate shifts and long-row admission scans.
   Revisit measured storage candidates using actual viewport/worker access patterns,
@@ -264,7 +273,7 @@ remains a completion gate as the remaining implementation ships.
   matrices and every other UI partition. Repeat warm highlight/row reuse,
   file-switch cancellation, cold queued-input source/selection ownership,
   host-plugin focus/layout and explicit Output/terminal targeting. Validate bounded
-  setup retries after upstream Chrome download failures. Latest checkpoint
+  setup retries after upstream Chrome download failures. Latest verified checkpoint
   `e4508a17` passes all five hosted jobs on integrated editor/plugin source
   ([receipt](editor-performance/editor-ci-e450-success.json)), with the historical
   probe-cleanup/navigation failures corrected. Repeat this gate for the final

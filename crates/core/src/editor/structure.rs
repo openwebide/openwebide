@@ -9,6 +9,10 @@ mod ordering;
 #[cfg(feature = "editor-parser")]
 mod reconciliation;
 pub(super) mod scanning;
+#[cfg(feature = "editor-parser")]
+mod serialization;
+#[cfg(feature = "editor-parser")]
+pub(super) use serialization::StructureSerialization;
 
 use crate::highlight::Language;
 

@@ -86,6 +86,10 @@ struct SyntaxTask {
     publication: Option<super::transfer::SourcePublication>,
     prepared: Option<(SyntaxStatus, Option<std::sync::Arc<super::SyntaxAnalysis>>)>,
     reply_source: Option<SyntaxSource>,
+    encoding: Option<super::transfer::ReplyPublication>,
+    ready_reply: Option<(SyntaxStatus, Option<std::sync::Arc<super::SyntaxAnalysis>>)>,
+    encoded_reply: Option<(String, bool)>,
+    full_retry: bool,
 }
 enum Start {
     Task(Box<SyntaxTask>),
@@ -161,11 +165,57 @@ impl SyntaxPreparations<String> {
             publication: None,
             prepared: None,
             reply_source: None,
+            encoding: None,
+            ready_reply: None,
+            encoded_reply: None,
+            full_retry: false,
         })))
     }
 }
 impl SyntaxTask {
     fn advance(
+        &mut self,
+        should_continue: &mut impl FnMut() -> bool,
+        should_yield: &mut impl FnMut() -> bool,
+    ) -> Option<(SyntaxStatus, Option<std::sync::Arc<super::SyntaxAnalysis>>)> {
+        if self.ready_reply.is_none() {
+            let result = self.advance_analysis(should_continue, should_yield)?;
+            let data = shape_reply_data(
+                self.ticket,
+                result.0,
+                result.1.as_ref(),
+                self.previous.as_ref(),
+                self.reply_source.take(),
+            );
+            self.encoding = Some(super::transfer::ReplyPublication::new(data));
+            self.ready_reply = Some(result);
+        }
+        loop {
+            if !should_continue() {
+                return Some((SyntaxStatus::Cancelled, None));
+            }
+            if should_yield() {
+                return None;
+            }
+            if !self.encoding.as_mut()?.advance(1) {
+                continue;
+            }
+            if let Some(encoded) = self.encoding.take()?.finish() {
+                self.encoded_reply = Some(encoded);
+                return self.ready_reply.take();
+            }
+            // Preserve the wire's single full-publication retry after overflow.
+            if self.full_retry {
+                return self.ready_reply.take();
+            }
+            self.full_retry = true;
+            let result = self.ready_reply.as_ref()?;
+            let data = shape_reply_data(self.ticket, result.0, result.1.as_ref(), None, None);
+            self.encoding = Some(super::transfer::ReplyPublication::new(data));
+        }
+    }
+
+    fn advance_analysis(
         &mut self,
         should_continue: &mut impl FnMut() -> bool,
         should_yield: &mut impl FnMut() -> bool,
@@ -245,13 +295,11 @@ impl SyntaxTask {
         result: (SyntaxStatus, Option<std::sync::Arc<super::SyntaxAnalysis>>),
     ) -> Option<String> {
         let (status, prepared) = result;
-        let (message, published) = shape_reply(
-            self.ticket,
-            status,
-            prepared.as_ref(),
-            self.previous.as_ref(),
-            self.reply_source.take(),
-        )?;
+        let (message, published) = match self.encoded_reply.take() {
+            Some(encoded) => encoded,
+            None if prepared.is_none() => (control_reply(self.ticket, status)?, false),
+            None => return None,
+        };
         if let Some(prepared) = prepared {
             if published {
                 self.document.publication = Some((self.ticket, prepared));
@@ -261,13 +309,13 @@ impl SyntaxTask {
         Some(message)
     }
 }
-fn shape_reply(
+fn shape_reply_data(
     ticket: u32,
     mut status: SyntaxStatus,
     prepared: Option<&std::sync::Arc<super::SyntaxAnalysis>>,
     previous: Option<&(u32, std::sync::Arc<super::SyntaxAnalysis>)>,
     source: Option<SyntaxSource>,
-) -> Option<(String, bool)> {
+) -> SyntaxReply {
     let analysis = prepared.and_then(|value| {
         let previous = previous.map(|(ticket, analysis)| (*ticket, analysis.as_ref()));
         source
@@ -280,25 +328,12 @@ fn shape_reply(
     if matches!(status, SyntaxStatus::Ready { .. }) && analysis.is_none() {
         status = SyntaxStatus::TooLarge;
     }
-    let mut reply = SyntaxReply {
+    SyntaxReply {
         version: SYNTAX_PROTOCOL_VERSION,
         ticket,
         status,
         analysis,
-    };
-    let mut message = serde_json::to_string(&reply).ok()?;
-    if message.len() > MAX_ANALYSIS_MESSAGE_BYTES {
-        reply.analysis = prepared?.transfer_data();
-        if reply.analysis.is_none() {
-            reply.status = SyntaxStatus::TooLarge;
-        }
-        message = serde_json::to_string(&reply).ok()?;
-        if message.len() > MAX_ANALYSIS_MESSAGE_BYTES {
-            return None;
-        }
     }
-
-    Some((message, reply.analysis.is_some()))
 }
 
 /// Bounded message admission and parser continuation shared above the worker runtime.
@@ -470,6 +505,50 @@ impl SyntaxReply {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cancellation_during_reply_encoding_never_publishes_partial_analysis() {
+        let mut service = SyntaxPreparations::default();
+        let source = "fn main() { let value = 1; }\n".repeat(64);
+        let other = serde_json::to_string(&SyntaxRequest::new(
+            40,
+            "other".into(),
+            Language::Rust,
+            &source,
+            4,
+            None,
+        ))
+        .unwrap();
+        assert!(service.handle_message(&other, || true).is_some());
+        let request = SyntaxRequest::new(43, "owner".into(), Language::Rust, &source, 4, None);
+        let Start::Task(mut task) = service.begin_request(request, &mut || true).unwrap() else {
+            panic!("valid source must create a task");
+        };
+        let result = task.advance_analysis(&mut || true, &mut || false).unwrap();
+        assert!(result.1.is_some());
+        let data = shape_reply_data(
+            task.ticket,
+            result.0,
+            result.1.as_ref(),
+            task.previous.as_ref(),
+            task.reply_source.take(),
+        );
+        task.encoding = Some(super::super::transfer::ReplyPublication::new(data));
+        task.ready_reply = Some(result);
+        assert!(!task.encoding.as_mut().unwrap().advance(1));
+        assert!(task.encoded_reply.is_none());
+        let result = task.advance(&mut || false, &mut || false).unwrap();
+        assert_eq!(result.0, SyntaxStatus::Cancelled);
+        assert!(result.1.is_none());
+        let message = task.finish(&mut service, result).unwrap();
+        assert_eq!(
+            SyntaxReply::receive(&message, 43, &source).unwrap().0,
+            SyntaxStatus::Cancelled
+        );
+        assert!(service.previous_publication(&"owner".to_owned()).is_none());
+        assert!(service.previous_publication(&"other".to_owned()).is_some());
+        assert_eq!(service.len(), 1);
+    }
 
     #[test]
     fn reply_routing_is_bounded_and_does_not_replace_validation() {
