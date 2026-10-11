@@ -231,18 +231,33 @@ async fn host_inspection_is_closed_by_default_and_only_polls_while_open() {
 #[wasm_bindgen_test]
 async fn phone_host_flyout_retains_a_visible_touch_target_and_icon() {
     let mounted = mount_test(move |state| {
-        provide_context(HostState::new(state.api, state.auth, state.chat, state.projects));
+        provide_context(HostState::new(
+            state.api,
+            state.auth,
+            state.chat,
+            state.projects,
+        ));
         view! {
             <style>{include_str!("../../styles.css")}</style>
             <div class="phone-layout" style="width: 360px;"><div class="tui-statusline"><HostPanel /></div></div>
         }
     });
     settle().await;
-    let button = mounted.element("button[aria-label='Host environment']").get_bounding_client_rect();
-    let icon = mounted.element(".tui-host-status .ui-icon-glyph").get_bounding_client_rect();
+    let button = mounted
+        .element("button[aria-label='Host environment']")
+        .get_bounding_client_rect();
+    let icon = mounted
+        .element(".tui-host-status .ui-icon-glyph")
+        .get_bounding_client_rect();
     assert!(button.height() >= 44.0);
     assert!(icon.width() > 0.0 && icon.height() > 0.0);
     mounted.click("button[aria-label='Host environment']");
     settle().await;
-    assert!(mounted.root.query_selector(".host-panel").unwrap().is_some());
+    assert!(
+        mounted
+            .root
+            .query_selector(".host-panel")
+            .unwrap()
+            .is_some()
+    );
 }
