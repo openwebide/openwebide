@@ -9,6 +9,8 @@ for what's still ahead.
 
 ## [Unreleased]
 
+- Require and serve shipped Monaspace fonts in the standalone editor component browser harness, and report served-font hashes so ordinary geometry checks cannot silently use missing assets.
+
 - Validate prepared offline plugin manifests against their pinned source instead of a hard-coded version in CI.
 
 - Use complete current document indexes to prepare neutral editor paint without allocating redundant plain-token rows; preserve bounded cold paint and cooperative fallback when geometry or a current index is unavailable. Keep current bounded native input through empty layout waits, and restore complete native fallback when geometry preparation fails.
