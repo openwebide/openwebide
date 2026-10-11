@@ -200,32 +200,39 @@ impl Structure {
         self.source.get(position..)?.chars().next()
     }
 
+    /// Parsed scopes are ordered and nonoverlapping. Inclusive insertion queries
+    /// select the first touching scope; bracket ancestry uses exclusive ends.
+    fn language_scope_at(&self, position: usize, inclusive_end: bool) -> Option<usize> {
+        let index = self.scopes.partition_point(|(range, _)| {
+            if inclusive_end {
+                range.end < position
+            } else {
+                range.end <= position
+            }
+        });
+        self.scopes
+            .get(index)
+            .filter(|(range, _)| range.start <= position)
+            .map(|_| index)
+    }
+
     /// The language of an insertion, including the end of an embedded body.
     pub fn language_at(&self, position: usize) -> Language {
-        self.scopes
-            .iter()
-            .find(|(range, _)| range.start <= position && position <= range.end)
-            .map_or(self.language, |(_, language)| *language)
+        self.language_scope_at(position, true)
+            .map_or(self.language, |index| self.scopes[index].1)
     }
 
     /// Separate embedded bodies cannot share indentation or bracket ancestry,
     /// even when both use the same language.
     pub fn same_language_body(&self, first: usize, second: usize) -> bool {
-        let body = |position| {
-            self.scopes
-                .iter()
-                .position(|(range, _)| range.contains(&position))
-        };
-        body(first) == body(second)
+        self.language_scope_at(first, false) == self.language_scope_at(second, false)
     }
 
     /// The bounds of the embedded language containing a caret. Root-language
     /// commands retain the document bounds.
     pub fn language_body(&self, position: usize) -> Range<usize> {
-        self.scopes
-            .iter()
-            .find(|(range, _)| range.start <= position && position <= range.end)
-            .map_or(0..self.source.len(), |(range, _)| range.clone())
+        self.language_scope_at(position, true)
+            .map_or(0..self.source.len(), |index| self.scopes[index].0.clone())
     }
 
     #[cfg(feature = "editor-parser")]
@@ -736,6 +743,127 @@ pub fn closing(ch: char) -> Option<char> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn indexed_language_queries_match_linear_touching_and_empty_scope_boundaries() {
+        for count in [0, 1, 32, 10_000] {
+            let mut structure = Structure::new(&"x".repeat(count * 8 + 4), Language::Rust);
+            for index in 0..count {
+                let start = index * 8;
+                structure.scopes.extend([
+                    (start..start + 3, Language::JavaScript),
+                    (start + 3..start + 3, Language::Css),
+                    (start + 3..start + 8, Language::Markdown),
+                ]);
+            }
+            let positions: Vec<_> = if count < 100 {
+                (0..=count * 8 + 4).chain([usize::MAX]).collect()
+            } else {
+                (0..512)
+                    .flat_map(|sample| {
+                        let start = (sample * 619 % count) * 8;
+                        [start, start + 1, start + 3, start + 4, start + 7, start + 8]
+                    })
+                    .chain([usize::MAX, count * 8 + 4])
+                    .collect()
+            };
+            for position in positions {
+                let old = structure
+                    .scopes
+                    .iter()
+                    .find(|(range, _)| range.start <= position && position <= range.end);
+                assert_eq!(
+                    structure.language_at(position),
+                    old.map_or(structure.language, |(_, language)| *language)
+                );
+                assert_eq!(
+                    structure.language_body(position),
+                    old.map_or(0..structure.source.len(), |(range, _)| range.clone())
+                );
+                let other = position.wrapping_mul(17) % structure.source.len();
+                let old_body = |point| {
+                    structure
+                        .scopes
+                        .iter()
+                        .position(|(range, _)| range.contains(&point))
+                };
+                assert_eq!(
+                    structure.same_language_body(position, other),
+                    old_body(position) == old_body(other)
+                );
+            }
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    #[ignore = "native release measurement, not a timing assertion"]
+    fn measure_indexed_language_queries() {
+        let mut structure = Structure::new(&"x".repeat(80_000), Language::Rust);
+        for index in 0..10_000 {
+            let start = index * 8;
+            structure.scopes.extend([
+                (start..start + 3, Language::JavaScript),
+                (start + 3..start + 3, Language::Css),
+                (start + 3..start + 8, Language::Markdown),
+            ]);
+        }
+        let positions: Vec<usize> = (0..1024).map(|sample| sample * 619 % 80_000).collect();
+        let queries = |indexed| {
+            positions
+                .iter()
+                .map(|&position| {
+                    let other = position.wrapping_mul(17) % structure.source.len();
+                    if indexed {
+                        (
+                            structure.language_at(position),
+                            structure.language_body(position),
+                            structure.same_language_body(position, other),
+                        )
+                    } else {
+                        let old = structure
+                            .scopes
+                            .iter()
+                            .find(|(range, _)| range.start <= position && position <= range.end);
+                        let body = |point| {
+                            structure
+                                .scopes
+                                .iter()
+                                .position(|(range, _)| range.contains(&point))
+                        };
+                        (
+                            old.map_or(structure.language, |(_, language)| *language),
+                            old.map_or(0..structure.source.len(), |(range, _)| range.clone()),
+                            body(position) == body(other),
+                        )
+                    }
+                })
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(queries(false), queries(true));
+        let mut old = Vec::new();
+        let mut indexed = Vec::new();
+        for iteration in 0..20 {
+            for new in if iteration % 2 == 0 {
+                [false, true]
+            } else {
+                [true, false]
+            } {
+                let start = std::time::Instant::now();
+                std::hint::black_box(queries(std::hint::black_box(new)));
+                let micros = start.elapsed().as_secs_f64() * 1_000_000.0;
+                if new {
+                    indexed.push(micros);
+                } else {
+                    old.push(micros);
+                }
+            }
+        }
+        println!(
+            "{}",
+            serde_json::json!({"scope":"Native language/body queries only; excludes parsing, transfer, browser input and paint", "scopes":structure.scopes.len(), "queriesPerSample":positions.len(), "interleavedSamples":20, "linearMicroseconds":old, "indexedMicroseconds":indexed})
+        );
+    }
+
     #[cfg(feature = "editor-parser")]
     #[test]
     fn metadata_batches_match_independent_sort_dedup_and_lexical_bracket_oracles() {

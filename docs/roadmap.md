@@ -115,9 +115,9 @@ the partition fix passes all five jobs
 ([receipts](editor-performance/editor-ci-d26-success.json),
 [receipt](editor-performance/editor-ci-f251-success.json)).
 
-Latest verified integrated checkpoint `e4508a17` passes all five hosted jobs, including the full
+Latest verified integrated checkpoint `97d1e424` passes all five hosted jobs, including the full
 browser partition on combined editor/plugin source
-([receipt](editor-performance/editor-ci-e450-success.json)). Post-frame owner
+([receipt](editor-performance/editor-ci-97-success.json)). Post-frame owner
 cancellation now releases wrapped probes before accessing disposed state; two
 consecutive affected 58-test groups and an accepted-coverage unmount regression
 pass both project modes
@@ -126,8 +126,11 @@ pass both project modes
 [unmount](editor-performance/wrapped-unmount-browser.json)). The later `c353f63c`
 checkpoint failed the cold-command cancellation browser test, which assumed
 preparation could not finish during its first 12 ms slice. That regression now
-uses the shared injectable clock; hosted verification of the correction is pending.
-Final integrated CI remains a completion gate as the remaining implementation ships.
+uses the shared injectable clock, and `97d1e424` verifies its correction. The later
+`307bc045` and `d2238505` checkpoints failed the dense-row browser contract because metadata
+prepared only one token row per unit. Small rows now share the existing 64-record/
+8 KiB budget; the 2,000-batch bound is unchanged. Hosted verification of this
+correction is pending. Final integrated CI remains a completion gate.
 
 **Remaining implementation** (all items remain part of this editor goal):
 
@@ -248,6 +251,13 @@ Final integrated CI remains a completion gate as the remaining implementation sh
   uses 64-record batches. Independent original-algorithm byte comparisons and
   exact record-limit/cancellation contracts pass
   ([receipt](editor-performance/cooperative-metadata-browser.json)).
+  Receiver bracket/language/body queries now use indexed ordered scopes, preserving
+  touching and empty-scope boundaries. Fold validation reuses the shared ordered
+  validator instead of cloning and sorting. Dense token metadata shares one
+  record/text budget across small rows, preserving the existing browser batch bound
+  ([receipt](editor-performance/indexed-scopes-browser.json)). Native query-only
+  measurements compare against the original linear oracle; browser-wide latency
+  and receive reconstruction remain unfinished.
   Capacity growth, JavaScript string conversion and complete receiver
   decoding/publication still need bounded work and production latency/memory
   measurements. No end-to-end latency or memory gain is established here.
@@ -286,8 +296,8 @@ Final integrated CI remains a completion gate as the remaining implementation sh
   file-switch cancellation, cold queued-input source/selection ownership,
   host-plugin focus/layout and explicit Output/terminal targeting. Validate bounded
   setup retries after upstream Chrome download failures. Latest verified checkpoint
-  `e4508a17` passes all five hosted jobs on integrated editor/plugin source
-  ([receipt](editor-performance/editor-ci-e450-success.json)), with the historical
+  `97d1e424` passes all five hosted jobs on integrated editor/plugin source
+  ([receipt](editor-performance/editor-ci-97-success.json)), with the historical
   probe-cleanup/navigation failures corrected. Repeat this gate for the final
   integrated editor implementation before closing.
 

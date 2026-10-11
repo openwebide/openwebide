@@ -21,6 +21,8 @@ impl Row {
         index: usize,
         lines: &TokenRows,
         previous: Option<&TokenRows>,
+        tokens: &mut usize,
+        bytes: &mut usize,
     ) -> Option<TokenRowData> {
         let line = &lines[index];
         let shifted = previous.and_then(|old| {
@@ -31,9 +33,7 @@ impl Row {
             }
         });
         let candidates = [Some(index), shifted];
-        let mut tokens = 64;
-        let mut bytes = 8192;
-        while self.candidate < 2 && tokens > 0 && bytes > 0 {
+        while self.candidate < 2 && *tokens > 0 && *bytes > 0 {
             let reuse = candidates[self.candidate];
             let old = reuse.and_then(|reuse| previous?.get(reuse));
             if let Some(old) = old.filter(|old| old.len() == line.len()) {
@@ -46,16 +46,16 @@ impl Row {
                 let current = &line[self.token];
                 let earlier = &old[self.token];
                 if current.kind == earlier.kind && current.text.len() == earlier.text.len() {
-                    let end = self.byte.saturating_add(bytes).min(current.text.len());
+                    let end = self.byte.saturating_add(*bytes).min(current.text.len());
                     if current.text.as_bytes()[self.byte..end]
                         == earlier.text.as_bytes()[self.byte..end]
                     {
-                        bytes -= end - self.byte;
+                        *bytes -= end - self.byte;
                         self.byte = end;
                         if end == current.text.len() {
                             self.token += 1;
                             self.byte = 0;
-                            tokens -= 1;
+                            *tokens -= 1;
                         }
                         continue;
                     }
@@ -64,17 +64,17 @@ impl Row {
             self.candidate += 1;
             self.token = 0;
             self.byte = 0;
-            tokens -= 1;
+            *tokens -= 1;
         }
         if self.candidate < 2 {
             return None;
         }
-        while self.token < line.len() && tokens > 0 {
+        while self.token < line.len() && *tokens > 0 {
             let token = &line[self.token];
             self.end += token.text.len();
             self.spans.push((self.end, token.kind));
             self.token += 1;
-            tokens -= 1;
+            *tokens -= 1;
         }
         (self.token == line.len()).then(|| TokenRowData::Spans(std::mem::take(&mut self.spans)))
     }
@@ -207,35 +207,42 @@ impl AnalysisTransferPreparation {
                 self.phase = 4;
             }
             _ => {
-                if let Some(lines) = &current.highlights
-                    && self.row < lines.len()
-                {
-                    let Some(data) = self.row_work.advance(
-                        self.row,
-                        lines,
-                        old.and_then(|value| value.highlights.as_deref()),
-                    ) else {
-                        return false;
-                    };
-                    self.highlight_records = self.highlight_records.saturating_add(data.records());
-                    if let TokenRowData::Previous { reuse, count } = data {
-                        self.reused = true;
-                        match self.highlights.last_mut() {
-                            Some(TokenRowData::Previous {
-                                reuse: start,
-                                count: existing,
-                            }) if start.checked_add(*existing) == Some(reuse) => {
-                                *existing += count;
+                if let Some(lines) = &current.highlights {
+                    let mut records = 64;
+                    let mut bytes = 8192;
+                    while self.row < lines.len() && records > 0 && bytes > 0 {
+                        records -= 1; // Charge row headers, including empty rows.
+
+                        let Some(data) = self.row_work.advance(
+                            self.row,
+                            lines,
+                            old.and_then(|value| value.highlights.as_deref()),
+                            &mut records,
+                            &mut bytes,
+                        ) else {
+                            return false;
+                        };
+                        self.highlight_records =
+                            self.highlight_records.saturating_add(data.records());
+                        if let TokenRowData::Previous { reuse, count } = data {
+                            self.reused = true;
+                            match self.highlights.last_mut() {
+                                Some(TokenRowData::Previous {
+                                    reuse: start,
+                                    count: existing,
+                                }) if start.checked_add(*existing) == Some(reuse) => {
+                                    *existing += count;
+                                }
+                                _ => self
+                                    .highlights
+                                    .push(TokenRowData::Previous { reuse, count }),
                             }
-                            _ => self
-                                .highlights
-                                .push(TokenRowData::Previous { reuse, count }),
+                        } else {
+                            self.highlights.push(data);
                         }
-                    } else {
-                        self.highlights.push(data);
+                        self.row += 1;
+                        self.row_work = Row::default();
                     }
-                    self.row += 1;
-                    self.row_work = Row::default();
                     if self.row < lines.len() {
                         return false;
                     }

@@ -1,0 +1,112 @@
+{
+  "scope": "Index immutable ordered embedded scopes for receiver bracket validation and editor language/body queries; avoid receiver fold clone/sort; share metadata row/token/text budgets across small rows. Complete JSON decode/reconstruction and browser-wide latency remain unfinished.",
+  "sourceFilesSha256": {
+    "crates/core/src/editor/structure.rs": "9c0ec47693dde4d0b0998c9153ee3c360c358dc0919b6587d73ae580e25f3291",
+    "crates/core/src/editor/syntax/service.rs": "03c3168f56c01feb11e9154fbda1c812d5ffdfc9b2c8940dff67c12145aad72a",
+    "crates/core/src/editor/syntax/transfer.rs": "0bb2ea24dac5483145cc5dc4d4637b75f97c664cdb3c492d6579d4b62cbbd6aa",
+    "crates/core/src/editor/syntax/transfer/preparation.rs": "cf618f0eec771999e70e04c938167213a39451c10fe049968085097b62b04a3a"
+  },
+  "executedBindingsWasmSha256": "c8388e46b4c556da6e2d6aa7add17c74851a457996fafb217bc27896c566e5b4",
+  "coreTests": {
+    "features": [
+      "editor-parser"
+    ],
+    "passed": 692,
+    "failed": 0,
+    "ignored": 1,
+    "ignoredPurpose": "Native release-only query measurement, explicitly run separately"
+  },
+  "browserContracts": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "console": "Invoking test: editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes\nInvoking test: editor::parser_selection_and_navigation_share_modes_and_reject_old_file_events\nInvoking test: editor::parsed_typing_contexts_share_modes_mixed_cursors_and_stale_guards\nInvoking test: editor::many_embedded_code_bodies_publish_complete_scopes_and_warm_edits_in_both_modes\nInvoking test: editor::html_embedded_folds_share_workspace_modes_and_discard_stale_bodies\nInvoking test: editor::cooperative_worker_row_index_preserves_dense_rows_in_both_modes\nInvoking test: editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes\n",
+    "output": "\nrunning 7 tests\ntest editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes ... ok\ntest editor::parser_selection_and_navigation_share_modes_and_reject_old_file_events ... ok\ntest editor::parsed_typing_contexts_share_modes_mixed_cursors_and_stale_guards ... ok\ntest editor::many_embedded_code_bodies_publish_complete_scopes_and_warm_edits_in_both_modes ... ok\ntest editor::html_embedded_folds_share_workspace_modes_and_discard_stale_bodies ... ok\ntest editor::cooperative_worker_row_index_preserves_dense_rows_in_both_modes ... ok\ntest editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes ... ok\n\ntest result: ok. 7 passed; 0 failed; 0 ignored; 0 filtered out; finished in 3.37s\n\n",
+    "passed": true,
+    "tests": [
+      "__wbgt__components::editor::cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_modes",
+      "__wbgt__components::editor::cooperative_worker_row_index_preserves_dense_rows_in_both_modes",
+      "__wbgt__components::editor::html_embedded_folds_share_workspace_modes_and_discard_stale_bodies",
+      "__wbgt__components::editor::many_embedded_code_bodies_publish_complete_scopes_and_warm_edits_in_both_modes",
+      "__wbgt__components::editor::parsed_typing_contexts_share_modes_mixed_cursors_and_stale_guards",
+      "__wbgt__components::editor::parser_selection_and_navigation_share_modes_and_reject_old_file_events",
+      "__wbgt__components::editor::worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes"
+    ],
+    "servedFonts": {},
+    "libraryStartSuppressed": false
+  },
+  "nativeQueryMeasurement": {
+    "indexedMicroseconds": [
+      159.125,
+      175.208,
+      144.375,
+      142.542,
+      147.91699999999997,
+      149.667,
+      155.083,
+      154.959,
+      163.5,
+      154.583,
+      165.667,
+      167.834,
+      176.125,
+      158.542,
+      165.708,
+      167.958,
+      147.584,
+      143.0,
+      160.041,
+      160.417
+    ],
+    "interleavedSamples": 20,
+    "linearMicroseconds": [
+      15369.0,
+      15364.25,
+      15479.708,
+      15405.375,
+      15088.459,
+      15715.875,
+      15169.584,
+      15085.708999999999,
+      14674.0,
+      15233.208,
+      14770.833,
+      15872.041,
+      15556.125,
+      16089.958,
+      15949.332999999999,
+      15102.75,
+      15419.417,
+      14290.209,
+      16573.917,
+      15475.791
+    ],
+    "queriesPerSample": 1024,
+    "scope": "Native language/body queries only; excludes parsing, transfer, browser input and paint",
+    "scopes": 30000
+  },
+  "contracts": [
+    "Indexed insertion-language/body queries preserve the first touching scope and empty ranges; exclusive bracket ancestry preserves original range.contains behavior, checked against independent linear oracles",
+    "Fold receiver validation reuses the existing ordered validator, whose exhaustive tests compare against normalize_folds sorting semantics",
+    "Dense cold/warm LF/CRLF publication retains the existing 2000-batch bound in native and both-mode browser contracts; the shared 64-record/8192-byte budget is never multiplied by the number of rows",
+    "Original metadata full/delta byte oracle, cancellation and record limits remain in the passing core suite"
+  ],
+  "hostedRegression": {
+    "failedRuns": [
+      38157600786,
+      38159201442
+    ],
+    "failure": "cooperative_worker_row_index_preserves_dense_rows_in_both_modes exceeded batches < 2000 because metadata prepared only one row per unit",
+    "correction": "Multiple small rows consume the same mutable row/token/byte budget per unit; unchanged frontend bound and deadlines",
+    "hostedVerification": "pending"
+  },
+  "strictLint": [
+    "core --features editor-parser --all-targets",
+    "release WASM frontend --features test-support --all-targets"
+  ],
+  "sharedImplementation": "Structure ordered-scope queries and core fold validation are shared by editing and receiver callers. AnalysisTransferPreparation retains one budget across Row preparation; SyntaxTask and both browser adapters use the same core policy.",
+  "remaining": [
+    "Complete receiver JSON decoding and token/structure reconstruction",
+    "Output capacity and JavaScript string conversion",
+    "Final integrated CI",
+    "Full physical input/memory and PWA verification"
+  ]
+}

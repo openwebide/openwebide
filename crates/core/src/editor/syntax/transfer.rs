@@ -378,7 +378,7 @@ impl SyntaxAnalysisData {
             .source
             .validate(expected_source, previous.map(|(_, analysis)| analysis))?;
         let line_count = source.split('\n').count();
-        if normalize_folds(self.folds.clone(), line_count) != self.folds {
+        if !super::super::folds::are_normalized(&self.folds, line_count) {
             return None;
         }
         let structure = match self.structure {

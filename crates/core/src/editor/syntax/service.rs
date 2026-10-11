@@ -645,6 +645,75 @@ mod tests {
     }
 
     #[test]
+    fn dense_row_publication_keeps_existing_cooperative_batch_bound() {
+        for ending in ["\n", "\r\n"] {
+            let source = format!("{}fn original() {{}}{ending}", ending.repeat(49_000));
+            let mut worker = SyntaxWorker::default();
+            let mut previous = None;
+            for (index, source) in [source.clone(), format!("// changed 文😀{ending}{source}")]
+                .into_iter()
+                .enumerate()
+            {
+                let ticket = u32::try_from(index + 1).unwrap();
+                let request = SyntaxRequest::new(
+                    ticket,
+                    "rows".into(),
+                    Language::Rust,
+                    &source,
+                    4,
+                    previous.as_ref().map(
+                        |(ticket, analysis): &(
+                            u32,
+                            std::sync::Arc<super::super::SyntaxAnalysis>,
+                        )| (*ticket, analysis.as_ref()),
+                    ),
+                );
+                assert!(
+                    worker
+                        .enqueue(&serde_json::to_string(&request).unwrap())
+                        .is_none()
+                );
+                let mut batches = 0;
+                let reply = loop {
+                    batches += 1;
+                    assert!(
+                        batches < 2000,
+                        "{ending:?}: revision {index}: {batches} batches"
+                    );
+                    let mut checks = 0;
+                    if let Some(reply) = worker.advance(
+                        || true,
+                        || {
+                            checks += 1;
+                            checks >= 4
+                        },
+                    ) {
+                        break reply;
+                    }
+                };
+                assert!(batches > 40);
+                let (status, analysis) = SyntaxReply::receive_reusing(
+                    &reply,
+                    ticket,
+                    &source,
+                    previous
+                        .as_ref()
+                        .map(|(ticket, analysis)| (*ticket, analysis.as_ref())),
+                )
+                .unwrap();
+                assert!(matches!(status, SyntaxStatus::Ready { .. }));
+                let analysis = analysis.unwrap();
+                assert_eq!(analysis.source(), source);
+                assert_eq!(
+                    analysis.highlights().unwrap().len(),
+                    source.split('\n').count()
+                );
+                previous = Some((ticket, analysis));
+            }
+        }
+    }
+
+    #[test]
     fn reply_routing_is_bounded_and_does_not_replace_validation() {
         for ticket in [0, 1, u32::MAX] {
             for status in [

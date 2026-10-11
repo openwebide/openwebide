@@ -8,6 +8,10 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Index embedded language/body lookups while preserving insertion and bracket-boundary behavior; reuse ordered fold validation without cloning and sorting receiver lists. Batch small token rows within the existing metadata budget so dense files retain their cooperative publication bound.
+
+- Verify the reply-encoding and cold-command cancellation checkpoint against all five hosted CI jobs; retain final integrated CI as an editor completion gate.
+
 - Analyze HTML and Markdown documents with more than 64 embedded code blocks using shared source, parser-work, aggregate AST-node and record budgets. Reuse parsers by language and unchanged bodies across edits; reject over-budget new or retained trees before publishing partial analysis.
 
 - Prepare worker reply source, fold, structure and token metadata in cancellable batches, including full-publication fallback. Preserve the existing record limits, structural patches and token-row reuse without copying complete lists in one pass.
