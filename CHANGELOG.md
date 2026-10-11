@@ -3,7 +3,7 @@
 All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-The first alpha is prepared as `1.0.0-alpha.5`. See
+The first alpha is published as `1.0.0-alpha.5`. See
 [docs/roadmap.md](docs/roadmap.md) for what is still ahead.
 
 ## [Unreleased]

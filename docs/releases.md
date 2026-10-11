@@ -1,13 +1,16 @@
 # Releases and upgrades
 
-Open WebIDE is preparing its first alpha (`1.0.0-alpha.5`). Registry installation files and the
-release workflow are prepared; published alpha/beta/RC builds can be distributed
-before stable `v1.0.0`. Download instructions become available when the first
-release or prerelease is published and its GHCR package is made public.
+[Alpha `1.0.0-alpha.5`](https://github.com/openwebide/openwebide/releases/tag/v1.0.0-alpha.5)
+is published with Linux amd64/arm64 images, Linux/macOS bridge archives and
+versioned installation assets. The rolling `alpha` image follows the same build;
+stable `latest` is unchanged. GHCR currently requires registry authentication.
+The package owner can enable anonymous pulls by making the container package
+public in [organization package settings](https://github.com/orgs/openwebide/packages).
+The remaining stable-release and installation checks are tracked on the roadmap.
 
 ## Install a published release
 
-After the first release is published, download `docker-compose.yml` from
+Download `docker-compose.yml` from
 [GitHub Releases](https://github.com/openwebide/openwebide/releases). It uses a
 versioned GHCR image and requires no checkout or Rust build. From a dedicated
 installation directory:
