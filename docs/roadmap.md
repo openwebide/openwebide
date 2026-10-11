@@ -396,7 +396,11 @@ tracks the remaining work rather than every optimization already shipped.
   Improvements must preserve source/account/project ownership,
   pending edits, themes, supported previews, agent context and both adapter contracts.
 - [ ] **Reliable CI and release/PWA checks:** pass the complete native/WASI/WASM,
-  platform, browser and release-app checks reliably. The embedded-comment
+  platform and release checks on the combined editor/plugin tree. The combined
+  debug browser run fails wrapped exact-row-cache readiness and cannot establish
+  completion ([record](editor-performance/editor-plugin-debug-failure.json));
+  optimized browser verification and hosted CI for `1bd0c30` remain pending.
+  The embedded-comment
   checkpoint `cc019c1` passed all five hosted jobs
   ([receipt](editor-performance/grouped-ci-cc019c1.json)). Selection-capability
   checkpoint `71997bc` passed all 184 editor browser tests locally and all five

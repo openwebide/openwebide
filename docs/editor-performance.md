@@ -6067,3 +6067,10 @@ Fresh compilation of all four selected defaults and both offline host contracts
 pass (2 tests, 72.37 s)
 ([receipt](editor-performance/plugin-bundle-ci-version.json)). Combined hosted
 CI remains pending.
+
+The combined debug component run does not pass
+([failure](editor-performance/editor-plugin-debug-failure.json)): its first
+56-test group times out after a wrapped exact-row-cache readiness failure. The
+377 MiB debug artifact emits 15 MiB of reactive warnings. This does not establish
+exclusive causation. Recheck the same contracts and deadlines with the optimized
+artifact used by CI; combined browser completion remains unproven.
