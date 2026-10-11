@@ -16,6 +16,7 @@ import socket
 import subprocess
 import tempfile
 import time
+import tomllib
 import urllib.error
 import urllib.request
 
@@ -86,6 +87,11 @@ class Runtime:
                 time.sleep(0.1)
         raise AssertionError("Isolated Spin did not become ready")
 
+    def acknowledge_release(self):
+        """Keep editor fixtures focused on the editor after account setup."""
+        version = tomllib.loads((ROOT / "Cargo.toml").read_text())["workspace"]["package"]["version"]
+        self.request("PUT", "/api/settings", {"key": "last_seen_release_version", "value": version})
+
     def stop(self):
         if self.process is not None:
             self.process.terminate()
@@ -147,6 +153,7 @@ def check(browser=False):
                 "username": "recovery-" + secrets.token_hex(8),
                 "password": secrets.token_urlsafe(32),
             }, expected=201)
+            runtime.acknowledge_release()
             records = []
             for mode in ("local", "remote"):
                 path = Path(files).relative_to(ROOT.parent.parent).as_posix() if mode == "remote" else "test-folder"

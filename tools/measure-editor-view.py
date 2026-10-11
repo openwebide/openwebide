@@ -198,6 +198,7 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
             runtime.request("POST", "/api/auth/register", {
                 "username": "measure-" + secrets.token_hex(8), "password": secrets.token_urlsafe(32),
             }, expected=201)
+            runtime.acknowledge_release()
             path = Path(folder).relative_to(ROOT.parent.parent).as_posix() if mode == "remote" else "measure-folder"
             project = runtime.request("POST", "/api/projects", {
                 "name": "View measurement", "mode": mode, "path": path,

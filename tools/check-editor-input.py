@@ -96,6 +96,7 @@ def check(mode, ending, windowed):
             runtime.request('POST', '/api/auth/register', {
                 'username': 'input-' + secrets.token_hex(8), 'password': secrets.token_urlsafe(32),
             }, expected=201)
+            runtime.acknowledge_release()
             path = Path(folder).relative_to(ROOT.parent.parent).as_posix() if mode == 'remote' else 'input-folder'
             project = runtime.request('POST', '/api/projects', {'name': 'Input verification', 'mode': mode, 'path': path}, expected=201)
             (Path(folder) / 'input.rs').write_bytes(source.encode())
