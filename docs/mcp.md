@@ -82,3 +82,26 @@ fields to the plugin manifest.
 
 Protocol reference: [modern versioning and compatibility](https://modelcontextprotocol.io/specification/2026-07-28/basic/versioning)
 and [legacy initialization](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle).
+
+## Deferred tool loading
+
+Large tool sets use the shared `tool_search` mechanism in both remote and paired-host
+runs. When optional schemas exceed 10% of a known model context limit, the agent
+initially sees a bounded list of names and a search tool instead of every full schema.
+Keyword search covers the whole authorized catalog, including names omitted from
+the initial list. File
+reading/writing, directory listing, workspace search and shell execution stay loaded.
+Small sets and models with unknown limits keep the original behavior.
+
+The agent can search names/descriptions with keywords or use `select:` followed by
+up to three exact names. Matching schemas become available on the next model turn;
+a call bundled into the same response as discovery cannot bypass that boundary.
+Older optional schemas rotate out when the active tool schemas exceed a quarter
+of the model context limit. A single selected schema remains subject to the normal
+context-budget checks. Search again for a tool that is no longer listed.
+
+Discovery only indexes the run's existing, granted tools. It does not start more
+servers, install plugins or grant permissions. MCP and plugin calls still pass
+through their ordinary approval checks. Each run, including delegated child runs,
+owns its loaded schemas; new or resumed runs rediscover tools from their current
+authorized catalog.

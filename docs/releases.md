@@ -2,7 +2,7 @@
 
 [Alpha `1.0.0-alpha.6`](https://github.com/openwebide/openwebide/releases/tag/v1.0.0-alpha.6)
 is published with Linux amd64/arm64 images, Linux/macOS bridge archives and
-versioned installation assets. Successful `main` builds update the rolling `alpha`
+versioned installation assets. Successful `main` builds update the rolling `nightly`
 image automatically; `preview` and `stable` are published from version tags. GHCR currently requires registry authentication.
 The package owner can enable anonymous pulls by making the container package
 public in [organization package settings](https://github.com/orgs/openwebide/packages).
@@ -32,7 +32,7 @@ Use [Tailscale HTTPS](tailscale.md) for access from other devices and local brow
 folder permissions. Release assets also include a standalone HTTPS Compose file
 and `serve-config.sh`, plus [Podman Quadlet units](podman-quadlet.md).
 
-The Quadlet assets track the release channel (`alpha`, `preview` or `stable`)
+The Quadlet assets track the release channel (`nightly`, `preview` or `stable`)
 and enable registry auto-updates; the Compose assets default to the specific version.
 See the automatic-update options below.
 
@@ -175,16 +175,16 @@ scheduler. Keep regular backups: automatic updates restart the app and apply
 database migrations. Use a versioned tag and disable the update timer when you
 want to control upgrade timing.
 
-## Alpha, preview and stable channels
+## Nightly, preview and stable channels
 
 | Source | Rolling image tag | Pinned image tag | GitHub Release |
 | --- | --- | --- | --- |
-| Successful `main` build | `alpha` | `sha-<full-commit-sha>` | None |
+| Successful `main` build | `nightly` | `sha-<full-commit-sha>` | None |
 | `v1.0.0-rc.1` tag | `preview` | `v1.0.0-rc.1` | Prerelease |
 | `v1.0.0` tag | `stable` | `v1.0.0` | Stable |
 
 Every push to `main` starts the Release workflow, including the shared CI checks
-and native amd64/arm64 image smoke tests. It publishes the tested image to `alpha`
+and native amd64/arm64 image smoke tests. It publishes the tested image to `nightly`
 and a commit-specific tag. New pushes supersede unfinished main builds. Failed
 checks leave the published channel unchanged. About displays the build commit;
 rolling builds retain the workspace version until a tagged release is prepared.
@@ -192,18 +192,19 @@ rolling builds retain the workspace version until a tagged release is prepared.
 Main builds publish container images, which include the server bridge. Tagged
 preview/stable releases also publish standalone Linux/macOS bridge archives,
 installation files and checksums. Existing numbered alpha releases remain pinned
-snapshots; future alpha updates need no version bump, changelog rollover or tag.
+snapshots; future nightly updates need no version bump, changelog rollover or tag.
 Preview never updates `stable` or GitHub's latest release. Publish version tags
 sequentially so an older release cannot finish later and replace a newer channel.
 
-For Compose, set `OPENWEBIDE_IMAGE=ghcr.io/openwebide/openwebide:alpha` in `.env`
+For Compose, set `OPENWEBIDE_IMAGE=ghcr.io/openwebide/openwebide:nightly` in `.env`
 to follow main, or use `:sha-<full-commit-sha>` to pin a build. For Podman, set the
 same image in `openwebide.image`; the auto-update timer follows the chosen channel.
 Downloaded Quadlet assets select `preview` or `stable`; Compose downloads pin
-the release version. Repository install files default to `stable`. There are no
-`latest`, `rc` or `beta` aliases. A channel exists after its first publication.
+the release version. Repository install files default to `stable`.
+Historical alpha Quadlet downloads need their image changed to `nightly` to follow
+main. There are no `alpha`, `latest`, `rc` or `beta` aliases. A channel exists after its first publication.
 
-Rolling alpha publication does not complete the stable 1.0 release gates.
+Rolling nightly publication does not complete the stable 1.0 release gates.
 
 ## Troubleshooting
 
@@ -239,7 +240,7 @@ release snapshots.
 3. Set the same version in `Cargo.toml` and `spin.toml`, update `Cargo.lock`, and
    move shipped changelog entries into its versioned section, leaving Unreleased
    for subsequent work. Use `MAJOR.MINOR.PATCH-rc.N` for preview (numeric `N`, no
-   leading zeros), or `MAJOR.MINOR.PATCH` for stable. Rolling alpha only needs a
+   leading zeros), or `MAJOR.MINOR.PATCH` for stable. Rolling nightly only needs a
    push to `main`; keep its changes under Unreleased. Update the README/site/guide to describe the actual
    release status. Run `python3 tools/release.py validate --tag v<version>`.
 4. Commit the reviewed release changes and push the corresponding `v<version>` tag.

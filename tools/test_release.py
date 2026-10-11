@@ -53,7 +53,7 @@ class ReleaseTests(unittest.TestCase):
             self.set_version(value)
             with self.subTest(channel=channel):
                 self.assertEqual(release.validate(self.root, f'v{value}'), (value, '- Shipped.\n'))
-                self.assertEqual(release.release_channel(value), 'preview' if channel == 'rc' else channel)
+                self.assertEqual(release.release_channel(value), 'preview' if channel == 'rc' else 'nightly')
                 self.assertEqual(release.github_outputs(value), f'version={value}\nchannel={release.release_channel(value)}\nprerelease=true\n')
             self.set_version('1.0.0', previous=value)
 
@@ -94,7 +94,7 @@ class ReleaseTests(unittest.TestCase):
     def test_publish_commands_do_not_promote_prereleases_to_latest(self):
         workflow = (release.ROOT / '.github/workflows/release.yml').read_text()
         publish = workflow.split('      - name: Publish multi-architecture image and release\n', 1)[1]
-        script = textwrap.dedent(publish.split('        run: |\n', 1)[1].split('\n  publish-alpha:', 1)[0])
+        script = textwrap.dedent(publish.split('        run: |\n', 1)[1].split('\n  publish-nightly:', 1)[0])
         bin_dir = self.root / 'bin'
         bin_dir.mkdir()
         log = self.root / 'commands.jsonl'
@@ -174,8 +174,8 @@ with open(os.environ['COMMAND_LOG'], 'a') as stream:
                 else:
                     self.assertNotIn('publish=true', output.read_text())
 
-    def test_rolling_alpha_promotes_only_complete_platform_manifests(self):
-        script = workflow_script('Publish rolling alpha image')
+    def test_rolling_nightly_promotes_only_complete_platform_manifests(self):
+        script = workflow_script('Publish rolling nightly image')
         bin_dir = self.root / 'bin'
         bin_dir.mkdir()
         log = self.root / 'commands.jsonl'
@@ -196,7 +196,7 @@ with open(os.environ['COMMAND_LOG'], 'a') as stream:
         calls = [json.loads(line) for line in log.read_text().splitlines()]
         writes = [call[call.index('--tag') + 1] for call in calls if '--tag' in call]
         image = env['IMAGE']
-        self.assertEqual(writes, [f"{image}:sha-{env['BUILD_COMMIT']}", f'{image}:alpha'])
+        self.assertEqual(writes, [f"{image}:sha-{env['BUILD_COMMIT']}", f'{image}:nightly'])
         self.assertEqual(calls[-1][-1], writes[0])
         self.assertEqual(calls[0][-2:], [f'{image}@sha256:' + 'a' * 64, f'{image}@sha256:' + 'b' * 64])
 

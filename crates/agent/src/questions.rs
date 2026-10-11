@@ -82,6 +82,9 @@ pub async fn ask<S: QuestionStore>(store: &S, anchor: i64, call: &ToolCall) -> T
     }
 }
 impl<E: ToolExecutor + Sync, S: QuestionStore> ToolExecutor for QuestionTools<E, S> {
+    fn reserve_tool_call(&self) -> Result<(), String> {
+        self.executor.reserve_tool_call()
+    }
     fn has_context(&self) -> bool {
         self.executor.has_context()
     }

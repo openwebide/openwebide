@@ -347,6 +347,9 @@ impl<E, T> McpTools<E, T> {
     }
 }
 impl<E: crate::ToolExecutor + Sync, T: Transport> crate::ToolExecutor for McpTools<E, T> {
+    fn reserve_tool_call(&self) -> Result<(), String> {
+        self.executor.reserve_tool_call()
+    }
     fn has_context(&self) -> bool {
         self.executor.has_context()
     }

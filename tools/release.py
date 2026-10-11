@@ -26,7 +26,7 @@ def release_channel(current):
     match = RELEASE_VERSION.fullmatch(current)
     if match is None:
         raise ValueError("Expected major.minor.patch, optionally followed by -alpha.N or -rc.N")
-    return {'rc': 'preview', None: 'stable'}.get(match['channel'], match['channel'])
+    return {'alpha': 'nightly', 'rc': 'preview', None: 'stable'}.get(match['channel'], match['channel'])
 
 
 def version(root=ROOT):

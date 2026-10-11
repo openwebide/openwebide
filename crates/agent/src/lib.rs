@@ -23,6 +23,7 @@ pub mod assistance;
 pub mod clients;
 pub mod compaction;
 pub mod context;
+mod discovery;
 pub mod executor;
 pub mod host_admin;
 pub mod mcp;
@@ -173,6 +174,12 @@ pub trait ToolExecutor: Send {
         _call: Option<&ToolCall>,
     ) -> impl Future<Output = Option<String>> + Send {
         std::future::ready(None)
+    }
+
+    /// Budget primitive for agent-owned tools that do not execute on the host.
+    /// Ordinary tool execution retains its existing admission checks.
+    fn reserve_tool_call(&self) -> Result<(), String> {
+        Ok(())
     }
 
     /// A short human-readable description of what this call will do, shown in
@@ -403,6 +410,8 @@ where
             anchor_id,
             tool_scope,
             tool_stream: None,
+            tool_catalog: None,
+            turn_tools: Default::default(),
             turn: config.first_turn.saturating_sub(1),
             tool_calls: 0,
             instructions_need_review: false,
@@ -466,10 +475,11 @@ where
                         // Restore the profile setting before budgeting this new completion.
                         state.request.model_settings.max_output_tokens = state.output_limit;
                         let compacted = {
-                            let prepare = Box::pin(compaction::prepare(
+                            let prepare = Box::pin(discovery::prepare(
                                 &state.provider,
                                 &state.compaction,
                                 &mut state.request,
+                                &mut state.tool_catalog,
                             ));
                             let cancelled = Box::pin(async { state.cancel.cancelled().await });
                             match futures::future::select(prepare, cancelled).await {
@@ -497,6 +507,12 @@ where
                         }
                         state.instructions_need_review = false;
                         state.turn += 1;
+                        state.turn_tools = state
+                            .request
+                            .tools
+                            .iter()
+                            .map(|tool| tool.name.clone())
+                            .collect();
                         state.model_stream = Some(state.provider.chat_tools_stream(&state.request));
                         state.turn_text.clear();
                         state.turn_reasoning.clear();
@@ -658,12 +674,7 @@ where
                             .pending
                             .pop_front()
                             .expect("pending calls are nonempty");
-                        if !state
-                            .request
-                            .tools
-                            .iter()
-                            .any(|tool| tool.name == pending.call.name)
-                        {
+                        if !state.turn_tools.contains(&pending.call.name) {
                             state.next = Next::UnavailableResult(pending.clone());
                             return Some((
                                 AgentEvent::ToolCall {
@@ -746,7 +757,15 @@ where
                     }
                     Next::UnavailableResult(pending) => {
                         state.tool_calls += 1;
-                        let content = "Tool is unavailable for this run. Use an advertised tool or respond without tools.";
+                        let content = if state
+                            .tool_catalog
+                            .as_ref()
+                            .is_some_and(|catalog| catalog.contains(&pending.call.name))
+                        {
+                            "This optional tool schema was not loaded for this turn. Use tool_search, then call the tool on a later turn."
+                        } else {
+                            "Tool is unavailable for this run. Use an advertised tool or respond without tools."
+                        };
                         state.request.messages.push(ChatMessage {
                             id: 0,
                             session_id: 0,
@@ -769,7 +788,63 @@ where
                             state,
                         ));
                     }
+                    Next::DiscoveryResult(pending) => {
+                        if state.cancel.check().await {
+                            state.next = Next::Cancelled;
+                            continue;
+                        }
+                        let outcome = match state.executor.reserve_tool_call() {
+                            Ok(()) => state
+                                .tool_catalog
+                                .as_mut()
+                                .expect("active tool catalog")
+                                .search(&mut state.request, &pending.call),
+                            Err(message) => ToolOutcome {
+                                ok: false,
+                                content: message.clone(),
+                                summary: message,
+                                diff: None,
+                            },
+                        };
+                        state.tool_calls += 1;
+                        state.request.messages.push(ChatMessage {
+                            id: 0,
+                            session_id: 0,
+                            role: Role::Tool,
+                            content: outcome.content,
+                            created_at: 0,
+                            tool_calls: None,
+                            tool_call_id: Some(pending.wire_id),
+                            usage: None,
+                        });
+                        state.next = Next::EmitToolCall;
+                        return Some((
+                            AgentEvent::ToolResult {
+                                id: pending.call.id,
+                                name: pending.call.name,
+                                ok: outcome.ok,
+                                summary: outcome.summary,
+                                diff: None,
+                            },
+                            state,
+                        ));
+                    }
                     Next::PrepareTool(pending) => {
+                        if state
+                            .tool_catalog
+                            .as_ref()
+                            .is_some_and(|catalog| catalog.handles(&pending.call.name))
+                        {
+                            state.next = Next::DiscoveryResult(pending.clone());
+                            return Some((
+                                AgentEvent::ToolCall {
+                                    id: pending.call.id,
+                                    name: pending.call.name,
+                                    summary: "Find optional tools".into(),
+                                },
+                                state,
+                            ));
+                        }
                         let call = pending.call.clone();
                         let summary = state.executor.describe(&call);
                         let automatic = if state.gate.needs_approval(&call)
@@ -1195,6 +1270,8 @@ struct LoopState<P, T, C, G, S> {
     anchor_id: i64,
     tool_scope: Option<String>,
     tool_stream: Option<ToolExecutionStream>,
+    tool_catalog: Option<discovery::ToolCatalog>,
+    turn_tools: std::collections::BTreeSet<String>,
     turn: usize,
     tool_calls: usize,
     instructions_need_review: bool,
@@ -1221,6 +1298,7 @@ fn append_context(request: &mut ChatRequest, context: &str) {
 enum Next {
     Startup,
     PrepareTool(PendingCall),
+    DiscoveryResult(PendingCall),
     DeferTool(PendingCall),
     DeferredResult(PendingCall),
     UnavailableResult(PendingCall),
@@ -1244,6 +1322,8 @@ enum Next {
 
 #[cfg(test)]
 mod tests {
+    #[path = "discovery.rs"]
+    mod discovery_tests;
     use std::collections::{HashMap, HashSet, VecDeque};
     use std::sync::{Arc, Mutex};
 

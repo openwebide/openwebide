@@ -28,6 +28,9 @@ impl<E, S> TodoTools<E, S> {
 }
 
 impl<E: ToolExecutor + Sync, S: TodoStore> ToolExecutor for TodoTools<E, S> {
+    fn reserve_tool_call(&self) -> Result<(), String> {
+        self.executor.reserve_tool_call()
+    }
     fn has_context(&self) -> bool {
         true
     }

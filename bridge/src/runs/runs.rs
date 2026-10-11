@@ -856,6 +856,8 @@ impl<B: RunBackend> openwebide_agent::todo::TodoStore for TodoPersistence<B> {
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+#[cfg(test)]
+pub(crate) use tests::assert_deferred_mcp_run;
 
 fn wall_time_ms() -> u64 {
     u64::try_from(

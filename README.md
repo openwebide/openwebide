@@ -48,7 +48,7 @@ Hosting and administration, Development, or Project.
 
 ## Run with Docker
 
-Main builds automatically update `ghcr.io/openwebide/openwebide:alpha`. The pinned alpha
+Main builds automatically update `ghcr.io/openwebide/openwebide:nightly`. The pinned alpha
 release is `ghcr.io/openwebide/openwebide:v1.0.0-alpha.6`
 for Linux amd64 and arm64. Download the versioned Compose or Podman Quadlet files
 from [the alpha release](https://github.com/openwebide/openwebide/releases/tag/v1.0.0-alpha.6)

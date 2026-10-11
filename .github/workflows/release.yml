@@ -35,7 +35,7 @@ jobs:
           if [ "$PUBLISH" = true ] && [ "$ROLLING" = false ]; then
             python3 tools/release.py validate --tag "$RELEASE_TAG" --notes "$RUNNER_TEMP/release-notes.md" --github-output "$GITHUB_OUTPUT"
             case "$RELEASE_TAG" in
-              *-alpha.*|*-beta.*) echo "Use main for rolling alpha builds; use -rc.N tags for preview or plain version tags for stable." >&2; exit 1 ;;
+              *-alpha.*|*-beta.*) echo "Use main for rolling nightly builds; use -rc.N tags for preview or plain version tags for stable." >&2; exit 1 ;;
             esac
           else
             python3 tools/release.py validate --notes "$RUNNER_TEMP/release-notes.md" --github-output "$GITHUB_OUTPUT"
@@ -246,7 +246,7 @@ jobs:
           fi
           docker buildx imagetools create --tag "$image:$CHANNEL" "$image:$RELEASE_TAG"
 
-  publish-alpha:
+  publish-nightly:
     if: needs.validate.outputs.rolling == 'true'
     needs: [validate, images]
     runs-on: ubuntu-24.04
@@ -265,7 +265,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Publish rolling alpha image
+      - name: Publish rolling nightly image
         env:
           IMAGE: ghcr.io/${{ github.repository }}
           BUILD_COMMIT: ${{ github.sha }}
@@ -275,4 +275,4 @@ jobs:
           test "${#refs[@]}" -eq 2
           docker buildx imagetools create --tag "$IMAGE:sha-$BUILD_COMMIT" "${refs[@]}"
           docker buildx imagetools inspect "$IMAGE:sha-$BUILD_COMMIT"
-          docker buildx imagetools create --tag "$IMAGE:alpha" "$IMAGE:sha-$BUILD_COMMIT"
+          docker buildx imagetools create --tag "$IMAGE:nightly" "$IMAGE:sha-$BUILD_COMMIT"

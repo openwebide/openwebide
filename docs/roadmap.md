@@ -592,11 +592,6 @@ programs) is optional later work, pending a concrete need beyond process output.
 
 Remaining execution-host work:
 
-- **Deferred tool loading (`tool_search`):** once MCP servers push the tool count up, keep the core
-  file/search/shell tools always loaded and, when the remaining schemas would exceed a share of the
-  connection's context limit, send only their names plus a `tool_search` tool (keyword or `select:`
-  lookup) that loads the matching full definitions for the next turn. Off below the threshold, so
-  small tool sets and small-context local models pay nothing extra.
 - **Headless browser via Chrome DevTools Protocol (CDP):** the bridge
   attaching to a host or sidecar Chrome/Chromium instance to give the agent
   `browser_navigate`/`browser_screenshot`/`browser_click`/`browser_type`/
@@ -851,7 +846,7 @@ walkthroughs against the final app before public launch.
   notes, archives, install files and checksums using `GITHUB_TOKEN`. Make the GHCR
   package public and verify anonymous pulls and clean installs on both architectures.
   Shared CI checks generated Quadlet services against the `stable` image channel.
-  The pinned alpha is `1.0.0-alpha.6`; main builds publish rolling `alpha` images. Alpha publication does not complete
+  The pinned alpha is `1.0.0-alpha.6`; main builds publish rolling `nightly` images. Alpha publication does not complete
   the stable-release gates.
 - **Public launch:** update the [site landing page](project-site.md) and pre-release
   documentation wording for the actual release, then prepare community announcements

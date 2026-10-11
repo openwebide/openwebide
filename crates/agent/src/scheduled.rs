@@ -96,6 +96,9 @@ impl<E, S> ScheduledTools<E, S> {
     }
 }
 impl<E: ToolExecutor + Sync, S: TaskStore> ToolExecutor for ScheduledTools<E, S> {
+    fn reserve_tool_call(&self) -> Result<(), String> {
+        self.executor.reserve_tool_call()
+    }
     fn has_context(&self) -> bool {
         self.executor.has_context()
     }
