@@ -21377,6 +21377,148 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes
 }
 
 #[wasm_bindgen_test]
+async fn current_unwrapped_replay_preserves_complete_unicode_geometry_in_both_modes() {
+    use openwebide_core::{WorkspaceMode, editor::Selection};
+    use openwebide_frontend::{
+        components::{retained_paragraph_matches_complete, take_paragraph_current_probes},
+        state_actions::editor::EditorActions,
+    };
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        for styled in [false, true] {
+            let source = if styled {
+                format!("const VALUE: &str = \"{}\";", "文😀 words ".repeat(70_000))
+            } else {
+                "x".repeat(200_000)
+            };
+            let original = source.clone();
+            let transport = std::rc::Rc::new(DeferredSyntax::default());
+            let installed = transport.clone();
+            let slot = std::rc::Rc::new(std::cell::Cell::new(None));
+            let capture = slot.clone();
+            take_paragraph_current_probes();
+            let mounted = mount_test(move |state| {
+                state.seed_project();
+                state
+                    .projects
+                    .projects
+                    .update(|projects| projects[0].mode = mode);
+                state.workspace.open_file.set(Some(
+                    if styled {
+                        "current-replay.rs"
+                    } else {
+                        "current-replay.txt"
+                    }
+                    .into(),
+                ));
+                let actions = EditorActions::new(state.workspace);
+                capture.set(Some(actions));
+                if styled {
+                    actions.install_syntax_transport(installed);
+                }
+                state
+                    .settings
+                    .editor_preferences
+                    .update(|preferences| preferences.word_wrap = false);
+                state.workspace.content.set(source.into());
+                view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:420px;height:320px">{editor_view(state)}</div> }
+            });
+            let actions = slot.get().unwrap();
+            let ready = |source: &str| {
+                if styled && !transport.pending.borrow().is_empty() {
+                    transport.respond(true);
+                }
+                actions.measured_rows().is_some()
+                    && mounted
+                        .state
+                        .workspace
+                        .editor_paragraph_cache
+                        .with_untracked(|cache| {
+                            cache.as_ref().is_some_and(|cache| {
+                                (!styled || cache.paint.prepared_source)
+                                    && cache.paint.projection.line_body(0) == Some(source)
+                            })
+                        })
+            };
+            super::support::wait_until_with_timeout("current unwrapped geometry", 30_000, || {
+                ready(&original)
+            })
+            .await;
+            let input: web_sys::HtmlTextAreaElement =
+                mounted.element(".editor-textarea").unchecked_into();
+            let scope = mounted
+                .state
+                .workspace
+                .editor_paragraph_cache
+                .get_untracked()
+                .unwrap()
+                .paint;
+            // Uniform native rows can bypass paragraph preparation. Exercise the
+            // retained candidate explicitly against the complete renderer too.
+            assert!(retained_paragraph_matches_complete(&input, &scope, 0, actions).await);
+            let reused = take_paragraph_current_probes();
+            assert!(
+                reused > 2,
+                "{mode:?} styled={styled}: current replay count {reused}"
+            );
+            let mut previous = original;
+            for edit in 0..3 {
+                let at = if edit == 2 { previous.len() } else { 0 };
+                let mut changed = previous.clone();
+                changed.insert(at, 'z');
+                actions
+                    .native_input(
+                        changed.clone(),
+                        Selection::caret(at + 1),
+                        "insertText",
+                        f64::from(edit + 1),
+                    )
+                    .unwrap();
+                super::support::wait_until_with_timeout(
+                    "edited unwrapped geometry",
+                    30_000,
+                    || ready(&changed),
+                )
+                .await;
+                let scope = mounted
+                    .state
+                    .workspace
+                    .editor_paragraph_cache
+                    .get_untracked()
+                    .unwrap()
+                    .paint;
+                assert!(
+                    retained_paragraph_matches_complete(&input, &scope, 0, actions).await,
+                    "{mode:?} styled={styled} edit={edit}: complete extent and every anchor"
+                );
+                let mut plan = actions
+                    .prepare_paragraph_measurements_cooperatively(&scope, 0)
+                    .await
+                    .unwrap();
+                let prefix = actions.paragraph_prefix(&scope, 0).unwrap();
+                assert!(actions.resume_paragraph_prefix_batch(&prefix, &mut plan) > 2);
+                assert!(plan.probe().is_some());
+                mounted
+                    .state
+                    .auth
+                    .generation
+                    .update(|generation| *generation += 1);
+                assert_eq!(
+                    actions.resume_current_paragraph_batch(&scope, 0, &mut plan),
+                    0
+                );
+                mounted
+                    .state
+                    .auth
+                    .generation
+                    .update(|generation| *generation -= 1);
+                assert_eq!(actions.source(), changed);
+                previous = changed;
+            }
+        }
+    }
+}
+
+#[wasm_bindgen_test]
 async fn background_wrapped_geometry_keeps_visible_input_and_rejects_superseded_work_in_both_modes()
 {
     #[wasm_bindgen::prelude::wasm_bindgen(inline_js = r#"

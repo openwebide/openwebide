@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Reuse exact current-source unwrapped paragraph measurements through the shared replay facade, preserving source/style topology and every incoming overlap rectangle. Keep tabs on fresh measurement and always measure terminal extents freshly.
+
 - Run near-limit editor replay contracts in independent browser partitions, preserving complete test inventory, font matrices, the 64-test group cap and existing timeouts.
 
 - Yield remaining wrapped geometry at background priority after accepting current viewport coverage, keeping visible input responsive in both project modes. Preserve exact geometry, stale-source/account rejection and cooperative fallback on browsers without task priorities.

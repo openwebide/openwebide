@@ -47,6 +47,11 @@ pub(super) const MAX_RETAINED_RECTANGLES: usize = 128 * 1024;
 /// Shared facade contract for validated replay; layout-specific geometry remains
 /// in each core plan, above the browser's measurement primitives.
 pub trait ParagraphReplay {
+    fn reuse_current_batch(
+        &mut self,
+        equivalent_style: impl Fn(Range<usize>, Range<usize>) -> bool,
+        max_records: usize,
+    ) -> usize;
     fn reuse_prefix_batch(
         &mut self,
         old_body: &str,
@@ -204,6 +209,111 @@ impl<'a> ParagraphMeasurementPlan<'a> {
         }
         reused
     }
+    /// Replay repeated source with identical paint boundaries and exact incoming
+    /// measured geometry, using the same proof as shifted suffix replay.
+    /// Terminal extents and tab-dependent placement always remain fresh.
+    pub fn reuse_current_batch(
+        &mut self,
+        equivalent_style: impl Fn(Range<usize>, Range<usize>) -> bool,
+        max_records: usize,
+    ) -> usize {
+        if self.has_tabs {
+            return 0;
+        }
+        let mut reused = 0;
+        while reused < max_records {
+            let Some(probe) = self.probe().cloned() else {
+                break;
+            };
+            if self.expected.is_empty() || self.requires_extent() {
+                break;
+            }
+            let runs = |bytes: &Range<usize>| {
+                self.runs.partition_point(|byte| *byte <= bytes.start)
+                    ..self.runs.partition_point(|byte| *byte <= bytes.end)
+            };
+            let candidate = self
+                .records
+                .iter()
+                .rev()
+                .find(|record| {
+                    record.bytes.len() == probe.bytes.len()
+                        && self.dimensions == Some((record.width, record.height))
+                        && self.body.get(record.bytes.clone()) == self.body.get(probe.bytes.clone())
+                        && equivalent_style(record.bytes.clone(), probe.bytes.clone())
+                        && self.runs[runs(&record.bytes)]
+                            .iter()
+                            .map(|byte| byte - record.bytes.start)
+                            .eq(self.runs[runs(&probe.bytes)]
+                                .iter()
+                                .map(|byte| byte - probe.bytes.start))
+                })
+                .cloned();
+            let Some(record) = candidate else { break };
+            let Some(old_start) = self.index.index_at_byte(self.body, record.bytes.start) else {
+                break;
+            };
+            let Some(targets) = self.targets() else { break };
+            let Some(positions) = self.index.positions(self.body, &targets) else {
+                break;
+            };
+            let old_targets = targets
+                .iter()
+                .map(|glyph| old_start.checked_add(glyph.checked_sub(probe.glyph_start)?))
+                .collect::<Option<Vec<_>>>();
+            let Some(old_targets) = old_targets else {
+                break;
+            };
+            let Some(old_positions) = self.index.positions(self.body, &old_targets) else {
+                break;
+            };
+            let delta = probe.origin - record.origin;
+            if !delta.is_finite() {
+                break;
+            }
+            let translated = targets
+                .iter()
+                .zip(old_targets)
+                .zip(positions.iter().zip(old_positions))
+                .map(|((&glyph, old_glyph), ((byte, _), (old_byte, _)))| {
+                    if record
+                        .bytes
+                        .start
+                        .checked_add(byte.checked_sub(probe.bytes.start)?)
+                        != Some(old_byte)
+                    {
+                        return None;
+                    }
+                    let at = record
+                        .rectangles
+                        .binary_search_by_key(&old_glyph, |rect| rect.glyph)
+                        .ok()?;
+                    Some(GlyphRectangle {
+                        glyph,
+                        left: record.rectangles[at].left + delta,
+                        ..record.rectangles[at]
+                    })
+                })
+                .collect::<Option<Vec<_>>>();
+            let Some(translated) = translated else { break };
+            if self.expected.iter().any(|expected| {
+                translated
+                    .binary_search_by_key(&expected.glyph, |rect| rect.glyph)
+                    .ok()
+                    .is_none_or(|at| translated[at] != *expected)
+            }) {
+                break;
+            }
+            // record_measurement verifies every dense overlap rectangle, commits
+            // exact anchors and constructs the next source-owned continuation.
+            if !self.record_measurement(record.width, record.height, None, &translated, None) {
+                break;
+            }
+            reused += 1;
+        }
+        reused
+    }
+
     /// Replay only probes whose source, paint boundaries and incoming measured
     /// overlap agree. A shifted suffix maps exact source/glyph coordinates; its
     /// final extent is always measured again rather than translating an integer
@@ -673,6 +783,13 @@ impl<'a> ParagraphMeasurementPlan<'a> {
 }
 
 impl ParagraphReplay for ParagraphMeasurementPlan<'_> {
+    fn reuse_current_batch(
+        &mut self,
+        style: impl Fn(Range<usize>, Range<usize>) -> bool,
+        limit: usize,
+    ) -> usize {
+        self.reuse_current_batch(style, limit)
+    }
     fn reuse_prefix_batch(
         &mut self,
         body: &str,
@@ -725,6 +842,62 @@ mod tests {
             ));
         }
         plan.finish_with_measurements().unwrap()
+    }
+
+    #[test]
+    fn current_source_replay_keeps_exact_anchors_and_fresh_terminal_extent() {
+        for source in ["x".repeat(200_000), "word 文😀 e\u{301} ".repeat(20_000)] {
+            let (width, complete, _) = measured(&source);
+            let mut plan =
+                ParagraphMeasurementPlan::new(&source, VisualLineIndex::new(&source).unwrap())
+                    .unwrap();
+            let mut reused = 0;
+            let mut fresh_terminal = false;
+            while let Some(probe) = plan.probe().cloned() {
+                assert_eq!(plan.reuse_current_batch(|_, _| true, 0), 0);
+                assert_eq!(plan.reuse_current_batch(|_, _| false, 2), 0);
+                let count = plan.reuse_current_batch(|_, _| true, 2);
+                assert!(count <= 2);
+                reused += count;
+                if count > 0 {
+                    continue;
+                }
+                let end = plan.index.index_at_byte(&source, probe.bytes.end).unwrap();
+                let rectangles = rectangles(&plan);
+                if plan.requires_extent() {
+                    fresh_terminal = true;
+                    assert_eq!(plan.reuse_current_batch(|_, _| true, 2), 0);
+                }
+                assert!(plan.record(
+                    244.0,
+                    15.0,
+                    (f64::from(u32::try_from(end).unwrap()) * 7.0).max(244.0),
+                    &rectangles
+                ));
+            }
+            assert!(fresh_terminal);
+            if source.starts_with('x') {
+                assert!(reused > 2);
+            }
+            let (actual_width, actual, _) = plan.finish_with_measurements().unwrap();
+            assert_eq!(actual_width.to_bits(), width.to_bits());
+            assert_eq!(actual, complete);
+        }
+    }
+
+    #[test]
+    fn current_source_replay_rejects_corrupt_incoming_overlap_and_tabs() {
+        for source in ["x".repeat(200_000), "x\t".repeat(100_000)] {
+            let mut plan =
+                ParagraphMeasurementPlan::new(&source, VisualLineIndex::new(&source).unwrap())
+                    .unwrap();
+            let rectangles = rectangles(&plan);
+            assert!(plan.record(244.0, 15.0, None, &rectangles));
+            plan.expected[0].left += 1.0;
+            let before = plan.probe().unwrap().bytes.clone();
+            assert_eq!(plan.reuse_current_batch(|_, _| true, 2), 0);
+            assert_eq!(plan.probe().unwrap().bytes, before);
+        }
     }
 
     #[test]

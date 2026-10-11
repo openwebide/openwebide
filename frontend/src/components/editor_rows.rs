@@ -199,6 +199,15 @@ async fn measure_paragraph(
                 continue;
             }
         }
+        let reused = actions.map_or(0, |actions| {
+            actions.resume_current_paragraph_batch(scope, logical, &mut plan)
+        });
+        #[cfg(feature = "test-support")]
+        CURRENT_PROBES.set(CURRENT_PROBES.get() + reused);
+        if reused > 0 {
+            crate::util::yield_task().await;
+            continue;
+        }
         let Some(targets) = plan.targets() else {
             return Ok(None);
         };

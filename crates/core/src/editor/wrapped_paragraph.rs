@@ -752,6 +752,13 @@ impl<'a> WrappedParagraphPreparation<'a> {
 }
 
 impl ParagraphReplay for WrappedParagraphPreparation<'_> {
+    fn reuse_current_batch(
+        &mut self,
+        style: impl Fn(Range<usize>, Range<usize>) -> bool,
+        limit: usize,
+    ) -> usize {
+        self.reuse_current_batch(style, limit)
+    }
     fn reuse_prefix_batch(
         &mut self,
         body: &str,

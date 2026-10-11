@@ -6371,3 +6371,16 @@ timeout
 ([receipt](editor-performance/grouped-ci-4fb3c637-failure.json)). The partition
 change preserves the 300-second deadline and every assertion; hosted rerun is
 required before claiming CI recovery.
+
+Final runtime verification passes five browser regressions with shipped fonts:
+current unwrapped Unicode replay (including a nonempty-plan stale-account check),
+wrapped replay, overlap fallback, unchanged suffix replay and held background
+work
+([receipt](editor-performance/unwrapped-final-browser.json)). All 660 native
+core tests and 129 native frontend tests pass. Strict native core and final
+WASM frontend all-targets lint pass; formatting passes. The shared facade uses
+one `ParagraphReplay` contract for wrapped/unwrapped eligibility, while core
+plans validate their respective exact geometry and the browser measures actual
+rectangles. Both project modes exercise that same implementation. Hosted CI
+for the new runtime checkpoint remains pending; this does not clear the full
+editor performance, device or integration gates.

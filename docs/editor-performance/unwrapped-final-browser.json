@@ -1,0 +1,26 @@
+{
+  "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+  "console": "Invoking test: editor::wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes\nInvoking test: editor::paragraph_unchanged_suffix_reuses_exact_browser_geometry_in_both_modes\nInvoking test: editor::paragraph_overlap_failure_uses_complete_measurement_in_both_modes\nInvoking test: editor::current_unwrapped_replay_preserves_complete_unicode_geometry_in_both_modes\nInvoking test: editor::background_wrapped_geometry_keeps_visible_input_and_rejects_superseded_work_in_both_modes\n",
+  "output": "\nrunning 5 tests\ntest editor::wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes ... ok\ntest editor::paragraph_unchanged_suffix_reuses_exact_browser_geometry_in_both_modes ... ok\ntest editor::paragraph_overlap_failure_uses_complete_measurement_in_both_modes ... ok\ntest editor::current_unwrapped_replay_preserves_complete_unicode_geometry_in_both_modes ... ok\ntest editor::background_wrapped_geometry_keeps_visible_input_and_rejects_superseded_work_in_both_modes ... ok\n\ntest result: ok. 5 passed; 0 failed; 0 ignored; 0 filtered out; finished in 113.70s\n\n",
+  "passed": true,
+  "tests": [
+    "__wbgt__components::editor::background_wrapped_geometry_keeps_visible_input_and_rejects_superseded_work_in_both_modes",
+    "__wbgt__components::editor::current_unwrapped_replay_preserves_complete_unicode_geometry_in_both_modes",
+    "__wbgt__components::editor::paragraph_overlap_failure_uses_complete_measurement_in_both_modes",
+    "__wbgt__components::editor::paragraph_unchanged_suffix_reuses_exact_browser_geometry_in_both_modes",
+    "__wbgt__components::editor::wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes"
+  ],
+  "servedFonts": {
+    "/fonts/MonaspaceNeon-v1.400.woff2": "6569968f448ae856ab5b57dff1f13b109b220ca8e3f664169e135fcb5c4f0721"
+  },
+  "libraryStartSuppressed": false,
+  "sourceHead": "2bdd9a8c98fc2bb966e123bfc313c4e338acab4e",
+  "sourceFilesSha256": {
+    "crates/core/src/editor/paragraph.rs": "2ca9277369a3194dd554c47522eccd8204a03b36754f654c4d1cb4a02978343f",
+    "crates/core/src/editor/wrapped_paragraph.rs": "cac1e1ddd304a2916b748b629e52ac0d6d2c6cfae0cecd24df09f7e447949590",
+    "frontend/src/components/editor_rows.rs": "928a233818960a1dbe6d7957c3f28abe4649279871a46c2cb0561c139242163d",
+    "frontend/src/state_actions/editor/rows.rs": "d44cf7fb2ab5aa68ecb6c3c4d8fcbb463183dde05ac101f8f2ba71816584a237",
+    "frontend/tests/components/editor.rs": "ed36508fd7cc6cbb2602822055aaf88ec10a1a2846574706a329b2aa39bb8dd2"
+  },
+  "testWasmSha256": "8892516ac9d9be7740d6c7575163c82350acccb4115db4aed1b54262c039611d"
+}

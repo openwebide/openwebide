@@ -63,31 +63,30 @@ tracks the remaining work rather than every optimization already shipped.
 | Selection and browser input | Multiple/rectangular selections and clipboard transactions; scoped native windows with bounded desktop startup for unwrapped, wrapped and nonuniform views, including long tabbed/bidirectional rows; automated Chromium composition and pointer checks. The recorded line-end caret bug is fixed and user-verified in the localhost PWA. |
 | Preparation and ownership | Rust/WASM worker and cooperative fallback; retained source/token/structure allocations; bounded worker delta reconstruction/reply-source publication and final structure metadata, parsed/lexical region reconciliation and retained fallback collection; bounded eligible unwrapped and wrapped paragraph probes, retained paint-run clipping and cooperative sampled cold-row glyph measurements, exact overlap validation, exact carets from retained anchors/current painted coverage and conservative complete-layout fallback. Current-file progress is shown during preparation. Matching trusted font notifications retain current in-flight work and ordinary-row replay after edits. |
 
-**Current measured bottleneck:** the pushed background-priority checkpoint verifies
-complete source after beginning edits in four near-1-MiB styled wrapped samples.
-Viewport paint takes 134–159 ms, complete geometry 387–416 ms, cold complete
-geometry 1.47–1.54 seconds, and peak Chrome PSS 681–719 MiB
-([samples](editor-performance/background-priority-production.jsonl)). This improves
-viewport paint but does not finish the responsiveness or memory requirement.
-The full 24-sample matrix preserves complete edited source in both modes, with
-wrapping on/off. Byte-limit edits paint in 59–69 ms and row-limit edits in
-32–60 ms; styled long-line cold preparation still takes 2.84–3.45 seconds
-without wrapping
-([boundary summary](editor-performance/background-priority-boundary-summary.json)).
-That cold styled preparation is the next measured target. Its instrumented
-profile records 89 preparation batches, dominated by browser layout/range reads
-([diagnostic](editor-performance/cold-unwrapped-profile.json)). A candidate extends
-the shared replay contract to unwrapped repeated text with identical source/style
-boundaries and exact incoming measured geometry (the existing suffix-replay
-proof). Native
-anchor/extent and corrupt-overlap/tab rejection regressions pass; the exact-overlap browser regression also passes in both modes, including
-positive plain/styled Unicode reuse and full-renderer checks after edits
-([receipt](editor-performance/unwrapped-exact-overlap-browser.json)). Eight production candidate samples preserve full edited source; cold unwrapped
-geometry improves to 1.35–1.43 seconds
-([samples](editor-performance/unwrapped-current-production.jsonl)). Final-source
-expanded checks remain pending. Hosted UI tests hit their 300-second group
-deadline after the long wrapped replay contract passes; independent replay
-partitions are being verified without changing deadlines or coverage.
+**Current measured bottleneck:** eight near-1-MiB styled long-line production
+samples preserve complete edited source in both modes, wrapping on/off. Cold
+complete geometry takes 1.35–1.43 seconds unwrapped and 1.49–1.54 seconds wrapped;
+edits paint in 117–125 ms and 129–150 ms respectively. Wrapped complete geometry
+takes 372–415 ms; peak Chrome PSS is 676–725 MiB
+([samples](editor-performance/unwrapped-current-production.jsonl)). These results
+do not finish the responsiveness or memory requirement.
+The preceding 24-sample boundary matrix preserves complete edited source, with
+byte-limit edits at 59–69 ms and row-limit edits at 32–60 ms
+([summary](editor-performance/background-priority-boundary-summary.json)); repeat
+the broader workloads on subsequent implementation checkpoints.
+
+Current-source unwrapped replay now uses the shared facade and existing suffix
+proof: matching source/style topology and exact incoming measured geometry.
+Tabs remain ineligible and terminal extents stay fresh. Eight production samples
+preserve full edited source; cold unwrapped geometry improves to 1.35–1.43 seconds
+([samples](editor-performance/unwrapped-current-production.jsonl)). Five final
+browser regressions, 660 core tests, 129 native frontend tests and strict native
+core/WASM frontend lint pass
+([receipt](editor-performance/unwrapped-final-browser.json)).
+Cold preparation and memory remain unfinished. The prior hosted browser groups
+hit their 300-second deadline after the long wrapped replay contract passed;
+independent replay partitions now preserve coverage and deadlines. Hosted CI for
+the partition fix is running; the new runtime checkpoint still needs hosted CI.
 
 **Remaining implementation** (all items remain part of this editor goal):
 

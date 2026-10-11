@@ -494,7 +494,7 @@ impl EditorActions {
         self,
         paint: &EditorRowPaint,
         row: usize,
-        plan: &mut openwebide_core::editor::WrappedParagraphPreparation<'_>,
+        plan: &mut impl openwebide_core::editor::ParagraphReplay,
     ) -> usize {
         if !self.row_paint_current(paint) {
             return 0;
