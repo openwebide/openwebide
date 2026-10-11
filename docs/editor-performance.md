@@ -6763,3 +6763,41 @@ baseline is an outlier at 324 ms input and 2.21 seconds cold readiness; it must
 not be used alone to claim a speedup. The remaining input, startup and memory
 gates stay open. The shipped property is bounded native target batches with
 cancellation and exact geometry, rather than a completed latency target.
+
+
+### Startup stages and native allocation sampling
+
+The immutable older release fixture now exposes main and worker linear-memory
+capacities through additive generated-glue diagnostics, leaving the compiled
+Rust/WASM unchanged. Both modes preserve complete source after input and every
+worker replies. Main capacity is 24.125 MiB at cold readiness and worker capacity
+is 27.625 MiB. These capacities do not explain the renderer PSS increase and
+must not be treated as resident pages or summed allocator ownership.
+
+A second diagnostic defers only the main generated-glue call to
+`__wbindgen_start`, snapshots the initialized instance, then invokes the original
+entry point once and completes normal editing. Worker startup remains unchanged.
+The same renderer grows from 43–44 MiB to 168–170 MiB before Rust startup, with
+no worker present and main linear capacity 19.94 MiB. It then reaches 279–283 MiB
+at editor readiness. Pre-start growth includes navigation, CSS/preloads and
+module loading/compilation/instantiation; it is not an isolated compiler cost.
+This separates a major runtime/module-load cost from editor document preparation.
+
+CDP native sampling returns live allocation stacks, but most Chrome frames are
+unnamed. The largest cold sample in the unstaged run is exactly 28,370,344 bytes,
+matching the WASM artifact size; equality alone does not prove ownership. Sampling
+estimates and trace buckets do not account for all resident process memory.
+
+The [receipt](editor-performance/startup-memory-attribution.json) records asset
+hashes, renderer mappings, worker acknowledgements and native sampling. The
+[diagnostic patch](editor-performance/startup-memory-diagnostic.patch) applies to
+the prior direct-allocator fixture identified by those hashes; update the patched
+glue's SHA-384 SRI and measurement-script hash when reproducing. Run its preserved
+`allocator-sample.py` with `local false` and `remote false` using the same owned
+Chrome/Docker harness. This older-baseline diagnostic is not current-head timing,
+a paired optimization comparison, or a shipped memory improvement. Runtime/module
+loading and subsequent editor/worker allocations still need separate investigation.
+
+The parser-budget checkpoint `55dc8f4` passes all five hosted CI jobs
+([receipt](editor-performance/editor-ci-55dc-success.json)). Final integrated
+verification remains required after the remaining editor implementation ships.

@@ -1,0 +1,4760 @@
+{
+  "scope": "Immutable older production baseline attribution only. Capacities are not resident memory; worker response and full edited source verified. No current-head latency or memory improvement claim. Native sampling estimates omit unsampled allocation and most Chrome frames are unnamed. Largest native sample equals WASM artifact length, but equality alone does not identify ownership.",
+  "linearMemoryRuns": [
+    {
+      "rawSha256": "14afa140150b54039b69e54455c3f28f41b8fe79d13c3d9b9dbe34d3bddd561a",
+      "mode": "local",
+      "completeSourceAfterInputVerified": true,
+      "runtime": {
+        "sourceHead": "1745f068049675a255e1599f0b072e6664da34b1",
+        "sourceFilesSha256": {
+          "crates/core/src/editor/visual_motion.rs": "21e8aaebb2841836251d702627862d312579dea5bdf69441a70874152430e284",
+          "crates/core/src/editor/mod.rs": "552c68362ee8f0628977c349bab7c5874d4cbfd1af2bae4dfa4d275ae16824e4",
+          "frontend/src/components/editor_geometry.rs": "2fd158e1a070bfeea30b0a1f925395240d6df4861e70a604aa08cf1f1c4de809",
+          "frontend/src/components/editor_rows.rs": "be22390f64521e3db85da55dbe935dea1ee72891dd4e65543c9b5d9a6084027f"
+        },
+        "frontendWasmSha256": {
+          "openwebide-frontend-92bf8193126be12a_bg.wasm": "cadd91dd63b3608b3d2c3ca686cfdb571441a560339d490db8b7741bc9424a18"
+        },
+        "backendWasmSha256": "8efc2579446963f530f5774fdcbe2223bbc6b974eb54d8221a768ff1c43232af",
+        "measurementScriptSha256": "dcef2e7bba838c9463765fea1715fa481d97b08c467e680c10be09e54e870b18",
+        "scope": "Private allocation attribution on the preserved paragraph/unmount release fixture. Rust/WASM binary unchanged. Exposes main/worker memory capacity without copying it; not current-head timing or a production change.",
+        "diagnosticAssetsSha256": {
+          "openwebide-frontend-92bf8193126be12a.js": "bfb93abc313f1470471e89aa12bcf95da4a14691e558c972b84ef60e534d444a",
+          "editor-worker.js": "9c9608b598aa6f4e7970d615f07907e99d7aa7b5af7d68857bbc2947d6c2f4ab",
+          "index.html": "1dcefe9b41421d5b6ddb89c16f717dbba3d1da832390744fb40a989b01918139"
+        }
+      },
+      "phases": [
+        {
+          "phase": "before-app",
+          "linearMemory": {
+            "mainLinearBytes": null,
+            "workers": []
+          },
+          "rendererMaps": [
+            {
+              "pid": 158,
+              "rssKiB": 161004,
+              "pssKiB": 77593,
+              "sizeKiB": 1518082812,
+              "largestRegionGroups": [
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 37336,
+                  "pssKiB": 36901,
+                  "sizeKiB": 224080
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 84776,
+                  "pssKiB": 30234,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 24052,
+                  "pssKiB": 4026,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "rwxp",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 2048,
+                  "pssKiB": 2048,
+                  "sizeKiB": 259912
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "resources.pak",
+                  "mappingCount": 1,
+                  "rssKiB": 1676,
+                  "pssKiB": 1538,
+                  "sizeKiB": 18872
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 900,
+                  "pssKiB": 383,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 664,
+                  "pssKiB": 356,
+                  "sizeKiB": 4992
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 440,
+                "rssKiB": 8900,
+                "pssKiB": 1455,
+                "sizeKiB": 1517298488
+              }
+            },
+            {
+              "pid": 167,
+              "rssKiB": 128520,
+              "pssKiB": 43472,
+              "sizeKiB": 1518019168,
+              "largestRegionGroups": [
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 81332,
+                  "pssKiB": 25909,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 9996,
+                  "pssKiB": 9561,
+                  "sizeKiB": 120380
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 24052,
+                  "pssKiB": 4058,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 2588,
+                  "pssKiB": 1332,
+                  "sizeKiB": 6784
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 896,
+                  "pssKiB": 375,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "libharfbuzz.so.0.60000.0",
+                  "mappingCount": 1,
+                  "rssKiB": 832,
+                  "pssKiB": 257,
+                  "sizeKiB": 1012
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "v8_context_snapshot.bin",
+                  "mappingCount": 1,
+                  "rssKiB": 648,
+                  "pssKiB": 237,
+                  "sizeKiB": 740
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 441,
+                "rssKiB": 7524,
+                "pssKiB": 1091,
+                "sizeKiB": 1517613784
+              }
+            },
+            {
+              "pid": 209,
+              "rssKiB": 80388,
+              "pssKiB": 19994,
+              "sizeKiB": 1517990652,
+              "largestRegionGroups": [
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 42932,
+                  "pssKiB": 8802,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 6000,
+                  "pssKiB": 5565,
+                  "sizeKiB": 88548
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 22004,
+                  "pssKiB": 3426,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 896,
+                  "pssKiB": 351,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 384,
+                  "pssKiB": 210,
+                  "sizeKiB": 4480
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "v8_context_snapshot.bin",
+                  "mappingCount": 1,
+                  "rssKiB": 520,
+                  "pssKiB": 173,
+                  "sizeKiB": 740
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "[stack]",
+                  "mappingCount": 1,
+                  "rssKiB": 140,
+                  "pssKiB": 140,
+                  "sizeKiB": 140
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 439,
+                "rssKiB": 6860,
+                "pssKiB": 675,
+                "sizeKiB": 1517620276
+              }
+            }
+          ]
+        },
+        {
+          "phase": "cold-ready",
+          "linearMemory": {
+            "mainLinearBytes": 25296896,
+            "workers": [
+              {
+                "linearBytes": 28966912,
+                "responded": true
+              }
+            ]
+          },
+          "rendererMaps": [
+            {
+              "pid": 158,
+              "rssKiB": 162076,
+              "pssKiB": 74479,
+              "sizeKiB": 1518082812,
+              "largestRegionGroups": [
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 37780,
+                  "pssKiB": 37346,
+                  "sizeKiB": 224176
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 85288,
+                  "pssKiB": 26654,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 24116,
+                  "pssKiB": 4032,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "rwxp",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 2048,
+                  "pssKiB": 2048,
+                  "sizeKiB": 259912
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "resources.pak",
+                  "mappingCount": 1,
+                  "rssKiB": 1676,
+                  "pssKiB": 1538,
+                  "sizeKiB": 18872
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 900,
+                  "pssKiB": 383,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 716,
+                  "pssKiB": 380,
+                  "sizeKiB": 4992
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 440,
+                "rssKiB": 8900,
+                "pssKiB": 1446,
+                "sizeKiB": 1517298392
+              }
+            },
+            {
+              "pid": 167,
+              "rssKiB": 329480,
+              "pssKiB": 227201,
+              "sizeKiB": 1522117252,
+              "largestRegionGroups": [
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 148008,
+                  "pssKiB": 147577,
+                  "sizeKiB": 387992
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 105844,
+                  "pssKiB": 41778,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rwxp",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 15512,
+                  "pssKiB": 15512,
+                  "sizeKiB": 295624
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 19000,
+                  "pssKiB": 11218,
+                  "sizeKiB": 23952
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 24884,
+                  "pssKiB": 4293,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "icudtl.dat",
+                  "mappingCount": 1,
+                  "rssKiB": 2760,
+                  "pssKiB": 1891,
+                  "sizeKiB": 10568
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "NotoSansCJK-Regular.ttc",
+                  "mappingCount": 1,
+                  "rssKiB": 1308,
+                  "pssKiB": 1084,
+                  "sizeKiB": 19032
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 1036,
+                  "pssKiB": 1036,
+                  "sizeKiB": 2320
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 445,
+                "rssKiB": 11128,
+                "pssKiB": 2812,
+                "sizeKiB": 1521103872
+              }
+            },
+            {
+              "pid": 209,
+              "rssKiB": 80492,
+              "pssKiB": 20001,
+              "sizeKiB": 1517990652,
+              "largestRegionGroups": [
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 42996,
+                  "pssKiB": 8794,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 6024,
+                  "pssKiB": 5590,
+                  "sizeKiB": 88580
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 22004,
+                  "pssKiB": 3415,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 896,
+                  "pssKiB": 352,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 400,
+                  "pssKiB": 210,
+                  "sizeKiB": 4480
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "v8_context_snapshot.bin",
+                  "mappingCount": 1,
+                  "rssKiB": 520,
+                  "pssKiB": 173,
+                  "sizeKiB": 740
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "[stack]",
+                  "mappingCount": 1,
+                  "rssKiB": 140,
+                  "pssKiB": 140,
+                  "sizeKiB": 140
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 439,
+                "rssKiB": 6860,
+                "pssKiB": 675,
+                "sizeKiB": 1517620244
+              }
+            }
+          ]
+        },
+        {
+          "phase": "after-input",
+          "linearMemory": {
+            "mainLinearBytes": 25624576,
+            "workers": [
+              {
+                "linearBytes": 28966912,
+                "responded": true
+              }
+            ]
+          },
+          "rendererMaps": [
+            {
+              "pid": 158,
+              "rssKiB": 161992,
+              "pssKiB": 74324,
+              "sizeKiB": 1518082812,
+              "largestRegionGroups": [
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 37668,
+                  "pssKiB": 37234,
+                  "sizeKiB": 224176
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 85288,
+                  "pssKiB": 26601,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 24116,
+                  "pssKiB": 4032,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "rwxp",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 2048,
+                  "pssKiB": 2048,
+                  "sizeKiB": 259912
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "resources.pak",
+                  "mappingCount": 1,
+                  "rssKiB": 1676,
+                  "pssKiB": 1538,
+                  "sizeKiB": 18872
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 744,
+                  "pssKiB": 390,
+                  "sizeKiB": 4992
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 900,
+                  "pssKiB": 383,
+                  "sizeKiB": 1024
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 440,
+                "rssKiB": 8900,
+                "pssKiB": 1446,
+                "sizeKiB": 1517298392
+              }
+            },
+            {
+              "pid": 167,
+              "rssKiB": 335748,
+              "pssKiB": 231344,
+              "sizeKiB": 1522118024,
+              "largestRegionGroups": [
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 151876,
+                  "pssKiB": 151445,
+                  "sizeKiB": 391296
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 106932,
+                  "pssKiB": 42429,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rwxp",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 15564,
+                  "pssKiB": 15564,
+                  "sizeKiB": 295628
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 20260,
+                  "pssKiB": 10786,
+                  "sizeKiB": 24720
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 24884,
+                  "pssKiB": 4293,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "icudtl.dat",
+                  "mappingCount": 1,
+                  "rssKiB": 2760,
+                  "pssKiB": 1891,
+                  "sizeKiB": 10568
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "NotoSansCJK-Regular.ttc",
+                  "mappingCount": 1,
+                  "rssKiB": 1308,
+                  "pssKiB": 1084,
+                  "sizeKiB": 19032
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 1036,
+                  "pssKiB": 1036,
+                  "sizeKiB": 2320
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 445,
+                "rssKiB": 11128,
+                "pssKiB": 2816,
+                "sizeKiB": 1521100568
+              }
+            },
+            {
+              "pid": 209,
+              "rssKiB": 80616,
+              "pssKiB": 20081,
+              "sizeKiB": 1517990652,
+              "largestRegionGroups": [
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 43060,
+                  "pssKiB": 8814,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 6060,
+                  "pssKiB": 5626,
+                  "sizeKiB": 88580
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 22004,
+                  "pssKiB": 3415,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 896,
+                  "pssKiB": 352,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 424,
+                  "pssKiB": 234,
+                  "sizeKiB": 4480
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "v8_context_snapshot.bin",
+                  "mappingCount": 1,
+                  "rssKiB": 520,
+                  "pssKiB": 173,
+                  "sizeKiB": 740
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "[stack]",
+                  "mappingCount": 1,
+                  "rssKiB": 140,
+                  "pssKiB": 140,
+                  "sizeKiB": 140
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 439,
+                "rssKiB": 6860,
+                "pssKiB": 675,
+                "sizeKiB": 1517620244
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rawSha256": "4fd01fa3039f71abaead1de28cd735bb99a073651e4a688097eed419227e4143",
+      "mode": "remote",
+      "completeSourceAfterInputVerified": true,
+      "runtime": {
+        "sourceHead": "1745f068049675a255e1599f0b072e6664da34b1",
+        "sourceFilesSha256": {
+          "crates/core/src/editor/visual_motion.rs": "21e8aaebb2841836251d702627862d312579dea5bdf69441a70874152430e284",
+          "crates/core/src/editor/mod.rs": "552c68362ee8f0628977c349bab7c5874d4cbfd1af2bae4dfa4d275ae16824e4",
+          "frontend/src/components/editor_geometry.rs": "2fd158e1a070bfeea30b0a1f925395240d6df4861e70a604aa08cf1f1c4de809",
+          "frontend/src/components/editor_rows.rs": "be22390f64521e3db85da55dbe935dea1ee72891dd4e65543c9b5d9a6084027f"
+        },
+        "frontendWasmSha256": {
+          "openwebide-frontend-92bf8193126be12a_bg.wasm": "cadd91dd63b3608b3d2c3ca686cfdb571441a560339d490db8b7741bc9424a18"
+        },
+        "backendWasmSha256": "8efc2579446963f530f5774fdcbe2223bbc6b974eb54d8221a768ff1c43232af",
+        "measurementScriptSha256": "dcef2e7bba838c9463765fea1715fa481d97b08c467e680c10be09e54e870b18",
+        "scope": "Private allocation attribution on the preserved paragraph/unmount release fixture. Rust/WASM binary unchanged. Exposes main/worker memory capacity without copying it; not current-head timing or a production change.",
+        "diagnosticAssetsSha256": {
+          "openwebide-frontend-92bf8193126be12a.js": "bfb93abc313f1470471e89aa12bcf95da4a14691e558c972b84ef60e534d444a",
+          "editor-worker.js": "9c9608b598aa6f4e7970d615f07907e99d7aa7b5af7d68857bbc2947d6c2f4ab",
+          "index.html": "1dcefe9b41421d5b6ddb89c16f717dbba3d1da832390744fb40a989b01918139"
+        }
+      },
+      "phases": [
+        {
+          "phase": "before-app",
+          "linearMemory": {
+            "mainLinearBytes": null,
+            "workers": []
+          },
+          "rendererMaps": [
+            {
+              "pid": 157,
+              "rssKiB": 162716,
+              "pssKiB": 78117,
+              "sizeKiB": 1518082812,
+              "largestRegionGroups": [
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 37748,
+                  "pssKiB": 37313,
+                  "sizeKiB": 224496
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 84788,
+                  "pssKiB": 30248,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 25332,
+                  "pssKiB": 4112,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "rwxp",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 2048,
+                  "pssKiB": 2048,
+                  "sizeKiB": 259912
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "resources.pak",
+                  "mappingCount": 1,
+                  "rssKiB": 1676,
+                  "pssKiB": 1537,
+                  "sizeKiB": 18872
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 900,
+                  "pssKiB": 383,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 672,
+                  "pssKiB": 372,
+                  "sizeKiB": 4992
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 440,
+                "rssKiB": 8900,
+                "pssKiB": 1452,
+                "sizeKiB": 1517298072
+              }
+            },
+            {
+              "pid": 166,
+              "rssKiB": 129696,
+              "pssKiB": 43582,
+              "sizeKiB": 1518027424,
+              "largestRegionGroups": [
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 81204,
+                  "pssKiB": 25879,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 10076,
+                  "pssKiB": 9641,
+                  "sizeKiB": 128588
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 25332,
+                  "pssKiB": 4112,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 2596,
+                  "pssKiB": 1348,
+                  "sizeKiB": 6784
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 896,
+                  "pssKiB": 375,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "libharfbuzz.so.0.60000.0",
+                  "mappingCount": 1,
+                  "rssKiB": 832,
+                  "pssKiB": 257,
+                  "sizeKiB": 1012
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "v8_context_snapshot.bin",
+                  "mappingCount": 1,
+                  "rssKiB": 648,
+                  "pssKiB": 237,
+                  "sizeKiB": 740
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 441,
+                "rssKiB": 7460,
+                "pssKiB": 1081,
+                "sizeKiB": 1517613832
+              }
+            },
+            {
+              "pid": 209,
+              "rssKiB": 82052,
+              "pssKiB": 20194,
+              "sizeKiB": 1517990652,
+              "largestRegionGroups": [
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 42932,
+                  "pssKiB": 8804,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 5996,
+                  "pssKiB": 5561,
+                  "sizeKiB": 88532
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 23668,
+                  "pssKiB": 3616,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 896,
+                  "pssKiB": 351,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 388,
+                  "pssKiB": 222,
+                  "sizeKiB": 4480
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "v8_context_snapshot.bin",
+                  "mappingCount": 1,
+                  "rssKiB": 520,
+                  "pssKiB": 173,
+                  "sizeKiB": 740
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "[stack]",
+                  "mappingCount": 1,
+                  "rssKiB": 140,
+                  "pssKiB": 140,
+                  "sizeKiB": 140
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 439,
+                "rssKiB": 6860,
+                "pssKiB": 675,
+                "sizeKiB": 1517620292
+              }
+            }
+          ]
+        },
+        {
+          "phase": "cold-ready",
+          "linearMemory": {
+            "mainLinearBytes": 25296896,
+            "workers": [
+              {
+                "linearBytes": 28966912,
+                "responded": true
+              }
+            ]
+          },
+          "rendererMaps": [
+            {
+              "pid": 157,
+              "rssKiB": 163720,
+              "pssKiB": 74912,
+              "sizeKiB": 1518082812,
+              "largestRegionGroups": [
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 38128,
+                  "pssKiB": 37694,
+                  "sizeKiB": 224752
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 85300,
+                  "pssKiB": 26657,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 25396,
+                  "pssKiB": 4121,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "rwxp",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 2048,
+                  "pssKiB": 2048,
+                  "sizeKiB": 259912
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "resources.pak",
+                  "mappingCount": 1,
+                  "rssKiB": 1676,
+                  "pssKiB": 1537,
+                  "sizeKiB": 18872
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 900,
+                  "pssKiB": 383,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 720,
+                  "pssKiB": 376,
+                  "sizeKiB": 4992
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 440,
+                "rssKiB": 8900,
+                "pssKiB": 1444,
+                "sizeKiB": 1517297816
+              }
+            },
+            {
+              "pid": 166,
+              "rssKiB": 336532,
+              "pssKiB": 232202,
+              "sizeKiB": 1522117828,
+              "largestRegionGroups": [
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 152748,
+                  "pssKiB": 152317,
+                  "sizeKiB": 390740
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 105652,
+                  "pssKiB": 41638,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rwxp",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 16400,
+                  "pssKiB": 16400,
+                  "sizeKiB": 295624
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 19788,
+                  "pssKiB": 10758,
+                  "sizeKiB": 24464
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 25780,
+                  "pssKiB": 4267,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "icudtl.dat",
+                  "mappingCount": 1,
+                  "rssKiB": 2760,
+                  "pssKiB": 1891,
+                  "sizeKiB": 10568
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "NotoSansCJK-Regular.ttc",
+                  "mappingCount": 1,
+                  "rssKiB": 1304,
+                  "pssKiB": 1075,
+                  "sizeKiB": 19032
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 1036,
+                  "pssKiB": 1036,
+                  "sizeKiB": 2320
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 445,
+                "rssKiB": 11064,
+                "pssKiB": 2820,
+                "sizeKiB": 1521101188
+              }
+            },
+            {
+              "pid": 209,
+              "rssKiB": 82184,
+              "pssKiB": 20220,
+              "sizeKiB": 1517990652,
+              "largestRegionGroups": [
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 42996,
+                  "pssKiB": 8795,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 6036,
+                  "pssKiB": 5602,
+                  "sizeKiB": 88564
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 23668,
+                  "pssKiB": 3607,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 896,
+                  "pssKiB": 352,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 416,
+                  "pssKiB": 224,
+                  "sizeKiB": 4480
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "v8_context_snapshot.bin",
+                  "mappingCount": 1,
+                  "rssKiB": 520,
+                  "pssKiB": 173,
+                  "sizeKiB": 740
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "[stack]",
+                  "mappingCount": 1,
+                  "rssKiB": 140,
+                  "pssKiB": 140,
+                  "sizeKiB": 140
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 439,
+                "rssKiB": 6860,
+                "pssKiB": 675,
+                "sizeKiB": 1517620260
+              }
+            }
+          ]
+        },
+        {
+          "phase": "after-input",
+          "linearMemory": {
+            "mainLinearBytes": 25624576,
+            "workers": [
+              {
+                "linearBytes": 28966912,
+                "responded": true
+              }
+            ]
+          },
+          "rendererMaps": [
+            {
+              "pid": 157,
+              "rssKiB": 163916,
+              "pssKiB": 75054,
+              "sizeKiB": 1518082812,
+              "largestRegionGroups": [
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 38288,
+                  "pssKiB": 37854,
+                  "sizeKiB": 224752
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 85300,
+                  "pssKiB": 26605,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 25396,
+                  "pssKiB": 4121,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "rwxp",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 2048,
+                  "pssKiB": 2048,
+                  "sizeKiB": 259912
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "resources.pak",
+                  "mappingCount": 1,
+                  "rssKiB": 1676,
+                  "pssKiB": 1537,
+                  "sizeKiB": 18872
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 756,
+                  "pssKiB": 410,
+                  "sizeKiB": 4992
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 900,
+                  "pssKiB": 383,
+                  "sizeKiB": 1024
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 440,
+                "rssKiB": 8900,
+                "pssKiB": 1444,
+                "sizeKiB": 1517297816
+              }
+            },
+            {
+              "pid": 166,
+              "rssKiB": 342576,
+              "pssKiB": 237214,
+              "sizeKiB": 1522122440,
+              "largestRegionGroups": [
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 156928,
+                  "pssKiB": 156497,
+                  "sizeKiB": 395164
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 106740,
+                  "pssKiB": 42290,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rwxp",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 16440,
+                  "pssKiB": 16440,
+                  "sizeKiB": 295628
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 20524,
+                  "pssKiB": 10894,
+                  "sizeKiB": 29072
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 25780,
+                  "pssKiB": 4267,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "icudtl.dat",
+                  "mappingCount": 1,
+                  "rssKiB": 2760,
+                  "pssKiB": 1891,
+                  "sizeKiB": 10568
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "NotoSansCJK-Regular.ttc",
+                  "mappingCount": 1,
+                  "rssKiB": 1304,
+                  "pssKiB": 1075,
+                  "sizeKiB": 19032
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 1036,
+                  "pssKiB": 1036,
+                  "sizeKiB": 2320
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 445,
+                "rssKiB": 11064,
+                "pssKiB": 2824,
+                "sizeKiB": 1521096764
+              }
+            },
+            {
+              "pid": 209,
+              "rssKiB": 82292,
+              "pssKiB": 20285,
+              "sizeKiB": 1517990652,
+              "largestRegionGroups": [
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 43060,
+                  "pssKiB": 8816,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 6064,
+                  "pssKiB": 5630,
+                  "sizeKiB": 88564
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 23668,
+                  "pssKiB": 3607,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 896,
+                  "pssKiB": 352,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 432,
+                  "pssKiB": 240,
+                  "sizeKiB": 4480
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "v8_context_snapshot.bin",
+                  "mappingCount": 1,
+                  "rssKiB": 520,
+                  "pssKiB": 173,
+                  "sizeKiB": 740
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "[stack]",
+                  "mappingCount": 1,
+                  "rssKiB": 140,
+                  "pssKiB": 140,
+                  "sizeKiB": 140
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 439,
+                "rssKiB": 6860,
+                "pssKiB": 675,
+                "sizeKiB": 1517620260
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "nativeSamplingRun": {
+    "rawSha256": "0e41ec5566cdce63aa424ca4e7974184c270556b2d53a4572975bfeddf71db14",
+    "mode": "local",
+    "completeSourceAfterInputVerified": true,
+    "runtime": {
+      "sourceHead": "1745f068049675a255e1599f0b072e6664da34b1",
+      "sourceFilesSha256": {
+        "crates/core/src/editor/visual_motion.rs": "21e8aaebb2841836251d702627862d312579dea5bdf69441a70874152430e284",
+        "crates/core/src/editor/mod.rs": "552c68362ee8f0628977c349bab7c5874d4cbfd1af2bae4dfa4d275ae16824e4",
+        "frontend/src/components/editor_geometry.rs": "2fd158e1a070bfeea30b0a1f925395240d6df4861e70a604aa08cf1f1c4de809",
+        "frontend/src/components/editor_rows.rs": "be22390f64521e3db85da55dbe935dea1ee72891dd4e65543c9b5d9a6084027f"
+      },
+      "frontendWasmSha256": {
+        "openwebide-frontend-92bf8193126be12a_bg.wasm": "cadd91dd63b3608b3d2c3ca686cfdb571441a560339d490db8b7741bc9424a18"
+      },
+      "backendWasmSha256": "8efc2579446963f530f5774fdcbe2223bbc6b974eb54d8221a768ff1c43232af",
+      "measurementScriptSha256": "a5d4e9a102b79218b4a7839fa957b67be31a20d58e4247bc39393193aae5729e",
+      "scope": "Private allocation attribution on the preserved paragraph/unmount release fixture. Rust/WASM binary unchanged. Exposes main/worker memory capacity without copying it; not current-head timing or a production change.",
+      "diagnosticAssetsSha256": {
+        "openwebide-frontend-92bf8193126be12a.js": "bfb93abc313f1470471e89aa12bcf95da4a14691e558c972b84ef60e534d444a",
+        "editor-worker.js": "9c9608b598aa6f4e7970d615f07907e99d7aa7b5af7d68857bbc2947d6c2f4ab",
+        "index.html": "1dcefe9b41421d5b6ddb89c16f717dbba3d1da832390744fb40a989b01918139"
+      },
+      "nativeSamplingScope": "CDP all-time native sampling, 64 KiB deterministic requested sampling; old immutable baseline, not current-head performance"
+    },
+    "phases": [
+      {
+        "phase": "before-app",
+        "linearMemory": {
+          "mainLinearBytes": null,
+          "workers": []
+        },
+        "rendererMaps": [
+          {
+            "pid": 158,
+            "rssKiB": 161560,
+            "pssKiB": 77888,
+            "sizeKiB": 1518082812,
+            "largestRegionGroups": [
+              {
+                "permissions": "rw-p",
+                "name": "anonymous",
+                "mappingCount": 1,
+                "rssKiB": 37560,
+                "pssKiB": 37125,
+                "sizeKiB": 224416
+              },
+              {
+                "permissions": "r-xp",
+                "name": "chromium",
+                "mappingCount": 1,
+                "rssKiB": 84724,
+                "pssKiB": 30217,
+                "sizeKiB": 216492
+              },
+              {
+                "permissions": "r--p",
+                "name": "chromium",
+                "mappingCount": 1,
+                "rssKiB": 24436,
+                "pssKiB": 4121,
+                "sizeKiB": 57400
+              },
+              {
+                "permissions": "rwxp",
+                "name": "anonymous",
+                "mappingCount": 1,
+                "rssKiB": 2048,
+                "pssKiB": 2048,
+                "sizeKiB": 259912
+              },
+              {
+                "permissions": "r--s",
+                "name": "resources.pak",
+                "mappingCount": 1,
+                "rssKiB": 1676,
+                "pssKiB": 1538,
+                "sizeKiB": 18872
+              },
+              {
+                "permissions": "r--p",
+                "name": "anonymous",
+                "mappingCount": 1,
+                "rssKiB": 652,
+                "pssKiB": 652,
+                "sizeKiB": 1552
+              },
+              {
+                "permissions": "rw-p",
+                "name": "chromium",
+                "mappingCount": 1,
+                "rssKiB": 900,
+                "pssKiB": 383,
+                "sizeKiB": 1024
+              },
+              {
+                "permissions": "rw-s",
+                "name": "memfd:shared-memory-region (deleted)",
+                "mappingCount": 1,
+                "rssKiB": 664,
+                "pssKiB": 356,
+                "sizeKiB": 4992
+              }
+            ],
+            "otherRegions": {
+              "mappingCount": 440,
+              "rssKiB": 8900,
+              "pssKiB": 1448,
+              "sizeKiB": 1517298152
+            }
+          },
+          {
+            "pid": 167,
+            "rssKiB": 132704,
+            "pssKiB": 44366,
+            "sizeKiB": 1518019168,
+            "largestRegionGroups": [
+              {
+                "permissions": "r-xp",
+                "name": "chromium",
+                "mappingCount": 1,
+                "rssKiB": 81652,
+                "pssKiB": 26024,
+                "sizeKiB": 216492
+              },
+              {
+                "permissions": "rw-p",
+                "name": "anonymous",
+                "mappingCount": 1,
+                "rssKiB": 10108,
+                "pssKiB": 9673,
+                "sizeKiB": 120396
+              },
+              {
+                "permissions": "r--p",
+                "name": "chromium",
+                "mappingCount": 1,
+                "rssKiB": 24500,
+                "pssKiB": 4142,
+                "sizeKiB": 57400
+              },
+              {
+                "permissions": "rw-s",
+                "name": "memfd:shared-memory-region (deleted)",
+                "mappingCount": 1,
+                "rssKiB": 2592,
+                "pssKiB": 1336,
+                "sizeKiB": 6784
+              },
+              {
+                "permissions": "r--p",
+                "name": "anonymous",
+                "mappingCount": 1,
+                "rssKiB": 652,
+                "pssKiB": 652,
+                "sizeKiB": 1552
+              },
+              {
+                "permissions": "rw-p",
+                "name": "chromium",
+                "mappingCount": 1,
+                "rssKiB": 956,
+                "pssKiB": 435,
+                "sizeKiB": 1024
+              },
+              {
+                "permissions": "r-xp",
+                "name": "libharfbuzz.so.0.60000.0",
+                "mappingCount": 1,
+                "rssKiB": 832,
+                "pssKiB": 257,
+                "sizeKiB": 1012
+              },
+              {
+                "permissions": "r--s",
+                "name": "v8_context_snapshot.bin",
+                "mappingCount": 1,
+                "rssKiB": 648,
+                "pssKiB": 237,
+                "sizeKiB": 740
+              }
+            ],
+            "otherRegions": {
+              "mappingCount": 441,
+              "rssKiB": 10764,
+              "pssKiB": 1610,
+              "sizeKiB": 1517613768
+            }
+          },
+          {
+            "pid": 209,
+            "rssKiB": 80704,
+            "pssKiB": 20046,
+            "sizeKiB": 1517990652,
+            "largestRegionGroups": [
+              {
+                "permissions": "r-xp",
+                "name": "chromium",
+                "mappingCount": 1,
+                "rssKiB": 42932,
+                "pssKiB": 8805,
+                "sizeKiB": 216492
+              },
+              {
+                "permissions": "rw-p",
+                "name": "anonymous",
+                "mappingCount": 1,
+                "rssKiB": 5988,
+                "pssKiB": 5553,
+                "sizeKiB": 88548
+              },
+              {
+                "permissions": "r--p",
+                "name": "chromium",
+                "mappingCount": 1,
+                "rssKiB": 22388,
+                "pssKiB": 3515,
+                "sizeKiB": 57400
+              },
+              {
+                "permissions": "r--p",
+                "name": "anonymous",
+                "mappingCount": 1,
+                "rssKiB": 652,
+                "pssKiB": 652,
+                "sizeKiB": 1552
+              },
+              {
+                "permissions": "rw-p",
+                "name": "chromium",
+                "mappingCount": 1,
+                "rssKiB": 896,
+                "pssKiB": 351,
+                "sizeKiB": 1024
+              },
+              {
+                "permissions": "rw-s",
+                "name": "memfd:shared-memory-region (deleted)",
+                "mappingCount": 1,
+                "rssKiB": 328,
+                "pssKiB": 180,
+                "sizeKiB": 4480
+              },
+              {
+                "permissions": "r--s",
+                "name": "v8_context_snapshot.bin",
+                "mappingCount": 1,
+                "rssKiB": 520,
+                "pssKiB": 173,
+                "sizeKiB": 740
+              },
+              {
+                "permissions": "rw-p",
+                "name": "[stack]",
+                "mappingCount": 1,
+                "rssKiB": 140,
+                "pssKiB": 140,
+                "sizeKiB": 140
+              }
+            ],
+            "otherRegions": {
+              "mappingCount": 439,
+              "rssKiB": 6860,
+              "pssKiB": 677,
+              "sizeKiB": 1517620276
+            }
+          }
+        ],
+        "nativeSampling": {
+          "sampleCount": 2,
+          "estimatedTotalBytes": 1114112,
+          "largestSamples": [
+            {
+              "size": 1048576,
+              "stack": [
+                "<V8 Heap>"
+              ],
+              "total": 1048576
+            },
+            {
+              "size": 72,
+              "stack": [
+                "0xaaaad0c70f50 <unknown>",
+                "0xaaaad0c70bf4 <unknown>",
+                "0xaaaad0c6ed60 <unknown>",
+                "0xaaaad0c194d4 <unknown>",
+                "0xaaaad0d602f8 new()",
+                "0xaaaad0c4b1f8 <unknown>",
+                "0xaaaad0c4b080 <unknown>",
+                "0xaaaad0c49c28 <unknown>",
+                "0xaaaad0c46da0 <unknown>",
+                "0xaaaad0c47058 <unknown>",
+                "0xaaaad0c4bca4 <unknown>",
+                "0xaaaad0d23d28 <unknown>",
+                "0xaaaad0d23670 <unknown>",
+                "0xaaaad0d21368 <unknown>",
+                "0xaaaad0c8d334 <unknown>",
+                "0xaaaad0ca7b14 <unknown>",
+                "0xaaaad0ca75e8 <unknown>",
+                "0xaaaad0c3e988 <unknown>",
+                "0xaaaad0ca81e0 <unknown>",
+                "0xaaaad0c6c62c <unknown>",
+                "0xaaaad0ccb7f8 <unknown>",
+                "0xaaaad0ccba04 <unknown>",
+                "0xaaaad0ce6fd8 <unknown>",
+                "0xffff84fc202c <unknown>",
+                "0xffff8502bf58 <unknown>"
+              ],
+              "total": 65536
+            }
+          ],
+          "modules": [
+            {
+              "baseAddress": "0xaaaac7a60000",
+              "name": "chrome --change-stack-guard-on-fork=enable --no-sandbox --disable-dev-shm-usage --disable-background-timer-throttling --enable-automation --remote-debugging-port=0 --test-type=webdriver --allow-pre-commit-input --ozone-platform=headless --disable-gpu-compositing --lang=en-US --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=7 --launch-time-ticks=75521903112 --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,10867618318839877322,18207274401547876412,262144 --enable-features=SingleAxisScrollContainers --disable-features=IgnoreDuplicateNavs,PaintHolding,Prewarm --variations-seed-version --pseudonymization-salt-handle=7,i,3813543512060235610,17752858630047430643,4 --trace-process-track-uuid=3190708992871164437 --enable-logging --log-level=0",
+              "size": 266192864,
+              "uuid": "0A3B6ADCA08A858A3C8E866CCBD423B68EB8FF370"
+            },
+            {
+              "baseAddress": "0xffff84f40000",
+              "name": "libc.so.6",
+              "size": 1620124,
+              "uuid": "6F268FF546C56D7F14E9501A55698CC2D0AB47320"
+            }
+          ]
+        }
+      },
+      {
+        "phase": "cold-ready",
+        "linearMemory": {
+          "mainLinearBytes": 25296896,
+          "workers": [
+            {
+              "linearBytes": 28966912,
+              "responded": true
+            }
+          ]
+        },
+        "rendererMaps": [
+          {
+            "pid": 158,
+            "rssKiB": 162596,
+            "pssKiB": 74746,
+            "sizeKiB": 1518082812,
+            "largestRegionGroups": [
+              {
+                "permissions": "rw-p",
+                "name": "anonymous",
+                "mappingCount": 1,
+                "rssKiB": 37980,
+                "pssKiB": 37546,
+                "sizeKiB": 224496
+              },
+              {
+                "permissions": "r-xp",
+                "name": "chromium",
+                "mappingCount": 1,
+                "rssKiB": 85236,
+                "pssKiB": 26637,
+                "sizeKiB": 216492
+              },
+              {
+                "permissions": "r--p",
+                "name": "chromium",
+                "mappingCount": 1,
+                "rssKiB": 24500,
+                "pssKiB": 4128,
+                "sizeKiB": 57400
+              },
+              {
+                "permissions": "rwxp",
+                "name": "anonymous",
+                "mappingCount": 1,
+                "rssKiB": 2048,
+                "pssKiB": 2048,
+                "sizeKiB": 259912
+              },
+              {
+                "permissions": "r--s",
+                "name": "resources.pak",
+                "mappingCount": 1,
+                "rssKiB": 1676,
+                "pssKiB": 1538,
+                "sizeKiB": 18872
+              },
+              {
+                "permissions": "r--p",
+                "name": "anonymous",
+                "mappingCount": 1,
+                "rssKiB": 652,
+                "pssKiB": 652,
+                "sizeKiB": 1552
+              },
+              {
+                "permissions": "rw-p",
+                "name": "chromium",
+                "mappingCount": 1,
+                "rssKiB": 900,
+                "pssKiB": 383,
+                "sizeKiB": 1024
+              },
+              {
+                "permissions": "rw-s",
+                "name": "memfd:shared-memory-region (deleted)",
+                "mappingCount": 1,
+                "rssKiB": 704,
+                "pssKiB": 370,
+                "sizeKiB": 4992
+              }
+            ],
+            "otherRegions": {
+              "mappingCount": 440,
+              "rssKiB": 8900,
+              "pssKiB": 1444,
+              "sizeKiB": 1517298072
+            }
+          },
+          {
+            "pid": 167,
+            "rssKiB": 333828,
+            "pssKiB": 227849,
+            "sizeKiB": 1522117252,
+            "largestRegionGroups": [
+              {
+                "permissions": "rw-p",
+                "name": "anonymous",
+                "mappingCount": 1,
+                "rssKiB": 149696,
+                "pssKiB": 149265,
+                "sizeKiB": 389760
+              },
+              {
+                "permissions": "r-xp",
+                "name": "chromium",
+                "mappingCount": 1,
+                "rssKiB": 105716,
+                "pssKiB": 41672,
+                "sizeKiB": 216492
+              },
+              {
+                "permissions": "rwxp",
+                "name": "anonymous",
+                "mappingCount": 1,
+                "rssKiB": 14840,
+                "pssKiB": 14840,
+                "sizeKiB": 295624
+              },
+              {
+                "permissions": "rw-s",
+                "name": "memfd:shared-memory-region (deleted)",
+                "mappingCount": 1,
+                "rssKiB": 18972,
+                "pssKiB": 10294,
+                "sizeKiB": 23952
+              },
+              {
+                "permissions": "r--p",
+                "name": "chromium",
+                "mappingCount": 1,
+                "rssKiB": 25268,
+                "pssKiB": 4391,
+                "sizeKiB": 57400
+              },
+              {
+                "permissions": "r--s",
+                "name": "icudtl.dat",
+                "mappingCount": 1,
+                "rssKiB": 2760,
+                "pssKiB": 1891,
+                "sizeKiB": 10568
+              },
+              {
+                "permissions": "r--s",
+                "name": "NotoSansCJK-Regular.ttc",
+                "mappingCount": 1,
+                "rssKiB": 1304,
+                "pssKiB": 1075,
+                "sizeKiB": 19032
+              },
+              {
+                "permissions": "r--p",
+                "name": "anonymous",
+                "mappingCount": 1,
+                "rssKiB": 1036,
+                "pssKiB": 1036,
+                "sizeKiB": 2320
+              }
+            ],
+            "otherRegions": {
+              "mappingCount": 445,
+              "rssKiB": 14236,
+              "pssKiB": 3385,
+              "sizeKiB": 1521102104
+            }
+          },
+          {
+            "pid": 209,
+            "rssKiB": 80840,
+            "pssKiB": 20085,
+            "sizeKiB": 1517990652,
+            "largestRegionGroups": [
+              {
+                "permissions": "r-xp",
+                "name": "chromium",
+                "mappingCount": 1,
+                "rssKiB": 42996,
+                "pssKiB": 8797,
+                "sizeKiB": 216492
+              },
+              {
+                "permissions": "rw-p",
+                "name": "anonymous",
+                "mappingCount": 1,
+                "rssKiB": 6040,
+                "pssKiB": 5606,
+                "sizeKiB": 88564
+              },
+              {
+                "permissions": "r--p",
+                "name": "chromium",
+                "mappingCount": 1,
+                "rssKiB": 22388,
+                "pssKiB": 3504,
+                "sizeKiB": 57400
+              },
+              {
+                "permissions": "r--p",
+                "name": "anonymous",
+                "mappingCount": 1,
+                "rssKiB": 652,
+                "pssKiB": 652,
+                "sizeKiB": 1552
+              },
+              {
+                "permissions": "rw-p",
+                "name": "chromium",
+                "mappingCount": 1,
+                "rssKiB": 896,
+                "pssKiB": 352,
+                "sizeKiB": 1024
+              },
+              {
+                "permissions": "rw-s",
+                "name": "memfd:shared-memory-region (deleted)",
+                "mappingCount": 1,
+                "rssKiB": 348,
+                "pssKiB": 184,
+                "sizeKiB": 4480
+              },
+              {
+                "permissions": "r--s",
+                "name": "v8_context_snapshot.bin",
+                "mappingCount": 1,
+                "rssKiB": 520,
+                "pssKiB": 173,
+                "sizeKiB": 740
+              },
+              {
+                "permissions": "rw-p",
+                "name": "[stack]",
+                "mappingCount": 1,
+                "rssKiB": 140,
+                "pssKiB": 140,
+                "sizeKiB": 140
+              }
+            ],
+            "otherRegions": {
+              "mappingCount": 439,
+              "rssKiB": 6860,
+              "pssKiB": 677,
+              "sizeKiB": 1517620260
+            }
+          }
+        ],
+        "nativeSampling": {
+          "sampleCount": 216,
+          "estimatedTotalBytes": 55873536,
+          "largestSamples": [
+            {
+              "size": 28370344,
+              "stack": [
+                "0xaaaad0c70f50 <unknown>",
+                "0xaaaad0c70bf4 <unknown>",
+                "0xaaaad0c6ed60 <unknown>",
+                "0xaaaad0c194d4 <unknown>",
+                "0xaaaad0d602f8 new()",
+                "0xaaaacc9d7cdc <unknown>",
+                "0xaaaacca0b2f8 <unknown>",
+                "0xaaaad3edc754 <unknown>",
+                "0xaaaace8164c4 <unknown>",
+                "0xaaaace81cd2c <unknown>",
+                "0xaaaad0c8d334 <unknown>",
+                "0xaaaad0ca7b14 <unknown>",
+                "0xaaaad0ca75e8 <unknown>",
+                "0xaaaad0c3e988 <unknown>",
+                "0xaaaad0ca81e0 <unknown>",
+                "0xaaaad0c6c62c <unknown>",
+                "0xaaaad3e7686c <unknown>",
+                "0xaaaacfaa0ff8 <unknown>",
+                "0xaaaacfaa1924 <unknown>",
+                "0xaaaacfaa2ae0 <unknown>",
+                "0xaaaacfaa0320 <unknown>",
+                "0xaaaacfaa0498 <unknown>",
+                "0xaaaaca70032c ChromeMain",
+                "0xffff84f67740 <unknown>",
+                "0xffff84f67814 __libc_start_main",
+                "0xaaaaca70002c _start"
+              ],
+              "total": 28311552
+            },
+            {
+              "size": 6983680,
+              "stack": [
+                "<V8 Heap>"
+              ],
+              "total": 6983680
+            },
+            {
+              "size": 2400000,
+              "stack": [
+                "0xaaaad0c70f50 <unknown>",
+                "0xaaaad0c70bf4 <unknown>",
+                "0xaaaad0c6ed60 <unknown>",
+                "0xaaaad0c194d4 <unknown>",
+                "0xaaaad0d602f8 new()",
+                "0xaaaacc9bce44 <unknown>",
+                "0xaaaacc9b6fe8 <unknown>",
+                "0xaaaacc9aef5c <unknown>",
+                "0xaaaacc9d89e0 <unknown>",
+                "0xaaaacc9d7968 <unknown>",
+                "0xaaaacca0b218 <unknown>",
+                "0xaaaad3edc588 <unknown>",
+                "0xaaaace8164c4 <unknown>",
+                "0xaaaace7c6798 <unknown>",
+                "0xaaaacb770798 <unknown>",
+                "0xaaaad10cc8a0 <unknown>",
+                "0xaaaad0c8d334 <unknown>",
+                "0xaaaad0ca7b14 <unknown>",
+                "0xaaaad0ca75e8 <unknown>",
+                "0xaaaad0c3e988 <unknown>",
+                "0xaaaad0ca81e0 <unknown>",
+                "0xaaaad0c6c62c <unknown>",
+                "0xaaaad3e7686c <unknown>",
+                "0xaaaacfaa0ff8 <unknown>",
+                "0xaaaacfaa1924 <unknown>",
+                "0xaaaacfaa2ae0 <unknown>",
+                "0xaaaacfaa0320 <unknown>",
+                "0xaaaacfaa0498 <unknown>",
+                "0xaaaaca70032c ChromeMain",
+                "0xffff84f67740 <unknown>",
+                "0xffff84f67814 __libc_start_main",
+                "0xaaaaca70002c _start"
+              ],
+              "total": 2359296
+            },
+            {
+              "size": 2043334,
+              "stack": [
+                "0xaaaad0c70f50 <unknown>",
+                "0xaaaad0c70bf4 <unknown>",
+                "0xaaaad0c6ed60 <unknown>",
+                "0xaaaad0c194d4 <unknown>",
+                "0xaaaad0d602f8 new()",
+                "0xaaaad4f35be8 <unknown>",
+                "0xaaaad4f35f20 <unknown>",
+                "0xaaaad505f840 <unknown>",
+                "0xaaaad5061dd8 <unknown>",
+                "0xaaaad5060b60 <unknown>",
+                "0xaaaad505fd94 <unknown>",
+                "0xaaaad4f358b0 <unknown>",
+                "0xaaaad4a51d14 <unknown>",
+                "0xaaaad4a53cbc <unknown>",
+                "0xaaaad0c8d334 <unknown>",
+                "0xaaaad0cb1868 <unknown>",
+                "0xaaaad0cb193c <unknown>",
+                "0xaaaad0cb11e0 <unknown>",
+                "0xaaaad0cb0d30 <unknown>",
+                "0xaaaad0cc30d4 <unknown>",
+                "0xaaaad0cc2d00 <unknown>",
+                "0xaaaad0cc2b24 <unknown>",
+                "0xaaaad0ce6fd8 <unknown>",
+                "0xffff84fc202c <unknown>",
+                "0xffff8502bf58 <unknown>"
+              ],
+              "total": 2031616
+            },
+            {
+              "size": 831808,
+              "stack": [
+                "0xaaaad0c70f50 <unknown>",
+                "0xaaaad0c70bf4 <unknown>",
+                "0xaaaad0c6ed60 <unknown>",
+                "0xaaaad0c194d4 <unknown>",
+                "0xaaaad0d602f8 new()",
+                "0xaaaacabf756c <unknown>",
+                "0xaaaacc9bb314 <unknown>",
+                "0xaaaacc9b7060 <unknown>",
+                "0xaaaacc9aef5c <unknown>",
+                "0xaaaacc9d89e0 <unknown>",
+                "0xaaaacc9d7a1c <unknown>",
+                "0xaaaacca0b218 <unknown>",
+                "0xaaaad3edc588 <unknown>",
+                "0xaaaace8164c4 <unknown>",
+                "0xaaaace7c6798 <unknown>",
+                "0xaaaacb770798 <unknown>",
+                "0xaaaad10cc8a0 <unknown>",
+                "0xaaaad0c8d334 <unknown>",
+                "0xaaaad0ca7b14 <unknown>",
+                "0xaaaad0ca75e8 <unknown>",
+                "0xaaaad0c3e988 <unknown>",
+                "0xaaaad0ca81e0 <unknown>",
+                "0xaaaad0c6c62c <unknown>",
+                "0xaaaad3e7686c <unknown>",
+                "0xaaaacfaa0ff8 <unknown>",
+                "0xaaaacfaa1924 <unknown>",
+                "0xaaaacfaa2ae0 <unknown>",
+                "0xaaaacfaa0320 <unknown>",
+                "0xaaaacfaa0498 <unknown>",
+                "0xaaaaca70032c ChromeMain",
+                "0xffff84f67740 <unknown>",
+                "0xffff84f67814 __libc_start_main",
+                "0xaaaaca70002c _start"
+              ],
+              "total": 851968
+            }
+          ],
+          "modules": [
+            {
+              "baseAddress": "0xaaaac7a60000",
+              "name": "chrome --change-stack-guard-on-fork=enable --no-sandbox --disable-dev-shm-usage --disable-background-timer-throttling --enable-automation --remote-debugging-port=0 --test-type=webdriver --allow-pre-commit-input --ozone-platform=headless --disable-gpu-compositing --lang=en-US --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=7 --launch-time-ticks=75521903112 --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,10867618318839877322,18207274401547876412,262144 --enable-features=SingleAxisScrollContainers --disable-features=IgnoreDuplicateNavs,PaintHolding,Prewarm --variations-seed-version --pseudonymization-salt-handle=7,i,3813543512060235610,17752858630047430643,4 --trace-process-track-uuid=3190708992871164437 --enable-logging --log-level=0",
+              "size": 266192864,
+              "uuid": "0A3B6ADCA08A858A3C8E866CCBD423B68EB8FF370"
+            },
+            {
+              "baseAddress": "0xffff84f40000",
+              "name": "libc.so.6",
+              "size": 1620124,
+              "uuid": "6F268FF546C56D7F14E9501A55698CC2D0AB47320"
+            },
+            {
+              "baseAddress": "0xffff85d90000",
+              "name": "libharfbuzz.so.0",
+              "size": 1034440,
+              "uuid": "A2FF5AAAF0627D59F8A5FF89B7CE671ADC522FE10"
+            }
+          ]
+        }
+      },
+      {
+        "phase": "after-input",
+        "linearMemory": {
+          "mainLinearBytes": 25624576,
+          "workers": [
+            {
+              "linearBytes": 28966912,
+              "responded": true
+            }
+          ]
+        },
+        "rendererMaps": [
+          {
+            "pid": 158,
+            "rssKiB": 162656,
+            "pssKiB": 74734,
+            "sizeKiB": 1518082812,
+            "largestRegionGroups": [
+              {
+                "permissions": "rw-p",
+                "name": "anonymous",
+                "mappingCount": 1,
+                "rssKiB": 38008,
+                "pssKiB": 37574,
+                "sizeKiB": 224496
+              },
+              {
+                "permissions": "r-xp",
+                "name": "chromium",
+                "mappingCount": 1,
+                "rssKiB": 85236,
+                "pssKiB": 26585,
+                "sizeKiB": 216492
+              },
+              {
+                "permissions": "r--p",
+                "name": "chromium",
+                "mappingCount": 1,
+                "rssKiB": 24500,
+                "pssKiB": 4128,
+                "sizeKiB": 57400
+              },
+              {
+                "permissions": "rwxp",
+                "name": "anonymous",
+                "mappingCount": 1,
+                "rssKiB": 2048,
+                "pssKiB": 2048,
+                "sizeKiB": 259912
+              },
+              {
+                "permissions": "r--s",
+                "name": "resources.pak",
+                "mappingCount": 1,
+                "rssKiB": 1676,
+                "pssKiB": 1538,
+                "sizeKiB": 18872
+              },
+              {
+                "permissions": "r--p",
+                "name": "anonymous",
+                "mappingCount": 1,
+                "rssKiB": 652,
+                "pssKiB": 652,
+                "sizeKiB": 1552
+              },
+              {
+                "permissions": "rw-p",
+                "name": "chromium",
+                "mappingCount": 1,
+                "rssKiB": 900,
+                "pssKiB": 383,
+                "sizeKiB": 1024
+              },
+              {
+                "permissions": "rw-s",
+                "name": "memfd:shared-memory-region (deleted)",
+                "mappingCount": 1,
+                "rssKiB": 736,
+                "pssKiB": 382,
+                "sizeKiB": 4992
+              }
+            ],
+            "otherRegions": {
+              "mappingCount": 440,
+              "rssKiB": 8900,
+              "pssKiB": 1444,
+              "sizeKiB": 1517298072
+            }
+          },
+          {
+            "pid": 167,
+            "rssKiB": 341508,
+            "pssKiB": 234204,
+            "sizeKiB": 1522118024,
+            "largestRegionGroups": [
+              {
+                "permissions": "rw-p",
+                "name": "anonymous",
+                "mappingCount": 1,
+                "rssKiB": 155000,
+                "pssKiB": 154569,
+                "sizeKiB": 393776
+              },
+              {
+                "permissions": "r-xp",
+                "name": "chromium",
+                "mappingCount": 1,
+                "rssKiB": 106804,
+                "pssKiB": 42323,
+                "sizeKiB": 216492
+              },
+              {
+                "permissions": "rwxp",
+                "name": "anonymous",
+                "mappingCount": 1,
+                "rssKiB": 14844,
+                "pssKiB": 14844,
+                "sizeKiB": 295628
+              },
+              {
+                "permissions": "rw-s",
+                "name": "memfd:shared-memory-region (deleted)",
+                "mappingCount": 1,
+                "rssKiB": 20256,
+                "pssKiB": 10686,
+                "sizeKiB": 24720
+              },
+              {
+                "permissions": "r--p",
+                "name": "chromium",
+                "mappingCount": 1,
+                "rssKiB": 25268,
+                "pssKiB": 4391,
+                "sizeKiB": 57400
+              },
+              {
+                "permissions": "r--s",
+                "name": "icudtl.dat",
+                "mappingCount": 1,
+                "rssKiB": 2760,
+                "pssKiB": 1891,
+                "sizeKiB": 10568
+              },
+              {
+                "permissions": "r--s",
+                "name": "NotoSansCJK-Regular.ttc",
+                "mappingCount": 1,
+                "rssKiB": 1304,
+                "pssKiB": 1075,
+                "sizeKiB": 19032
+              },
+              {
+                "permissions": "r--p",
+                "name": "anonymous",
+                "mappingCount": 1,
+                "rssKiB": 1036,
+                "pssKiB": 1036,
+                "sizeKiB": 2320
+              }
+            ],
+            "otherRegions": {
+              "mappingCount": 445,
+              "rssKiB": 14236,
+              "pssKiB": 3389,
+              "sizeKiB": 1521098088
+            }
+          },
+          {
+            "pid": 209,
+            "rssKiB": 80956,
+            "pssKiB": 20157,
+            "sizeKiB": 1517990652,
+            "largestRegionGroups": [
+              {
+                "permissions": "r-xp",
+                "name": "chromium",
+                "mappingCount": 1,
+                "rssKiB": 43060,
+                "pssKiB": 8817,
+                "sizeKiB": 216492
+              },
+              {
+                "permissions": "rw-p",
+                "name": "anonymous",
+                "mappingCount": 1,
+                "rssKiB": 6072,
+                "pssKiB": 5638,
+                "sizeKiB": 88564
+              },
+              {
+                "permissions": "r--p",
+                "name": "chromium",
+                "mappingCount": 1,
+                "rssKiB": 22388,
+                "pssKiB": 3504,
+                "sizeKiB": 57400
+              },
+              {
+                "permissions": "r--p",
+                "name": "anonymous",
+                "mappingCount": 1,
+                "rssKiB": 652,
+                "pssKiB": 652,
+                "sizeKiB": 1552
+              },
+              {
+                "permissions": "rw-p",
+                "name": "chromium",
+                "mappingCount": 1,
+                "rssKiB": 896,
+                "pssKiB": 352,
+                "sizeKiB": 1024
+              },
+              {
+                "permissions": "rw-s",
+                "name": "memfd:shared-memory-region (deleted)",
+                "mappingCount": 1,
+                "rssKiB": 368,
+                "pssKiB": 204,
+                "sizeKiB": 4480
+              },
+              {
+                "permissions": "r--s",
+                "name": "v8_context_snapshot.bin",
+                "mappingCount": 1,
+                "rssKiB": 520,
+                "pssKiB": 173,
+                "sizeKiB": 740
+              },
+              {
+                "permissions": "rw-p",
+                "name": "[stack]",
+                "mappingCount": 1,
+                "rssKiB": 140,
+                "pssKiB": 140,
+                "sizeKiB": 140
+              }
+            ],
+            "otherRegions": {
+              "mappingCount": 439,
+              "rssKiB": 6860,
+              "pssKiB": 677,
+              "sizeKiB": 1517620260
+            }
+          }
+        ],
+        "nativeSampling": {
+          "sampleCount": 235,
+          "estimatedTotalBytes": 58454016,
+          "largestSamples": [
+            {
+              "size": 28370344,
+              "stack": [
+                "0xaaaad0c70f50 <unknown>",
+                "0xaaaad0c70bf4 <unknown>",
+                "0xaaaad0c6ed60 <unknown>",
+                "0xaaaad0c194d4 <unknown>",
+                "0xaaaad0d602f8 new()",
+                "0xaaaacc9d7cdc <unknown>",
+                "0xaaaacca0b2f8 <unknown>",
+                "0xaaaad3edc754 <unknown>",
+                "0xaaaace8164c4 <unknown>",
+                "0xaaaace81cd2c <unknown>",
+                "0xaaaad0c8d334 <unknown>",
+                "0xaaaad0ca7b14 <unknown>",
+                "0xaaaad0ca75e8 <unknown>",
+                "0xaaaad0c3e988 <unknown>",
+                "0xaaaad0ca81e0 <unknown>",
+                "0xaaaad0c6c62c <unknown>",
+                "0xaaaad3e7686c <unknown>",
+                "0xaaaacfaa0ff8 <unknown>",
+                "0xaaaacfaa1924 <unknown>",
+                "0xaaaacfaa2ae0 <unknown>",
+                "0xaaaacfaa0320 <unknown>",
+                "0xaaaacfaa0498 <unknown>",
+                "0xaaaaca70032c ChromeMain",
+                "0xffff84f67740 <unknown>",
+                "0xffff84f67814 __libc_start_main",
+                "0xaaaaca70002c _start"
+              ],
+              "total": 28311552
+            },
+            {
+              "size": 7598080,
+              "stack": [
+                "<V8 Heap>"
+              ],
+              "total": 7598080
+            },
+            {
+              "size": 2400000,
+              "stack": [
+                "0xaaaad0c70f50 <unknown>",
+                "0xaaaad0c70bf4 <unknown>",
+                "0xaaaad0c6ed60 <unknown>",
+                "0xaaaad0c194d4 <unknown>",
+                "0xaaaad0d602f8 new()",
+                "0xaaaacc9bce44 <unknown>",
+                "0xaaaacc9b6fe8 <unknown>",
+                "0xaaaacc9aef5c <unknown>",
+                "0xaaaacc9d89e0 <unknown>",
+                "0xaaaacc9d7968 <unknown>",
+                "0xaaaacca0b218 <unknown>",
+                "0xaaaad3edc588 <unknown>",
+                "0xaaaace8164c4 <unknown>",
+                "0xaaaace7c6798 <unknown>",
+                "0xaaaacb770798 <unknown>",
+                "0xaaaad10cc8a0 <unknown>",
+                "0xaaaad0c8d334 <unknown>",
+                "0xaaaad0ca7b14 <unknown>",
+                "0xaaaad0ca75e8 <unknown>",
+                "0xaaaad0c3e988 <unknown>",
+                "0xaaaad0ca81e0 <unknown>",
+                "0xaaaad0c6c62c <unknown>",
+                "0xaaaad3e7686c <unknown>",
+                "0xaaaacfaa0ff8 <unknown>",
+                "0xaaaacfaa1924 <unknown>",
+                "0xaaaacfaa2ae0 <unknown>",
+                "0xaaaacfaa0320 <unknown>",
+                "0xaaaacfaa0498 <unknown>",
+                "0xaaaaca70032c ChromeMain",
+                "0xffff84f67740 <unknown>",
+                "0xffff84f67814 __libc_start_main",
+                "0xaaaaca70002c _start"
+              ],
+              "total": 2359296
+            },
+            {
+              "size": 2043334,
+              "stack": [
+                "0xaaaad0c70f50 <unknown>",
+                "0xaaaad0c70bf4 <unknown>",
+                "0xaaaad0c6ed60 <unknown>",
+                "0xaaaad0c194d4 <unknown>",
+                "0xaaaad0d602f8 new()",
+                "0xaaaad4f35be8 <unknown>",
+                "0xaaaad4f35f20 <unknown>",
+                "0xaaaad505f840 <unknown>",
+                "0xaaaad5061dd8 <unknown>",
+                "0xaaaad5060b60 <unknown>",
+                "0xaaaad505fd94 <unknown>",
+                "0xaaaad4f358b0 <unknown>",
+                "0xaaaad4a51d14 <unknown>",
+                "0xaaaad4a53cbc <unknown>",
+                "0xaaaad0c8d334 <unknown>",
+                "0xaaaad0cb1868 <unknown>",
+                "0xaaaad0cb193c <unknown>",
+                "0xaaaad0cb11e0 <unknown>",
+                "0xaaaad0cb0d30 <unknown>",
+                "0xaaaad0cc30d4 <unknown>",
+                "0xaaaad0cc2d00 <unknown>",
+                "0xaaaad0cc2b24 <unknown>",
+                "0xaaaad0ce6fd8 <unknown>",
+                "0xffff84fc202c <unknown>",
+                "0xffff8502bf58 <unknown>"
+              ],
+              "total": 2031616
+            },
+            {
+              "size": 831808,
+              "stack": [
+                "0xaaaad0c70f50 <unknown>",
+                "0xaaaad0c70bf4 <unknown>",
+                "0xaaaad0c6ed60 <unknown>",
+                "0xaaaad0c194d4 <unknown>",
+                "0xaaaad0d602f8 new()",
+                "0xaaaacabf756c <unknown>",
+                "0xaaaacc9bb314 <unknown>",
+                "0xaaaacc9b7060 <unknown>",
+                "0xaaaacc9aef5c <unknown>",
+                "0xaaaacc9d89e0 <unknown>",
+                "0xaaaacc9d7a1c <unknown>",
+                "0xaaaacca0b218 <unknown>",
+                "0xaaaad3edc588 <unknown>",
+                "0xaaaace8164c4 <unknown>",
+                "0xaaaace7c6798 <unknown>",
+                "0xaaaacb770798 <unknown>",
+                "0xaaaad10cc8a0 <unknown>",
+                "0xaaaad0c8d334 <unknown>",
+                "0xaaaad0ca7b14 <unknown>",
+                "0xaaaad0ca75e8 <unknown>",
+                "0xaaaad0c3e988 <unknown>",
+                "0xaaaad0ca81e0 <unknown>",
+                "0xaaaad0c6c62c <unknown>",
+                "0xaaaad3e7686c <unknown>",
+                "0xaaaacfaa0ff8 <unknown>",
+                "0xaaaacfaa1924 <unknown>",
+                "0xaaaacfaa2ae0 <unknown>",
+                "0xaaaacfaa0320 <unknown>",
+                "0xaaaacfaa0498 <unknown>",
+                "0xaaaaca70032c ChromeMain",
+                "0xffff84f67740 <unknown>",
+                "0xffff84f67814 __libc_start_main",
+                "0xaaaaca70002c _start"
+              ],
+              "total": 851968
+            }
+          ],
+          "modules": [
+            {
+              "baseAddress": "0xaaaac7a60000",
+              "name": "chrome --change-stack-guard-on-fork=enable --no-sandbox --disable-dev-shm-usage --disable-background-timer-throttling --enable-automation --remote-debugging-port=0 --test-type=webdriver --allow-pre-commit-input --ozone-platform=headless --disable-gpu-compositing --lang=en-US --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=7 --launch-time-ticks=75521903112 --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,10867618318839877322,18207274401547876412,262144 --enable-features=SingleAxisScrollContainers --disable-features=IgnoreDuplicateNavs,PaintHolding,Prewarm --variations-seed-version --pseudonymization-salt-handle=7,i,3813543512060235610,17752858630047430643,4 --trace-process-track-uuid=3190708992871164437 --enable-logging --log-level=0",
+              "size": 266192864,
+              "uuid": "0A3B6ADCA08A858A3C8E866CCBD423B68EB8FF370"
+            },
+            {
+              "baseAddress": "0xffff84f40000",
+              "name": "libc.so.6",
+              "size": 1620124,
+              "uuid": "6F268FF546C56D7F14E9501A55698CC2D0AB47320"
+            },
+            {
+              "baseAddress": "0xffff85d90000",
+              "name": "libharfbuzz.so.0",
+              "size": 1034440,
+              "uuid": "A2FF5AAAF0627D59F8A5FF89B7CE671ADC522FE10"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "stagedStartupRuns": [
+    {
+      "rawSha256": "bc577a5f47ba5e47dc8deef45027d6a7f941038bb8f604516e8810b0237a7231",
+      "mode": "local",
+      "runtime": {
+        "sourceHead": "1745f068049675a255e1599f0b072e6664da34b1",
+        "sourceFilesSha256": {
+          "crates/core/src/editor/visual_motion.rs": "21e8aaebb2841836251d702627862d312579dea5bdf69441a70874152430e284",
+          "crates/core/src/editor/mod.rs": "552c68362ee8f0628977c349bab7c5874d4cbfd1af2bae4dfa4d275ae16824e4",
+          "frontend/src/components/editor_geometry.rs": "2fd158e1a070bfeea30b0a1f925395240d6df4861e70a604aa08cf1f1c4de809",
+          "frontend/src/components/editor_rows.rs": "be22390f64521e3db85da55dbe935dea1ee72891dd4e65543c9b5d9a6084027f"
+        },
+        "frontendWasmSha256": {
+          "openwebide-frontend-92bf8193126be12a_bg.wasm": "cadd91dd63b3608b3d2c3ca686cfdb571441a560339d490db8b7741bc9424a18"
+        },
+        "backendWasmSha256": "8efc2579446963f530f5774fdcbe2223bbc6b974eb54d8221a768ff1c43232af",
+        "measurementScriptSha256": "35e7a31952b8438b06555ae873992a79d944897d21450b5b72e66b18fe63a960",
+        "scope": "Private allocation attribution on the preserved paragraph/unmount release fixture. Rust/WASM binary unchanged. Exposes main/worker memory capacity without copying it; not current-head timing or a production change.",
+        "diagnosticAssetsSha256": {
+          "openwebide-frontend-92bf8193126be12a.js": "81f28e61d359455fc1beb93a2246da3201350b949be09216105835260ce71466",
+          "editor-worker.js": "9c9608b598aa6f4e7970d615f07907e99d7aa7b5af7d68857bbc2947d6c2f4ab",
+          "index.html": "9d5043190e2926b1b85b1d85300649456a6b8954c9c0e1d7e35620b5ee0c698a",
+          "offline.html": "216edd3f2ec8c644b5108948692afc3d125d7cf4f4b61b886e03630cba6eb841",
+          "about.html": "cf95ec9f5b3f4f1b949dd7cf262e87ff055d64bc5b244222f9e2a23b861bcb82",
+          "about-software-5ff63ce850c3d400.html": "5ff63ce850c3d400098552c54b832da61d465a26f58d2eae23bae3db5991f3bc",
+          "service-worker.js": "cc23f6b11b04379a21966cdc34a100f4d1394402c1a1ed7cecc3c8fb2612270e",
+          "pwa.js": "81c9716c0f4d573404f365a05ee343ac62c77735d81f72e5bf045425e42a33e1"
+        },
+        "nativeSamplingScope": "CDP all-time native sampling, 64 KiB deterministic requested sampling; old immutable baseline, not current-head performance",
+        "stagedStartupScope": "Unmodified Rust/WASM; main generated glue defers wasm start until compilation-only snapshot. Worker start unchanged; diagnostic only, not shipping behavior."
+      },
+      "completeSourceAfterInputVerified": true,
+      "phases": [
+        {
+          "phase": "before-app",
+          "linearMemory": {
+            "mainLinearBytes": null,
+            "workers": []
+          },
+          "rendererMaps": [
+            {
+              "pid": 158,
+              "rssKiB": 162228,
+              "pssKiB": 77558,
+              "sizeKiB": 1518082812,
+              "largestRegionGroups": [
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 37128,
+                  "pssKiB": 36694,
+                  "sizeKiB": 223616
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 84916,
+                  "pssKiB": 30287,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 25332,
+                  "pssKiB": 4131,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "rwxp",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 2048,
+                  "pssKiB": 2048,
+                  "sizeKiB": 259912
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "resources.pak",
+                  "mappingCount": 1,
+                  "rssKiB": 1676,
+                  "pssKiB": 1538,
+                  "sizeKiB": 18872
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 900,
+                  "pssKiB": 383,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 676,
+                  "pssKiB": 368,
+                  "sizeKiB": 4992
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 440,
+                "rssKiB": 8900,
+                "pssKiB": 1457,
+                "sizeKiB": 1517298952
+              }
+            },
+            {
+              "pid": 167,
+              "rssKiB": 133580,
+              "pssKiB": 44423,
+              "sizeKiB": 1518019168,
+              "largestRegionGroups": [
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 81652,
+                  "pssKiB": 25992,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 10236,
+                  "pssKiB": 9802,
+                  "sizeKiB": 120476
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 25332,
+                  "pssKiB": 4131,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 2600,
+                  "pssKiB": 1344,
+                  "sizeKiB": 6784
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 956,
+                  "pssKiB": 435,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "libharfbuzz.so.0.60000.0",
+                  "mappingCount": 1,
+                  "rssKiB": 832,
+                  "pssKiB": 257,
+                  "sizeKiB": 1012
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "v8_context_snapshot.bin",
+                  "mappingCount": 1,
+                  "rssKiB": 648,
+                  "pssKiB": 237,
+                  "sizeKiB": 740
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 441,
+                "rssKiB": 10672,
+                "pssKiB": 1573,
+                "sizeKiB": 1517613688
+              }
+            },
+            {
+              "pid": 206,
+              "rssKiB": 82128,
+              "pssKiB": 20238,
+              "sizeKiB": 1517990652,
+              "largestRegionGroups": [
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 42996,
+                  "pssKiB": 8824,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 6012,
+                  "pssKiB": 5578,
+                  "sizeKiB": 88532
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 23668,
+                  "pssKiB": 3634,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 896,
+                  "pssKiB": 351,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 384,
+                  "pssKiB": 210,
+                  "sizeKiB": 4480
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "v8_context_snapshot.bin",
+                  "mappingCount": 1,
+                  "rssKiB": 520,
+                  "pssKiB": 173,
+                  "sizeKiB": 740
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "[stack]",
+                  "mappingCount": 1,
+                  "rssKiB": 140,
+                  "pssKiB": 140,
+                  "sizeKiB": 140
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 439,
+                "rssKiB": 6860,
+                "pssKiB": 676,
+                "sizeKiB": 1517620292
+              }
+            }
+          ],
+          "sampleCount": 3,
+          "estimatedSampleTotalBytes": 1179648
+        },
+        {
+          "phase": "compiled-before-app-start",
+          "linearMemory": {
+            "mainLinearBytes": 20905984,
+            "workers": []
+          },
+          "rendererMaps": [
+            {
+              "pid": 158,
+              "rssKiB": 162548,
+              "pssKiB": 76323,
+              "sizeKiB": 1518082812,
+              "largestRegionGroups": [
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 37428,
+                  "pssKiB": 36994,
+                  "sizeKiB": 223696
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 84916,
+                  "pssKiB": 28783,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 25332,
+                  "pssKiB": 4112,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "rwxp",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 2048,
+                  "pssKiB": 2048,
+                  "sizeKiB": 259912
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "resources.pak",
+                  "mappingCount": 1,
+                  "rssKiB": 1676,
+                  "pssKiB": 1538,
+                  "sizeKiB": 18872
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 900,
+                  "pssKiB": 383,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 696,
+                  "pssKiB": 356,
+                  "sizeKiB": 4992
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 440,
+                "rssKiB": 8900,
+                "pssKiB": 1457,
+                "sizeKiB": 1517298872
+              }
+            },
+            {
+              "pid": 167,
+              "rssKiB": 266452,
+              "pssKiB": 173574,
+              "sizeKiB": 1520099384,
+              "largestRegionGroups": [
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 129712,
+                  "pssKiB": 129278,
+                  "sizeKiB": 333192
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 88180,
+                  "pssKiB": 29737,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rwxp",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 4988,
+                  "pssKiB": 4988,
+                  "sizeKiB": 295620
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 25588,
+                  "pssKiB": 4173,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 3968,
+                  "pssKiB": 2040,
+                  "sizeKiB": 10908
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 844,
+                  "pssKiB": 844,
+                  "sizeKiB": 1936
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 956,
+                  "pssKiB": 442,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "libharfbuzz.so.0.60000.0",
+                  "mappingCount": 1,
+                  "rssKiB": 832,
+                  "pssKiB": 257,
+                  "sizeKiB": 1012
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 441,
+                "rssKiB": 11384,
+                "pssKiB": 1815,
+                "sizeKiB": 1519181800
+              }
+            },
+            {
+              "pid": 206,
+              "rssKiB": 82160,
+              "pssKiB": 20230,
+              "sizeKiB": 1517990652,
+              "largestRegionGroups": [
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 42996,
+                  "pssKiB": 8813,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 6028,
+                  "pssKiB": 5594,
+                  "sizeKiB": 88548
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 23668,
+                  "pssKiB": 3625,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 896,
+                  "pssKiB": 351,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 400,
+                  "pssKiB": 206,
+                  "sizeKiB": 4480
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "v8_context_snapshot.bin",
+                  "mappingCount": 1,
+                  "rssKiB": 520,
+                  "pssKiB": 173,
+                  "sizeKiB": 740
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "[stack]",
+                  "mappingCount": 1,
+                  "rssKiB": 140,
+                  "pssKiB": 140,
+                  "sizeKiB": 140
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 439,
+                "rssKiB": 6860,
+                "pssKiB": 676,
+                "sizeKiB": 1517620276
+              }
+            }
+          ],
+          "sampleCount": 66,
+          "estimatedSampleTotalBytes": 106729472
+        },
+        {
+          "phase": "cold-ready",
+          "linearMemory": {
+            "mainLinearBytes": 25296896,
+            "workers": [
+              {
+                "linearBytes": 28966912,
+                "responded": true
+              }
+            ]
+          },
+          "rendererMaps": [
+            {
+              "pid": 158,
+              "rssKiB": 163260,
+              "pssKiB": 74441,
+              "sizeKiB": 1518082812,
+              "largestRegionGroups": [
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 37588,
+                  "pssKiB": 37155,
+                  "sizeKiB": 223824
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 85364,
+                  "pssKiB": 26677,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 25396,
+                  "pssKiB": 4139,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "rwxp",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 2048,
+                  "pssKiB": 2048,
+                  "sizeKiB": 259912
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "resources.pak",
+                  "mappingCount": 1,
+                  "rssKiB": 1676,
+                  "pssKiB": 1538,
+                  "sizeKiB": 18872
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 736,
+                  "pssKiB": 396,
+                  "sizeKiB": 4992
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 900,
+                  "pssKiB": 383,
+                  "sizeKiB": 1024
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 440,
+                "rssKiB": 8900,
+                "pssKiB": 1453,
+                "sizeKiB": 1517298744
+              }
+            },
+            {
+              "pid": 167,
+              "rssKiB": 392168,
+              "pssKiB": 285522,
+              "sizeKiB": 1522117508,
+              "largestRegionGroups": [
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 206960,
+                  "pssKiB": 206530,
+                  "sizeKiB": 467112
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 105972,
+                  "pssKiB": 41839,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rwxp",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 14720,
+                  "pssKiB": 14720,
+                  "sizeKiB": 295624
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 19468,
+                  "pssKiB": 10796,
+                  "sizeKiB": 24208
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 25780,
+                  "pssKiB": 4285,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "icudtl.dat",
+                  "mappingCount": 1,
+                  "rssKiB": 2760,
+                  "pssKiB": 1891,
+                  "sizeKiB": 10568
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "NotoSansCJK-Regular.ttc",
+                  "mappingCount": 1,
+                  "rssKiB": 1304,
+                  "pssKiB": 1075,
+                  "sizeKiB": 19032
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 1036,
+                  "pssKiB": 1036,
+                  "sizeKiB": 2320
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 445,
+                "rssKiB": 14168,
+                "pssKiB": 3350,
+                "sizeKiB": 1521024752
+              }
+            },
+            {
+              "pid": 206,
+              "rssKiB": 82260,
+              "pssKiB": 20272,
+              "sizeKiB": 1517990652,
+              "largestRegionGroups": [
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 43060,
+                  "pssKiB": 8817,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 6048,
+                  "pssKiB": 5615,
+                  "sizeKiB": 88564
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 23668,
+                  "pssKiB": 3625,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 896,
+                  "pssKiB": 352,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 416,
+                  "pssKiB": 222,
+                  "sizeKiB": 4480
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "v8_context_snapshot.bin",
+                  "mappingCount": 1,
+                  "rssKiB": 520,
+                  "pssKiB": 173,
+                  "sizeKiB": 740
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "[stack]",
+                  "mappingCount": 1,
+                  "rssKiB": 140,
+                  "pssKiB": 140,
+                  "sizeKiB": 140
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 439,
+                "rssKiB": 6860,
+                "pssKiB": 676,
+                "sizeKiB": 1517620260
+              }
+            }
+          ],
+          "sampleCount": 228,
+          "estimatedSampleTotalBytes": 136024064
+        },
+        {
+          "phase": "after-input",
+          "linearMemory": {
+            "mainLinearBytes": 25624576,
+            "workers": [
+              {
+                "linearBytes": 28966912,
+                "responded": true
+              }
+            ]
+          },
+          "rendererMaps": [
+            {
+              "pid": 158,
+              "rssKiB": 163360,
+              "pssKiB": 74475,
+              "sizeKiB": 1518082812,
+              "largestRegionGroups": [
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 37672,
+                  "pssKiB": 37239,
+                  "sizeKiB": 223824
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 85364,
+                  "pssKiB": 26625,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 25396,
+                  "pssKiB": 4139,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "rwxp",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 2048,
+                  "pssKiB": 2048,
+                  "sizeKiB": 259912
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "resources.pak",
+                  "mappingCount": 1,
+                  "rssKiB": 1676,
+                  "pssKiB": 1538,
+                  "sizeKiB": 18872
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 752,
+                  "pssKiB": 398,
+                  "sizeKiB": 4992
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 900,
+                  "pssKiB": 383,
+                  "sizeKiB": 1024
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 440,
+                "rssKiB": 8900,
+                "pssKiB": 1453,
+                "sizeKiB": 1517298744
+              }
+            },
+            {
+              "pid": 167,
+              "rssKiB": 401760,
+              "pssKiB": 293784,
+              "sizeKiB": 1522118280,
+              "largestRegionGroups": [
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 212368,
+                  "pssKiB": 211938,
+                  "sizeKiB": 471000
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 107060,
+                  "pssKiB": 42491,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rwxp",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 16772,
+                  "pssKiB": 16772,
+                  "sizeKiB": 295628
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 20512,
+                  "pssKiB": 10942,
+                  "sizeKiB": 24976
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 25780,
+                  "pssKiB": 4285,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "icudtl.dat",
+                  "mappingCount": 1,
+                  "rssKiB": 2760,
+                  "pssKiB": 1891,
+                  "sizeKiB": 10568
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "NotoSansCJK-Regular.ttc",
+                  "mappingCount": 1,
+                  "rssKiB": 1304,
+                  "pssKiB": 1075,
+                  "sizeKiB": 19032
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 1036,
+                  "pssKiB": 1036,
+                  "sizeKiB": 2320
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 445,
+                "rssKiB": 14168,
+                "pssKiB": 3354,
+                "sizeKiB": 1521020864
+              }
+            },
+            {
+              "pid": 206,
+              "rssKiB": 82344,
+              "pssKiB": 20300,
+              "sizeKiB": 1517990652,
+              "largestRegionGroups": [
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 43124,
+                  "pssKiB": 8837,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 6044,
+                  "pssKiB": 5611,
+                  "sizeKiB": 88564
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 23668,
+                  "pssKiB": 3625,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 896,
+                  "pssKiB": 352,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 440,
+                  "pssKiB": 234,
+                  "sizeKiB": 4480
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "v8_context_snapshot.bin",
+                  "mappingCount": 1,
+                  "rssKiB": 520,
+                  "pssKiB": 173,
+                  "sizeKiB": 740
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "[stack]",
+                  "mappingCount": 1,
+                  "rssKiB": 140,
+                  "pssKiB": 140,
+                  "sizeKiB": 140
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 439,
+                "rssKiB": 6860,
+                "pssKiB": 676,
+                "sizeKiB": 1517620260
+              }
+            }
+          ],
+          "sampleCount": 251,
+          "estimatedSampleTotalBytes": 139128832
+        }
+      ]
+    },
+    {
+      "rawSha256": "0ae019b4c74c1cb1b3e23dff0a603a22830e811d89619b701eefbb230e21b8a8",
+      "mode": "remote",
+      "runtime": {
+        "sourceHead": "1745f068049675a255e1599f0b072e6664da34b1",
+        "sourceFilesSha256": {
+          "crates/core/src/editor/visual_motion.rs": "21e8aaebb2841836251d702627862d312579dea5bdf69441a70874152430e284",
+          "crates/core/src/editor/mod.rs": "552c68362ee8f0628977c349bab7c5874d4cbfd1af2bae4dfa4d275ae16824e4",
+          "frontend/src/components/editor_geometry.rs": "2fd158e1a070bfeea30b0a1f925395240d6df4861e70a604aa08cf1f1c4de809",
+          "frontend/src/components/editor_rows.rs": "be22390f64521e3db85da55dbe935dea1ee72891dd4e65543c9b5d9a6084027f"
+        },
+        "frontendWasmSha256": {
+          "openwebide-frontend-92bf8193126be12a_bg.wasm": "cadd91dd63b3608b3d2c3ca686cfdb571441a560339d490db8b7741bc9424a18"
+        },
+        "backendWasmSha256": "8efc2579446963f530f5774fdcbe2223bbc6b974eb54d8221a768ff1c43232af",
+        "measurementScriptSha256": "35e7a31952b8438b06555ae873992a79d944897d21450b5b72e66b18fe63a960",
+        "scope": "Private allocation attribution on the preserved paragraph/unmount release fixture. Rust/WASM binary unchanged. Exposes main/worker memory capacity without copying it; not current-head timing or a production change.",
+        "diagnosticAssetsSha256": {
+          "openwebide-frontend-92bf8193126be12a.js": "81f28e61d359455fc1beb93a2246da3201350b949be09216105835260ce71466",
+          "editor-worker.js": "9c9608b598aa6f4e7970d615f07907e99d7aa7b5af7d68857bbc2947d6c2f4ab",
+          "index.html": "9d5043190e2926b1b85b1d85300649456a6b8954c9c0e1d7e35620b5ee0c698a",
+          "offline.html": "216edd3f2ec8c644b5108948692afc3d125d7cf4f4b61b886e03630cba6eb841",
+          "about.html": "cf95ec9f5b3f4f1b949dd7cf262e87ff055d64bc5b244222f9e2a23b861bcb82",
+          "about-software-5ff63ce850c3d400.html": "5ff63ce850c3d400098552c54b832da61d465a26f58d2eae23bae3db5991f3bc",
+          "service-worker.js": "cc23f6b11b04379a21966cdc34a100f4d1394402c1a1ed7cecc3c8fb2612270e",
+          "pwa.js": "81c9716c0f4d573404f365a05ee343ac62c77735d81f72e5bf045425e42a33e1"
+        },
+        "nativeSamplingScope": "CDP all-time native sampling, 64 KiB deterministic requested sampling; old immutable baseline, not current-head performance",
+        "stagedStartupScope": "Unmodified Rust/WASM; main generated glue defers wasm start until compilation-only snapshot. Worker start unchanged; diagnostic only, not shipping behavior."
+      },
+      "completeSourceAfterInputVerified": true,
+      "phases": [
+        {
+          "phase": "before-app",
+          "linearMemory": {
+            "mainLinearBytes": null,
+            "workers": []
+          },
+          "rendererMaps": [
+            {
+              "pid": 158,
+              "rssKiB": 164176,
+              "pssKiB": 78106,
+              "sizeKiB": 1518058044,
+              "largestRegionGroups": [
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 39288,
+                  "pssKiB": 37304,
+                  "sizeKiB": 199728
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 84788,
+                  "pssKiB": 30250,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 25268,
+                  "pssKiB": 4129,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "rwxp",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 2048,
+                  "pssKiB": 2048,
+                  "sizeKiB": 128768
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "resources.pak",
+                  "mappingCount": 1,
+                  "rssKiB": 1676,
+                  "pssKiB": 1538,
+                  "sizeKiB": 18872
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 900,
+                  "pssKiB": 383,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 668,
+                  "pssKiB": 360,
+                  "sizeKiB": 4992
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 441,
+                "rssKiB": 8888,
+                "pssKiB": 1442,
+                "sizeKiB": 1517429216
+              }
+            },
+            {
+              "pid": 167,
+              "rssKiB": 135684,
+              "pssKiB": 44931,
+              "sizeKiB": 1518027428,
+              "largestRegionGroups": [
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 81780,
+                  "pssKiB": 26080,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 12188,
+                  "pssKiB": 10204,
+                  "sizeKiB": 128700
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 25268,
+                  "pssKiB": 4129,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 2604,
+                  "pssKiB": 1348,
+                  "sizeKiB": 6784
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 956,
+                  "pssKiB": 435,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "libharfbuzz.so.0.60000.0",
+                  "mappingCount": 1,
+                  "rssKiB": 832,
+                  "pssKiB": 257,
+                  "sizeKiB": 1012
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "v8_context_snapshot.bin",
+                  "mappingCount": 1,
+                  "rssKiB": 648,
+                  "pssKiB": 237,
+                  "sizeKiB": 740
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 442,
+                "rssKiB": 10756,
+                "pssKiB": 1589,
+                "sizeKiB": 1517613724
+              }
+            },
+            {
+              "pid": 206,
+              "rssKiB": 83648,
+              "pssKiB": 20473,
+              "sizeKiB": 1517990656,
+              "largestRegionGroups": [
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 42868,
+                  "pssKiB": 8804,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 7860,
+                  "pssKiB": 5870,
+                  "sizeKiB": 88532
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 23476,
+                  "pssKiB": 3568,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 896,
+                  "pssKiB": 351,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 384,
+                  "pssKiB": 236,
+                  "sizeKiB": 4480
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "v8_context_snapshot.bin",
+                  "mappingCount": 1,
+                  "rssKiB": 520,
+                  "pssKiB": 173,
+                  "sizeKiB": 740
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "[stack]",
+                  "mappingCount": 1,
+                  "rssKiB": 144,
+                  "pssKiB": 144,
+                  "sizeKiB": 144
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 440,
+                "rssKiB": 6848,
+                "pssKiB": 675,
+                "sizeKiB": 1517620292
+              }
+            }
+          ],
+          "sampleCount": 2,
+          "estimatedSampleTotalBytes": 1114112
+        },
+        {
+          "phase": "compiled-before-app-start",
+          "linearMemory": {
+            "mainLinearBytes": 20905984,
+            "workers": []
+          },
+          "rendererMaps": [
+            {
+              "pid": 158,
+              "rssKiB": 164528,
+              "pssKiB": 76876,
+              "sizeKiB": 1518058044,
+              "largestRegionGroups": [
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 39552,
+                  "pssKiB": 37568,
+                  "sizeKiB": 199824
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 84852,
+                  "pssKiB": 28783,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 25268,
+                  "pssKiB": 4110,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "rwxp",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 2048,
+                  "pssKiB": 2048,
+                  "sizeKiB": 128768
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "resources.pak",
+                  "mappingCount": 1,
+                  "rssKiB": 1676,
+                  "pssKiB": 1538,
+                  "sizeKiB": 18872
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 900,
+                  "pssKiB": 383,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 692,
+                  "pssKiB": 352,
+                  "sizeKiB": 4992
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 441,
+                "rssKiB": 8888,
+                "pssKiB": 1442,
+                "sizeKiB": 1517429120
+              }
+            },
+            {
+              "pid": 167,
+              "rssKiB": 266436,
+              "pssKiB": 172162,
+              "sizeKiB": 1520099428,
+              "largestRegionGroups": [
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 131848,
+                  "pssKiB": 129864,
+                  "sizeKiB": 333240
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 88052,
+                  "pssKiB": 29719,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 25460,
+                  "pssKiB": 4155,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "rwxp",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 3048,
+                  "pssKiB": 3048,
+                  "sizeKiB": 164476
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 3928,
+                  "pssKiB": 2002,
+                  "sizeKiB": 10884
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 844,
+                  "pssKiB": 844,
+                  "sizeKiB": 1936
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 956,
+                  "pssKiB": 442,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "libharfbuzz.so.0.60000.0",
+                  "mappingCount": 1,
+                  "rssKiB": 832,
+                  "pssKiB": 257,
+                  "sizeKiB": 1012
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 442,
+                "rssKiB": 11468,
+                "pssKiB": 1831,
+                "sizeKiB": 1519312964
+              }
+            },
+            {
+              "pid": 206,
+              "rssKiB": 83680,
+              "pssKiB": 20470,
+              "sizeKiB": 1517990656,
+              "largestRegionGroups": [
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 42868,
+                  "pssKiB": 8798,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 7876,
+                  "pssKiB": 5886,
+                  "sizeKiB": 88548
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 23476,
+                  "pssKiB": 3559,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 896,
+                  "pssKiB": 351,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 400,
+                  "pssKiB": 232,
+                  "sizeKiB": 4480
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "v8_context_snapshot.bin",
+                  "mappingCount": 1,
+                  "rssKiB": 520,
+                  "pssKiB": 173,
+                  "sizeKiB": 740
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "[stack]",
+                  "mappingCount": 1,
+                  "rssKiB": 144,
+                  "pssKiB": 144,
+                  "sizeKiB": 144
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 440,
+                "rssKiB": 6848,
+                "pssKiB": 675,
+                "sizeKiB": 1517620276
+              }
+            }
+          ],
+          "sampleCount": 68,
+          "estimatedSampleTotalBytes": 106729472
+        },
+        {
+          "phase": "cold-ready",
+          "linearMemory": {
+            "mainLinearBytes": 25296896,
+            "workers": [
+              {
+                "linearBytes": 28966912,
+                "responded": true
+              }
+            ]
+          },
+          "rendererMaps": [
+            {
+              "pid": 158,
+              "rssKiB": 165384,
+              "pssKiB": 75142,
+              "sizeKiB": 1518058044,
+              "largestRegionGroups": [
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 39860,
+                  "pssKiB": 37877,
+                  "sizeKiB": 199952
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 85300,
+                  "pssKiB": 26680,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 25332,
+                  "pssKiB": 4137,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "rwxp",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 2048,
+                  "pssKiB": 2048,
+                  "sizeKiB": 128768
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "resources.pak",
+                  "mappingCount": 1,
+                  "rssKiB": 1676,
+                  "pssKiB": 1538,
+                  "sizeKiB": 18872
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 728,
+                  "pssKiB": 388,
+                  "sizeKiB": 4992
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 900,
+                  "pssKiB": 383,
+                  "sizeKiB": 1024
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 441,
+                "rssKiB": 8888,
+                "pssKiB": 1439,
+                "sizeKiB": 1517428992
+              }
+            },
+            {
+              "pid": 167,
+              "rssKiB": 397824,
+              "pssKiB": 289307,
+              "sizeKiB": 1522117000,
+              "largestRegionGroups": [
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 211972,
+                  "pssKiB": 209992,
+                  "sizeKiB": 465608
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 106036,
+                  "pssKiB": 41888,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rwxp",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 15288,
+                  "pssKiB": 15288,
+                  "sizeKiB": 164480
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 19484,
+                  "pssKiB": 10518,
+                  "sizeKiB": 23696
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 25716,
+                  "pssKiB": 4283,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "icudtl.dat",
+                  "mappingCount": 1,
+                  "rssKiB": 2760,
+                  "pssKiB": 1891,
+                  "sizeKiB": 10568
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "NotoSansCJK-Regular.ttc",
+                  "mappingCount": 1,
+                  "rssKiB": 1304,
+                  "pssKiB": 1075,
+                  "sizeKiB": 19032
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 1036,
+                  "pssKiB": 1036,
+                  "sizeKiB": 2320
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 446,
+                "rssKiB": 14228,
+                "pssKiB": 3336,
+                "sizeKiB": 1521157404
+              }
+            },
+            {
+              "pid": 206,
+              "rssKiB": 83808,
+              "pssKiB": 20535,
+              "sizeKiB": 1517990656,
+              "largestRegionGroups": [
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 42932,
+                  "pssKiB": 8797,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 7920,
+                  "pssKiB": 5931,
+                  "sizeKiB": 88564
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 23476,
+                  "pssKiB": 3559,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 896,
+                  "pssKiB": 352,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 420,
+                  "pssKiB": 252,
+                  "sizeKiB": 4480
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "v8_context_snapshot.bin",
+                  "mappingCount": 1,
+                  "rssKiB": 520,
+                  "pssKiB": 173,
+                  "sizeKiB": 740
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "[stack]",
+                  "mappingCount": 1,
+                  "rssKiB": 144,
+                  "pssKiB": 144,
+                  "sizeKiB": 144
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 440,
+                "rssKiB": 6848,
+                "pssKiB": 675,
+                "sizeKiB": 1517620260
+              }
+            }
+          ],
+          "sampleCount": 224,
+          "estimatedSampleTotalBytes": 132288512
+        },
+        {
+          "phase": "after-input",
+          "linearMemory": {
+            "mainLinearBytes": 25624576,
+            "workers": [
+              {
+                "linearBytes": 28966912,
+                "responded": true
+              }
+            ]
+          },
+          "rendererMaps": [
+            {
+              "pid": 158,
+              "rssKiB": 165512,
+              "pssKiB": 75190,
+              "sizeKiB": 1518058044,
+              "largestRegionGroups": [
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 39964,
+                  "pssKiB": 37981,
+                  "sizeKiB": 199952
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 85300,
+                  "pssKiB": 26628,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 25332,
+                  "pssKiB": 4137,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "rwxp",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 2048,
+                  "pssKiB": 2048,
+                  "sizeKiB": 128768
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "resources.pak",
+                  "mappingCount": 1,
+                  "rssKiB": 1676,
+                  "pssKiB": 1538,
+                  "sizeKiB": 18872
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 752,
+                  "pssKiB": 384,
+                  "sizeKiB": 4992
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 900,
+                  "pssKiB": 383,
+                  "sizeKiB": 1024
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 441,
+                "rssKiB": 8888,
+                "pssKiB": 1439,
+                "sizeKiB": 1517428992
+              }
+            },
+            {
+              "pid": 167,
+              "rssKiB": 406368,
+              "pssKiB": 296813,
+              "sizeKiB": 1522117772,
+              "largestRegionGroups": [
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 216520,
+                  "pssKiB": 214543,
+                  "sizeKiB": 469984
+                },
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 107060,
+                  "pssKiB": 42507,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rwxp",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 17388,
+                  "pssKiB": 17388,
+                  "sizeKiB": 164484
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 20356,
+                  "pssKiB": 10750,
+                  "sizeKiB": 24464
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 25716,
+                  "pssKiB": 4283,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "icudtl.dat",
+                  "mappingCount": 1,
+                  "rssKiB": 2760,
+                  "pssKiB": 1891,
+                  "sizeKiB": 10568
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "NotoSansCJK-Regular.ttc",
+                  "mappingCount": 1,
+                  "rssKiB": 1304,
+                  "pssKiB": 1075,
+                  "sizeKiB": 19032
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 1036,
+                  "pssKiB": 1036,
+                  "sizeKiB": 2320
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 446,
+                "rssKiB": 14228,
+                "pssKiB": 3340,
+                "sizeKiB": 1521153028
+              }
+            },
+            {
+              "pid": 206,
+              "rssKiB": 83884,
+              "pssKiB": 20547,
+              "sizeKiB": 1517990656,
+              "largestRegionGroups": [
+                {
+                  "permissions": "r-xp",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 42996,
+                  "pssKiB": 8817,
+                  "sizeKiB": 216492
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 7908,
+                  "pssKiB": 5919,
+                  "sizeKiB": 88564
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 23476,
+                  "pssKiB": 3559,
+                  "sizeKiB": 57400
+                },
+                {
+                  "permissions": "r--p",
+                  "name": "anonymous",
+                  "mappingCount": 1,
+                  "rssKiB": 652,
+                  "pssKiB": 652,
+                  "sizeKiB": 1552
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "chromium",
+                  "mappingCount": 1,
+                  "rssKiB": 896,
+                  "pssKiB": 352,
+                  "sizeKiB": 1024
+                },
+                {
+                  "permissions": "rw-s",
+                  "name": "memfd:shared-memory-region (deleted)",
+                  "mappingCount": 1,
+                  "rssKiB": 444,
+                  "pssKiB": 256,
+                  "sizeKiB": 4480
+                },
+                {
+                  "permissions": "r--s",
+                  "name": "v8_context_snapshot.bin",
+                  "mappingCount": 1,
+                  "rssKiB": 520,
+                  "pssKiB": 173,
+                  "sizeKiB": 740
+                },
+                {
+                  "permissions": "rw-p",
+                  "name": "[stack]",
+                  "mappingCount": 1,
+                  "rssKiB": 144,
+                  "pssKiB": 144,
+                  "sizeKiB": 144
+                }
+              ],
+              "otherRegions": {
+                "mappingCount": 440,
+                "rssKiB": 6848,
+                "pssKiB": 675,
+                "sizeKiB": 1517620260
+              }
+            }
+          ],
+          "sampleCount": 246,
+          "estimatedSampleTotalBytes": 135917568
+        }
+      ]
+    }
+  ],
+  "conclusion": "Same renderer grows 124\u2013126 MiB between pre-navigation and initialized main WASM before invoking its Rust start; no worker exists then. App/editor plus worker subsequently add 109\u2013114 MiB before cold readiness. Main linear capacity before Rust start is 19.94 MiB. Pre-start growth includes navigation, module loading/compilation/instantiation, CSS and preload processing; it is not isolated compiler allocation. Investigate runtime/module load separately from editor document allocations. No production memory reduction is established.",
+  "mappingSummary": "Eight largest permission/name groups per renderer, with all remaining mappings totaled separately. RSS, PSS and virtual size totals preserved; raw SHA256 identifies full traces."
+}

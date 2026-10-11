@@ -8,9 +8,13 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Verify the parser-budget checkpoint against all five hosted CI jobs. Record staged startup-memory attribution in both project modes, separating pre-entry-point runtime costs from subsequent editor and worker startup; no memory reduction is claimed.
+
 - Write suggested follow-up prompts from the user's perspective, addressing the assistant rather than asking the user questions.
 - Rank three distinct follow-up suggestions by likelihood; reserve the first for the composer hint and show the other two as chat buttons.
 - Refine assistance summaries, follow-ups, context selection, auto-approval and compaction prompts against a small local model; use shorter instructions and separate context identifiers from labels.
+
+- Reuse prepared long-row category summaries for double-click and word-drag selection, preserving exact Unicode units, whitespace, line-end behavior and stale-gesture rejection.
 
 - Reuse cooperatively prepared long-row category summaries for exact word navigation, avoiding repeated scans through long identifiers, punctuation, whitespace and Unicode clusters. Preserve existing grapheme rules and source ownership through edits and undo.
 
