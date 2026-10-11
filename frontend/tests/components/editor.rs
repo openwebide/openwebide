@@ -7345,6 +7345,10 @@ async fn wrapping_whitespace_fold_geometry_and_navigation_share_both_modes() {
             textarea.scroll_height(),
             full_height
         );
+        assert_eq!(
+            actions.navigation_target("2:220"),
+            openwebide_core::editor::navigation_target(&expected, "2:220")
+        );
         mounted.click_text("Ln 1, Col 1");
         settle().await;
         let go: web_sys::HtmlInputElement = mounted
@@ -7447,6 +7451,18 @@ async fn wrapping_whitespace_fold_geometry_and_navigation_share_both_modes() {
         );
         assert_eq!(actions.source(), expected);
         assert!(!mounted.state.workspace.dirty.get_untracked());
+        // A cached document from the same path must not resolve replacement
+        // source, and a different project must not use the previous file index.
+        mounted.state.workspace.content.set("changed\r\nx".into());
+        assert_eq!(actions.navigation_target("2:220"), Some(10));
+        mounted.state.workspace.active_project.set(Some(2));
+        assert_eq!(actions.navigation_target("2:220"), Some(10));
+        mounted.state.workspace.active_project.set(Some(1));
+        mounted.state.workspace.content.set(expected.clone().into());
+        assert_eq!(
+            actions.navigation_target("2:220"),
+            openwebide_core::editor::navigation_target(&expected, "2:220")
+        );
     }
 }
 
@@ -9746,6 +9762,22 @@ async fn long_wrapped_lines_move_cursors_without_measuring_the_entire_line_in_bo
             assert!(runs.item(index).unwrap().text_content().unwrap().len() <= 516);
         }
         let actions = EditorActions::new(mounted.state.workspace);
+        // Early viewport paint can precede complete long-row geometry. This
+        // contract measures cursor work after cold setup; otherwise its global
+        // Range counter also charges unrelated continuation probes to the key.
+        wait_until(
+            "complete long-row geometry before cursor measurement",
+            || {
+                actions.measured_rows().is_some()
+                    && !actions.syntax_is_pending()
+                    && mounted
+                        .state
+                        .workspace
+                        .editor_row_preparation
+                        .with_untracked(Option::is_none)
+            },
+        )
+        .await;
         let input: web_sys::HtmlTextAreaElement =
             mounted.element(".editor-textarea").unchecked_into();
         let first = "文😀e\u{301} words ".len() * 15_000 + 3;
@@ -9768,7 +9800,16 @@ async fn long_wrapped_lines_move_cursors_without_measuring_the_entire_line_in_bo
         let measured = js_sys::Array::from(&measured);
         assert_eq!(measured.get(0).as_bool(), Some(true));
         let count = measured.get(1).as_f64().unwrap();
-        assert!(count < 2_000.0, "{mode:?}: {count} range measurements");
+        let background = measured.get(3).as_f64().unwrap();
+        assert!(
+            background.abs() < f64::EPSILON,
+            "{mode:?}: cursor motion restarted cold geometry"
+        );
+        assert!(
+            count < 2_000.0,
+            "{mode:?}: {count} range measurements, {} background measurements",
+            measured.get(3).as_f64().unwrap()
+        );
         wasm_bindgen_test::console_log!(
             "{mode:?}: long-line Down measured {count} ranges in {}ms",
             measured.get(2).as_f64().unwrap()
@@ -9800,8 +9841,14 @@ async fn long_wrapped_lines_move_cursors_without_measuring_the_entire_line_in_bo
 #[wasm_bindgen::prelude::wasm_bindgen(inline_js = r#"
 export async function measureWrappedKey(input, key) {
     const original = Range.prototype.getClientRects;
-    let count = 0;
-    Range.prototype.getClientRects = function() { ++count; return original.call(this); };
+    let count = 0, background = 0;
+    Range.prototype.getClientRects = function() {
+        ++count;
+        const node = this.startContainer;
+        const element = node.nodeType === 1 ? node : node.parentElement;
+        if (element?.closest('.editor-height-measure')) ++background;
+        return original.call(this);
+    };
     const event = new KeyboardEvent('keydown', {key, bubbles:true, cancelable:true});
     const start = performance.now();
     try {
@@ -9810,7 +9857,7 @@ export async function measureWrappedKey(input, key) {
         for (let frame = 0; input.selectionStart === before && frame < 60; ++frame) {
             await new Promise(resolve => requestAnimationFrame(resolve));
         }
-        return [event.defaultPrevented, count, performance.now() - start];
+        return [event.defaultPrevented, count, performance.now() - start, background];
     } finally { Range.prototype.getClientRects = original; }
 }
 "#)]
@@ -11155,15 +11202,31 @@ async fn rejected_wrapped_geometry_restarts_when_syntax_completes_in_both_modes(
         actions.paste("changed ", Selection::caret(0)).unwrap();
         openwebide_frontend::util::yield_task().await;
         settle().await;
-        assert!(!transport.pending.borrow().is_empty());
+        // Publication yields in bounded batches. Wait for the observable wire
+        // request under the ordinary 3 s deadline, keeping geometry suspended.
+        let deadline = js_sys::Date::now() + 3_000.0;
+        while transport.pending.borrow().is_empty() && js_sys::Date::now() < deadline {
+            openwebide_frontend::util::sleep_ms(10).await;
+            settle().await;
+        }
+        let request_ready = !transport.pending.borrow().is_empty();
+        let geometry_pending = actions.row_geometry_is_pending();
+        if request_ready {
+            reject();
+            openwebide_frontend::util::yield_task().await;
+            settle().await;
+        }
+        // Restore the hook before assertions: WASM panics do not unwind the
+        // Rust guard, and a failed check must not suspend later tests' frames.
+        drop(frames);
         assert!(
-            actions.row_geometry_is_pending(),
+            request_ready,
+            "{mode:?}: timed out waiting for changed-source request"
+        );
+        assert!(
+            geometry_pending,
             "{mode:?}: geometry must be in flight before the reply"
         );
-        reject();
-        openwebide_frontend::util::yield_task().await;
-        settle().await;
-        drop(frames);
         wait_until(
             "wrapped geometry completes after syntax revision changes",
             || {
@@ -16425,7 +16488,7 @@ async fn horizontal_fragments_preserve_tabs_scroll_extent_and_native_hits_in_bot
         let normalized: Vec<_> = source.replace("\r\n", "\n").encode_utf16().collect();
         let initial_source = js_sys::Function::new_no_args(
             r#"
-            const state = {cold: 0, paint: 0};
+            const state = {cold: 0, paint: 0, unboundedPaint: null};
             const old = Range.prototype.getClientRects;
             Range.prototype.getClientRects = function(...args) {
                 const node = this.startContainer;
@@ -16434,6 +16497,15 @@ async fn horizontal_fragments_preserve_tabs_scroll_extent_and_native_hits_in_bot
                 if (row) {
                     const kind = row.closest('.editor-height-measure') ? 'cold' : 'paint';
                     state[kind] = Math.max(state[kind], row.textContent.length);
+                    if (kind === 'paint' && row.textContent.length > 65536 && !state.unboundedPaint) {
+                        const probe = row.closest('.editor-row-measure');
+                        state.unboundedPaint = {
+                            row: Object.fromEntries(Array.from(row.attributes).map(attribute => [attribute.name, attribute.value])),
+                            scope: Object.fromEntries(Array.from(probe.attributes).filter(attribute => attribute.name.startsWith('data-measure-')).map(attribute => [attribute.name, attribute.value])),
+                            fonts: Array.from(document.fonts).map(font => ({family:font.family,status:font.status})),
+                            stack: new Error().stack,
+                        };
+                    }
                 }
                 return old.apply(this, args);
             };
@@ -16506,6 +16578,12 @@ async fn horizontal_fragments_preserve_tabs_scroll_extent_and_native_hits_in_bot
         };
         let cold = measured("cold");
         let paint = measured("paint");
+        let diagnostic = js_sys::JSON::stringify(
+            &js_sys::Reflect::get(&initial_source, &"unboundedPaint".into()).unwrap(),
+        )
+        .unwrap()
+        .as_string()
+        .unwrap();
         js_sys::Reflect::get(&initial_source, &"restore".into())
             .unwrap()
             .dyn_into::<js_sys::Function>()
@@ -16518,7 +16596,7 @@ async fn horizontal_fragments_preserve_tabs_scroll_extent_and_native_hits_in_bot
         );
         assert!(
             paint > 0.0 && paint <= 65_536.0,
-            "initial horizontal paint must reuse cold anchors: {paint}"
+            "initial horizontal paint must reuse cold anchors: {paint}; {mode:?}; {diagnostic}"
         );
         // Audit the source extent after initial geometry and native-window
         // installation settle, rather than a transient cold native extent.

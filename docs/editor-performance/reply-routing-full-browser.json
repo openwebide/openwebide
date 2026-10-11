@@ -1,0 +1,58 @@
+{
+  "baseHead": "f5ad5903ccfb8d90c35227745196d2bc4896e609",
+  "profile": "release",
+  "terminalExitCode": 0,
+  "editorTestsPassed": 191,
+  "additionalWorkerAdapterTestsPassed": 1,
+  "uniqueTestsPassed": 192,
+  "failures": 0,
+  "groupOrder": [
+    2,
+    5,
+    0,
+    1,
+    3,
+    4
+  ],
+  "runs": [
+    {
+      "passed": 1,
+      "seconds": 0.01
+    },
+    {
+      "passed": 55,
+      "seconds": 48.28
+    },
+    {
+      "passed": 23,
+      "seconds": 1.05
+    },
+    {
+      "passed": 56,
+      "seconds": 103.33
+    },
+    {
+      "passed": 55,
+      "seconds": 36.24
+    },
+    {
+      "passed": 1,
+      "seconds": 23.51
+    },
+    {
+      "passed": 1,
+      "seconds": 16.18
+    }
+  ],
+  "componentsWasmSha256": "1c1551d0bbd17e90606968a3fe7c26e34a9bb911d7042c6ca9e269b531aa6ebd",
+  "libraryWasmSha256": "02bdd2da6b4a286987e4a2e16b40aa7f3712aa7739d7e2322906f97ee05ea70a",
+  "sourceManifestSha256": "f1390577cc0c8f2ef13c82c021813a8e8e93c4509699afbea93b4451cf9b6ba3",
+  "allManifestSourcesMatch": true,
+  "logSha256": "1cad41aa06dc8fa5d4c8819caadd8d169db2de1fa6b680135f7caac41b28958f",
+  "scope": "Complete editor browser inventory plus worker routing regression. Prepared cursor-cost contract preserves total-read limit and asserts zero background geometry reads in both modes.",
+  "limitations": [
+    "Does not establish a fix for the historical intermittent horizontal paint failure.",
+    "Does not measure production latency or replace physical PWA/input/accessibility checks.",
+    "Hosted CI for this candidate remains pending."
+  ]
+}

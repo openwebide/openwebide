@@ -5,7 +5,7 @@ use crate::{
     editor::*,
     highlight::{Token, TokenKind},
 };
-pub(super) use publication::SourcePublication;
+pub(super) use publication::{SourcePublication, SourceSelection};
 use std::sync::Arc;
 
 pub const MAX_ANALYSIS_MESSAGE_BYTES: usize = 32 * 1024 * 1024;

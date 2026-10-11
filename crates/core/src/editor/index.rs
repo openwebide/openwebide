@@ -454,6 +454,15 @@ impl LineIndex {
             head: self.textarea_to_byte(text, selection.head),
         }
     }
+    pub fn offset_at_line_column(&self, text: &str, line: usize, column: usize) -> usize {
+        let index = line.saturating_sub(1).min(self.rows.len() - 1);
+        let row = &self.rows[index];
+        (row.start
+            + self.coordinates[index]
+                .char_to_byte(&text[row.start..row.end], column.saturating_sub(1)))
+        .min(row.body_end)
+    }
+
     pub fn line_column(&self, text: &str, offset: usize) -> (usize, usize) {
         let offset = text.floor_char_boundary(offset.min(text.len()));
         let row = row_at(&self.rows, offset);

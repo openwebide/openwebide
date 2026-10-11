@@ -20,6 +20,18 @@ for what's still ahead.
 - Add schema-defined JSON plugin icons with typed drawing primitives, bounded geometry, fixed sizing and theme color. Share validation across manifests and catalog listings; use the puzzle fallback for omitted or invalid cached icons.
 - Document the pinned public Git SDK and custom-marketplace authoring. Marketplace CI validates catalogs and tests, lints and compiles executable sources against that SDK. Official catalog promotion and remaining manual PWA verification are tracked on the roadmap.
 
+- Reuse immutable source identity in editor text, cursor queue, decoration and indentation-guide checks while preserving complete equality for external text.
+
+- Resolve editor go-to-line queries from retained line and character indexes, avoiding full-file row rebuilding for prepared documents.
+
+- Route syntax-worker replies from a bounded ticket header instead of scanning the entire analysis payload twice; complete reply validation remains in the shared editor facade.
+
+- Yield a browser frame when long wrapped-row preparation first publishes proved viewport coverage, allowing visible paint before continuing background geometry probes.
+
+- Encode syntax requests directly from retained immutable source ranges, sharing full/delta selection with worker replies and avoiding an intermediate plaintext copy.
+
+- Publish syntax request deltas and JSON source text in bounded batches, yielding between batches and cancelling superseded background, resync and structural-action requests.
+
 - Check ordinary-input syntax budgets during source admission, comparison and row-index preparation through the same cooperative engine used by background analysis, without preparing decoration output.
 
 - Reject oversized syntax requests before constructing a grammar parser in the shared preparation cache, releasing stale analysis while preserving ordinary editing above the syntax limit.

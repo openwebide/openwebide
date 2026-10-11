@@ -1,0 +1,16 @@
+{
+  "testedHead": "f5ad5903ccfb8d90c35227745196d2bc4896e609",
+  "profile": "release",
+  "componentsWasmSha256": "0a7ece13761e02db9eedc84e8b097259a8b523f87c3e05a8e819bde47a4c2ffc",
+  "libraryWasmSha256": "eba3d7c49352186992ca72af24d79a4323031706e49ce13a9b147922e111bfaa",
+  "inventory": 191,
+  "passed": 188,
+  "failed": [
+    "editor::long_wrapped_lines_move_cursors_without_measuring_the_entire_line_in_both_modes"
+  ],
+  "unexecuted": 2,
+  "terminalExitCode": 1,
+  "assertion": "frontend/tests/components/editor.rs:9771: Local: 4663 range measurements",
+  "scope": "Frozen artifacts from f5ad5903; later uncommitted routing work was not tested. Both independent font matrices remain unexecuted.",
+  "diagnosis": "Unresolved. Counter wraps all Range reads during asynchronous keyboard movement, including concurrent background preparation; diagnostics are being added without changing bounds/deadlines."
+}

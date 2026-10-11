@@ -15,7 +15,7 @@ pub struct EditorText(
 
 impl PartialEq for EditorText {
     fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
+        self.matches_text(other.as_str())
     }
 }
 impl Eq for EditorText {}
@@ -26,6 +26,11 @@ impl EditorText {
     }
     pub fn as_str(&self) -> &str {
         self.0.as_str()
+    }
+    /// Borrowed views of this immutable allocation need no source traversal.
+    /// Independently allocated strings still require complete byte equality.
+    pub fn matches_text(&self, text: &str) -> bool {
+        std::ptr::eq(self.as_str(), text) || self.as_str() == text
     }
     pub fn editor_limit(&self) -> Option<openwebide_core::editor::EditorLimit> {
         *self
@@ -73,32 +78,32 @@ impl From<EditorText> for String {
 }
 impl PartialEq<str> for EditorText {
     fn eq(&self, other: &str) -> bool {
-        self.as_str() == other
+        self.matches_text(other)
     }
 }
 impl PartialEq<&str> for EditorText {
     fn eq(&self, other: &&str) -> bool {
-        self.as_str() == *other
+        self.matches_text(other)
     }
 }
 impl PartialEq<String> for EditorText {
     fn eq(&self, other: &String) -> bool {
-        self.as_str() == other
+        self.matches_text(other)
     }
 }
 impl PartialEq<EditorText> for str {
     fn eq(&self, other: &EditorText) -> bool {
-        self == other.as_str()
+        other.matches_text(self)
     }
 }
 impl PartialEq<EditorText> for &str {
     fn eq(&self, other: &EditorText) -> bool {
-        *self == other.as_str()
+        other.matches_text(self)
     }
 }
 impl PartialEq<EditorText> for String {
     fn eq(&self, other: &EditorText) -> bool {
-        self == other.as_str()
+        other.matches_text(self)
     }
 }
 
@@ -1184,6 +1189,43 @@ mod tests {
                 assert!(workspace.editor_recovery(&project, false).is_err());
             });
         }
+    }
+
+    #[test]
+    fn source_equality_preserves_borrowed_aliases_external_values_and_retained_revisions() {
+        use openwebide_core::editor::{Document, Edit, Selection};
+        let text = "文😀e\u{301}\r\n".repeat(60_000);
+        let mut document = Document::new(&text);
+        let source = EditorText::from(document.shared_text());
+        let retained = source.clone();
+        let external = source.as_str().to_owned();
+        assert!(std::ptr::eq(source.as_str(), document.text()));
+        assert!(source.matches_text(document.text()));
+        assert_eq!(source, retained);
+        assert_eq!(source, external);
+        assert_eq!(external, source);
+        assert!(source == external.as_str());
+        assert!(external.as_str() == source);
+        assert!(source == *external.as_str());
+        assert!(*external.as_str() == source);
+        assert!(!source.matches_text(&source[..source.len() - 1]));
+        // Equal-length revisions must not be accepted just because they share
+        // every earlier byte. Retained snapshots remain equal to the old source.
+        let end = source.len();
+        document
+            .apply(
+                vec![Edit::replace(end - 1..end, "x")],
+                vec![Selection::caret(0)],
+                None,
+            )
+            .unwrap();
+        let changed = EditorText::from(document.shared_text());
+        assert_eq!(source.len(), changed.len());
+        assert_ne!(source, changed);
+        assert_ne!(changed, external);
+        assert!(!source.matches_text(document.text()));
+        assert_eq!(retained.as_str(), external);
+        assert_eq!(EditorText::default(), "");
     }
 
     #[test]

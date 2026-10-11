@@ -33,6 +33,11 @@ pub fn offset_at_line_column(text: &str, line: usize, column: usize) -> usize {
 
 /// Parse the go-to input and resolve it to a safe source offset.
 pub fn navigation_target(text: &str, query: &str) -> Option<usize> {
+    let (line, column) = navigation_coordinates(query)?;
+    Some(offset_at_line_column(text, line, column))
+}
+
+pub(super) fn navigation_coordinates(query: &str) -> Option<(usize, usize)> {
     let (line, column) = query
         .trim()
         .split_once(':')
@@ -41,7 +46,7 @@ pub fn navigation_target(text: &str, query: &str) -> Option<usize> {
         });
     let line = line.parse::<usize>().ok().filter(|line| *line > 0)?;
     let column = column.parse::<usize>().ok().filter(|column| *column > 0)?;
-    Some(offset_at_line_column(text, line, column))
+    Some((line, column))
 }
 
 pub fn has_adjacent_bracket(text: &str, offset: usize) -> bool {
@@ -179,6 +184,55 @@ mod tests {
             assert!(navigation_target("x", query).is_none());
         }
     }
+    #[test]
+    fn indexed_navigation_matches_source_coordinates_after_edits_and_history() {
+        use super::super::{Document, Edit, Selection};
+        let source = format!(
+            "{}\r\n{}\n",
+            "文😀e\u{301}\t".repeat(4000),
+            "tail".repeat(300)
+        );
+        let mut document = Document::new(&source);
+        for stage in 0..4 {
+            for line in [0, 1, 2, 3, 999, usize::MAX] {
+                for column in [0, 1, 2, 511, 512, 513, 9000, usize::MAX] {
+                    let query = format!("{line}:{column}");
+                    assert_eq!(
+                        document.navigation_target(&query),
+                        navigation_target(document.text(), &query)
+                    );
+                }
+            }
+            for query in ["", " 2:2 ", "1", "0", "1:0", "-1", "1:x", "1:2:3"] {
+                assert_eq!(
+                    document.navigation_target(query),
+                    navigation_target(document.text(), query)
+                );
+            }
+            match stage {
+                0 => {
+                    document
+                        .apply(
+                            vec![Edit {
+                                range: 0..0,
+                                text: "new\r\n".into(),
+                            }],
+                            vec![Selection::caret(0)],
+                            None,
+                        )
+                        .unwrap();
+                }
+                1 => {
+                    document.undo();
+                }
+                2 => {
+                    document.redo();
+                }
+                _ => {}
+            }
+        }
+    }
+
     #[test]
     fn bracket_navigation_ignores_literals_and_supports_either_side_of_a_pair() {
         let text = "fn f() { let s = \"} 文😀\"; /* { */ work(); }";

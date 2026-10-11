@@ -5666,3 +5666,252 @@ native core all-target lint pass. Strict WASM frontend all-target lint and all
 uses debug WASM, not the hosted release profile, and does not cover the complete
 browser inventory or prove physical preparation readiness. No latency improvement
 is claimed from these tests. Full hosted CI and production measurements remain open.
+
+### Bounded browser request publication
+
+`SyntaxRequestPublication` retains the immutable current/base sources and uses
+the existing source-publication policy for full/delta selection. Source comparison
+and copying, followed by exact JSON string escaping, advance in bounded batches.
+The frontend shared facade yields between 64 KiB batches and checks current
+ownership before each batch and after completion. Background requests, the
+one-shot missing-base resync, and cooperative structural actions all use it.
+The wire version, delta threshold and worker validation are unchanged.
+
+Native wire-contract tests compare decoded JSON with the existing request builder
+for full/no-op/changed sources, controls, Unicode, escaped document names and
+empty strings under four batch budgets. Unfinished jobs cannot publish messages.
+A browser regression polls a large publication to Pending, replaces source/file/
+project/account ownership in both modes, checks cancellation, and publishes a
+fresh request. Current 635 core tests, 128 native frontend tests and strict native
+core/WASM frontend lint pass. Rebuilt release browser verification now passes
+all 191 editor contracts, including both independent font matrices
+([receipt](editor-performance/request-publication-full-browser.json)). A
+preliminary release build saw a mismatched dependency after the batch constant
+changed during compilation; no browser tests ran from that build. Rebuild final
+sources before accepting artifact evidence.
+
+This does not bound metadata/capacity allocation or the final JavaScript string
+conversion, worker message decoding, reply-source validation and DOM publication.
+It still copies the published source into an intermediate wire source. Repeat
+actual facade/input latency and memory workloads before crediting responsiveness.
+
+The first release browser run reports 148 passes and one failure, with 42 tests
+without terminal results ([failure receipt](editor-performance/request-publication-browser-failure.json)).
+The failed fixture left its animation-frame hook paused; the owned container was
+stopped after later tests stopped progressing. An isolated unchanged-artifact
+run reproduces the assertion that a changed-source request is already queued
+after one task yield. The test now waits for observable transport readiness under
+the ordinary 3 s deadline, captures geometry-in-flight before the reply, and
+restores animation frames before its assertions. Geometry/source checks and
+the final completion deadline remain unchanged. Rebuilt full verification passes all 191 tests with zero failures. These
+functional contracts do not establish production responsiveness or complete
+release reliability. The three preceding checkpoints also pass all five hosted
+jobs ([7ff2462](editor-performance/grouped-ci-7ff2462.json),
+[211574d](editor-performance/grouped-ci-211574d.json),
+[81d2d78](editor-performance/grouped-ci-81d2d78.json)). This publisher checkpoint
+also passed all five hosted jobs
+([f208bde](editor-performance/grouped-ci-f208bde.json)); the outstanding
+production/device gates still need verification.
+
+### Borrowed request source ranges
+
+Requests now select full/delta source ranges through the same bounded
+`SourceSelection` engine used by reply `SourcePublication`, then JSON-escape
+directly from their retained immutable source. The request job no longer stores
+an owned plaintext wire source. Reply publication still owns its required wire
+source; delta thresholds, byte budgets and protocol version are unchanged.
+
+The new boundary regression uses 2 MiB of NUL bytes (worst-case six-byte JSON
+escaping), checks the retained source allocation throughout preparation, and
+requires one escape batch per source-byte batch after header selection. The
+existing Unicode/full/delta wire contracts cover both consumers of selection.
+All 636 native core tests and strict native core/WASM frontend all-target lint
+pass. All 191 release editor browser contracts, including both independent
+font matrices, pass ([receipt](editor-performance/borrowed-request-full-browser.json)).
+These tests verify ownership, wire compatibility and geometry; they do not
+establish production latency/memory completion. This checkpoint passed all five
+hosted jobs ([receipt](editor-performance/grouped-ci-6ef5108.json)).
+This removes an intermediate allocation/copy; it does not establish physical
+latency, Chrome PSS or the remaining conversion/decoding/publication bounds.
+
+### Production measurements after borrowed request publication
+
+Eight current release samples cover a styled 1,048,567-byte Rust row, local and
+remote projects, wrapping on/off and two repeats. Each verifies the complete
+source after an insertion at the beginning, not only the visible native window
+([samples](editor-performance/borrowed-request-production.jsonl)). Metadata
+identifies commit `6ef5108`, both production WASM hashes, Chromium, the reused
+image and the four-CPU/10-GiB container limits. These recovered local fixtures
+do not establish physical folder-permission or PWA input behavior.
+
+| View | Load to paint | Input viewport paint | Complete input geometry |
+| --- | --- | --- | --- |
+| Wrapped | 2.40–2.55 s | 246–261 ms | 1.18–1.27 s |
+| Unwrapped | 2.94–3.66 s | 128–142 ms | 128–142 ms |
+
+The results still fail the responsiveness goal. They do not establish a
+controlled causal improvement over earlier checkpoints: host/background load
+was not controlled. All eight source checks pass; source integrity does not
+prove latency completion.
+
+A separate wrapped local run enables both CPU profiling and bounded tracing
+([summary](editor-performance/borrowed-request-layout-profile.json)). Its
+264.6 ms viewport paint and 1.238 s complete geometry include instrumentation
+overhead and are excluded from the normal cohort. During input, 71 probes spend
+855.7 ms in element bounds reads and 133.0 ms in range reads. Recorded paragraph
+rendering totals 1.4 ms, layout 870.3 ms and geometry 175.7 ms. Across startup
+and input, the CPU profile attributes about 1.81 s of self samples to element
+bounds reads. The trace is not truncated and complete edited source is verified.
+
+The next layout work should reduce fresh browser shaping/reflow and prove
+reconnection for changed wrapping phases, while preserving exact renderer
+geometry and current-source ownership. Further request-copy optimizations alone
+cannot account for this measured layout cost. Parser, allocation and device
+gates remain independently open.
+
+### Frame yield after first wrapped viewport coverage
+
+The shared DOM measurement loop now yields a frame immediately after first
+publishing source-owned wrapped viewport coverage. Previously it could continue
+additional shaping probes through task yields until its periodic frame boundary.
+The change preserves the existing geometry admission, source ownership,
+cancellation and complete-extent requirements. Both project modes use the same
+facade and measurement primitive; no adapter or transport policy changes.
+
+Five existing release browser contracts pass: early paint before complete
+geometry, exact styled geometry, source-owned edit reuse, stale-work cancellation
+and rejected-geometry restart after syntax completes
+([receipt](editor-performance/coverage-frame-browser.json)). Strict WASM frontend
+all-target lint, formatting and the production Spin build pass. The initial
+container invocation omitted the Linux runner mount and executed no tests; the
+corrected invocation used the same frozen artifact. This focused run does not
+replace the complete browser inventory or hosted CI.
+
+Four isolated current production samples use the same styled 1,048,567-byte row,
+beginning insertion, both modes and two repeats, with complete-source verification
+in every sample ([results](editor-performance/coverage-frame-production.jsonl)).
+Viewport paint takes 231–247 ms and complete geometry 1.11–1.14 s. The preceding
+cohort measured 246–261 ms and 1.18–1.27 s, respectively. These are sequential
+cohorts with uncontrolled host/background load, so their difference does not
+establish a controlled causal improvement. The scheduling change prioritizes
+the first proved viewport; the substantial fresh shaping cost and full
+responsiveness, memory, device and CI gates remain open.
+
+The full release follow-up passed 133 editor tests, failed one initial tabbed
+horizontal paint bound and left 57 tests unexecuted
+([failure record](editor-performance/coverage-frame-full-failure.json)). The
+failed assertion observes a 130,011-character row in a paint probe where the
+existing contract requires at most 65,536. An isolated run of the same frozen
+artifact passes. That does not resolve the full-run failure or establish its
+cause. The assertion now captures the first oversized paint's row attributes,
+measurement scope, font states and call stack for diagnosis; its original
+paint bounds and deadlines remain unchanged. No full-suite pass is claimed.
+The rebuilt diagnostic artifact passes the same 56-test group with zero failures
+([receipt](editor-performance/horizontal-diagnostic-group.json)). This establishes
+that the diagnostics preserve the contracts, but leaves the intermittent failure
+unresolved; it is not a renderer fix or a complete-inventory pass.
+The subsequent complete-inventory attempt passed 188 tests and failed the wrapped
+long-row cursor range-count bound (4,663 reads in Local); both font matrices were
+unexecuted ([record](editor-performance/horizontal-diagnostic-full-failure.json)).
+The initial horizontal-paint contract passed in that run. The cursor harness
+counts all range reads until native selection changes, including background
+height preparation. A separate background count is being added to distinguish
+that work without changing the existing total limit or deadlines. Neither failure
+is considered resolved by this rerun.
+Hosted CI for `f86dd7b` also failed that cursor bound in Remote mode with 2,504
+range reads; its other four jobs passed
+([receipt](editor-performance/grouped-ci-f86dd7b-failure.json)). This is a
+release-reliability failure, not a passing checkpoint.
+The following diagnostic-only checkpoint `f5ad5903` passes all five hosted jobs
+([receipt](editor-performance/grouped-ci-f5ad590.json)). It precedes the bounded
+routing and cursor-setup changes below; its green result does not establish a
+fix for the timing-dependent counter or horizontal-paint failures.
+The instrumented reproduction reports 4,663 total reads, of which 4,110 belong
+to background height preparation and 553 to other probes
+([diagnostic](editor-performance/reply-routing-diagnostic-failure.json)). The
+cursor-cost contract started at bounded viewport paint, which now intentionally
+precedes complete geometry. Its setup now waits for complete current geometry,
+finished syntax and no active row preparation under the existing deadline.
+The original total limit of 2,000 remains, and a new assertion requires zero
+background geometry reads during the measured key. Existing cold/queued-input
+contracts still cover motion while preparation is unfinished. The rebuilt complete browser inventory passes with this setup, including the
+zero-background assertion in both modes
+([receipt](editor-performance/reply-routing-full-browser.json)). This does not
+reduce cold layout costs or resolve the earlier horizontal-paint failure.
+
+### Bounded reply ticket routing
+
+The dedicated browser worker client previously deserialized the complete reply
+into a ticket-only struct before the shared facade decoded and validated it
+again. It now calls `SyntaxReply::routing_ticket`, which inspects at most 256
+bytes and stops after reading the root ticket. Shared producers serialize
+version/ticket first; replies with routing metadata beyond this prefix are not
+routed by this internal adapter. Complete decoding, version/ticket/source checks
+and analysis validation remain in the facade. The cooperative transport already
+returns the reply directly and does not need this routing step. Neither path
+adds a project-mode branch.
+
+All 637 native core tests and strict native core/WASM frontend all-target lint
+pass. New core coverage includes canonical control headers, whitespace and
+escaped keys, nested ticket rejection, invalid numeric tickets, bounded late
+metadata, duplicate fields and a malformed 2 MiB tail that routing must not scan
+and complete validation must reject. A browser adapter regression exercises
+large-body routing followed by full validation, then a valid control reply;
+its release browser regression passes
+([combined diagnostic run](editor-performance/reply-routing-diagnostic-failure.json)).
+That run also reproduced the cursor-counter failure described above. The rebuilt combined change passes all 191 editor contracts and the additional
+worker routing regression: 192 unique tests, zero failures, including both font
+matrices ([receipt](editor-performance/reply-routing-full-browser.json)). Strict
+WASM frontend lint also passes after the cursor assertion change. Hosted CI for
+this candidate remains pending. No production latency
+improvement or completion of remaining message decoding/publication work is
+claimed yet.
+
+
+### Indexed go-to-line preparation
+
+Go-to-line previously rebuilt logical rows and counted characters from the
+requested row's beginning for every query. Prepared documents now resolve the
+same shared query syntax through retained logical rows and sparse character
+checkpoints. Character columns preserve Unicode scalar semantics, tabs and CRLF
+clamping; the scan starts at the closest retained checkpoint. The frontend facade
+uses this path only for a current source-owned document and keeps the existing
+source-only fallback when no current document exists. No mode check is added.
+
+All 638 core tests pass, including a regression against the complete source
+coordinate oracle for long Unicode rows, boundary/overflow coordinates, invalid
+queries, edits, undo and redo. The existing both-mode browser navigation contract
+also checks replacement source and project ownership. Strict native core and WASM frontend all-target lint pass. The release browser
+contract passes in both modes (0.40 s), including stale source/project checks
+([receipt](editor-performance/indexed-navigation-browser.json)). The initial
+fixture attempt altered the cursor before its existing go-to click and failed
+to open that input; moving ownership checks after the original UI sequence
+corrected the fixture without changing its bounds or deadlines. Hosted CI for
+this candidate remains pending. This avoids repeated row rebuilding
+for prepared navigation; it does not resolve cold fallback indexing, long word
+motion or the remaining paragraph layout costs.
+
+
+### Shared immutable-source equality
+
+`EditorText` equality now shares one borrowed-source comparison: references to
+exactly the same immutable allocation and length return immediately, while
+independent strings retain complete byte equality. Every string equality overload
+uses that policy. Motion queue, decoration and indentation-guide ownership checks
+also use the core document's existing `matches_text` primitive. This preserves
+external equal values and rejects equal-prefix or equal-length changed revisions;
+it adds no project-mode branch and changes no source acceptance contract.
+
+A native regression covers a large Unicode/CRLF document, borrowed aliases,
+independent equal strings through each overload, shortened views, an equal-length
+last-byte edit and retained old snapshots. All 129 native frontend tests and strict native/WASM all-target frontend lint
+pass. All three targeted release browser contracts pass in both modes: queued motion
+account/file/ticket ownership, deferred decoration source/selection/scope
+rejection and indexed guide ownership
+([receipt](editor-performance/source-equality-browser.json)). These targeted
+results do not replace the complete hosted suite, which remains pending. No measured input latency
+improvement or completion of remaining source materialization is claimed.
+
+A real PWA inspection was attempted through computer use. Chrome and Open WebIDE
+processes were listed as running, but neither exposed an accessible window
+(`cgWindowNotFound`); no physical interaction gate is credited from that attempt.

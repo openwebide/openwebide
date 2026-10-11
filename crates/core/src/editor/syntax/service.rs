@@ -372,6 +372,41 @@ fn request_bytes(request: &SyntaxRequest) -> usize {
 }
 
 impl SyntaxReply {
+    /// Read transport metadata without scanning an analysis payload. Shared
+    /// producers serialize version/ticket first; routing inspects at most 256
+    /// bytes. This is not reply validation: callers must still use `receive`.
+    pub fn routing_ticket(message: &str) -> Option<u32> {
+        if message.len() > MAX_ANALYSIS_MESSAGE_BYTES {
+            return None;
+        }
+        struct Ticket<'a>(&'a mut Option<u32>);
+        impl<'de> serde::de::Visitor<'de> for Ticket<'_> {
+            type Value = ();
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                formatter.write_str("a syntax reply object")
+            }
+
+            fn visit_map<A: serde::de::MapAccess<'de>>(self, mut map: A) -> Result<(), A::Error> {
+                while let Some(key) = map.next_key::<String>()? {
+                    if key == "ticket" {
+                        *self.0 = Some(map.next_value()?);
+                        // Deliberately stop before status/analysis. The complete
+                        // decoder validates their syntax and ownership later.
+                        return Err(serde::de::Error::custom("routing ticket extracted"));
+                    }
+                    map.next_value::<serde::de::IgnoredAny>()?;
+                }
+                Ok(())
+            }
+        }
+        let mut ticket = None;
+        let prefix = &message.as_bytes()[..message.len().min(256)];
+        let mut decoder = serde_json::Deserializer::from_slice(prefix);
+        let _ = serde::Deserializer::deserialize_map(&mut decoder, Ticket(&mut ticket));
+        ticket
+    }
+
     pub fn receive(
         message: &str,
         ticket: u32,
@@ -433,6 +468,52 @@ impl SyntaxReply {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reply_routing_is_bounded_and_does_not_replace_validation() {
+        for ticket in [0, 1, u32::MAX] {
+            for status in [
+                SyntaxStatus::Cancelled,
+                SyntaxStatus::TooLarge,
+                SyntaxStatus::NeedsSource,
+                SyntaxStatus::Ready { incremental: false },
+            ] {
+                let message = control_reply(ticket, status).unwrap();
+                assert_eq!(SyntaxReply::routing_ticket(&message), Some(ticket));
+            }
+        }
+        for message in [
+            r#" { "version":6, "ticket":42, "analysis":null }"#,
+            r#"{"ticket":42,"version":6}"#,
+            r#"{"analysis":{"ticket":7},"ticket":42}"#,
+            r#"{"\u0074icket":42}"#,
+        ] {
+            assert_eq!(SyntaxReply::routing_ticket(message), Some(42));
+        }
+        for message in [
+            r#"{"ticket":-1}"#,
+            r#"{"ticket":4294967296}"#,
+            r#"{"ticket":"42"}"#,
+            r#"[{"ticket":42}]"#,
+            r#"{"analysis":{"ticket":42}}"#,
+        ] {
+            assert_eq!(SyntaxReply::routing_ticket(message), None);
+        }
+        // A large or malformed tail cannot be scanned during routing. Complete
+        // validation must still reject it before publishing any analysis.
+        let message = format!(
+            "{{\"version\":6,\"ticket\":42,{}",
+            "x".repeat(2 * 1024 * 1024)
+        );
+        assert_eq!(SyntaxReply::routing_ticket(&message), Some(42));
+        assert!(SyntaxReply::receive(&message, 42, "source").is_none());
+        let late = format!("{{\"analysis\":\"{}\",\"ticket\":42}}", "x".repeat(1024));
+        assert_eq!(SyntaxReply::routing_ticket(&late), None);
+        let duplicate =
+            r#"{"version":6,"ticket":42,"ticket":7,"status":"Cancelled","analysis":null}"#;
+        assert_eq!(SyntaxReply::routing_ticket(duplicate), Some(42));
+        assert!(SyntaxReply::receive(duplicate, 42, "source").is_none());
+    }
 
     #[test]
     fn short_worker_slices_make_progress_through_parser_injections_and_final_structure() {

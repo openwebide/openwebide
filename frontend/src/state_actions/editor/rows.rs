@@ -624,7 +624,7 @@ impl EditorActions {
             self.workspace.editor_documents.with_untracked(|documents| {
                 documents
                     .get(&key)
-                    .filter(|document| document.text() == source)
+                    .filter(|document| document.matches_text(source))
                     .map_or_else(
                         || Arc::from([]),
                         |document| document.indent_guide_columns(indentation),

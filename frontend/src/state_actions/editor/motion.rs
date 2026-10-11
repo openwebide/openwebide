@@ -89,7 +89,7 @@ impl EditorActions {
                         && self
                             .workspace
                             .content
-                            .with_untracked(|source| document.text() == source)
+                            .with_untracked(|source| document.matches_text(source))
                 })
             })
     }

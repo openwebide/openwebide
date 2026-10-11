@@ -78,7 +78,9 @@ tracks the remaining work rather than every optimization already shipped.
   ([receipt](editor-performance/input-clock-focused-browser.json)). All 190 editor browser
   contracts, including both font matrices, pass
   ([receipt](editor-performance/input-clock-full-browser.json)); physical
-  readiness/latency and hosted CI are not established by those contracts.
+  readiness/latency are not established by those contracts. That checkpoint's
+  hosted CI passed all five jobs
+  ([receipt](editor-performance/grouped-ci-7ff2462.json)).
   The earlier full candidate run passed 76 tests, failed held Markdown pairing
   and left 112 tests unexecuted
   ([record](editor-performance/input-structure-full-failure.json)). Instrumented
@@ -89,8 +91,8 @@ tracks the remaining work rather than every optimization already shipped.
   before context is available. Native debug fallback edit medians improved from
   50–96 ms to below 0.5 ms
   ([comparison](editor-performance/typing-preparation-native-comparison.json));
-  real browser/release latency, hard per-phase bounds and candidate hosted CI
-  remain open. The native/WASM input harness now passes strict lint and all
+  real browser/release latency and hard per-phase bounds remain open.
+  The native/WASM input harness now passes strict lint and all
   16 source/selection checks per output variant
   ([first release samples](editor-performance/input-preparation-release-samples.json)).
   Single samples show cold browser preparation exceeding the budget and a
@@ -108,6 +110,9 @@ tracks the remaining work rather than every optimization already shipped.
   native/WASM lint and twelve focused debug-WASM both-mode browser contracts pass
   ([receipt](editor-performance/input-bounded-preparation.json)). Repeat release
   and physical latency measurements before crediting the responsiveness gate.
+  Both follow-on checkpoints passed all five hosted jobs
+  ([early admission](editor-performance/grouped-ci-211574d.json),
+  [budgeted input](editor-performance/grouped-ci-81d2d78.json)).
 
 - [ ] **Cold startup and native input:** remove remaining full-source shaping in
   touch and unsupported-layout fallbacks. Desktop startup now uses bounded native
@@ -118,6 +123,12 @@ tracks the remaining work rather than every optimization already shipped.
   when bounded geometry cannot be proved. Basic direct and queued keyboard
   motion now uses editor admission instead of the separate 2 MiB structure
   budget; measured neighborhoods retain source and validate only measured rows.
+  Go-to-line now uses retained logical rows and sparse character coordinates for
+  current prepared documents, with source-only fallback when no current document
+  exists. All 638 core tests and strict native core/WASM frontend lint pass;
+  the release both-mode navigation and stale source/project regression passes
+  ([receipt](editor-performance/indexed-navigation-browser.json)). Hosted CI
+  for this candidate remains pending.
   Complete projection/native normalization, long word/context traversal and
   remaining synchronous selection publication still require bounded preparation.
 - [ ] **Tabbed, wrapped and bidirectional layout:** extend bounded preparation
@@ -156,7 +167,45 @@ tracks the remaining work rather than every optimization already shipped.
   beginning-edit production repeats show styled viewport paint in 253–260 ms,
   while full geometry still takes 1.18–1.24 seconds; cold viewport paint takes
   1.57–1.62 seconds. Broader boundary latency and memory measurements, arbitrary
-  nonorigin coverage and the remaining full measurement costs are still unfinished. Extend
+  nonorigin coverage and the remaining full measurement costs are still unfinished.
+  Current release measurements after borrowed request publication still show
+  246–261 ms wrapped input paint and 1.18–1.27 s complete geometry in both modes
+  ([eight production samples](editor-performance/borrowed-request-production.jsonl)).
+  A separate instrumented input run attributes 856 ms to bounds reads across
+  71 probes, compared with 1.4 ms of paragraph rendering
+  ([profile summary](editor-performance/borrowed-request-layout-profile.json));
+  reduce fresh browser shaping/reflow rather than treating source-copy removal
+  as completion of this gate.
+  Preparation now yields a frame immediately after first publishing proved
+  viewport coverage, before continuing background probes. Five focused release
+  browser contracts pass in both modes
+  ([receipt](editor-performance/coverage-frame-browser.json)). Four current
+  production samples show 231–247 ms viewport paint and 1.11–1.14 s complete
+  geometry ([samples](editor-performance/coverage-frame-production.jsonl));
+  these remain above the responsiveness goal. Its full release browser run passed
+  133 tests, failed the initial tabbed horizontal paint bound, and left 57
+  unexecuted ([failure](editor-performance/coverage-frame-full-failure.json)).
+  The same frozen test passes alone; resolve the timing/order dependency and
+  verify the complete inventory and hosted CI before crediting this gate.
+  The diagnostic full rerun passed 188 tests but failed the wrapped cursor
+  range-count bound, leaving both font matrices unexecuted
+  ([record](editor-performance/horizontal-diagnostic-full-failure.json)).
+  Distinguish concurrent cold preparation from cursor work and resolve that
+  failure without weakening measurement bounds or deadlines.
+  Hosted CI for the frame-yield checkpoint also fails the cursor bound in Remote
+  mode with 2,504 reads ([receipt](editor-performance/grouped-ci-f86dd7b-failure.json));
+  its other four jobs pass. Diagnostics identify 4,110 background height reads
+  and 553 other reads in the failing Local sample
+  ([record](editor-performance/reply-routing-diagnostic-failure.json)). The
+  cursor-cost fixture now waits for complete geometry under its existing deadline,
+  retains the 2,000 total-read limit and additionally requires zero background
+  reads during the key. The rebuilt full inventory passes all 191 editor tests
+  plus the worker routing regression (192 unique tests), including both font
+  matrices ([receipt](editor-performance/reply-routing-full-browser.json)).
+  Reverify hosted CI; cold layout costs and the horizontal-paint failure remain open.
+  The diagnostic-only follow-on passed all five hosted jobs
+  ([receipt](editor-performance/grouped-ci-f5ad590.json)); it predates the cursor
+  setup change and does not establish that failure's resolution. Extend
   shifted suffix reuse to changed long-token and plain-run boundaries; avoid repeated prefix
   segmentation for over-limit styled run tables. Eligible styled measurement paths
   now prepare run tables in yielding batches, including uncapped unwrapped
@@ -232,8 +281,38 @@ tracks the remaining work rather than every optimization already shipped.
 - [ ] **Source ownership and storage:** finish external parser snapshots,
   remaining changed-revision paint/transport comparisons, metadata materialization
   and transport serialization, message decoding, diff shaping and native-text
-  materialization. Browser request source publication and oversized-message fallback
-  still run synchronously. Combined row scans retain the geometry contracts, but
+  materialization.
+  Editor text equality and motion/decoration/guide ownership checks now accept
+  borrowed references to the same immutable source without scanning bytes;
+  external values retain complete equality validation. All 129 native frontend
+  tests and strict native/WASM lint pass; all three release both-mode motion,
+  decoration and guide ownership contracts pass
+  ([receipt](editor-performance/source-equality-browser.json)). Complete hosted
+  CI and measured production latency remain open.
+  The browser worker client now routes replies through a shared core header
+  reader capped at 256 bytes, avoiding a full payload parse solely for the ticket.
+  Shared producers serialize routing metadata first; complete facade validation
+  remains required. All 637 native core tests and strict native/WASM lint pass;
+  the worker routing regression and full 191-test editor inventory pass
+  ([receipt](editor-performance/reply-routing-full-browser.json)). Remaining
+  complete decoding/publication costs are still open. Browser request source comparison, copying and JSON escaping
+  now advance in bounded Rust batches through the shared facade. All 191 release
+  editor browser contracts, including both font matrices, pass
+  ([receipt](editor-performance/request-publication-full-browser.json)); measure
+  actual publication/input latency and memory before crediting responsiveness.
+  That request-publication checkpoint also passed all five hosted jobs
+  ([receipt](editor-performance/grouped-ci-f208bde.json)); newer checkpoints and
+  the remaining production/device gates still require verification.
+  The borrowed-source follow-on also passed all five hosted jobs
+  ([receipt](editor-performance/grouped-ci-6ef5108.json)); this does not resolve
+  the later intermittent horizontal-paint failure.
+  Request encoding now borrows retained source ranges without an intermediate
+  plaintext copy, sharing full/delta selection with replies. Its 636 core tests,
+  strict native/WASM lint and all 191 release browser contracts pass
+  ([receipt](editor-performance/borrowed-request-full-browser.json)); measure
+  actual memory effects and await hosted candidate CI.
+  Header and capacity allocation, JavaScript string conversion, message decoding and
+  oversized-message fallback still need bounded preparation. Combined row scans retain the geometry contracts, but
   current production repeats still show 125–178 ms cold source-publication tasks
   and 64–69 ms input tasks; these
   source/controller costs remain responsiveness targets. Bound remaining
@@ -288,8 +367,13 @@ tracks the remaining work rather than every optimization already shipped.
   that checkpoint (`8cb111c`) passed all five hosted jobs
   ([receipt](editor-performance/grouped-ci-8cb111c.json)). The subsequent embedded-input checkpoint
   passes the complete 188-test editor inventory
-  ([receipt](editor-performance/held-typing-full-browser.json)); its own hosted CI
-  and the remaining reliability checks remain required.
+  ([receipt](editor-performance/held-typing-full-browser.json)) and passed all five
+  hosted jobs ([receipt](editor-performance/grouped-ci-ed1c8ca.json)). The subsequent
+  preparation checkpoints also passed all five jobs
+  ([7ff2462](editor-performance/grouped-ci-7ff2462.json),
+  [211574d](editor-performance/grouped-ci-211574d.json),
+  [81d2d78](editor-performance/grouped-ci-81d2d78.json)). These successful
+  checkpoints do not close the outstanding production and reliability gates.
 
   Investigate intermittent hosted readiness failures before declaring reliability.
   `9d4f888` published the typed parser-budget fallback but did not finish paint
