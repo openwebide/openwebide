@@ -1,0 +1,46 @@
+{
+  "scope": "Current wrapped paragraph checkpoint; all selected raw WASM editor/worker exports, actual shipped font serving, unchanged deadlines",
+  "componentTests": 170,
+  "editorLibraryTests": 23,
+  "workerTests": 1,
+  "total": 194,
+  "componentGroups": [
+    {
+      "record": "current-source-editor-suite-first-run.json",
+      "passed": 160,
+      "failed": 0,
+      "unfinished": 10,
+      "harnessDeadlineSeconds": 300
+    },
+    {
+      "record": "current-source-editor-suite-remaining.json",
+      "passed": 10,
+      "failed": 0
+    }
+  ],
+  "finalOwnershipRegression": {
+    "record": "current-source-probe-reuse-final-browser.json",
+    "passed": true
+  },
+  "libraryRecord": "current-source-library-worker-browser.json",
+  "componentArtifactSha256": "ffc8bc4bf7f50e87a7d835af60c69a2800ffc256df7ca7d5757ad09c26a9f9e9",
+  "libraryArtifactSha256": "d2aa0300d8179cbd07f9684a27f33caa9404244b1105392a8c3c0e3add66700d",
+  "artifactDifference": "The final component artifact adds one stale-account assertion; feature runtime is unchanged from the 170-test component runs. The expanded regression passes on the final artifact.",
+  "nativeCoreTests": 658,
+  "nativeFrontendTests": 129,
+  "strictWasmClippy": "passed",
+  "helperCases": {
+    "component": {
+      "passed": true,
+      "selectedTests": [
+        "__wbgt__components::editor::editor_tab_focus_accessibility_contract"
+      ],
+      "output": "\nrunning 1 test\ntest editor::editor_tab_focus_accessibility_contract ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.09s\n\n"
+    },
+    "negative": {
+      "passed": false,
+      "selectedTests": null,
+      "output": "Error: No matching WASM test exports for: missing_contract_must_fail\n    at http://127.0.0.1:36981/runner.js:17:39"
+    }
+  }
+}

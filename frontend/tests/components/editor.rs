@@ -21198,20 +21198,34 @@ async fn bounded_wrapped_paragraphs_preserve_complete_styled_geometry_in_both_mo
 async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes() {
     use openwebide_core::{WorkspaceMode, editor::Selection};
     use openwebide_frontend::{
-        components::{bounded_wrapped_matches_complete, take_paragraph_suffix_probes},
+        components::{
+            bounded_wrapped_matches_complete, take_paragraph_current_probes,
+            take_paragraph_suffix_probes,
+        },
         state_actions::editor::EditorActions,
     };
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        for (styled, reconnect) in [false, true]
-            .into_iter()
-            .flat_map(|styled| [false, true].map(move |reconnect| (styled, reconnect)))
-        {
+        for (styled, reconnect, width) in [
+            (false, false, 420),
+            (false, true, 420),
+            (true, false, 420),
+            (true, true, 420),
+            (true, true, 264),
+        ] {
             let transport = std::rc::Rc::new(DeferredSyntax::default());
             let installed = transport.clone();
             let body = if reconnect {
-                // Production String pattern at a smaller size: require
-                // measured reconnection before reusing shifted geometry.
-                "文😀 words ".repeat(16_000)
+                // Include the production near-limit String before any prior
+                // edit changes its wrapping phase or retained probe origins.
+                "文😀 words ".repeat(if styled {
+                    // Reserve the prefix/suffix and all four test edits.
+                    (openwebide_core::editor::MAX_EDITOR_LINE_BYTES
+                        - "const VALUE: &str = \"\";".len()
+                        - 16)
+                        / "文😀 words ".len()
+                } else {
+                    16_000
+                })
             } else {
                 // Different wrapping phase may require fresh measurements.
                 "word 文😀e\u{301} != -> café ".repeat(8000)
@@ -21248,7 +21262,7 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes
                     .editor_preferences
                     .update(|preferences| preferences.word_wrap = true);
                 state.workspace.content.set(source.into());
-                view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:420px;height:320px">{editor_view(state)}</div> }
+                view! { <style>{include_str!("../../styles.css")}</style><div style=format!("display:flex;width:{width}px;height:320px")>{editor_view(state)}</div> }
             });
             let actions = slot.get().unwrap();
             let ready = |expected: &str| {
@@ -21278,21 +21292,22 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes
             let input: web_sys::HtmlTextAreaElement =
                 mounted.element(".editor-textarea").unchecked_into();
             let mut previous = original;
-            for change in 0..3 {
+            for change in 0..4 {
                 let mut changed = previous.clone();
-                let at = if change == 0 {
+                let at = if change == 1 {
                     previous.find("word").unwrap()
-                } else if change == 1 {
+                } else if change < 3 {
                     0
                 } else {
                     previous.len()
                 };
-                if change == 0 {
+                if change == 1 {
                     changed.replace_range(at..at + 1, "z");
                 } else {
                     changed.insert(at, 'z');
                 }
                 take_paragraph_suffix_probes();
+                take_paragraph_current_probes();
                 actions
                     .native_input(
                         changed.clone(),
@@ -21308,10 +21323,15 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes
                 )
                 .await;
                 let reused = take_paragraph_suffix_probes();
-                if change == 0 || (change == 1 && styled && reconnect) {
+                let current_reused = take_paragraph_current_probes();
+                if change == 1 || (change < 3 && styled && reconnect) {
                     assert!(
-                        reused > 2,
-                        "{mode:?} styled={styled} reconnect={reconnect} change={change} reused={reused}"
+                        if change == 1 {
+                            reused > 2
+                        } else {
+                            reused + current_reused > 2
+                        },
+                        "{mode:?} styled={styled} reconnect={reconnect} width={width} change={change} reused={reused} current={current_reused}"
                     );
                 }
                 let scope = mounted
@@ -21337,6 +21357,10 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes
                     .auth
                     .generation
                     .update(|generation| *generation += 1);
+                assert_eq!(
+                    actions.resume_current_paragraph_batch(&scope, 0, &mut plan),
+                    0
+                );
                 assert_eq!(actions.resume_paragraph_suffix(&suffix, &mut plan), 0);
                 assert_eq!(actions.resume_paragraph_prefix_batch(&prefix, &mut plan), 0);
                 assert!(plan.probe().is_some());

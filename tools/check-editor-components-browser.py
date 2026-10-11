@@ -27,6 +27,8 @@ def main():
     parser.add_argument("bindings", type=Path)
     parser.add_argument("filters", nargs="+")
     parser.add_argument("--fonts", type=Path, default=ROOT / "frontend/fonts")
+    parser.add_argument("--library-tests", action="store_true",
+                        help="Suppress generated startup, matching wasm-bindgen-test-runner emit_start(false)")
     args = parser.parse_args()
     assert (args.bindings / "tests.js").is_file(), "Missing generated tests.js"
     # Ordinary geometry contracts use the CSS font URLs, while font matrices
@@ -37,6 +39,19 @@ def main():
         for family in ["Neon", "Argon", "Xenon", "Radon", "Krypton"]
     }
     served_fonts = {}
+    library_js = None
+    if args.library_tests:
+        library_js = (args.bindings / "tests.js").read_text()
+        # Rust library test bundles also contain libtest's native entry point.
+        # Official wasm-bindgen-test-runner explicitly uses emit_start(false),
+        # then runs the selected raw test exports through its test context.
+        start = "wasm.__wbindgen_start();"
+        assert start in library_js, "Missing expected generated startup call"
+        # Keep intrinsic reference initialization even when libtest is skipped.
+        initializer = '__wbg_get_imports()["./tests_bg.js"].__wbindgen_init_externref_table();'
+        assert "__wbindgen_init_externref_table" in library_js
+        library_js = library_js.replace(start, initializer)
+
     script = """
         import init, * as bindings from '/tests.js';
         window.__wbg_test_invoke = callback => callback();
@@ -56,7 +71,9 @@ def main():
             if (missing.length) throw new Error('No matching WASM test exports for: ' + missing.join(', '));
             window.editorComponentNames = names;
             const context = new bindings.WasmBindgenTestContext(false);
-            window.editorComponentResult = await context.run(names.map(name => wasm[name]));
+            const passed = await context.run(names.map(name => wasm[name]));
+            if (typeof passed !== 'boolean') throw new Error('Invalid test-context result type: ' + typeof passed);
+            window.editorComponentResult = passed;
             context.free();
         } catch (error) {
             document.getElementById('output').textContent += String(error.stack || error);
@@ -71,6 +88,9 @@ def main():
                 content_type = "text/html; charset=utf-8"
             elif self.path == "/runner.js":
                 body = script.encode()
+                content_type = "text/javascript; charset=utf-8"
+            elif self.path == "/tests.js" and library_js is not None:
+                body = library_js.encode()
                 content_type = "text/javascript; charset=utf-8"
             elif self.path in fonts:
                 body = fonts[self.path]
@@ -102,6 +122,7 @@ def main():
                     result = browser.script("return {passed:window.editorComponentResult ?? null, tests:window.editorComponentNames, output:document.getElementById('output').textContent, console:document.getElementById('console_output').textContent, browser:navigator.userAgent}")
                     if result["passed"] is not None:
                         result["servedFonts"] = served_fonts.copy()
+                        result["libraryStartSuppressed"] = args.library_tests
                         print(json.dumps(result), flush=True)
                         assert result["passed"] is True, "WASM component tests failed"
                         break
@@ -109,6 +130,7 @@ def main():
                         # Preserve the executed-test output and first failure even
                         # when a later contract prevents the run from completing.
                         result["servedFonts"] = served_fonts.copy()
+                        result["libraryStartSuppressed"] = args.library_tests
                         print(json.dumps(result), flush=True)
                         raise AssertionError("WASM component tests timed out")
                     time.sleep(0.2)

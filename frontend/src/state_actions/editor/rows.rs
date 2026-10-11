@@ -487,6 +487,44 @@ impl EditorActions {
         };
         plan.reuse_suffix_batch(body, &suffix.measurements, suffix.style_start, limit)
     }
+    /// Token styling is shared feature policy; DOM measurements supply geometry.
+    /// Limit inspection to small token tables and one unchanged token, while
+    /// larger/mixed spans keep the ordinary measured path.
+    pub fn resume_current_paragraph_batch(
+        self,
+        paint: &EditorRowPaint,
+        row: usize,
+        plan: &mut openwebide_core::editor::WrappedParagraphPreparation<'_>,
+    ) -> usize {
+        if !self.row_paint_current(paint) {
+            return 0;
+        }
+        let Some(style) = paint_row(paint, row) else {
+            return 0;
+        };
+        if style.guide != 0 || style.tokens.len() > 64 {
+            return 0;
+        }
+        plan.reuse_current_batch(
+            |old, new| {
+                if style.plain.is_some() {
+                    return true;
+                }
+                let mut start = 0;
+                style.tokens.iter().any(|token| {
+                    let end = start + token.text.len();
+                    let matching = old.start >= start
+                        && old.end <= end
+                        && new.start >= start
+                        && new.end <= end;
+                    start = end;
+                    matching
+                })
+            },
+            openwebide_core::editor::MAX_MEASURE_BATCHES_PER_FRAME,
+        )
+    }
+
     pub fn retain_paragraph_measurements(
         self,
         paint: &EditorRowPaint,

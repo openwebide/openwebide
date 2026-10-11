@@ -6145,3 +6145,82 @@ all five actual font files served (42.83 s)
 ([receipt](editor-performance/monaspace-wrapped-complete-geometry.json)).
 This validates the corrected harness and complete-geometry comparison, not the
 full ordinary component suite or the failing replay performance candidate.
+
+The merged `7968226d` checkpoint passes all five hosted CI jobs
+([receipt](editor-performance/grouped-ci-7968226.json)). This does not validate
+the subsequent uncommitted wrapped replay candidate.
+
+The correctly sized 1,048,553-byte styled replay diagnostic retains matching
+cache environment, font/read/account/epoch and styles, and reports 60 translated
+first-row overflow rejections plus 12 dense-overlap rejections
+([record](editor-performance/wrapped-phase-current-diagnostic.json)). The earlier
+expanded-font failure used 917,023 bytes; the test now derives repeat count from
+UTF-8 byte length and reserves space for its edits.
+
+A candidate allows reconnection at matching fractional word positions using the
+existing quarter-pixel overlap tolerance rather than requiring an absolute zero.
+Its new native regression, all seven native wrapped contracts and strict native
+core lint pass, but the expanded real-Monaspace browser test still fails the
+second beginning insertion's positive-replay assertion. It does not resolve the
+measured performance gap and remains uncommitted. Further work must establish
+actual reconnection at the browser's source-owned wrap boundaries without
+removing the geometry proof. Temporary trace labels have been removed from code.
+
+The font-serving harness checkpoint `13fe1da0` passes all five hosted CI jobs
+([receipt](editor-performance/grouped-ci-13fe1da.json)). Pending wrapped replay
+implementation is not included in that checkpoint.
+
+Current-source repeated-probe reuse also passes all 657 native core tests and
+strict native core lint, but fails the same real-font browser case: the second
+beginning insertion reuses neither prior-source nor current-source probes
+([record](editor-performance/current-source-probe-reuse-failure.json)). Source,
+span topology, style and dense-overlap checks remain enforced. This candidate
+is uncommitted; its native coverage does not establish browser performance.
+
+The revised continuation selects the first complete word after an original span
+edge when that edge falls inside a Unicode word. The focused release browser
+contract now passes in local and remote modes at 420- and 264-pixel containers,
+including near-1-MiB styled source and all four edits. It checks every retained
+glyph and complete extent against a full render, along with ownership rejection
+([receipt](editor-performance/current-source-probe-reuse-browser.json)).
+All 658 native core tests, strict native core and strict WASM frontend lint pass.
+The span mismatch diagnostic is preserved
+([record](editor-performance/current-source-span-diagnostic.json)). Temporary
+runtime diagnostics have been removed. Complete ordinary-font browser coverage
+and production latency/memory remain to be measured before this candidate ships.
+
+Four isolated production samples (local/remote, two fresh repeats each, same
+merged backend and four-CPU/10-GiB container limits) verify complete source after
+beginning input. Complete wrapped geometry falls to 373–389 ms from the earlier
+1.145–1.167 s. Viewport paint is 236–256 ms, versus 233–242 ms previously;
+this does not resolve visible-input latency. Cold complete geometry is
+1.47–1.68 s and peak Chrome PSS is 688–723 MiB. The samples include actual
+near-1-MiB String styling. They do not clear the full responsiveness gate.
+([samples](editor-performance/current-source-wrapped-production.jsonl),
+[artifact manifest](editor-performance/current-source-wrapped-production-manifest.json)).
+A preceding four-sample run overlapped the full editor component suite and is
+excluded from the isolated comparison. The ordinary-font full suite passed
+160 contracts with no failed contracts before the unchanged 300-second harness
+limit stopped it during a font matrix; the remaining ten contracts are being
+run separately with unchanged deadlines
+([first run](editor-performance/current-source-editor-suite-first-run.json)).
+
+The remaining ten contracts pass in a separate fresh browser, including the
+other actual-font matrix. Together with the first run this covers all 170 editor
+component exports with production font files served and unchanged per-test and
+harness deadlines
+([remaining receipt](editor-performance/current-source-editor-suite-remaining.json)).
+Editor library and worker routing tests remain to be rechecked for this candidate.
+
+The final stale-account regression passes on the final component artifact
+([receipt](editor-performance/current-source-probe-reuse-final-browser.json)).
+All 23 editor library tests and the worker-routing contract also pass
+([receipt](editor-performance/current-source-library-worker-browser.json)),
+completing the 194-test editor/worker inventory. The standalone harness now
+supports library bundles explicitly: skip Rust's native libtest startup while
+initializing wasm-bindgen reference slots, as the official runner does before
+invoking raw selected exports. It rejects nonboolean results. A normal component
+contract still passes and a valid library filter plus missing contract fails
+before test execution. The final native frontend inventory has 129 passing
+contracts; final strict WASM frontend lint and formatting checks pass.
+Hosted CI for the new checkpoint still needs to run after pushing.

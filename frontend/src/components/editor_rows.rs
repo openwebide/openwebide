@@ -131,6 +131,13 @@ fn extent_supported(input: &web_sys::HtmlTextAreaElement, rows: &MeasuredRows) -
 }
 
 #[cfg(feature = "test-support")]
+thread_local! { static CURRENT_PROBES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) }; }
+#[cfg(feature = "test-support")]
+pub(super) fn take_paragraph_current_probes() -> usize {
+    CURRENT_PROBES.replace(0)
+}
+
+#[cfg(feature = "test-support")]
 thread_local! { static SUFFIX_PROBES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) }; }
 #[cfg(feature = "test-support")]
 pub(super) fn take_paragraph_suffix_probes() -> usize {
@@ -291,6 +298,13 @@ async fn measure_wrapped_paragraph(
                 crate::util::yield_task().await;
                 continue;
             }
+        }
+        let reused = actions.resume_current_paragraph_batch(scope, logical, &mut plan);
+        #[cfg(feature = "test-support")]
+        CURRENT_PROBES.set(CURRENT_PROBES.get() + reused);
+        if reused > 0 {
+            crate::util::yield_task().await;
+            continue;
         }
         let Some(targets) = plan.targets() else {
             return Ok(None);

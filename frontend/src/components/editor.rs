@@ -897,6 +897,11 @@ pub fn take_highlight_segment_bytes() -> usize {
 }
 
 #[cfg(feature = "test-support")]
+pub fn take_paragraph_current_probes() -> usize {
+    super::editor_rows::take_paragraph_current_probes()
+}
+
+#[cfg(feature = "test-support")]
 pub fn take_paragraph_suffix_probes() -> usize {
     super::editor_rows::take_paragraph_suffix_probes()
 }

@@ -184,13 +184,17 @@ these measurements do not complete the requirements below.
   and exact differential DOM-retention experiments do not remove that cost. Finish
   nonreconnecting wrapped updates: the
   near-limit beginning-edit trace matches source/run boundaries but rejects changed
-  incoming wrapping phases through first-row overflow and dense overlap; the latest
-  repeated measurements still require 70 fresh probes and 1.1–1.2 seconds. New
+  incoming wrapping phases through first-row overflow and dense overlap; earlier
+  measurements required 70 fresh probes and 1.1–1.2 seconds. Current-source
+  repeated probes and preserved Unicode span phase now reduce complete geometry
+  to 373–389 ms in four isolated both-mode samples, while viewport paint remains
+  236–256 ms. Reduce the remaining visible-input and startup costs. New
   exact overlap samples have no shared visual-row word starts, and nonadjacent
   probe markup/layout identities also remain unique. Removing absolute source
   metadata from detached diagnostic signatures still produces no identical probes
   in either mode ([receipt](editor-performance/normalized-probe-identity.json));
-  a whole-probe identity cache remains unsupported for this workload.
+  those earlier seams did not support a whole-probe identity cache. Current-source
+  reuse retains matching span topology and the full incoming-overlap proof.
   Publish source-owned current
   viewport coverage during long-row preparation without claiming complete extents
   or fabricating a caret at a partial endpoint; retain nonorigin and failed-proof
@@ -416,7 +420,23 @@ these measurements do not complete the requirements below.
   Monaspace on a second beginning insertion; complete geometry finishes
   ([failure](editor-performance/monaspace-wrapped-replay-regression.json)). Current
   hosted CI for `7968226d`, including the paired-plugin error assertion
-  correction, remains pending.
+  correction, passes all five jobs
+  ([receipt](editor-performance/grouped-ci-7968226.json)). The newer font-harness
+  checkpoint `13fe1da0` also passes all five jobs
+  ([receipt](editor-performance/grouped-ci-13fe1da.json)). The first
+  current-source replay candidate failed the second beginning insertion
+  ([failure](editor-performance/current-source-probe-reuse-failure.json)).
+  Selecting the next complete word after a Unicode span edge resolves the focused
+  release regression in both modes and widths
+  ([receipt](editor-performance/current-source-probe-reuse-browser.json));
+  658 native core tests and strict native/WASM lint pass. All 170 component
+  contracts pass with actual font files served, using
+  disjoint runs within unchanged deadlines. Production complete geometry improves
+  to 373–389 ms, while viewport paint remains 236–256 ms
+  ([samples](editor-performance/current-source-wrapped-production.jsonl)).
+  All 194 editor/worker browser contracts, 658 native core tests, 129 native
+  frontend tests, final ownership regression and strict WASM lint pass. Hosted
+  CI and the remaining visible-input/cold-start performance gates remain open.
   The embedded-comment
   checkpoint `cc019c1` passed all five hosted jobs
   ([receipt](editor-performance/grouped-ci-cc019c1.json)). Selection-capability

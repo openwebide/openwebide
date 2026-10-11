@@ -114,9 +114,35 @@ impl<'a> WrappedParagraphPreparation<'a> {
         if probe.bytes.end == self.body.len() {
             return Some(None);
         }
-        let start = self.boundary(
-            probe.bytes.start + CONTEXT_BYTES..probe.bytes.end.checked_sub(CONTEXT_BYTES)?,
-        )?;
+        let range =
+            probe.bytes.start + CONTEXT_BYTES..probe.bytes.end.checked_sub(CONTEXT_BYTES)?;
+        let first = self.runs.partition_point(|byte| *byte < range.start);
+        let last = self.runs.partition_point(|byte| *byte < range.end);
+        let start = self.runs[first..last]
+            .iter()
+            .rev()
+            .copied()
+            .find_map(|byte| {
+                // Unicode-safe paint chunks can consistently end inside a word.
+                // Preserve their phase by using the first following word break,
+                // rather than requiring the chunk itself to end after a space.
+                let end = (byte + CONTEXT_BYTES).min(range.end);
+                let offset = self
+                    .body
+                    .as_bytes()
+                    .get(byte..end)?
+                    .iter()
+                    .position(|byte| *byte == b' ')?;
+                let start = byte + offset + 1;
+                (probe.bytes.end - start <= 4 * CONTEXT_BYTES
+                    && self
+                        .index
+                        .index_at_byte(self.body, start)
+                        .and_then(|glyph| self.index.at(self.body, glyph))
+                        .is_some_and(|(at, _)| at == start))
+                .then_some(start)
+            })
+            .or_else(|| self.boundary(range))?;
         if probe.bytes.end - start > 4 * CONTEXT_BYTES {
             return None;
         }
@@ -301,6 +327,67 @@ impl<'a> WrappedParagraphPreparation<'a> {
         }
         true
     }
+    /// Reuse only exact probes from this source-owned plan. The facade proves
+    /// equivalent original token styling; text, span clipping, origins, source
+    /// coordinates and incoming overlap remain validated by the ordinary gate.
+    /// Always measure the terminal extent freshly.
+    pub fn reuse_current_batch(
+        &mut self,
+        equivalent_style: impl Fn(Range<usize>, Range<usize>) -> bool,
+        max_records: usize,
+    ) -> usize {
+        let previous = ParagraphMeasurements {
+            runs: self.runs.clone(),
+            index: self.index.clone(),
+            records: Vec::new(),
+            wrapped: true,
+        };
+        let mut reused = 0;
+        while reused < max_records {
+            let Some(probe) = self.probe().cloned() else {
+                break;
+            };
+            if self.expected.is_empty() || probe.bytes.end == self.body.len() {
+                break;
+            }
+            let candidate = self
+                .records
+                .iter()
+                .rev()
+                .find(|record| {
+                    record.bytes.start > 0
+                        && record.bytes.len() == probe.bytes.len()
+                        && record.origin.to_bits() == probe.origin.to_bits()
+                        && self.body.get(record.bytes.clone()) == self.body.get(probe.bytes.clone())
+                        && equivalent_style(record.bytes.clone(), probe.bytes.clone())
+                        && {
+                            let old_runs = self
+                                .runs
+                                .partition_point(|byte| *byte <= record.bytes.start)
+                                ..self.runs.partition_point(|byte| *byte <= record.bytes.end);
+                            let new_runs =
+                                self.runs.partition_point(|byte| *byte <= probe.bytes.start)
+                                    ..self.runs.partition_point(|byte| *byte <= probe.bytes.end);
+                            self.runs[old_runs]
+                                .iter()
+                                .map(|byte| byte - record.bytes.start)
+                                .eq(self.runs[new_runs]
+                                    .iter()
+                                    .map(|byte| byte - probe.bytes.start))
+                        }
+                })
+                .cloned();
+            let Some(record) = candidate else {
+                break;
+            };
+            if !self.replay_record(self.body, &previous, &record) {
+                break;
+            }
+            reused += 1;
+        }
+        reused
+    }
+
     /// A complete unchanged prefix needs no browser work. Never replay the
     /// terminal probe: it must establish the new complete extent freshly.
     pub fn reuse_prefix(
@@ -338,7 +425,7 @@ impl<'a> WrappedParagraphPreparation<'a> {
             else {
                 break;
             };
-            if !self.replay_record(old_body, old, record, false) {
+            if !self.replay_record(old_body, old, record) {
                 break;
             }
             reused += 1;
@@ -381,7 +468,7 @@ impl<'a> WrappedParagraphPreparation<'a> {
             else {
                 break;
             };
-            if !self.replay_record(old_body, old, record, true) {
+            if !self.replay_record(old_body, old, record) {
                 break;
             }
             reused += 1;
@@ -421,8 +508,9 @@ impl<'a> WrappedParagraphPreparation<'a> {
             let old = lookup(expected.glyph)?;
             let old_previous = lookup(previous.glyph)?;
             if expected.glyph != previous.glyph + 1
-                || expected.left != 0.0
-                || old.left != 0.0
+                // A measured word may start at a fractional glyph bearing.
+                // Reconnection requires matching positions, not an absolute zero.
+                || (expected.left - old.left).abs() > TOLERANCE
                 || previous.top >= expected.top
                 || old_previous.top >= old.top
                 || previous.left + previous.width <= 0.0
@@ -487,17 +575,13 @@ impl<'a> WrappedParagraphPreparation<'a> {
         old_body: &str,
         old: &ParagraphMeasurements,
         record: &ParagraphMeasurement,
-        shifted: bool,
     ) -> bool {
         let probe = &self.probe;
         let old_byte = |byte: usize| {
-            if shifted {
-                old_body
-                    .len()
-                    .checked_sub(self.body.len().checked_sub(byte)?)
-            } else {
-                Some(byte)
-            }
+            record
+                .bytes
+                .start
+                .checked_add(byte.checked_sub(probe.bytes.start)?)
         };
         if old_byte(probe.bytes.end) != Some(record.bytes.end) {
             return false;
@@ -802,6 +886,116 @@ mod tests {
         (geometry, measurements)
     }
     #[test]
+    fn unicode_word_continuations_preserve_repeated_original_style_spans() {
+        use crate::highlight::{Token, TokenKind};
+        let body = format!("\"{}\"", "文😀 words ".repeat(20_000));
+        let tokens = [Token {
+            kind: TokenKind::String,
+            text: body.clone(),
+        }];
+        let mut runs = super::super::PaintRunPreparation::new(&tokens, body.len(), false, 4096);
+        assert!(runs.advance(usize::MAX));
+        let runs = runs.finish().unwrap();
+        let index = VisualLineIndex::new(&body).unwrap();
+        let mut plan = WrappedParagraphPreparation::new(&body, index, runs).unwrap();
+        let mut matched = false;
+        while let Some(probe) = plan.probe() {
+            if probe.bytes.end != body.len() {
+                let current_runs = plan
+                    .runs
+                    .iter()
+                    .filter(|byte| probe.bytes.contains(byte) && **byte > probe.bytes.start)
+                    .map(|byte| byte - probe.bytes.start)
+                    .collect::<Vec<_>>();
+                matched |= plan.records.iter().any(|record| {
+                    record.bytes.start > 0
+                        && body.get(record.bytes.clone()) == body.get(probe.bytes.clone())
+                        && plan
+                            .runs
+                            .iter()
+                            .filter(|byte| {
+                                record.bytes.contains(byte) && **byte > record.bytes.start
+                            })
+                            .map(|byte| byte - record.bytes.start)
+                            .eq(current_runs.iter().copied())
+                });
+            }
+            let (height, rectangles) = layout(&plan);
+            assert!(plan.record(280.0, height, 280.0, &rectangles));
+        }
+        assert!(
+            matched,
+            "identical Unicode words must retain matching original span topology"
+        );
+    }
+
+    #[test]
+    fn repeated_current_probes_require_source_style_overlap_and_fresh_extent() {
+        let body = "word ".repeat(40_000);
+        let (expected, _) = complete(&body);
+        let index = VisualLineIndex::new(&body).unwrap();
+        let mut plan = WrappedParagraphPreparation::new(
+            &body,
+            index.clone(),
+            index.text_run_boundaries().collect(),
+        )
+        .unwrap();
+        for _ in 0..2 {
+            let (height, rectangles) = layout(&plan);
+            assert!(plan.record(280.0, height, 280.0, &rectangles));
+        }
+        let before = plan.probe().unwrap().bytes.clone();
+        assert_eq!(plan.reuse_current_batch(|_, _| true, 0), 0);
+        assert_eq!(plan.reuse_current_batch(|_, _| false, 2), 0);
+        assert_eq!(plan.probe().unwrap().bytes, before);
+        let valid = plan.records[1].clone();
+        let mut corrupt = valid.rectangles.to_vec();
+        corrupt[0].left += 1.0;
+        plan.records[1].rectangles = corrupt.into();
+        assert_eq!(plan.reuse_current_batch(|_, _| true, 2), 0);
+        assert_eq!(plan.probe().unwrap().bytes, before);
+        plan.records[1] = valid;
+        let mut reused = 0;
+        let mut fresh = 0;
+        while plan.probe().is_some() {
+            let count = plan.reuse_current_batch(|_, _| true, 2);
+            assert!(count <= 2);
+            reused += count;
+            if count == 0 {
+                let (height, rectangles) = layout(&plan);
+                assert!(plan.record(280.0, height, 280.0, &rectangles));
+                fresh += 1;
+            }
+        }
+        assert!(reused > 2);
+        assert!(fresh > 0, "terminal extent must be fresh");
+        let (_, actual) = plan.finish().unwrap();
+        assert_eq!(actual.height.to_bits(), expected.height.to_bits());
+        assert_eq!(actual.width.to_bits(), expected.width.to_bits());
+        assert_eq!(
+            actual.anchors(0..index.len() - 1),
+            expected.anchors(0..index.len() - 1)
+        );
+
+        let mut changed = body.clone();
+        changed.replace_range(40_000..40_001, "z");
+        let index = VisualLineIndex::new(&changed).unwrap();
+        let mut plan = WrappedParagraphPreparation::new(
+            &changed,
+            index.clone(),
+            index.text_run_boundaries().collect(),
+        )
+        .unwrap();
+        for _ in 0..2 {
+            let (height, rectangles) = layout(&plan);
+            assert!(plan.record(280.0, height, 280.0, &rectangles));
+        }
+        let before = plan.probe().unwrap().bytes.clone();
+        assert_eq!(plan.reuse_current_batch(|_, _| true, 2), 0);
+        assert_eq!(plan.probe().unwrap().bytes, before);
+    }
+
+    #[test]
     fn wrapped_replay_requires_source_style_overlap_and_fresh_terminal_extent() {
         let body = "word ".repeat(40_000);
         let (_, old) = complete(&body);
@@ -928,11 +1122,11 @@ mod tests {
                 .find(|rect| rect.glyph > start && rect.left == 0.0)
                 .unwrap()
                 .glyph;
-            assert_eq!(reconnect, start + 5);
-            plan.probe.origin = record.origin - 7.0;
+            assert_eq!(reconnect % 40, 0);
+            plan.probe.origin = record.origin + 7.0;
             for expected in &mut plan.expected {
                 if expected.glyph < reconnect - 1 {
-                    expected.left -= 7.0;
+                    expected.left += 7.0;
                 } else if expected.glyph == reconnect - 1 {
                     expected.left = 0.0;
                     expected.top += 15.0;
@@ -978,7 +1172,7 @@ mod tests {
                         assert_eq!(new.left.to_bits(), old.left.to_bits());
                     }
                 }
-                assert!(plan.replay_record(&body, &previous, record, false));
+                assert!(plan.replay_record(&body, &previous, record));
                 assert_eq!(
                     plan.records.last().unwrap().height.to_bits(),
                     (record.height + 15.0).to_bits()
@@ -992,6 +1186,76 @@ mod tests {
                     rectangles, original,
                     "rejected proofs leave local geometry intact"
                 );
+            }
+        }
+    }
+
+    #[test]
+    fn prefix_reconnection_preserves_matching_fractional_word_positions() {
+        let body = "word ".repeat(40_000);
+        let (_, previous) = complete(&body);
+        let mut plan = WrappedParagraphPreparation::new(
+            &body,
+            VisualLineIndex::new(&body).unwrap(),
+            previous.runs.clone(),
+        )
+        .unwrap();
+        let (height, measured) = layout(&plan);
+        assert!(plan.record(280.0, height, 280.0, &measured));
+        let mut record = previous.records[1].clone();
+        let start = plan.probe.glyph_start;
+        let reconnect = record
+            .rectangles
+            .iter()
+            .find(|rect| rect.glyph > start && rect.left == 0.0)
+            .unwrap()
+            .glyph;
+        let bearing = 0.125;
+        plan.probe.origin = record.origin + 7.0 + bearing;
+        for expected in &mut plan.expected {
+            expected.left += bearing;
+            if expected.glyph < reconnect - 1 {
+                expected.left += 7.0;
+            } else if expected.glyph == reconnect - 1 {
+                expected.left = bearing;
+                expected.top += 15.0;
+            } else {
+                expected.top += 15.0;
+            }
+        }
+        record.origin += bearing;
+        let mut rectangles = plan
+            .targets()
+            .unwrap()
+            .into_iter()
+            .map(|glyph| {
+                let mut rectangle = *record
+                    .rectangles
+                    .iter()
+                    .find(|rect| rect.glyph == glyph)
+                    .unwrap();
+                rectangle.left += bearing;
+                rectangle
+            })
+            .collect::<Vec<_>>();
+        let original = rectangles.clone();
+        let shift = plan.expected[0].top - original[0].top;
+        assert_eq!(
+            plan.reconcile_prefix(&record, &mut rectangles),
+            Some(record.height + 15.0)
+        );
+        for (old, new) in original.iter().zip(&rectangles) {
+            if new.glyph < reconnect {
+                let expected = plan
+                    .expected
+                    .iter()
+                    .find(|rect| rect.glyph == new.glyph)
+                    .unwrap();
+                assert_eq!(new.left.to_bits(), expected.left.to_bits());
+                assert_eq!(new.top.to_bits(), (expected.top - shift).to_bits());
+            } else {
+                assert_eq!(new.left.to_bits(), old.left.to_bits());
+                assert_eq!(new.top.to_bits(), (old.top + 15.0).to_bits());
             }
         }
     }

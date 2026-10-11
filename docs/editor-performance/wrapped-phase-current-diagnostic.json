@@ -1,0 +1,19 @@
+{
+  "baseHead": "13fe1da09c658f6798498feca7372fc67c46c64c",
+  "status": "diagnostic failure",
+  "sourceBytesBeforeEdits": 1048553,
+  "replayRejections": {
+    "not attempted": 3,
+    "final overlap": 12,
+    "translated overflow": 60
+  },
+  "servedFonts": {
+    "/fonts/MonaspaceNeon-v1.400.woff2": "6569968f448ae856ab5b57dff1f13b109b220ca8e3f664169e135fcb5c4f0721"
+  },
+  "componentWasmSha256": "b32fa7f808354375c0e800c005b3a6cffdd0dd6ea5e3c7967053b8c85650b703",
+  "scope": "Local near-1-MiB styled width-420 second beginning insertion; remote and narrow cases not reached",
+  "ownershipObservation": "Reported cache environment, font/read/account/epoch and styles match; changed wrapping phase prevents reconnection",
+  "rawLogSha256": "8a89edcdf68d470406b85523ce3d64adacf7bd3eeacaa2104b6b02532dd9848e",
+  "interpretation": "Existing exact guards reject translated-first-row overflow and dense overlap. Diagnostic does not change validation or demonstrate a performance improvement.",
+  "byteCountCorrection": "Original diagnostic arithmetic omitted one byte; fixture prefix plus repeated UTF-8 body is 1,048,553 bytes."
+}

@@ -9,6 +9,10 @@ for what's still ahead.
 
 ## [Unreleased]
 
+- Support Rust/WASM library bundles in the standalone editor browser verifier, retain reference initialization while skipping native test startup, and reject nonboolean test results.
+
+- Reuse repeated, current-source wrapped paragraph measurements after proving matching text, styling, span boundaries and geometry. Preserve Unicode span phase at complete-word continuations and measure terminal extents freshly in local and remote editors.
+
 - Require and serve shipped Monaspace fonts in the standalone editor component browser harness, and report served-font hashes so ordinary geometry checks cannot silently use missing assets.
 
 - Validate prepared offline plugin manifests against their pinned source instead of a hard-coded version in CI.

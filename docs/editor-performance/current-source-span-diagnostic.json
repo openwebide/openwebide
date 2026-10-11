@@ -1,0 +1,33 @@
+{
+  "candidateCommitted": false,
+  "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+  "servedFonts": {
+    "/fonts/MonaspaceNeon-v1.400.woff2": "6569968f448ae856ab5b57dff1f13b109b220ca8e3f664169e135fcb5c4f0721"
+  },
+  "diagnosticProbes": 245,
+  "countsFields": [
+    "retained records",
+    "same source bytes",
+    "style callback accepted (diagnostic accepts all)",
+    "same relative span boundaries",
+    "same exact origin"
+  ],
+  "lastProbes": [
+    "CURRENT_REUSE guide=0 tokens=9 counts=[54, 26, 26, 0, 0]",
+    "CURRENT_REUSE guide=0 tokens=9 counts=[55, 27, 27, 0, 0]",
+    "CURRENT_REUSE guide=0 tokens=9 counts=[56, 27, 27, 0, 0]",
+    "CURRENT_REUSE guide=0 tokens=9 counts=[57, 28, 28, 0, 0]",
+    "CURRENT_REUSE guide=0 tokens=9 counts=[58, 28, 28, 0, 0]",
+    "CURRENT_REUSE guide=0 tokens=9 counts=[59, 29, 29, 0, 0]",
+    "CURRENT_REUSE guide=0 tokens=9 counts=[60, 29, 29, 0, 0]",
+    "CURRENT_REUSE guide=0 tokens=9 counts=[61, 30, 30, 0, 0]",
+    "CURRENT_REUSE guide=0 tokens=9 counts=[62, 30, 30, 0, 0]",
+    "CURRENT_REUSE guide=0 tokens=9 counts=[63, 31, 31, 0, 0]",
+    "CURRENT_REUSE guide=0 tokens=9 counts=[64, 31, 31, 0, 0]",
+    "CURRENT_REUSE guide=0 tokens=9 counts=[65, 32, 32, 0, 0]",
+    "CURRENT_REUSE guide=0 tokens=9 counts=[66, 32, 32, 0, 0]",
+    "CURRENT_REUSE guide=0 tokens=9 counts=[67, 33, 33, 0, 0]",
+    "CURRENT_REUSE guide=0 tokens=9 counts=[68, 0, 0, 0, 0]"
+  ],
+  "conclusion": "Later repeated text has candidate records but none with matching span topology. Native span preparation can place every span edge inside a word, bypassing the candidate seam preference. Corrected candidate selects the first following complete word."
+}

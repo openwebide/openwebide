@@ -1,0 +1,9 @@
+{
+  "sourceHead": "13fe1da09c658f6798498feca7372fc67c46c64c",
+  "sourceDiffSha256": "e9fa10a1d1fea1c14a7c64466b3083a5ef370df99ce6fdf52f8dd802196d5942",
+  "backendWasmSha256": "8efc2579446963f530f5774fdcbe2223bbc6b974eb54d8221a768ff1c43232af",
+  "measurementScriptSha256": "8e810dc178ce0a2469a6b6f315d92896ed81cdc51a359c17fe521af4596d001e",
+  "frontendWasmSha256": {
+    "openwebide-frontend-6104154eeb9739cc_bg.wasm": "f8597cf8d47c94e4cea9126badffb8a2f0d6c8f656282580df46fe7670818484"
+  }
+}
