@@ -1,4 +1,5 @@
-use crate::state::auth::AuthState;
+use super::ui::LogoMark;
+use crate::state::{auth::AuthState, ui::UiState};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use web_sys::wasm_bindgen::JsCast;
@@ -12,6 +13,7 @@ use crate::backend::Api;
 pub fn AuthGate() -> impl IntoView {
     let api = expect_context::<Api>();
     let auth = expect_context::<AuthState>();
+    let ui = expect_context::<UiState>();
     // false = sign in, true = create account.
     let register = RwSignal::new(false);
     let username = RwSignal::new(String::new());
@@ -21,6 +23,9 @@ pub fn AuthGate() -> impl IntoView {
 
     let submit = {
         Callback::new(move |()| {
+            if busy.get_untracked() {
+                return;
+            }
             let user = username.with(|u| u.trim().to_string());
             let pass = password.get();
             if user.is_empty() || pass.is_empty() {
@@ -38,7 +43,10 @@ pub fn AuthGate() -> impl IntoView {
                 };
                 busy.set(false);
                 match result {
-                    Ok(u) => auth.set_user(u),
+                    Ok(u) => {
+                        ui.clear_toast();
+                        auth.set_user(u);
+                    }
                     Err(e) => error.set(Some(e)),
                 }
             });
@@ -48,7 +56,8 @@ pub fn AuthGate() -> impl IntoView {
     view! {
         <div class="auth-gate">
             <div class="auth-card">
-                <h1 class="auth-logo">"openwebide"</h1>
+                <LogoMark class="auth-brand-mark" />
+                <h1 class="auth-logo">"Open WebIDE"</h1>
                 <p class="auth-subtitle">
                     {move || {
                         if register.get() {

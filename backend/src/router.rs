@@ -865,6 +865,10 @@ fn preflight(_origin: Option<&str>) -> JsonResp {
 /// Add permissive CORS headers so the frontend can be served from another
 /// origin during development (e.g. `trunk serve` on port 8080).
 fn with_cors(mut resp: JsonResp, origin: Option<&str>) -> JsonResp {
+    // Account responses, including errors, must never survive cookie changes
+    // in a browser or proxy cache. All API routes pass through this boundary.
+    resp.headers_mut()
+        .insert("cache-control", "no-store".parse().unwrap());
     let dev_origins = ["http://localhost:8080", "http://127.0.0.1:8080"];
     if let Some(o) = origin
         && dev_origins.contains(&o)
@@ -888,6 +892,16 @@ fn with_cors(mut resp: JsonResp, origin: Option<&str>) -> JsonResp {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn api_success_and_errors_are_never_cached() {
+        for status in [200, 201, 401, 403, 500] {
+            for origin in [None, Some("http://localhost:8080")] {
+                let response = with_cors(ApiError::new(status, "test").into_response(), origin);
+                assert_eq!(response.headers()["cache-control"], "no-store");
+            }
+        }
+    }
+
     #[test]
     fn only_exact_theme_get_skips_csrf_header() {
         let mut headers = spin_sdk::http::HeaderMap::new();

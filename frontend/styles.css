@@ -2027,11 +2027,12 @@ button.browser-item {
 .auth-logo {
   margin: 0;
   text-align: center;
-  font-family: var(--mono);
   font-size: 22px;
   font-weight: 600;
   color: var(--accent);
 }
+
+.logo-mark.auth-brand-mark { width: 56px; height: 56px; align-self: center; }
 
 .auth-subtitle {
   margin: 0 0 6px;

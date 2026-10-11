@@ -51,9 +51,15 @@ impl AuthActions {
             if auth.checked.get() {
                 return;
             }
+            let generation = auth.generation.get_untracked();
             spawn_local(async move {
                 let user = api.with_value(Clone::clone).me().await.ok();
-                auth.user.set(user);
+                if auth.generation.get_untracked() != generation {
+                    return;
+                }
+                if let Some(user) = user {
+                    auth.set_user(user);
+                }
                 auth.checked.set(true);
             });
         });
