@@ -151,7 +151,11 @@ remains a completion gate as the remaining implementation ships.
   three local/remote browser contracts and strict lint pass; native release
   measurements show 2–8 ms long-run scans becoming sub-0.001 ms queries
   ([receipt](editor-performance/indexed-word-navigation.json)). These exclude
-  browser paint and startup. Cross-row whitespace
+  browser paint and startup. Double-click and word-drag selection now reuse the
+  same prepared category steps rather than scanning from the row start. All 522
+  core tests, three local/remote browser contracts and strict lint pass
+  ([receipt](editor-performance/indexed-word-pointer.json)).
+  Cross-row whitespace
   and unindexed/noncanonical traversal still need bounded work. Preserve
   composition mapping and complete-native fallback when
   bounded geometry cannot be proved. Finish startup and memory measurements

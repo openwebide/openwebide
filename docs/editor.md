@@ -562,7 +562,10 @@ Long-row coordinate preparation also records long runs of whitespace, word
 characters or punctuation. Word motion reuses these immutable summaries at
 exact grapheme boundaries instead of rescanning long tokens or indivisible
 Unicode clusters. Short runs retain the existing grapheme traversal; noncanonical
-carets and row crossings retain the complete-source fallback. Summaries publish
+carets and row crossings retain the complete-source fallback. Double-click and
+word-drag selection use the same category steps to find the complete source
+unit, including whitespace and the final unit at line end, without scanning
+from the start of a long row. Summaries publish
 only with completed coordinates and survive unchanged-row edits and undo/redo.
 
 

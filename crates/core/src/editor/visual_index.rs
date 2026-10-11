@@ -162,6 +162,55 @@ impl<'a> VisualLinePreparation<'a> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VisualLineIndex(Arc<Coordinates>);
 impl VisualLineIndex {
+    fn word_step(&self, body: &str, cursor: usize, left: bool) -> Option<(usize, u8)> {
+        let key = if left { cursor.checked_sub(1)? } else { cursor };
+        let run = self
+            .0
+            .word_runs
+            .partition_point(|run| run.start <= key)
+            .checked_sub(1)
+            .and_then(|index| self.0.word_runs.get(index))
+            .filter(|run| key < run.end);
+        if let Some(run) = run {
+            Some((if left { run.start } else { run.end }, run.kind))
+        } else if left {
+            let (byte, glyph) = body[..cursor].grapheme_indices(true).next_back()?;
+            Some((byte, super::motion::category(glyph)))
+        } else {
+            let glyph = body[cursor..].graphemes(true).next()?;
+            Some((cursor + glyph.len(), super::motion::category(glyph)))
+        }
+    }
+
+    /// Exact double-click unit, including whitespace and the final unit at EOF.
+    pub(super) fn word_selection(&self, body: &str, at: usize) -> Option<std::ops::Range<usize>> {
+        let glyph = self.index_at_byte(body, at)?;
+        if body.is_empty() {
+            return Some(0..0);
+        }
+        let glyph = if at == body.len() {
+            glyph.checked_sub(1)?
+        } else {
+            glyph
+        };
+        let mut start = self.at(body, glyph)?.0;
+        let (mut end, kind) = self.word_step(body, start, false)?;
+        while start > 0 {
+            let (boundary, previous) = self.word_step(body, start, true)?;
+            if previous != kind {
+                break;
+            }
+            start = boundary;
+        }
+        while end < body.len() {
+            let (boundary, next) = self.word_step(body, end, false)?;
+            if next != kind {
+                break;
+            }
+            end = boundary;
+        }
+        Some(start..end)
+    }
     /// Skip long category runs; short runs retain the original grapheme rules.
     /// A noncanonical byte caret uses the caller's complete-source fallback.
     pub(super) fn word_boundary(
@@ -181,23 +230,7 @@ impl VisualLineIndex {
         } else {
             cursor < body.len()
         } {
-            let key = if left { cursor - 1 } else { cursor };
-            let run = self
-                .0
-                .word_runs
-                .partition_point(|run| run.start <= key)
-                .checked_sub(1)
-                .and_then(|index| self.0.word_runs.get(index))
-                .filter(|run| key < run.end);
-            let (boundary, current) = if let Some(run) = run {
-                (if left { run.start } else { run.end }, run.kind)
-            } else if left {
-                let (byte, glyph) = body[..cursor].grapheme_indices(true).next_back()?;
-                (byte, super::motion::category(glyph))
-            } else {
-                let glyph = body[cursor..].graphemes(true).next()?;
-                (cursor + glyph.len(), super::motion::category(glyph))
-            };
+            let (boundary, current) = self.word_step(body, cursor, left)?;
             if kind.is_some_and(|kind| kind != current) && (left || current != 0) {
                 break;
             }

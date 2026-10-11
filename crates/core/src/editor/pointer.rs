@@ -76,6 +76,12 @@ impl Document {
         if unit == Unit::Caret || body.is_empty() {
             return Ok(row.start + snapped..row.start + snapped);
         }
+        if let Some(range) = self.line_index.coordinates[index]
+            .visual()
+            .and_then(|coordinates| coordinates.word_selection(body, snapped))
+        {
+            return Ok(row.start + range.start..row.start + range.end);
+        }
         let mut start = 0;
         let mut previous = None;
         for (byte, glyph) in body.grapheme_indices(true) {
@@ -150,6 +156,68 @@ impl Document {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn indexed_pointer_words_match_complete_units_including_cluster_interiors_and_eof() {
+        for body in [
+            format!(
+                "{}{}{}{} end",
+                "word_".repeat(16_000),
+                "!".repeat(1024),
+                " \t".repeat(512),
+                "👩‍💻🇺🇸".repeat(2048)
+            ),
+            format!("before a{} \t end", "\u{301}".repeat(40_000)),
+            format!("{} ++ end", "\u{600}a\u{301}文".repeat(16_000)),
+        ] {
+            let units: Vec<_> = body
+                .grapheme_indices(true)
+                .map(|(start, glyph)| {
+                    (
+                        start..start + glyph.len(),
+                        super::super::motion::category(glyph),
+                    )
+                })
+                .collect();
+            let count = body.chars().count();
+            let positions: Vec<_> = body
+                .char_indices()
+                .step_by((count / 16).max(1))
+                .map(|(at, _)| at)
+                .chain([body.len()])
+                .collect();
+            for ending in ["\n", "\r\n"] {
+                let source = format!("prefix{ending}{body}{ending}tail");
+                let base = "prefix".len() + ending.len();
+                let mut document = Document::new(&source);
+                assert!(document.line_index.coordinates[1].visual().is_some());
+                for &at in &positions {
+                    let hit = units
+                        .partition_point(|(range, _)| range.start <= at)
+                        .saturating_sub(1);
+                    let kind = units[hit].1;
+                    let mut first = hit;
+                    let mut last = hit;
+                    while first > 0 && units[first - 1].1 == kind {
+                        first -= 1;
+                    }
+                    while last + 1 < units.len() && units[last + 1].1 == kind {
+                        last += 1;
+                    }
+                    document
+                        .begin_pointer_selection(base + at, 2, false)
+                        .unwrap();
+                    assert_eq!(
+                        document.selections(),
+                        [Selection {
+                            anchor: base + units[first].0.start,
+                            head: base + units[last].0.end
+                        }],
+                        "at={at}"
+                    );
+                }
+            }
+        }
+    }
     #[test]
     fn selection_scroll_preserves_direction_speed_and_suspended_frame_bounds() {
         assert!(selection_scroll_delta(100.0, 0.0, 200.0, 20.0).abs() < f64::EPSILON);

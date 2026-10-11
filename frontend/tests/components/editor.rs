@@ -7,6 +7,67 @@ use wasm_bindgen_test::*;
 use super::support::{Mounted, editor_view, mount_test, settle, wait_until};
 
 #[wasm_bindgen_test]
+async fn indexed_word_pointer_units_and_drag_reject_stale_edits_in_both_modes() {
+    use openwebide_core::{WorkspaceMode, editor::Selection};
+    use openwebide_frontend::state_actions::editor::EditorActions;
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let word = "word_".repeat(16_000);
+        let source = format!("{word}  ++ end\r\n");
+        let initial = source.clone();
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            state.workspace.open_file.set(Some("pointer.txt".into()));
+            state.workspace.content.set(initial.clone().into());
+            view! { <div/> }
+        });
+        let actions = EditorActions::new(mounted.state.workspace);
+        let project = mounted
+            .state
+            .workspace
+            .active_project
+            .get_untracked()
+            .unwrap();
+        let pointer = actions
+            .begin_current_pointer_selection(project, "pointer.txt", word.len() / 2, 2, false)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            actions.current_selection(),
+            Some(Selection {
+                anchor: 0,
+                head: word.len()
+            })
+        );
+        assert_eq!(
+            actions
+                .drag_current_pointer_selection(project, "pointer.txt", &pointer, word.len() + 2)
+                .unwrap()
+                .unwrap(),
+            [Selection {
+                anchor: 0,
+                head: word.len() + 4
+            }]
+        );
+        actions
+            .record_selection(Selection::caret(source.len()))
+            .unwrap();
+        actions.insert_native_text("tail", 1.0).unwrap();
+        let before = actions.current_selection();
+        assert!(
+            actions
+                .drag_current_pointer_selection(project, "pointer.txt", &pointer, 0)
+                .is_err()
+        );
+        assert_eq!(actions.current_selection(), before);
+        assert_eq!(actions.source().as_str(), format!("{source}tail"));
+    }
+}
+
+#[wasm_bindgen_test]
 async fn long_word_motion_retains_exact_source_after_edits_and_undo_in_both_modes() {
     use openwebide_core::{
         WorkspaceMode,

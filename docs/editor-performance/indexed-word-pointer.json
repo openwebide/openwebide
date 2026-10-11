@@ -1,0 +1,44 @@
+{
+  "sourceBase": "d61232a7eb5ec39538daa7c693d0a34c262872a6",
+  "sourceSha256": {
+    "crates/core/src/editor/pointer.rs": "63c6b6d1b2fb22557374c49c28cd8f424ed2584391b106eb27c8e99a9fce06a1",
+    "crates/core/src/editor/visual_index.rs": "1b34861f43bb931fa99fc211408bce176077c0ce1d0276b665cae0aa82d4cd15",
+    "frontend/tests/components/editor.rs": "f5b73d6e3777984ac433c8ed0cc5c3b61136befeaff54af24fe2da582ff99641"
+  },
+  "wasmArtifactSha256": "804122265e089124bb421fb41e9e817601eb0a66e666b9513791f198399e64a6",
+  "report": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "console": "Invoking test: editor::primary_pointer_units_and_drag_use_source_in_both_modes\nInvoking test: editor::long_word_motion_retains_exact_source_after_edits_and_undo_in_both_modes\nInvoking test: editor::indexed_word_pointer_units_and_drag_reject_stale_edits_in_both_modes\n",
+    "output": "\nrunning 3 tests\ntest editor::primary_pointer_units_and_drag_use_source_in_both_modes ... ok\ntest editor::long_word_motion_retains_exact_source_after_edits_and_undo_in_both_modes ... ok\ntest editor::indexed_word_pointer_units_and_drag_reject_stale_edits_in_both_modes ... ok\n\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.96s\n\n",
+    "passed": true,
+    "tests": [
+      "__wbgt__components::editor::indexed_word_pointer_units_and_drag_reject_stale_edits_in_both_modes",
+      "__wbgt__components::editor::long_word_motion_retains_exact_source_after_edits_and_undo_in_both_modes",
+      "__wbgt__components::editor::primary_pointer_units_and_drag_use_source_in_both_modes"
+    ]
+  },
+  "checks": {
+    "coreAll": [
+      "test editor::visual_index::tests::probe_anchor_ranges_match_complete_anchor_filtering ... ok",
+      "test editor::coordinates::tests::cooperative_row_coordinates_keep_native_and_admission_contracts_at_every_budget ... ok",
+      "",
+      "test result: ok. 522 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 25.79s",
+      ""
+    ],
+    "coreLint": [
+      "    Checking ppv-lite86 v0.2.21",
+      "    Checking rand_chacha v0.9.0",
+      "    Checking proptest v1.11.0",
+      "    Checking openwebide-core v1.0.0-alpha.6 (/Users/BWestnes/source/repos/open-webide/crates/core)",
+      "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 41.17s"
+    ],
+    "wasmLint": [
+      "    Checking leptos v0.8.20",
+      "    Checking lepticons v0.13.1",
+      "    Finished `release` profile [optimized] target(s) in 5m 31s",
+      "warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1",
+      "note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`"
+    ]
+  },
+  "scope": "Shared source policy reuses the same category step for keyboard word motion and pointer units. Core reference units are obtained by complete grapheme traversal, including cluster interiors, LF/CRLF and EOF. Three owned-Chrome contracts exercise both modes, word drag and stale gestures. This does not prove physical touch, browser paint latency or remaining unsupported traversal bounds."
+}
