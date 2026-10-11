@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RELEASE_VERSION = re.compile(
     r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"
-    r"(?:-(?P<channel>alpha|beta|rc)\.(?:0|[1-9][0-9]*))?"
+    r"(?:-(?P<channel>alpha|rc)\.(?:0|[1-9][0-9]*))?"
 )
 TARGETS = {
     "x86_64-unknown-linux-gnu",
@@ -25,8 +25,8 @@ TARGETS = {
 def release_channel(current):
     match = RELEASE_VERSION.fullmatch(current)
     if match is None:
-        raise ValueError("Expected major.minor.patch, optionally followed by -alpha.N, -beta.N or -rc.N")
-    return match['channel'] or 'latest'
+        raise ValueError("Expected major.minor.patch, optionally followed by -alpha.N or -rc.N")
+    return {'rc': 'preview', None: 'stable'}.get(match['channel'], match['channel'])
 
 
 def version(root=ROOT):
@@ -133,14 +133,14 @@ def prepare_install_files(root, output):
             raise ValueError(f"Refusing to replace {path}")
         shutil.copy2(root / source, path)
         if destination.endswith(".yml"):
-            path.write_text(path.read_text().replace(image + "latest", image + "v" + current))
+            path.write_text(path.read_text().replace(image + "stable", image + "v" + current))
         elif destination == "openwebide.image":
-            path.write_text(path.read_text().replace(image + "latest", image + channel))
+            path.write_text(path.read_text().replace(image + "stable", image + channel))
 
 
 def github_outputs(current):
     channel = release_channel(current)
-    return f"version={current}\nchannel={channel}\nprerelease={str(channel != 'latest').lower()}\n"
+    return f"version={current}\nchannel={channel}\nprerelease={str(channel != 'stable').lower()}\n"
 
 
 def main():

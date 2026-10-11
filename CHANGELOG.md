@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Publish rolling `alpha` container images from successful main builds, with commit-specific image tags. Share CI checks with release builds, push the exact smoke-tested images, and reserve standalone bridge downloads for tagged releases. Use `preview` for RC tags and `stable` for stable versions, with no legacy channel aliases.
+
 - Prevent cached API responses and delayed unauthorized file/chat requests from expiring a fresh login. Clear the expired-session notice after sign-in and display the shared logo and Open WebIDE branding on the account page.
 
 - Share immutable blank token rows across plain preparation, grammar paint and syntax reception while preserving token shapes and retained owners. Construct plain rows directly without intermediate token vectors. Verify the framed-worker checkpoint against all five hosted CI jobs; broader editor performance and final verification remain open.

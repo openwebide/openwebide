@@ -13,6 +13,18 @@ from pathlib import Path
 import release
 
 
+def workflow_script(step_name):
+    workflow = (release.ROOT / '.github/workflows/release.yml').read_text()
+    step = workflow.split(f'      - name: {step_name}\n', 1)[1]
+    lines = step.split('        run: |\n', 1)[1].splitlines()
+    script = []
+    for line in lines:
+        if line.strip() and not line.startswith('          '):
+            break
+        script.append(line)
+    return textwrap.dedent('\n'.join(script))
+
+
 class ReleaseTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -36,29 +48,29 @@ class ReleaseTests(unittest.TestCase):
             path.write_text(path.read_text().replace(previous, value))
 
     def test_prerelease_versions_keep_tag_notes_and_channels_consistent(self):
-        for channel in ['alpha', 'beta', 'rc']:
+        for channel in ['alpha', 'rc']:
             value = f'1.0.0-{channel}.1'
             self.set_version(value)
             with self.subTest(channel=channel):
                 self.assertEqual(release.validate(self.root, f'v{value}'), (value, '- Shipped.\n'))
-                self.assertEqual(release.release_channel(value), channel)
-                self.assertEqual(release.github_outputs(value), f'version={value}\nchannel={channel}\nprerelease=true\n')
+                self.assertEqual(release.release_channel(value), 'preview' if channel == 'rc' else channel)
+                self.assertEqual(release.github_outputs(value), f'version={value}\nchannel={release.release_channel(value)}\nprerelease=true\n')
             self.set_version('1.0.0', previous=value)
 
-    def test_stable_versions_publish_to_latest(self):
-        self.assertEqual(release.github_outputs('1.0.0'), 'version=1.0.0\nchannel=latest\nprerelease=false\n')
+    def test_stable_versions_publish_to_stable(self):
+        self.assertEqual(release.github_outputs('1.0.0'), 'version=1.0.0\nchannel=stable\nprerelease=false\n')
 
     def test_rejects_unsupported_or_malformed_versions(self):
-        for value in ['01.0.0', '1.0', '1.0.0-alpha', '1.0.0-alpha.01', '1.0.0-dev.1', '1.0.0-beta.1+build', '1.0.0-rc.1;echo bad']:
+        for value in ['01.0.0', '1.0', '1.0.0-alpha', '1.0.0-alpha.01', '1.0.0-dev.1', '1.0.0-beta.1', '1.0.0-beta.1+build', '1.0.0-rc.1;echo bad']:
             with self.subTest(value=value), self.assertRaises(ValueError):
                 release.release_channel(value)
 
     def test_install_assets_pin_compose_and_follow_correct_quadlet_channel(self):
         sources = {
-            'docker-compose.release.yml': 'image: ghcr.io/openwebide/openwebide:latest\n',
-            'docker-compose.https.yml': 'image: ghcr.io/openwebide/openwebide:latest\n',
+            'docker-compose.release.yml': 'image: ghcr.io/openwebide/openwebide:stable\n',
+            'docker-compose.https.yml': 'image: ghcr.io/openwebide/openwebide:stable\n',
             'docker-compose.ssh.yml': 'services: {}\n',
-            'deploy/openwebide.image': '[Image]\nImage=ghcr.io/openwebide/openwebide:latest\n',
+            'deploy/openwebide.image': '[Image]\nImage=ghcr.io/openwebide/openwebide:stable\n',
             'deploy/openwebide.container': '[Container]\nImage=openwebide.image\nPull=newer\nAutoUpdate=registry\n',
             'docker/tailscale/serve-config.sh': '#!/bin/sh\necho config\n',
         }
@@ -66,7 +78,7 @@ class ReleaseTests(unittest.TestCase):
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content)
-        for value, channel in [('1.0.0', 'latest'), ('1.0.0-beta.2', 'beta')]:
+        for value, channel in [('1.0.0', 'stable'), ('1.0.0-rc.2', 'preview')]:
             self.set_version(value)
             output = self.root / value
             release.prepare_install_files(self.root, output)
@@ -82,7 +94,7 @@ class ReleaseTests(unittest.TestCase):
     def test_publish_commands_do_not_promote_prereleases_to_latest(self):
         workflow = (release.ROOT / '.github/workflows/release.yml').read_text()
         publish = workflow.split('      - name: Publish multi-architecture image and release\n', 1)[1]
-        script = textwrap.dedent(publish.split('        run: |\n', 1)[1])
+        script = textwrap.dedent(publish.split('        run: |\n', 1)[1].split('\n  publish-alpha:', 1)[0])
         bin_dir = self.root / 'bin'
         bin_dir.mkdir()
         log = self.root / 'commands.jsonl'
@@ -100,7 +112,7 @@ with open(os.environ['COMMAND_LOG'], 'a') as stream:
         for name in ['a', 'b']:
             (self.root / 'digests' / name).touch()
         (self.root / 'assets/archive.tar.gz').touch()
-        for value in ['1.0.0', '1.0.0-alpha.1', '1.0.0-beta.2', '1.0.0-rc.3']:
+        for value in ['1.0.0', '1.0.0-rc.3']:
             log.write_text('')
             outputs = dict(line.split('=', 1) for line in release.github_outputs(value).splitlines())
             env = os.environ | {
@@ -116,7 +128,9 @@ with open(os.environ['COMMAND_LOG'], 'a') as stream:
             with self.subTest(version=value):
                 writes = [call[call.index('--tag') + 1] for call in calls if call[:4] == ['docker', 'buildx', 'imagetools', 'create']]
                 image = 'ghcr.io/openwebide/openwebide'
-                self.assertEqual(writes, [f'{image}:v{value}', f"{image}:{outputs['channel']}"])
+                expected = [f'{image}:v{value}', f"{image}:{outputs['channel']}"]
+                self.assertEqual(writes, expected)
+                self.assertNotIn(image + ':latest', writes)
                 edit = next(call for call in calls if call[:3] == ['gh', 'release', 'edit'])
                 create = next(call for call in calls if call[:3] == ['gh', 'release', 'create'])
                 if outputs['prerelease'] == 'true':
@@ -128,6 +142,92 @@ with open(os.environ['COMMAND_LOG'], 'a') as stream:
                 else:
                     self.assertIn('--latest', edit)
                     self.assertNotIn('--prerelease', edit)
+
+    def test_main_and_tag_publication_selection_and_manual_dry_run(self):
+        tools = self.root / 'tools'
+        tools.mkdir()
+        (tools / 'release.py').write_text((release.ROOT / 'tools/release.py').read_text())
+        output = self.root / 'outputs'
+        env = os.environ | {'RUNNER_TEMP': str(self.root), 'GITHUB_OUTPUT': str(output)}
+        cases = [
+            ('true', 'true', 'main', '1.0.0', True, '- Future.'),
+            ('false', 'false', 'main', '1.0.0', True, '- Future.'),
+            ('true', 'false', 'v1.0.0-rc.1', '1.0.0-rc.1', True, '- Shipped.'),
+            ('true', 'false', 'v1.0.0', '1.0.0', True, '- Shipped.'),
+            ('true', 'false', 'v1.0.0-alpha.7', '1.0.0-alpha.7', False, None),
+        ]
+        current = '1.0.0'
+        for publish, rolling, tag, value, succeeds, notes in cases:
+            self.set_version(value, previous=current)
+            current = value
+            output.write_text('')
+            result = subprocess.run(['bash', '-e', '-c', workflow_script('Validate versions and changelog')],
+                                    cwd=self.root, env=env | {'PUBLISH': publish, 'ROLLING': rolling, 'RELEASE_TAG': tag},
+                                    capture_output=True, text=True)
+            with self.subTest(tag=tag, publish=publish):
+                self.assertEqual(result.returncode == 0, succeeds, result.stderr)
+                if succeeds:
+                    values = dict(line.split('=', 1) for line in output.read_text().splitlines())
+                    self.assertEqual(values['publish'], publish)
+                    self.assertEqual(values['rolling'], rolling)
+                    self.assertEqual((self.root / 'release-notes.md').read_text().strip(), notes)
+                else:
+                    self.assertNotIn('publish=true', output.read_text())
+
+    def test_rolling_alpha_promotes_only_complete_platform_manifests(self):
+        script = workflow_script('Publish rolling alpha image')
+        bin_dir = self.root / 'bin'
+        bin_dir.mkdir()
+        log = self.root / 'commands.jsonl'
+        docker = bin_dir / 'docker'
+        docker.write_text("#!/usr/bin/env python3\nimport json, os, sys\nwith open(os.environ['COMMAND_LOG'], 'a') as stream: stream.write(json.dumps(sys.argv[1:]) + '\\n')\n")
+        docker.chmod(0o755)
+        digests = self.root / 'digests'
+        digests.mkdir()
+        (digests / ('a' * 64)).touch()
+        env = os.environ | {'PATH': str(bin_dir) + os.pathsep + os.environ['PATH'],
+                            'COMMAND_LOG': str(log), 'IMAGE': 'ghcr.io/openwebide/openwebide',
+                            'BUILD_COMMIT': 'c' * 40}
+        result = subprocess.run(['bash', '-e', '-c', script], cwd=self.root, env=env)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(log.exists())
+        (digests / ('b' * 64)).touch()
+        subprocess.run(['bash', '-e', '-c', script], cwd=self.root, env=env, check=True)
+        calls = [json.loads(line) for line in log.read_text().splitlines()]
+        writes = [call[call.index('--tag') + 1] for call in calls if '--tag' in call]
+        image = env['IMAGE']
+        self.assertEqual(writes, [f"{image}:sha-{env['BUILD_COMMIT']}", f'{image}:alpha'])
+        self.assertEqual(calls[-1][-1], writes[0])
+        self.assertEqual(calls[0][-2:], [f'{image}@sha256:' + 'a' * 64, f'{image}@sha256:' + 'b' * 64])
+
+    def test_push_uses_smoke_tested_image_and_stops_on_failure(self):
+        script = workflow_script('Push tested platform image')
+        bin_dir = self.root / 'bin'
+        bin_dir.mkdir()
+        log = self.root / 'commands.jsonl'
+        output = self.root / 'outputs'
+        docker = bin_dir / 'docker'
+        docker.write_text(r"""#!/usr/bin/env python3
+import json, os, sys
+with open(os.environ['COMMAND_LOG'], 'a') as stream:
+    stream.write(json.dumps(sys.argv[1:]) + '\n')
+if sys.argv[1] == 'push' and os.environ.get('FAIL_PUSH') == 'true': sys.exit(1)
+if sys.argv[1] == 'inspect': print(os.environ['IMAGE'] + '@sha256:' + 'd' * 64)
+""")
+        docker.chmod(0o755)
+        env = os.environ | {'PATH': str(bin_dir) + os.pathsep + os.environ['PATH'],
+                            'COMMAND_LOG': str(log), 'IMAGE': 'ghcr.io/openwebide/openwebide',
+                            'BUILD_COMMIT': 'c' * 40, 'ARCH': 'arm64', 'GITHUB_OUTPUT': str(output)}
+        failed = subprocess.run(['bash', '-e', '-c', script], cwd=self.root, env=env | {'FAIL_PUSH': 'true'})
+        self.assertNotEqual(failed.returncode, 0)
+        self.assertFalse(output.exists())
+        log.write_text('')
+        subprocess.run(['bash', '-e', '-c', script], cwd=self.root, env=env, check=True)
+        calls = [json.loads(line) for line in log.read_text().splitlines()]
+        platform = f"{env['IMAGE']}:sha-{env['BUILD_COMMIT']}-arm64"
+        self.assertEqual(calls[0], ['tag', 'openwebide:release-test', platform])
+        self.assertEqual(calls[1], ['push', platform])
+        self.assertEqual(output.read_text(), 'digest=sha256:' + 'd' * 64 + '\n')
 
     def test_release_notes_only_include_tagged_section(self):
         self.assertEqual(release.validate(self.root, "v1.0.0"), ("1.0.0", "- Shipped.\n"))

@@ -2,6 +2,7 @@ name: Release
 
 on:
   push:
+    branches: [main]
     tags: ['v*']
   # Build and smoke-test artifacts without publishing a release or registry image.
   workflow_dispatch:
@@ -11,7 +12,7 @@ permissions:
 
 concurrency:
   group: release-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
 
 jobs:
   validate:
@@ -19,6 +20,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       publish: ${{ steps.version.outputs.publish }}
+      rolling: ${{ steps.version.outputs.rolling }}
       channel: ${{ steps.version.outputs.channel }}
       prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
@@ -27,14 +29,19 @@ jobs:
         id: version
         env:
           RELEASE_TAG: ${{ github.ref_name }}
-          PUBLISH: ${{ github.event_name == 'push' && github.ref_type == 'tag' }}
+          PUBLISH: ${{ github.event_name == 'push' }}
+          ROLLING: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: |
-          if [ "$PUBLISH" = true ]; then
+          if [ "$PUBLISH" = true ] && [ "$ROLLING" = false ]; then
             python3 tools/release.py validate --tag "$RELEASE_TAG" --notes "$RUNNER_TEMP/release-notes.md" --github-output "$GITHUB_OUTPUT"
+            case "$RELEASE_TAG" in
+              *-alpha.*|*-beta.*) echo "Use main for rolling alpha builds; use -rc.N tags for preview or plain version tags for stable." >&2; exit 1 ;;
+            esac
           else
             python3 tools/release.py validate --notes "$RUNNER_TEMP/release-notes.md" --github-output "$GITHUB_OUTPUT"
           fi
           echo "publish=$PUBLISH" >> "$GITHUB_OUTPUT"
+          echo "rolling=$ROLLING" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         with:
           name: release-notes
@@ -92,6 +99,7 @@ jobs:
           bash docker/ssh-test/check.sh openwebide:release-test
           python3 docker/https-test/check.py docker --image openwebide:release-test
       - name: Package Linux bridge from tested image
+        if: needs.validate.outputs.rolling != 'true'
         env:
           RELEASE_TARGET: ${{ matrix.target }}
         run: |
@@ -100,25 +108,25 @@ jobs:
           docker rm "$container"
           python3 tools/release.py package-bridge --target "$RELEASE_TARGET" --binary "$RUNNER_TEMP/openwebide-bridge" --output "$RUNNER_TEMP/assets"
       - uses: actions/upload-artifact@v4
+        if: needs.validate.outputs.rolling != 'true'
         with:
           name: bridge-${{ matrix.target }}
           path: ${{ runner.temp }}/assets/*.tar.gz
           if-no-files-found: error
-      - name: Push tested platform image by digest
+      - name: Push tested platform image
         if: needs.validate.outputs.publish == 'true'
         id: push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          build-args: OPENWEBIDE_BUILD_COMMIT=${{ github.sha }}
-          platforms: linux/${{ matrix.arch }}
-          outputs: type=image,name=ghcr.io/${{ github.repository }},push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=gha,scope=release-${{ matrix.arch }}
-          labels: |
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.version=${{ needs.validate.outputs.version }}
-            org.opencontainers.image.licenses=MIT
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}
+          BUILD_COMMIT: ${{ github.sha }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          platform_image="$IMAGE:sha-$BUILD_COMMIT-$ARCH"
+          docker tag openwebide:release-test "$platform_image"
+          docker push "$platform_image"
+          digest=$(docker inspect --format='{{index .RepoDigests 0}}' "$platform_image")
+          [[ "$digest" == "$IMAGE@sha256:"* ]]
+          echo "digest=${digest##*@}" >> "$GITHUB_OUTPUT"
       - name: Export digest
         if: needs.validate.outputs.publish == 'true'
         env:
@@ -134,6 +142,7 @@ jobs:
           if-no-files-found: error
 
   macos-bridges:
+    if: needs.validate.outputs.rolling != 'true'
     needs: [validate, checks]
     strategy:
       fail-fast: false
@@ -167,6 +176,7 @@ jobs:
           if-no-files-found: error
 
   assets:
+    if: needs.validate.outputs.rolling != 'true'
     needs: [validate, images, macos-bridges]
     runs-on: ubuntu-24.04
     steps:
@@ -187,7 +197,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    if: needs.validate.outputs.publish == 'true'
+    if: needs.validate.outputs.publish == 'true' && needs.validate.outputs.rolling != 'true'
     needs: [validate, assets]
     runs-on: ubuntu-24.04
     permissions:
@@ -235,3 +245,34 @@ jobs:
             gh release edit "$RELEASE_TAG" --draft=false --latest
           fi
           docker buildx imagetools create --tag "$image:$CHANNEL" "$image:$RELEASE_TAG"
+
+  publish-alpha:
+    if: needs.validate.outputs.rolling == 'true'
+    needs: [validate, images]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: digest-*
+          merge-multiple: true
+          path: digests
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish rolling alpha image
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}
+          BUILD_COMMIT: ${{ github.sha }}
+        run: |
+          refs=()
+          for digest in digests/*; do refs+=("$IMAGE@sha256:$(basename "$digest")"); done
+          test "${#refs[@]}" -eq 2
+          docker buildx imagetools create --tag "$IMAGE:sha-$BUILD_COMMIT" "${refs[@]}"
+          docker buildx imagetools inspect "$IMAGE:sha-$BUILD_COMMIT"
+          docker buildx imagetools create --tag "$IMAGE:alpha" "$IMAGE:sha-$BUILD_COMMIT"

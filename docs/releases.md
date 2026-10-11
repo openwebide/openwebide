@@ -2,8 +2,8 @@
 
 [Alpha `1.0.0-alpha.6`](https://github.com/openwebide/openwebide/releases/tag/v1.0.0-alpha.6)
 is published with Linux amd64/arm64 images, Linux/macOS bridge archives and
-versioned installation assets. The rolling `alpha` image follows the same build;
-stable `latest` is unchanged. GHCR currently requires registry authentication.
+versioned installation assets. Successful `main` builds update the rolling `alpha`
+image automatically; `preview` and `stable` are published from version tags. GHCR currently requires registry authentication.
 The package owner can enable anonymous pulls by making the container package
 public in [organization package settings](https://github.com/orgs/openwebide/packages).
 The remaining stable-release and installation checks are tracked on the roadmap.
@@ -32,7 +32,7 @@ Use [Tailscale HTTPS](tailscale.md) for access from other devices and local brow
 folder permissions. Release assets also include a standalone HTTPS Compose file
 and `serve-config.sh`, plus [Podman Quadlet units](podman-quadlet.md).
 
-The Quadlet assets track the release channel (`latest`, `alpha`, `beta` or `rc`)
+The Quadlet assets track the release channel (`alpha`, `preview` or `stable`)
 and enable registry auto-updates; the Compose assets default to the specific version.
 See the automatic-update options below.
 
@@ -48,7 +48,7 @@ reference describes host requirements and configuration.
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
-| `OPENWEBIDE_IMAGE` | `ghcr.io/openwebide/openwebide:latest` in repository install files; pinned in Compose release assets | Override the Compose container image/version. |
+| `OPENWEBIDE_IMAGE` | `ghcr.io/openwebide/openwebide:stable` in repository install files; pinned in Compose release assets | Override the Compose container image/version. |
 | `OPENWEBIDE_WORKSPACE` | `$HOME/source` in Compose | Host projects directory mounted at `/workspace`. |
 | `OPENWEBIDE_DATA_VOLUME` | `openwebide-data` | Named app data volume; set to an existing volume name when migrating an older install. |
 | `OPENWEBIDE_TAILSCALE_VOLUME` | `openwebide-tailscale-data` | Named Tailscale state volume in HTTPS Compose; preserve an existing identity by selecting its old volume. |
@@ -122,7 +122,7 @@ to activate the new PWA shell; local folders may need **Grant folder access** ag
 ## Automatic updates
 
 Podman units include `Pull=newer`, `AutoUpdate=registry` and a rolling channel
-image (`latest` for stable releases). Enable `podman-auto-update.timer` as shown
+image (`stable` for stable releases). Enable `podman-auto-update.timer` as shown
 in the [Quadlet guide](podman-quadlet.md#upgrade).
 
 Docker Compose has no built-in background update service. Its equivalent is a
@@ -132,7 +132,7 @@ downloads images; [up](https://docs.docker.com/reference/cli/docker/compose/up/)
 recreates services whose images changed. `restart: unless-stopped` alone does not
 check for new images.
 
-Set `OPENWEBIDE_IMAGE=ghcr.io/openwebide/openwebide:latest` in your installation's
+Set `OPENWEBIDE_IMAGE=ghcr.io/openwebide/openwebide:stable` in your installation's
 `.env` file to follow releases. On Linux, this example user service and timer
 check daily; replace the working directory and Docker binary path as needed.
 The user running the service must have access to the Docker daemon.
@@ -175,31 +175,35 @@ scheduler. Keep regular backups: automatic updates restart the app and apply
 database migrations. Use a versioned tag and disable the update timer when you
 want to control upgrade timing.
 
-## Alpha, beta and release-candidate channels
+## Alpha, preview and stable channels
 
-Each published build has a versioned image tag and a rolling channel tag:
+| Source | Rolling image tag | Pinned image tag | GitHub Release |
+| --- | --- | --- | --- |
+| Successful `main` build | `alpha` | `sha-<full-commit-sha>` | None |
+| `v1.0.0-rc.1` tag | `preview` | `v1.0.0-rc.1` | Prerelease |
+| `v1.0.0` tag | `stable` | `v1.0.0` | Stable |
 
-| Git tag / versioned image tag | Rolling image tag | GitHub Release |
-| --- | --- | --- |
-| `v1.0.0-alpha.6` | `alpha` | Prerelease |
-| `v1.0.0-beta.1` | `beta` | Prerelease |
-| `v1.0.0-rc.1` | `rc` | Prerelease |
-| `v1.0.0` | `latest` | Stable |
+Every push to `main` starts the Release workflow, including the shared CI checks
+and native amd64/arm64 image smoke tests. It publishes the tested image to `alpha`
+and a commit-specific tag. New pushes supersede unfinished main builds. Failed
+checks leave the published channel unchanged. About displays the build commit;
+rolling builds retain the workspace version until a tagged release is prepared.
 
-Prereleases update only their own channel and are never marked as GitHub's latest
-release. Stable publication updates `latest`. Channels follow the most recently
-published build; publish version tags sequentially so an older build finishing
-later does not replace a newer channel image.
+Main builds publish container images, which include the server bridge. Tagged
+preview/stable releases also publish standalone Linux/macOS bridge archives,
+installation files and checksums. Existing numbered alpha releases remain pinned
+snapshots; future alpha updates need no version bump, changelog rollover or tag.
+Preview never updates `stable` or GitHub's latest release. Publish version tags
+sequentially so an older release cannot finish later and replace a newer channel.
 
 For Compose, set `OPENWEBIDE_IMAGE=ghcr.io/openwebide/openwebide:alpha` in `.env`
-to follow alphas, or use `:v1.0.0-alpha.6` to pin one build. For Podman, set the
+to follow main, or use `:sha-<full-commit-sha>` to pin a build. For Podman, set the
 same image in `openwebide.image`; the auto-update timer follows the chosen channel.
-Downloaded prerelease Quadlet assets already select their own channel rather than
-`latest`. A channel exists only after its first build is published.
+Downloaded Quadlet assets select `preview` or `stable`; Compose downloads pin
+the release version. Repository install files default to `stable`. There are no
+`latest`, `rc` or `beta` aliases. A channel exists after its first publication.
 
-Publishing an alpha does not declare the 1.0 milestone complete. The same version,
-changelog, CI and packaging gates apply, but known limitations can be documented
-in prerelease notes while stable-release verification continues.
+Rolling alpha publication does not complete the stable 1.0 release gates.
 
 ## Troubleshooting
 
@@ -219,6 +223,10 @@ with your version, deployment method, browser and workspace mode.
 
 ## Maintainer release procedure
 
+PRs run CI directly; main and tag builds run the same CI workflow through Release,
+so main pushes run the checks once. The following steps are for preview/stable
+release snapshots.
+
 1. For stable 1.0, finish the release gates in the [roadmap](roadmap.md), including both-mode
    verification and hands-on device/environment checks. The prepared pipeline alone
    does not complete the 1.0 milestone.
@@ -230,18 +238,17 @@ with your version, deployment method, browser and workspace mode.
    persistence, upgrades, both workspace modes and real-model streaming.
 3. Set the same version in `Cargo.toml` and `spin.toml`, update `Cargo.lock`, and
    move shipped changelog entries into its versioned section, leaving Unreleased
-   for subsequent work. Supported versions are `MAJOR.MINOR.PATCH` and
-   `MAJOR.MINOR.PATCH-alpha.N`, `-beta.N` or `-rc.N` (numeric `N`, no leading zeros).
-   For the next alpha, increment the prerelease counter, for example `1.0.0-alpha.6` and `## [1.0.0-alpha.6] - YYYY-MM-DD`;
-   for stable 1.0, use `1.0.0`. Update the README/site/guide to describe the actual
+   for subsequent work. Use `MAJOR.MINOR.PATCH-rc.N` for preview (numeric `N`, no
+   leading zeros), or `MAJOR.MINOR.PATCH` for stable. Rolling alpha only needs a
+   push to `main`; keep its changes under Unreleased. Update the README/site/guide to describe the actual
    release status. Run `python3 tools/release.py validate --tag v<version>`.
 4. Commit the reviewed release changes and push the corresponding `v<version>` tag.
    Tag builds require matching manifest/lock versions and nonempty tagged changelog
    notes, then run all CI checks before packaging or publication. The workflow
    pushes native platform images, merges their digests into the versioned tag, attaches
    archives/install files/checksums to a draft GitHub Release, publishes it and
-   updates the appropriate channel. Alpha/beta/RC releases carry GitHub's prerelease
-   flag and leave the stable `latest` image and release untouched.
+   updates the appropriate channel. Preview releases carry GitHub's prerelease
+   flag and leave the `stable` image and GitHub latest release untouched.
 5. On the first publication, set the GHCR package to **Public** in package settings
    and check it is linked to this repository (the image carries the source label).
    Verify an anonymous pull for both architectures and the versioned release install.

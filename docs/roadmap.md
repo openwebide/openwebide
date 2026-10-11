@@ -829,14 +829,14 @@ walkthroughs against the final app before public launch.
   service and update-timer checks remain hands-on.
 - **Prerelease installation verification:** make the GHCR package public and verify
   anonymous pulls on both architectures, then validate a clean prerelease install
-  before using alpha/beta distribution for feedback; this does not complete 1.0.
+  before using alpha/preview distribution for feedback; this does not complete 1.0.
 - **First stable publication:** move shipped changelog entries to `[1.0.0]`, bump workspace,
   Spin and lockfile versions together, and publish `v1.0.0` after rehearsal passes.
   The prepared workflow runs CI, merges native platform images into
-  `ghcr.io/openwebide/openwebide:v1.0.0` and `latest`, and publishes changelog-derived
+  `ghcr.io/openwebide/openwebide:v1.0.0` and `stable`, and publishes changelog-derived
   notes, archives, install files and checksums using `GITHUB_TOKEN`. Make the GHCR
   package public and verify anonymous pulls and clean installs on both architectures.
-  The published alpha is `1.0.0-alpha.5`; alpha publication does not complete
+  The pinned alpha is `1.0.0-alpha.6`; main builds publish rolling `alpha` images. Alpha publication does not complete
   the stable-release gates.
 - **Public launch:** update the [site landing page](project-site.md) and pre-release
   documentation wording for the actual release, then prepare community announcements
