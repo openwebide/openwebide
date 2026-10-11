@@ -161,7 +161,15 @@ tracks the remaining work rather than every optimization already shipped.
   beginning-edit production repeats show styled viewport paint in 253–260 ms,
   while full geometry still takes 1.18–1.24 seconds; cold viewport paint takes
   1.57–1.62 seconds. Broader boundary latency and memory measurements, arbitrary
-  nonorigin coverage and the remaining full measurement costs are still unfinished. Extend
+  nonorigin coverage and the remaining full measurement costs are still unfinished.
+  Current release measurements after borrowed request publication still show
+  246–261 ms wrapped input paint and 1.18–1.27 s complete geometry in both modes
+  ([eight production samples](editor-performance/borrowed-request-production.jsonl)).
+  A separate instrumented input run attributes 856 ms to bounds reads across
+  71 probes, compared with 1.4 ms of paragraph rendering
+  ([profile summary](editor-performance/borrowed-request-layout-profile.json));
+  reduce fresh browser shaping/reflow rather than treating source-copy removal
+  as completion of this gate. Extend
   shifted suffix reuse to changed long-token and plain-run boundaries; avoid repeated prefix
   segmentation for over-limit styled run tables. Eligible styled measurement paths
   now prepare run tables in yielding batches, including uncapped unwrapped

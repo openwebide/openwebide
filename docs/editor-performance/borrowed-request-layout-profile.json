@@ -1,0 +1,408 @@
+{
+  "metadata": {
+    "host": "Linux-7.0.14-linuxkit-aarch64-with-glibc2.36",
+    "measurement": "production editor; process-tree memory",
+    "cpuCount": 14,
+    "cgroupMemoryMax": "10737418240",
+    "cgroupCpuMax": "400000 100000",
+    "repetitions": 1,
+    "fileName": "measure.rs",
+    "measurementImage": "sha256:e1a372cac8e6c496251a7ea371631a8beb560d1c5c6cddd1b70a270da19bda8c",
+    "inputTimingStart": "beforeinput",
+    "inputPosition": "beginning",
+    "cpuProfiling": true,
+    "frontendWasmSha256": {
+      "openwebide-frontend-2f133fe5d79bb6d4_bg.wasm": "8a07976f6352f3934dc9727a61d4a3b5f0f218f05469c5943c418e1f1f27512c"
+    },
+    "backendWasmSha256": "575245e07301adb843869263e66785fa1099f40754cb2214f47ec653dd8b6afa",
+    "measurementScriptSha256": "8e810dc178ce0a2469a6b6f315d92896ed81cdc51a359c17fe521af4596d001e",
+    "checkoutHead": "6ef5108f65611fecee2ec0d31f8a015bb5dd8db4",
+    "browser": "Chromium 154.0.8037.92 built on Debian GNU/Linux 12 (bookworm)"
+  },
+  "diagnosticOnly": true,
+  "profilingAndTraceOverhead": true,
+  "rawProfileSha256": "8c6337d6581459d38c2c9da9618e07dda71e32653140fd2e8d138ee2b644b1bc",
+  "results": {
+    "cpuProfileMetrics": [
+      {
+        "name": "Timestamp",
+        "value": 20332.756277
+      },
+      {
+        "name": "AudioHandlers",
+        "value": 0
+      },
+      {
+        "name": "AudioWorkletProcessors",
+        "value": 0
+      },
+      {
+        "name": "Documents",
+        "value": 2
+      },
+      {
+        "name": "Frames",
+        "value": 1
+      },
+      {
+        "name": "JSEventListeners",
+        "value": 378
+      },
+      {
+        "name": "LayoutObjects",
+        "value": 1229
+      },
+      {
+        "name": "MediaKeySessions",
+        "value": 0
+      },
+      {
+        "name": "MediaKeys",
+        "value": 0
+      },
+      {
+        "name": "Nodes",
+        "value": 2163
+      },
+      {
+        "name": "Resources",
+        "value": 55
+      },
+      {
+        "name": "ContextLifecycleStateObservers",
+        "value": 18
+      },
+      {
+        "name": "V8PerContextDatas",
+        "value": 1
+      },
+      {
+        "name": "WorkerGlobalScopes",
+        "value": 2
+      },
+      {
+        "name": "UACSSResources",
+        "value": 0
+      },
+      {
+        "name": "RTCPeerConnections",
+        "value": 0
+      },
+      {
+        "name": "ResourceFetchers",
+        "value": 5
+      },
+      {
+        "name": "AdSubframes",
+        "value": 0
+      },
+      {
+        "name": "DetachedScriptStates",
+        "value": 0
+      },
+      {
+        "name": "ArrayBufferContents",
+        "value": 33
+      },
+      {
+        "name": "LayoutCount",
+        "value": 253
+      },
+      {
+        "name": "RecalcStyleCount",
+        "value": 375
+      },
+      {
+        "name": "LayoutDuration",
+        "value": 1.920548
+      },
+      {
+        "name": "RecalcStyleDuration",
+        "value": 0.038283
+      },
+      {
+        "name": "DevToolsCommandDuration",
+        "value": 0.018073
+      },
+      {
+        "name": "ScriptDuration",
+        "value": 0.88412
+      },
+      {
+        "name": "V8CompileDuration",
+        "value": 0.000129
+      },
+      {
+        "name": "TaskDuration",
+        "value": 3.058764
+      },
+      {
+        "name": "TaskOtherDuration",
+        "value": 0.197611
+      },
+      {
+        "name": "ThreadTime",
+        "value": 3.049612
+      },
+      {
+        "name": "ProcessTime",
+        "value": 3.84
+      },
+      {
+        "name": "JSHeapUsedSize",
+        "value": 5941288
+      },
+      {
+        "name": "JSHeapTotalSize",
+        "value": 10051584
+      },
+      {
+        "name": "FirstMeaningfulPaint",
+        "value": 20328.538514
+      },
+      {
+        "name": "DomContentLoaded",
+        "value": 20327.818421
+      },
+      {
+        "name": "NavigationStart",
+        "value": 20327.671251
+      }
+    ],
+    "cpuProfiling": true,
+    "case": "styled-long-line",
+    "fileName": "measure.rs",
+    "mode": "local",
+    "wrap": true,
+    "repetition": 1,
+    "sourceBytes": 1048567,
+    "inputPosition": "beginning",
+    "verifiedSourceCaretBeforeInput": 0,
+    "completeSourceAfterInputVerified": true,
+    "loadToPaintMs": 2468.741542998032,
+    "appModule": "/openwebide-frontend-2f133fe5d79bb6d4.js",
+    "clientWidth": 264,
+    "domNodes": 716,
+    "maxFrameMs": 133.30000000000007,
+    "nativeBound": true,
+    "nativeInputLength": 8782,
+    "paintRows": 1,
+    "scrollHeight": 547721,
+    "scrollWidth": 264,
+    "styledString": true,
+    "wasmCommittedBytes": 32571392,
+    "wrapped": true,
+    "scrollAxis": "vertical",
+    "scrollOffset": 383405,
+    "scrollToPaintMs": 42.30000000074506,
+    "inputToPaintMs": 1238.199999999255,
+    "chrome_processes": 9,
+    "chrome_summed_rss_kib": 1318316,
+    "chrome_pss_kib": 700139,
+    "memorySnapshotAttempts": 1,
+    "afterInputMemory": {
+      "chrome_processes": 9,
+      "chrome_summed_rss_kib": 1333944,
+      "chrome_pss_kib": 714996,
+      "memorySnapshotAttempts": 1
+    },
+    "beforeLoadMemory": {
+      "chrome_processes": 9,
+      "chrome_summed_rss_kib": 982580,
+      "chrome_pss_kib": 395128,
+      "memorySnapshotAttempts": 1
+    },
+    "peakChromeSummedRssKiB": 1356352,
+    "peakChromePssKiB": 738535,
+    "memorySamples": 25,
+    "memorySampleIntervalMs": 200,
+    "coldViewportPaintMs": 1504,
+    "coldCompleteGeometryMs": 2446.10000000149,
+    "coldViewportHadCompleteExtent": false,
+    "inputViewportPaintMs": 264.5999999977648,
+    "inputCompleteGeometryMs": 1238.199999999255,
+    "inputViewportHadCompleteExtent": false,
+    "inputScrollTop": 2,
+    "inputScrollLeft": 0,
+    "afterInputWasmCommittedBytes": 38273024,
+    "longTasks": 4,
+    "longTaskMs": 261,
+    "maxLongTaskMs": 71,
+    "maxFrameIncludingInputMs": 133.30000000000007,
+    "traceTruncated": false
+  },
+  "selfSampleMilliseconds": [
+    {
+      "function": "(idle)",
+      "url": "",
+      "lineNumber": -1,
+      "milliseconds": 1993.628
+    },
+    {
+      "function": "Element.getBoundingClientRect",
+      "url": "",
+      "lineNumber": 69,
+      "milliseconds": 1811.399
+    },
+    {
+      "function": "Range.getClientRects",
+      "url": "",
+      "lineNumber": 61,
+      "milliseconds": 301.622
+    },
+    {
+      "function": "(program)",
+      "url": "",
+      "lineNumber": -1,
+      "milliseconds": 197.594
+    },
+    {
+      "function": "wasm-function[1190]",
+      "url": "http://127.0.0.1:58811/openwebide-frontend-2f133fe5d79bb6d4_bg.wasm",
+      "lineNumber": 0,
+      "milliseconds": 63.265
+    },
+    {
+      "function": "wasm-function[680]",
+      "url": "http://127.0.0.1:58811/openwebide-frontend-2f133fe5d79bb6d4_bg.wasm",
+      "lineNumber": 0,
+      "milliseconds": 49.688
+    },
+    {
+      "function": "wasm-function[17760]",
+      "url": "http://127.0.0.1:58811/openwebide-frontend-2f133fe5d79bb6d4_bg.wasm",
+      "lineNumber": 0,
+      "milliseconds": 43.705
+    },
+    {
+      "function": "get",
+      "url": "",
+      "lineNumber": 110,
+      "milliseconds": 38.529
+    },
+    {
+      "function": "refresh_editor_scroll",
+      "url": "http://127.0.0.1:58811/snippets/openwebide-frontend-57d841698259b965/inline9.js",
+      "lineNumber": 5,
+      "milliseconds": 37.324
+    },
+    {
+      "function": "(garbage collector)",
+      "url": "",
+      "lineNumber": -1,
+      "milliseconds": 33.429
+    },
+    {
+      "function": "recordFor",
+      "url": "",
+      "lineNumber": 40,
+      "milliseconds": 27.97
+    },
+    {
+      "function": "wasm-function[1191]",
+      "url": "http://127.0.0.1:58811/openwebide-frontend-2f133fe5d79bb6d4_bg.wasm",
+      "lineNumber": 0,
+      "milliseconds": 25.31
+    },
+    {
+      "function": "passStringToWasm0",
+      "url": "http://127.0.0.1:58811/openwebide-frontend-2f133fe5d79bb6d4.js",
+      "lineNumber": 2565,
+      "milliseconds": 18.305
+    },
+    {
+      "function": "wasm-function[1131]",
+      "url": "http://127.0.0.1:58811/openwebide-frontend-2f133fe5d79bb6d4_bg.wasm",
+      "lineNumber": 0,
+      "milliseconds": 17.502
+    },
+    {
+      "function": "wasm-function[13212]",
+      "url": "http://127.0.0.1:58811/openwebide-frontend-2f133fe5d79bb6d4_bg.wasm",
+      "lineNumber": 0,
+      "milliseconds": 17.483
+    },
+    {
+      "function": "decodeText",
+      "url": "http://127.0.0.1:58811/openwebide-frontend-2f133fe5d79bb6d4.js",
+      "lineNumber": 2612,
+      "milliseconds": 16.21
+    },
+    {
+      "function": "observe_element_width",
+      "url": "http://127.0.0.1:58811/snippets/openwebide-frontend-57d841698259b965/inline11.js",
+      "lineNumber": 1,
+      "milliseconds": 15.698
+    },
+    {
+      "function": "paragraphRangeRectangles",
+      "url": "http://127.0.0.1:58811/snippets/openwebide-frontend-57d841698259b965/inline1.js",
+      "lineNumber": 1,
+      "milliseconds": 15.629
+    },
+    {
+      "function": "wasm-function[1329]",
+      "url": "http://127.0.0.1:58811/openwebide-frontend-2f133fe5d79bb6d4_bg.wasm",
+      "lineNumber": 0,
+      "milliseconds": 15.235
+    },
+    {
+      "function": "editor_scroll_element",
+      "url": "http://127.0.0.1:58811/snippets/openwebide-frontend-57d841698259b965/inline9.js",
+      "lineNumber": 1,
+      "milliseconds": 11.612
+    },
+    {
+      "function": "wasm-function[24269]",
+      "url": "http://127.0.0.1:58811/openwebide-frontend-2f133fe5d79bb6d4_bg.wasm",
+      "lineNumber": 0,
+      "milliseconds": 10.675
+    },
+    {
+      "function": "__wbg_set_innerHTML_ffa3d7ec0128d447",
+      "url": "http://127.0.0.1:58811/openwebide-frontend-2f133fe5d79bb6d4.js",
+      "lineNumber": 1807,
+      "milliseconds": 10.026
+    },
+    {
+      "function": "browserPreferences",
+      "url": "http://127.0.0.1:58811/snippets/openwebide-frontend-57d841698259b965/inline2.js",
+      "lineNumber": 1,
+      "milliseconds": 8.725
+    },
+    {
+      "function": "wasm-function[4736]",
+      "url": "http://127.0.0.1:58811/openwebide-frontend-2f133fe5d79bb6d4_bg.wasm",
+      "lineNumber": 0,
+      "milliseconds": 7.319
+    },
+    {
+      "function": "wasm-to-js",
+      "url": "",
+      "lineNumber": -1,
+      "milliseconds": 6.928
+    }
+  ],
+  "phases": {
+    "cold": {
+      "probes": 80,
+      "rangeReadMilliseconds": 147.6000000089407,
+      "boundsReadMilliseconds": 955.5000000074506,
+      "preparationMilliseconds": {
+        "paragraph-render": 2.4000000096857548,
+        "paragraph-layout": 964.3999999910593,
+        "paragraph-geometry": 199.4999999962747
+      }
+    },
+    "input": {
+      "probes": 71,
+      "rangeReadMilliseconds": 133.00000004470348,
+      "boundsReadMilliseconds": 855.7000000067055,
+      "preparationMilliseconds": {
+        "paragraph-render": 1.4000000022351742,
+        "paragraph-layout": 870.2999999932945,
+        "paragraph-geometry": 175.70000000670552
+      }
+    }
+  }
+}

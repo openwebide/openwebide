@@ -5730,3 +5730,38 @@ These tests verify ownership, wire compatibility and geometry; they do not
 establish production latency/memory completion. Hosted candidate CI remains pending.
 This removes an intermediate allocation/copy; it does not establish physical
 latency, Chrome PSS or the remaining conversion/decoding/publication bounds.
+
+### Production measurements after borrowed request publication
+
+Eight current release samples cover a styled 1,048,567-byte Rust row, local and
+remote projects, wrapping on/off and two repeats. Each verifies the complete
+source after an insertion at the beginning, not only the visible native window
+([samples](editor-performance/borrowed-request-production.jsonl)). Metadata
+identifies commit `6ef5108`, both production WASM hashes, Chromium, the reused
+image and the four-CPU/10-GiB container limits. These recovered local fixtures
+do not establish physical folder-permission or PWA input behavior.
+
+| View | Load to paint | Input viewport paint | Complete input geometry |
+| --- | --- | --- | --- |
+| Wrapped | 2.40–2.55 s | 246–261 ms | 1.18–1.27 s |
+| Unwrapped | 2.94–3.66 s | 128–142 ms | 128–142 ms |
+
+The results still fail the responsiveness goal. They do not establish a
+controlled causal improvement over earlier checkpoints: host/background load
+was not controlled. All eight source checks pass; source integrity does not
+prove latency completion.
+
+A separate wrapped local run enables both CPU profiling and bounded tracing
+([summary](editor-performance/borrowed-request-layout-profile.json)). Its
+264.6 ms viewport paint and 1.238 s complete geometry include instrumentation
+overhead and are excluded from the normal cohort. During input, 71 probes spend
+855.7 ms in element bounds reads and 133.0 ms in range reads. Recorded paragraph
+rendering totals 1.4 ms, layout 870.3 ms and geometry 175.7 ms. Across startup
+and input, the CPU profile attributes about 1.81 s of self samples to element
+bounds reads. The trace is not truncated and complete edited source is verified.
+
+The next layout work should reduce fresh browser shaping/reflow and prove
+reconnection for changed wrapping phases, while preserving exact renderer
+geometry and current-source ownership. Further request-copy optimizations alone
+cannot account for this measured layout cost. Parser, allocation and device
+gates remain independently open.
