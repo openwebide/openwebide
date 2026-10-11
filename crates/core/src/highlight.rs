@@ -44,7 +44,37 @@ pub type TokenRows = Vec<TokenRow>;
 
 /// Transfer owned tokens into compact immutable rows without cloning their text.
 pub fn share_token_rows(rows: Vec<Vec<Token>>) -> TokenRows {
-    rows.into_iter().map(std::sync::Arc::from).collect()
+    rows.into_iter().map(share_token_row).collect()
+}
+
+pub(crate) fn share_token_row(tokens: Vec<Token>) -> TokenRow {
+    static EMPTY: std::sync::LazyLock<TokenRow> =
+        std::sync::LazyLock::new(|| std::sync::Arc::from([]));
+    if tokens.is_empty() {
+        EMPTY.clone()
+    } else if matches!(tokens.as_slice(), [Token { kind: TokenKind::Plain, text }] if text.is_empty())
+    {
+        plain_token_row(String::new())
+    } else {
+        std::sync::Arc::from(tokens)
+    }
+}
+
+fn plain_token_row(text: String) -> TokenRow {
+    static BLANK: std::sync::LazyLock<TokenRow> = std::sync::LazyLock::new(|| {
+        std::sync::Arc::from([Token {
+            kind: TokenKind::Plain,
+            text: String::new(),
+        }])
+    });
+    if text.is_empty() {
+        BLANK.clone()
+    } else {
+        std::sync::Arc::from([Token {
+            kind: TokenKind::Plain,
+            text,
+        }])
+    }
 }
 
 /// The language a file is written in, chosen from its extension.
@@ -452,7 +482,7 @@ impl LexicalPreparation {
                 previous.tokens[index].clone()
             } else {
                 self.retokenized_rows += 1;
-                std::sync::Arc::from(highlight_line(line, self.language))
+                plain_token_row(line.to_owned())
             };
             // Exact source boundaries allow unchanged row reuse.
             // Changed/new rows recover via indexed lookup.
@@ -554,6 +584,64 @@ mod tests {
     }
 
     use super::*;
+
+    #[test]
+    fn shared_blank_rows_preserve_exact_token_shapes() {
+        let plain = || {
+            vec![Token {
+                kind: TokenKind::Plain,
+                text: String::new(),
+            }]
+        };
+        let rows = share_token_rows(vec![
+            vec![],
+            vec![],
+            plain(),
+            plain(),
+            vec![Token {
+                kind: TokenKind::String,
+                text: String::new(),
+            }],
+        ]);
+        assert!(std::sync::Arc::ptr_eq(&rows[0], &rows[1]));
+        assert!(std::sync::Arc::ptr_eq(&rows[2], &rows[3]));
+        assert!(rows[0].is_empty());
+        assert_eq!(rows[2].as_ref(), plain());
+        assert_eq!(rows[4][0].kind, TokenKind::String);
+        assert!(!std::sync::Arc::ptr_eq(&rows[0], &rows[2]));
+        assert!(!std::sync::Arc::ptr_eq(&rows[2], &rows[4]));
+    }
+
+    #[test]
+    fn dense_blank_plain_rows_share_tokens_but_keep_source_owners() {
+        for bounded in [false, true] {
+            let source = std::sync::Arc::new("\n".repeat(49_000));
+            let mut work = LexicalPreparation::new(source.clone(), Language::Rust);
+            while !work.is_complete() {
+                if bounded {
+                    work.advance_bounded(128, 8192);
+                } else {
+                    work.advance(128, 8192);
+                }
+            }
+            let snapshot = work.finish_snapshot().unwrap();
+            assert!(std::sync::Arc::ptr_eq(&source, &snapshot.source));
+            assert_eq!(snapshot.tokens().len(), 49_001);
+            assert!(
+                snapshot
+                    .tokens()
+                    .iter()
+                    .all(|row| std::sync::Arc::ptr_eq(row, &snapshot.tokens()[0]))
+            );
+            assert_eq!(
+                snapshot.tokens()[0].as_ref(),
+                &[Token {
+                    kind: TokenKind::Plain,
+                    text: String::new()
+                }]
+            );
+        }
+    }
 
     #[test]
     fn cooperative_lexical_rows_preserve_context_and_newline_contracts() {

@@ -292,8 +292,9 @@ prepared only one token row per unit. Small rows now share the existing 64-recor
   [transport receipt](editor-performance/live-syntax-frame-transport.json).
   The production-worker oracle and official-runner fixture now understand framed
   replies and explicit child WASM initialization; both failed CI checks are
-  reproduced and repaired locally, with full hosted follow-up still required
-  ([repair receipt](editor-performance/framed-transport-ci-repair.json)). Twelve
+  reproduced and repaired locally; all five hosted jobs now pass at `1b63c9ab`
+  ([CI receipt](editor-performance/editor-ci-1b63-success.json),
+  [repair receipt](editor-performance/framed-transport-ci-repair.json)). Twelve
   unwrapped production samples cover dense rows and 250 repeated embedded-language
   HTML/Markdown sections in both modes. Early viewport paint and cold/post-edit syntax readiness
   are distinct metrics; startup long tasks and high process-tree memory remain
@@ -305,6 +306,13 @@ prepared only one token row per unit. Small rows now share the existing 64-recor
   dense/long-row and malformed-header contracts verify stable capacity and
   rejection before over-budget record allocation
   ([receipt](editor-performance/frame-capacity-browser.json)).
+  Plain preparation, grammar paint and syntax reception now share immutable
+  blank rows, preserving the distinct empty/Plain-token shapes and exact retained
+  owners. Dense 49,001-row contracts verify sharing and source ownership
+  ([receipt](editor-performance/shared-blank-row-browser.json)). Plain preparation
+  also avoids intermediate token vectors. Production comparisons and wrapped
+  beginning-edit source checks are recorded separately
+  ([measurements](editor-performance/shared-blank-row-production-summary.json)).
   Initial reservation costs, vector/string growth outside frame decoding,
   JavaScript string conversion and per-row immutable allocation/copying still
   require bounded work and production latency/memory measurements. Twelve
@@ -346,8 +354,8 @@ prepared only one token row per unit. Small rows now share the existing 64-recor
   file-switch cancellation, cold queued-input source/selection ownership,
   host-plugin focus/layout and explicit Output/terminal targeting. Validate bounded
   setup retries after upstream Chrome download failures. Latest verified checkpoint
-  `764873b8` passes all five hosted jobs on integrated editor/plugin source
-  ([receipt](editor-performance/editor-ci-764-success.json)), with the historical
+  `1b63c9ab` passes all five hosted jobs on integrated editor/plugin source
+  ([receipt](editor-performance/editor-ci-1b63-success.json)), with the historical
   probe-cleanup/navigation failures corrected. Repeat this gate for the final
   integrated editor implementation before closing.
 

@@ -1,5 +1,5 @@
 //! Cooperative plain-row preparation; source and publication policy stay shared.
-use super::{LexicalPreparation, LexicalRow, Token, TokenKind};
+use super::{LexicalPreparation, LexicalRow, Token, plain_token_row};
 use std::sync::Arc;
 
 pub(super) struct LexicalRowPreparation {
@@ -107,10 +107,7 @@ impl LexicalPreparation {
                         row.copied = to;
                     }
                     if row.copied == end {
-                        let tokens = Arc::from(vec![Token {
-                            kind: TokenKind::Plain,
-                            text: row.text.take().unwrap(),
-                        }]);
+                        let tokens = plain_token_row(row.text.take().unwrap());
                         self.retokenized_rows += 1;
                         self.publish_bounded_row(next, newline, tokens, None);
                         completed += 1;

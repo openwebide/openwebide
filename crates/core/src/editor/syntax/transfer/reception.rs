@@ -283,7 +283,8 @@ impl ReceiveRow {
         Some(false)
     }
     fn finish(self) -> crate::highlight::TokenRow {
-        self.retained.unwrap_or_else(|| Arc::from(self.output))
+        self.retained
+            .unwrap_or_else(|| crate::highlight::share_token_row(self.output))
     }
 }
 impl TokenReconstruction {
@@ -417,6 +418,46 @@ impl TokenReconstruction {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reconstructed_blank_rows_share_tokens_without_replacing_retained_owners() {
+        use super::super::TokenRowData;
+        use crate::highlight::{Token, TokenKind};
+        for plain in [false, true] {
+            let count = 49_001;
+            let source = Arc::new("\n".repeat(count - 1));
+            let spans = if plain {
+                vec![(0, TokenKind::Plain)]
+            } else {
+                vec![]
+            };
+            let mut work = TokenReconstruction::new(
+                vec![TokenRowData::Spans(spans); count],
+                source,
+                count,
+                0,
+                None,
+            );
+            while !work.advance().unwrap() {}
+            let rows = work.finish().unwrap();
+            assert_eq!(rows.len(), count);
+            assert!(rows.iter().all(|row| Arc::ptr_eq(row, &rows[0])));
+            assert_eq!(rows[0].len(), usize::from(plain));
+            let old: crate::highlight::TokenRow = Arc::from(vec![Token {
+                kind: TokenKind::Plain,
+                text: String::new(),
+            }]);
+            let mut retained = TokenReconstruction::new(
+                vec![TokenRowData::Previous { reuse: 0, count: 1 }],
+                Arc::new(String::new()),
+                1,
+                0,
+                Some(Arc::new(vec![old.clone()])),
+            );
+            while !retained.advance().unwrap() {}
+            assert!(Arc::ptr_eq(&retained.finish().unwrap()[0], &old));
+        }
+    }
 
     #[test]
     fn record_admission_matches_original_limits_and_bounds_dense_headers() {

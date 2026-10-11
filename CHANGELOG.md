@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Share immutable blank token rows across plain preparation, grammar paint and syntax reception while preserving token shapes and retained owners. Construct plain rows directly without intermediate token vectors. Verify the framed-worker checkpoint against all five hosted CI jobs; broader editor performance and final verification remain open.
+
 - Reserve admitted framed syntax source, fold, row, span and structural buffers once with fallible allocations. Avoid recopying accumulated fragments while preserving transaction limits and complete-only publication; browser-wide performance work remains open.
 
 - Batch editor row measurements before updating fold gutters and skip unchanged viewport/gutter styles. Preserve wrapped resize, scroll and caret behavior in both project modes; startup and memory work remains unfinished.

@@ -1,0 +1,217 @@
+{
+  "scope": "Canonical immutable blank rows and direct plain-row construction; twelve unwrapped comparison samples and four wrapped beginning-edit source checks",
+  "baseline": "frame-capacity-production.jsonl",
+  "candidate": "shared-blank-row-production.jsonl",
+  "matchedConditions": {
+    "backendWasmSha256": false,
+    "measurementImage": true,
+    "measurementScriptSha256": true,
+    "browser": true,
+    "cgroupCpuMax": true,
+    "cgroupMemoryMax": true
+  },
+  "summaries": [
+    {
+      "case": "dense-rows",
+      "mode": "local",
+      "samplesPerVersion": 2,
+      "beforeMedian": {
+        "inputViewportPaintMs": 15.149999998509884,
+        "inputSyntaxReadyMs": 46.900000005960464,
+        "coldSyntaxReadyMs": 1339.8999999985099,
+        "peakChromePssKiB": 699399.0,
+        "wasmCommittedBytes": 32178176.0,
+        "afterInputWasmCommittedBytes": 34013184.0,
+        "maxLongTaskMs": 131.0
+      },
+      "afterMedian": {
+        "inputViewportPaintMs": 14.700000002980232,
+        "inputSyntaxReadyMs": 47.849999994039536,
+        "coldSyntaxReadyMs": 1303.4999999925494,
+        "peakChromePssKiB": 716416.5,
+        "wasmCommittedBytes": 31195136.0,
+        "afterInputWasmCommittedBytes": 34144256.0,
+        "maxLongTaskMs": 115.0
+      }
+    },
+    {
+      "case": "dense-rows",
+      "mode": "remote",
+      "samplesPerVersion": 2,
+      "beforeMedian": {
+        "inputViewportPaintMs": 15.300000004470348,
+        "inputSyntaxReadyMs": 47.04999999701977,
+        "coldSyntaxReadyMs": 1285.25,
+        "peakChromePssKiB": 682422.0,
+        "wasmCommittedBytes": 30441472.0,
+        "afterInputWasmCommittedBytes": 34865152.0,
+        "maxLongTaskMs": 94.5
+      },
+      "afterMedian": {
+        "inputViewportPaintMs": 14.99999999254942,
+        "inputSyntaxReadyMs": 44.19999999552965,
+        "coldSyntaxReadyMs": 1244.6000000014901,
+        "peakChromePssKiB": 711794.5,
+        "wasmCommittedBytes": 30015488.0,
+        "afterInputWasmCommittedBytes": 33652736.0,
+        "maxLongTaskMs": 95.0
+      }
+    },
+    {
+      "case": "embedded-html",
+      "mode": "local",
+      "samplesPerVersion": 2,
+      "beforeMedian": {
+        "inputViewportPaintMs": 21.599999994039536,
+        "inputSyntaxReadyMs": 48.1499999910593,
+        "coldSyntaxReadyMs": 2346.8500000089407,
+        "peakChromePssKiB": 705456.5,
+        "wasmCommittedBytes": 23527424.0,
+        "afterInputWasmCommittedBytes": 23527424.0,
+        "maxLongTaskMs": 129.0
+      },
+      "afterMedian": {
+        "inputViewportPaintMs": 19.25,
+        "inputSyntaxReadyMs": 50.30000000447035,
+        "coldSyntaxReadyMs": 1110.6000000014901,
+        "peakChromePssKiB": 688556.5,
+        "wasmCommittedBytes": 23527424.0,
+        "afterInputWasmCommittedBytes": 23527424.0,
+        "maxLongTaskMs": 66.0
+      }
+    },
+    {
+      "case": "embedded-html",
+      "mode": "remote",
+      "samplesPerVersion": 2,
+      "beforeMedian": {
+        "inputViewportPaintMs": 19.600000001490116,
+        "inputSyntaxReadyMs": 42.400000005960464,
+        "coldSyntaxReadyMs": 1139.25,
+        "peakChromePssKiB": 682416.5,
+        "wasmCommittedBytes": 23461888.0,
+        "afterInputWasmCommittedBytes": 23592960.0,
+        "maxLongTaskMs": 65.0
+      },
+      "afterMedian": {
+        "inputViewportPaintMs": 19.69999999552965,
+        "inputSyntaxReadyMs": 40.94999999552965,
+        "coldSyntaxReadyMs": 1133.9499999955297,
+        "peakChromePssKiB": 665838.5,
+        "wasmCommittedBytes": 23461888.0,
+        "afterInputWasmCommittedBytes": 23527424.0,
+        "maxLongTaskMs": 64.5
+      }
+    },
+    {
+      "case": "embedded-markdown",
+      "mode": "local",
+      "samplesPerVersion": 2,
+      "beforeMedian": {
+        "inputViewportPaintMs": 11.799999997019768,
+        "inputSyntaxReadyMs": 61.44999999552965,
+        "coldSyntaxReadyMs": 1213.5999999940395,
+        "peakChromePssKiB": 713225.5,
+        "wasmCommittedBytes": 23068672.0,
+        "afterInputWasmCommittedBytes": 23330816.0,
+        "maxLongTaskMs": 68.0
+      },
+      "afterMedian": {
+        "inputViewportPaintMs": 11.699999995529652,
+        "inputSyntaxReadyMs": 62.0,
+        "coldSyntaxReadyMs": 1282.9499999955297,
+        "peakChromePssKiB": 666970.5,
+        "wasmCommittedBytes": 23068672.0,
+        "afterInputWasmCommittedBytes": 23330816.0,
+        "maxLongTaskMs": 68.0
+      }
+    },
+    {
+      "case": "embedded-markdown",
+      "mode": "remote",
+      "samplesPerVersion": 2,
+      "beforeMedian": {
+        "inputViewportPaintMs": 11.799999997019768,
+        "inputSyntaxReadyMs": 59.45000000298023,
+        "coldSyntaxReadyMs": 1192.1499999985099,
+        "peakChromePssKiB": 667710.5,
+        "wasmCommittedBytes": 23068672.0,
+        "afterInputWasmCommittedBytes": 23330816.0,
+        "maxLongTaskMs": 65.5
+      },
+      "afterMedian": {
+        "inputViewportPaintMs": 12.449999995529652,
+        "inputSyntaxReadyMs": 58.8999999910593,
+        "coldSyntaxReadyMs": 1229.5,
+        "peakChromePssKiB": 660758.0,
+        "wasmCommittedBytes": 23166976.0,
+        "afterInputWasmCommittedBytes": 23330816.0,
+        "maxLongTaskMs": 67.5
+      }
+    }
+  ],
+  "wrappedBeginningEdits": [
+    {
+      "mode": "local",
+      "repetition": 1,
+      "verifiedSourceCaretBeforeInput": 0,
+      "completeSourceAfterInputVerified": true,
+      "inputViewportPaintMs": 83.70000000298023,
+      "inputSyntaxReadyMs": 83.70000000298023,
+      "coldSyntaxReadyMs": 1603,
+      "peakChromePssKiB": 696672,
+      "wasmCommittedBytes": 31522816,
+      "afterInputWasmCommittedBytes": 34078720,
+      "maxLongTaskMs": 165
+    },
+    {
+      "mode": "local",
+      "repetition": 2,
+      "verifiedSourceCaretBeforeInput": 0,
+      "completeSourceAfterInputVerified": true,
+      "inputViewportPaintMs": 81.70000000298023,
+      "inputSyntaxReadyMs": 81.70000000298023,
+      "coldSyntaxReadyMs": 1247.4000000059605,
+      "peakChromePssKiB": 725945,
+      "wasmCommittedBytes": 30605312,
+      "afterInputWasmCommittedBytes": 33554432,
+      "maxLongTaskMs": 92
+    },
+    {
+      "mode": "remote",
+      "repetition": 1,
+      "verifiedSourceCaretBeforeInput": 0,
+      "completeSourceAfterInputVerified": true,
+      "inputViewportPaintMs": 91,
+      "inputSyntaxReadyMs": 91,
+      "coldSyntaxReadyMs": 1275.7999999970198,
+      "peakChromePssKiB": 705651,
+      "wasmCommittedBytes": 30801920,
+      "afterInputWasmCommittedBytes": 33685504,
+      "maxLongTaskMs": 95
+    },
+    {
+      "mode": "remote",
+      "repetition": 2,
+      "verifiedSourceCaretBeforeInput": 0,
+      "completeSourceAfterInputVerified": true,
+      "inputViewportPaintMs": 100.40000000596046,
+      "inputSyntaxReadyMs": 100.40000000596046,
+      "coldSyntaxReadyMs": 1304.7000000029802,
+      "peakChromePssKiB": 708965,
+      "wasmCommittedBytes": 30801920,
+      "afterInputWasmCommittedBytes": 33947648,
+      "maxLongTaskMs": 92
+    }
+  ],
+  "limits": "Unchanged source, record, frame, readiness, input-paint, browser/font and probe limits; four CPU/10 GiB quota, untraced Chrome, process-tree PSS every 200 ms",
+  "limitations": [
+    "Two sequential samples per case/mode/version; timings and process memory are noisy, nonrandomized observations",
+    "The rebuilt backend WASM hash differs from the baseline; browser/image/script/quotas match, but this is not a single-artifact controlled comparison",
+    "Dense cold WASM committed bytes fall in these samples, while after-input committed bytes are mixed; no overall latency or process-memory gain is established",
+    "Wrapped beginning edits preserve complete source but still take about 82\u2013100 ms; no previous-version wrapped comparison is claimed",
+    "Local samples use database recovery without physical directory handles",
+    "Initial/source/native-window shaping, nonempty token copies, geometry, storage/history, physical PWA, permission, accessibility and final integrated CI remain part of the full goal"
+  ],
+  "nextAction": "Trace wrapped beginning-edit native context size and complete row-table traversal; preserve complete paragraph/selection geometry and fallback proofs"
+}

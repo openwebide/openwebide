@@ -2,7 +2,8 @@
 use super::SyntaxDocument;
 use crate::editor::structure::RegionKind;
 use crate::highlight::{
-    Language, Token, TokenKind, TokenRow, TokenRows, highlight_lines, share_token_rows,
+    Language, Token, TokenKind, TokenRow, TokenRows, highlight_lines, share_token_row,
+    share_token_rows,
 };
 use std::{collections::HashMap, ops::Range, sync::Arc};
 
@@ -132,7 +133,7 @@ impl RowPaint {
         let tokens = if let [(piece, row)] = self.parts.as_slice() {
             piece.rows[*row].clone()
         } else {
-            Arc::from(
+            share_token_row(
                 self.parts
                     .iter()
                     .flat_map(|(piece, row)| piece.rows[*row].iter().cloned())
