@@ -303,7 +303,11 @@ async fn measure_wrapped_paragraph(
         #[cfg(feature = "test-support")]
         CURRENT_PROBES.set(CURRENT_PROBES.get() + reused);
         if reused > 0 {
-            crate::util::yield_task().await;
+            if coverage_published && actions.paragraph_viewport_published(scope, logical) {
+                crate::util::yield_background_task().await;
+            } else {
+                crate::util::yield_task().await;
+            }
             continue;
         }
         let Some(targets) = plan.targets() else {
@@ -396,11 +400,14 @@ async fn measure_wrapped_paragraph(
         // Let the newly proved viewport reach the screen before measuring more
         // of this long row. Task yields alone can run additional shaping probes
         // ahead of the animation-frame callback that publishes visible paint.
-        if published_coverage
-            || probes % openwebide_core::editor::MAX_MEASURE_BATCHES_PER_FRAME == 0
-        {
+        let needs_frame = published_coverage
+            || probes % openwebide_core::editor::MAX_MEASURE_BATCHES_PER_FRAME == 0;
+        if needs_frame {
             crate::util::yield_frame().await;
-        } else {
+        }
+        if coverage_published && actions.paragraph_viewport_published(scope, logical) {
+            crate::util::yield_background_task().await;
+        } else if !needs_frame {
             crate::util::yield_task().await;
         }
     }

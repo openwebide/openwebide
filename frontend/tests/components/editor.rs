@@ -21377,6 +21377,157 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes
 }
 
 #[wasm_bindgen_test]
+async fn background_wrapped_geometry_keeps_visible_input_and_rejects_superseded_work_in_both_modes()
+{
+    #[wasm_bindgen::prelude::wasm_bindgen(inline_js = r#"
+    export function holdBackgroundGeometry(fallback) {
+        const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'scheduler');
+        const real = globalThis.scheduler;
+        const pending = [];
+        let restored = false;
+        Object.defineProperty(globalThis, 'scheduler', {configurable:true, value:fallback ? undefined : {
+            yield: () => real?.yield ? real.yield() : Promise.resolve(),
+            postTask: (callback, options) => options?.priority === 'background'
+                ? new Promise(resolve => pending.push(() => resolve(callback())))
+                : Promise.resolve().then(callback)
+        }});
+        return [() => {
+            if (restored) return;
+            restored = true;
+            if (descriptor) Object.defineProperty(globalThis, 'scheduler', descriptor);
+            else delete globalThis.scheduler;
+            for (const release of pending.splice(0)) release();
+        }, () => pending.length];
+    }
+    "#)]
+    extern "C" {
+        fn holdBackgroundGeometry(fallback: bool) -> js_sys::Array;
+    }
+    struct SchedulerGuard(js_sys::Array);
+    impl SchedulerGuard {
+        fn release(&self) {
+            self.0
+                .get(0)
+                .unchecked_into::<js_sys::Function>()
+                .call0(&wasm_bindgen::JsValue::NULL)
+                .unwrap();
+        }
+        fn held(&self) -> bool {
+            self.0
+                .get(1)
+                .unchecked_into::<js_sys::Function>()
+                .call0(&wasm_bindgen::JsValue::NULL)
+                .unwrap()
+                .as_f64()
+                .unwrap()
+                > 0.0
+        }
+    }
+    impl Drop for SchedulerGuard {
+        fn drop(&mut self) {
+            self.release();
+        }
+    }
+    use openwebide_core::{WorkspaceMode, editor::Selection};
+    use openwebide_frontend::state_actions::editor::EditorActions;
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        for fallback in [false, true] {
+            let scheduler = SchedulerGuard(holdBackgroundGeometry(fallback));
+            let source = "word 文😀 words ".repeat(12_000);
+            let original = source.clone();
+            let slot = std::rc::Rc::new(std::cell::Cell::new(None));
+            let capture = slot.clone();
+            let mounted = mount_test(move |state| {
+                state.seed_project();
+                state
+                    .projects
+                    .projects
+                    .update(|projects| projects[0].mode = mode);
+                state
+                    .workspace
+                    .open_file
+                    .set(Some("background-geometry.txt".into()));
+                state.workspace.content.set(source.into());
+                state
+                    .settings
+                    .editor_preferences
+                    .update(|preferences| preferences.word_wrap = true);
+                capture.set(Some(EditorActions::new(state.workspace)));
+                view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:420px;height:320px">{editor_view(state)}</div> }
+            });
+            let actions = slot.get().unwrap();
+            if !fallback {
+                wait_until("geometry yields at background priority", || {
+                    scheduler.held()
+                })
+                .await;
+                wait_until(
+                    "current viewport paints while background geometry is held",
+                    || {
+                        mounted
+                            .root
+                            .query_selector(".editor-code.highlight-ready .editor-source-line")
+                            .unwrap()
+                            .is_some()
+                    },
+                )
+                .await;
+                assert!(actions.measured_rows().is_none());
+                assert!(actions.native_geometry_pending());
+                assert_eq!(actions.source(), original);
+                wait_until(
+                    "current accepted viewport coverage remains available",
+                    || actions.paragraph_coverage().is_some(),
+                )
+                .await;
+                let paint = actions.paragraph_coverage().unwrap().paint;
+                assert!(actions.paragraph_viewport_published(&paint, 0));
+                assert!(!actions.paragraph_viewport_published(&paint, 1));
+                mounted
+                    .state
+                    .auth
+                    .generation
+                    .update(|generation| *generation += 1);
+                assert!(!actions.paragraph_viewport_published(&paint, 0));
+                mounted
+                    .state
+                    .auth
+                    .generation
+                    .update(|generation| *generation -= 1);
+                let changed = format!("z{original}");
+                actions
+                    .native_input(changed.clone(), Selection::caret(1), "insertText", 1.0)
+                    .unwrap();
+                assert!(!actions.paragraph_viewport_published(&paint, 0));
+                scheduler.release();
+                super::support::wait_until_with_timeout(
+                    "new source completes after releasing old geometry",
+                    30_000,
+                    || actions.measured_rows().is_some(),
+                )
+                .await;
+                let cache = mounted
+                    .state
+                    .workspace
+                    .editor_paragraph_cache
+                    .get_untracked()
+                    .unwrap();
+                assert_eq!(cache.paint.projection.line_body(0), Some(changed.as_str()));
+                assert_eq!(actions.source(), changed);
+            } else {
+                super::support::wait_until_with_timeout(
+                    "scheduler fallback completes exact wrapped geometry",
+                    30_000,
+                    || actions.measured_rows().is_some(),
+                )
+                .await;
+                assert_eq!(actions.source(), original);
+            }
+        }
+    }
+}
+
+#[wasm_bindgen_test]
 async fn wrapped_chunk_cancellation_discards_old_geometry_in_both_modes() {
     #[wasm_bindgen::prelude::wasm_bindgen(inline_js = r#"
     export function interruptWrappedChunk(input, prefix) {

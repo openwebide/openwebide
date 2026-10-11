@@ -1,0 +1,38 @@
+{
+  "conclusion": "success",
+  "headSha": "1b271c818b0423bb951176926c50e570c9d0e333",
+  "jobs": [
+    {
+      "conclusion": "success",
+      "name": "docker",
+      "status": "completed",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38116761089/job/114403067076"
+    },
+    {
+      "conclusion": "success",
+      "name": "bridge-windows",
+      "status": "completed",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38116761089/job/114403067214"
+    },
+    {
+      "conclusion": "success",
+      "name": "frontend-ui-tests",
+      "status": "completed",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38116761089/job/114403067258"
+    },
+    {
+      "conclusion": "success",
+      "name": "frontend",
+      "status": "completed",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38116761089/job/114403067284"
+    },
+    {
+      "conclusion": "success",
+      "name": "backend-and-crates",
+      "status": "completed",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/38116761089/job/114403067292"
+    }
+  ],
+  "status": "completed",
+  "runUrl": "https://github.com/openwebide/openwebide/actions/runs/38116761089"
+}

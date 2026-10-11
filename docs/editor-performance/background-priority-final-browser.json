@@ -1,0 +1,31 @@
+{
+  "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+  "console": "Invoking test: editor::wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes\nInvoking test: editor::wrapped_chunk_cancellation_discards_old_geometry_in_both_modes\nInvoking test: editor::paragraph_overlap_failure_uses_complete_measurement_in_both_modes\nInvoking test: editor::bounded_wrapped_paragraphs_preserve_complete_styled_geometry_in_both_modes\nInvoking test: editor::background_wrapped_geometry_keeps_visible_input_and_rejects_superseded_work_in_both_modes\n",
+  "output": "\nrunning 5 tests\ntest editor::wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes ... ok\ntest editor::wrapped_chunk_cancellation_discards_old_geometry_in_both_modes ... ok\ntest editor::paragraph_overlap_failure_uses_complete_measurement_in_both_modes ... ok\ntest editor::bounded_wrapped_paragraphs_preserve_complete_styled_geometry_in_both_modes ... ok\ntest editor::background_wrapped_geometry_keeps_visible_input_and_rejects_superseded_work_in_both_modes ... ok\n\ntest result: ok. 5 passed; 0 failed; 0 ignored; 0 filtered out; finished in 117.46s\n\n",
+  "passed": true,
+  "tests": [
+    "__wbgt__components::editor::background_wrapped_geometry_keeps_visible_input_and_rejects_superseded_work_in_both_modes",
+    "__wbgt__components::editor::bounded_wrapped_paragraphs_preserve_complete_styled_geometry_in_both_modes",
+    "__wbgt__components::editor::paragraph_overlap_failure_uses_complete_measurement_in_both_modes",
+    "__wbgt__components::editor::wrapped_chunk_cancellation_discards_old_geometry_in_both_modes",
+    "__wbgt__components::editor::wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes"
+  ],
+  "servedFonts": {
+    "/fonts/MonaspaceNeon-v1.400.woff2": "6569968f448ae856ab5b57dff1f13b109b220ca8e3f664169e135fcb5c4f0721",
+    "/fonts/MonaspaceArgon-v1.400.woff2": "ad0ad84cb65ab56ea82b3098800403aeec1bbc445ba24da0dc87f439b3883db6",
+    "/fonts/MonaspaceXenon-v1.400.woff2": "eea00c02f4c00f09fd50e80efdb8341975f9eb8c82720ce50f44c19a962996c5",
+    "/fonts/MonaspaceRadon-v1.400.woff2": "6411b3c2b3e02e3913248184800d6c5a83bb1ccd1472daeb7bfee605c176cb33",
+    "/fonts/MonaspaceKrypton-v1.400.woff2": "f1357532c080c3f976e35ec1d18a92b423d4261103acb7d2cdccffa03a989fad"
+  },
+  "libraryStartSuppressed": false,
+  "sourceManifest": {
+    "sourceHead": "1b271c818b0423bb951176926c50e570c9d0e333",
+    "filesSha256": {
+      "frontend/src/components/editor_rows.rs": "d383f7757bbdb4281ccd64c8ec65c96bdcedc88c6d4554b22eaf387704610afd",
+      "frontend/src/state_actions/editor/rows.rs": "a69188259edfbc7eee6a93cd3957db6a6a6f01e8a9905060a4be8b48d26922ae",
+      "frontend/src/util.rs": "43b01165307643f8dda6ca749567ac47cc30540e7f690f4b2674b1194bee60e1",
+      "frontend/tests/components/editor.rs": "30c987704e6c26803d5323d54abf7a865b6827e93a2dc0e0c459914d53eb67b3"
+    },
+    "testWasmSha256": "1e86d362bbf8df0fb3f3e650b022c7e2cb1486939b1b4e8f82b6463945a1434d"
+  }
+}

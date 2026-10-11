@@ -6224,3 +6224,73 @@ contract still passes and a valid library filter plus missing contract fails
 before test execution. The final native frontend inventory has 129 passing
 contracts; final strict WASM frontend lint and formatting checks pass.
 Hosted CI for the new checkpoint still needs to run after pushing.
+
+Checkpoint `9afec17` is pushed in merged main `1b271c81`; the merge adds the
+published alpha version, release documentation/tooling and build-only Spin
+telemetry configuration. Release tooling's 13 tests pass. The feature runtime
+checks above precede that metadata merge. Hosted CI run `38116761089` passed all five jobs for the merged head.
+
+A single instrumented remote input profile still measures 15 fresh cold probes;
+input-window self CPU is dominated by `getBoundingClientRect` (185 ms) and
+`Range.getClientRects` (63 ms), while native input handling takes 32 ms
+([diagnostic](editor-performance/current-source-wrapped-profile.json)). These
+profile timings include instrumentation and cannot replace uninstrumented
+samples. Investigate earlier viewport publication and fewer distinct incoming
+wrap phases without relaxing the exact geometry proof. Shared target cleanup
+is deferred while another Rust build is active. The installed Chrome PWA still
+returns `cgWindowNotFound`; physical verification remains open.
+
+A bounded DOM observer on one remote sample records current styled viewport HTML
+ready at 134 ms, while the frame observer records it at 236 ms during continuing
+geometry work
+([diagnostic](editor-performance/current-source-viewport-publication-diagnostic.json)).
+This separates DOM publication from a visible-frame observation; it does not
+prove compositor latency or an exclusive cause. The candidate schedules further
+geometry at background priority only when the shared facade accepts current
+origin coverage. Unsupported schedulers retain the cooperative task fallback;
+source, account, style and extent proof are unchanged. A new both-mode browser
+contract holds background tasks, verifies visible input, edits while work is held
+and checks that the old source cannot complete; it also covers scheduler fallback.
+The WASM frontend check passes; browser and production verification are pending.
+Cleanup removed 1.6 GiB once Rust builds stopped. The backend file, which had
+already been removed by another cleanup, is restored from the retained verified
+artifact; the running bridge health and root UI still respond successfully.
+
+Merged main `1b271c81` passes all five hosted CI jobs
+([receipt](editor-performance/grouped-ci-1b271c8.json)). This verifies the pushed
+Unicode-span/current-probe checkpoint with alpha release metadata; it does not
+verify the uncommitted background-priority candidate.
+
+The context-aware held-background-task regression passes in both local and
+remote modes, including scheduler fallback, visible input during held work,
+current coverage ownership and completion after a superseding edit
+([receipt](editor-performance/background-geometry-owned-browser.json)). The first
+fixture created its facade outside the Leptos owner and could not read wrapped
+preferences/authentication; capturing it inside the component fixes that fixture.
+The broader wrapped replay/full-renderer comparison also passed before that
+fixture correction. Strict WASM frontend lint passes. Final production scheduling
+and latency remain to be verified; this candidate remains uncommitted.
+
+The production background-priority candidate verifies full source after beginning
+edits in four isolated local/remote near-1-MiB styled wrapped samples
+([results](editor-performance/background-priority-production.jsonl),
+[artifact manifest](editor-performance/background-priority-production-manifest.json)).
+Edited viewport paint takes 134–159 ms, compared with 236–256 ms in the prior
+current-probe cohort. Complete geometry takes 387–416 ms versus 373–389 ms;
+cold complete geometry takes 1.47–1.54 seconds and peak Chrome PSS is
+681–719 MiB. These small sequential cohorts use the same retained backend, fonts
+and measurement script; the candidate also includes alpha release metadata.
+The viewport improves, with slightly slower full completion; this does not clear
+the overall responsiveness or memory gate. Final-source browser/lint checks are
+pending before committing the priority change.
+
+Final-source verification passes all five selected browser contracts with actual
+Monaspace assets: held background work and scheduler fallback, repeated
+near-limit Unicode/style replay against the complete renderer, chunk cancellation,
+failed-overlap fallback and complete styled wrapped geometry
+([receipt](editor-performance/background-priority-final-browser.json)).
+The run took 117.46 seconds with unchanged assertions/deadlines. Strict WASM
+frontend all-targets lint and formatting pass. Shared `EditorActions` owns
+coverage eligibility; the browser adapter only supplies prioritized task yielding.
+Both mode paths use that policy and retain current source/account checks.
+Hosted CI for the new checkpoint remains pending.

@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Yield remaining wrapped geometry at background priority after accepting current viewport coverage, keeping visible input responsive in both project modes. Preserve exact geometry, stale-source/account rejection and cooperative fallback on browsers without task priorities.
+
 - Support Rust/WASM library bundles in the standalone editor browser verifier, retain reference initialization while skipping native test startup, and reject nonboolean test results.
 
 - Reuse repeated, current-source wrapped paragraph measurements after proving matching text, styling, span boundaries and geometry. Preserve Unicode span phase at complete-word continuations and measure terminal extents freshly in local and remote editors.

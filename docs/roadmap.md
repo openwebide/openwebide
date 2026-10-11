@@ -399,6 +399,18 @@ these measurements do not complete the requirements below.
   Neutral rendering borrows immutable projection rows with a stable cache identity;
   fallback completion remains a separate readiness condition. Verify styled-boundary
   and beginning-edit production workloads before crediting broader improvements.
+  Remaining wrapped geometry yields to visible
+  paint and input only after current source-owned viewport coverage is accepted.
+  Both-mode held-task/cancellation and scheduler-fallback verification pass
+  ([receipt](editor-performance/background-geometry-owned-browser.json)); final
+  production samples verify full source and 134–159 ms viewport paint, with
+  387–416 ms complete geometry
+  ([results](editor-performance/background-priority-production.jsonl)). Final-source
+  geometry, overlap fallback, superseding-source cancellation and held-task
+  contracts pass in both modes
+  ([receipt](editor-performance/background-priority-final-browser.json)); strict
+  WASM lint and formatting pass. Geometry proof and completion requirements
+  remain unchanged.
 - [ ] **Exact geometry and fallbacks:** retain complete-renderer extent/anchor/hit
   comparisons, font/feature/whitespace matrices, Unicode/caret mapping and failed-proof
   fallback contracts. Current painted coverage and exact retained caret anchors,
@@ -435,8 +447,10 @@ these measurements do not complete the requirements below.
   to 373–389 ms, while viewport paint remains 236–256 ms
   ([samples](editor-performance/current-source-wrapped-production.jsonl)).
   All 194 editor/worker browser contracts, 658 native core tests, 129 native
-  frontend tests, final ownership regression and strict WASM lint pass. Hosted
-  CI and the remaining visible-input/cold-start performance gates remain open.
+  frontend tests, final ownership regression and strict WASM lint pass. Merged
+  main `1b271c81` passes all five hosted jobs
+  ([receipt](editor-performance/grouped-ci-1b271c8.json)). Hosted CI for the newer background-priority checkpoint remains pending;
+  visible-input/cold-start performance gates remain open.
   The embedded-comment
   checkpoint `cc019c1` passed all five hosted jobs
   ([receipt](editor-performance/grouped-ci-cc019c1.json)). Selection-capability

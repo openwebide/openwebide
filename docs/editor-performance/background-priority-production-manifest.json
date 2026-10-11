@@ -1,0 +1,10 @@
+{
+  "sourceHead": "1b271c818b0423bb951176926c50e570c9d0e333",
+  "sourceDiffSha256": "6360f3d21cfc4270b2e72de547814bed33ba1855b2326b9b732bb3a16dcf5cea",
+  "backendWasmSha256": "8efc2579446963f530f5774fdcbe2223bbc6b974eb54d8221a768ff1c43232af",
+  "measurementScriptSha256": "8e810dc178ce0a2469a6b6f315d92896ed81cdc51a359c17fe521af4596d001e",
+  "frontendWasmSha256": {
+    "openwebide-frontend-226aa795ca8f0b46_bg.wasm": "804d620998027df00f7ddf51ddc20e89148c6d6e5b254c7ae91ac3dc56d21062"
+  },
+  "artifactDifference": "Frontend uses current alpha.5 metadata and background priority candidate; retained backend is the same previous baseline runtime."
+}

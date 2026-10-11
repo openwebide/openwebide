@@ -859,6 +859,18 @@ impl EditorActions {
             })
         })
     }
+    /// Only accepted current-origin coverage permits lower-priority geometry.
+    /// A rejected prefix or a non-origin row must retain ordinary scheduling.
+    pub fn paragraph_viewport_published(self, paint: &EditorRowPaint, row: usize) -> bool {
+        row == 0
+            && self.paragraph_coverage().is_some_and(|coverage| {
+                same_paint_scope(paint, &coverage.paint)
+                    && paint
+                        .projection
+                        .shares_text_version(&coverage.paint.projection)
+            })
+    }
+
     /// Partial logical-row coverage is never a completed row table or EOF.
     pub fn paragraph_coverage(self) -> Option<crate::state::workspace::EditorParagraphCoverage> {
         self.workspace.editor_composition.track();

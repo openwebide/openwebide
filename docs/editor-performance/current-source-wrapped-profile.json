@@ -1,0 +1,71 @@
+{
+  "scope": "One instrumented remote wrapped near-1-MiB input sample; profiling/trace overhead; not a performance gate or causal comparison",
+  "artifactManifest": "current-source-wrapped-production-manifest.json",
+  "completeSourceAfterInputVerified": true,
+  "actualStringStyling": true,
+  "inputFreshColdProbes": 15,
+  "inputSelfCpuMs": [
+    {
+      "function": "Element.getBoundingClientRect",
+      "ms": 185.37
+    },
+    {
+      "function": "Range.getClientRects",
+      "ms": 62.91
+    },
+    {
+      "function": "(program)",
+      "ms": 52.47
+    },
+    {
+      "function": "wasm-function[1224]",
+      "ms": 20.53
+    },
+    {
+      "function": "wasm-function[1219]",
+      "ms": 9.87
+    },
+    {
+      "function": "wasm-function[683]",
+      "ms": 7.68
+    },
+    {
+      "function": "recordFor",
+      "ms": 5.2
+    },
+    {
+      "function": "wasm-function[1153]",
+      "ms": 5.02
+    },
+    {
+      "function": "paragraphRangeRectangles",
+      "ms": 4.99
+    },
+    {
+      "function": "wasm-function[895]",
+      "ms": 4.45
+    },
+    {
+      "function": "(idle)",
+      "ms": 4.28
+    },
+    {
+      "function": "yield_browser_task",
+      "ms": 2.76
+    }
+  ],
+  "nativeInputEvents": [
+    {
+      "at": 1946.1000000014901,
+      "kind": "beforeinput",
+      "elapsedMs": 1
+    },
+    {
+      "at": 1983.5,
+      "kind": "input",
+      "elapsedMs": 32.399999998509884
+    }
+  ],
+  "rawDiagnosticSha256": "259e5a7382672bff83cadc8ced43182ee20a88cd62fa7cb485c884073ffdee3e",
+  "nextInvestigation": "Fresh probe layout remains the largest measured input cost. Preserve exact glyph proof while investigating earlier viewport publication and fewer distinct incoming wrap phases."
+}

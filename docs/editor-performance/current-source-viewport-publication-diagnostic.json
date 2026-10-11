@@ -1,0 +1,75 @@
+{
+  "scope": "One instrumented remote sample; bounded DOM mutation observer; prior pushed feature artifact, before priority experiment",
+  "completeSourceAfterInputVerified": true,
+  "inputViewportFrameMs": 236.29999999701977,
+  "inputCompleteGeometryMs": 386,
+  "surfaceEvents": [
+    {
+      "at": 1777.1999999955297,
+      "nativeScope": "1",
+      "paintScope": "1",
+      "ready": true,
+      "scope": "1",
+      "stringLength": 971,
+      "textLength": 991,
+      "viewportHeight": "547696.5",
+      "sinceBeforeInputMs": 0.8
+    },
+    {
+      "at": 1832.2999999970198,
+      "nativeScope": "2",
+      "paintScope": "1",
+      "ready": true,
+      "scope": "2",
+      "stringLength": 971,
+      "textLength": 991,
+      "viewportHeight": "0",
+      "sinceBeforeInputMs": 55.9
+    },
+    {
+      "at": 1859.5,
+      "nativeScope": "2",
+      "paintScope": "2",
+      "ready": false,
+      "scope": "2",
+      "stringLength": null,
+      "textLength": 0,
+      "viewportHeight": "0",
+      "sinceBeforeInputMs": 83.1
+    },
+    {
+      "at": 1891.1000000014901,
+      "nativeScope": "2",
+      "paintScope": "2",
+      "ready": false,
+      "scope": "2",
+      "stringLength": null,
+      "textLength": 0,
+      "viewportHeight": null,
+      "sinceBeforeInputMs": 114.7
+    },
+    {
+      "at": 1910.5,
+      "nativeScope": "2",
+      "paintScope": "2",
+      "ready": true,
+      "scope": "2",
+      "stringLength": 965,
+      "textLength": 986,
+      "viewportHeight": null,
+      "sinceBeforeInputMs": 134.1
+    },
+    {
+      "at": 2158.6999999955297,
+      "nativeScope": "2",
+      "paintScope": "2",
+      "ready": true,
+      "scope": "2",
+      "stringLength": 965,
+      "textLength": 986,
+      "viewportHeight": "547696.5",
+      "sinceBeforeInputMs": 382.3
+    }
+  ],
+  "conclusion": "Current styled DOM becomes ready about 134 ms after input; frame observer records it at 236 ms while further geometry probes continue. Investigate task/frame scheduling without weakening geometry validation."
+}
