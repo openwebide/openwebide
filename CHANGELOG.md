@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Enlarge desktop and Apple PWA icons and provide separate maskable icons for adaptive launchers, with all variants cached for offline use.
+
 - Shorten generated model-server names to host, port and API path; migrate existing generated labels while retaining custom names and handling duplicate endpoints.
 
 - Check plugin marketplaces on server and paired hosts with browsers closed, using shared account leases, persisted results, bounded retries and restart recovery. Restore update indicators and source failures from the database when clients reconnect; keep Notify as the default and existing Automatic activation while a client is open.

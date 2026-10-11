@@ -21,13 +21,14 @@ function icon(scale, rounded) {
 </svg>\n`;
 }
 
-// All painted geometry fits inside the central 80%-diameter maskable safe circle.
-const installed = icon(0.64, false);
-for (const size of [180, 192, 512]) {
-  const filename = size === 180 ? 'apple-touch-icon.png' : `icon-${size}.png`;
-  const png = new Resvg(installed, { fitTo: { mode: 'width', value: size } }).render().asPng();
-  writeFileSync(resolve(output, filename), png);
+// Desktop icons use the canvas; adaptive icons retain their safe-circle padding.
+for (const size of [192, 512]) {
+  for (const [prefix, svg] of [['icon', icon(0.94, true)], ['maskable-icon', icon(0.64, false)]]) {
+    const png = new Resvg(svg, { fitTo: { mode: 'width', value: size } }).render().asPng();
+    writeFileSync(resolve(output, `${prefix}-${size}.png`), png);
+  }
 }
+writeFileSync(resolve(output, 'apple-touch-icon.png'), new Resvg(icon(0.94, false), { fitTo: { mode: 'width', value: 180 } }).render().asPng());
 const favicon = icon(0.875, true);
 writeFileSync(resolve(output, 'favicon.svg'), favicon);
 writeFileSync(resolve(output, 'favicon.png'), new Resvg(favicon, { fitTo: { mode: 'width', value: 32 } }).render().asPng());
