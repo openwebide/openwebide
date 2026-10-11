@@ -132,15 +132,13 @@ impl ContextAssistance {
             if candidates.is_empty() {
                 return;
             }
-            let input = format!(
-                "Draft:\n{}\nCandidates:\n{}",
-                draft.chars().take(2000).collect::<String>(),
-                candidates
-                    .iter()
-                    .map(|candidate| format!("{}: {}", candidate.id(), candidate.label()))
-                    .collect::<Vec<_>>()
-                    .join("\n")
-            );
+            let input = serde_json::json!({
+                "draft": draft.chars().take(2000).collect::<String>(),
+                "candidates": candidates.iter().map(|candidate| {
+                    serde_json::json!({"id": candidate.id(), "label": candidate.label()})
+                }).collect::<Vec<_>>()
+            })
+            .to_string();
             spawn_local(async move {
                 crate::util::sleep_ms(1500).await;
                 let current = move || {

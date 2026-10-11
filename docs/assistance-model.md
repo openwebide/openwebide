@@ -16,15 +16,14 @@ Completed chats show a collapsible **Where you left off** recap, a short result
 summary marked with a **↪** recap indicator and suggested next prompts as inline
 composer hints. Summaries describe the topic or concrete result directly,
 mentioning failures or blockers only when relevant. Follow-up suggestions are
-prompts you can send to the assistant, rather than questions addressed to you.
-A hint completes matching
-text as you type. Press **Right Arrow** at the end of the input to accept
-it; acceptance fills the composer without submitting. Cursor movement, text
-selection and modified arrow keys keep their normal behavior. Follow-up choices
+three distinct prompts you can send to the assistant, ranked by likelihood. The
+most likely prompt appears only in the composer; the other two appear as chat
+buttons. A hint completes matching text as you type. Press **Right Arrow** at the
+end of the input to accept it; acceptance fills the composer without submitting.
+Cursor movement, text selection and modified arrow keys keep their normal behavior. Follow-up choices
 also appear as compact outlined prompt buttons in the chat history; clicking one
-sends it immediately. Activity
-labels describe current tools and approval waits directly from their execution
-state.
+sends it immediately. Activity labels describe current tools and approval waits
+directly from their execution state.
 
 When you write a prompt, the app may suggest files, saved memories and previous
 chats from the current project. Projectless chats can suggest other projectless

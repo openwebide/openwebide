@@ -171,13 +171,19 @@ impl ChatAssistance {
                         } else if kind == AssistanceKind::Completion {
                             result.completion.set(Some(text));
                         } else {
-                            result.next_actions.set(
-                                text.lines()
-                                    .filter(|line| !line.trim().is_empty() && line.trim() != "NONE")
-                                    .take(2)
-                                    .map(str::to_owned)
-                                    .collect(),
-                            );
+                            let mut prompts = Vec::new();
+                            for line in text.lines().map(str::trim) {
+                                if !line.is_empty()
+                                    && line != "NONE"
+                                    && !prompts.iter().any(|prompt| prompt == line)
+                                {
+                                    prompts.push(line.to_owned());
+                                    if prompts.len() == 3 {
+                                        break;
+                                    }
+                                }
+                            }
+                            result.next_actions.set(prompts);
                         }
                     }
                 }

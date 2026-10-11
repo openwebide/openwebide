@@ -830,8 +830,8 @@ pub fn ChatPane(
         let prefix = draft.get();
         assistance.next_actions.with(|prompts| {
             prompts
-                .iter()
-                .find(|prompt| prompt.starts_with(&prefix) && prompt.len() > prefix.len())
+                .first()
+                .filter(|prompt| prompt.starts_with(&prefix) && prompt.len() > prefix.len())
                 .cloned()
         })
     });
@@ -1031,9 +1031,9 @@ pub fn ChatPane(
                         </div>
                     </Show>
             </Show>
-            <Show when=move || !assistance.next_actions.with(Vec::is_empty) && !streaming.get() && draft.get().is_empty() && chat.prompt_images.with(Vec::is_empty) && chat.prompt_edit.get().is_none() && chat.queue_edit.get().is_none()>
+            <Show when=move || assistance.next_actions.with(|prompts| prompts.len() > 1) && !streaming.get() && draft.get().is_empty() && chat.prompt_images.with(Vec::is_empty) && chat.prompt_edit.get().is_none() && chat.queue_edit.get().is_none()>
                 <div class="chat-followups" aria-label="Suggested next actions">
-                    {move || assistance.next_actions.get().into_iter().map(|prompt| {
+                    {move || assistance.next_actions.get().into_iter().skip(1).take(2).map(|prompt| {
                         let label = prompt.clone();
                         let accessible_label = label.clone();
                         view! { <button class="btn md" type="button" aria-label=accessible_label title="Send this prompt" disabled=move || submission_blocked.get() on:click=move |_| {

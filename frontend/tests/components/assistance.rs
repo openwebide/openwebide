@@ -101,11 +101,11 @@ async fn context_assistance_rejects_invented_ids_and_attaches_only_after_selecti
 }
 
 #[wasm_bindgen_test]
-async fn assistance_shows_grounded_recaps_and_at_most_two_suggestions() {
+async fn assistance_shows_grounded_recaps_and_three_distinct_ranked_suggestions() {
     let fake = Rc::new(FakeBackend::default());
     for result in [
         "Fixed menu icons; compilation failed.",
-        "Review changes\nDraft a commit\nIgnored third suggestion",
+        " Review changes \nDraft a commit\nReview changes\nRun tests\nIgnored fourth suggestion",
         "Fixed menu icons; compilation failed.",
     ] {
         let (send, receive) = futures::channel::oneshot::channel();
@@ -153,7 +153,7 @@ async fn assistance_shows_grounded_recaps_and_at_most_two_suggestions() {
         view! { <div/> }
     });
     wait_until("recap and suggestions", || {
-        captured.get().unwrap().next_actions.get_untracked().len() == 2
+        captured.get().unwrap().next_actions.get_untracked().len() == 3
             && captured.get().unwrap().completion.get_untracked().is_some()
     })
     .await;
@@ -164,7 +164,7 @@ async fn assistance_shows_grounded_recaps_and_at_most_two_suggestions() {
     );
     assert_eq!(
         assistance.next_actions.get_untracked(),
-        ["Review changes", "Draft a commit"]
+        ["Review changes", "Draft a commit", "Run tests"]
     );
     assert!(
         mounted
@@ -459,6 +459,28 @@ async fn assistance_context_files_and_memories_require_selection_and_reject_chan
             mounted.state.chat.draft.get_untracked(),
             "Explain the build for main.rs"
         );
+        let request = mounted
+            .state
+            .fake
+            .assistance_requests
+            .borrow()
+            .last()
+            .unwrap()
+            .clone();
+        let input: serde_json::Value = serde_json::from_str(&request.input).unwrap();
+        assert_eq!(input["draft"], "Explain the build for main.rs");
+        let candidates = input["candidates"].as_array().unwrap();
+        assert!(
+            candidates
+                .iter()
+                .any(|candidate| candidate["id"] == "file:main.rs")
+        );
+        assert!(
+            candidates
+                .iter()
+                .any(|candidate| candidate["id"] == "memory:1")
+        );
+
         actions.attach.run(ContextCandidate::File("main.rs".into()));
         wait_until("selected file mention", || {
             mounted.state.chat.draft.get_untracked().contains("@file:")
@@ -505,7 +527,7 @@ async fn inline_chat_hints_accept_only_at_the_caret_end_in_every_scope() {
         let fake = Rc::new(FakeBackend::default());
         for result in [
             "Recent work",
-            "😀 Review changes\nDraft a commit",
+            "😀 Review changes\nDraft a commit\nRun tests",
             "Finished",
         ] {
             let (send, receive) = futures::channel::oneshot::channel();
@@ -566,6 +588,26 @@ async fn inline_chat_hints_accept_only_at_the_caret_end_in_every_scope() {
                 <= 1.0
         })
         .await;
+        let buttons = mounted
+            .root
+            .query_selector_all(".chat-followups button")
+            .unwrap();
+        assert_eq!(buttons.length(), 2);
+        assert_eq!(
+            buttons.item(0).unwrap().text_content().as_deref(),
+            Some("❯Draft a commit")
+        );
+        assert_eq!(
+            buttons.item(1).unwrap().text_content().as_deref(),
+            Some("❯Run tests")
+        );
+        assert!(
+            mounted
+                .root
+                .query_selector(".chat-followups button[aria-label='😀 Review changes']")
+                .unwrap()
+                .is_none()
+        );
         let input = mounted
             .element(".composer-input")
             .unchecked_into::<web_sys::HtmlTextAreaElement>();
@@ -645,9 +687,16 @@ async fn inline_chat_hints_accept_only_at_the_caret_end_in_every_scope() {
         mounted.input("Draft");
         settle().await;
         input.set_selection_range(5, 5).unwrap();
-        assert!(!key(false, false, false, false, false));
+        assert!(key(false, false, false, false, false));
         settle().await;
-        assert_eq!(mounted.state.chat.draft.get_untracked(), "Draft a commit");
+        assert_eq!(mounted.state.chat.draft.get_untracked(), "Draft");
+        assert!(
+            mounted
+                .root
+                .query_selector(".tui-inline-hint")
+                .unwrap()
+                .is_none()
+        );
         mounted.input("Different question");
         settle().await;
         assert!(key(false, false, false, false, false));
@@ -709,7 +758,11 @@ async fn chat_actions_send_followups_immediately_and_restore_composer_focus() {
         Some(WorkspaceMode::Remote),
     ] {
         let fake = Rc::new(FakeBackend::default());
-        for result in ["Recent work", "Review changes\nDraft a commit", "Finished"] {
+        for result in [
+            "Recent work",
+            "Review changes\nDraft a commit\nRun tests",
+            "Finished",
+        ] {
             let (send, receive) = futures::channel::oneshot::channel();
             send.send(Ok(Some(result.into()))).unwrap();
             fake.assistance_results.borrow_mut().push_back(receive);

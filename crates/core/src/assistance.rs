@@ -37,19 +37,19 @@ impl AssistanceKind {
             Self::TaskName => "Name this task from its prompt, at most 80 characters.",
             Self::MemoryName => "Name this saved memory from its contents, at most 80 characters.",
             Self::Recap => {
-                "Write a natural recap that helps pick up this conversation, in at most two short sentences. Lead with the topic and useful details, decisions or results. For casual conversation, describe what was discussed; do not frame receiving an answer as an accomplishment. For example: Science puns, dad jokes and animal jokes. Avoid third-person narration such as the user and stock phrases such as successfully received. Mention outstanding work or a blocker only when it matters and is evidenced; omit statements that there were no failures or blockers. Do not infer commits, pushes or passing tests without evidence."
+                "Recap the topic and useful details in at most two short sentences. For casual conversation, summarize the subjects discussed. Omit participant narration and statements about absent blockers. Mention outstanding work only when relevant. Ground results in evidence."
             }
             Self::Activity => {
                 "Describe the current work in one short present-tense sentence, at most 120 characters."
             }
             Self::Completion => {
-                "Write one short, natural summary of the actual result or conversation topic, at most 240 characters. Name the concrete answer or change directly. For example: Shared science puns, dad jokes and animal jokes. Avoid third-person narration such as the user and stock phrases such as successfully received. Mention a failure or blocker only when present and relevant; omit statements that there were no failures or blockers. Do not invent success."
+                "Write one short summary of the actual result or conversation topic, at most 240 characters. Lead with the concrete answer or change. Omit participant narration and statements about absent blockers. Ground results in evidence."
             }
             Self::NextActions => {
-                "Write at most two concrete follow-up prompts that the user could send to the assistant next. Write from the user's perspective, addressing the assistant directly, for example: Compare these options. Explain how to set this up. Never speak as the assistant, offer to help, or ask the user for information, such as: Would you like me to search? What is your location? Use only context supported by the conversation; do not invent user preferences or missing facts. Return only one ready-to-send prompt per line, without numbering, quotes or commentary. Return NONE if there is no useful next action."
+                "Write exactly three distinct user-to-assistant follow-ups, most likely first. Start each with \"Help me\", \"Explain\", \"Find\", or \"Compare\". Stay on the current topic and use known facts; invent no personal details. One unnumbered prompt per line. Return only NONE if the user is finished."
             }
             Self::Context => {
-                "Select at most three relevant context candidates from the supplied list. Skip candidates already referenced in the draft. Return only their exact identifiers, one per line. Never invent identifiers. Return NONE if none is relevant."
+                "Choose up to three candidates relevant to the draft. Copy their id fields exactly, one per line, excluding labels. Return only NONE when none applies."
             }
             Self::Commit => {
                 "Draft a concise Git commit message from the supplied diff and instructions. Describe only changes present in the diff. Honor supplied repository commit conventions. No attribution trailers."

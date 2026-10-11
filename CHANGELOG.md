@@ -9,6 +9,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 ## [Unreleased]
 
 - Write suggested follow-up prompts from the user's perspective, addressing the assistant rather than asking the user questions.
+- Rank three distinct follow-up suggestions by likelihood; reserve the first for the composer hint and show the other two as chat buttons.
+- Refine assistance summaries, follow-ups, context selection, auto-approval and compaction prompts against a small local model; use shorter instructions and separate context identifiers from labels.
 
 - Reuse cooperatively prepared long-row category summaries for exact word navigation, avoiding repeated scans through long identifiers, punctuation, whitespace and Unicode clusters. Preserve existing grapheme rules and source ownership through edits and undo.
 
