@@ -122,7 +122,7 @@ def check(mode, ending, windowed):
                 window.Worker = class extends NativeWorker {
                     constructor(url, options) {
                         super(url, options);
-                        this.editorInputWorker = String(url).includes('editor-worker.js');
+                        this.editorInputWorker = /\/editor-worker(?:-[a-f0-9]+)?\.js$/.test(new URL(url, location.href).pathname);
                     }
                     set onmessage(listener) {
                         super.onmessage = event => {

@@ -8,6 +8,10 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Reuse the app's compiled WASM module when starting the syntax worker, with matching-bundle checks and URL fallback when module cloning is unavailable. Cache versioned worker bootstraps in the PWA shell and preserve full/warm language behavior through both startup paths.
+
+- Refresh proved source scrollbar extents after offscreen edits even when visible syntax paint stays unchanged. Keep source scroll alignment independent of the native editor window's local offset.
+
 - Bound native editor input windows by rows as well as bytes, and rebind overflowing windows after ordinary edits. Preserve complete-source selections, history and active composition in both project modes; reclip after composition finishes. Larger startup and wrapped-input performance work remains open.
 
 - Defer large optional tool schemas through run-scoped `tool_search` in the shared agent loop. Keep core file/search/shell tools loaded, activate selected schemas on the next turn, bound the active optional set, and preserve run authority and mutation approvals in server and paired-host runs.

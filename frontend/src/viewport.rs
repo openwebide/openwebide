@@ -420,6 +420,15 @@ export function observe_editor_viewport(input, overlay, onLayout) {
     if (scroll !== input) observer.observe(scroll);
     const mutation = new MutationObserver(() => schedule());
     mutation.observe(overlay, {childList: true, subtree: true});
+    // Offscreen edits can change complete-source extents without changing any
+    // painted rows. Apply newly proved dimensions even when paint stays intact.
+    const extents = new MutationObserver(() => schedule());
+    if (scroll !== input && scroll.firstElementChild) {
+        extents.observe(scroll.firstElementChild, {attributes:true, attributeFilter:[
+            'data-source-width', 'data-source-height', 'data-editor-scope',
+            'data-editor-view', 'data-editor-account'
+        ]});
+    }
     const fontIdentity = () => JSON.stringify(editor_font_style_identity(getComputedStyle(input)));
     let preferenceFont = fontIdentity();
     const preferences = new MutationObserver(() => {
@@ -435,7 +444,7 @@ export function observe_editor_viewport(input, overlay, onLayout) {
     // including loads already in progress when this observer is installed.
     document.fonts?.addEventListener('loadingerror', fontsChanged);
     update();
-    return () => { active = false; cancelAnimationFrame(frame); observer.disconnect(); mutation.disconnect(); preferences.disconnect(); document.fonts?.removeEventListener('loadingdone', fontsChanged); document.fonts?.removeEventListener('loadingerror', fontsChanged); };
+    return () => { active = false; cancelAnimationFrame(frame); observer.disconnect(); mutation.disconnect(); extents.disconnect(); preferences.disconnect(); document.fonts?.removeEventListener('loadingdone', fontsChanged); document.fonts?.removeEventListener('loadingerror', fontsChanged); };
 }
 "#)]
 extern "C" {

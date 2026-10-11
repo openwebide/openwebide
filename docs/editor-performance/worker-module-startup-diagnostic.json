@@ -1,0 +1,492 @@
+{
+  "scope": "Isolated main-loaded worker initialization through current production bootstrap, alternating order across three fresh browsers; both paths parse identical Rust source",
+  "header": {
+    "measurement": "isolated worker startup, current production bootstrap",
+    "frontendWasmSha256": "fae223872eb590375621e04d5c81fbdc59ca7192e376c6463176ee483ad18adf",
+    "glue": "openwebide-frontend-dbe0944bc0ce35da.js",
+    "probeSha256": "bf0109b42f8ba94ee72de6c3d31060cb8c623495cf00193e55ab48d24e985ea5"
+  },
+  "samples": [
+    {
+      "frames": 7,
+      "readyAndParseMs": 141.8999999910593,
+      "readyMs": 133.20000000298023,
+      "shared": false,
+      "sourcePreserved": true,
+      "status": {
+        "Ready": {
+          "incremental": false
+        }
+      },
+      "repetition": 1,
+      "wasmFetches": 0,
+      "beforeMemory": {
+        "chrome_processes": 9,
+        "chrome_summed_rss_kib": 1129864,
+        "chrome_pss_kib": 533759,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 1,
+            "rssKiB": 217272,
+            "pssKiB": 126565
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 147248,
+            "pssKiB": 33905
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 95704,
+            "pssKiB": 47383
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 161160,
+            "pssKiB": 50753
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 508480,
+            "pssKiB": 275153
+          }
+        },
+        "memorySnapshotAttempts": 1
+      },
+      "afterMemory": {
+        "chrome_processes": 9,
+        "chrome_summed_rss_kib": 1167492,
+        "chrome_pss_kib": 563655,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 1,
+            "rssKiB": 217992,
+            "pssKiB": 126605
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 147248,
+            "pssKiB": 33903
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 98008,
+            "pssKiB": 48458
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 161224,
+            "pssKiB": 50722
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 543020,
+            "pssKiB": 303967
+          }
+        },
+        "memorySnapshotAttempts": 1
+      }
+    },
+    {
+      "frames": 7,
+      "readyAndParseMs": 26.5,
+      "readyMs": 25.5,
+      "shared": true,
+      "sourcePreserved": true,
+      "status": {
+        "Ready": {
+          "incremental": false
+        }
+      },
+      "repetition": 1,
+      "wasmFetches": 0,
+      "beforeMemory": {
+        "chrome_processes": 9,
+        "chrome_summed_rss_kib": 1129864,
+        "chrome_pss_kib": 533759,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 1,
+            "rssKiB": 217272,
+            "pssKiB": 126565
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 147248,
+            "pssKiB": 33905
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 95704,
+            "pssKiB": 47383
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 161160,
+            "pssKiB": 50753
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 508480,
+            "pssKiB": 275153
+          }
+        },
+        "memorySnapshotAttempts": 1
+      },
+      "afterMemory": {
+        "chrome_processes": 9,
+        "chrome_summed_rss_kib": 1111788,
+        "chrome_pss_kib": 507519,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 1,
+            "rssKiB": 218092,
+            "pssKiB": 126681
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 147248,
+            "pssKiB": 33903
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 98008,
+            "pssKiB": 48403
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 161208,
+            "pssKiB": 50693
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 487232,
+            "pssKiB": 247839
+          }
+        },
+        "memorySnapshotAttempts": 1
+      }
+    },
+    {
+      "frames": 7,
+      "readyAndParseMs": 28.099999994039536,
+      "readyMs": 19.099999994039536,
+      "shared": true,
+      "sourcePreserved": true,
+      "status": {
+        "Ready": {
+          "incremental": false
+        }
+      },
+      "repetition": 2,
+      "wasmFetches": 0,
+      "beforeMemory": {
+        "chrome_processes": 10,
+        "chrome_summed_rss_kib": 1075356,
+        "chrome_pss_kib": null,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 2,
+            "rssKiB": 218528,
+            "pssKiB": null
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 147360,
+            "pssKiB": 34637
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 101416,
+            "pssKiB": 49831
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 158700,
+            "pssKiB": 51614
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 449352,
+            "pssKiB": 219026
+          }
+        },
+        "memorySnapshotAttempts": 3
+      },
+      "afterMemory": {
+        "chrome_processes": 10,
+        "chrome_summed_rss_kib": 1104124,
+        "chrome_pss_kib": null,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 2,
+            "rssKiB": 219244,
+            "pssKiB": null
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 147360,
+            "pssKiB": 34637
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 101436,
+            "pssKiB": 49840
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 158872,
+            "pssKiB": 51703
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 477212,
+            "pssKiB": 246341
+          }
+        },
+        "memorySnapshotAttempts": 3
+      }
+    },
+    {
+      "frames": 7,
+      "readyAndParseMs": 91.70000000298023,
+      "readyMs": 90.90000000596046,
+      "shared": false,
+      "sourcePreserved": true,
+      "status": {
+        "Ready": {
+          "incremental": false
+        }
+      },
+      "repetition": 2,
+      "wasmFetches": 0,
+      "beforeMemory": {
+        "chrome_processes": 10,
+        "chrome_summed_rss_kib": 1075356,
+        "chrome_pss_kib": null,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 2,
+            "rssKiB": 218528,
+            "pssKiB": null
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 147360,
+            "pssKiB": 34637
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 101416,
+            "pssKiB": 49831
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 158700,
+            "pssKiB": 51614
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 449352,
+            "pssKiB": 219026
+          }
+        },
+        "memorySnapshotAttempts": 3
+      },
+      "afterMemory": {
+        "chrome_processes": 10,
+        "chrome_summed_rss_kib": 1162100,
+        "chrome_pss_kib": null,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 2,
+            "rssKiB": 219292,
+            "pssKiB": null
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 147360,
+            "pssKiB": 34637
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 101436,
+            "pssKiB": 49786
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 158856,
+            "pssKiB": 51674
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 535156,
+            "pssKiB": 303913
+          }
+        },
+        "memorySnapshotAttempts": 3
+      }
+    },
+    {
+      "frames": 7,
+      "readyAndParseMs": 109.80000001192093,
+      "readyMs": 101.5,
+      "shared": false,
+      "sourcePreserved": true,
+      "status": {
+        "Ready": {
+          "incremental": false
+        }
+      },
+      "repetition": 3,
+      "wasmFetches": 0,
+      "beforeMemory": {
+        "chrome_processes": 9,
+        "chrome_summed_rss_kib": 1126116,
+        "chrome_pss_kib": 532488,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 1,
+            "rssKiB": 216800,
+            "pssKiB": 125986
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 151808,
+            "pssKiB": 35974
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 103308,
+            "pssKiB": 50060
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 156212,
+            "pssKiB": 49444
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 497988,
+            "pssKiB": 271024
+          }
+        },
+        "memorySnapshotAttempts": 1
+      },
+      "afterMemory": {
+        "chrome_processes": 9,
+        "chrome_summed_rss_kib": 1163284,
+        "chrome_pss_kib": 564175,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 1,
+            "rssKiB": 217656,
+            "pssKiB": 126163
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 151808,
+            "pssKiB": 35970
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 105452,
+            "pssKiB": 51101
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 156572,
+            "pssKiB": 49704
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 531796,
+            "pssKiB": 301237
+          }
+        },
+        "memorySnapshotAttempts": 1
+      }
+    },
+    {
+      "frames": 7,
+      "readyAndParseMs": 16.30000001192093,
+      "readyMs": 15.700000002980232,
+      "shared": true,
+      "sourcePreserved": true,
+      "status": {
+        "Ready": {
+          "incremental": false
+        }
+      },
+      "repetition": 3,
+      "wasmFetches": 0,
+      "beforeMemory": {
+        "chrome_processes": 9,
+        "chrome_summed_rss_kib": 1126116,
+        "chrome_pss_kib": 532488,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 1,
+            "rssKiB": 216800,
+            "pssKiB": 125986
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 151808,
+            "pssKiB": 35974
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 103308,
+            "pssKiB": 50060
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 156212,
+            "pssKiB": 49444
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 497988,
+            "pssKiB": 271024
+          }
+        },
+        "memorySnapshotAttempts": 1
+      },
+      "afterMemory": {
+        "chrome_processes": 9,
+        "chrome_summed_rss_kib": 1107348,
+        "chrome_pss_kib": 507800,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 1,
+            "rssKiB": 217668,
+            "pssKiB": 126151
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 151808,
+            "pssKiB": 35970
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 105452,
+            "pssKiB": 51047
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 156476,
+            "pssKiB": 49596
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 475944,
+            "pssKiB": 245036
+          }
+        },
+        "memorySnapshotAttempts": 1
+      }
+    }
+  ],
+  "interpretation": "Worker-specific readiness improves, but this is not complete editor readiness. URL fallback includes the 25 ms module-handoff wait. Full editor startup and memory results are recorded separately."
+}

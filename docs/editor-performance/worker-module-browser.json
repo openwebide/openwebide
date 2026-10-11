@@ -1,0 +1,97 @@
+{
+  "scope": "WorkerClient browser startup uses the current main module; syntax preparation/protocol/reception remain in core. Shared viewport observer applies source extents independently of visible paint.",
+  "sourceSha256": {
+    "frontend/src/editor_worker.rs": "335086e8a31bbe9c292b0d51271f033c04b504828928f09d18b8253e3d86b094",
+    "frontend/src/viewport.rs": "07330be38b1b25ebb5a065832ca7243964b13b9740b711fcbe3c8ef793f5828b",
+    "frontend/pwa/editor-worker.js": "8cdfb91c554cf95a6368f0be802d541d24c55bf57e8d3ccf8df1f17651b5d6aa",
+    "frontend/pwa/build.sh": "93c1b4ab90e8a9ba682bfef9cf55996f3aba2a1265d9296b6cff2895e3493727",
+    "frontend/tests/components/editor.rs": "5dab770e42de59c713c5fd6eba28c67520cb8033e0b62077613c9f514141a18f"
+  },
+  "ui": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "console": "Invoking test: editor::wrapping_whitespace_fold_geometry_and_navigation_share_both_modes\nInvoking test: editor::primary_caret_and_selection_follow_source_motion_and_scroll_in_both_modes\nInvoking test: editor::prepared_source_extents_ignore_native_dimensions_and_reject_stale_scopes_in_both_modes\nInvoking test: editor::numbered_views_scroll_horizontally_with_compact_gutters_and_linked_split_panes\nInvoking test: editor::newline_dense_small_files_use_row_bounded_native_contexts_in_both_modes\nInvoking test: editor::growing_paste_preserves_scroll_after_frame\nInvoking test: editor::fold_controls_preserve_scrolled_viewport_with_a_distant_caret_in_both_modes\nInvoking test: editor::editor_scroll_surface_preserves_wheel_native_navigation_and_scope_in_both_modes\n",
+    "output": "\nrunning 8 tests\ntest editor::wrapping_whitespace_fold_geometry_and_navigation_share_both_modes ... ok\ntest editor::primary_caret_and_selection_follow_source_motion_and_scroll_in_both_modes ... ok\ntest editor::prepared_source_extents_ignore_native_dimensions_and_reject_stale_scopes_in_both_modes ... ok\ntest editor::numbered_views_scroll_horizontally_with_compact_gutters_and_linked_split_panes ... ok\ntest editor::newline_dense_small_files_use_row_bounded_native_contexts_in_both_modes ... ok\ntest editor::growing_paste_preserves_scroll_after_frame ... ok\ntest editor::fold_controls_preserve_scrolled_viewport_with_a_distant_caret_in_both_modes ... ok\ntest editor::editor_scroll_surface_preserves_wheel_native_navigation_and_scope_in_both_modes ... ok\n\ntest result: ok. 8 passed; 0 failed; 0 ignored; 0 filtered out; finished in 4.57s\n\n",
+    "passed": true,
+    "tests": [
+      "__wbgt__components::editor::editor_scroll_surface_preserves_wheel_native_navigation_and_scope_in_both_modes",
+      "__wbgt__components::editor::fold_controls_preserve_scrolled_viewport_with_a_distant_caret_in_both_modes",
+      "__wbgt__components::editor::growing_paste_preserves_scroll_after_frame",
+      "__wbgt__components::editor::newline_dense_small_files_use_row_bounded_native_contexts_in_both_modes",
+      "__wbgt__components::editor::numbered_views_scroll_horizontally_with_compact_gutters_and_linked_split_panes",
+      "__wbgt__components::editor::prepared_source_extents_ignore_native_dimensions_and_reject_stale_scopes_in_both_modes",
+      "__wbgt__components::editor::primary_caret_and_selection_follow_source_motion_and_scroll_in_both_modes",
+      "__wbgt__components::editor::wrapping_whitespace_fold_geometry_and_navigation_share_both_modes"
+    ],
+    "servedFonts": {
+      "/fonts/MonaspaceNeon-v1.400.woff2": "6569968f448ae856ab5b57dff1f13b109b220ca8e3f664169e135fcb5c4f0721"
+    },
+    "libraryStartSuppressed": false,
+    "testModuleRoute": "/tests.js"
+  },
+  "library": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "console": "Invoking test: editor_worker::tests::module_clone_failures_and_bundle_mismatches_use_url_initialization\nInvoking test: editor_worker::tests::dropped_framed_requests_release_partial_transactions\nInvoking test: editor_worker::tests::dedicated_framed_worker_and_cooperative_adapter_preserve_language_contracts\nInvoking test: editor_worker::tests::bounded_worker_routing_preserves_complete_reply_validation\n",
+    "output": "\nrunning 4 tests\ntest editor_worker::tests::module_clone_failures_and_bundle_mismatches_use_url_initialization ... ok\ntest editor_worker::tests::dropped_framed_requests_release_partial_transactions ... ok\ntest editor_worker::tests::dedicated_framed_worker_and_cooperative_adapter_preserve_language_contracts ... ok\ntest editor_worker::tests::bounded_worker_routing_preserves_complete_reply_validation ... ok\n\ntest result: ok. 4 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.53s\n\n",
+    "passed": true,
+    "tests": [
+      "__wbgt__openwebide_frontend::editor_worker::tests::bounded_worker_routing_preserves_complete_reply_validation",
+      "__wbgt__openwebide_frontend::editor_worker::tests::dedicated_framed_worker_and_cooperative_adapter_preserve_language_contracts",
+      "__wbgt__openwebide_frontend::editor_worker::tests::dropped_framed_requests_release_partial_transactions",
+      "__wbgt__openwebide_frontend::editor_worker::tests::module_clone_failures_and_bundle_mismatches_use_url_initialization"
+    ],
+    "servedFonts": {},
+    "libraryStartSuppressed": true,
+    "testModuleRoute": "/wasm-bindgen-test"
+  },
+  "productionWorkerInventories": {
+    "compiled": {
+      "compiled_module": true,
+      "providers": 15,
+      "config_languages": 6,
+      "plain_fallback_languages": 1,
+      "nested_languages": 6,
+      "incremental": true,
+      "structural_delta": true,
+      "ui_event_during_worker": true,
+      "oversize_fallback": true,
+      "changed_row_records": 3,
+      "cooperative_yields": 2212,
+      "large_literal_bytes": 1043013,
+      "large_literal_yields": 48,
+      "yaml_bytes": 1043026,
+      "yaml_yields": 48
+    },
+    "url": {
+      "compiled_module": false,
+      "providers": 15,
+      "config_languages": 6,
+      "plain_fallback_languages": 1,
+      "nested_languages": 6,
+      "incremental": true,
+      "structural_delta": true,
+      "ui_event_during_worker": true,
+      "oversize_fallback": true,
+      "changed_row_records": 3,
+      "cooperative_yields": 2212,
+      "large_literal_bytes": 1043013,
+      "large_literal_yields": 48,
+      "yaml_bytes": 1043026,
+      "yaml_yields": 48
+    }
+  },
+  "strictWasmLint": true,
+  "regressions": [
+    "Offscreen widest-row edit shrinks physical source scrollbar width without changing visible rows",
+    "Source overlay scroll matches the whole-source surface when native input is row bounded",
+    "Matching compiled module and URL initialization produce equal full/warm syntax results against cooperative preparation",
+    "Module clone failure and bundle mismatch initialize from URL without losing source",
+    "Both current and versioned worker scripts are included in the PWA shell"
+  ],
+  "remaining": "Broader startup/anonymous allocation attribution, wrapped input, physical touch/IME/permission recovery and final hosted CI remain open.",
+  "officialWorkerRunner": {
+    "passed": 4,
+    "failed": 0,
+    "version": "0.2.128",
+    "timeoutSeconds": 300
+  }
+}

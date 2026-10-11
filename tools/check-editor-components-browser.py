@@ -96,6 +96,9 @@ def main():
             elif self.path == args.test_module_route:
                 body = (library_js if library_js is not None else (args.bindings / "tests.js").read_text()).encode()
                 content_type = "text/javascript; charset=utf-8"
+            elif self.path == args.test_module_route.removesuffix('.js') + '_bg.wasm':
+                body = (args.bindings / 'tests_bg.wasm').read_bytes()
+                content_type = 'application/wasm'
             elif self.path in fonts:
                 body = fonts[self.path]
                 content_type = "font/woff2"

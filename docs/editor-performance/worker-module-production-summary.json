@@ -1,0 +1,150 @@
+{
+  "scope": "Same production artifact with module handoff or URL fallback; first eight serial samples followed by eight ABBA interleaved samples",
+  "matchedConditions": {
+    "frontendWasmSha256": true,
+    "backendWasmSha256": true,
+    "measurementScriptSha256": true,
+    "measurementImage": true,
+    "cgroupCpuMax": true,
+    "cgroupMemoryMax": true,
+    "browser": true
+  },
+  "completeSourceChecks": 16,
+  "summaries": [
+    {
+      "mode": "local",
+      "url": {
+        "samples": 4,
+        "median": {
+          "coldSyntaxReadyMs": 1145.5,
+          "inputViewportPaintMs": 11.5,
+          "peakChromePssKiB": 673472.5,
+          "wasmCommittedBytes": 29491200.0
+        },
+        "completeColdPssSnapshots": 4,
+        "handoffs": [
+          {
+            "accepted": 0,
+            "attempted": 1,
+            "dropped": 1
+          },
+          {
+            "accepted": 0,
+            "attempted": 1,
+            "dropped": 1
+          },
+          {
+            "accepted": 0,
+            "attempted": 1,
+            "dropped": 1
+          },
+          {
+            "accepted": 0,
+            "attempted": 1,
+            "dropped": 1
+          }
+        ]
+      },
+      "compiled": {
+        "samples": 4,
+        "median": {
+          "coldSyntaxReadyMs": 1306.7000000029802,
+          "inputViewportPaintMs": 9.549999997019768,
+          "peakChromePssKiB": 620009.5,
+          "wasmCommittedBytes": 29720576.0
+        },
+        "completeColdPssSnapshots": 4,
+        "handoffs": [
+          {
+            "accepted": 1,
+            "attempted": 1,
+            "dropped": 0
+          },
+          {
+            "accepted": 1,
+            "attempted": 1,
+            "dropped": 0
+          },
+          {
+            "accepted": 1,
+            "attempted": 1,
+            "dropped": 0
+          },
+          {
+            "accepted": 1,
+            "attempted": 1,
+            "dropped": 0
+          }
+        ]
+      }
+    },
+    {
+      "mode": "remote",
+      "url": {
+        "samples": 4,
+        "median": {
+          "coldSyntaxReadyMs": 1164.3999999985099,
+          "inputViewportPaintMs": 9.200000002980232,
+          "peakChromePssKiB": 593427.0,
+          "wasmCommittedBytes": 29491200.0
+        },
+        "completeColdPssSnapshots": 1,
+        "handoffs": [
+          {
+            "accepted": 0,
+            "attempted": 1,
+            "dropped": 1
+          },
+          {
+            "accepted": 0,
+            "attempted": 1,
+            "dropped": 1
+          },
+          {
+            "accepted": 0,
+            "attempted": 1,
+            "dropped": 1
+          },
+          {
+            "accepted": 0,
+            "attempted": 1,
+            "dropped": 1
+          }
+        ]
+      },
+      "compiled": {
+        "samples": 4,
+        "median": {
+          "coldSyntaxReadyMs": 1198.75,
+          "inputViewportPaintMs": 9.450000002980232,
+          "peakChromePssKiB": 618855.5,
+          "wasmCommittedBytes": 29491200.0
+        },
+        "completeColdPssSnapshots": 3,
+        "handoffs": [
+          {
+            "accepted": 1,
+            "attempted": 1,
+            "dropped": 0
+          },
+          {
+            "accepted": 1,
+            "attempted": 1,
+            "dropped": 0
+          },
+          {
+            "accepted": 1,
+            "attempted": 1,
+            "dropped": 0
+          },
+          {
+            "accepted": 1,
+            "attempted": 1,
+            "dropped": 0
+          }
+        ]
+      }
+    }
+  ],
+  "interpretation": "Local peak PSS is lower with handoff. Remote URL samples include incomplete early memory snapshots, so their sampled peaks do not prove a memory improvement or regression. Full editor cold readiness remains near 1.2 seconds; general startup/memory work stays open."
+}

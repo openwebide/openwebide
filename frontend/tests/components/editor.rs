@@ -2315,7 +2315,14 @@ async fn prepared_source_extents_ignore_native_dimensions_and_reject_stale_scope
             })
             .await;
             frame().await;
-            assert!(scroll.scroll_width() < native_width || wrap);
+            assert!(
+                scroll.scroll_width() < native_width || wrap,
+                "shrunk source: scroll={} original-full={} extent={:?} bound={:?}",
+                scroll.scroll_width(),
+                native_width,
+                extent.get_attribute("data-source-width"),
+                textarea.get_attribute("data-editor-native-bound")
+            );
             assert!(scroll.scroll_height() < native_height || !wrap);
             assert_eq!(actions.source(), replacement);
             // Exercise both shrinking and growing client areas, including the
@@ -4781,19 +4788,20 @@ async fn markdown_preview_gutters_share_git_and_pending_changes_in_both_modes() 
 
 fn assert_scroll_aligned(mounted: &Mounted, textarea: &web_sys::HtmlTextAreaElement) {
     let overlay = mounted.element(".editor-highlight");
+    let scroll = openwebide_frontend::viewport::editor_scroll(textarea);
     assert_eq!(
         overlay
             .style()
             .get_property_value("--editor-scroll-y")
             .unwrap(),
-        format!("{}px", -textarea.scroll_top())
+        format!("{}px", -scroll.scroll_top())
     );
     assert_eq!(
         overlay
             .style()
             .get_property_value("--editor-scroll-x")
             .unwrap(),
-        format!("{}px", -textarea.scroll_left())
+        format!("{}px", -scroll.scroll_left())
     );
     assert!(overlay.scroll_top().abs() < f64::EPSILON);
     assert!(overlay.scroll_left().abs() < f64::EPSILON);
@@ -5111,22 +5119,29 @@ async fn growing_paste_preserves_scroll_after_frame() {
     }
     let textarea: web_sys::HtmlTextAreaElement =
         mounted.element(".editor-textarea").unchecked_into();
+    let scroll = openwebide_frontend::viewport::editor_scroll(&textarea);
     textarea.set_attribute("wrap", "off").unwrap();
-    textarea.set_scroll_top(f64::from(textarea.scroll_height()));
-    textarea
+    openwebide_frontend::viewport::set_editor_scroll_top(
+        &textarea,
+        f64::from(scroll.scroll_height()),
+    );
+    scroll
         .dispatch_event(&web_sys::Event::new("scroll").unwrap())
         .unwrap();
     let overlay = mounted.element(".editor-highlight");
 
     input(&mounted, &format!("{source}\n{source}{}", "x".repeat(200)));
     settle().await;
-    textarea.set_scroll_top(f64::from(textarea.scroll_height()));
-    textarea.set_scroll_left(500.0);
-    textarea
+    openwebide_frontend::viewport::set_editor_scroll_top(
+        &textarea,
+        f64::from(scroll.scroll_height()),
+    );
+    openwebide_frontend::viewport::set_editor_scroll_left(&textarea, 500.0);
+    scroll
         .dispatch_event(&web_sys::Event::new("scroll").unwrap())
         .unwrap();
-    assert!(textarea.scroll_top() > overlay.scroll_top());
-    assert!(textarea.scroll_left() > overlay.scroll_left());
+    assert!(scroll.scroll_top() > overlay.scroll_top());
+    assert!(scroll.scroll_left() > overlay.scroll_left());
     frame().await;
     assert_scroll_aligned(&mounted, &textarea);
     assert!(

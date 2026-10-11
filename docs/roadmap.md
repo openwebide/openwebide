@@ -77,11 +77,22 @@ startup cost next; total Chrome PSS includes a substantial browser baseline.
 An isolated worker-bundle experiment did not reduce process
 memory and increased the WASM download from roughly 27 to 42 MiB; it was rejected
 ([comparison](editor-performance/rejected-worker-split-comparison.jsonl)).
-Passing the main compiled module to the existing worker also preserves full
-source and worker readiness, but paired unwrapped samples show no PSS reduction
-([diagnostic](editor-performance/shared-module-diagnostic.jsonl)); this candidate
-remains unshipped. Profile native allocations rather than assuming duplicate
-compilation explains the renderer increase. A clock-marked native allocation
+Earlier paired unwrapped module-sharing samples showed no PSS reduction
+([diagnostic](editor-performance/shared-module-diagnostic.jsonl)). The current
+worker now accepts the app's compiled module with matching-bundle checks and
+versioned PWA bootstraps, retaining URL initialization for clone failures and
+standalone clients. Both paths pass all provider/configuration cases; four official
+worker contracts and eight geometry/input contracts pass
+([receipt](editor-performance/worker-module-browser.json)). Isolated worker
+readiness is 16–26 ms with handoff versus 91–133 ms through the URL fallback,
+which includes its 25-ms handoff wait
+([diagnostic](editor-performance/worker-module-startup-diagnostic.json)). Sixteen
+same-artifact full-editor samples preserve complete edited source. Local sampled
+peak PSS falls; incomplete early remote snapshots leave the general memory result
+inconclusive, and cold editor readiness remains near 1.2 seconds
+([comparison](editor-performance/worker-module-production-summary.json)). Profile
+native allocations rather than assuming duplicate compilation explains the
+renderer increase. A clock-marked native allocation
 diagnostic follows the same app renderer from 41.9 MiB before navigation to
 276.8 MiB at cold readiness and 283.6 MiB after input; anonymous writable
 mappings dominate ([summary](editor-performance/native-allocator-diagnostic.json)).
@@ -208,6 +219,11 @@ prepared only one token row per unit. Small rows now share the existing 64-recor
   measuring wrapped rows, batches row reads before gutter writes, and skips
   unchanged styles. Eight scroll/caret/wrapped-resize/stale-owner contracts pass
   in both modes ([receipt](editor-performance/viewport-row-layout-browser.json)).
+  Proved source extent changes now refresh the scroll surface independently of
+  visible paint, fixing stale scrollbar widths after offscreen edits. Paste
+  alignment uses complete-source scroll offsets when native text is bounded;
+  the two previously failing hosted contracts and six related input/geometry
+  contracts pass locally ([receipt](editor-performance/worker-module-browser.json)).
   Twelve production observations retain separate paint/readiness/PSS metrics;
   they do not establish a latency or memory gain
   ([comparison](editor-performance/viewport-row-layout-production-summary.json)).

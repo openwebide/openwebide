@@ -273,7 +273,7 @@ class Browser:
                 window.Worker = class extends NativeWorker {
                     constructor(url, options) {
                         super(url, options);
-                        if (!String(url).includes('editor-worker.js')) return;
+                        if (!/\/editor-worker(?:-[a-f0-9]+)?\.js$/.test(new URL(url, location.href).pathname)) return;
                         window.editorWorkerEvidence.instances++;
                         this.addEventListener('message', event => {
                             if (typeof event.data !== 'string' || !event.data.startsWith('{')) return;

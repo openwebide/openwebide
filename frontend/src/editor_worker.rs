@@ -12,6 +12,33 @@ use wasm_bindgen::{JsCast, closure::Closure};
 
 const READY_MESSAGE: &str = "openwebide-editor-ready:6:frames:1";
 
+#[wasm_bindgen::prelude::wasm_bindgen(inline_js = r#"
+export function editor_worker_bundle_url() {
+    for (const link of document.querySelectorAll('link[rel="modulepreload"][href]')) {
+        const url = new URL(link.href, document.baseURI);
+        if (/\/openwebide-frontend-[a-f0-9]+\.js$/.test(url.pathname)) return url.href;
+    }
+    return null;
+}
+export function editor_worker_entry_url(bundle) {
+    const match = bundle && new URL(bundle).pathname.match(/\/openwebide-frontend-([a-f0-9]+)\.js$/);
+    return match ? `/editor-worker-${match[1]}.js` : '/editor-worker.js';
+}
+export function send_editor_module(worker, module, bundle_url) {
+    worker.postMessage({kind:'openwebide-editor-module:1', module, bundle_url});
+}
+"#)]
+extern "C" {
+    fn editor_worker_bundle_url() -> wasm_bindgen::JsValue;
+    fn editor_worker_entry_url(bundle: Option<&str>) -> String;
+    #[wasm_bindgen(catch)]
+    fn send_editor_module(
+        worker: &web_sys::Worker,
+        module: &wasm_bindgen::JsValue,
+        bundle: &str,
+    ) -> Result<(), wasm_bindgen::JsValue>;
+}
+
 thread_local! { static ENABLED: Cell<bool> = const { Cell::new(false) }; }
 pub fn enable() {
     ENABLED.set(true);
@@ -306,10 +333,17 @@ pub struct WorkerClient {
 }
 impl WorkerClient {
     pub fn new() -> Result<Self, WorkerError> {
+        Self::new_for_bundle(editor_worker_bundle_url().as_string())
+    }
+
+    fn new_for_bundle(bundle: Option<String>) -> Result<Self, WorkerError> {
         let options = web_sys::WorkerOptions::new();
         options.set_type(web_sys::WorkerType::Module);
-        let worker = web_sys::Worker::new_with_options("/editor-worker.js", &options)
-            .map_err(|_| WorkerError::Unavailable)?;
+        let worker = web_sys::Worker::new_with_options(
+            &editor_worker_entry_url(bundle.as_deref()),
+            &options,
+        )
+        .map_err(|_| WorkerError::Unavailable)?;
         let pending: Pending = Rc::new(RefCell::new(HashMap::new()));
         let failed = Rc::new(Cell::new(false));
         let ready = Rc::new(Cell::new(false));
@@ -367,6 +401,10 @@ impl WorkerClient {
         worker.set_onmessage(Some(message.as_ref().unchecked_ref()));
         worker.set_onerror(Some(error.as_ref().unchecked_ref()));
         worker.set_onmessageerror(Some(error.as_ref().unchecked_ref()));
+        if let Some(bundle) = bundle {
+            // Cloning is optional: the bootstrap uses its URL when this fails.
+            let _ = send_editor_module(&worker, &wasm_bindgen::module(), &bundle);
+        }
         Ok(Self {
             worker,
             pending,
@@ -515,7 +553,7 @@ mod tests {
     }
 
     #[wasm_bindgen::prelude::wasm_bindgen(inline_js = r#"
-    export function installRealSyntaxWorker() {
+    export function installRealSyntaxWorker(template, rejectModule) {
         const original = globalThis.Worker;
         const module = performance.getEntriesByType('resource').map(entry => entry.name)
             .find(url => /\/(?:tests\.js|wasm-bindgen-test(?:\.js)?)$/.test(new URL(url).pathname));
@@ -523,8 +561,8 @@ mod tests {
         const wasm = new URL(module);
         wasm.pathname = wasm.pathname.replace(/(?:\.js)?$/, '_bg.wasm');
         wasm.search = ''; wasm.hash = '';
-        const source = `import init, {mountSyntaxWorkerContract} from '${module}';
-            await init({module_or_path: '${wasm.href}'});
+        const source = template.replaceAll('__EDITOR_MODULE__', module).replaceAll('__EDITOR_WASM__', wasm.href) +
+            `\nconst {mountSyntaxWorkerContract} = await import(bundle.href);
             if (!mountSyntaxWorkerContract()) throw new Error('Not in a dedicated worker');`;
         const url = URL.createObjectURL(new Blob([source], {type:'text/javascript'}));
         globalThis.Worker = class extends original {
@@ -532,24 +570,37 @@ mod tests {
                 super(url, options);
                 this.addEventListener('error', event => console.error('Syntax fixture worker error:', event.message));
             }
+            postMessage(value, ...args) {
+                if (rejectModule && value?.kind === 'openwebide-editor-module:1') {
+                    throw new DOMException('Fixture cannot clone a Module', 'DataCloneError');
+                }
+                super.postMessage(value, ...args);
+            }
         };
-        return () => { globalThis.Worker = original; URL.revokeObjectURL(url); };
+        const restore = () => { globalThis.Worker = original; URL.revokeObjectURL(url); };
+        restore.module_url = module;
+        return restore;
     }
     "#)]
     extern "C" {
-        fn installRealSyntaxWorker() -> js_sys::Function;
+        fn installRealSyntaxWorker(template: &str, reject_module: bool) -> js_sys::Function;
     }
 
     #[wasm_bindgen_test]
     async fn dedicated_framed_worker_and_cooperative_adapter_preserve_language_contracts() {
         use openwebide_core::highlight::Language;
         use std::sync::Arc;
-        let restore = installRealSyntaxWorker();
+        let restore = installRealSyntaxWorker(include_str!("../pwa/editor-worker.js"), false);
+        let bundle = js_sys::Reflect::get(&restore, &"module_url".into())
+            .unwrap()
+            .as_string()
+            .unwrap();
         let stage = Cell::new("worker creation");
         let result = async {
-            let worker = WorkerClient::new()?;
-            let cooperative = CooperativeClient::default();
             let mut contracts = Vec::new();
+            for bundle in [None, Some(bundle)] {
+            let worker = WorkerClient::new_for_bundle(bundle)?;
+            let cooperative = CooperativeClient::default();
             for (language, path, body) in [
                 (
                     Language::Rust,
@@ -639,13 +690,62 @@ mod tests {
             }
             worker.stop();
             cooperative.stop();
+            }
             Ok::<_, WorkerError>(contracts)
         }
         .await;
         restore.call0(&wasm_bindgen::JsValue::NULL).unwrap();
         let contracts = result.unwrap_or_else(|error| panic!("{}: {error:?}", stage.get()));
-        assert_eq!(contracts.len(), 6);
+        assert_eq!(contracts.len(), 12);
         assert!(contracts.into_iter().all(|same| same));
+    }
+
+    #[wasm_bindgen_test]
+    async fn module_clone_failures_and_bundle_mismatches_use_url_initialization() {
+        for reject_module in [false, true] {
+            let restore =
+                installRealSyntaxWorker(include_str!("../pwa/editor-worker.js"), reject_module);
+            let mut bundle = js_sys::Reflect::get(&restore, &"module_url".into())
+                .unwrap()
+                .as_string()
+                .unwrap();
+            if !reject_module {
+                bundle.push_str("?different-bundle");
+            }
+            let result = async {
+                let worker = WorkerClient::new_for_bundle(Some(bundle))?;
+                let source =
+                    std::sync::Arc::new("fn sample() { let word = \"文😀\"; }\n".to_string());
+                let request = SyntaxRequest::new(
+                    1,
+                    "fallback.rs".into(),
+                    openwebide_core::highlight::Language::Rust,
+                    &source,
+                    4,
+                    None,
+                );
+                let reply = worker
+                    .request_reply(1, serde_json::to_string(&request).unwrap())
+                    .await?;
+                let mut proof = reply
+                    .prepare_received_shared(1, source.clone(), None)
+                    .ok_or(WorkerError::Transport)?;
+                while !proof.advance() {
+                    crate::util::yield_task().await;
+                }
+                let analysis = proof
+                    .finish()
+                    .ok_or(WorkerError::Transport)?
+                    .1
+                    .ok_or(WorkerError::Transport)?;
+                worker.stop();
+                assert_eq!(analysis.source(), source.as_str());
+                Ok::<_, WorkerError>(())
+            }
+            .await;
+            restore.call0(&wasm_bindgen::JsValue::NULL).unwrap();
+            result.unwrap();
+        }
     }
 
     #[wasm_bindgen_test]

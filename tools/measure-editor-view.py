@@ -188,7 +188,7 @@ READY = """
 """
 
 
-def measure(case, mode, wrapped, trace=False, repetition=1, input_position="start", profile=False, file_name="measure.rs", wait_syntax=False):
+def measure(case, mode, wrapped, trace=False, repetition=1, input_position="start", profile=False, file_name="measure.rs", wait_syntax=False, worker_startup="default"):
     source = source_for(case)
     require_styled = case in {"styled-long-line", "styled-long-line-following-row"}
     native = source.replace("\r\n", "\n")
@@ -227,6 +227,21 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
             }.items():
                 runtime.request("PUT", "/api/settings", {"key": key, "value": value})
             browser = Browser(state)
+            browser.call("POST", "/goog/cdp/execute", {"cmd":"Page.addScriptToEvaluateOnNewDocument", "params":{
+                "source": """
+                    window.editorWorkerStartup = {attempted:0, accepted:0, dropped:0};
+                    const post = Worker.prototype.postMessage;
+                    Worker.prototype.postMessage = function(message, ...args) {
+                        if (message?.kind === 'openwebide-editor-module:1') {
+                            editorWorkerStartup.attempted++;
+                            if (__URL__) { editorWorkerStartup.dropped++; return; }
+                            const result = post.call(this, message, ...args);
+                            editorWorkerStartup.accepted++;
+                            return result;
+                        }
+                        return post.call(this, message, ...args);
+                    };
+                """.replace('__URL__', json.dumps(worker_startup == 'url'))}})
             browser.call("POST", "/url", {"url": runtime.url + "/offline.html"})
             for cookie in runtime.cookies:
                 browser.call("POST", "/cookie", {"cookie": {"name": cookie.name, "value": cookie.value,
@@ -596,7 +611,11 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
                 metrics = browser.call("POST", "/goog/cdp/execute", {"cmd": "Performance.getMetrics", "params": {}})
                 cpu = browser.call("POST", "/goog/cdp/execute", {"cmd": "Profiler.stop", "params": {}})
                 profiling = {"cpuProfile": cpu["profile"], "cpuProfileMetrics": metrics["metrics"]}
-            return {**profiling, "cpuProfiling": profile, "waitedForSyntax": wait_syntax, "case": case, "fileName": file_name, "mode": mode, "wrap": wrapped, "repetition": repetition, "sourceBytes": len(source.encode()),
+            startup = browser.script('return window.editorWorkerStartup')
+            if worker_startup != 'default':
+                assert startup['attempted'] > 0, 'No production worker module handoff was attempted'
+                assert startup['dropped' if worker_startup == 'url' else 'accepted'] > 0, startup
+            return {**profiling, "workerStartup":worker_startup, "workerStartupEvidence":startup, "cpuProfiling": profile, "waitedForSyntax": wait_syntax, "case": case, "fileName": file_name, "mode": mode, "wrap": wrapped, "repetition": repetition, "sourceBytes": len(source.encode()),
                     "inputPosition": input_position, "verifiedSourceCaretBeforeInput": verified_source_caret,
                     "completeSourceAfterInputVerified": input_position in {"beginning", "end"}, "loadToPaintMs": load_ms, **snapshot, **scroll, **edited, **memory,
                     "afterInputMemory": process_memory(browser.process.pid), **sampled,
@@ -663,6 +682,7 @@ if __name__ == "__main__":
     parser.add_argument("--file-name", default="measure.rs", help="Fixture filename selects the production language policy")
     parser.add_argument("--repeat", type=int, default=1, help="Fresh browser/runtime runs for each case and mode")
     parser.add_argument("--require-pss", action="store_true", help="Fail if apportioned Chrome process memory cannot be measured")
+    parser.add_argument('--worker-startup', choices=['default','compiled','url'], default='default', help='Compare the same production artifact with module handoff or its URL fallback')
     args = parser.parse_args()
     if args.repeat < 1:
         parser.error("--repeat must be positive")
@@ -673,7 +693,7 @@ if __name__ == "__main__":
                       **host_constraints(),
                       "repetitions": args.repeat, "fileName": args.file_name,
                       "measurementImage": os.environ.get("EDITOR_VIEW_IMAGE"),
-                      "inputTimingStart": "beforeinput", "inputPosition": args.input_position, "cpuProfiling": args.profile,
+                      "inputTimingStart": "beforeinput", "inputPosition": args.input_position, "cpuProfiling": args.profile, "workerStartup":args.worker_startup,
                       "frontendWasmSha256": {
                           path.name: hashlib.sha256(path.read_bytes()).hexdigest()
                           for path in sorted((ROOT / "frontend/dist").glob("*.wasm"))
@@ -687,7 +707,7 @@ if __name__ == "__main__":
     for case in args.cases:
         for mode in args.modes:
             for repetition in range(1, args.repeat + 1):
-                result = measure(case, mode, args.wrap, args.trace, repetition, args.input_position, args.profile, args.file_name, args.wait_syntax)
+                result = measure(case, mode, args.wrap, args.trace, repetition, args.input_position, args.profile, args.file_name, args.wait_syntax, args.worker_startup)
                 print(json.dumps(result), flush=True)
                 if args.require_pss:
                     assert result["peakChromePssKiB"] is not None, "Chrome peak PSS was unavailable"

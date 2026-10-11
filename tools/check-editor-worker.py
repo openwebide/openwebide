@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Exercise the actual production Rust/WASM worker in Chrome, without an account."""
+import argparse
 import functools
 import http.server
 import json
@@ -13,11 +14,16 @@ ROOT = Path(__file__).resolve().parent.parent
 Browser = runpy.run_path(str(ROOT / 'tools/check-editor-recovery.py'))['Browser']
 
 
-def check():
+def check(compiled_module=False):
     assert os.environ.get('CHROMEDRIVER'), 'Set CHROMEDRIVER to a compatible driver'
     dist = ROOT / 'frontend/dist'
     assert (dist / 'editor-worker.js').is_file(), 'Build the frontend first'
     assert '"/editor-worker.js"' in (dist / 'service-worker.js').read_text(), 'Worker missing from PWA shell'
+    module = next(dist.glob('openwebide-frontend-*.js'))
+    binary = module.with_name(module.stem + '_bg.wasm')
+    versioned = 'editor-worker-' + module.stem.removeprefix('openwebide-frontend-') + '.js'
+    assert (dist / versioned).is_file(), 'Missing matching worker bootstrap'
+    assert json.dumps('/' + versioned) in (dist / 'service-worker.js').read_text(), 'Versioned worker missing from PWA shell'
     handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(dist))
     server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), handler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -27,9 +33,17 @@ def check():
             browser = Browser(directory)
             try:
                 browser.call('POST', '/url', {'url': f'http://127.0.0.1:{server.server_port}/offline.html'})
-                result = browser.call('POST', '/execute/async', {'script': r'''
+                initialize = ''
+                if compiled_module:
+                    initialize = f'''const bundle = new URL({json.dumps('/' + module.name)}, location.href);
+                        const parentModule = await WebAssembly.compileStreaming(fetch({json.dumps('/' + binary.name)}));
+                        const {{default:init}} = await import(bundle.href);
+                        await init({{module_or_path:parentModule}});'''
+                script = r'''
                     const done = arguments[0];
-                    const worker = new Worker('/editor-worker.js', {type: 'module'});
+                    const run = async () => {
+                    __INITIALIZE__
+                    const worker = new Worker(__WORKER_URL__, {type: 'module'});
                     const waiting = new Map(), bases = new Map(), sources = new Map(), structures = new Map(); let ticket = 0;
                     // Independent wire oracle for the existing production-worker
                     // assertions. Runtime validation and feature policy stay in Rust.
@@ -104,6 +118,7 @@ def check():
                         if (!reply) return;
                         waiting.get(reply.ticket)?.(reply); waiting.delete(reply.ticket);
                     };
+                    __HANDOFF__
                     async function request(document, language, source, span = null) {
                         await ready;
                         return new Promise(resolve => {
@@ -335,7 +350,12 @@ def check():
                             resyncStatus: resync.status, resyncedSource: resynced.analysis?.source === resyncText,
                             oversizedStatus: oversized.status, oversizedAnalysis: oversized.analysis});
                     })().catch(error => {worker.terminate(); done({error:String(error)});});
-                ''', 'args': []})
+                    };
+                    run().catch(error => done({error:String(error)}));
+                '''
+                script = script.replace('__INITIALIZE__', initialize).replace('__WORKER_URL__', json.dumps('/' + versioned if compiled_module else '/editor-worker.js'))
+                script = script.replace('__HANDOFF__', "worker.postMessage({kind:'openwebide-editor-module:1',module:parentModule,bundle_url:bundle.href});" if compiled_module else '')
+                result = browser.call('POST', '/execute/async', {'script':script, 'args':[]})
                 assert 'error' not in result, result
                 assert result['heavyDelta'] and result['heavyUpdateSource'], result
                 assert result['structuralDelta'], 'Structural update did not preserve metadata with a compact patch'
@@ -362,7 +382,7 @@ def check():
                 for key in ['literal', 'yaml']:
                     assert 1_000_000 < result['batches'][key]['bytes'] < 1_048_576 and result['batches'][key]['yields'] > 10, result['batches'][key]
                     assert all(result['batches'][key][field] for field in ['ready','source','colors','structure','folds','painted']), result['batches'][key]
-                print(json.dumps({'providers': len(result['providers'])+1, 'config_languages': len(result['configs']) - 1, 'plain_fallback_languages': 1, 'nested_languages': len(result['nested']), 'incremental': True, 'structural_delta': result['structuralDelta'],
+                print(json.dumps({'compiled_module':compiled_module, 'providers': len(result['providers'])+1, 'config_languages': len(result['configs']) - 1, 'plain_fallback_languages': 1, 'nested_languages': len(result['nested']), 'incremental': True, 'structural_delta': result['structuralDelta'],
                                   'ui_event_during_worker': result['uiEvent'], 'oversize_fallback': True, 'changed_row_records': result['heavyRowRuns'],
                                   'cooperative_yields': result['batches']['yields'], 'large_literal_bytes':result['batches']['literal']['bytes'], 'large_literal_yields':result['batches']['literal']['yields'], 'yaml_bytes':result['batches']['yaml']['bytes'], 'yaml_yields':result['batches']['yaml']['yields']}))
             finally:
@@ -374,4 +394,6 @@ def check():
 
 
 if __name__ == '__main__':
-    check()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--compiled-module', action='store_true')
+    check(parser.parse_args().compiled_module)
