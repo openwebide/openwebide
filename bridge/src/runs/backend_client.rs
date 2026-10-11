@@ -268,6 +268,14 @@ impl BackendClient {
         self.service_call("/plugins/runs/service", json!(request))
             .await
     }
+    pub async fn plugin_update_service(
+        &self,
+        request: &openwebide_core::plugins::updates::UpdateServiceRequest,
+    ) -> Result<openwebide_core::plugins::updates::UpdateServiceResponse, String> {
+        self.service_call("/plugins/updates/service", json!(request))
+            .await
+    }
+
     pub async fn plugin_job_service(
         &self,
         request: &openwebide_core::plugins::jobs::JobServiceRequest,
@@ -885,6 +893,41 @@ impl<B: RunBackend> openwebide_agent::compaction::CompactionSource for ModelSour
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn plugin_update_transport_authenticates_both_host_claims_and_propagates_errors() {
+        for (server, status) in [(true, 200), (false, 200), (false, 401)] {
+            let response = if status == 200 {
+                "HTTP/1.1 200 Result\r\nContent-Type: application/json\r\nContent-Length: 44\r\nConnection: close\r\n\r\n{\"status\":\"claimed\",\"claims\":[],\"next\":null}"
+            } else {
+                "HTTP/1.1 401 Result\r\nContent-Type: application/json\r\nContent-Length: 44\r\nConnection: close\r\n\r\n{\"status\":\"claimed\",\"claims\":[],\"next\":null}"
+            };
+            let (url, captured) = crate::runs::http_client::tests::capture(response).await;
+            let client = BackendClient::new(
+                format!("{url}/api"),
+                "shared-secret".into(),
+                ReqwestHttpClient::default(),
+            );
+            let result = client
+                .plugin_update_service(
+                    &openwebide_core::plugins::updates::UpdateServiceRequest::Claim {
+                        host_id: if server { "server" } else { "paired-host" }.into(),
+                        server,
+                        after: 0,
+                    },
+                )
+                .await;
+            assert_eq!(result.is_ok(), status == 200);
+            let request = captured.await.unwrap();
+            assert!(request.starts_with("POST /api/plugins/updates/service HTTP/1.1"));
+            assert!(
+                request
+                    .to_ascii_lowercase()
+                    .contains("authorization: bearer shared-secret\r\n")
+            );
+            assert!(request.contains(&format!("\"server\":{server}")));
+        }
+    }
 
     #[tokio::test]
     async fn records_streamed_tools_flag_at_connection_route() {

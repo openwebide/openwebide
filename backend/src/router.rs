@@ -42,6 +42,7 @@ enum Route {
     ScheduledSessionCommand,
     ScheduledDue,
     PluginJobService,
+    PluginUpdateService,
     PluginRunService,
     HostJournal,
     HostInspect,
@@ -214,6 +215,7 @@ fn resolve(method: &str, segments: &[&str]) -> Option<Route> {
         ("POST", ["sessions", id, "host"]) if numeric_id(id) => Some(Route::HostInspect),
         ("POST", ["scheduled-tasks", "due"]) => Some(Route::ScheduledDue),
         ("POST", ["plugins", "jobs", "service"]) => Some(Route::PluginJobService),
+        ("POST", ["plugins", "updates", "service"]) => Some(Route::PluginUpdateService),
         ("POST", ["plugins", "runs", "service"]) => Some(Route::PluginRunService),
         ("POST", ["scheduled-tasks", "result"]) => Some(Route::ScheduledResult),
         ("POST", ["sessions", id, "scheduled-tasks"]) if numeric_id(id) => {
@@ -428,6 +430,7 @@ pub async fn route(req: Request) -> JsonResp {
                 | Route::ScheduledResult
                 | Route::HostJournal
                 | Route::PluginJobService
+                | Route::PluginUpdateService
                 | Route::PluginRunService
         )
     ) {
@@ -435,6 +438,7 @@ pub async fn route(req: Request) -> JsonResp {
             Ok(()) => match route {
                 Some(Route::HostJournal) => api::host_admin::journal(req, &state).await,
                 Some(Route::PluginJobService) => api::plugin_jobs::service(req, &state).await,
+                Some(Route::PluginUpdateService) => api::plugin_updates::service(req, &state).await,
                 Some(Route::PluginRunService) => api::plugin_runs::service(req, &state).await,
                 Some(Route::ScheduledDue) => api::scheduled::due(req, &state).await,
                 Some(Route::ScheduledResult) => api::scheduled::result(req, &state).await,
@@ -1079,6 +1083,7 @@ mod tests {
                 Route::SendSessionMessage,
                 Route::WebFetch,
                 Route::PluginJobService,
+                Route::PluginUpdateService,
                 Route::PluginRunService,
             ] {
                 let error = authenticate_route(&state, &headers, Some(route), "")
@@ -1138,6 +1143,11 @@ mod tests {
             ("POST", "plugins/host", Route::PluginContextHostRequest),
             ("POST", "plugins/invoke", Route::PluginStartInvocation),
             ("POST", "plugins/jobs/service", Route::PluginJobService),
+            (
+                "POST",
+                "plugins/updates/service",
+                Route::PluginUpdateService,
+            ),
             ("POST", "plugins/runs/service", Route::PluginRunService),
             ("POST", "plugins/continue", Route::PluginContinueInvocation),
             ("POST", "plugins/cancel", Route::PluginCancelInvocation),

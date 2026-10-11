@@ -88,8 +88,28 @@ individual update, release selection and update preferences. **Notify** is the
 default: checking a catalog does not install its newer releases. **Automatic**
 applies compatible updates; major version changes, and minor changes before 1.0,
 still need a manual update. **Off** hides update notifications and prevents automatic
-updates. Checks run at sign-in and every 15 minutes while the app is open. Failed
-checks preserve cached releases; failed updates preserve the installed version.
+updates. Server and paired bridge hosts check catalogs every 15 minutes even
+while all browser clients are closed. Checks start when an account has an
+installation with Notify or Automatic enabled; accounts with only Off
+installations are skipped. Paired hosts check accounts with installations prepared
+on that host; the server host can check any account with eligible installations.
+Checks share an account-scoped database lease, so connected hosts do not duplicate
+work. Catalog results, check times, failures and retry times survive restarts;
+source edits revoke pending checks so stale results cannot restore removed sources.
+Each Git source request has a 30-second deadline. Failed checks retain cached
+releases and retry after one minute, doubling up to 15 minutes. Expired leases
+allow another live host to recover a check after a crash.
+
+The browser reads persisted results at sign-in and every minute while idle; the
+existing update count, Update All and source error messages reflect those results.
+Manual marketplace refresh remains available. Checking never prepares, installs
+or enables a release. Automatic still applies compatible updates while the app
+is open, with existing capability review; unattended automatic installation is
+not implemented. Failed updates preserve the installed version. These discovery
+checks do not require project folder mapping on a paired host. Host workers use
+the daemon's configured backend API URL and shared secret, as documented in
+[execution bridge setup](execution-bridge.md). The server host can continue
+checking account catalogs when a paired host is offline.
 
 Selecting another release updates or rolls back the installation and enabled
 projects together. Project opt-outs remain disabled. **Uninstall** removes the

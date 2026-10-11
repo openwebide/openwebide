@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Check plugin marketplaces on server and paired hosts with browsers closed, using shared account leases, persisted results, bounded retries and restart recovery. Restore update indicators and source failures from the database when clients reconnect; keep Notify as the default and existing Automatic activation while a client is open.
+
 - Document plugin authoring from working examples through SDK checks, host testing and immutable marketplace publishing; correct retired API and future-contribution claims in both repositories.
 
 - Extend cooperative editor row planning through row validation and exact prefix/suffix reuse, preserving conflicting-duplicate rejection. Restart canceled preparations after layout invalidation.

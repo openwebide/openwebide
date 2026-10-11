@@ -7,6 +7,7 @@ pub mod marketplace;
 pub mod preparation;
 pub mod records;
 pub mod runs;
+pub mod updates;
 use std::{collections::BTreeMap, future::Future, pin::Pin, sync::LazyLock};
 
 use regex::Regex;
@@ -1621,6 +1622,7 @@ mod update_tests {
             }
         }
         let mut markets = marketplace::MarketplaceSettings {
+            check: None,
             revision: 1,
             sources: vec![cache.source.clone()],
             catalogs: vec![cache],

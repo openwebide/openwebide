@@ -372,6 +372,7 @@ async fn plugins_review_new_capabilities_before_recording_updates_and_clear_stal
             release.source.commit = prepared.source.commit.clone();
             catalog.catalog.plugins[0].releases.push(release);
             let markets = openwebide_core::plugins::marketplace::MarketplaceSettings {
+                check: None,
                 revision: 1,
                 sources: vec![catalog.source.clone()],
                 catalogs: vec![catalog],
@@ -599,6 +600,7 @@ async fn plugins_marketplace_install_enables_by_default_and_uninstall_restores_a
     newer.source.commit = "d".repeat(40);
     catalog.catalog.plugins[0].releases.push(newer);
     *fake.marketplaces.borrow_mut() = openwebide_core::plugins::marketplace::MarketplaceSettings {
+        check: None,
         revision: 1,
         sources: vec![catalog.source.clone()],
         catalogs: vec![catalog.clone()],
@@ -731,6 +733,7 @@ async fn plugins_reject_mismatched_catalog_identity_and_stale_activation_package
         let catalog = catalog();
         *fake.marketplaces.borrow_mut() =
             openwebide_core::plugins::marketplace::MarketplaceSettings {
+                check: None,
                 revision: 1,
                 sources: vec![catalog.source.clone()],
                 catalogs: vec![catalog.clone()],
@@ -1225,6 +1228,16 @@ async fn plugins_notify_updates_in_status_bar_and_update_all_from_the_same_facad
             .sources
             .push(catalog.source.clone());
         fake.marketplaces.borrow_mut().catalogs.push(catalog);
+        fake.marketplaces.borrow_mut().check =
+            Some(openwebide_core::plugins::updates::UpdateCheckStatus {
+                checked_at: Some(12),
+                next_check_at: 912,
+                host_id: "server".into(),
+                failures: vec![openwebide_core::plugins::marketplace::MarketplaceFailure {
+                    source: openwebide_core::plugins::marketplace::MarketplaceSource::official(),
+                    message: "Retained host check failure".into(),
+                }],
+            });
         *fake.plugins.borrow_mut() = openwebide_core::plugins::record_installation(
             Vec::new(),
             &RecordPlugin {
@@ -1245,7 +1258,10 @@ async fn plugins_notify_updates_in_status_bar_and_update_all_from_the_same_facad
             send.send(Ok(updated.clone())).unwrap();
             fake.plugin_packages.borrow_mut().push_back(receive);
         }
+        let captured = Rc::new(Cell::new(None));
+        let slot = captured.clone();
         let mounted = mount_test_with_backend(fake.clone(), move |state| {
+            slot.set(Some(expect_context::<PluginsState>()));
             state.seed_project();
             if projectless {
                 state.projects.active_project.set(None);
@@ -1260,6 +1276,21 @@ async fn plugins_notify_updates_in_status_bar_and_update_all_from_the_same_facad
             view! {<StatusBar health=RwSignal::new(None).read_only() on_toggle_terminal=||{}/><Show when=move ||ui.plugins_open.get()><PluginsDialog/></Show>}
         });
         settle().await;
+        assert_eq!(
+            captured.get().unwrap().failures.get_untracked()[0].message,
+            "Retained host check failure"
+        );
+        assert_eq!(
+            captured
+                .get()
+                .unwrap()
+                .marketplaces
+                .get_untracked()
+                .check
+                .unwrap()
+                .checked_at,
+            Some(12)
+        );
         assert_eq!(fake.plugins.borrow()[0].update_policy, policy);
         if policy != PluginUpdatePolicy::Notify {
             assert_eq!(

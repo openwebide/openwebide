@@ -127,6 +127,7 @@ pub struct CatalogSelection {
 enum Operation {
     Refresh,
     Catalogs,
+    CheckResults,
     UpdateAll,
     ApproveUpdate(PluginSource),
     Policy(Box<PluginInstallation>, PluginUpdatePolicy),
@@ -223,6 +224,7 @@ impl ProjectPluginActions {
                         | Operation::UpdateAll
                         | Operation::ApproveUpdate(_)
                         | Operation::Catalogs
+                        | Operation::CheckResults
                         | Operation::Refresh
                         | Operation::Enable(_)
                         | Operation::Disable(_)
@@ -284,16 +286,16 @@ impl ProjectPluginActions {
                 && checked.get_value() != Some(account)
             {
                 checked.set_value(Some(account));
-                perform.run(Operation::Catalogs);
+                perform.run(Operation::CheckResults);
             }
         });
         let timer = leptos::leptos_dom::helpers::set_interval_with_handle(
             move || {
                 if auth.user.get_untracked().is_some() && !chat.streaming.get_untracked() {
-                    perform.run(Operation::Catalogs);
+                    perform.run(Operation::CheckResults);
                 }
             },
-            std::time::Duration::from_secs(15 * 60),
+            std::time::Duration::from_secs(60),
         )
         .ok();
         on_cleanup(move || {
@@ -376,6 +378,12 @@ async fn run_operation(
             if !current() {
                 return Ok(());
             }
+            state.failures.set(
+                markets
+                    .check
+                    .as_ref()
+                    .map_or_else(Vec::new, |check| check.failures.clone()),
+            );
             state.marketplaces.set(markets);
             if let Some(id) = project {
                 let entries = backend.project_plugins(id).await?;
@@ -427,6 +435,22 @@ async fn run_operation(
                     state.project_plugins.set(bindings);
                 }
             }
+        }
+        Operation::CheckResults => {
+            let entries = backend.plugin_installations().await?;
+            let markets = backend.plugin_marketplaces().await?;
+            if !current() {
+                return Ok(());
+            }
+            state.installations.set(entries);
+            state.failures.set(
+                markets
+                    .check
+                    .as_ref()
+                    .map_or_else(Vec::new, |check| check.failures.clone()),
+            );
+            state.marketplaces.set(markets);
+            update_plugins(api, state, host, project, current, true).await?;
         }
         Operation::Catalogs => {
             let refreshed = backend.refresh_plugin_marketplaces().await?;

@@ -4,6 +4,7 @@ pub mod invocations;
 pub mod jobs;
 pub mod runs;
 pub mod transport;
+pub mod updates;
 use openwebide_core::plugins::{
     MAX_PACKAGE_BYTES, MAX_PACKAGE_FILE_BYTES, MAX_PACKAGE_FILES, PackageFile, PackageFileKind,
     PluginError, PluginFuture, PluginHost, PluginSource, PreparedPlugin, prepare_plugin,

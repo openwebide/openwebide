@@ -529,39 +529,49 @@ pub(crate) async fn save_marketplaces(
             .await?,
     ))
 }
+struct CatalogAdapter<'a> {
+    state: &'a AppState,
+    user: openwebide_core::UserId,
+}
+impl openwebide_core::plugins::updates::CatalogHost for CatalogAdapter<'_> {
+    async fn catalog(&self, source: &MarketplaceSource) -> Result<CachedMarketplace, String> {
+        let (status, body) = crate::bridge::send(
+            &self.state.store,
+            "/plugins/catalog",
+            json!({"marketplace":source,"user":self.user.get()}).to_string(),
+        )
+        .await
+        .map_err(|_| "Plugin execution host is unavailable.".to_string())?;
+        if status != 200 {
+            return Err("Could not refresh this marketplace on the server host. Check its repository, reference and catalog path.".into());
+        }
+        serde_json::from_slice(&body).map_err(|error| error.to_string())
+    }
+}
 pub(crate) async fn refresh_marketplaces(
     state: &AppState,
     user: AuthedUser,
 ) -> Result<JsonResp, ApiError> {
     let current = state.store.plugin_marketplaces(user.id).await?;
-    let mut catalogs = Vec::new();
-    let mut failures = Vec::new();
-    for source in &current.sources {
-        let result = async {
-            let (status,body)=crate::bridge::send(&state.store,"/plugins/catalog",json!({"marketplace":source,"user":user.id.get()}).to_string()).await.map_err(|_|"Plugin execution host is unavailable.".to_string())?;
-            if status!=200 { return Err("Could not refresh this marketplace on the server host. Check its repository, reference and catalog path.".to_string()); }
-            let catalog:CachedMarketplace=serde_json::from_slice(&body).map_err(|error|error.to_string())?;
-            catalog.validate().map_err(|error|error.to_string())?;
-            if catalog.source!=*source {return Err("Catalog host returned a different source.".into());}
-            Ok(catalog)
-        }.await;
-        match result {
-            Ok(catalog) => catalogs.push(catalog),
-            Err(message) => failures.push(MarketplaceFailure {
-                source: source.clone(),
-                message,
-            }),
-        }
-    }
-    let settings = state
+    let mut refreshed = openwebide_core::plugins::updates::refresh_catalogs(
+        &CatalogAdapter {
+            state,
+            user: user.id,
+        },
+        current,
+    )
+    .await;
+    refreshed.settings = state
         .store
-        .cache_plugin_marketplaces(user.id, current.revision, catalogs)
+        .cache_plugin_marketplaces(
+            user.id,
+            refreshed.settings.revision,
+            refreshed.settings.catalogs,
+        )
         .await?;
-    Ok(json_response(
-        200,
-        &MarketplaceRefresh { settings, failures },
-    ))
+    Ok(json_response(200, &refreshed))
 }
+
 fn project_id(path: &str, suffix: &str) -> Result<i64, ApiError> {
     path_id(
         path.strip_suffix(suffix)

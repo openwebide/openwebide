@@ -221,6 +221,8 @@ impl CachedMarketplace {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MarketplaceSettings {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub check: Option<super::updates::UpdateCheckStatus>,
     pub revision: i64,
     pub sources: Vec<MarketplaceSource>,
     pub catalogs: Vec<CachedMarketplace>,
@@ -238,6 +240,7 @@ impl MarketplaceSettings {
 impl Default for MarketplaceSettings {
     fn default() -> Self {
         Self {
+            check: None,
             revision: 0,
             sources: vec![MarketplaceSource::official()],
             catalogs: Vec::new(),
@@ -250,7 +253,7 @@ pub struct SaveMarketplaces {
     pub revision: i64,
     pub sources: Vec<MarketplaceSource>,
 }
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MarketplaceFailure {
     pub source: MarketplaceSource,
     pub message: String,
@@ -283,6 +286,7 @@ pub fn save_sources(
         }
     }
     Ok(MarketplaceSettings {
+        check: None,
         revision: current.revision + 1,
         sources: request.sources.clone(),
         catalogs: current
@@ -323,6 +327,7 @@ mod tests {
     #[test]
     fn official_marketplace_is_required_and_restored_for_legacy_settings() {
         let legacy = MarketplaceSettings {
+            check: None,
             revision: 7,
             sources: vec![catalog().source],
             catalogs: vec![catalog()],
@@ -393,6 +398,7 @@ mod tests {
     fn failed_refresh_preserves_cache_and_source_changes_reject_stale_results() {
         let cache = catalog();
         let settings = MarketplaceSettings {
+            check: None,
             revision: 0,
             sources: vec![MarketplaceSource::official(), cache.source.clone()],
             catalogs: vec![cache.clone()],

@@ -4,6 +4,7 @@ pub mod completion;
 pub mod execution;
 pub mod jobs;
 pub mod runs;
+pub mod updates;
 mod worker;
 use openwebide_core::{ToolDefinition, plugins::ProjectPlugin};
 /// Keep workspace primitives built in; optional services are supplied by plugins.

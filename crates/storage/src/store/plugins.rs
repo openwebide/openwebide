@@ -253,7 +253,7 @@ mod tests {
 }
 
 use openwebide_core::plugins::{ProjectPlugin, ProjectPluginCommand, RemovePlugin, marketplace::*};
-fn plugin_error(error: PluginError) -> StorageError {
+pub(super) fn plugin_error(error: PluginError) -> StorageError {
     match error {
         PluginError::Conflict(message) => StorageError::Conflict(message),
         PluginError::Invalid(message) => StorageError::InvalidRequest(message),
@@ -265,7 +265,8 @@ impl<D: Db> Store<D> {
         &self,
         user: UserId,
     ) -> Result<MarketplaceSettings, StorageError> {
-        self.get_user_setting(user, "plugin_marketplaces")
+        let mut settings = self
+            .get_user_setting(user, "plugin_marketplaces")
             .await?
             .map_or_else(
                 || Ok(MarketplaceSettings::default()),
@@ -274,7 +275,9 @@ impl<D: Db> Store<D> {
                         .map(MarketplaceSettings::ensure_official)
                         .map_err(|error| StorageError::Db(error.to_string()))
                 },
-            )
+            )?;
+        settings.check = self.plugin_update_status(user).await?;
+        Ok(settings)
     }
     pub async fn save_plugin_marketplaces(
         &self,
@@ -286,6 +289,7 @@ impl<D: Db> Store<D> {
                 let store = Store::new(tx);
                 let next = save_sources(store.plugin_marketplaces(user).await?, request)
                     .map_err(plugin_error)?;
+                store.db.execute("UPDATE plugin_update_checks SET checked_at=NULL,next_due=0,lease='',lease_expires_at=0,failures='[]',failures_count=0 WHERE user_id=?", &[DbValue::Int(user.get())]).await?;
                 store
                     .set_user_setting(
                         user,
@@ -1111,6 +1115,7 @@ mod lifecycle_tests {
                     .is_none()
             );
             let legacy = MarketplaceSettings {
+                check: None,
                 revision: 7,
                 sources: Vec::new(),
                 catalogs: Vec::new(),

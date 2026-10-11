@@ -450,10 +450,11 @@ capability.
   keep discovery and context loading bounded through deferred tool loading.
   Add further run hooks when needed, building on the shared read-only SDK context
   planner. Core workspace tools remain built in.
-- Add host-side update checks while all clients are closed, extending the existing
-  Notify, Automatic compatible and Off policies. Persist check state and update
-  availability, bound polling/retries, and surface results in the existing Plugins
-  indicator and update controls when a client reconnects.
+- Extend the existing host-side catalog checks to unattended Automatic activation,
+  preserving compatible-version policy, capability review, installation revisions,
+  project opt-outs and active-run pins. Notify remains the default. Catalog checks
+  already run with clients closed; automatic installation currently requires an
+  open client.
 - Use one package format with typed contributions rather than mutually exclusive
   plugin types. A package can combine skills, MCP servers/tools and language
   support, declarative panels/editor annotations and eventual editor hooks; validate compatibility,
