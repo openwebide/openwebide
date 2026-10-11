@@ -68,10 +68,6 @@ pub enum WorkerError {
     Transport,
     Timeout,
 }
-#[derive(serde::Deserialize)]
-struct ReplyTicket {
-    ticket: u32,
-}
 type Pending =
     Rc<RefCell<HashMap<u32, futures::channel::oneshot::Sender<Result<String, WorkerError>>>>>;
 
@@ -173,14 +169,12 @@ impl WorkerClient {
                     }
                     return;
                 }
-                if text.len() > openwebide_core::editor::MAX_ANALYSIS_MESSAGE_BYTES {
-                    return;
-                }
                 // Extract only the routing ticket; the shared facade validates the complete reply.
-                let Ok(reply) = serde_json::from_str::<ReplyTicket>(&text) else {
+                let Some(ticket) = openwebide_core::editor::SyntaxReply::routing_ticket(&text)
+                else {
                     return;
                 };
-                if let Some(sender) = messages.borrow_mut().remove(&reply.ticket) {
+                if let Some(sender) = messages.borrow_mut().remove(&ticket) {
                     let _ = sender.send(Ok(text));
                 }
             },
@@ -278,5 +272,70 @@ impl SyntaxTransport for WorkerClient {
     }
     fn stop(&self) {
         WorkerClient::stop(self);
+    }
+}
+
+#[cfg(all(test, target_arch = "wasm32"))]
+mod tests {
+    use super::*;
+    use openwebide_core::editor::{SyntaxReply, SyntaxRequest, SyntaxStatus};
+    use wasm_bindgen_test::wasm_bindgen_test;
+
+    #[wasm_bindgen::prelude::wasm_bindgen(inline_js = r#"
+    export function installRoutingWorker(ready) {
+        const original = globalThis.Worker;
+        globalThis.Worker = class {
+            constructor() {
+                queueMicrotask(() => this.onmessage?.({data:ready}));
+            }
+            postMessage(message) {
+                const request = JSON.parse(message);
+                const reply = {version:request.version,ticket:request.ticket,status:'Cancelled',analysis:null};
+                if (request.ticket === 7) reply.padding = 'x'.repeat(2 * 1024 * 1024);
+                queueMicrotask(() => this.onmessage?.({data:JSON.stringify(reply)}));
+            }
+            terminate() {}
+        };
+        return () => { globalThis.Worker = original; };
+    }
+    "#)]
+    extern "C" {
+        fn installRoutingWorker(ready: &str) -> js_sys::Function;
+    }
+
+    #[wasm_bindgen_test]
+    async fn bounded_worker_routing_preserves_complete_reply_validation() {
+        let restore = installRoutingWorker(READY_MESSAGE);
+        let result = async {
+            let client = WorkerClient::new()?;
+            let mut replies = Vec::new();
+            for ticket in [7, 8] {
+                let request = SyntaxRequest::new(
+                    ticket,
+                    "worker.rs".into(),
+                    openwebide_core::highlight::Language::Rust,
+                    "let value = 1;",
+                    4,
+                    None,
+                );
+                replies.push(
+                    client
+                        .request(ticket, serde_json::to_string(&request).unwrap())
+                        .await?,
+                );
+            }
+            client.stop();
+            Ok::<_, WorkerError>(replies)
+        }
+        .await;
+        // Restore the global primitive before assertions, including transport
+        // failures: WASM panics do not unwind test fixture cleanup.
+        restore.call0(&wasm_bindgen::JsValue::NULL).unwrap();
+        let replies = result.unwrap();
+        assert!(replies[0].len() > 2 * 1024 * 1024);
+        assert!(SyntaxReply::receive(&replies[0], 7, "let value = 1;").is_none());
+        let (status, analysis) = SyntaxReply::receive(&replies[1], 8, "let value = 1;").unwrap();
+        assert_eq!(status, SyntaxStatus::Cancelled);
+        assert!(analysis.is_none());
     }
 }

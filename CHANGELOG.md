@@ -9,6 +9,8 @@ for what's still ahead.
 
 ## [Unreleased]
 
+- Route syntax-worker replies from a bounded ticket header instead of scanning the entire analysis payload twice; complete reply validation remains in the shared editor facade.
+
 - Yield a browser frame when long wrapped-row preparation first publishes proved viewport coverage, allowing visible paint before continuing background geometry probes.
 
 - Encode syntax requests directly from retained immutable source ranges, sharing full/delta selection with worker replies and avoiding an intermediate plaintext copy.

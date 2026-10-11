@@ -9746,6 +9746,22 @@ async fn long_wrapped_lines_move_cursors_without_measuring_the_entire_line_in_bo
             assert!(runs.item(index).unwrap().text_content().unwrap().len() <= 516);
         }
         let actions = EditorActions::new(mounted.state.workspace);
+        // Early viewport paint can precede complete long-row geometry. This
+        // contract measures cursor work after cold setup; otherwise its global
+        // Range counter also charges unrelated continuation probes to the key.
+        wait_until(
+            "complete long-row geometry before cursor measurement",
+            || {
+                actions.measured_rows().is_some()
+                    && !actions.syntax_is_pending()
+                    && mounted
+                        .state
+                        .workspace
+                        .editor_row_preparation
+                        .with_untracked(Option::is_none)
+            },
+        )
+        .await;
         let input: web_sys::HtmlTextAreaElement =
             mounted.element(".editor-textarea").unchecked_into();
         let first = "文😀e\u{301} words ".len() * 15_000 + 3;
@@ -9768,7 +9784,16 @@ async fn long_wrapped_lines_move_cursors_without_measuring_the_entire_line_in_bo
         let measured = js_sys::Array::from(&measured);
         assert_eq!(measured.get(0).as_bool(), Some(true));
         let count = measured.get(1).as_f64().unwrap();
-        assert!(count < 2_000.0, "{mode:?}: {count} range measurements");
+        let background = measured.get(3).as_f64().unwrap();
+        assert!(
+            background.abs() < f64::EPSILON,
+            "{mode:?}: cursor motion restarted cold geometry"
+        );
+        assert!(
+            count < 2_000.0,
+            "{mode:?}: {count} range measurements, {} background measurements",
+            measured.get(3).as_f64().unwrap()
+        );
         wasm_bindgen_test::console_log!(
             "{mode:?}: long-line Down measured {count} ranges in {}ms",
             measured.get(2).as_f64().unwrap()
@@ -9800,8 +9825,14 @@ async fn long_wrapped_lines_move_cursors_without_measuring_the_entire_line_in_bo
 #[wasm_bindgen::prelude::wasm_bindgen(inline_js = r#"
 export async function measureWrappedKey(input, key) {
     const original = Range.prototype.getClientRects;
-    let count = 0;
-    Range.prototype.getClientRects = function() { ++count; return original.call(this); };
+    let count = 0, background = 0;
+    Range.prototype.getClientRects = function() {
+        ++count;
+        const node = this.startContainer;
+        const element = node.nodeType === 1 ? node : node.parentElement;
+        if (element?.closest('.editor-height-measure')) ++background;
+        return original.call(this);
+    };
     const event = new KeyboardEvent('keydown', {key, bubbles:true, cancelable:true});
     const start = performance.now();
     try {
@@ -9810,7 +9841,7 @@ export async function measureWrappedKey(input, key) {
         for (let frame = 0; input.selectionStart === before && frame < 60; ++frame) {
             await new Promise(resolve => requestAnimationFrame(resolve));
         }
-        return [event.defaultPrevented, count, performance.now() - start];
+        return [event.defaultPrevented, count, performance.now() - start, background];
     } finally { Range.prototype.getClientRects = original; }
 }
 "#)]

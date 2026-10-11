@@ -1,0 +1,20 @@
+{
+  "baseHead": "f5ad5903ccfb8d90c35227745196d2bc4896e609",
+  "profile": "release",
+  "componentsWasmSha256": "a0423c989f55051eb021310e15ef522ea80a41d324e61db99ef02318e82b1362",
+  "libraryWasmSha256": "02bdd2da6b4a286987e4a2e16b40aa7f3712aa7739d7e2322906f97ee05ea70a",
+  "passed": 55,
+  "failed": [
+    "editor::long_wrapped_lines_move_cursors_without_measuring_the_entire_line_in_both_modes"
+  ],
+  "terminalExitCode": 1,
+  "workerRoutingRegressionPassed": true,
+  "cursorDiagnostic": {
+    "workspaceMode": "Local",
+    "totalRangeReads": 4663,
+    "backgroundRangeReads": 4110,
+    "otherRangeReads": 553,
+    "limit": 2000
+  },
+  "diagnosis": "Counter includes continuing cold height probes after partial viewport paint; cursor-only setup must await complete geometry. Production layout costs remain open."
+}

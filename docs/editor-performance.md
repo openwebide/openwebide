@@ -5729,7 +5729,8 @@ All 636 native core tests and strict native core/WASM frontend all-target lint
 pass. All 191 release editor browser contracts, including both independent
 font matrices, pass ([receipt](editor-performance/borrowed-request-full-browser.json)).
 These tests verify ownership, wire compatibility and geometry; they do not
-establish production latency/memory completion. Hosted candidate CI remains pending.
+establish production latency/memory completion. This checkpoint passed all five
+hosted jobs ([receipt](editor-performance/grouped-ci-6ef5108.json)).
 This removes an intermediate allocation/copy; it does not establish physical
 latency, Chrome PSS or the remaining conversion/decoding/publication bounds.
 
@@ -5809,3 +5810,59 @@ The rebuilt diagnostic artifact passes the same 56-test group with zero failures
 ([receipt](editor-performance/horizontal-diagnostic-group.json)). This establishes
 that the diagnostics preserve the contracts, but leaves the intermittent failure
 unresolved; it is not a renderer fix or a complete-inventory pass.
+The subsequent complete-inventory attempt passed 188 tests and failed the wrapped
+long-row cursor range-count bound (4,663 reads in Local); both font matrices were
+unexecuted ([record](editor-performance/horizontal-diagnostic-full-failure.json)).
+The initial horizontal-paint contract passed in that run. The cursor harness
+counts all range reads until native selection changes, including background
+height preparation. A separate background count is being added to distinguish
+that work without changing the existing total limit or deadlines. Neither failure
+is considered resolved by this rerun.
+Hosted CI for `f86dd7b` also failed that cursor bound in Remote mode with 2,504
+range reads; its other four jobs passed
+([receipt](editor-performance/grouped-ci-f86dd7b-failure.json)). This is a
+release-reliability failure, not a passing checkpoint.
+The following diagnostic-only checkpoint `f5ad5903` passes all five hosted jobs
+([receipt](editor-performance/grouped-ci-f5ad590.json)). It precedes the bounded
+routing and cursor-setup changes below; its green result does not establish a
+fix for the timing-dependent counter or horizontal-paint failures.
+The instrumented reproduction reports 4,663 total reads, of which 4,110 belong
+to background height preparation and 553 to other probes
+([diagnostic](editor-performance/reply-routing-diagnostic-failure.json)). The
+cursor-cost contract started at bounded viewport paint, which now intentionally
+precedes complete geometry. Its setup now waits for complete current geometry,
+finished syntax and no active row preparation under the existing deadline.
+The original total limit of 2,000 remains, and a new assertion requires zero
+background geometry reads during the measured key. Existing cold/queued-input
+contracts still cover motion while preparation is unfinished. The rebuilt complete browser inventory passes with this setup, including the
+zero-background assertion in both modes
+([receipt](editor-performance/reply-routing-full-browser.json)). This does not
+reduce cold layout costs or resolve the earlier horizontal-paint failure.
+
+### Bounded reply ticket routing
+
+The dedicated browser worker client previously deserialized the complete reply
+into a ticket-only struct before the shared facade decoded and validated it
+again. It now calls `SyntaxReply::routing_ticket`, which inspects at most 256
+bytes and stops after reading the root ticket. Shared producers serialize
+version/ticket first; replies with routing metadata beyond this prefix are not
+routed by this internal adapter. Complete decoding, version/ticket/source checks
+and analysis validation remain in the facade. The cooperative transport already
+returns the reply directly and does not need this routing step. Neither path
+adds a project-mode branch.
+
+All 637 native core tests and strict native core/WASM frontend all-target lint
+pass. New core coverage includes canonical control headers, whitespace and
+escaped keys, nested ticket rejection, invalid numeric tickets, bounded late
+metadata, duplicate fields and a malformed 2 MiB tail that routing must not scan
+and complete validation must reject. A browser adapter regression exercises
+large-body routing followed by full validation, then a valid control reply;
+its release browser regression passes
+([combined diagnostic run](editor-performance/reply-routing-diagnostic-failure.json)).
+That run also reproduced the cursor-counter failure described above. The rebuilt combined change passes all 191 editor contracts and the additional
+worker routing regression: 192 unique tests, zero failures, including both font
+matrices ([receipt](editor-performance/reply-routing-full-browser.json)). Strict
+WASM frontend lint also passes after the cursor assertion change. Hosted CI for
+this candidate remains pending. No production latency
+improvement or completion of remaining message decoding/publication work is
+claimed yet.
