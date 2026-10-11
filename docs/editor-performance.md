@@ -6058,3 +6058,12 @@ Checkpoint `b2e6b62` contains the verified editor changes above. Before its push
 The integration retains both changelog entries; the measurements and 194-test
 receipt describe the pre-integration editor artifact. The combined tree requires
 fresh browser and hosted CI verification, including its updated app and fixtures.
+
+The predecessor plugin CI run `38110025619` fails its bundled-defaults contract
+because it expects version `0.2.0` while the selected source is `0.2.1`. The
+follow-up compares the entire prepared manifest against normal validation of the
+pinned files, preserving the offline/both-host contract across version updates.
+Fresh compilation of all four selected defaults and both offline host contracts
+pass (2 tests, 72.37 s)
+([receipt](editor-performance/plugin-bundle-ci-version.json)). Combined hosted
+CI remains pending.
