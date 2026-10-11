@@ -36,7 +36,9 @@ RUN python3 tools/bundle_plugins.py
 # Runs the [component.x.build] commands from spin.toml:
 #   backend  -> cargo build -p openwebide-backend --target wasm32-wasip2 --release
 #   frontend -> cd frontend && trunk build --release
-RUN spin build
+# BuildKit can inject an OTLP Unix socket that Spin does not support.
+# Disable only build-command telemetry; runtime configuration remains available.
+RUN OTEL_SDK_DISABLED=1 spin build
 RUN cargo build -p openwebide-plugin-build --release --locked
 # Compile the selected defaults once in the same isolation used for user installs.
 # The final host embeds validated components; first launch requires no Git/network/compiler.
