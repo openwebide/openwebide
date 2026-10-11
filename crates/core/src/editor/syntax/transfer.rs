@@ -1,4 +1,9 @@
 //! Validated data crossing the worker boundary; parser allocations never cross it.
+mod framing;
+pub use framing::{
+    MAX_SYNTAX_FRAME_BYTES, SYNTAX_FRAME_VERSION, SyntaxFrameProgress, SyntaxReplyFrameDecoding,
+    SyntaxReplyFrames,
+};
 mod preparation;
 mod publication;
 pub(super) use preparation::AnalysisTransferPreparation;

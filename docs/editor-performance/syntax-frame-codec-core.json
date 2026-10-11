@@ -1,0 +1,48 @@
+{
+  "scope": "Preparatory core typed syntax reply framing and direct decoded-reply proof entry. Worker publication, browser routing and both transport-adapter contracts are not yet migrated.",
+  "sourceFilesSha256": {
+    "crates/core/src/editor/structure/framing.rs": "7051b304635ed5644e74b6be3e15269d022e633e6e6be4cb04511cf4b43ee223",
+    "crates/core/src/editor/syntax/transfer/framing.rs": "547da2656b1a5eb55b42f743c35c9b4523db39794150772c6595f6f79ce29c8b",
+    "crates/core/src/editor/syntax/service.rs": "d1c1e72a13cb8fdb7565d2235202611a5d2e8fdb08804aac1c75d9283224c752"
+  },
+  "coreTests": {
+    "features": [
+      "editor-parser"
+    ],
+    "passed": 706,
+    "failed": 0,
+    "ignored": 1,
+    "ignoredPurpose": "Unchanged native release query measurement"
+  },
+  "limits": {
+    "framingVersion": 1,
+    "syntaxProtocolVersion": 6,
+    "sourceBytesPerFrame": 8192,
+    "recordOperationsPerPublishedBatch": 64,
+    "encodedFrameBytes": 65536,
+    "transactionBytes": 33554432,
+    "sourceAndRecordBudgets": "unchanged"
+  },
+  "independentOracles": [
+    "Full and retained Rust/HTML/Markdown replies reconstruct the exact existing serde Value representation",
+    "Decoded replies enter the shared proof pipeline directly and retain the expected immutable source",
+    "Long UTF-8/escaped sources, 8193-span rows, dense empty rows and maximally escaped 2 MiB sources preserve existing admission"
+  ],
+  "failureContracts": [
+    "Incomplete, reordered, duplicate and wrong-ticket frames",
+    "Wrong framing version, malformed and oversized frames",
+    "Source-chunk byte overflow and record declaration overflow",
+    "Poisoned decoders cannot resume or expose partial replies",
+    "Control replies require Begin and End and valid status/analysis shapes"
+  ],
+  "lint": {
+    "nativeCoreAllTargets": "passed with -D warnings",
+    "wasmCoreEditorParser": "passed with -D warnings"
+  },
+  "limitations": [
+    "Codec is not active in the live worker transport",
+    "Browser local/remote transport integration, failures and stale-owner contracts remain required",
+    "Complete live reply JSON decoding remains synchronous",
+    "Allocation/capacity and end-to-end responsiveness/memory measurements remain unfinished"
+  ]
+}

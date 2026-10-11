@@ -656,6 +656,26 @@ impl SyntaxReply {
             return None;
         }
         let reply: Self = serde_json::from_str(message).ok()?;
+        Self::prepare_reply(reply, ticket, source, previous)
+    }
+
+    /// Enter the same proof pipeline after bounded frame decoding, without
+    /// serializing the assembled reply back into a complete JSON message.
+    pub fn prepare_received_shared<'a>(
+        self,
+        ticket: u32,
+        source: std::sync::Arc<String>,
+        previous: Option<(u32, &'a super::SyntaxAnalysis)>,
+    ) -> Option<SyntaxReplyReception<'a>> {
+        Self::prepare_reply(self, ticket, || source, previous)
+    }
+
+    fn prepare_reply<'a>(
+        reply: Self,
+        ticket: u32,
+        source: impl FnOnce() -> std::sync::Arc<String>,
+        previous: Option<(u32, &'a super::SyntaxAnalysis)>,
+    ) -> Option<SyntaxReplyReception<'a>> {
         if reply.version != SYNTAX_PROTOCOL_VERSION || reply.ticket != ticket {
             return None;
         }

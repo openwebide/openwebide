@@ -271,7 +271,14 @@ prepared only one token row per unit. Small rows now share the existing 64-recor
   Ordered coordinate validation and bracket/link/body proofs also yield between
   64-record batches, preserving complete-only publication and expanded limits
   ([receipt](editor-performance/cooperative-structure-receiver-browser.json)).
-  Complete JSON decoding remains synchronous;
+  A versioned core frame codec now separates source chunks, folds, structural
+  descriptors/records, dense rows and long span rows into bounded typed serde
+  payloads. The decoder enforces transaction order and limits and exposes a reply
+  only after End; decoded replies enter the shared proof pipeline directly
+  ([core receipt](editor-performance/syntax-frame-codec-core.json)).
+  This is preparatory work: migrate worker publication, transport routing and both
+  adapter contracts before claiming framed decoding is active. Complete JSON
+  decoding in the live transport remains synchronous;
   vector/string capacity growth and per-row immutable allocation/copying still
   require bounded work and production measurements.
   Capacity growth, JavaScript string conversion and complete receiver

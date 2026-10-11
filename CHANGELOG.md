@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Add the core typed syntax-reply frame codec and direct decoded-reply validation entry point. Frame ordering, version, transaction limits and complete-only assembly are checked; live worker transport integration remains in progress.
+
 - Resolve worker structural patches and validate ordered ranges, bracket links and embedded bodies in cancellable record batches. Share the copy budget across structural lists, preserve expanded limits and expose only complete source-bound analysis in both project modes.
 
 - Verify the indexed-scope and dense-worker publication checkpoint against all five hosted CI jobs, preserving the existing dense-row batch bound.

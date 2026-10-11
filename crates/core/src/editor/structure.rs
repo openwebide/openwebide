@@ -14,9 +14,13 @@ mod reception;
 mod reconciliation;
 #[cfg(feature = "editor-parser")]
 pub(super) use reception::StructureReception;
+#[cfg(feature = "editor-parser")]
+mod framing;
 pub(super) mod scanning;
 #[cfg(feature = "editor-parser")]
 mod serialization;
+#[cfg(feature = "editor-parser")]
+pub(super) use framing::{StructureFrame, StructureFrameDecoding, StructureFrames};
 #[cfg(feature = "editor-parser")]
 pub(super) use publication::StructurePublicationPreparation;
 #[cfg(feature = "editor-parser")]

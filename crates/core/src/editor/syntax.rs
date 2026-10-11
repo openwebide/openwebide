@@ -23,7 +23,10 @@ use super::{FoldRange, MAX_STRUCTURE_BYTES, SyntaxProvider, normalize_folds, syn
 use super::{Structure, SyntaxContextKind, structure::RegionKind};
 use crate::highlight::Language;
 use std::sync::Arc;
-pub use transfer::{MAX_ANALYSIS_MESSAGE_BYTES, SyntaxAnalysisData, SyntaxSource};
+pub use transfer::{
+    MAX_ANALYSIS_MESSAGE_BYTES, MAX_SYNTAX_FRAME_BYTES, SYNTAX_FRAME_VERSION, SyntaxAnalysisData,
+    SyntaxFrameProgress, SyntaxReplyFrameDecoding, SyntaxReplyFrames, SyntaxSource,
+};
 use tree_sitter::{InputEdit, Node, Parser, Point, Range, Tree};
 
 const MAX_PROGRESS_CHECKS: usize = 4_096;
