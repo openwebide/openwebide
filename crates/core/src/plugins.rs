@@ -1,6 +1,12 @@
 //! Host-only plugin preparation policy, shared by every bridge transport.
+pub mod completion;
 pub mod execution;
+pub mod icon;
+pub mod jobs;
 pub mod marketplace;
+pub mod preparation;
+pub mod records;
+pub mod runs;
 use std::{collections::BTreeMap, future::Future, pin::Pin, sync::LazyLock};
 
 use regex::Regex;
@@ -86,6 +92,8 @@ pub struct PluginManifest {
     #[serde(rename = "displayName")]
     pub display_name: String,
     pub description: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<crate::plugins::icon::PluginIcon>,
     pub license: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub readme: Option<String>,
@@ -104,12 +112,24 @@ pub struct PluginCompatibility {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PluginContributions {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub background: Option<PluginBackground>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub events: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tools: Vec<PluginTool>,
     #[serde(default, rename = "toolGroups", skip_serializing_if = "Vec::is_empty")]
     pub tool_groups: Vec<PluginToolGroup>,
     #[serde(default)]
     pub skills: Vec<PluginSkill>,
+}
+/// Periodic, project-scoped reconciliation through the ordinary durable event queue.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PluginBackground {
+    pub event: String,
+    #[serde(rename = "intervalSeconds")]
+    pub interval_seconds: i64,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -137,7 +157,23 @@ pub struct PluginTool {
 }
 
 impl PluginManifest {
+    /// Historical receipts remain readable, but tool-group switches no longer
+    /// activate application-owned feature behavior.
+    pub fn requires_update(&self) -> bool {
+        !self.contributions.tool_groups.is_empty()
+    }
+    pub fn validate_activation(&self) -> Result<(), PluginError> {
+        if self.requires_update() {
+            return Err(invalid(
+                "Update required: this plugin version uses retired built-in tool groups. Choose a release with executable SDK handlers.",
+            ));
+        }
+        Ok(())
+    }
     pub fn validate(&self) -> Result<(), PluginError> {
+        if let Some(icon) = &self.icon {
+            icon::render(icon)?;
+        }
         static VERSION: LazyLock<Regex> = LazyLock::new(|| {
             Regex::new(
             r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$"
@@ -188,6 +224,7 @@ impl PluginManifest {
         if (self.contributions.skills.is_empty()
             && self.contributions.tool_groups.is_empty()
             && self.contributions.tools.is_empty())
+            && self.contributions.events.is_empty()
             || self.contributions.skills.len() > crate::skills::MAX_SKILLS
             || self.contributions.tool_groups.len() > 4
             || self
@@ -204,6 +241,35 @@ impl PluginManifest {
             ));
         }
         let executable = self.executable.as_ref();
+        if self.contributions.events.len() > 100
+            || (!self.contributions.events.is_empty() && executable.is_none())
+            || self
+                .contributions
+                .events
+                .iter()
+                .any(|name| execution::validate_event(name, &serde_json::Value::Null).is_err())
+            || self
+                .contributions
+                .events
+                .iter()
+                .collect::<std::collections::BTreeSet<_>>()
+                .len()
+                != self.contributions.events.len()
+        {
+            return Err(invalid(
+                "Host events require a Rust executable and unique supported event names.",
+            ));
+        }
+        if let Some(background) = &self.contributions.background
+            && (!(60..=86400).contains(&background.interval_seconds)
+                || !self.contributions.events.contains(&background.event)
+                || !executable
+                    .is_some_and(|rust| rust.capabilities.iter().any(|name| name == "jobs")))
+        {
+            return Err(invalid(
+                "Background events require a declared event, jobs capability and an interval of 60–86,400 seconds.",
+            ));
+        }
         if executable.is_some() != (self.compatibility.plugin_api == 3)
             || (executable.is_none() && !self.contributions.tools.is_empty())
             || self.contributions.tools.len() > 100
@@ -221,9 +287,19 @@ impl PluginManifest {
                     .library
                     .bytes()
                     .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
-                || rust.capabilities.len() > 5
+                || rust.capabilities.len() > 8
                 || rust.capabilities.iter().any(|name| {
-                    !["http", "records", "jobs", "workspace", "clock"].contains(&name.as_str())
+                    ![
+                        "http",
+                        "records",
+                        "collections",
+                        "jobs",
+                        "runs",
+                        "workspace",
+                        "clock",
+                        "completion",
+                    ]
+                    .contains(&name.as_str())
                 })
                 || rust
                     .capabilities
@@ -231,7 +307,7 @@ impl PluginManifest {
                     .collect::<std::collections::BTreeSet<_>>()
                     .len()
                     != rust.capabilities.len()
-                || self.contributions.tools.is_empty()
+                || (self.contributions.tools.is_empty() && self.contributions.events.is_empty())
                 || !self.contributions.tool_groups.is_empty())
         {
             return Err(invalid(
@@ -274,6 +350,28 @@ pub struct PreparedPlugin {
     pub host_id: String,
 }
 impl PreparedPlugin {
+    /// Stable across versions, distinct across repositories claiming the same ID.
+    pub fn storage_namespace(&self) -> String {
+        let mut digest = Sha256::new();
+        for field in [
+            &self.source.repository,
+            &self.source.path,
+            &self.manifest.publisher,
+            &self.manifest.name,
+        ] {
+            digest.update(
+                u64::try_from(field.len())
+                    .expect("bounded field length")
+                    .to_be_bytes(),
+            );
+            digest.update(field.as_bytes());
+        }
+        digest
+            .finalize()
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect()
+    }
     pub fn validate(&self) -> Result<(), PluginError> {
         self.source.validate()?;
         self.manifest.validate()?;
@@ -299,6 +397,9 @@ pub struct PluginInstallation {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RecordPlugin {
+    /// Exact additions reviewed for this prepared version; never a blanket grant.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub approved_capabilities: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub update_policy: Option<PluginUpdatePolicy>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -400,6 +501,7 @@ pub async fn prepare_plugin(
     }
     let files = host.files(source).await?;
     let manifest = validate_files(&files)?;
+    manifest.validate_activation()?;
     let digest = package_digest(&files);
     host.publish(source, &digest, &files).await?;
     if manifest.executable.is_some() {
@@ -558,6 +660,7 @@ pub fn record_installation(
     request.prepared.validate()?;
     if let Some(package) = &request.package {
         package.validate()?;
+        request.prepared.manifest.validate_activation()?;
         if package.prepared != request.prepared {
             return Err(invalid(
                 "Plugin content does not match the installation receipt.",
@@ -573,6 +676,9 @@ pub fn record_installation(
         let same = existing.prepared.source == *source
             && existing.prepared.digest == request.prepared.digest
             && existing.prepared.manifest == request.prepared.manifest;
+        if !same {
+            request.prepared.manifest.validate_activation()?;
+        }
         if request
             .revision
             .is_some_and(|revision| revision != existing.revision)
@@ -598,6 +704,13 @@ pub fn record_installation(
                 "A pinned plugin version cannot change its contents.".into(),
             ));
         }
+        let added = added_capabilities(&existing.prepared, &request.prepared);
+        if !added.is_empty() && request.approved_capabilities != added {
+            return Err(PluginError::Conflict(format!(
+                "Review the plugin's new capabilities before updating: {}.",
+                added.join(", ")
+            )));
+        }
         if !same {
             existing.hosts.clear();
             existing.prepared = request.prepared.clone();
@@ -622,6 +735,7 @@ pub fn record_installation(
             existing.revision += 1;
         }
     } else {
+        request.prepared.manifest.validate_activation()?;
         if request.revision.is_some() {
             return Err(PluginError::Conflict(
                 "This plugin installation no longer exists.".into(),
@@ -720,6 +834,7 @@ pub mod testing {
                     name: receipt.manifest.name,
                     display_name: receipt.manifest.display_name,
                     description: receipt.manifest.description,
+                    icon: receipt.manifest.icon,
                     categories: vec!["skills".into()],
                     releases: vec![marketplace::CatalogRelease {
                         version: receipt.manifest.version,
@@ -748,6 +863,20 @@ mod tests {
     use super::*;
     use std::sync::Mutex;
     use testing::*;
+    #[test]
+    fn storage_namespace_survives_versions_but_separates_source_identity() {
+        let original = receipt();
+        let mut updated = original.clone();
+        updated.manifest.version = "0.2.0".into();
+        updated.digest = "c".repeat(64);
+        updated.source.commit = "c".repeat(40);
+        assert_eq!(original.storage_namespace(), updated.storage_namespace());
+        updated.source.repository = "https://example.com/another.git".into();
+        assert_ne!(original.storage_namespace(), updated.storage_namespace());
+        updated = original.clone();
+        updated.source.path = "another-plugin".into();
+        assert_ne!(original.storage_namespace(), updated.storage_namespace());
+    }
 
     struct Host {
         id: String,
@@ -785,6 +914,144 @@ mod tests {
         }
     }
 
+    #[test]
+    fn retired_tool_groups_remain_readable_but_cannot_be_prepared_or_reactivated() {
+        futures::executor::block_on(async {
+            let mut manifest = receipt().manifest;
+            manifest.compatibility.plugin_api = 2;
+            manifest.contributions.tool_groups = vec![PluginToolGroup::Memory];
+            manifest.validate().unwrap();
+            assert!(manifest.requires_update());
+            let mut files = review_files();
+            files
+                .iter_mut()
+                .find(|file| file.path == "plugin.json")
+                .unwrap()
+                .content = serde_json::to_vec(&manifest).unwrap();
+            for id in ["server", "paired"] {
+                let host = Host {
+                    id: id.into(),
+                    files: files.clone(),
+                    fail_fetch: false,
+                    fail_publish: false,
+                    published: Mutex::default(),
+                };
+                let error = prepare_plugin(&host, &source()).await.unwrap_err();
+                assert!(error.to_string().contains("Update required"));
+                assert!(host.published.lock().unwrap().is_empty());
+            }
+            let prepared = PreparedPlugin {
+                manifest,
+                digest: package_digest(&files),
+                ..receipt()
+            };
+            prepared.validate().unwrap();
+            let installation = PluginInstallation {
+                prepared: prepared.clone(),
+                revision: 3,
+                hosts: vec![prepared.host_id.clone()],
+                installed_at: 1,
+                default_enabled: true,
+                update_policy: PluginUpdatePolicy::Notify,
+            };
+            let request = RecordPlugin {
+                prepared: prepared.clone(),
+                revision: Some(3),
+                package: None,
+                update_policy: Some(PluginUpdatePolicy::Off),
+                approved_capabilities: Vec::new(),
+            };
+            let updated = record_installation(vec![installation], &request, 2).unwrap();
+            assert_eq!(updated[0].prepared, prepared);
+            assert_eq!(updated[0].update_policy, PluginUpdatePolicy::Off);
+            assert!(updated[0].default_enabled);
+            assert_eq!(updated[0].installed_at, 1);
+            assert!(
+                record_installation(
+                    Vec::new(),
+                    &RecordPlugin {
+                        revision: None,
+                        ..request.clone()
+                    },
+                    2
+                )
+                .is_err()
+            );
+            let package = PluginPackage {
+                prepared: prepared.clone(),
+                skills: import_plugin_skills(&files, &prepared.manifest).unwrap(),
+            };
+            let activation = RecordPlugin {
+                revision: Some(updated[0].revision),
+                package: Some(Box::new(package)),
+                ..request
+            };
+            assert!(record_installation(updated, &activation, 2).is_err());
+        });
+    }
+
+    #[test]
+    fn background_events_require_declared_jobs_authority_and_bounded_intervals() {
+        let mut manifest = testing::receipt().manifest;
+        manifest.compatibility.plugin_api = 3;
+        manifest.contributions.skills.clear();
+        manifest.contributions.events = vec!["repair".into()];
+        manifest.executable = Some(RustPlugin {
+            manifest: "Cargo.toml".into(),
+            library: "background".into(),
+            sdk_version: "0.1.0".into(),
+            capabilities: vec!["jobs".into()],
+        });
+        manifest.contributions.background = Some(PluginBackground {
+            event: "repair".into(),
+            interval_seconds: 60,
+        });
+        manifest.validate().unwrap();
+        for interval in [0, 59, 86401, i64::MAX] {
+            manifest
+                .contributions
+                .background
+                .as_mut()
+                .unwrap()
+                .interval_seconds = interval;
+            assert!(manifest.validate().is_err());
+        }
+        manifest
+            .contributions
+            .background
+            .as_mut()
+            .unwrap()
+            .interval_seconds = 86400;
+        manifest.validate().unwrap();
+        manifest.contributions.background.as_mut().unwrap().event = "undeclared".into();
+        assert!(manifest.validate().is_err());
+        manifest.contributions.background.as_mut().unwrap().event = "repair".into();
+        manifest.executable.as_mut().unwrap().capabilities.clear();
+        assert!(manifest.validate().is_err());
+    }
+    #[test]
+    fn executable_event_contributions_do_not_require_model_tools() {
+        let mut manifest = testing::receipt().manifest;
+        manifest.compatibility.plugin_api = 3;
+        manifest.contributions.skills.clear();
+        manifest.contributions.tools.clear();
+        manifest.contributions.events = vec!["job_due".into()];
+        manifest.executable = Some(RustPlugin {
+            manifest: "Cargo.toml".into(),
+            library: "event_plugin".into(),
+            sdk_version: "0.1.0".into(),
+            capabilities: vec!["records".into()],
+        });
+        manifest.validate().unwrap();
+        manifest.contributions.events.push("job_due".into());
+        assert!(manifest.validate().is_err());
+        manifest.contributions.events = vec!["../invalid".into()];
+        assert!(manifest.validate().is_err());
+        manifest.contributions.events = vec!["job_due".into()];
+        manifest.executable = None;
+        manifest.compatibility.plugin_api = 2;
+        assert!(manifest.validate().is_err());
+    }
     #[test]
     fn rust_plugin_contract_requires_pinned_sdk_lockfile_and_executable_tools() {
         let mut value = serde_json::to_value(receipt().manifest).unwrap();
@@ -942,6 +1209,7 @@ mod tests {
     #[test]
     fn receipts_merge_hosts_without_enabling_and_updates_require_revision() {
         let request = RecordPlugin {
+            approved_capabilities: Vec::new(),
             update_policy: None,
             package: None,
             prepared: receipt(),
@@ -970,6 +1238,7 @@ mod tests {
     #[test]
     fn same_commit_cannot_change_its_validated_contents() {
         let request = RecordPlugin {
+            approved_capabilities: Vec::new(),
             update_policy: None,
             package: None,
             prepared: receipt(),
@@ -1120,6 +1389,26 @@ pub enum PluginUpdatePolicy {
     Automatic,
     Off,
 }
+
+/// Runtime authority additions are compared after preparing the actual source,
+/// regardless of catalog claims or SemVer compatibility.
+pub fn added_capabilities(previous: &PreparedPlugin, next: &PreparedPlugin) -> Vec<String> {
+    let previous: std::collections::BTreeSet<_> = previous
+        .manifest
+        .executable
+        .iter()
+        .flat_map(|rust| rust.capabilities.iter())
+        .collect();
+    next.manifest
+        .executable
+        .iter()
+        .flat_map(|rust| rust.capabilities.iter())
+        .filter(|capability| !previous.contains(capability))
+        .cloned()
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .collect()
+}
 #[derive(Clone, Debug)]
 pub struct PluginUpdate {
     pub installation: PluginInstallation,
@@ -1197,7 +1486,7 @@ fn discover_updates(
         .collect()
 }
 
-/// Platform service groups available through host-installed plugins.
+/// Historical service switches retained for reading existing plugin receipts.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum PluginToolGroup {
@@ -1206,24 +1495,6 @@ pub enum PluginToolGroup {
     Scheduling,
     SkillAuthoring,
 }
-pub fn enabled_tool_groups(
-    bindings: &[ProjectPlugin],
-) -> std::collections::BTreeSet<PluginToolGroup> {
-    bindings
-        .iter()
-        .filter(|binding| binding.enabled)
-        .flat_map(|binding| {
-            binding
-                .prepared
-                .manifest
-                .contributions
-                .tool_groups
-                .iter()
-                .copied()
-        })
-        .collect()
-}
-
 pub fn default_bindings(installations: &[PluginInstallation]) -> Vec<ProjectPlugin> {
     installations
         .iter()
@@ -1241,6 +1512,76 @@ pub fn default_bindings(installations: &[PluginInstallation]) -> Vec<ProjectPlug
 mod update_tests {
     use super::*;
     use testing::{catalog, receipt};
+    #[test]
+    fn capability_expansion_requires_exact_review_even_for_compatible_updates() {
+        let mut prepared = receipt();
+        prepared.manifest.compatibility.plugin_api = 3;
+        prepared.manifest.contributions.skills.clear();
+        prepared.manifest.contributions.tools = vec![PluginTool {
+            name: "community_lookup".into(),
+            description: "Look up records".into(),
+            parameters: serde_json::json!({"type":"object"}),
+            requires_approval: false,
+        }];
+        prepared.manifest.executable = Some(RustPlugin {
+            manifest: "Cargo.toml".into(),
+            library: "lookup".into(),
+            sdk_version: "0.1.0".into(),
+            capabilities: vec!["records".into()],
+        });
+        let install = RecordPlugin {
+            approved_capabilities: Vec::new(),
+            update_policy: Some(PluginUpdatePolicy::Automatic),
+            package: None,
+            prepared: prepared.clone(),
+            revision: None,
+        };
+        let installed = record_installation(Vec::new(), &install, 1).unwrap();
+        let mut next = prepared.clone();
+        next.source.commit = "b".repeat(40);
+        next.digest = "b".repeat(64);
+        next.manifest.version = "0.1.1".into();
+        next.manifest.executable.as_mut().unwrap().capabilities =
+            vec!["http".into(), "records".into()];
+        assert_eq!(added_capabilities(&prepared, &next), vec!["http"]);
+        let mut update = RecordPlugin {
+            prepared: next.clone(),
+            revision: Some(installed[0].revision),
+            ..install.clone()
+        };
+        for approval in [
+            vec![],
+            vec!["records".into()],
+            vec!["http".into(), "jobs".into()],
+        ] {
+            update.approved_capabilities = approval;
+            assert!(matches!(
+                record_installation(installed.clone(), &update, 2),
+                Err(PluginError::Conflict(_))
+            ));
+        }
+        update.approved_capabilities = vec!["http".into()];
+        let installed = record_installation(installed, &update, 2).unwrap();
+        assert_eq!(installed[0].prepared, next);
+        assert_eq!(installed[0].update_policy, PluginUpdatePolicy::Automatic);
+        update.prepared.source.commit = "c".repeat(40);
+        update.prepared.digest = "c".repeat(64);
+        update.prepared.manifest.version = "0.1.2".into();
+        update
+            .prepared
+            .manifest
+            .executable
+            .as_mut()
+            .unwrap()
+            .capabilities = vec!["records".into()];
+        update.approved_capabilities.clear();
+        update.revision = Some(installed[0].revision);
+        assert!(added_capabilities(&next, &update.prepared).is_empty());
+        assert!(record_installation(installed.clone(), &update, 3).is_ok());
+        update.revision = Some(installed[0].revision - 1);
+        update.approved_capabilities = vec!["http".into()];
+        assert!(record_installation(installed, &update, 3).is_err());
+    }
     #[test]
     fn notify_is_default_and_updates_use_semver_source_and_compatible_auto_policy() {
         let mut cache = catalog();
@@ -1264,6 +1605,7 @@ mod update_tests {
         let mut entries = record_installation(
             Vec::new(),
             &RecordPlugin {
+                approved_capabilities: Vec::new(),
                 prepared: receipt(),
                 revision: None,
                 package: None,
@@ -1299,6 +1641,7 @@ mod update_tests {
     #[test]
     fn preferences_are_revision_checked_and_verified_content_cannot_mismatch_receipts() {
         let request = RecordPlugin {
+            approved_capabilities: Vec::new(),
             prepared: receipt(),
             revision: None,
             package: None,

@@ -102,17 +102,21 @@ impl ApiError {
     /// impl) so that `Result<T, ApiError>` handlers can convert it
     /// explicitly.
     pub fn into_response(self) -> JsonResp {
-        let message = if self.status == 500 {
-            "internal error"
-        } else {
-            &self.message
-        };
+        let message = self.public_message();
         let body = json!({ "error": message }).to_string();
         Response::builder()
             .status(self.status)
             .header("content-type", "application/json")
             .body(box_body(FullBody::new(Bytes::from(body))))
             .expect("valid status and headers")
+    }
+
+    pub fn public_message(&self) -> &str {
+        if self.status == 500 {
+            "internal error"
+        } else {
+            &self.message
+        }
     }
 }
 

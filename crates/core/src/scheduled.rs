@@ -124,6 +124,52 @@ pub enum TaskCommand {
         revision: i64,
     },
 }
+impl TaskCommand {
+    /// Translate UI intent into the public tool shape; source owns validation and behavior.
+    pub fn plugin_call(&self) -> Result<crate::ToolCall, String> {
+        let (name, arguments) = match self {
+            Self::List => ("schedule_list", serde_json::json!({})),
+            Self::Create { draft } => ("schedule_create", serde_json::json!({"draft":draft})),
+            Self::Update {
+                id,
+                revision,
+                draft,
+            } => (
+                "schedule_update",
+                serde_json::json!({"id":id,"revision":revision,"draft":draft}),
+            ),
+            Self::SetEnabled {
+                id,
+                revision,
+                enabled,
+            } => (
+                "schedule_set_enabled",
+                serde_json::json!({"id":id,"revision":revision,"enabled":enabled}),
+            ),
+            Self::Delete { id, revision } => (
+                "schedule_delete",
+                serde_json::json!({"id":id,"revision":revision}),
+            ),
+            Self::Monitor {
+                session_id,
+                command,
+            } => {
+                let mut arguments =
+                    serde_json::to_value(command).map_err(|error| error.to_string())?;
+                arguments
+                    .as_object_mut()
+                    .ok_or("Invalid monitor command")?
+                    .insert("session_id".into(), serde_json::json!(session_id));
+                ("monitor", arguments)
+            }
+        };
+        Ok(crate::ToolCall {
+            id: "tasks-ui".into(),
+            name: name.into(),
+            arguments: arguments.to_string(),
+        })
+    }
+}
 /// Ephemeral follow-up checks belong to one conversation, not the saved-task list.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "action", rename_all = "snake_case", deny_unknown_fields)]
@@ -195,6 +241,15 @@ pub struct ExecutionHost {
 pub struct HostBinding {
     pub host_id: String,
     pub path: String,
+}
+impl HostBinding {
+    /// Preserve a mapped workspace root as an explicit working directory.
+    pub fn new(host_id: String, path: String) -> Self {
+        Self {
+            host_id,
+            path: if path.is_empty() { ".".into() } else { path },
+        }
+    }
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ScheduledTask {
@@ -288,6 +343,62 @@ pub fn weekly_cron(time: &str, weekdays: &[u8]) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn execution_host_binding_preserves_root_and_nested_workspace_mappings() {
+        for (mapped, expected) in [("", "."), (".", "."), ("repos/project", "repos/project")] {
+            let binding = HostBinding::new("paired-host".into(), mapped.into());
+            assert_eq!(binding.host_id, "paired-host");
+            assert_eq!(binding.path, expected);
+            let restored: HostBinding =
+                serde_json::from_str(&serde_json::to_string(&binding).unwrap()).unwrap();
+            assert_eq!(restored, binding);
+        }
+    }
+    #[test]
+    fn task_ui_commands_preserve_public_sdk_shapes_without_feature_dispatch() {
+        let call = TaskCommand::SetEnabled {
+            id: 12,
+            revision: 3,
+            enabled: false,
+        }
+        .plugin_call()
+        .unwrap();
+        assert_eq!(call.name, "schedule_set_enabled");
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&call.arguments).unwrap(),
+            serde_json::json!({"id":12,"revision":3,"enabled":false})
+        );
+        let call = TaskCommand::Monitor {
+            session_id: 9,
+            command: MonitorCommand::Cancel {
+                id: 12,
+                revision: 4,
+            },
+        }
+        .plugin_call()
+        .unwrap();
+        assert_eq!(call.name, "monitor");
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&call.arguments).unwrap(),
+            serde_json::json!({"action":"cancel","id":12,"revision":4,"session_id":9})
+        );
+        let draft:TaskDraft = serde_json::from_value(serde_json::json!({"title":"Task","prompt":"Work","session_id":1,"schedule":{"kind":"once","at":1},"enabled":false})).unwrap();
+        for command in [
+            TaskCommand::Create {
+                draft: draft.clone(),
+            },
+            TaskCommand::Update {
+                id: 12,
+                revision: 4,
+                draft,
+            },
+        ] {
+            let call = command.plugin_call().unwrap();
+            let args: serde_json::Value = serde_json::from_str(&call.arguments).unwrap();
+            assert_eq!(args["draft"]["schedule"]["at"], 1);
+            assert!(args.get("action").is_none());
+        }
+    }
     #[test]
     fn host_result_detail_obeys_the_byte_limit_for_unicode() {
         let detail = format!("{}{}", "a".repeat(1023), "😀".repeat(100));

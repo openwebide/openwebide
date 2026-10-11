@@ -11,8 +11,24 @@ fn fixture(mode: WorkspaceMode, chat: bool) -> Mounted {
         state.seed_project();
         state.seed_connection();
         state.seed_session();
-        if chat {
-            state.seed_plugin_tools(openwebide_core::plugins::PluginToolGroup::Memory);
+        {
+            let prepared = state.seed_memory_plugin();
+            if mode == WorkspaceMode::Local {
+                state
+                    .settings
+                    .bridge_url
+                    .set("ws://bridge.test:3001".into());
+                *state.fake.bridge_credential.borrow_mut() =
+                    Some(("memory-test-token".into(), i64::MAX));
+                let mock = super::local_bridge::fake_bridge_http();
+                super::local_bridge::bridge_found(&mock, false);
+                super::local_bridge::set_bridge_plugin(
+                    &mock,
+                    &serde_json::to_string(&prepared).unwrap(),
+                );
+                let mock = send_wrapper::SendWrapper::new(mock);
+                on_cleanup(move || super::local_bridge::restore_bridge_http(&mock));
+            }
         }
         state
             .projects
@@ -61,13 +77,18 @@ async fn project_memory_ui_edits_toggles_preserves_conflicts_and_follows_project
             "Run cargo test 🦀",
         );
         mounted.click_text("Save memory");
-        settle().await;
+        wait_until("plugin action to finish", || {
+            !mounted.state.memories.busy.get_untracked()
+        })
+        .await;
         assert!(
             mounted
                 .root
                 .text_content()
                 .unwrap()
-                .contains("Run cargo test 🦀")
+                .contains("Run cargo test 🦀"),
+            "mode {mode:?}: {:?}",
+            mounted.state.memories.error.get_untracked()
         );
         mounted.click(".memory-entry .ui-disclosure-toggle");
         mounted.click_text("Edit");
@@ -87,7 +108,10 @@ async fn project_memory_ui_edits_toggles_preserves_conflicts_and_follows_project
             .entries[0]
             .revision += 1;
         mounted.click_text("Save memory");
-        settle().await;
+        wait_until("plugin action to finish", || {
+            !mounted.state.memories.busy.get_untracked()
+        })
+        .await;
         assert!(
             mounted
                 .element("[role=alert]")
@@ -131,8 +155,20 @@ async fn project_memory_ui_edits_toggles_preserves_conflicts_and_follows_project
         assert_eq!(mounted.state.fake.memories.borrow()[&1].entries.len(), 1);
         mounted.click(".memory-entry .ui-disclosure-toggle");
         mounted.click_text("Delete");
-        settle().await;
+        wait_until("plugin action to finish", || {
+            !mounted.state.memories.busy.get_untracked()
+        })
+        .await;
         assert!(mounted.state.fake.memories.borrow()[&1].entries.is_empty());
+        assert!(
+            mounted
+                .state
+                .fake
+                .memory_commands
+                .borrow()
+                .iter()
+                .all(|(_, command, _)| matches!(command, MemoryCommand::SetEnabled { .. }))
+        );
         mounted.state.projects.active_project.set(None);
         settle().await;
         assert!(
@@ -141,6 +177,48 @@ async fn project_memory_ui_edits_toggles_preserves_conflicts_and_follows_project
                 .query_selector(".project-memories")
                 .unwrap()
                 .is_none()
+        );
+    }
+}
+#[wasm_bindgen_test]
+async fn memory_ui_requires_an_enabled_executable_plugin_without_builtin_fallback() {
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let mounted = fixture(mode, false);
+        settle().await;
+        mounted
+            .state
+            .fake
+            .project_plugin_entries
+            .borrow_mut()
+            .get_mut(&1)
+            .unwrap()[0]
+            .enabled = false;
+        let actions = mounted.state.memory_actions;
+        actions.edit.run(None);
+        mounted.state.memories.content.set("Keep this fact".into());
+        actions.save.run(());
+        wait_until("plugin action to finish", || {
+            !mounted.state.memories.busy.get_untracked()
+        })
+        .await;
+        assert!(
+            mounted
+                .state
+                .memories
+                .error
+                .get_untracked()
+                .unwrap()
+                .contains("No enabled plugin")
+        );
+        assert!(mounted.state.fake.memory_commands.borrow().is_empty());
+        assert!(
+            mounted
+                .state
+                .fake
+                .memories
+                .borrow()
+                .get(&1)
+                .is_none_or(|data| data.entries.is_empty())
         );
     }
 }
@@ -343,6 +421,6 @@ async fn browser_memory_tools_persist_and_toggle_removes_context_and_tools_from_
                 |(_, command, session)| *session && matches!(command, MemoryCommand::Create { .. })
             )
             .count(),
-        1
+        0
     );
 }

@@ -194,6 +194,8 @@ pub fn agent_stream(
     user_message: ChatMessage,
     request: ChatRequest,
     plugin_skills: Vec<openwebide_core::ProjectSkill>,
+    plugin_executables: Vec<openwebide_core::plugins::PreparedPlugin>,
+    plugin_grants: std::collections::BTreeMap<String, String>,
     provider: Provider<SpinHttpClient>,
     base: Option<String>,
     environment: openwebide_core::RunEnvironment,
@@ -208,6 +210,8 @@ pub fn agent_stream(
         session: session_id,
         anchor: anchor_id,
         plugin_skills: Arc::new(plugin_skills),
+        plugin_executables: Arc::new(plugin_executables),
+        plugin_grants: Arc::new(plugin_grants),
         base,
         environment,
         manual: gate,
@@ -1198,11 +1202,13 @@ mod tests {
     }
 }
 
+#[cfg(test)]
 struct SpinMemoryPersistence {
     store: Arc<Store<AppDb>>,
     user: openwebide_core::UserId,
     session: i64,
 }
+#[cfg(test)]
 impl openwebide_agent::memory::MemoryStore for SpinMemoryPersistence {
     async fn execute(
         &self,
@@ -1231,62 +1237,14 @@ impl openwebide_agent::memory::MemoryStore for SpinMemoryPersistence {
     }
 }
 
-struct SpinScheduledPersistence {
-    store: Arc<Store<AppDb>>,
-    user: openwebide_core::UserId,
-    session: i64,
-}
-impl openwebide_agent::scheduled::TaskStore for SpinScheduledPersistence {
-    async fn execute(
-        &self,
-        command: &openwebide_core::scheduled::TaskCommand,
-    ) -> Result<Vec<openwebide_core::scheduled::ScheduledTask>, String> {
-        let project = self
-            .store
-            .get_session(self.session, self.user)
-            .await
-            .map_err(|error| error.to_string())?
-            .project_id;
-        let mut command = command.clone();
-        if let openwebide_core::scheduled::TaskCommand::Create { draft }
-        | openwebide_core::scheduled::TaskCommand::Update { draft, .. } = &mut command
-            && draft.session_target == openwebide_core::scheduled::SessionTarget::Existing
-            && draft.session_id == 0
-        {
-            draft.session_id = self.session;
-        }
-        let command = crate::api::naming::task(&self.store, self.user, project, command, true)
-            .await
-            .map_err(|error| error.to_string())?;
-        self.store
-            .scheduled_session_command(self.user, self.session, &command, crate::state::now())
-            .await
-            .map_err(|error| error.to_string())
-    }
-}
-type SpinMemoryExecutor = openwebide_agent::memory::MemoryTools<
-    openwebide_agent::todo::TodoTools<
-        openwebide_agent::vfs_executor::SessionToolExecutor<
-            VfsToolExecutor<
-                HostFsVfs,
-                crate::web::SpinWebClient,
-                crate::bridge_client::SpinBridgeClient,
-            >,
-            crate::web::SpinWebClient,
-            crate::bridge_client::SpinBridgeClient,
-        >,
-        TodoPersistence,
-    >,
-    SpinMemoryPersistence,
->;
-type SpinScheduledExecutor =
-    openwebide_agent::scheduled::ScheduledTools<SpinMemoryExecutor, SpinScheduledPersistence>;
+#[cfg(test)]
 struct SpinSkillPersistence {
     pinned: Arc<Vec<openwebide_core::ProjectSkill>>,
     store: Arc<Store<AppDb>>,
     user: openwebide_core::UserId,
     session: i64,
 }
+#[cfg(test)]
 impl openwebide_agent::skills::SkillStore for SpinSkillPersistence {
     async fn execute(
         &self,
@@ -1301,12 +1259,32 @@ impl openwebide_agent::skills::SkillStore for SpinSkillPersistence {
         .await
     }
 }
-type SpinBaseTaskExecutor =
-    openwebide_agent::skills::SkillTools<SpinScheduledExecutor, SpinSkillPersistence>;
-type SpinTaskGate =
-    openwebide_agent::policy::PolicyGate<PermissionPoller, crate::api::approvals::ApprovalAdapter>;
+type SpinBuiltinTaskExecutor = openwebide_agent::todo::TodoTools<
+    openwebide_agent::vfs_executor::SessionToolExecutor<
+        VfsToolExecutor<
+            HostFsVfs,
+            openwebide_agent::NoopWebClient,
+            crate::bridge_client::SpinBridgeClient,
+        >,
+        openwebide_agent::NoopWebClient,
+        crate::bridge_client::SpinBridgeClient,
+    >,
+    TodoPersistence,
+>;
+type SpinBaseTaskExecutor = openwebide_agent::plugins::execution::PluginTools<
+    openwebide_agent::skills::packages::PackageSkillTools<SpinBuiltinTaskExecutor>,
+    crate::api::plugins::PlanningHost<'static>,
+    openwebide_agent::plugins::execution::GrantedServices<
+        crate::api::plugins::PlanningHost<'static>,
+    >,
+>;
+type SpinTaskGate = openwebide_agent::plugins::execution::PluginGate<
+    openwebide_agent::policy::PolicyGate<PermissionPoller, crate::api::approvals::ApprovalAdapter>,
+>;
 #[derive(Clone)]
 struct SpinTaskFactory {
+    plugin_executables: Arc<Vec<openwebide_core::plugins::PreparedPlugin>>,
+    plugin_grants: Arc<std::collections::BTreeMap<String, String>>,
     plugin_skills: Arc<Vec<openwebide_core::ProjectSkill>>,
     store: Arc<Store<AppDb>>,
     user: openwebide_core::UserId,
@@ -1329,10 +1307,26 @@ impl SpinTaskFactory {
         )
     }
     fn base_executor(&self) -> SpinBaseTaskExecutor {
+        let host =
+            crate::api::plugins::PlanningHost::owned(self.store.clone(), self.user, self.session);
+        openwebide_agent::plugins::execution::PluginTools {
+            executor: openwebide_agent::skills::packages::PackageSkillTools::new(
+                self.builtin_executor(),
+                &self.plugin_skills,
+            ),
+            transport: host.clone(),
+            services: openwebide_agent::plugins::execution::GrantedServices {
+                host,
+                grants: self.plugin_grants.clone(),
+            },
+            plugins: self.plugin_executables.clone(),
+        }
+    }
+    fn builtin_executor(&self) -> SpinBuiltinTaskExecutor {
         let workspace = self.base.as_ref().map(|base| {
             VfsToolExecutor::with_web_and_bridge(
                 HostFsVfs::new(base.clone()),
-                crate::web::SpinWebClient,
+                openwebide_agent::NoopWebClient,
                 crate::bridge_client::SpinBridgeClient::for_project(
                     self.store.clone(),
                     base.clone(),
@@ -1342,7 +1336,7 @@ impl SpinTaskFactory {
         });
         let executor = openwebide_agent::vfs_executor::SessionToolExecutor::new(
             workspace,
-            crate::web::SpinWebClient,
+            openwebide_agent::NoopWebClient,
             self.environment.clone(),
         )
         .with_host(crate::bridge_client::SpinBridgeClient::for_host(
@@ -1350,47 +1344,28 @@ impl SpinTaskFactory {
             self.user.get(),
             self.session,
         ));
-        openwebide_agent::skills::SkillTools::new(
-            openwebide_agent::scheduled::ScheduledTools::new(
-                openwebide_agent::memory::MemoryTools::new(
-                    openwebide_agent::todo::TodoTools::new(
-                        executor,
-                        TodoPersistence {
-                            store: self.store.clone(),
-                            user: self.user,
-                            session: self.session,
-                            anchor: self.anchor,
-                        },
-                    ),
-                    SpinMemoryPersistence {
-                        store: self.store.clone(),
-                        user: self.user,
-                        session: self.session,
-                    },
-                ),
-                SpinScheduledPersistence {
-                    store: self.store.clone(),
-                    user: self.user,
-                    session: self.session,
-                },
-            ),
-            SpinSkillPersistence {
-                pinned: self.plugin_skills.clone(),
+        openwebide_agent::todo::TodoTools::new(
+            executor,
+            TodoPersistence {
                 store: self.store.clone(),
                 user: self.user,
                 session: self.session,
+                anchor: self.anchor,
             },
         )
     }
     fn gate(&self, request: &ChatRequest) -> SpinTaskGate {
-        openwebide_agent::policy::PolicyGate {
-            manual: self.manual.clone(),
-            source: crate::api::approvals::ApprovalAdapter {
-                store: self.store.clone(),
-                user: self.user,
-                session: self.session,
-                connection_id: request.connection_id,
-                model: request.model.clone(),
+        openwebide_agent::plugins::execution::PluginGate {
+            plugins: self.plugin_executables.clone(),
+            gate: openwebide_agent::policy::PolicyGate {
+                manual: self.manual.clone(),
+                source: crate::api::approvals::ApprovalAdapter {
+                    store: self.store.clone(),
+                    user: self.user,
+                    session: self.session,
+                    connection_id: request.connection_id,
+                    model: request.model.clone(),
+                },
             },
         }
     }
@@ -1432,6 +1407,96 @@ impl openwebide_agent::tasks::host::TaskFactory for SpinTaskFactory {
 mod memory_tests {
     use super::*;
     use openwebide_agent::ToolExecutor;
+    #[test]
+    fn spin_sdk_tools_never_fall_back_to_builtin_memory_when_the_host_is_unavailable() {
+        futures::executor::block_on(async {
+            for mode in [
+                openwebide_core::WorkspaceMode::Local,
+                openwebide_core::WorkspaceMode::Remote,
+            ] {
+                let store = Arc::new(Store::new(AppDb::open_in_memory().unwrap()));
+                store.migrate().await.unwrap();
+                let user = store
+                    .insert_user("owner", "hash", openwebide_core::UserRole::Admin, 0)
+                    .await
+                    .unwrap()
+                    .id;
+                let project = store
+                    .create_project(
+                        &openwebide_core::NewProject {
+                            name: "p".into(),
+                            mode,
+                            path: Some("p".into()),
+                        },
+                        user,
+                        0,
+                    )
+                    .await
+                    .unwrap()
+                    .id;
+                let session = store
+                    .create_session("s", None, None, Some(project), user, 0)
+                    .await
+                    .unwrap()
+                    .id;
+                let record = store
+                    .memory_command(
+                        user,
+                        project,
+                        &openwebide_core::MemoryCommand::Create {
+                            auto_title: false,
+                            title: "UI fact".into(),
+                            content: "BUILTIN MEMORY DATA".into(),
+                        },
+                        false,
+                        0,
+                    )
+                    .await
+                    .unwrap()
+                    .entries
+                    .remove(0);
+                let mut plugin = openwebide_core::plugins::testing::receipt();
+                plugin.manifest.compatibility.plugin_api = 3;
+                plugin.manifest.contributions.skills.clear();
+                plugin.manifest.contributions.tools = vec![openwebide_core::plugins::PluginTool {
+                    name: "memory_read".into(),
+                    description: "Read a memory through source code".into(),
+                    parameters: serde_json::json!({"type":"object"}),
+                    requires_approval: false,
+                }];
+                plugin.manifest.executable = Some(openwebide_core::plugins::RustPlugin {
+                    manifest: "Cargo.toml".into(),
+                    library: "memory".into(),
+                    sdk_version: "0.1.0".into(),
+                    capabilities: vec!["collections".into()],
+                });
+                let factory = SpinTaskFactory {
+                    plugin_grants: Arc::new(std::collections::BTreeMap::from([(
+                        plugin.digest.clone(),
+                        "a".repeat(32),
+                    )])),
+                    plugin_executables: Arc::new(vec![plugin]),
+                    plugin_skills: Arc::new(vec![]),
+                    store: store.clone(),
+                    user,
+                    session,
+                    anchor: 1,
+                    base: None,
+                    environment: Default::default(),
+                    manual: PermissionPoller::new(store, session, 0),
+                };
+                let call = ToolCall {
+                    id: "read".into(),
+                    name: "memory_read".into(),
+                    arguments: serde_json::json!({"id":record.id}).to_string(),
+                };
+                assert!(!factory.builtin_executor().execute(&call).await.ok);
+                let outcome = factory.executor().execute(&call).await;
+                assert!(!outcome.ok);
+                assert!(!outcome.content.contains("BUILTIN MEMORY DATA"));
+            }
+        });
+    }
     #[test]
     fn memory_tools_use_owned_session_adapter_and_propagate_disabled_conflicts_and_failures() {
         futures::executor::block_on(async {

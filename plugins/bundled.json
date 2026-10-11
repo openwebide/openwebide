@@ -1,5 +1,10 @@
 {
   "repository": "https://github.com/openwebide/plugins.git",
-  "commit": "56d73b8c349f3c34ca885816453eabfd7564e8d6",
-  "paths": ["plugins/web", "plugins/memory", "plugins/scheduling", "plugins/skill-authoring"]
+  "commit": "11c38f13460159dd2de294628adb6231aa6e6aef",
+  "paths": [
+    "plugins/web",
+    "plugins/memory",
+    "plugins/scheduling",
+    "plugins/skill-authoring"
+  ]
 }

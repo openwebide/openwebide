@@ -120,29 +120,39 @@ impl TaskActions {
                     command,
                     TaskCommand::Create { .. } | TaskCommand::Update { .. }
                 );
-                let binding = if saved
-                    && project
-                        .and_then(|id| projects.project(id))
-                        .is_some_and(|project| {
-                            project.mode == openwebide_core::WorkspaceMode::Local
-                        }) {
-                    match host.scheduled_binding(project.unwrap(), current).await {
-                        Ok(binding) => Some(binding),
-                        Err(error) => {
-                            if current() {
-                                state.busy.set(false);
-                                state.error.set(Some(error));
-                            }
-                            return;
+                let result = async {
+                    let backend = api.with_value(Clone::clone);
+                    if (saved || matches!(command, TaskCommand::SetEnabled { enabled: true, .. }))
+                        && let Some(binding) = host.background_binding(project, current).await?
+                    {
+                        if !current() {
+                            return Err("Plugin action context changed".into());
                         }
+                        backend
+                            .bind_background_host(
+                                project.ok_or("Project is no longer available")?,
+                                &binding,
+                            )
+                            .await?;
                     }
-                } else {
-                    None
-                };
-                let result = api
-                    .with_value(Clone::clone)
-                    .scheduled_command(project, &command, binding.as_ref())
-                    .await;
+                    let outcome = crate::plugin_actions::invoke_scoped_plugin_action(
+                        api,
+                        host,
+                        project,
+                        &command.plugin_call()?,
+                        true,
+                        current,
+                    )
+                    .await?;
+                    if !outcome.ok {
+                        return Err(outcome.content);
+                    }
+                    if !current() {
+                        return Err("Plugin action context changed".into());
+                    }
+                    backend.scheduled_tasks(project).await
+                }
+                .await;
                 if !current() {
                     return;
                 }
@@ -280,10 +290,6 @@ impl TaskActions {
                 schedule,
                 enabled: state.enabled.get_untracked(),
             };
-            if let Err(error) = draft.validate(openwebide_core::now_seconds(js_sys::Date::now())) {
-                state.error.set(Some(error));
-                return;
-            }
             command.run(state.edit_id.get_untracked().map_or_else(
                 || TaskCommand::Create {
                     draft: draft.clone(),

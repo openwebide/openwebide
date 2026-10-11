@@ -48,7 +48,7 @@ jobs:
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       - name: Clippy (native crates)
-        run: cargo clippy -p openwebide-plugin-sdk -p openwebide-plugin-runtime -p openwebide-core -p openwebide-llm -p openwebide-storage -p openwebide-agent -p openwebide-auth --features openwebide-core/editor-parser --all-targets -- -D warnings
+        run: cargo clippy -p openwebide-core -p openwebide-llm -p openwebide-storage -p openwebide-agent -p openwebide-auth -p openwebide-plugin-sdk -p openwebide-plugin-runtime -p openwebide-plugin-build --features openwebide-core/editor-parser --all-targets -- -D warnings
 
       - name: Clippy (backend, wasm32-wasip2)
         run: cargo clippy -p openwebide-backend --target wasm32-wasip2 -- -D warnings
@@ -64,8 +64,15 @@ jobs:
       - name: Clippy (bridge)
         run: cargo clippy -p openwebide-bridge --all-targets -- -D warnings
 
+      - name: Compile and verify offline executable defaults
+        env:
+          OPENWEBIDE_BUNDLED_ARTIFACTS: ${{ runner.temp }}/bundled-plugins.json
+        run: |
+          cargo run -p openwebide-plugin-runtime --bin openwebide-bundle-plugins --locked -- bridge/bundled/plugins.json "$OPENWEBIDE_BUNDLED_ARTIFACTS"
+          cargo test -p openwebide-bridge --features bundled-defaults bundled_tests
+
       - name: Tests (native)
-        run: cargo test -p openwebide-plugin-sdk -p openwebide-plugin-runtime -p openwebide-core -p openwebide-llm -p openwebide-storage -p openwebide-agent -p openwebide-auth -p openwebide-bridge -p openwebide-backend --features openwebide-core/editor-parser
+        run: cargo test -p openwebide-core -p openwebide-llm -p openwebide-storage -p openwebide-agent -p openwebide-auth -p openwebide-bridge -p openwebide-backend -p openwebide-plugin-sdk -p openwebide-plugin-runtime -p openwebide-plugin-build --features openwebide-core/editor-parser
 
       - name: Tests (editor storage workloads)
         run: cargo test -p openwebide-editor-bench --features candidates --release

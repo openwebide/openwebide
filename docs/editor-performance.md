@@ -6052,3 +6052,9 @@ unwrapped gain. Wrapped cold viewport/complete geometry still takes 1.20–1.28 
 unwrapped cold startup takes 1.10–1.20 s. This fixes the measured wrapped edit
 regression, but does not clear cold-startup, styled-boundary or overall memory
 gates. Current hosted CI is pending for this checkpoint.
+
+Checkpoint `b2e6b62` contains the verified editor changes above. Before its push,
+`origin/main` advanced with the Rust plugin implementation through `08d33b20`.
+The integration retains both changelog entries; the measurements and 194-test
+receipt describe the pre-integration editor artifact. The combined tree requires
+fresh browser and hosted CI verification, including its updated app and fixtures.

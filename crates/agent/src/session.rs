@@ -1,5 +1,7 @@
 //! Shared run planning and persisted event lifecycle. Hosts supply storage and transport primitives.
 mod chat;
+#[cfg(test)]
+mod plugin_context_tests;
 pub use chat::{ChatPersistence, chat_events};
 
 use crate::AgentEvent;
@@ -114,6 +116,122 @@ pub struct PlanInput {
 }
 
 pub fn plan(runtime: &ModelRuntime, input: PlanInput) -> openwebide_core::RunPlan {
+    plan_with_executables(runtime, input, Vec::new())
+}
+
+/// Prepare plugin tools before applying connection/model selection. Both host
+/// adapters use this entry point; only advertised plugins receive run authority.
+pub fn plan_with_plugins(
+    runtime: &ModelRuntime,
+    mut input: PlanInput,
+    bindings: &[openwebide_core::plugins::ProjectPlugin],
+) -> Result<openwebide_core::RunPlan, String> {
+    let plugins = crate::plugins::execution::configure_tools(&mut input.tools, bindings)?;
+    Ok(plan_with_executables(runtime, input, plugins))
+}
+
+/// Execute read-only plugin planning hooks before model/tool selection. Hosts
+/// supply only authority, transport and callback primitives.
+pub async fn plan_with_plugin_context<T, S, A, F>(
+    runtime: &ModelRuntime,
+    mut input: PlanInput,
+    bindings: &[openwebide_core::plugins::ProjectPlugin],
+    transport: &T,
+    host: S,
+    authorize: A,
+) -> Result<openwebide_core::RunPlan, String>
+where
+    T: crate::plugins::execution::PluginTransport,
+    S: crate::plugins::execution::GrantedHost,
+    A: FnOnce(Vec<openwebide_core::plugins::PreparedPlugin>) -> F,
+    F: Future<Output = Result<std::collections::BTreeMap<String, String>, String>>,
+{
+    use crate::plugins::execution::{GrantedServices, invoke_plugin};
+    use openwebide_core::plugins::execution::{ContextContribution, InvokePlugin, PluginOperation};
+    let plugins = crate::plugins::execution::configure_tools(&mut input.tools, bindings)?;
+    if plugins.is_empty() {
+        return Ok(plan_with_executables(runtime, input, plugins));
+    }
+    let grants = authorize(plugins.clone()).await?;
+    if plugins
+        .iter()
+        .any(|plugin| grants.get(&plugin.digest).is_none_or(String::is_empty))
+    {
+        return Err("Plugin planning authority is unavailable".into());
+    }
+    let services = GrantedServices {
+        host,
+        grants: std::sync::Arc::new(grants.clone()),
+    };
+    let mut budget = runtime
+        .settings
+        .context_limit
+        .unwrap_or(32768)
+        .saturating_mul(3)
+        / 10;
+    budget = budget.min(8192);
+    for plugin in &plugins {
+        let outcome = invoke_plugin(
+            transport,
+            &services,
+            InvokePlugin {
+                operation: PluginOperation::Context,
+                prepared: plugin.clone(),
+                name: String::new(),
+                arguments: serde_json::json!({"budget_bytes":budget.saturating_sub(2)}).to_string(),
+            },
+        )
+        .await
+        .map_err(|error| format!("{} context failed: {error}", plugin.manifest.display_name))?;
+        if !outcome.ok {
+            return Err(format!(
+                "{} context failed: {}",
+                plugin.manifest.display_name, outcome.summary
+            ));
+        }
+        let contribution: ContextContribution =
+            serde_json::from_str(&outcome.content).map_err(|error| error.to_string())?;
+        let mut disabled = std::collections::BTreeSet::new();
+        if contribution.disabled_tools.iter().any(|name| {
+            !disabled.insert(name)
+                || !plugin
+                    .manifest
+                    .contributions
+                    .tools
+                    .iter()
+                    .any(|tool| tool.name == *name)
+        }) {
+            return Err("Plugin context can disable only its own tools".into());
+        }
+        input.tools.retain(|tool| !disabled.contains(&tool.name));
+        if let Some(prompt) = contribution.prompt.filter(|prompt| !prompt.is_empty()) {
+            if prompt.len().saturating_add(2) > budget {
+                return Err("Plugin context exceeds its budget".into());
+            }
+            budget -= prompt.len() + 2;
+            input
+                .system_prompt
+                .get_or_insert_with(String::new)
+                .push_str(&format!("\n\n{prompt}"));
+        }
+    }
+    let mut plan = plan_with_executables(runtime, input, plugins);
+    plan.plugin_grants = grants
+        .into_iter()
+        .filter(|(digest, _)| {
+            plan.plugin_executables
+                .iter()
+                .any(|plugin| plugin.digest == *digest)
+        })
+        .collect();
+    Ok(plan)
+}
+
+fn plan_with_executables(
+    runtime: &ModelRuntime,
+    input: PlanInput,
+    mut plugins: Vec<openwebide_core::plugins::PreparedPlugin>,
+) -> openwebide_core::RunPlan {
     let projectless =
         input.environment.project_name.is_none() && input.environment.project_root.is_none();
     let tools = if projectless {
@@ -121,13 +239,31 @@ pub fn plan(runtime: &ModelRuntime, input: PlanInput) -> openwebide_core::RunPla
             .tools
             .into_iter()
             .filter(|tool| {
-                is_projectless_tool(&tool.name) || crate::scheduled::is_scheduled_tool(&tool.name)
+                is_projectless_tool(&tool.name)
+                    || crate::host_admin::is_host_tool(&tool.name)
+                    || crate::scheduled::is_scheduled_tool(&tool.name)
+                    || plugins.iter().any(|plugin| {
+                        plugin
+                            .manifest
+                            .contributions
+                            .tools
+                            .iter()
+                            .any(|declared| declared.name == tool.name)
+                    })
             })
             .collect()
     } else {
         input.tools
     };
     let request = request(runtime, input.system_prompt, input.messages, tools);
+    plugins.retain(|plugin| {
+        plugin
+            .manifest
+            .contributions
+            .tools
+            .iter()
+            .any(|declared| request.tools.iter().any(|tool| tool.name == declared.name))
+    });
     let kind = match input.environment.project_root.as_ref() {
         Some(root) if !request.tools.is_empty() => openwebide_core::RunKind::Agent {
             project_path: root.clone(),
@@ -136,6 +272,8 @@ pub fn plan(runtime: &ModelRuntime, input: PlanInput) -> openwebide_core::RunPla
         _ => openwebide_core::RunKind::Chat,
     };
     openwebide_core::RunPlan {
+        plugin_executables: plugins,
+        plugin_grants: Default::default(),
         plugin_skills: Vec::new(),
         connection: runtime.connection.clone(),
         transport: runtime.transport.clone(),
@@ -840,7 +978,13 @@ pub fn projectless_tools() -> Vec<ToolDefinition> {
 pub fn is_projectless_tool(name: &str) -> bool {
     matches!(
         name,
-        "search_web" | "fetch_web_page" | "host_info" | "todo_write" | "ask_user_question"
+        "search_web"
+            | "fetch_web_page"
+            | "host_info"
+            | "todo_write"
+            | "ask_user_question"
+            | "plugin_skill_list"
+            | "plugin_skill_read"
     )
 }
 
@@ -1364,6 +1508,94 @@ mod tests {
 mod tool_selection_contract {
     use super::*;
     use openwebide_core::{ToolSelection, WorkspaceMode};
+    #[test]
+    fn plugin_planning_applies_selection_and_model_settings_for_both_hosts() {
+        use openwebide_core::plugins::{PluginTool, ProjectPlugin, RustPlugin};
+        let mut prepared = openwebide_core::plugins::testing::receipt();
+        prepared.manifest.compatibility.plugin_api = 3;
+        prepared.manifest.contributions.skills.clear();
+        prepared.manifest.contributions.tools = vec![PluginTool {
+            name: "community_lookup".into(),
+            description: "Look up information".into(),
+            parameters: serde_json::json!({"type":"object"}),
+            requires_approval: false,
+        }];
+        prepared.manifest.executable = Some(RustPlugin {
+            manifest: "Cargo.toml".into(),
+            library: "lookup".into(),
+            sdk_version: "0.1.0".into(),
+            capabilities: vec!["http".into()],
+        });
+        let binding = ProjectPlugin {
+            id: 1,
+            revision: 1,
+            prepared,
+            enabled: true,
+        };
+        for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+            for projectless in [false, true] {
+                for enabled in [false, true] {
+                    for selection in [
+                        ToolSelection::All,
+                        ToolSelection::Selected(vec!["community_lookup".into()]),
+                        ToolSelection::ChatOnly,
+                    ] {
+                        let mut runtime: ModelRuntime = serde_json::from_value(serde_json::json!({"connection":{"id":1,"name":"test","kind":"ollama","base_url":"http://localhost","model":"test","enabled":true},"settings":{},"transport":{}})).unwrap();
+                        runtime.settings.tools = Some(enabled);
+                        runtime.connection.tool_selection = selection.clone();
+                        let plan = plan_with_plugins(
+                            &runtime,
+                            PlanInput {
+                                environment: openwebide_core::RunEnvironment {
+                                    project_name: (!projectless).then(|| "p".into()),
+                                    project_root: (!projectless).then(|| "p".into()),
+                                    mode: Some(mode),
+                                    ..Default::default()
+                                },
+                                system_prompt: None,
+                                messages: vec![],
+                                tools: vec![],
+                                content: "go".into(),
+                                editor: None,
+                            },
+                            std::slice::from_ref(&binding),
+                        )
+                        .unwrap();
+                        let advertised = enabled && selection.allows("community_lookup");
+                        assert_eq!(
+                            plan.request
+                                .tools
+                                .iter()
+                                .any(|tool| tool.name == "community_lookup"),
+                            advertised
+                        );
+                        assert_eq!(plan.plugin_executables.len(), usize::from(advertised));
+                        assert_eq!(
+                            matches!(plan.kind, openwebide_core::RunKind::Chat),
+                            !advertised
+                        );
+                        if advertised {
+                            let child = crate::tasks::child_request(
+                                &plan.request,
+                                &openwebide_core::NewAgentTask {
+                                    description: "child".into(),
+                                    prompt: "go".into(),
+                                },
+                                1,
+                            )
+                            .unwrap();
+                            assert!(
+                                child
+                                    .tools
+                                    .iter()
+                                    .any(|tool| tool.name == "community_lookup")
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
     #[test]
     fn both_hosts_filter_before_run_kind_context_and_children() {
         for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {

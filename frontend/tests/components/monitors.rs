@@ -1,4 +1,4 @@
-use super::support::{mount_test, settle};
+use super::support::{mount_test, settle, wait_until};
 use leptos::prelude::*;
 use openwebide_core::{
     WorkspaceMode,
@@ -32,6 +32,7 @@ async fn conversation_monitors_have_status_and_cancel_without_saved_tasks_in_bot
         let mounted = mount_test(move |state| {
             state.seed_project();
             state.seed_session();
+            state.seed_scheduling_plugin();
             state
                 .projects
                 .projects
@@ -51,9 +52,27 @@ async fn conversation_monitors_have_status_and_cancel_without_saved_tasks_in_bot
         );
         assert!(mounted.state.fake.scheduled.borrow().is_empty());
         mounted.click_text("Cancel future checks");
-        settle().await;
+        wait_until("monitor cancellation finishes", || {
+            !mounted.state.monitors.busy.get_untracked()
+        })
+        .await;
+        assert!(
+            mounted.state.fake.scheduled_commands.borrow().is_empty(),
+            "Monitor controls must not call legacy scheduling endpoints"
+        );
+        if mode == WorkspaceMode::Local {
+            // This UI fixture has no paired daemon: failure must retain the monitor, with no builtin fallback.
+            assert_eq!(mounted.state.monitors.entries.get_untracked().len(), 1);
+            assert!(mounted.state.monitors.error.get_untracked().is_some());
+            assert_eq!(mounted.state.fake.monitors.borrow()[&1].len(), 1);
+            continue;
+        }
         assert!(mounted.state.monitors.entries.get_untracked().is_empty());
         assert!(mounted.state.fake.monitors.borrow()[&1].is_empty());
+        assert_eq!(
+            mounted.state.fake.plugin_action_calls.borrow()[0].1.name,
+            "monitor"
+        );
         assert!(
             mounted
                 .root

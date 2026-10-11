@@ -22,6 +22,8 @@ struct FakeBackend {
     fail_completion: AtomicBool,
     fail_interim: AtomicBool,
     fail_plan: AtomicBool,
+    hold_plan: AtomicBool,
+    released_leases: Mutex<Vec<String>>,
     fail_queue: AtomicBool,
     queue_deliveries: Mutex<Vec<openwebide_core::QueuedPromptKey>>,
     approval_mode: Mutex<openwebide_core::ApprovalMode>,
@@ -29,6 +31,21 @@ struct FakeBackend {
 }
 
 impl RunBackend for FakeBackend {
+    async fn run_lease(
+        &self,
+        _user: i64,
+        _session: i64,
+        token: &str,
+        release: bool,
+        _since: i64,
+        _permission: Option<&str>,
+    ) -> Result<openwebide_core::scheduled::RunControl, String> {
+        if release {
+            self.released_leases.lock().unwrap().push(token.into());
+        }
+        Ok(Default::default())
+    }
+
     async fn save_tool_timing(
         &self,
         _user: i64,
@@ -123,6 +140,9 @@ impl RunBackend for FakeBackend {
     ) -> Result<RunPlan, String> {
         if self.fail_plan.load(Ordering::SeqCst) {
             return Err("plan failed".into());
+        }
+        if self.hold_plan.load(Ordering::SeqCst) {
+            futures::future::pending::<()>().await;
         }
         let mut plan = plan(
             self.kind.lock().unwrap().clone().unwrap_or(RunKind::Chat),
@@ -220,9 +240,17 @@ impl RunBackend for FakeBackend {
         _query: &str,
         _limit: usize,
     ) -> Result<Vec<WebSearchResult>, String> {
+        self.operations
+            .lock()
+            .unwrap()
+            .push("legacy web search".into());
         Ok(vec![])
     }
     async fn web_fetch(&self, _user_id: i64, _url: &str) -> Result<String, String> {
+        self.operations
+            .lock()
+            .unwrap()
+            .push("legacy web fetch".into());
         Ok(String::new())
     }
 }
@@ -234,10 +262,22 @@ fn plan(kind: RunKind, content: &str) -> RunPlan {
         RunKind::Chat => Vec::new(),
     };
     let mut tools = tools;
+    openwebide_agent::plugins::configure(
+        &mut tools,
+        &mut None,
+        &openwebide_agent::plugins::PluginContext {
+            bindings: &[],
+            memories: &Default::default(),
+            skills: &Default::default(),
+            context_limit: None,
+        },
+    );
     if !tools.is_empty() {
         tools.push(openwebide_agent::tasks::executor::definition());
     }
     RunPlan {
+        plugin_executables: Vec::new(),
+        plugin_grants: Default::default(),
         plugin_skills: Vec::new(),
         transport: Default::default(),
         environment: openwebide_core::RunEnvironment::default(),
@@ -396,7 +436,10 @@ async fn buffered_start_cancel_survives_delayed_start_task() {
                             |_| -> FakeProvider {
                                 panic!("cancelled start must not call the model")
                             },
-                            Arc::new(crate::exec::HostExecution),
+                            RunHost {
+                                execution: Arc::new(crate::exec::HostExecution),
+                                plugins: crate::plugins::transport::PluginExecutionHost::default(),
+                            },
                         )
                         .await
                         .unwrap()
@@ -1355,7 +1398,14 @@ async fn http_and_agent_run_use_configured_execution() {
             &config.workspace_root,
             backend,
             |_| provider,
-            config.execution.clone(),
+            RunHost {
+                execution: config.execution.clone(),
+                plugins: crate::plugins::transport::PluginExecutionHost {
+                    paired: false,
+                    installer: config.plugins.clone(),
+                    invocations: config.plugin_invocations.clone(),
+                },
+            },
         )
         .await
         .unwrap();
@@ -1515,7 +1565,7 @@ async fn both_server_run_paths_save_compaction_before_the_reply_and_keep_origina
 }
 
 #[tokio::test]
-async fn projectless_run_uses_web_tools_and_rejects_workspace_calls() {
+async fn projectless_run_requires_plugin_web_tools_and_rejects_workspace_calls() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(dir.path().join("private.txt"), "secret").unwrap();
     let backend = Arc::new(FakeBackend::default());
@@ -1583,8 +1633,8 @@ async fn projectless_run_uses_web_tools_and_rejects_workspace_calls() {
     let events = events(&run);
     for (name, expected) in [
         ("host_info", true),
-        ("search_web", true),
-        ("fetch_web_page", true),
+        ("search_web", false),
+        ("fetch_web_page", false),
         ("read_file", false),
         ("write_file", false),
         ("run_command", false),
@@ -1593,6 +1643,14 @@ async fn projectless_run_uses_web_tools_and_rejects_workspace_calls() {
         assert!(events.iter().any(|event| matches!(event, RunEvent::ToolResult { name:actual, ok, .. } if actual == name && *ok == expected)));
     }
     assert!(matches!(events.last(), Some(RunEvent::Done { .. })));
+    assert!(
+        !backend
+            .operations
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|operation| operation.starts_with("legacy web"))
+    );
     assert_eq!(
         std::fs::read_to_string(dir.path().join("private.txt")).unwrap(),
         "secret"
@@ -1812,5 +1870,189 @@ async fn browser_preferences_reach_bridge_run_context() {
         assert!(context.content.contains("en-GB"));
         assert!(context.content.contains("24-hour"));
         assert!(context.content.contains("UTC+05:45"));
+    }
+}
+
+#[tokio::test]
+async fn dropping_preparation_releases_the_reservation_and_owned_backend_lease() {
+    use std::future::Future;
+    let registry = RunRegistry::default();
+    let backend = Arc::new(FakeBackend::default());
+    backend.hold_plan.store(true, Ordering::SeqCst);
+    let dir = tempfile::tempdir().unwrap();
+    let principal = user(1);
+    let mut preparing = Box::pin(registry.start(
+        &principal,
+        start("preparing"),
+        dir.path(),
+        backend.clone(),
+        |_| FakeProvider::default(),
+    ));
+    let mut context = std::task::Context::from_waker(futures::task::noop_waker_ref());
+    assert!(preparing.as_mut().poll(&mut context).is_pending());
+    let run = registry.get(&principal, "preparing").unwrap();
+    assert!(registry.list(&principal, 1)[0].running);
+    drop(preparing);
+    assert!(matches!(
+        run.scheduled_status().0,
+        Some(RunEvent::Cancelled)
+    ));
+    assert!(!registry.list(&principal, 1)[0].running);
+    tokio::task::yield_now().await;
+    assert!(
+        backend
+            .released_leases
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|id| id == "preparing")
+    );
+    assert!(registry.reserve(&principal, &start("replacement")).is_ok());
+}
+
+mod plugin_run_delivery {
+    use super::*;
+    use openwebide_agent::plugins::runs::RunHost as DeliveryHost;
+    use openwebide_core::plugins::runs::*;
+
+    #[derive(Clone)]
+    struct Host {
+        registry: Arc<RunRegistry>,
+        backend: Arc<FakeBackend>,
+        root: Arc<tempfile::TempDir>,
+        reports: Arc<Mutex<Vec<RunReport>>>,
+    }
+    impl DeliveryHost for Host {
+        type Run = Arc<Run>;
+        async fn request(&self, command: RunServiceRequest) -> Result<RunServiceResponse, String> {
+            match command {
+                RunServiceRequest::Renew { .. } => {
+                    Ok(RunServiceResponse::Renewed(RunLeaseStatus {
+                        expires_at: 120,
+                        cancel_requested: false,
+                    }))
+                }
+                RunServiceRequest::Report { report, .. } => {
+                    report.validate()?;
+                    self.reports.lock().unwrap().push(report);
+                    Ok(RunServiceResponse::Reported)
+                }
+                _ => unreachable!(),
+            }
+        }
+        async fn start(&self, delivery: &RunDelivery) -> Result<Arc<Run>, (RunRejectCode, String)> {
+            self.registry
+                .start(
+                    &user(delivery.user_id),
+                    StartRun {
+                        run_id: delivery.run_id(),
+                        session_id: delivery.prompt.session_id,
+                        queued_prompt: Some(delivery.prompt.key()),
+                        content: delivery.prompt.content.clone(),
+                        host_path: delivery.host_path.clone(),
+                        model: None,
+                        editor_context: None,
+                        browser_preferences: None,
+                    },
+                    self.root.path(),
+                    self.backend.clone(),
+                    |_| FakeProvider {
+                        chat: Mutex::new(vec![Ok(StreamChunk::Delta("Build passed".into()))]),
+                        tools: Mutex::new(vec![vec![Ok(ToolStreamChunk::Response(
+                            ChatResponse::Text("Build passed".into()),
+                        ))]]),
+                        ..Default::default()
+                    },
+                )
+                .await
+        }
+        fn snapshot(&self, run: &Arc<Run>) -> (Option<RunEvent>, Option<openwebide_core::RunStep>) {
+            run.scheduled_status()
+        }
+        fn cancel(&self, delivery: &RunDelivery) {
+            if let Ok(run) = self
+                .registry
+                .get(&user(delivery.user_id), &delivery.run_id())
+            {
+                run.cancel.cancel();
+            }
+        }
+        fn now(&self) -> i64 {
+            0
+        }
+        async fn wait(&self, duration: Duration) {
+            if duration.as_secs() == 30 {
+                futures::future::pending::<()>().await;
+            } else {
+                tokio::time::sleep(Duration::from_millis(1)).await;
+            }
+        }
+        fn report(&self, _: &str) {}
+    }
+
+    #[tokio::test]
+    async fn raw_delivery_consumes_once_and_reports_persisted_runner_output_for_both_host_bindings()
+    {
+        for mode in ["server", "paired-host"] {
+            let host = Host {
+                registry: Arc::default(),
+                backend: Arc::default(),
+                root: Arc::new(tempfile::tempdir().unwrap()),
+                reports: Arc::default(),
+            };
+            let delivery = RunDelivery {
+                user_id: 1,
+                run: PluginRun {
+                    id: 5,
+                    revision: 2,
+                    key: "check:1".into(),
+                    session_id: Some(1),
+                    state: RunState::Leased,
+                    created_at: 0,
+                    detail: String::new(),
+                    message_id: None,
+                    permission_id: None,
+                },
+                prompt: openwebide_core::QueuedPrompt {
+                    scheduled_task: None,
+                    plugin_run: Some(5),
+                    id: 8,
+                    session_id: 1,
+                    revision: 2,
+                    content: "Check the build".into(),
+                    created_at: 0,
+                    guidance: false,
+                },
+                host_path: (mode != "server").then(|| host.root.path().to_string_lossy().into()),
+                lease: RunLease {
+                    host_id: mode.into(),
+                    id: 5,
+                    lease: "unique-nonce".into(),
+                },
+                lease_expires_at: 120,
+            };
+            tokio::time::timeout(
+                Duration::from_secs(2),
+                openwebide_agent::plugins::runs::deliver(&host, delivery.clone()),
+            )
+            .await
+            .unwrap()
+            .unwrap();
+            assert_eq!(
+                *host.backend.queue_deliveries.lock().unwrap(),
+                [delivery.prompt.key()]
+            );
+            let messages = host.backend.messages.lock().unwrap();
+            assert_eq!(messages.iter().filter(|m| m.role == Role::User).count(), 1);
+            assert!(
+                messages
+                    .iter()
+                    .any(|m| m.role == Role::Assistant && m.content == "Build passed")
+            );
+            let reports = host.reports.lock().unwrap();
+            let terminal = reports.last().unwrap();
+            assert_eq!(terminal.state, RunState::Completed);
+            assert_eq!(terminal.detail, "Build passed");
+        }
     }
 }

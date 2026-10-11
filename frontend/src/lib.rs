@@ -34,6 +34,10 @@ pub mod monitors;
 pub mod notifications;
 pub mod pending;
 #[cfg(target_arch = "wasm32")]
+pub mod plugin_actions;
+#[cfg(target_arch = "wasm32")]
+pub mod plugin_bridge;
+#[cfg(target_arch = "wasm32")]
 pub mod project_git;
 #[cfg(target_arch = "wasm32")]
 pub mod project_host;

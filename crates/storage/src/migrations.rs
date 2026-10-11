@@ -22,7 +22,7 @@ use crate::StorageError;
 use crate::db::Db;
 
 /// The highest schema version this build knows how to apply.
-pub const SCHEMA_VERSION: i64 = 45;
+pub const SCHEMA_VERSION: i64 = 56;
 
 pub const MIGRATIONS: &[&str] = &[
     "CREATE TABLE IF NOT EXISTS settings (
@@ -487,6 +487,198 @@ async fn apply_step<D: Db>(
         }
         45 => {
             db.execute("CREATE TABLE IF NOT EXISTS plugin_defaults (user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, repository TEXT NOT NULL, path TEXT NOT NULL, package TEXT NOT NULL, PRIMARY KEY(user_id,repository,path))", &[]).await?;
+            Ok(())
+        }
+        46 => {
+            db.execute("CREATE TABLE IF NOT EXISTS plugin_records (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, project_scope INTEGER NOT NULL, plugin TEXT NOT NULL, collection TEXT NOT NULL, value TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 1, updated_at INTEGER NOT NULL)", &[]).await?;
+            db.execute("CREATE INDEX IF NOT EXISTS plugin_records_scope ON plugin_records(user_id,project_scope,plugin,collection,id)", &[]).await?;
+            db.execute("CREATE TRIGGER IF NOT EXISTS delete_project_plugin_records AFTER DELETE ON projects BEGIN DELETE FROM plugin_records WHERE project_scope=OLD.id; END", &[]).await?;
+            Ok(())
+        }
+        47 => {
+            db.execute("CREATE TABLE IF NOT EXISTS plugin_execution_grants (token TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE, project_scope INTEGER NOT NULL, prepared TEXT NOT NULL, expires_at INTEGER NOT NULL)", &[]).await?;
+            db.execute("CREATE INDEX IF NOT EXISTS plugin_execution_grant_expiry ON plugin_execution_grants(expires_at)", &[]).await?;
+            Ok(())
+        }
+        48 => {
+            db.execute("DROP TRIGGER IF EXISTS delete_project_plugin_grants", &[])
+                .await?;
+            // This unreleased rebuild preserves action and job authority markers on replay.
+            db.execute("CREATE TABLE IF NOT EXISTS plugin_execution_grants_context (token TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, session_id INTEGER REFERENCES sessions(id) ON DELETE CASCADE, project_scope INTEGER NOT NULL, prepared TEXT NOT NULL, expires_at INTEGER NOT NULL, primary_model TEXT, user_action INTEGER NOT NULL DEFAULT 0, job_id INTEGER, job_lease TEXT)", &[]).await?;
+            let primary = db.execute("SELECT 1 FROM pragma_table_info('plugin_execution_grants') WHERE name='primary_model'", &[]).await?;
+            let action = db.execute("SELECT 1 FROM pragma_table_info('plugin_execution_grants') WHERE name='user_action'", &[]).await?;
+            let primary = if primary.rows.is_empty() {
+                "NULL"
+            } else {
+                "primary_model"
+            };
+            let action = if action.rows.is_empty() {
+                "0"
+            } else {
+                "user_action"
+            };
+            let job_id = db.execute("SELECT 1 FROM pragma_table_info('plugin_execution_grants') WHERE name='job_id'", &[]).await?;
+            let job_lease = db.execute("SELECT 1 FROM pragma_table_info('plugin_execution_grants') WHERE name='job_lease'", &[]).await?;
+            let job_id = if job_id.rows.is_empty() {
+                "NULL"
+            } else {
+                "job_id"
+            };
+            let job_lease = if job_lease.rows.is_empty() {
+                "NULL"
+            } else {
+                "job_lease"
+            };
+            db.execute(&format!("INSERT OR IGNORE INTO plugin_execution_grants_context SELECT token,user_id,session_id,project_scope,prepared,expires_at,{primary},{action},{job_id},{job_lease} FROM plugin_execution_grants"), &[]).await?;
+            db.execute("DROP TABLE plugin_execution_grants", &[])
+                .await?;
+            db.execute(
+                "ALTER TABLE plugin_execution_grants_context RENAME TO plugin_execution_grants",
+                &[],
+            )
+            .await?;
+            db.execute("CREATE INDEX IF NOT EXISTS plugin_execution_grant_expiry ON plugin_execution_grants(expires_at)", &[]).await?;
+            db.execute("CREATE TRIGGER IF NOT EXISTS delete_project_plugin_grants AFTER DELETE ON projects BEGIN DELETE FROM plugin_execution_grants WHERE project_scope=OLD.id; END", &[]).await?;
+            Ok(())
+        }
+        49 => {
+            let columns = db.execute("SELECT 1 FROM pragma_table_info('plugin_execution_grants') WHERE name='user_action'", &[]).await?;
+            if columns.rows.is_empty() {
+                db.execute("ALTER TABLE plugin_execution_grants ADD COLUMN user_action INTEGER NOT NULL DEFAULT 0", &[]).await?;
+            }
+            Ok(())
+        }
+        50 => {
+            db.execute("CREATE TABLE IF NOT EXISTS plugin_jobs (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, project_scope INTEGER NOT NULL, plugin TEXT NOT NULL, job_key TEXT NOT NULL, due_at INTEGER NOT NULL, expires_at INTEGER, event TEXT NOT NULL, payload TEXT NOT NULL, prepared TEXT NOT NULL, context TEXT NOT NULL, host_id TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'pending', revision INTEGER NOT NULL DEFAULT 1, attempts INTEGER NOT NULL DEFAULT 0, lease TEXT, lease_expires_at INTEGER, detail TEXT, UNIQUE(user_id,project_scope,plugin,job_key))", &[]).await?;
+            db.execute("CREATE INDEX IF NOT EXISTS plugin_jobs_due ON plugin_jobs(host_id,state,due_at,id)", &[]).await?;
+            db.execute("CREATE TRIGGER IF NOT EXISTS delete_project_plugin_jobs AFTER DELETE ON projects BEGIN DELETE FROM plugin_jobs WHERE project_scope=OLD.id; END", &[]).await?;
+            for (name, declaration) in [("job_id", "INTEGER"), ("job_lease", "TEXT")] {
+                let columns = db
+                    .execute(
+                        "SELECT 1 FROM pragma_table_info('plugin_execution_grants') WHERE name=?",
+                        &[crate::db::DbValue::Text(name.into())],
+                    )
+                    .await?;
+                if columns.rows.is_empty() {
+                    db.execute(
+                        &format!(
+                            "ALTER TABLE plugin_execution_grants ADD COLUMN {name} {declaration}"
+                        ),
+                        &[],
+                    )
+                    .await?;
+                }
+            }
+            Ok(())
+        }
+        51 => {
+            db.execute("CREATE TABLE IF NOT EXISTS plugin_runs (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, project_scope INTEGER NOT NULL, plugin TEXT NOT NULL, run_key TEXT NOT NULL, request TEXT NOT NULL, prepared TEXT NOT NULL, context TEXT NOT NULL, host_id TEXT NOT NULL, session_id INTEGER REFERENCES sessions(id) ON DELETE SET NULL, queued_id INTEGER REFERENCES queued_prompts(id) ON DELETE SET NULL, message_id INTEGER REFERENCES messages(id) ON DELETE SET NULL, model TEXT, state TEXT NOT NULL DEFAULT 'pending', revision INTEGER NOT NULL DEFAULT 1, created_at INTEGER NOT NULL, lease TEXT, lease_expires_at INTEGER, detail TEXT NOT NULL DEFAULT '', permission_id TEXT, UNIQUE(user_id,project_scope,plugin,run_key))", &[]).await?;
+            db.execute(
+                "CREATE INDEX IF NOT EXISTS plugin_runs_pending ON plugin_runs(host_id,state,id)",
+                &[],
+            )
+            .await?;
+            db.execute("CREATE TRIGGER IF NOT EXISTS delete_project_plugin_runs AFTER DELETE ON projects BEGIN DELETE FROM queued_prompts WHERE id IN (SELECT queued_id FROM plugin_runs WHERE project_scope=OLD.id); DELETE FROM plugin_runs WHERE project_scope=OLD.id; END", &[]).await?;
+            db.execute("CREATE TRIGGER IF NOT EXISTS delete_plugin_run_queue AFTER DELETE ON plugin_runs BEGIN DELETE FROM queued_prompts WHERE id=OLD.queued_id; END", &[]).await?;
+            db.execute("CREATE TRIGGER IF NOT EXISTS cancel_plugin_run_queue BEFORE DELETE ON queued_prompts BEGIN UPDATE plugin_runs SET state='cancelled',revision=revision+1,detail='Queued prompt removed' WHERE queued_id=OLD.id AND state IN ('pending','leased') AND message_id IS NULL; END", &[]).await?;
+            db.execute("CREATE TRIGGER IF NOT EXISTS cancel_session_plugin_runs BEFORE DELETE ON sessions BEGIN UPDATE plugin_runs SET state=CASE WHEN message_id IS NULL THEN 'cancelled' ELSE 'interrupted' END,revision=revision+1,detail='Conversation removed',permission_id=NULL WHERE session_id=OLD.id AND state IN ('pending','leased','running','blocked','cancelling'); END", &[]).await?;
+            Ok(())
+        }
+        52 => {
+            if db
+                .execute(
+                    "SELECT 1 FROM pragma_table_info('plugin_runs') WHERE name='completion_job'",
+                    &[],
+                )
+                .await?
+                .rows
+                .is_empty()
+            {
+                db.execute("ALTER TABLE plugin_runs ADD COLUMN completion_job INTEGER REFERENCES plugin_jobs(id) ON DELETE SET NULL", &[]).await?;
+            }
+            // Every terminal transition, including queue/session deletion and recovery,
+            // releases the reserved event in the same transaction as the run status.
+            db.execute("CREATE TRIGGER IF NOT EXISTS complete_plugin_run_event AFTER UPDATE OF state ON plugin_runs WHEN NEW.state IN ('completed','failed','cancelled','interrupted') AND OLD.state NOT IN ('completed','failed','cancelled','interrupted') BEGIN UPDATE plugin_jobs SET state='pending',revision=revision+1,payload=json_object('run',json_object('id',NEW.id,'revision',NEW.revision,'key',NEW.run_key,'session_id',NEW.session_id,'state',NEW.state,'created_at',NEW.created_at,'detail',NEW.detail,'message_id',NEW.message_id,'permission_id',NEW.permission_id),'data',json(payload)) WHERE id=NEW.completion_job AND state='waiting'; END", &[]).await?;
+            db.execute("CREATE TRIGGER IF NOT EXISTS delete_plugin_run_event AFTER DELETE ON plugin_runs BEGIN UPDATE plugin_jobs SET state='cancelled',revision=revision+1 WHERE id=OLD.completion_job AND state='waiting'; END", &[]).await?;
+            Ok(())
+        }
+        53 => {
+            if db
+                .execute(
+                    "SELECT 1 FROM pragma_table_info('plugin_jobs') WHERE name='scope'",
+                    &[],
+                )
+                .await?
+                .rows
+                .is_empty()
+            {
+                db.execute(
+                    "ALTER TABLE plugin_jobs ADD COLUMN scope TEXT NOT NULL DEFAULT 'origin'",
+                    &[],
+                )
+                .await?;
+            }
+            Ok(())
+        }
+        54 => {
+            for (column, sql) in [
+                (
+                    "plugin_owner",
+                    "ALTER TABLE scheduled_tasks ADD COLUMN plugin_owner TEXT",
+                ),
+                (
+                    "plugin_state",
+                    "ALTER TABLE scheduled_tasks ADD COLUMN plugin_state TEXT NOT NULL DEFAULT '{}'",
+                ),
+                (
+                    "plugin_updated_at",
+                    "ALTER TABLE scheduled_tasks ADD COLUMN plugin_updated_at INTEGER NOT NULL DEFAULT 0",
+                ),
+            ] {
+                if db.execute(&format!("SELECT 1 FROM pragma_table_info('scheduled_tasks') WHERE name='{column}'"), &[]).await?.rows.is_empty() {
+                    db.execute(sql,&[]).await?;
+                }
+            }
+            Ok(())
+        }
+        55 => {
+            db.execute("CREATE TABLE IF NOT EXISTS plugin_task_runs (id INTEGER PRIMARY KEY AUTOINCREMENT, task_id INTEGER NOT NULL REFERENCES scheduled_tasks(id) ON DELETE CASCADE, history_key TEXT NOT NULL, due_at INTEGER NOT NULL, run_id INTEGER, linked_run INTEGER REFERENCES plugin_runs(id) ON DELETE SET NULL, revision INTEGER NOT NULL DEFAULT 1, updated_at INTEGER NOT NULL, status TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '', session_id INTEGER REFERENCES sessions(id) ON DELETE SET NULL, message_id INTEGER REFERENCES messages(id) ON DELETE SET NULL, permission_id TEXT, UNIQUE(task_id,history_key))",&[]).await?;
+            // This is a data reference projection, not task dispatch or recurrence policy.
+            // Preserve the last raw status before its history entry is deleted.
+            for (name, event, reference) in [
+                (
+                    "project_plugin_task_run",
+                    "AFTER UPDATE OF state,detail,session_id,message_id,permission_id ON plugin_runs",
+                    "NEW",
+                ),
+                (
+                    "snapshot_deleted_plugin_task_run",
+                    "BEFORE DELETE ON plugin_runs",
+                    "OLD",
+                ),
+            ] {
+                db.execute(&format!("CREATE TRIGGER IF NOT EXISTS {name} {event} BEGIN UPDATE plugin_task_runs SET revision=revision+1,status=CASE {reference}.state WHEN 'pending' THEN 'queued' WHEN 'leased' THEN 'claimed' WHEN 'completed' THEN 'complete' ELSE {reference}.state END,detail={reference}.detail,session_id={reference}.session_id,message_id={reference}.message_id,permission_id={reference}.permission_id WHERE linked_run={reference}.id; END"),&[]).await?;
+            }
+            Ok(())
+        }
+        56 => {
+            db.execute("CREATE TABLE IF NOT EXISTS plugin_background (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE, project_scope INTEGER NOT NULL, plugin TEXT NOT NULL, host_id TEXT NOT NULL, prepared TEXT NOT NULL, next_due INTEGER NOT NULL, UNIQUE(user_id,project_scope,plugin))",&[]).await?;
+            db.execute("CREATE INDEX IF NOT EXISTS plugin_background_due ON plugin_background(host_id,next_due,id)",&[]).await?;
+            if db
+                .execute(
+                    "SELECT 1 FROM pragma_table_info('plugin_jobs') WHERE name='background_id'",
+                    &[],
+                )
+                .await?
+                .rows
+                .is_empty()
+            {
+                db.execute(
+                    "ALTER TABLE plugin_jobs ADD COLUMN background_id INTEGER",
+                    &[],
+                )
+                .await?;
+            }
             Ok(())
         }
         other => Err(StorageError::Db(format!("unknown migration step {other}"))),

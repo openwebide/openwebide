@@ -678,29 +678,24 @@ Extend agent and editor capabilities through versioned plugin packages that user
 and the agent can manage, without requiring changes to the app for each new
 capability.
 
-- Finish executable plugin integration on the public Rust SDK and versioned
-  WASM component contract. The SDK, host runtime and isolated source preparation
-  foundation are merged; invocation transport and authenticated general host
-  capability dispatch remain unfinished. Verify Linux/container build isolation
-  and provision compiler prerequisites before enabling executable installation
-  there; Windows source-build isolation remains unsupported. Publisher
-  CI builds artifacts; releases record artifact location, checksum, pinned source
-  and host API compatibility. Validate and execute components only on bridge hosts.
-  Provide an authoring example and reusable build/validation workflow for custom
-  marketplaces.
-- Replace transitional first-party tool-group feature switches with plugin-owned
-  implementations, starting with Web, then Memory, Scheduling and Skill Authoring.
-  Require the same public SDK, interfaces and privileges as community plugins:
-  no first-party identity dispatch, built-in feature proxy or fallback. Keep host
-  primitives general and feature policy in plugin code. Verify local/remote
-  execution, cancellation, failures, disablement and updates before declaring
-  these behavior migrations complete.
-- Extend the existing skills and optional platform tool-group contributions with
-  arbitrary host tool handlers and MCP servers. Add versioned tool schemas,
-  runtime contracts, capability grants and dependency/configuration validation.
+- Finish manual PWA lifecycle checks on server and paired hosts: asynchronous
+  install/cancel and failure recovery, cold action caches, compiled-default
+  initialization, and install/run/update/disable/uninstall flows.
+- Complete remaining Scheduling browser checks for deletion and bounded monitor
+  lifecycle, retained legacy task adoption, pending-occurrence handoff, active
+  invocation
+  pinning and updates during streamed work, interrupted-run recovery, history
+  retention and full-quota journaling/recovery. These extend verified production
+  SDK flows through both host transports; retain active work and existing data.
+- Extend authenticated, run-pinned collection callbacks with further app data
+  and workspace primitives. Publish a registry release of the SDK, extending the
+  available pinned public Git SDK and verified custom-marketplace authoring flow.
+- Extend executable contributions with MCP servers and dependency/configuration
+  validation, using the existing versioned schemas and capability grants.
   Build on the MCP client and [database-backed project skills](agent-skills.md);
   keep discovery and context loading bounded through deferred tool loading.
-  Add context/run hooks when needed. Core workspace tools remain built in.
+  Add further run hooks when needed, building on the shared read-only SDK context
+  planner. Core workspace tools remain built in.
 - Add host-side update checks while all clients are closed, extending the existing
   Notify, Automatic compatible and Off policies. Persist check state and update
   availability, bound polling/retries, and surface results in the existing Plugins

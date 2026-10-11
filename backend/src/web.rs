@@ -1,7 +1,7 @@
 //! Web search and documentation fetching implementation for the Spin backend.
 //!
-//! Provides internet research capabilities to the agent via [`openwebide_agent::WebClient`],
-//! backed by Spin's WASI outbound HTTP capability (`wasi:http`).
+//! Retains web research HTTP endpoints backed by Spin WASI outbound HTTP.
+//! Agent web tools execute through installed SDK plugins.
 //!
 //! Combines multi-source search providers (DuckDuckGo Instant Answer, StackOverflow,
 //! Crates.io, GitHub, Wikipedia) with proper User-Agent headers, redirect following,
@@ -9,35 +9,13 @@
 //! without requiring paid API keys or triggering bot blockers.
 
 use crate::url::url_encode;
-use std::future::Future;
 
 use bytes::{Buf, Bytes};
 use http_body_util::BodyExt;
-use openwebide_agent::WebClient;
 use openwebide_core::{WebSearchResult, html_to_markdown};
 use spin_sdk::http::{self, FullBody, Request, Response, Uri, box_body};
 
 const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 OpenWebIDE/0.1 (https://github.com/openwebide/openwebide)";
-
-/// Outbound web client backed by Spin's HTTP handler.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct SpinWebClient;
-
-impl WebClient for SpinWebClient {
-    fn search(
-        &self,
-        query: &str,
-        limit: usize,
-    ) -> impl Future<Output = Result<Vec<WebSearchResult>, String>> + Send {
-        let query = query.to_string();
-        async move { search_web_internal(&query, limit).await }
-    }
-
-    fn fetch_page(&self, url: &str) -> impl Future<Output = Result<String, String>> + Send {
-        let url = url.to_string();
-        async move { fetch_page_internal(&url).await }
-    }
-}
 
 /// Validate that a URL target uses http/https scheme and is not a cloud metadata endpoint.
 ///
@@ -63,100 +41,9 @@ pub fn check_fetch_target(url: &str) -> Result<Uri, String> {
         .host()
         .ok_or_else(|| format!("invalid URL '{url}': missing host"))?;
 
-    let host = raw_host
-        .trim_end_matches('.')
-        .trim_start_matches('[')
-        .trim_end_matches(']')
-        .to_ascii_lowercase();
-
-    let is_metadata = if host == "metadata.google.internal" {
-        true
-    } else if let Some(ip) = normalize_host_to_ip(&host) {
-        match ip {
-            std::net::IpAddr::V4(v4) => v4 == std::net::Ipv4Addr::new(169, 254, 169, 254),
-            std::net::IpAddr::V6(v6) => {
-                v6 == std::net::Ipv6Addr::new(0xfd00, 0x0ec2, 0, 0, 0, 0, 0, 0x0254)
-                    || v6.to_ipv4_mapped() == Some(std::net::Ipv4Addr::new(169, 254, 169, 254))
-                    || v6.to_ipv4() == Some(std::net::Ipv4Addr::new(169, 254, 169, 254))
-            }
-        }
-    } else {
-        false
-    };
-
-    if is_metadata {
-        return Err(format!("refusing to fetch {host}: cloud metadata endpoint"));
-    }
+    openwebide_core::network::check_http_host(raw_host)?;
 
     Ok(uri)
-}
-
-/// Parse a single numbers-and-dots octet in decimal, `0x`-prefixed hex, or leading-zero octal.
-fn parse_inet_aton_part(part: &str) -> Option<u32> {
-    if let Some(hex) = part.strip_prefix("0x").or_else(|| part.strip_prefix("0X")) {
-        if hex.is_empty() {
-            return None;
-        }
-        return u32::from_str_radix(hex, 16).ok();
-    }
-    if part.len() > 1 && part.starts_with('0') {
-        return u32::from_str_radix(part, 8).ok();
-    }
-    part.parse::<u32>().ok()
-}
-
-/// Parse a numbers-and-dots host (1-4 dot-separated parts, each decimal/hex/octal) into an
-/// `Ipv4Addr` following the classic BSD `inet_aton` combination rules.
-fn parse_inet_aton(host: &str) -> Option<std::net::Ipv4Addr> {
-    if host.is_empty() {
-        return None;
-    }
-    let parts: Vec<&str> = host.split('.').collect();
-    if parts.is_empty() || parts.len() > 4 || parts.iter().any(|p| p.is_empty()) {
-        return None;
-    }
-
-    let values: Vec<u32> = parts
-        .iter()
-        .map(|p| parse_inet_aton_part(p))
-        .collect::<Option<_>>()?;
-
-    let addr: u32 = match values.as_slice() {
-        [a] => *a,
-        [a, b] => {
-            if *a > 0xff || *b > 0x00ff_ffff {
-                return None;
-            }
-            (*a << 24) | *b
-        }
-        [a, b, c] => {
-            if *a > 0xff || *b > 0xff || *c > 0xffff {
-                return None;
-            }
-            (*a << 24) | (*b << 16) | *c
-        }
-        [a, b, c, d] => {
-            if *a > 0xff || *b > 0xff || *c > 0xff || *d > 0xff {
-                return None;
-            }
-            (*a << 24) | (*b << 16) | (*c << 8) | *d
-        }
-        _ => return None,
-    };
-
-    Some(std::net::Ipv4Addr::from(addr))
-}
-
-/// Normalize a host string to a canonical [`std::net::IpAddr`] if it represents a numeric IP,
-/// covering standard dotted-decimal/IPv6 forms as well as alternate numeric encodings
-/// (decimal dword, hex, octal, and short "numbers-and-dots" forms) that a resolver or the OS
-/// network stack would still resolve to the same address. Returns `None` for non-numeric
-/// hostnames.
-fn normalize_host_to_ip(host: &str) -> Option<std::net::IpAddr> {
-    if let Ok(ip) = host.parse::<std::net::IpAddr>() {
-        return Some(ip);
-    }
-    parse_inet_aton(host).map(std::net::IpAddr::V4)
 }
 
 /// Resolve a target redirect `Location` against a base `Uri` according to RFC 3986 §5.2.

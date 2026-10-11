@@ -23,6 +23,40 @@ pub(crate) async fn list(
         &state.store.scheduled_tasks(user.id, project, now()).await?,
     ))
 }
+pub(crate) async fn monitors(
+    state: &AppState,
+    path: &str,
+    user: AuthedUser,
+) -> Result<JsonResp, ApiError> {
+    Ok(json_response(
+        200,
+        &state
+            .store
+            .scheduled_monitors(user.id, session_id(path)?, now())
+            .await?,
+    ))
+}
+pub(crate) async fn bind_host(
+    req: Request,
+    state: &AppState,
+    path: &str,
+    user: AuthedUser,
+) -> Result<JsonResp, ApiError> {
+    let binding: HostBinding = parse_json(read_body(req, 8192).await?)?;
+    state
+        .store
+        .bind_background_host(
+            user.id,
+            path_id(
+                path.strip_suffix("/execution-host")
+                    .ok_or_else(|| ApiError::bad_request("Invalid execution host path"))?,
+                "/api/projects",
+            )?,
+            &binding,
+        )
+        .await?;
+    Ok(json_response(200, &json!({"ok":true})))
+}
 pub(crate) async fn command(
     req: Request,
     state: &AppState,

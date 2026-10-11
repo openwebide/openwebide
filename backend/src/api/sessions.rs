@@ -396,15 +396,31 @@ pub(super) async fn build_run_plan(
     session_id: i64,
     send: SendMessageBody,
 ) -> Result<RunPlan, ApiError> {
+    let host = super::plugins::PlanningHost::new(state, user_id, session_id);
+    build_run_plan_with_plugin_transport(state, user_id, session_id, send, &host).await
+}
+
+pub(super) async fn build_run_plan_with_plugin_transport<T>(
+    state: &AppState,
+    user_id: UserId,
+    session_id: i64,
+    send: SendMessageBody,
+    transport: &T,
+) -> Result<RunPlan, ApiError>
+where
+    T: openwebide_agent::plugins::execution::PluginTransport,
+{
     state.store.ensure_not_rewinding(session_id).await?;
     let session = state.store.get_session(session_id, user_id).await?;
     let task_model = match send.queued_prompt {
-        Some(key) => {
-            state
+        Some(key) => state
+            .store
+            .scheduled_prompt_model(user_id, session_id, key)
+            .await?
+            .or(state
                 .store
-                .scheduled_prompt_model(user_id, session_id, key)
-                .await?
-        }
+                .plugin_prompt_model(user_id, session_id, key)
+                .await?),
         None => None,
     };
     let connection_id = task_model
@@ -475,6 +491,18 @@ pub(super) async fn build_run_plan(
     };
     super::plugins::ensure_bundled_plugins(state, user_id).await;
     let skills = state.store.session_skills(user_id, session_id).await?;
+    if session.project_id.is_none()
+        && state
+            .store
+            .get_user(user_id)
+            .await?
+            .is_some_and(|user| user.role == openwebide_core::UserRole::Admin)
+        && state.store.host_connection().await?.is_configured()
+    {
+        input
+            .tools
+            .extend(openwebide_agent::host_admin::definitions());
+    }
     let plugin_bindings = if let Some(project) = session.project_id {
         state.store.project_plugins(user_id, project).await?
     } else {
@@ -492,29 +520,39 @@ pub(super) async fn build_run_plan(
             context_limit: runtime.settings.context_limit,
         },
     );
-    let mut plan = openwebide_agent::session::plan(&runtime, input);
+    let plugin_context = openwebide_core::plugins::execution::PluginExecutionContext {
+        user_action: false,
+        project_id: session.project_id,
+        session_id: Some(session_id),
+        primary: runtime
+            .connection
+            .model
+            .as_ref()
+            .filter(|model| !model.trim().is_empty())
+            .map(|model| openwebide_core::ModelSelection {
+                server_id: runtime.connection.id,
+                model: model.clone(),
+            }),
+    };
+    let plugin_host = super::plugins::PlanningHost::new(state, user_id, session_id);
+    let plan = openwebide_agent::session::plan_with_plugin_context(
+        &runtime,
+        input,
+        &plugin_bindings,
+        transport,
+        plugin_host.clone(),
+        |plugins| async move {
+            super::plugins::context_grants(state, user_id, &plugin_context, &plugins)
+                .await
+                .map_err(|error| {
+                    error.log_for_route("POST", "/api/sessions/run-plan");
+                    error.public_message().to_owned()
+                })
+        },
+    )
+    .await;
+    let mut plan = plan.map_err(ApiError::bad_request)?;
     plan.plugin_skills = openwebide_agent::skills::package_snapshot(&skills);
-    if session.project_id.is_none()
-        && state
-            .store
-            .get_user(user_id)
-            .await?
-            .is_some_and(|user| user.role == openwebide_core::UserRole::Admin)
-        && runtime.settings.tools != Some(false)
-        && state.store.host_connection().await?.is_configured()
-    {
-        plan.request
-            .tools
-            .extend(openwebide_agent::host_admin::definitions());
-        plan.connection
-            .tool_selection
-            .apply(&mut plan.request.tools);
-        plan.kind = if plan.request.tools.is_empty() {
-            RunKind::Chat
-        } else {
-            RunKind::WebChat
-        };
-    }
     plan.validate_prompt().map_err(ApiError::bad_request)?;
     Ok(plan)
 }
@@ -608,6 +646,8 @@ pub(crate) async fn send_session_message(
             user_message,
             request,
             plan.plugin_skills,
+            plan.plugin_executables,
+            plan.plugin_grants,
             provider,
             base,
             plan.environment,

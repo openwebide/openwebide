@@ -149,13 +149,15 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.98.1
-          targets: ${{ matrix.target }}
+          targets: ${{ matrix.target }}, wasm32-wasip2
       - uses: Swatinem/rust-cache@v2
       - name: Build and smoke-test native bridge
         env:
           RELEASE_TARGET: ${{ matrix.target }}
+          OPENWEBIDE_BUNDLED_ARTIFACTS: ${{ runner.temp }}/bundled-plugins.json
         run: |
-          cargo build -p openwebide-bridge --release --locked --target "$RELEASE_TARGET"
+          cargo run -p openwebide-plugin-runtime --bin openwebide-bundle-plugins --release --locked -- bridge/bundled/plugins.json "$OPENWEBIDE_BUNDLED_ARTIFACTS"
+          cargo build -p openwebide-bridge --features bundled-defaults --release --locked --target "$RELEASE_TARGET"
           "target/$RELEASE_TARGET/release/openwebide-bridge" --help
           python3 tools/release.py package-bridge --target "$RELEASE_TARGET" --binary "target/$RELEASE_TARGET/release/openwebide-bridge" --output "$RUNNER_TEMP/assets"
       - uses: actions/upload-artifact@v4

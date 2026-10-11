@@ -13,6 +13,14 @@ use serde_json::{Value, json};
 use crate::runs::http_client::ReqwestHttpClient;
 
 pub trait RunBackend: Send + Sync {
+    fn plugin_request(
+        &self,
+        _user: i64,
+        _session: i64,
+        _request: &openwebide_core::plugins::execution::PluginHostRequest,
+    ) -> impl Future<Output = Result<String, String>> + Send {
+        async { Err("Plugin host capability unavailable".into()) }
+    }
     fn host_journal(
         &self,
         _command: &openwebide_core::host_admin::HostJournalCommand,
@@ -253,6 +261,20 @@ impl BackendClient {
         Self { url, secret, http }
     }
 
+    pub async fn plugin_run_service(
+        &self,
+        request: &openwebide_core::plugins::runs::RunServiceRequest,
+    ) -> Result<openwebide_core::plugins::runs::RunServiceResponse, String> {
+        self.service_call("/plugins/runs/service", json!(request))
+            .await
+    }
+    pub async fn plugin_job_service(
+        &self,
+        request: &openwebide_core::plugins::jobs::JobServiceRequest,
+    ) -> Result<openwebide_core::plugins::jobs::JobServiceResponse, String> {
+        self.service_call("/plugins/jobs/service", json!(request))
+            .await
+    }
     pub async fn due_tasks(
         &self,
         host: &openwebide_core::scheduled::ExecutionHost,
@@ -365,6 +387,20 @@ pub fn encode_query(s: &str) -> String {
 }
 
 impl RunBackend for BackendClient {
+    async fn plugin_request(
+        &self,
+        user: i64,
+        session: i64,
+        request: &openwebide_core::plugins::execution::PluginHostRequest,
+    ) -> Result<String, String> {
+        self.call(
+            user,
+            "POST",
+            &format!("/sessions/{session}/plugin-host"),
+            json!(request),
+        )
+        .await
+    }
     async fn host_journal(
         &self,
         command: &openwebide_core::host_admin::HostJournalCommand,

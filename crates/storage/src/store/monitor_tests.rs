@@ -13,6 +13,97 @@ struct Fixture {
     sibling: i64,
     host: ExecutionHost,
 }
+#[test]
+fn monitor_reads_are_owned_scope_projections_without_expiry_side_effects() {
+    futures::executor::block_on(async {
+        for mode in [
+            None,
+            Some(WorkspaceMode::Local),
+            Some(WorkspaceMode::Remote),
+        ] {
+            let f = Fixture::new(mode).await;
+            f.authorize().await;
+            let original = f
+                .command(
+                    MonitorCommand::Start {
+                        prompt: "Check".into(),
+                        delay_seconds: 5,
+                        interval_seconds: 10,
+                        max_checks: 1,
+                    },
+                    0,
+                )
+                .await;
+            let monitor = original[0].clone();
+            assert_eq!(
+                f.store
+                    .scheduled_monitors(f.user, f.session, 100000)
+                    .await
+                    .unwrap()[0]
+                    .id,
+                monitor.id
+            );
+            assert_eq!(
+                f.store
+                    .scheduled_monitors(f.user, f.session, 100000)
+                    .await
+                    .unwrap()[0]
+                    .revision,
+                monitor.revision
+            );
+            assert!(
+                f.store
+                    .scheduled_monitors(f.user, f.sibling, 100000)
+                    .await
+                    .unwrap()
+                    .is_empty()
+            );
+            assert!(
+                f.store
+                    .scheduled_monitors(f.other, f.session, 100000)
+                    .await
+                    .is_err()
+            );
+            if mode == Some(WorkspaceMode::Local) {
+                let binding = HostBinding {
+                    host_id: "paired-new".into(),
+                    path: "/project".into(),
+                };
+                assert!(
+                    f.store
+                        .bind_background_host(f.other, f.project.unwrap(), &binding)
+                        .await
+                        .is_err()
+                );
+                f.store
+                    .bind_background_host(f.user, f.project.unwrap(), &binding)
+                    .await
+                    .unwrap();
+                assert!(
+                    f.store
+                        .bind_background_host(
+                            f.user,
+                            f.project.unwrap(),
+                            &HostBinding {
+                                path: String::new(),
+                                ..binding
+                            }
+                        )
+                        .await
+                        .is_err()
+                );
+                assert_eq!(
+                    f.store
+                        .scheduled_monitors(f.user, f.session, 100000)
+                        .await
+                        .unwrap()[0]
+                        .revision,
+                    monitor.revision
+                );
+            }
+        }
+    });
+}
 impl Fixture {
     async fn new(mode: Option<WorkspaceMode>) -> Self {
         let store = Store::new(RusqliteDb::open_in_memory().unwrap());

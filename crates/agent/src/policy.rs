@@ -50,6 +50,9 @@ pub const BRIDGE_TOOLS: &[&str] = &[
 /// Derived from [`ToolName::requires_approval`]; an unknown tool name
 /// requires approval (default-deny).
 pub fn requires_approval(call: &ToolCall) -> bool {
+    if crate::skills::packages::TOOL_NAMES.contains(&call.name.as_str()) {
+        return false;
+    }
     if crate::host_admin::is_host_tool(&call.name) {
         return call.name == "host_apply";
     }

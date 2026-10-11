@@ -14,6 +14,7 @@ path = "src/main.rs"
 [features]
 default = ["tls"]
 tls = ["dep:hyper-rustls"]
+bundled-defaults = []
 
 [dependencies]
 thiserror = { workspace = true }
@@ -44,6 +45,7 @@ openwebide-auth = { workspace = true }
 tempfile = "3"
 
 [dev-dependencies]
+openwebide-storage = { workspace = true }
 openwebide-core = { workspace = true, features = ["test-support"] }
 tokio = { version = "1", features = ["test-util"] }
 

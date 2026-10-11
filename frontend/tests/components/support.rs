@@ -77,10 +77,6 @@ impl TestState {
         provide_context(skill_actions);
         let memories = openwebide_frontend::state::memories::MemoriesState::new();
         provide_context(memories);
-        let memory_actions = openwebide_frontend::project_memory::ProjectMemoryActions::new(
-            api, memories, auth, projects, chat,
-        );
-        provide_context(memory_actions);
         let session_management =
             openwebide_frontend::state::sessions::SessionsState::new(chat, projects.active_project);
         provide_context(session_management);
@@ -91,6 +87,15 @@ impl TestState {
             settings,
             expect_context::<AuthState>(),
         ));
+        let memory_actions = openwebide_frontend::project_memory::ProjectMemoryActions::new(
+            api,
+            memories,
+            auth,
+            projects,
+            chat,
+            expect_context::<openwebide_frontend::project_host::ProjectHost>(),
+        );
+        provide_context(memory_actions);
         let plugins = openwebide_frontend::state::plugins::PluginsState::default();
         provide_context(plugins);
         provide_context(
@@ -151,19 +156,119 @@ impl TestState {
         self.projects.active_project.set(Some(1));
     }
 
-    pub fn seed_plugin_tools(&self, group: openwebide_core::plugins::PluginToolGroup) {
+    pub fn seed_skill_plugin(&self) -> openwebide_core::plugins::PreparedPlugin {
+        use openwebide_core::plugins::PluginTool;
+        let mut prepared = self.seed_memory_plugin();
+        prepared.manifest.contributions.tools = [
+            "skill_create",
+            "skill_update",
+            "skill_delete",
+            "skill_search",
+            "skill_list",
+            "skill_read",
+        ]
+        .into_iter()
+        .map(|name| PluginTool {
+            name: name.into(),
+            description: "SDK Skills fixture".into(),
+            parameters: serde_json::json!({"type":"object"}),
+            requires_approval: matches!(name, "skill_create" | "skill_update" | "skill_delete"),
+        })
+        .collect();
+        prepared.manifest.executable.as_mut().unwrap().library = "skills_fixture".into();
+        self.fake
+            .project_plugin_entries
+            .borrow_mut()
+            .get_mut(&1)
+            .unwrap()[0]
+            .prepared = prepared.clone();
+        prepared
+    }
+
+    pub fn seed_scheduling_plugin(&self) {
+        use openwebide_core::plugins::{
+            PluginInstallation, PluginTool, PluginUpdatePolicy, ProjectPlugin, RustPlugin,
+        };
         let mut prepared = openwebide_core::plugins::testing::receipt();
-        prepared.manifest.compatibility.plugin_api = 2;
-        prepared.manifest.contributions.tool_groups = vec![group];
+        prepared.manifest.compatibility.plugin_api = 3;
+        prepared.manifest.contributions.skills.clear();
+        prepared.manifest.contributions.tools = [
+            "schedule_create",
+            "schedule_update",
+            "schedule_set_enabled",
+            "schedule_delete",
+            "monitor",
+        ]
+        .into_iter()
+        .map(|name| PluginTool {
+            name: name.into(),
+            description: "Scheduling UI fixture".into(),
+            parameters: serde_json::json!({"type":"object"}),
+            requires_approval: true,
+        })
+        .collect();
+        prepared.manifest.executable = Some(RustPlugin {
+            manifest: "Cargo.toml".into(),
+            library: "tasks_fixture".into(),
+            sdk_version: "0.1.0".into(),
+            capabilities: vec!["collections".into()],
+        });
         self.fake.project_plugin_entries.borrow_mut().insert(
             1,
-            vec![openwebide_core::plugins::ProjectPlugin {
+            vec![ProjectPlugin {
                 id: 1,
                 revision: 1,
-                prepared,
                 enabled: true,
+                prepared: prepared.clone(),
             }],
         );
+        self.fake.plugins.borrow_mut().push(PluginInstallation {
+            prepared,
+            revision: 1,
+            installed_at: 0,
+            hosts: vec!["server".into()],
+            default_enabled: true,
+            update_policy: PluginUpdatePolicy::Notify,
+        });
+    }
+
+    pub fn seed_memory_plugin(&self) -> openwebide_core::plugins::PreparedPlugin {
+        use openwebide_core::plugins::{PluginTool, ProjectPlugin, RustPlugin};
+        let mut prepared = openwebide_core::plugins::testing::receipt();
+        prepared.manifest.compatibility.plugin_api = 3;
+        prepared.manifest.contributions.skills.clear();
+        prepared.manifest.contributions.tools = [
+            "memory_create",
+            "memory_update",
+            "memory_delete",
+            "memory_search",
+            "memory_list",
+            "memory_read",
+        ]
+        .into_iter()
+        .map(|name| PluginTool {
+            name: name.into(),
+            description: "Host memory fixture".into(),
+            parameters: serde_json::json!({"type":"object"}),
+            requires_approval: matches!(name, "memory_create" | "memory_update" | "memory_delete"),
+        })
+        .collect();
+        prepared.manifest.executable = Some(RustPlugin {
+            manifest: "Cargo.toml".into(),
+            library: "memory_fixture".into(),
+            sdk_version: "0.1.0".into(),
+            capabilities: vec!["collections".into()],
+        });
+        self.fake.project_plugin_entries.borrow_mut().insert(
+            1,
+            vec![ProjectPlugin {
+                id: 1,
+                revision: 1,
+                enabled: true,
+                prepared: prepared.clone(),
+            }],
+        );
+        prepared
     }
 
     pub fn seed_connection(&self) {

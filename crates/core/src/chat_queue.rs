@@ -16,6 +16,8 @@ pub struct QueuedPromptKey {
 pub struct QueuedPrompt {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scheduled_task: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plugin_run: Option<i64>,
     pub id: i64,
     pub session_id: i64,
     pub revision: i64,
@@ -27,6 +29,9 @@ pub struct QueuedPrompt {
 }
 
 impl QueuedPrompt {
+    pub fn is_host_delivered(&self) -> bool {
+        self.scheduled_task.is_some() || self.plugin_run.is_some()
+    }
     pub fn key(&self) -> QueuedPromptKey {
         QueuedPromptKey {
             id: self.id,

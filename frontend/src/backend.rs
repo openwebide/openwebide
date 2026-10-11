@@ -502,6 +502,19 @@ pub trait Backend {
     ) -> LocalBoxFuture<'_, Result<Vec<openwebide_core::scheduled::ScheduledTask>, String>> {
         Box::pin(async { Ok(Vec::new()) })
     }
+    fn scheduled_monitors(
+        &self,
+        _session: i64,
+    ) -> LocalBoxFuture<'_, Result<Vec<openwebide_core::scheduled::ScheduledTask>, String>> {
+        Box::pin(async { Ok(Vec::new()) })
+    }
+    fn bind_background_host<'a>(
+        &'a self,
+        _project: i64,
+        _binding: &'a openwebide_core::scheduled::HostBinding,
+    ) -> LocalBoxFuture<'a, Result<(), String>> {
+        Box::pin(async { Err("Project execution host unavailable".into()) })
+    }
     fn scheduled_command<'a>(
         &'a self,
         _project: Option<i64>,
@@ -580,6 +593,52 @@ pub trait Backend {
     ) -> LocalBoxFuture<'a, Result<openwebide_core::plugins::PluginPackage, String>> {
         Box::pin(async { Err("Plugin management unavailable".into()) })
     }
+    fn plugin_host_request<'a>(
+        &'a self,
+        _session: i64,
+        _request: &'a openwebide_core::plugins::execution::PluginHostRequest,
+    ) -> LocalBoxFuture<'a, Result<String, String>> {
+        Box::pin(async { Err("Plugin host capability unavailable".into()) })
+    }
+    fn plugin_execution_grants<'a>(
+        &'a self,
+        _session: i64,
+        _plugins: &'a [openwebide_core::plugins::PreparedPlugin],
+    ) -> LocalBoxFuture<'a, Result<std::collections::BTreeMap<String, String>, String>> {
+        Box::pin(async { Err("Plugin execution grants unavailable".into()) })
+    }
+    fn plugin_context_grants<'a>(
+        &'a self,
+        _request: &'a openwebide_core::plugins::execution::PluginGrantRequest,
+    ) -> LocalBoxFuture<'a, Result<std::collections::BTreeMap<String, String>, String>> {
+        Box::pin(async { Err("Plugin execution grants unavailable".into()) })
+    }
+    fn plugin_context_host_request<'a>(
+        &'a self,
+        _request: &'a openwebide_core::plugins::execution::PluginHostRequest,
+    ) -> LocalBoxFuture<'a, Result<String, String>> {
+        Box::pin(async { Err("Plugin host capability unavailable".into()) })
+    }
+    fn start_plugin_invocation<'a>(
+        &'a self,
+        _request: &'a openwebide_core::plugins::execution::PluginStartRequest,
+    ) -> LocalBoxFuture<'a, Result<openwebide_core::plugins::execution::PluginInvocation, String>>
+    {
+        Box::pin(async { Err("Plugin execution host unavailable".into()) })
+    }
+    fn continue_plugin_invocation<'a>(
+        &'a self,
+        _request: &'a openwebide_core::plugins::execution::ContinuePlugin,
+    ) -> LocalBoxFuture<'a, Result<openwebide_core::plugins::execution::PluginInvocation, String>>
+    {
+        Box::pin(async { Err("Plugin execution host unavailable".into()) })
+    }
+    fn cancel_plugin_invocation<'a>(
+        &'a self,
+        _id: &'a str,
+    ) -> LocalBoxFuture<'a, Result<(), String>> {
+        Box::pin(async { Err("Plugin execution host unavailable".into()) })
+    }
     fn plugin_installations(
         &self,
     ) -> LocalBoxFuture<'_, Result<Vec<openwebide_core::plugins::PluginInstallation>, String>> {
@@ -591,6 +650,14 @@ pub trait Backend {
         _source: &'a openwebide_core::plugins::PluginSource,
     ) -> LocalBoxFuture<'a, Result<openwebide_core::plugins::PreparedPlugin, String>> {
         Box::pin(async { Err("Plugin installation is unavailable".into()) })
+    }
+    fn plugin_preparation<'a>(
+        &'a self,
+        _project: Option<i64>,
+        _command: &'a openwebide_core::plugins::preparation::PreparationCommand,
+    ) -> LocalBoxFuture<'a, Result<openwebide_core::plugins::preparation::PluginPreparation, String>>
+    {
+        Box::pin(async { Err("Plugin preparation is unavailable".into()) })
     }
     fn record_plugin<'a>(
         &'a self,
@@ -1430,6 +1497,19 @@ impl Backend for BackendApi {
     ) -> LocalBoxFuture<'_, Result<Vec<openwebide_core::scheduled::ScheduledTask>, String>> {
         Box::pin(BackendApi::scheduled_tasks(self, project))
     }
+    fn scheduled_monitors(
+        &self,
+        session: i64,
+    ) -> LocalBoxFuture<'_, Result<Vec<openwebide_core::scheduled::ScheduledTask>, String>> {
+        Box::pin(BackendApi::scheduled_monitors(self, session))
+    }
+    fn bind_background_host<'a>(
+        &'a self,
+        project: i64,
+        binding: &'a openwebide_core::scheduled::HostBinding,
+    ) -> LocalBoxFuture<'a, Result<(), String>> {
+        Box::pin(BackendApi::bind_background_host(self, project, binding))
+    }
     fn scheduled_command<'a>(
         &'a self,
         project: Option<i64>,
@@ -1512,6 +1592,52 @@ impl Backend for BackendApi {
     ) -> LocalBoxFuture<'a, Result<openwebide_core::plugins::PluginPackage, String>> {
         Box::pin(BackendApi::plugin_package(self, project, expected))
     }
+    fn plugin_host_request<'a>(
+        &'a self,
+        session: i64,
+        request: &'a openwebide_core::plugins::execution::PluginHostRequest,
+    ) -> LocalBoxFuture<'a, Result<String, String>> {
+        Box::pin(BackendApi::plugin_host_request(self, session, request))
+    }
+    fn plugin_execution_grants<'a>(
+        &'a self,
+        session: i64,
+        plugins: &'a [openwebide_core::plugins::PreparedPlugin],
+    ) -> LocalBoxFuture<'a, Result<std::collections::BTreeMap<String, String>, String>> {
+        Box::pin(BackendApi::plugin_execution_grants(self, session, plugins))
+    }
+    fn plugin_context_grants<'a>(
+        &'a self,
+        request: &'a openwebide_core::plugins::execution::PluginGrantRequest,
+    ) -> LocalBoxFuture<'a, Result<std::collections::BTreeMap<String, String>, String>> {
+        Box::pin(BackendApi::plugin_context_grants(self, request))
+    }
+    fn plugin_context_host_request<'a>(
+        &'a self,
+        request: &'a openwebide_core::plugins::execution::PluginHostRequest,
+    ) -> LocalBoxFuture<'a, Result<String, String>> {
+        Box::pin(BackendApi::plugin_context_host_request(self, request))
+    }
+    fn start_plugin_invocation<'a>(
+        &'a self,
+        request: &'a openwebide_core::plugins::execution::PluginStartRequest,
+    ) -> LocalBoxFuture<'a, Result<openwebide_core::plugins::execution::PluginInvocation, String>>
+    {
+        Box::pin(BackendApi::start_plugin_invocation(self, request))
+    }
+    fn continue_plugin_invocation<'a>(
+        &'a self,
+        request: &'a openwebide_core::plugins::execution::ContinuePlugin,
+    ) -> LocalBoxFuture<'a, Result<openwebide_core::plugins::execution::PluginInvocation, String>>
+    {
+        Box::pin(BackendApi::continue_plugin_invocation(self, request))
+    }
+    fn cancel_plugin_invocation<'a>(
+        &'a self,
+        id: &'a str,
+    ) -> LocalBoxFuture<'a, Result<(), String>> {
+        Box::pin(BackendApi::cancel_plugin_invocation(self, id))
+    }
     fn plugin_installations(
         &self,
     ) -> LocalBoxFuture<'_, Result<Vec<openwebide_core::plugins::PluginInstallation>, String>> {
@@ -1523,6 +1649,14 @@ impl Backend for BackendApi {
         source: &'a openwebide_core::plugins::PluginSource,
     ) -> LocalBoxFuture<'a, Result<openwebide_core::plugins::PreparedPlugin, String>> {
         Box::pin(BackendApi::prepare_plugin(self, project, source))
+    }
+    fn plugin_preparation<'a>(
+        &'a self,
+        project: Option<i64>,
+        command: &'a openwebide_core::plugins::preparation::PreparationCommand,
+    ) -> LocalBoxFuture<'a, Result<openwebide_core::plugins::preparation::PluginPreparation, String>>
+    {
+        Box::pin(BackendApi::plugin_preparation(self, project, command))
     }
     fn record_plugin<'a>(
         &'a self,

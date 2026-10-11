@@ -1067,6 +1067,22 @@ impl BackendApi {
         ))
         .await
     }
+    pub async fn scheduled_monitors(
+        &self,
+        session: i64,
+    ) -> Result<Vec<openwebide_core::scheduled::ScheduledTask>, String> {
+        self.get(&format!("/sessions/{session}/monitors")).await
+    }
+    pub async fn bind_background_host(
+        &self,
+        project: i64,
+        binding: &openwebide_core::scheduled::HostBinding,
+    ) -> Result<(), String> {
+        let _: serde_json::Value = self
+            .post(&format!("/projects/{project}/execution-host"), binding)
+            .await?;
+        Ok(())
+    }
     pub async fn scheduled_command(
         &self,
         project: Option<i64>,
@@ -1180,6 +1196,52 @@ impl BackendApi {
         );
         self.post(&path, expected).await
     }
+    pub async fn plugin_execution_grants(
+        &self,
+        session: i64,
+        plugins: &[openwebide_core::plugins::PreparedPlugin],
+    ) -> Result<std::collections::BTreeMap<String, String>, String> {
+        self.post(&format!("/sessions/{session}/plugin-grants"), &plugins)
+            .await
+    }
+    pub async fn plugin_context_grants(
+        &self,
+        request: &openwebide_core::plugins::execution::PluginGrantRequest,
+    ) -> Result<std::collections::BTreeMap<String, String>, String> {
+        self.post("/plugins/execution-grants", request).await
+    }
+    pub async fn plugin_context_host_request(
+        &self,
+        request: &openwebide_core::plugins::execution::PluginHostRequest,
+    ) -> Result<String, String> {
+        self.post("/plugins/host", request).await
+    }
+    pub async fn start_plugin_invocation(
+        &self,
+        request: &openwebide_core::plugins::execution::PluginStartRequest,
+    ) -> Result<openwebide_core::plugins::execution::PluginInvocation, String> {
+        self.post("/plugins/invoke", request).await
+    }
+    pub async fn continue_plugin_invocation(
+        &self,
+        request: &openwebide_core::plugins::execution::ContinuePlugin,
+    ) -> Result<openwebide_core::plugins::execution::PluginInvocation, String> {
+        self.post("/plugins/continue", request).await
+    }
+    pub async fn cancel_plugin_invocation(&self, id: &str) -> Result<(), String> {
+        let _: serde_json::Value = self
+            .post("/plugins/cancel", &serde_json::json!({"id":id}))
+            .await?;
+        Ok(())
+    }
+    pub async fn plugin_host_request(
+        &self,
+        session: i64,
+        request: &openwebide_core::plugins::execution::PluginHostRequest,
+    ) -> Result<String, String> {
+        self.post(&format!("/sessions/{session}/plugin-host"), request)
+            .await
+    }
     pub async fn plugin_installations(
         &self,
     ) -> Result<Vec<openwebide_core::plugins::PluginInstallation>, String> {
@@ -1195,6 +1257,18 @@ impl BackendApi {
             |id| format!("/projects/{id}/plugins/prepare"),
         );
         self.post(&path, source).await
+    }
+    pub async fn plugin_preparation(
+        &self,
+        project: Option<i64>,
+        command: &openwebide_core::plugins::preparation::PreparationCommand,
+    ) -> Result<openwebide_core::plugins::preparation::PluginPreparation, String> {
+        command.validate().map_err(|error| error.to_string())?;
+        let path = project.map_or_else(
+            || "/plugins/preparation".into(),
+            |id| format!("/projects/{id}/plugins/preparation"),
+        );
+        self.request(Method::POST, &path, Some(command), true).await
     }
     pub async fn record_plugin(
         &self,

@@ -140,7 +140,7 @@ pub fn actions(
             return;
         }
         if let Some(prompt) = chat.queued_prompts.with(|entries| entries.first().cloned()) {
-            if prompt.scheduled_task.is_none() {
+            if !prompt.is_host_delivered() {
                 untrack(move || send.run(prompt));
             }
         } else {

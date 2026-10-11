@@ -56,10 +56,24 @@ type SettingsLoad = futures::channel::oneshot::Receiver<Result<BTreeMap<String, 
 
 #[derive(Default)]
 pub struct FakeBackend {
+    pub bridge_credential: RefCell<Option<(String, i64)>>,
     pub marketplaces: RefCell<openwebide_core::plugins::marketplace::MarketplaceSettings>,
     pub marketplace_results:
         RefCell<VecDeque<Deferred<openwebide_core::plugins::marketplace::MarketplaceRefresh>>>,
     pub plugin_packages: RefCell<VecDeque<Deferred<openwebide_core::plugins::PluginPackage>>>,
+    pub plugin_authorities: RefCell<
+        BTreeMap<
+            String,
+            (
+                openwebide_core::plugins::execution::PluginExecutionContext,
+                openwebide_core::plugins::PreparedPlugin,
+            ),
+        >,
+    >,
+    pub plugin_actor_contexts:
+        RefCell<BTreeMap<String, openwebide_core::plugins::execution::PluginExecutionContext>>,
+    pub plugin_action_calls: RefCell<Vec<(Option<i64>, openwebide_core::ToolCall)>>,
+    pub plugin_actors: RefCell<BTreeMap<String, openwebide_core::plugins::execution::InvokePlugin>>,
     pub plugin_commands: RefCell<Vec<(i64, openwebide_core::plugins::ProjectPluginCommand)>>,
     pub project_plugin_entries:
         RefCell<BTreeMap<i64, Vec<openwebide_core::plugins::ProjectPlugin>>>,
@@ -69,6 +83,14 @@ pub struct FakeBackend {
     pub plugin_loads:
         RefCell<VecDeque<Deferred<Vec<openwebide_core::plugins::PluginInstallation>>>>,
     pub plugin_preparations: RefCell<VecDeque<Deferred<openwebide_core::plugins::PreparedPlugin>>>,
+    pub plugin_progress:
+        RefCell<VecDeque<Deferred<openwebide_core::plugins::preparation::PluginPreparation>>>,
+    pub plugin_preparation_commands: RefCell<
+        Vec<(
+            Option<i64>,
+            openwebide_core::plugins::preparation::PreparationCommand,
+        )>,
+    >,
     pub plugin_requests: RefCell<Vec<(Option<i64>, openwebide_core::plugins::PluginSource)>>,
     pub plugin_records: RefCell<Vec<openwebide_core::plugins::RecordPlugin>>,
     pub questions: RefCell<Vec<openwebide_core::questions::AgentQuestion>>,
@@ -226,6 +248,170 @@ pub struct FakeBackend {
 }
 
 impl FakeBackend {
+    fn fixture_skill_records(
+        &self,
+        project: i64,
+        request: &openwebide_core::plugins::records::RecordRequest,
+    ) -> Result<String, String> {
+        use openwebide_core::plugins::records::RecordOperation;
+        let mut all = self.skills.borrow_mut();
+        let data = all.entry(project).or_default();
+        match &request.operation {
+            RecordOperation::Create { value } => {
+                let draft = serde_json::from_value(value["draft"].clone())
+                    .map_err(|error| error.to_string())?;
+                let id = data.entries.iter().map(|entry| entry.id).max().unwrap_or(0) + 1;
+                data.entries.insert(
+                    0,
+                    openwebide_core::ProjectSkill {
+                        plugin: None,
+                        id,
+                        revision: 1,
+                        updated_at: 0,
+                        draft,
+                    },
+                );
+            }
+            RecordOperation::Update {
+                id,
+                revision,
+                value,
+            } => {
+                let entry = data
+                    .entries
+                    .iter_mut()
+                    .find(|entry| entry.id == *id && entry.revision == *revision)
+                    .ok_or("Skill changed. Refresh before editing.")?;
+                entry.draft = serde_json::from_value(value["draft"].clone())
+                    .map_err(|error| error.to_string())?;
+                entry.revision += 1;
+            }
+            RecordOperation::Delete { id, revision } => {
+                let index = data
+                    .entries
+                    .iter()
+                    .position(|entry| entry.id == *id && entry.revision == *revision)
+                    .ok_or("Skill changed. Refresh before deleting.")?;
+                data.entries.remove(index);
+            }
+            _ => {}
+        }
+        let records: Vec<_> = data.entries.iter().map(|entry| serde_json::json!({"id":entry.id,"revision":entry.revision,"updated_at":entry.updated_at,"value":{"draft":entry.draft,"origin":entry.plugin}})).collect();
+        Ok(serde_json::json!({"enabled":data.enabled,"records":records,"next":null}).to_string())
+    }
+
+    fn fixture_tasks<'a>(
+        &'a self,
+        project: Option<i64>,
+        command: &'a openwebide_core::scheduled::TaskCommand,
+        _binding: Option<&'a openwebide_core::scheduled::HostBinding>,
+    ) -> LocalBoxFuture<'a, Result<Vec<openwebide_core::scheduled::ScheduledTask>, String>> {
+        Box::pin(async move {
+            use openwebide_core::scheduled::{ScheduledTask, TaskCommand};
+            {
+                let mut entries = self.scheduled.borrow_mut();
+                match command {
+                    TaskCommand::Monitor { .. } => {
+                        return Err("Monitor test adapter not configured".into());
+                    }
+                    TaskCommand::List => {}
+                    TaskCommand::Create { draft } => {
+                        draft.validate(openwebide_core::now_seconds(js_sys::Date::now()))?;
+                        let id = entries.iter().map(|task| task.id).max().unwrap_or(0) + 1;
+                        entries.push(ScheduledTask {
+                            id,
+                            revision: 1,
+                            project_id: project,
+                            draft: draft.clone(),
+                            next_run: draft
+                                .schedule
+                                .next_after(openwebide_core::now_seconds(js_sys::Date::now()))?,
+                            host_id: "server".into(),
+                            host_available: true,
+                            last_run: None,
+                        });
+                    }
+                    TaskCommand::Update {
+                        id,
+                        revision,
+                        draft,
+                    } => {
+                        let task = entries
+                            .iter_mut()
+                            .find(|task| {
+                                task.id == *id
+                                    && task.revision == *revision
+                                    && task.project_id == project
+                            })
+                            .ok_or("Task changed")?;
+                        task.draft = draft.clone();
+                        task.revision += 1;
+                    }
+                    TaskCommand::SetEnabled {
+                        id,
+                        revision,
+                        enabled,
+                    } => {
+                        let task = entries
+                            .iter_mut()
+                            .find(|task| {
+                                task.id == *id
+                                    && task.revision == *revision
+                                    && task.project_id == project
+                            })
+                            .ok_or("Task changed")?;
+                        task.draft.enabled = *enabled;
+                        task.revision += 1;
+                    }
+                    TaskCommand::Delete { id, revision } => {
+                        let pos = entries
+                            .iter()
+                            .position(|task| {
+                                task.id == *id
+                                    && task.revision == *revision
+                                    && task.project_id == project
+                            })
+                            .ok_or("Task changed")?;
+                        entries.remove(pos);
+                    }
+                }
+            }
+            self.scheduled_tasks(project).await
+        })
+    }
+    fn fixture_monitor<'a>(
+        &'a self,
+        session: i64,
+        command: &'a openwebide_core::scheduled::TaskCommand,
+    ) -> LocalBoxFuture<'a, Result<Vec<openwebide_core::scheduled::ScheduledTask>, String>> {
+        Box::pin(async move {
+            use openwebide_core::scheduled::{MonitorCommand, TaskCommand};
+            let pending = self.monitor_results.borrow_mut().pop_front();
+            if let Some(pending) = pending {
+                return pending
+                    .await
+                    .unwrap_or_else(|_| Err("response dropped".into()));
+            }
+            let TaskCommand::Monitor { command, .. } = command else {
+                return Err("Expected a monitor command".into());
+            };
+            let mut entries = self.monitors.borrow_mut();
+            let tasks = entries.entry(session).or_default();
+            match command {
+                MonitorCommand::List {} => {}
+                MonitorCommand::Cancel { id, revision } => {
+                    let pos = tasks
+                        .iter()
+                        .position(|task| task.id == *id && task.revision == *revision)
+                        .ok_or("Monitor changed")?;
+                    tasks.remove(pos);
+                }
+                MonitorCommand::Start { .. } => return Err("Seed monitors to test creation".into()),
+            }
+            Ok(tasks.clone())
+        })
+    }
+
     fn read(&self, project: i64, path: &str) -> Result<String, String> {
         self.files
             .borrow()
@@ -274,6 +460,299 @@ impl Backend for FakeBackend {
                 settings: self.marketplaces.borrow().clone(),
                 failures: Vec::new(),
             })
+        })
+    }
+    fn plugin_context_grants<'a>(
+        &'a self,
+        request: &'a openwebide_core::plugins::execution::PluginGrantRequest,
+    ) -> LocalBoxFuture<'a, Result<BTreeMap<String, String>, String>> {
+        Box::pin(async move {
+            self.calls.borrow_mut().push(Call::Request {
+                method: "plugin_context_grants",
+            });
+            let mut grants = BTreeMap::new();
+            for plugin in &request.plugins {
+                let bindings = match request.context.project_id {
+                    Some(project) => self
+                        .project_plugin_entries
+                        .borrow()
+                        .get(&project)
+                        .cloned()
+                        .unwrap_or_default(),
+                    None => openwebide_core::plugins::default_bindings(&self.plugins.borrow()),
+                };
+                if !bindings
+                    .iter()
+                    .any(|binding| binding.enabled && binding.prepared.digest == plugin.digest)
+                {
+                    return Err("Plugin is no longer enabled".into());
+                }
+                let token = format!("grant-{}", self.plugin_authorities.borrow().len());
+                self.plugin_authorities
+                    .borrow_mut()
+                    .insert(token.clone(), (request.context.clone(), plugin.clone()));
+                grants.insert(plugin.digest.clone(), token);
+            }
+            Ok(grants)
+        })
+    }
+    fn start_plugin_invocation<'a>(
+        &'a self,
+        request: &'a openwebide_core::plugins::execution::PluginStartRequest,
+    ) -> LocalBoxFuture<'a, Result<openwebide_core::plugins::execution::PluginInvocation, String>>
+    {
+        Box::pin(async move {
+            use openwebide_core::plugins::execution::*;
+            self.calls.borrow_mut().push(Call::Request {
+                method: "start_plugin_invocation",
+            });
+            let id = format!("actor-{}", self.calls.borrow().len());
+            let context = self
+                .plugin_authorities
+                .borrow()
+                .get(&request.grant)
+                .ok_or("Missing authority")?
+                .0
+                .clone();
+            self.plugin_action_calls.borrow_mut().push((
+                context.project_id,
+                openwebide_core::ToolCall {
+                    id: id.clone(),
+                    name: request.call.name.clone(),
+                    arguments: request.call.arguments.clone(),
+                },
+            ));
+            self.plugin_actor_contexts
+                .borrow_mut()
+                .insert(id.clone(), context);
+            self.plugin_actors
+                .borrow_mut()
+                .insert(id.clone(), request.call.clone());
+            Ok(PluginInvocation {
+                id,
+                step: PluginStep::Ready,
+            })
+        })
+    }
+    fn continue_plugin_invocation<'a>(
+        &'a self,
+        request: &'a openwebide_core::plugins::execution::ContinuePlugin,
+    ) -> LocalBoxFuture<'a, Result<openwebide_core::plugins::execution::PluginInvocation, String>>
+    {
+        Box::pin(async move {
+            use openwebide_core::plugins::execution::*;
+            self.calls.borrow_mut().push(Call::Request {
+                method: "continue_plugin_invocation",
+            });
+            let call = self
+                .plugin_actors
+                .borrow()
+                .get(&request.id)
+                .cloned()
+                .ok_or("Missing actor")?;
+            if call.name.starts_with("schedule_") || call.name == "monitor" {
+                let mut args: serde_json::Value =
+                    serde_json::from_str(&call.arguments).map_err(|error| error.to_string())?;
+                let context = self
+                    .plugin_actor_contexts
+                    .borrow_mut()
+                    .remove(&request.id)
+                    .ok_or("Missing fixture context")?;
+                self.plugin_actors.borrow_mut().remove(&request.id);
+                let result = if call.name == "monitor" {
+                    let session = args["session_id"]
+                        .as_i64()
+                        .ok_or("Missing monitor conversation")?;
+                    args.as_object_mut().unwrap().remove("session_id");
+                    let command = openwebide_core::scheduled::TaskCommand::Monitor {
+                        session_id: session,
+                        command: serde_json::from_value(args).map_err(|error| error.to_string())?,
+                    };
+                    self.fixture_monitor(session, &command).await
+                } else {
+                    args.as_object_mut().unwrap().insert(
+                        "action".into(),
+                        serde_json::json!(call.name.strip_prefix("schedule_").unwrap()),
+                    );
+                    let command =
+                        serde_json::from_value(args).map_err(|error| error.to_string())?;
+                    self.fixture_tasks(context.project_id, &command, None).await
+                };
+                return Ok(PluginInvocation {
+                    id: request.id.clone(),
+                    step: match result {
+                        Ok(value) => PluginStep::Complete {
+                            ok: true,
+                            content: serde_json::to_string(&value).unwrap(),
+                            summary: "Fixture task action".into(),
+                        },
+                        Err(error) => PluginStep::Complete {
+                            ok: false,
+                            content: error,
+                            summary: "Fixture task failure".into(),
+                        },
+                    },
+                });
+            }
+            let step = if request.sequence == 0 {
+                let args: serde_json::Value =
+                    serde_json::from_str(&call.arguments).map_err(|error| error.to_string())?;
+                let action = call
+                    .name
+                    .strip_prefix("memory_")
+                    .ok_or("Unknown fixture tool")?;
+                let value = serde_json::json!({"title":args["title"],"content":args["content"],"auto_title":args["auto_title"]});
+                let operation = match action {
+                    "create" => serde_json::json!({"action":action,"value":value}),
+                    "update" => {
+                        serde_json::json!({"action":action,"id":args["id"],"revision":args["revision"],"value":value})
+                    }
+                    _ => {
+                        serde_json::json!({"action":action,"id":args["id"],"revision":args["revision"]})
+                    }
+                };
+                PluginStep::HostCall {
+                    sequence: 1,
+                    capability: "collections".into(),
+                    payload: serde_json::json!({"collection":"memories","operation":operation})
+                        .to_string(),
+                }
+            } else {
+                self.plugin_actors.borrow_mut().remove(&request.id);
+                self.plugin_actor_contexts.borrow_mut().remove(&request.id);
+                match &request.response {
+                    Ok(content) => PluginStep::Complete {
+                        ok: true,
+                        content: content.clone(),
+                        summary: "Stored".into(),
+                    },
+                    Err(error) => PluginStep::Complete {
+                        ok: false,
+                        content: error.clone(),
+                        summary: "Failed".into(),
+                    },
+                }
+            };
+            Ok(PluginInvocation {
+                id: request.id.clone(),
+                step,
+            })
+        })
+    }
+    fn cancel_plugin_invocation<'a>(
+        &'a self,
+        id: &'a str,
+    ) -> LocalBoxFuture<'a, Result<(), String>> {
+        Box::pin(async move {
+            self.calls.borrow_mut().push(Call::Request {
+                method: "cancel_plugin_invocation",
+            });
+            self.plugin_actors.borrow_mut().remove(id);
+            self.plugin_actor_contexts.borrow_mut().remove(id);
+            Ok(())
+        })
+    }
+    fn plugin_host_request<'a>(
+        &'a self,
+        session: i64,
+        request: &'a openwebide_core::plugins::execution::PluginHostRequest,
+    ) -> LocalBoxFuture<'a, Result<String, String>> {
+        Box::pin(async move {
+            self.calls.borrow_mut().push(Call::Request {
+                method: "plugin_host_request",
+            });
+            if self
+                .plugin_authorities
+                .borrow()
+                .get(&request.grant)
+                .and_then(|(scope, _)| scope.session_id)
+                != Some(session)
+            {
+                return Err("Plugin conversation changed".into());
+            }
+            self.plugin_context_host_request(request).await
+        })
+    }
+    fn plugin_context_host_request<'a>(
+        &'a self,
+        request: &'a openwebide_core::plugins::execution::PluginHostRequest,
+    ) -> LocalBoxFuture<'a, Result<String, String>> {
+        Box::pin(async move {
+            use openwebide_core::plugins::records::RecordOperation;
+            self.calls.borrow_mut().push(Call::Request {
+                method: "plugin_context_host_request",
+            });
+            let (scope, _) = self
+                .plugin_authorities
+                .borrow()
+                .get(&request.grant)
+                .cloned()
+                .ok_or("Missing grant")?;
+            let project = scope.project_id.ok_or("Missing project")?;
+            let command: openwebide_core::plugins::records::RecordRequest =
+                serde_json::from_str(&request.payload).map_err(|error| error.to_string())?;
+            if command.collection == "skills" {
+                return self.fixture_skill_records(project, &command);
+            }
+            let pending = self.memory_command_results.borrow_mut().pop_front();
+            if let Some(pending) = pending {
+                pending.await.map_err(|error| error.to_string())??;
+            }
+            let mut all = self.memories.borrow_mut();
+            let data = all.entry(project).or_default();
+            if !data.enabled
+                && !scope.user_action
+                && !matches!(
+                    command.operation,
+                    RecordOperation::List { .. } | RecordOperation::Read { .. }
+                )
+            {
+                return Err("Memory is disabled".into());
+            }
+            match command.operation {
+                RecordOperation::Create { value } => {
+                    data.entries.insert(
+                        0,
+                        openwebide_core::ProjectMemory {
+                            id: data.entries.iter().map(|entry| entry.id).max().unwrap_or(0) + 1,
+                            revision: 1,
+                            updated_at: 0,
+                            title: value["title"].as_str().unwrap_or_default().into(),
+                            content: value["content"].as_str().unwrap_or_default().into(),
+                            auto_title: value["auto_title"].as_bool().unwrap_or(false),
+                        },
+                    );
+                }
+                RecordOperation::Update {
+                    id,
+                    revision,
+                    value,
+                } => {
+                    let entry = data
+                        .entries
+                        .iter_mut()
+                        .find(|entry| entry.id == id && entry.revision == revision)
+                        .ok_or("Memory changed. Refresh before editing.")?;
+                    entry.title = value["title"].as_str().unwrap_or_default().into();
+                    entry.content = value["content"].as_str().unwrap_or_default().into();
+                    entry.auto_title = value["auto_title"].as_bool().unwrap_or(false);
+                    entry.revision += 1;
+                }
+                RecordOperation::Delete { id, revision } => {
+                    let index = data
+                        .entries
+                        .iter()
+                        .position(|entry| entry.id == id && entry.revision == revision)
+                        .ok_or("Memory changed. Refresh before deleting.")?;
+                    data.entries.remove(index);
+                }
+                _ => {}
+            }
+            let records: Vec<_> = data.entries.iter().map(|entry| serde_json::json!({"id":entry.id,"revision":entry.revision,"updated_at":entry.updated_at,"value":{"title":entry.title,"content":entry.content,"auto_title":entry.auto_title}})).collect();
+            Ok(
+                serde_json::json!({"enabled":data.enabled,"records":records,"next":null})
+                    .to_string(),
+            )
         })
     }
     fn project_plugins(
@@ -369,7 +848,52 @@ impl Backend for FakeBackend {
             if let Some(pending) = pending {
                 return pending.await.map_err(|error| error.to_string())?;
             }
-            Err("No plugin fixture prepared".into())
+            self.project_plugin_entries
+                .borrow()
+                .values()
+                .flatten()
+                .find(|binding| binding.prepared.source == *source)
+                .map(|binding| binding.prepared.clone())
+                .ok_or_else(|| "No plugin fixture prepared".into())
+        })
+    }
+    fn plugin_preparation<'a>(
+        &'a self,
+        project: Option<i64>,
+        command: &'a openwebide_core::plugins::preparation::PreparationCommand,
+    ) -> LocalBoxFuture<'a, Result<openwebide_core::plugins::preparation::PluginPreparation, String>>
+    {
+        Box::pin(async move {
+            use openwebide_core::plugins::preparation::{
+                PluginPreparation, PreparationCommand, PreparationState,
+            };
+            self.plugin_preparation_commands
+                .borrow_mut()
+                .push((project, command.clone()));
+            let pending = self.plugin_progress.borrow_mut().pop_front();
+            if let Some(pending) = pending {
+                return pending.await.map_err(|error| error.to_string())?;
+            }
+            match command {
+                PreparationCommand::Start { source } => Ok(PluginPreparation {
+                    id: "f".repeat(32),
+                    state: PreparationState::Ready,
+                    prepared: Some(self.prepare_plugin(project, source).await?),
+                    error: None,
+                }),
+                PreparationCommand::Status { id } => Ok(PluginPreparation {
+                    id: id.clone(),
+                    state: PreparationState::Preparing,
+                    prepared: None,
+                    error: None,
+                }),
+                PreparationCommand::Cancel { id } => Ok(PluginPreparation {
+                    id: id.clone(),
+                    state: PreparationState::Cancelled,
+                    prepared: None,
+                    error: None,
+                }),
+            }
         })
     }
     fn record_plugin<'a>(
@@ -546,7 +1070,10 @@ impl Backend for FakeBackend {
             self.calls.borrow_mut().push(Call::Request {
                 method: "bridge_token",
             });
-            Err("bridge_token has no scripted response".into())
+            self.bridge_credential
+                .borrow()
+                .clone()
+                .ok_or_else(|| "bridge_token has no scripted response".into())
         })
     }
     fn health<'a>(&'a self) -> LocalBoxFuture<'a, Result<Health, String>> {
@@ -2313,83 +2840,12 @@ impl Backend for FakeBackend {
         &'a self,
         project: Option<i64>,
         command: &'a openwebide_core::scheduled::TaskCommand,
-        _binding: Option<&'a openwebide_core::scheduled::HostBinding>,
+        binding: Option<&'a openwebide_core::scheduled::HostBinding>,
     ) -> LocalBoxFuture<'a, Result<Vec<openwebide_core::scheduled::ScheduledTask>, String>> {
-        Box::pin(async move {
-            use openwebide_core::scheduled::{ScheduledTask, TaskCommand};
-            self.scheduled_commands
-                .borrow_mut()
-                .push((project, command.clone()));
-            {
-                let mut entries = self.scheduled.borrow_mut();
-                match command {
-                    TaskCommand::Monitor { .. } => {
-                        return Err("Monitor test adapter not configured".into());
-                    }
-                    TaskCommand::List => {}
-                    TaskCommand::Create { draft } => {
-                        draft.validate(openwebide_core::now_seconds(js_sys::Date::now()))?;
-                        let id = entries.iter().map(|task| task.id).max().unwrap_or(0) + 1;
-                        entries.push(ScheduledTask {
-                            id,
-                            revision: 1,
-                            project_id: project,
-                            draft: draft.clone(),
-                            next_run: draft
-                                .schedule
-                                .next_after(openwebide_core::now_seconds(js_sys::Date::now()))?,
-                            host_id: "server".into(),
-                            host_available: true,
-                            last_run: None,
-                        });
-                    }
-                    TaskCommand::Update {
-                        id,
-                        revision,
-                        draft,
-                    } => {
-                        let task = entries
-                            .iter_mut()
-                            .find(|task| {
-                                task.id == *id
-                                    && task.revision == *revision
-                                    && task.project_id == project
-                            })
-                            .ok_or("Task changed")?;
-                        task.draft = draft.clone();
-                        task.revision += 1;
-                    }
-                    TaskCommand::SetEnabled {
-                        id,
-                        revision,
-                        enabled,
-                    } => {
-                        let task = entries
-                            .iter_mut()
-                            .find(|task| {
-                                task.id == *id
-                                    && task.revision == *revision
-                                    && task.project_id == project
-                            })
-                            .ok_or("Task changed")?;
-                        task.draft.enabled = *enabled;
-                        task.revision += 1;
-                    }
-                    TaskCommand::Delete { id, revision } => {
-                        let pos = entries
-                            .iter()
-                            .position(|task| {
-                                task.id == *id
-                                    && task.revision == *revision
-                                    && task.project_id == project
-                            })
-                            .ok_or("Task changed")?;
-                        entries.remove(pos);
-                    }
-                }
-            }
-            self.scheduled_tasks(project).await
-        })
+        self.scheduled_commands
+            .borrow_mut()
+            .push((project, command.clone()));
+        self.fixture_tasks(project, command, binding)
     }
     fn project_skills(
         &self,
@@ -2535,40 +2991,32 @@ impl Backend for FakeBackend {
             Ok(data.clone())
         })
     }
+    fn scheduled_monitors(
+        &self,
+        session: i64,
+    ) -> LocalBoxFuture<'_, Result<Vec<openwebide_core::scheduled::ScheduledTask>, String>> {
+        Box::pin(async move {
+            let pending = self.monitor_results.borrow_mut().pop_front();
+            if let Some(pending) = pending {
+                return pending.await.map_err(|error| error.to_string())?;
+            }
+            Ok(self
+                .monitors
+                .borrow()
+                .get(&session)
+                .cloned()
+                .unwrap_or_default())
+        })
+    }
     fn scheduled_session_command<'a>(
         &'a self,
         session: i64,
         command: &'a openwebide_core::scheduled::TaskCommand,
     ) -> LocalBoxFuture<'a, Result<Vec<openwebide_core::scheduled::ScheduledTask>, String>> {
-        Box::pin(async move {
-            use openwebide_core::scheduled::{MonitorCommand, TaskCommand};
-            self.scheduled_commands
-                .borrow_mut()
-                .push((None, command.clone()));
-            let pending = self.monitor_results.borrow_mut().pop_front();
-            if let Some(pending) = pending {
-                return pending
-                    .await
-                    .unwrap_or_else(|_| Err("response dropped".into()));
-            }
-            let TaskCommand::Monitor { command, .. } = command else {
-                return Err("Expected a monitor command".into());
-            };
-            let mut entries = self.monitors.borrow_mut();
-            let tasks = entries.entry(session).or_default();
-            match command {
-                MonitorCommand::List {} => {}
-                MonitorCommand::Cancel { id, revision } => {
-                    let pos = tasks
-                        .iter()
-                        .position(|task| task.id == *id && task.revision == *revision)
-                        .ok_or("Monitor changed")?;
-                    tasks.remove(pos);
-                }
-                MonitorCommand::Start { .. } => return Err("Seed monitors to test creation".into()),
-            }
-            Ok(tasks.clone())
-        })
+        self.scheduled_commands
+            .borrow_mut()
+            .push((None, command.clone()));
+        self.fixture_monitor(session, command)
     }
     fn project_memories(
         &self,
@@ -2920,6 +3368,7 @@ impl Backend for FakeBackend {
             self.queue_next_id.set(id);
             let prompt = openwebide_core::QueuedPrompt {
                 scheduled_task: None,
+                plugin_run: None,
                 id,
                 session_id: session,
                 revision: 1,

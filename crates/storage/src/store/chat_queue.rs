@@ -8,6 +8,7 @@ use openwebide_core::{
 fn queued_from_row(row: &crate::db::QueryRow) -> Result<QueuedPrompt, StorageError> {
     Ok(QueuedPrompt {
         scheduled_task: row.get_int_opt(6),
+        plugin_run: row.get_int_opt(7),
         id: row.get_int(0)?,
         session_id: row.get_int(1)?,
         revision: row.get_int(2)?,
@@ -24,7 +25,7 @@ impl<D: Db> Store<D> {
         session: i64,
     ) -> Result<Vec<QueuedPrompt>, StorageError> {
         self.get_session(session, user).await?;
-        let result = self.db.execute("SELECT id, session_id, revision, content, created_at, guidance, (SELECT task_id FROM scheduled_runs WHERE queued_id=queued_prompts.id) FROM queued_prompts WHERE session_id = ? ORDER BY guidance DESC, id", &[DbValue::Int(session)]).await?;
+        let result = self.db.execute("SELECT id, session_id, revision, content, created_at, guidance, (SELECT task_id FROM scheduled_runs WHERE queued_id=queued_prompts.id), (SELECT id FROM plugin_runs WHERE queued_id=queued_prompts.id) FROM queued_prompts WHERE session_id = ? ORDER BY guidance DESC, id", &[DbValue::Int(session)]).await?;
         result.rows.iter().map(queued_from_row).collect()
     }
 
@@ -57,18 +58,53 @@ impl<D: Db> Store<D> {
         guidance: bool,
     ) -> Result<QueuedPrompt, StorageError> {
         validate_content(content).map_err(StorageError::InvalidValue)?;
-        self.db.transaction(|tx| async move {
-            let store = Store::new(tx);
-            store.ensure_not_rewinding(session).await?;
-            store.get_session(session,user).await?;
-            store.yield_goal_pending(session,created_at).await?;
-            let queue = store.list_queued_prompts(user, session).await?;
-            if queue.len() >= MAX_QUEUED_PROMPTS || queue.iter().map(|entry| entry.content.len()).sum::<usize>().saturating_add(content.len()) > MAX_QUEUE_BYTES {
-                return Err(StorageError::Conflict("The queue holds at most 8 prompts and 16 MiB. Remove a prompt before adding another.".into()));
-            }
-            let result = store.db.execute("INSERT INTO queued_prompts (session_id, content, created_at, guidance) VALUES (?, ?, ?, ?)", &[DbValue::Int(session), DbValue::Text(content.into()), DbValue::Int(created_at), DbValue::Int(i64::from(guidance))]).await?;
-            Ok(QueuedPrompt { scheduled_task: None, id: result.last_insert_rowid, session_id: session, revision: 1, content: content.into(), created_at, guidance })
-        }).await
+        self.db
+            .transaction(|tx| async move {
+                let store = Store::new(tx);
+                store.ensure_not_rewinding(session).await?;
+                store.get_session(session, user).await?;
+                store.yield_goal_pending(session, created_at).await?;
+                store
+                    .enqueue_prompt_in_transaction(user, session, content, created_at, guidance)
+                    .await
+            })
+            .await
+    }
+
+    /// Raw queue primitive; callers choose foreground-yield policy above it.
+    pub(super) async fn enqueue_prompt_in_transaction(
+        &self,
+        user: UserId,
+        session: i64,
+        content: &str,
+        created_at: i64,
+        guidance: bool,
+    ) -> Result<QueuedPrompt, StorageError> {
+        validate_content(content).map_err(StorageError::InvalidValue)?;
+        self.ensure_not_rewinding(session).await?;
+        self.get_session(session, user).await?;
+        let queue = self.list_queued_prompts(user, session).await?;
+        if queue.len() >= MAX_QUEUED_PROMPTS
+            || queue
+                .iter()
+                .map(|entry| entry.content.len())
+                .sum::<usize>()
+                .saturating_add(content.len())
+                > MAX_QUEUE_BYTES
+        {
+            return Err(StorageError::Conflict("The queue holds at most 8 prompts and 16 MiB. Remove a prompt before adding another.".into()));
+        }
+        let result = self.db.execute("INSERT INTO queued_prompts (session_id, content, created_at, guidance) VALUES (?, ?, ?, ?)", &[DbValue::Int(session), DbValue::Text(content.into()), DbValue::Int(created_at), DbValue::Int(i64::from(guidance))]).await?;
+        Ok(QueuedPrompt {
+            scheduled_task: None,
+            plugin_run: None,
+            id: result.last_insert_rowid,
+            session_id: session,
+            revision: 1,
+            content: content.into(),
+            created_at,
+            guidance,
+        })
     }
 
     pub async fn update_queued_prompt(
@@ -84,6 +120,7 @@ impl<D: Db> Store<D> {
             let queue = store.list_queued_prompts(user, session).await?;
             let prompt = queue.iter().find(|prompt| prompt.key() == key).ok_or_else(|| StorageError::Conflict("Queued prompt changed or was already sent. Refresh the queue.".into()))?;
             if prompt.scheduled_task.is_some(){return Err(StorageError::InvalidRequest("Edit scheduled prompts in Tasks.".into()));}
+            if !store.db.execute("SELECT 1 FROM plugin_runs WHERE queued_id=?", &[DbValue::Int(key.id)]).await?.rows.is_empty() { return Err(StorageError::InvalidRequest("Plugin submissions cannot be edited in the prompt queue; cancel and submit again".into())); }
             if queue.iter().filter(|entry| entry.id != key.id).map(|entry| entry.content.len()).sum::<usize>().saturating_add(content.len()) > MAX_QUEUE_BYTES {
                 return Err(StorageError::Conflict("The queue is limited to 16 MiB.".into()));
             }
@@ -142,8 +179,14 @@ impl<D: Db> Store<D> {
                 let allowed=store.db.execute("SELECT 1 FROM scheduled_runs r JOIN session_run_leases l ON l.session_id=? WHERE r.queued_id=? AND r.status='claimed' AND l.token=('scheduled-' || r.id) AND l.expires_at>?", &[DbValue::Int(session),DbValue::Int(key.id),DbValue::Int(created_at)]).await?;
                 if allowed.rows.is_empty(){return Err(StorageError::Conflict("Scheduled prompts are delivered by their execution host.".into()));}
             }
+            let plugin = store.db.execute("SELECT r.id FROM plugin_runs r WHERE r.queued_id=?", &[DbValue::Int(key.id)]).await?;
+            if let Some(row) = plugin.rows.first() {
+                let allowed = store.db.execute("SELECT 1 FROM plugin_runs r JOIN session_run_leases l ON l.session_id=r.session_id WHERE r.id=? AND r.state='leased' AND l.token=('plugin-run-' || r.id || '-' || r.lease) AND l.expires_at>? AND r.lease_expires_at>?", &[DbValue::Int(row.get_int(0)?), DbValue::Int(created_at), DbValue::Int(created_at)]).await?;
+                if allowed.rows.is_empty() { return Err(StorageError::Conflict("Plugin prompts are delivered by their execution host".into())); }
+            }
             let message = store.insert_interim_message_unlocked(session, Role::User, content, created_at, None, None).await?;
             store.db.execute("UPDATE scheduled_runs SET status='running',message_id=?,claimed_until=? WHERE queued_id=? AND status IN ('queued','claimed')", &[DbValue::Int(message.id),DbValue::Int(created_at+120),DbValue::Int(key.id)]).await?;
+            store.db.execute("UPDATE plugin_runs SET state='running',revision=revision+1,message_id=? WHERE queued_id=? AND state='leased'", &[DbValue::Int(message.id), DbValue::Int(key.id)]).await?;
             store.db.execute("DELETE FROM queued_prompts WHERE session_id = ? AND id = ? AND revision = ?", &[DbValue::Int(session), DbValue::Int(key.id), DbValue::Int(key.revision)]).await?;
             Ok(message)
         }).await

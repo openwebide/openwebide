@@ -1,0 +1,51 @@
+name: Plugin source compiler
+
+on:
+  push:
+    paths:
+      - 'crates/plugin-*/**'
+      - 'crates/core/**'
+      - 'Dockerfile'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - 'tools/check-plugin-container.sh'
+      - '.github/workflows/plugin-source.yml'
+  pull_request:
+    paths:
+      - 'crates/plugin-*/**'
+      - 'crates/core/**'
+      - 'Dockerfile'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - 'tools/check-plugin-container.sh'
+      - '.github/workflows/plugin-source.yml'
+  workflow_dispatch:
+
+jobs:
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test source builds with default Docker permissions
+        run: |
+          mkdir -p target
+          docker run --rm --workdir /src --env CARGO_TARGET_DIR=/build \
+            --volume "$GITHUB_WORKSPACE:/src:ro" --volume "$GITHUB_WORKSPACE/target:/build" \
+            rust:1.98.1-slim-bookworm bash tools/check-plugin-container.sh
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.98.1
+          components: clippy, rustfmt
+          targets: wasm32-wasip2
+      - uses: Swatinem/rust-cache@v2
+      - name: Check public SDK and host compiler
+        run: cargo clippy -p openwebide-plugin-sdk -p openwebide-plugin-runtime -p openwebide-plugin-build --all-targets -- -D warnings
+      - name: Test isolated source compilation and execution
+        run: cargo test -p openwebide-plugin-runtime --lib

@@ -43,6 +43,13 @@ pub(super) async fn route(
     config: ServerConfig,
     permit_cell: PermitCell,
 ) -> Result<Response<Full<Bytes>>, Infallible> {
+    if req
+        .headers()
+        .contains_key(openwebide_core::plugins::execution::PLUGIN_HTTP_HEADER)
+        && (req.uri().path() != "/health" || is_websocket_upgrade(req.headers()))
+    {
+        return Ok(rejection_response(403));
+    }
     let host = req.headers().get(HOST).and_then(|v| v.to_str().ok());
     let origin = req.headers().get(ORIGIN).and_then(|v| v.to_str().ok());
     let content_type = req
@@ -89,7 +96,15 @@ pub(super) async fn route(
         || path == "/host/input"
         || matches!(
             path.as_str(),
-            "/plugins/prepare" | "/plugins/package" | "/plugins/catalog"
+            "/plugins/prepare"
+                | "/plugins/prepare/start"
+                | "/plugins/prepare/status"
+                | "/plugins/prepare/cancel"
+                | "/plugins/package"
+                | "/plugins/catalog"
+                | "/plugins/invoke"
+                | "/plugins/continue"
+                | "/plugins/cancel"
         )
         || path.starts_with("/git/")
         || path == "/models/discover";
@@ -130,7 +145,18 @@ pub(super) async fn route(
 
     match (method.as_str(), path.as_str()) {
         ("OPTIONS", _) => Ok(preflight_response(req.headers(), allowed_origin)),
-        ("POST", "/plugins/prepare" | "/plugins/package" | "/plugins/catalog") => {
+        (
+            "POST",
+            "/plugins/prepare"
+            | "/plugins/prepare/start"
+            | "/plugins/prepare/status"
+            | "/plugins/prepare/cancel"
+            | "/plugins/package"
+            | "/plugins/catalog"
+            | "/plugins/invoke"
+            | "/plugins/continue"
+            | "/plugins/cancel",
+        ) => {
             let result = async {
                 #[derive(Deserialize)]
                 #[serde(deny_unknown_fields)]
@@ -139,8 +165,15 @@ pub(super) async fn route(
                     prepared: Option<openwebide_core::plugins::PreparedPlugin>,
                     marketplace: Option<openwebide_core::plugins::marketplace::MarketplaceSource>,
                     user: Option<i64>,
+                    call: Option<openwebide_core::plugins::execution::InvokePlugin>,
+                    continuation: Option<openwebide_core::plugins::execution::ContinuePlugin>,
+                    id: Option<String>,
                 }
-                let payload: Payload = read_json(req.into_body(), 256 * 1024).await?;
+                let payload: Payload = read_json(
+                    req.into_body(),
+                    openwebide_plugin_runtime::MAX_MESSAGE_BYTES + 256 * 1024,
+                )
+                .await?;
                 let owner = match principal {
                     Some(crate::auth::Principal::User { user_id }) => format!("user:{user_id}"),
                     Some(crate::auth::Principal::Paired) => "paired".into(),
@@ -154,6 +187,72 @@ pub(super) async fn route(
                 let operation = async {
                     use openwebide_core::plugins::PluginError;
                     let result = match path.as_str() {
+                        "/plugins/invoke" => serde_json::to_value(
+                            config
+                                .plugin_invocations
+                                .start(
+                                    &config.plugins,
+                                    &owner,
+                                    payload.call.ok_or_else(|| {
+                                        PluginError::Invalid("Plugin call is required.".into())
+                                    })?,
+                                )
+                                .await
+                                .map_err(PluginError::Invalid)?,
+                        ),
+                        "/plugins/continue" => serde_json::to_value(
+                            config
+                                .plugin_invocations
+                                .resume(
+                                    &owner,
+                                    payload.continuation.ok_or_else(|| {
+                                        PluginError::Invalid(
+                                            "Plugin continuation is required.".into(),
+                                        )
+                                    })?,
+                                )
+                                .await
+                                .map_err(PluginError::Invalid)?,
+                        ),
+                        "/plugins/cancel" => {
+                            config
+                                .plugin_invocations
+                                .cancel(
+                                    &owner,
+                                    &payload.id.ok_or_else(|| {
+                                        PluginError::Invalid(
+                                            "Plugin invocation id is required.".into(),
+                                        )
+                                    })?,
+                                )
+                                .await
+                                .map_err(PluginError::Invalid)?;
+                            serde_json::to_value(serde_json::json!({"cancelled":true}))
+                        }
+                        "/plugins/prepare/start" => serde_json::to_value(
+                            config
+                                .plugins
+                                .preparations
+                                .start(
+                                    config.plugins.clone(),
+                                    owner.clone(),
+                                    crate::scheduled::host(&config).id,
+                                    payload.source.ok_or_else(|| {
+                                        PluginError::Invalid("Plugin source is required.".into())
+                                    })?,
+                                )
+                                .await?,
+                        ),
+                        "/plugins/prepare/status" | "/plugins/prepare/cancel" => {
+                            let id = payload.id.ok_or_else(|| {
+                                PluginError::Invalid("Plugin preparation id is required.".into())
+                            })?;
+                            serde_json::to_value(if path.ends_with("/cancel") {
+                                config.plugins.preparations.cancel(&owner, &id).await?
+                            } else {
+                                config.plugins.preparations.status(&owner, &id).await?
+                            })
+                        }
                         "/plugins/prepare" => serde_json::to_value(
                             config
                                 .plugins

@@ -62,7 +62,45 @@ export function fakeBridgeHttp() {
         const body = JSON.parse((await request.text()) || '{}');
         const path = new URL(request.url).pathname;
         mock.calls.push({ path, body, authorization: request.headers.get('Authorization') });
+        if (path.startsWith('/plugins/prepare/')) {
+            if (mock.invalid) return new Response(JSON.stringify({error:'preparation failed'}), {status:400});
+            const id = body.id || 'a'.repeat(32);
+            const plugin = JSON.parse(mock.plugin);
+            if (path.endsWith('/start')) return new Response(JSON.stringify({id, state:'queued', prepared:null, error:null}));
+            if (path.endsWith('/cancel')) return new Response(JSON.stringify({id, state:'cancelled', prepared:null, error:null}));
+            return new Response(JSON.stringify({id, state:'ready', prepared:plugin.prepared || plugin, error:null}));
+        }
         if (path === '/plugins/prepare' || path === '/plugins/package') { const plugin = JSON.parse(mock.plugin); return mock.invalid ? new Response(JSON.stringify({error:'preparation failed'}), {status:400}) : new Response(JSON.stringify(path === '/plugins/prepare' ? (plugin.prepared || plugin) : plugin)); }
+        if (path === '/plugins/invoke') {
+            mock.actor = body.call;
+            const plugin = JSON.parse(mock.plugin);
+            mock.collection = (plugin.prepared || plugin).manifest.executable.library === 'skills_fixture' ? 'skills' : 'memories';
+            return new Response(JSON.stringify({id:'plugin-ui', step:{status:'ready'}}));
+        }
+        if (path === '/plugins/continue') {
+            const continuation = body.continuation;
+            if (continuation.sequence === 0) {
+                if (mock.actor.operation === 'context') {
+                    return new Response(JSON.stringify({id:'plugin-ui', step:{status:'host_call', sequence:1, capability:'collections', payload:JSON.stringify({collection:mock.collection, operation:{action:'list', after:0}})}}));
+                }
+                const args = JSON.parse(mock.actor.arguments);
+                const action = mock.actor.name.replace(/^(memory|skill)_/, '');
+                const value = mock.collection === 'skills' ? {draft:args.draft} : {title:args.title, content:args.content, auto_title:args.auto_title};
+                const operation = action === 'create' ? {action, value} : action === 'update' ? {action, id:args.id, revision:args.revision, value} : {action, id:args.id, revision:args.revision};
+                return new Response(JSON.stringify({id:'plugin-ui', step:{status:'host_call', sequence:1, capability:'collections', payload:JSON.stringify({collection:mock.collection, operation})}}));
+            }
+            const ok = continuation.response.Ok !== undefined;
+            if (mock.actor.operation === 'context' && ok) {
+                const page = JSON.parse(continuation.response.Ok);
+                const plugin = JSON.parse(mock.plugin);
+                const tools = (plugin.prepared || plugin).manifest.contributions.tools.map(tool => tool.name);
+                const prompt = page.records.map(record => mock.collection === 'skills' ? record.value.draft.name : record.value.content).join('\n');
+                const content = JSON.stringify({prompt:page.enabled ? prompt || null : null, disabled_tools:page.enabled ? [] : tools});
+                return new Response(JSON.stringify({id:'plugin-ui', step:{status:'complete', ok:true, content, summary:'Fixture context'}}));
+            }
+            return new Response(JSON.stringify({id:'plugin-ui', step:{status:'complete', ok, content:ok ? continuation.response.Ok : continuation.response.Err, summary:ok ? 'Stored' : 'Failed'}}));
+        }
+        if (path === '/plugins/cancel') { mock.actor = null; return new Response('{}'); }
         if (path === '/scheduler/host') return new Response(JSON.stringify({id:'paired-host', name:'Test host', last_seen:0}));
         if (path === '/host/info' && !mock.hanging) return new Response(JSON.stringify({host_name:'bridge-host', os:'linux', scope:'bridge host', cpu:'Test CPU', logical_cores:8, ram_total_bytes:32000000000, ram_available_bytes:16000000000, disks:[], temperatures:[], gpus:[], fans:[], notes:[]}));
         if (path === '/environment' && !mock.hanging) return new Response(JSON.stringify({os: 'linux', shell: 'sh'}));
@@ -103,7 +141,7 @@ extern "C" {
     #[wasm_bindgen(js_name = fakeBridgeHttp)]
     pub(crate) fn fake_bridge_http() -> JsValue;
     #[wasm_bindgen(js_name = setBridgePlugin)]
-    fn set_bridge_plugin(mock: &JsValue, plugin: &str);
+    pub(crate) fn set_bridge_plugin(mock: &JsValue, plugin: &str);
     #[wasm_bindgen(js_name = setBridgeDiff)]
     fn set_bridge_diff(mock: &JsValue, diff: &str);
     #[wasm_bindgen(js_name = restoreBridgeHttp)]
@@ -111,7 +149,7 @@ extern "C" {
     #[wasm_bindgen(js_name = bridgeCalls)]
     fn bridge_calls(mock: &JsValue) -> String;
     #[wasm_bindgen(js_name = bridgeFound)]
-    fn bridge_found(mock: &JsValue, found: bool);
+    pub(crate) fn bridge_found(mock: &JsValue, found: bool);
     #[wasm_bindgen(js_name = bridgeHanging)]
     fn bridge_hanging(mock: &JsValue, hanging: bool);
     #[wasm_bindgen(js_name = bridgeAborted)]
@@ -1945,6 +1983,7 @@ async fn queued_local_prompt_is_consumed_once_with_its_captured_images_and_refer
                 1,
                 vec![openwebide_core::QueuedPrompt {
                     scheduled_task: None,
+                    plugin_run: None,
                     id: 1,
                     session_id: 1,
                     revision: 1,
@@ -2163,9 +2202,8 @@ async fn local_plugin_transport_uses_paired_credentials_and_propagates_host_fail
     let prepared = openwebide_core::plugins::testing::receipt();
     set_bridge_plugin(&http.0, &serde_json::to_string(&prepared).unwrap());
     let mounted = mount_test(|_| view! {<div/>});
-    let client = BrowserBridgeClient::for_project(
+    let client = openwebide_frontend::plugin_bridge::PluginBridgeClient::new(
         "http://bridge.test:3001".into(),
-        "repos/x".into(),
         BridgeCredentials::new(mounted.state.api),
     );
     assert_eq!(
@@ -2227,8 +2265,6 @@ async fn plugins_install_and_enable_use_the_same_workflow_on_paired_and_remote_h
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let http = HttpGuard(fake_bridge_http());
         set_bridge_plugin(&http.0, &serde_json::to_string(&package()).unwrap());
-        let fixture = contractFolder().await;
-        let handle = contractHandle(&fixture);
         let captured = std::rc::Rc::new(std::cell::Cell::new(None));
         let slot = captured.clone();
         let mounted = mount_test(move |state| {
@@ -2243,9 +2279,6 @@ async fn plugins_install_and_enable_use_the_same_workflow_on_paired_and_remote_h
                 .projects
                 .projects
                 .update(|projects| projects[0].mode = mode);
-            state.projects.local_handles.update(|handles| {
-                handles.insert(1, handle.unchecked_into());
-            });
             state
                 .settings
                 .bridge_url
@@ -2340,6 +2373,7 @@ async fn plugins_install_and_enable_use_the_same_workflow_on_paired_and_remote_h
             assert!(mounted.state.fake.plugin_requests.borrow().is_empty());
             let calls: Vec<serde_json::Value> =
                 serde_json::from_str(&bridge_calls(&http.0)).unwrap();
+            assert!(calls.iter().all(|call| call["path"] != "/fs/resolve"));
             assert!(
                 calls
                     .iter()
@@ -2353,7 +2387,6 @@ async fn plugins_install_and_enable_use_the_same_workflow_on_paired_and_remote_h
         }
         drop(commands);
         drop(mounted);
-        contractCleanup(&fixture).await;
     }
     openwebide_frontend::idb::set_bridge_pairing_token(previous.as_deref().unwrap_or(""))
         .await

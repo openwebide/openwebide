@@ -1338,12 +1338,13 @@ fn PromptQueueControls(
                 </div>
                 <For each=move || chat.queued_prompts.get() key=|prompt| (prompt.id, prompt.revision) children=move |prompt| {
                     let key = prompt.key();
+                    let host_delivered = prompt.is_host_delivered();
                     let content = openwebide_core::PromptContent::decode(&prompt.content);
                     let text = extract_editor_context_prelude(&content.text).1.chars().take(200).collect::<String>();
                     let label = if text.trim().is_empty() { format!("{} image(s)", content.images.len()) } else if content.images.is_empty() { text } else { format!("{text} · {} image(s)", content.images.len()) };
                     view! { <div class="tui-queued-prompt" data-queue-id=prompt.id>
-                        <span class="tui-queue-kind">{if prompt.scheduled_task.is_some() {"Scheduled"} else if prompt.guidance { "Guidance" } else { "Next" }}</span><span class="tui-queue-label">{label}</span>
-                        <button class="btn ghost" disabled=move || prompt.scheduled_task.is_some() || chat.queue_busy.get() || chat.queue_delivering.get().is_some_and(|(_, delivering)| delivering == key) on:click=move |_| actions.edit.run(key)>"Edit"</button>
+                        <span class="tui-queue-kind">{if prompt.plugin_run.is_some() {"Plugin"} else if prompt.scheduled_task.is_some() {"Scheduled"} else if prompt.guidance { "Guidance" } else { "Next" }}</span><span class="tui-queue-label">{label}</span>
+                        <button class="btn ghost" disabled=move || host_delivered || chat.queue_busy.get() || chat.queue_delivering.get().is_some_and(|(_, delivering)| delivering == key) on:click=move |_| actions.edit.run(key)>"Edit"</button>
                         <button class="btn ghost" disabled=move || chat.queue_busy.get() || chat.queue_delivering.get().is_some_and(|(_, delivering)| delivering == key) on:click=move |_| actions.remove.run(key)>"Remove"</button>
                     </div> }
                 } />

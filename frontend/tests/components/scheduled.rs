@@ -7,6 +7,7 @@ async fn calendar_task_ui_creates_pauses_edits_and_keeps_projectless_scope() {
         let mounted = mount_test(move |state| {
             state.seed_project();
             state.seed_session();
+            state.seed_scheduling_plugin();
             if projectless {
                 state.projects.active_project.set(None);
                 state
@@ -86,6 +87,35 @@ async fn calendar_task_ui_creates_pauses_edits_and_keeps_projectless_scope() {
         mounted.click_text("Delete");
         settle().await;
         assert!(mounted.state.fake.scheduled.borrow().is_empty());
+        assert!(
+            mounted.state.fake.scheduled_commands.borrow().is_empty(),
+            "Task controls must not call legacy scheduling endpoints"
+        );
+        assert_eq!(
+            mounted
+                .state
+                .fake
+                .plugin_action_calls
+                .borrow()
+                .iter()
+                .map(|(_, call)| call.name.as_str())
+                .collect::<Vec<_>>(),
+            [
+                "schedule_create",
+                "schedule_set_enabled",
+                "schedule_update",
+                "schedule_delete"
+            ]
+        );
+        assert!(
+            mounted
+                .state
+                .fake
+                .plugin_action_calls
+                .borrow()
+                .iter()
+                .all(|(scope, _)| *scope == if projectless { None } else { Some(1) })
+        );
     }
 }
 #[wasm_bindgen_test]
@@ -260,6 +290,7 @@ async fn task_model_dropdown_saves_reopens_and_clears_override_in_every_scope() 
     ] {
         let mounted = mount_test(move |state| {
             state.seed_project();
+            state.seed_scheduling_plugin();
             state.seed_session();
             state.seed_connection();
             if let Some(mode) = mode {

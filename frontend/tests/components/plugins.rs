@@ -9,6 +9,434 @@ use std::{cell::Cell, rc::Rc};
 use wasm_bindgen_test::*;
 
 #[wasm_bindgen_test]
+async fn plugins_explain_retired_tool_groups_and_prevent_reactivation_in_both_modes() {
+    use openwebide_core::plugins::{
+        PluginInstallation, PluginToolGroup, PluginUpdatePolicy, ProjectPlugin,
+    };
+    use wasm_bindgen::JsCast;
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let fake = Rc::new(FakeBackend::default());
+        let captured = Rc::new(Cell::new(None));
+        let slot = captured.clone();
+        let mounted = mount_test_with_backend(fake.clone(), move |state| {
+            state.seed_project();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            state.auth.set_user(User {
+                id: UserId::new(1),
+                username: "test".into(),
+                role: UserRole::User,
+                created_at: 0,
+            });
+            let plugins = PluginsState::default();
+            let host = ProjectHost::new(state.api, state.projects, state.settings, state.auth);
+            let actions = ProjectPluginActions::new(
+                state.api,
+                plugins,
+                host,
+                state.auth,
+                state.projects,
+                state.chat,
+                state.settings,
+            );
+            slot.set(Some((plugins, actions)));
+            provide_context(plugins);
+            provide_context(actions);
+            view! {<openwebide_frontend::components::Plugins/>}
+        });
+        settle().await;
+        let (plugins, actions) = captured.get().unwrap();
+        let mut prepared = receipt();
+        prepared.manifest.compatibility.plugin_api = 2;
+        prepared.manifest.contributions.tool_groups = vec![PluginToolGroup::Memory];
+        plugins.installations.set(vec![PluginInstallation {
+            prepared: prepared.clone(),
+            revision: 1,
+            hosts: vec![prepared.host_id.clone()],
+            installed_at: 0,
+            default_enabled: true,
+            update_policy: PluginUpdatePolicy::Notify,
+        }]);
+        plugins.project_plugins.set(vec![ProjectPlugin {
+            id: 1,
+            revision: 1,
+            prepared,
+            enabled: false,
+        }]);
+        settle().await;
+        let text = mounted.root.text_content().unwrap();
+        assert!(text.contains("Update required"));
+        assert!(text.contains("Your data and update preferences are retained"));
+        let buttons = mounted
+            .root
+            .query_selector_all(".plugin-row button")
+            .unwrap();
+        let enable = (0..buttons.length())
+            .filter_map(|i| buttons.item(i))
+            .find(|button| {
+                button
+                    .text_content()
+                    .is_some_and(|text| text.trim() == "Enable")
+            })
+            .expect("Enable control")
+            .unchecked_into::<web_sys::HtmlButtonElement>();
+        assert!(enable.disabled());
+        mounted.click("button[aria-label='Installed plugin actions']");
+        settle().await;
+        let menu = mounted
+            .root
+            .query_selector_all("button[role='menuitem']")
+            .unwrap();
+        let enable = (0..menu.length())
+            .filter_map(|i| menu.item(i))
+            .find(|button| {
+                button
+                    .text_content()
+                    .is_some_and(|text| text.trim() == "Enable for project")
+            })
+            .expect("Project activation menu item")
+            .unchecked_into::<web_sys::HtmlButtonElement>();
+        assert!(enable.disabled());
+        assert!(
+            mounted
+                .root
+                .text_content()
+                .unwrap()
+                .contains("Update preferences")
+        );
+        let installed = plugins.installations.get_untracked();
+        actions.enable.run(installed[0].clone());
+        settle().await;
+        assert!(
+            plugins
+                .error
+                .get_untracked()
+                .is_some_and(|error| error.contains("Update required"))
+        );
+        assert_eq!(plugins.installations.get_untracked(), installed);
+        assert!(fake.plugin_records.borrow().is_empty());
+    }
+}
+
+#[wasm_bindgen_test]
+async fn plugins_poll_host_preparation_and_cancel_pending_requests_without_recording_stale_receipts()
+ {
+    use super::support::wait_until;
+    use openwebide_core::plugins::preparation::{
+        PluginPreparation, PreparationCommand, PreparationState,
+    };
+    for boundary in ["cancel", "account", "success", "wrong-id"] {
+        let fake = Rc::new(FakeBackend::default());
+        let captured = Rc::new(Cell::new(None));
+        let slot = captured.clone();
+        let mounted = mount_test_with_backend(fake.clone(), move |state| {
+            state.seed_project();
+            state.auth.set_user(User {
+                id: UserId::new(1),
+                username: "test".into(),
+                role: UserRole::User,
+                created_at: 0,
+            });
+            let plugins = PluginsState::default();
+            let host = ProjectHost::new(state.api, state.projects, state.settings, state.auth);
+            let actions = ProjectPluginActions::new(
+                state.api,
+                plugins,
+                host,
+                state.auth,
+                state.projects,
+                state.chat,
+                state.settings,
+            );
+            slot.set(Some((plugins, actions)));
+            provide_context(plugins);
+            provide_context(actions);
+            view! {<openwebide_frontend::components::Plugins/>}
+        });
+        settle().await;
+        let (plugins, actions) = captured.get().unwrap();
+        let prepared = receipt();
+        let id = "a".repeat(32);
+        for state in [PreparationState::Queued, PreparationState::Preparing] {
+            let (send, receive) = futures::channel::oneshot::channel();
+            send.send(Ok(PluginPreparation {
+                id: id.clone(),
+                state,
+                prepared: None,
+                error: None,
+            }))
+            .unwrap();
+            fake.plugin_progress.borrow_mut().push_back(receive);
+        }
+        let (send, receive) = futures::channel::oneshot::channel();
+        fake.plugin_progress.borrow_mut().push_back(receive);
+        plugins.repository.set(prepared.source.repository.clone());
+        plugins.commit.set(prepared.source.commit.clone());
+        plugins.path.set(prepared.source.path.clone());
+        actions.install.run(());
+        wait_until("pending host preparation status", || {
+            fake.plugin_preparation_commands
+                .borrow()
+                .iter()
+                .filter(|(_, command)| matches!(command, PreparationCommand::Status { .. }))
+                .count()
+                == 2
+        })
+        .await;
+        assert!(plugins.busy.get_untracked());
+        assert!(
+            mounted
+                .root
+                .text_content()
+                .unwrap()
+                .contains("Preparing plugin on host")
+        );
+        assert!(
+            mounted
+                .root
+                .text_content()
+                .unwrap()
+                .contains("Cancel installation")
+        );
+        match boundary {
+            "cancel" => mounted.click_text("Cancel installation"),
+            "account" => mounted.state.auth.logout(),
+            _ => {
+                if boundary == "success" {
+                    let (package_send, receive) = futures::channel::oneshot::channel();
+                    package_send
+                        .send(Ok(openwebide_core::plugins::testing::package()))
+                        .unwrap();
+                    fake.plugin_packages.borrow_mut().push_back(receive);
+                }
+                send.send(Ok(PluginPreparation {
+                    id: if boundary == "wrong-id" {
+                        "b".repeat(32)
+                    } else {
+                        id.clone()
+                    },
+                    state: PreparationState::Ready,
+                    prepared: Some(prepared),
+                    error: None,
+                }))
+                .unwrap();
+                wait_until("finished host preparation", || {
+                    !plugins.busy.get_untracked()
+                })
+                .await;
+                if boundary == "wrong-id" {
+                    assert!(
+                        plugins
+                            .error
+                            .get_untracked()
+                            .unwrap()
+                            .contains("different preparation")
+                    );
+                    assert!(fake.plugin_records.borrow().is_empty());
+                } else {
+                    assert!(plugins.error.get_untracked().is_none());
+                    assert_eq!(fake.plugin_records.borrow().len(), 1);
+                    assert_eq!(plugins.installations.get_untracked().len(), 1);
+                    assert!(
+                        !fake.plugin_preparation_commands.borrow().iter().any(
+                            |(_, command)| matches!(command, PreparationCommand::Cancel { .. })
+                        )
+                    );
+                }
+                continue;
+            }
+        }
+        wait_until("host cancellation after request invalidation", || fake.plugin_preparation_commands.borrow()
+            .iter().any(|(_,command)|matches!(command, PreparationCommand::Cancel { id: cancelled } if cancelled == &id))).await;
+        assert!(fake.plugin_records.borrow().is_empty());
+        assert!(
+            send.send(Ok(PluginPreparation {
+                id,
+                state: PreparationState::Ready,
+                prepared: Some(prepared),
+                error: None
+            }))
+            .is_err(),
+            "The pending status request must be dropped"
+        );
+        assert!(plugins.preparation.get_untracked().is_none());
+    }
+}
+
+#[wasm_bindgen_test]
+async fn plugins_review_new_capabilities_before_recording_updates_and_clear_stale_reviews() {
+    use openwebide_core::plugins::{
+        PluginPackage, PluginTool, PluginUpdatePolicy, RecordPlugin, RustPlugin,
+        record_installation,
+    };
+    for boundary in [
+        "approve",
+        "dismiss",
+        "account",
+        "host",
+        "automatic",
+        "all",
+        "account-race",
+        "host-race",
+    ] {
+        let fake = Rc::new(FakeBackend::default());
+        let mut original = receipt();
+        original.manifest.compatibility.plugin_api = 3;
+        original.manifest.contributions.skills.clear();
+        original.manifest.contributions.tools = vec![PluginTool {
+            name: "community_notes".into(),
+            description: "Notes".into(),
+            parameters: serde_json::json!({"type":"object"}),
+            requires_approval: false,
+        }];
+        original.manifest.executable = Some(RustPlugin {
+            manifest: "Cargo.toml".into(),
+            library: "notes".into(),
+            sdk_version: "0.1.0".into(),
+            capabilities: vec!["records".into()],
+        });
+        let installed = record_installation(
+            Vec::new(),
+            &RecordPlugin {
+                approved_capabilities: Vec::new(),
+                update_policy: Some(PluginUpdatePolicy::Automatic),
+                prepared: original.clone(),
+                revision: None,
+                package: Some(Box::new(PluginPackage {
+                    prepared: original.clone(),
+                    skills: Vec::new(),
+                })),
+            },
+            1,
+        )
+        .unwrap();
+        *fake.plugins.borrow_mut() = installed;
+        let mut prepared = original;
+        prepared.source.commit = "b".repeat(40);
+        prepared.digest = "b".repeat(64);
+        prepared.manifest.version = "0.1.1".into();
+        prepared
+            .manifest
+            .executable
+            .as_mut()
+            .unwrap()
+            .capabilities
+            .push("http".into());
+        let (send, receive) = futures::channel::oneshot::channel();
+        send.send(Ok(prepared.clone())).unwrap();
+        fake.plugin_preparations.borrow_mut().push_back(receive);
+        let (send, receive) = futures::channel::oneshot::channel();
+        send.send(Ok(PluginPackage {
+            prepared: prepared.clone(),
+            skills: Vec::new(),
+        }))
+        .unwrap();
+        fake.plugin_packages.borrow_mut().push_back(receive);
+        let captured = Rc::new(Cell::new(None));
+        let slot = captured.clone();
+        let mounted = mount_test_with_backend(fake.clone(), move |state| {
+            state.seed_project();
+            state.auth.set_user(User {
+                id: UserId::new(1),
+                username: "test".into(),
+                role: UserRole::User,
+                created_at: 0,
+            });
+            let plugins = PluginsState::default();
+            let host = ProjectHost::new(state.api, state.projects, state.settings, state.auth);
+            let actions = ProjectPluginActions::new(
+                state.api,
+                plugins,
+                host,
+                state.auth,
+                state.projects,
+                state.chat,
+                state.settings,
+            );
+            slot.set(Some((plugins, actions)));
+            provide_context(plugins);
+            provide_context(actions);
+            view! {<openwebide_frontend::components::Plugins/>}
+        });
+        settle().await;
+        let (plugins, actions) = captured.get().unwrap();
+        plugins.repository.set(prepared.source.repository.clone());
+        plugins.commit.set(prepared.source.commit.clone());
+        plugins.path.set(prepared.source.path.clone());
+        if matches!(boundary, "automatic" | "all") {
+            let mut catalog = openwebide_core::plugins::testing::catalog();
+            let mut release = catalog.catalog.plugins[0].releases[0].clone();
+            release.version = prepared.manifest.version.clone();
+            release.source.commit = prepared.source.commit.clone();
+            catalog.catalog.plugins[0].releases.push(release);
+            let markets = openwebide_core::plugins::marketplace::MarketplaceSettings {
+                revision: 1,
+                sources: vec![catalog.source.clone()],
+                catalogs: vec![catalog],
+            };
+            *fake.marketplaces.borrow_mut() = markets.clone();
+            if boundary == "automatic" {
+                actions.refresh_catalogs.run(());
+            } else {
+                plugins.marketplaces.set(markets);
+                actions.update_all.run(());
+            }
+        } else {
+            actions.install.run(());
+        }
+        settle().await;
+        assert!(fake.plugin_records.borrow().is_empty());
+        assert_eq!(plugins.pending_updates.get_untracked().len(), 1);
+        assert_eq!(fake.plugins.borrow()[0].prepared.manifest.version, "0.1.0");
+        assert!(
+            mounted
+                .root
+                .text_content()
+                .unwrap()
+                .contains("additional access: http")
+        );
+        match boundary {
+            "approve" | "automatic" | "all" => mounted.click_text("Approve and update"),
+            "dismiss" => mounted.click_text("Keep current version"),
+            "account" => mounted.state.auth.logout(),
+            "account-race" => {
+                mounted.state.auth.logout();
+                actions.approve_update.run(prepared.source.clone());
+            }
+            "host-race" => {
+                mounted
+                    .state
+                    .settings
+                    .bridge_url
+                    .set("ws://other-host:3001".into());
+                actions.approve_update.run(prepared.source.clone());
+            }
+            "host" => mounted
+                .state
+                .settings
+                .bridge_url
+                .set("ws://other-host:3001".into()),
+            _ => unreachable!(),
+        }
+        settle().await;
+        assert!(plugins.pending_updates.get_untracked().is_empty());
+        if matches!(boundary, "approve" | "automatic" | "all") {
+            assert_eq!(fake.plugin_records.borrow().len(), 1);
+            assert_eq!(
+                fake.plugin_records.borrow()[0].approved_capabilities,
+                vec!["http"]
+            );
+            assert_eq!(fake.plugins.borrow()[0].prepared.manifest.version, "0.1.1");
+        } else {
+            assert!(fake.plugin_records.borrow().is_empty());
+            assert_eq!(fake.plugins.borrow()[0].prepared.manifest.version, "0.1.0");
+        }
+    }
+}
+
+#[wasm_bindgen_test]
 async fn plugins_guard_preparation_before_recording_on_account_project_and_host_changes() {
     for boundary in [
         "account",
@@ -74,6 +502,10 @@ async fn plugins_guard_preparation_before_recording_on_account_project_and_host_
         actions.install.run(());
         settle().await;
         if boundary == "unpaired" {
+            super::support::wait_until("unpaired plugin host failure", || {
+                !plugins.busy.get_untracked() && plugins.error.get_untracked().is_some()
+            })
+            .await;
             assert!(fake.plugin_requests.borrow().is_empty());
             assert!(plugins.error.get_untracked().is_some());
             continue;
@@ -141,6 +573,7 @@ async fn plugins_discard_an_old_accounts_installation_list() {
     let entries = openwebide_core::plugins::record_installation(
         Vec::new(),
         &openwebide_core::plugins::RecordPlugin {
+            approved_capabilities: Vec::new(),
             update_policy: None,
             package: None,
             prepared: receipt(),
@@ -355,6 +788,7 @@ async fn plugins_reject_mismatched_catalog_identity_and_stale_activation_package
         let entries = openwebide_core::plugins::record_installation(
             Vec::new(),
             &openwebide_core::plugins::RecordPlugin {
+                approved_capabilities: Vec::new(),
                 update_policy: None,
                 package: None,
                 prepared: package().prepared,
@@ -794,6 +1228,7 @@ async fn plugins_notify_updates_in_status_bar_and_update_all_from_the_same_facad
         *fake.plugins.borrow_mut() = openwebide_core::plugins::record_installation(
             Vec::new(),
             &RecordPlugin {
+                approved_capabilities: Vec::new(),
                 prepared: original.prepared.clone(),
                 revision: None,
                 package: Some(Box::new(original)),
@@ -904,5 +1339,104 @@ async fn plugins_notify_updates_in_status_bar_and_update_all_from_the_same_facad
                 .unwrap()
                 .is_none()
         );
+    }
+}
+
+#[wasm_bindgen_test]
+async fn plugins_render_static_icons_and_fall_back_without_executing_markup_in_both_modes() {
+    use openwebide_core::plugins::{PluginInstallation, PluginUpdatePolicy, testing::catalog};
+    let drawing = serde_json::json!({"elements":[{"type":"circle","cx":12,"cy":12,"r":10}]});
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let fake = Rc::new(FakeBackend::default());
+        let captured = Rc::new(Cell::new(None));
+        let slot = captured.clone();
+        let mounted = mount_test_with_backend(fake, move |state| {
+            state.seed_project();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            let plugins = PluginsState::default();
+            let host = ProjectHost::new(state.api, state.projects, state.settings, state.auth);
+            let actions = ProjectPluginActions::new(
+                state.api,
+                plugins,
+                host,
+                state.auth,
+                state.projects,
+                state.chat,
+                state.settings,
+            );
+            slot.set(Some(plugins));
+            provide_context(plugins);
+            provide_context(actions);
+            view! {<openwebide_frontend::components::Plugins/>}
+        });
+        settle().await;
+        let plugins = captured.get().unwrap();
+        let mut prepared = receipt();
+        prepared.manifest.icon = Some(serde_json::from_value(drawing.clone()).unwrap());
+        plugins.installations.set(vec![PluginInstallation {
+            hosts: vec![prepared.host_id.clone()],
+            prepared,
+            revision: 1,
+            installed_at: 0,
+            default_enabled: true,
+            update_policy: PluginUpdatePolicy::Notify,
+        }]);
+        let mut marketplace = catalog();
+        let listing = &mut marketplace.catalog.plugins[0];
+        listing.name = "available-icon".into();
+        listing.icon = Some(serde_json::from_value(drawing.clone()).unwrap());
+        let mut malformed = listing.clone();
+        malformed.name = "malformed-icon".into();
+        malformed.icon = Some(
+            serde_json::from_value(
+                serde_json::json!({"elements":[{"type":"path","d":"<script>"}]}),
+            )
+            .unwrap(),
+        );
+        let mut omitted = listing.clone();
+        omitted.name = "fallback-icon".into();
+        omitted.icon = None;
+        marketplace.catalog.plugins.push(malformed);
+        marketplace.catalog.plugins.push(omitted);
+        plugins
+            .marketplaces
+            .update(|state| state.catalogs = vec![marketplace]);
+        settle().await;
+        assert_eq!(
+            mounted
+                .root
+                .query_selector_all(".plugin-symbol svg")
+                .unwrap()
+                .length(),
+            4
+        );
+        assert_eq!(
+            mounted
+                .root
+                .query_selector_all(".plugin-symbol circle")
+                .unwrap()
+                .length(),
+            2
+        );
+        assert_eq!(
+            mounted
+                .root
+                .query_selector_all(
+                    ".plugin-symbol script, .plugin-symbol [onload], .plugin-symbol use"
+                )
+                .unwrap()
+                .length(),
+            0
+        );
+        let svg = mounted
+            .root
+            .query_selector(".plugin-symbol svg")
+            .unwrap()
+            .unwrap();
+        assert_eq!(svg.get_attribute("viewBox").as_deref(), Some("0 0 24 24"));
+        assert_eq!(svg.get_attribute("stroke").as_deref(), Some("currentColor"));
     }
 }

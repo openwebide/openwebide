@@ -10,3 +10,8 @@ crate-type = ["cdylib"]
 
 [dependencies]
 openwebide-plugin-sdk = { path = "../.." }
+
+# The isolation test adds a build script. Its native dependencies must be fetched
+# before the cross build enters the offline sandbox.
+[build-dependencies]
+libc = "0.2"

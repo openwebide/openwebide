@@ -63,6 +63,28 @@ pub enum MemoryCommand {
     },
 }
 impl MemoryCommand {
+    /// Adapt the UI's data command to the declared plugin tool interface.
+    /// The enable switch is a core preference rather than executable behavior.
+    pub fn plugin_call(&self) -> Result<Option<crate::ToolCall>, String> {
+        let name = match self {
+            Self::Create { .. } => "memory_create",
+            Self::Search { .. } => "memory_search",
+            Self::Read { .. } => "memory_read",
+            Self::Update { .. } => "memory_update",
+            Self::Delete { .. } => "memory_delete",
+            Self::SetEnabled { .. } => return Ok(None),
+        };
+        let mut value = serde_json::to_value(self).map_err(|error| error.to_string())?;
+        value
+            .as_object_mut()
+            .ok_or("Invalid memory command")?
+            .remove("action");
+        Ok(Some(crate::ToolCall {
+            id: "memory-ui".into(),
+            name: name.into(),
+            arguments: value.to_string(),
+        }))
+    }
     pub fn validate(&self) -> Result<(), String> {
         match self {
             Self::Create {

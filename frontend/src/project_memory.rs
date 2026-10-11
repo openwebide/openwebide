@@ -1,6 +1,7 @@
 //! Project-memory UI facade; database transport is identical for both workspace modes.
 use crate::{
     backend::Api,
+    project_host::ProjectHost,
     state::{auth::AuthState, chat::ChatState, memories::MemoriesState, projects::ProjectsState},
 };
 use leptos::{prelude::*, task::spawn_local};
@@ -19,6 +20,7 @@ impl ProjectMemoryActions {
         auth: AuthState,
         projects: ProjectsState,
         chat: ChatState,
+        host: ProjectHost,
     ) -> Self {
         let generation = StoredValue::new(0u64);
         let refresh = Callback::new(move |()| {
@@ -77,7 +79,30 @@ impl ProjectMemoryActions {
                 let Some(backend) = api.try_with_value(Clone::clone) else {
                     return;
                 };
-                let result = backend.memory_command(project, &command, false).await;
+                let current = move || {
+                    auth.generation.try_get_untracked() == Some(account)
+                        && projects.active_project.try_get_untracked() == Some(Some(project))
+                        && generation.try_get_value() == Some(ticket)
+                };
+                let result = async {
+                    match command.plugin_call()? {
+                        Some(call) => {
+                            let outcome = crate::plugin_actions::invoke_project_plugin_action(
+                                api, host, project, &call, true, current,
+                            )
+                            .await?;
+                            if !outcome.ok {
+                                return Err(outcome.content);
+                            }
+                            if !current() {
+                                return Err("Plugin action context changed".into());
+                            }
+                            backend.project_memories(project).await
+                        }
+                        None => backend.memory_command(project, &command, false).await,
+                    }
+                }
+                .await;
                 if auth.generation.try_get_untracked() != Some(account)
                     || projects.active_project.try_get_untracked() != Some(Some(project))
                     || generation.try_get_value() != Some(ticket)

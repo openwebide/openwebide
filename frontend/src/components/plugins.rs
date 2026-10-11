@@ -57,8 +57,31 @@ pub fn Plugins() -> impl IntoView {
                     }><Icon name=IconName::Settings/><span>"Manage marketplace sources"</span></button>
                 </ActionMenu>
             </PanelSearchRow>
-            <Show when=move ||state.busy.get()><p class="form-hint" role="status">"Working…"</p></Show>
+            <Show when=move ||state.busy.get()><InlineActions>
+                <p class="form-hint" role="status">{move || match state.preparation.get() {
+                    Some(openwebide_core::plugins::preparation::PreparationState::Queued) => "Queued on host…",
+                    Some(openwebide_core::plugins::preparation::PreparationState::Preparing) => "Preparing plugin on host…",
+                    _ => "Working…",
+                }}</p>
+                <Show when=move ||state.preparation.get().is_some()>
+                    <Button variant=ButtonVariant::Ghost disabled=state.cancel_preparation.read_only()
+                        on_click=Callback::new(move |_|state.cancel_preparation.set(true))>
+                        {move ||if state.cancel_preparation.get(){"Cancelling…"}else{"Cancel installation"}}
+                    </Button>
+                </Show>
+            </InlineActions></Show>
             <Show when=move ||state.error.get().is_some()><p class="error" role="alert">{move ||state.error.get().unwrap_or_default()}</p></Show>
+            <For each=move ||state.pending_updates.get() key=|update|(update.prepared.source.repository.clone(), update.prepared.source.path.clone(), update.prepared.source.commit.clone()) children=move |update| {
+                let source = StoredValue::new(update.prepared.source.clone());
+                view! { <FormSection title="Review plugin update"><div class="ui-section-content">
+                    <p>{format!("{} {} requests additional access: {}.", update.prepared.manifest.display_name, update.prepared.manifest.version, update.approved_capabilities.join(", "))}</p>
+                    <p class="form-hint">"Your installed version stays active until you approve this update."</p>
+                    <InlineActions>
+                        <Button disabled=state.busy.read_only() on_click=Callback::new(move |_|actions.approve_update.run(source.get_value()))>"Approve and update"</Button>
+                        <Button variant=ButtonVariant::Ghost disabled=state.busy.read_only() on_click=Callback::new(move |_|actions.dismiss_update.run(source.get_value()))>"Keep current version"</Button>
+                    </InlineActions>
+                </div></FormSection> }
+            }/>
             <For each=move ||state.failures.get() key=|f|(f.source.repository.clone(),f.source.reference.clone(),f.source.path.clone()) children=move |failure|view!{<p class="error" role="alert">{format!("{}: {} Previously cached releases remain available.",failure.source.repository,failure.message)}</p>}/>
             <Show when=move ||projects.active_project.get().is_none()><p class="form-hint">"Install plugins on the server host. They are enabled by default in your projects."</p></Show>
             <PluginSection title="Installed" count=Signal::derive(move ||filtered_installations(state).len()) header_actions=move || view! {
@@ -213,6 +236,7 @@ fn PluginRow(
     name: String,
     description: String,
     publisher: String,
+    #[prop(optional_no_strip)] icon: Option<openwebide_core::plugins::icon::PluginIcon>,
     #[prop(into)] source: Signal<String>,
     #[prop(into)] version: Signal<String>,
     #[prop(into)] status: Signal<String>,
@@ -220,8 +244,14 @@ fn PluginRow(
     children: Children,
 ) -> impl IntoView {
     let description_title = description.clone();
+    let symbol = icon
+        .as_ref()
+        .and_then(|svg| openwebide_core::plugins::icon::render(svg).ok());
     view! {<div class="plugin-row">
-        <span class="plugin-symbol"><Icon name=IconName::Puzzle/></span>
+        <span class="plugin-symbol" aria-hidden="true">{match symbol {
+            Some(svg) => view! {<span class="ui-icon-glyph" inner_html=svg/>}.into_any(),
+            None => view! {<Icon name=IconName::Puzzle/>}.into_any(),
+        }}</span>
         <div class="plugin-info">
             <button type="button" class="btn ghost plugin-name" on:click=move |_|on_details.run(())>{name}</button>
             <p class="plugin-description" title=description_title>{description}</p>
@@ -276,7 +306,7 @@ fn CatalogPackage(catalog: CachedMarketplace, plugin: CatalogPlugin) -> impl Int
         });
     });
     view! {<div class="plugin-entry">
-        <PluginRow name=plugin.display_name description=plugin.description publisher=plugin.publisher source=Signal::derive(move ||inspect.with_value(|(catalog,_)|marketplace_name(catalog))) version=version.read_only()
+        <PluginRow name=plugin.display_name description=plugin.description publisher=plugin.publisher icon=plugin.icon source=Signal::derive(move ||inspect.with_value(|(catalog,_)|marketplace_name(catalog))) version=version.read_only()
             status=Signal::derive(move ||if installed.get(){"Installed".into()}else{String::new()}) on_details=Callback::new(move |()|details.update(|open| *open = !*open))>
             <Button size=ButtonSize::Sm disabled=Signal::derive(move ||state.busy.get()||installed.get()) on_click=install><Icon name=IconName::Download/>{move ||if installed.get(){"Installed"}else{"Install"}}</Button>
             <ActionMenu aria_label="Available plugin actions" icon=IconName::Settings>
@@ -348,19 +378,25 @@ fn InstalledPackage(entry: PluginInstallation) -> impl IntoView {
         })
     });
     let enabled = Signal::derive(move || binding.get().is_some_and(|b| b.enabled));
+    let requires_update = Signal::derive(move || {
+        entry.with_value(|entry| entry.prepared.manifest.requires_update())
+            || binding.get().is_some_and(|binding| {
+                binding.enabled && binding.prepared.manifest.requires_update()
+            })
+    });
     let current = Signal::derive(move || {
         binding.get().is_some_and(|b| {
             b.enabled && entry.with_value(|e| b.prepared.source == e.prepared.source)
         })
     });
     view! {<div class="plugin-entry">
-        <PluginRow name=manifest.display_name description=manifest.description publisher=manifest.publisher
+        <PluginRow name=manifest.display_name description=manifest.description publisher=manifest.publisher icon=manifest.icon
             source=Signal::derive(move ||state.marketplaces.with(|marketplaces|entry.with_value(|entry|marketplaces.catalogs.iter().find(|catalog|catalog.source.repository==entry.prepared.source.repository).map(marketplace_name).unwrap_or_default())))
             version=Signal::derive(move ||entry.with_value(|e|e.prepared.manifest.version.clone()))
-            status=Signal::derive(move ||binding.get().map_or_else(||entry.with_value(|entry|if entry.default_enabled{"Enabled by default"}else{"Activation pending"}.into()),|b|format!("{} in this project: {}",if b.enabled{"Enabled"}else{"Disabled"},b.prepared.manifest.version)))
+            status=Signal::derive(move ||if requires_update.get(){"Update required".into()}else{binding.get().map_or_else(||entry.with_value(|entry|if entry.default_enabled{"Enabled by default"}else{"Activation pending"}.into()),|b|format!("{} in this project: {}",if b.enabled{"Enabled"}else{"Disabled"},b.prepared.manifest.version))})
             on_details=Callback::new(move |()|details.update(|open| *open = !*open))>
             <Show when=move ||projects.active_project.get().is_some()&&binding.get().is_some()>
-            <Show when=move ||enabled.get() fallback=move ||view!{<Button size=ButtonSize::Sm disabled=Signal::derive(move ||state.busy.get()||projects.active_project.get().is_none()) on_click=Callback::new(move |_|actions.enable.run(entry.get_value()))>"Enable"</Button>}>
+            <Show when=move ||enabled.get() fallback=move ||view!{<Button size=ButtonSize::Sm disabled=Signal::derive(move ||state.busy.get()||projects.active_project.get().is_none()||entry.with_value(|entry|entry.prepared.manifest.requires_update())) on_click=Callback::new(move |_|actions.enable.run(entry.get_value()))>"Enable"</Button>}>
                 <Button size=ButtonSize::Sm disabled=state.busy.read_only() on_click=Callback::new(move |_|{if let Some(binding)=binding.get_untracked(){actions.disable.run(binding);}})>"Disable"</Button>
             </Show>
             </Show>
@@ -370,11 +406,12 @@ fn InstalledPackage(entry: PluginInstallation) -> impl IntoView {
                 }><Icon name=IconName::Download/><span>{move ||update.get().map(|update|format!("Update to {}",update.version))}</span></button></Show>
                 <button type="button" role="menuitem" class="ui-dropdown-item recent-item" on:click=move |_|preferences.update(|open| *open = !*open)><Icon name=IconName::Bell/><span>"Update preferences"</span></button>
                 <button type="button" role="menuitem" class="ui-dropdown-item recent-item" disabled=move ||release_catalog.get().is_none() on:click=move |_|versions.update(|open| *open = !*open)><Icon name=IconName::GitBranch/><span>"Choose release"</span></button>
-                <button type="button" role="menuitem" class="ui-dropdown-item recent-item" disabled=move ||state.busy.get()||projects.active_project.get().is_none()||current.get() on:click=move |_|actions.enable.run(entry.get_value())><Icon name=IconName::Check/><span>{move ||if enabled.get(){"Apply installed version"}else{"Enable for project"}}</span></button>
+                <button type="button" role="menuitem" class="ui-dropdown-item recent-item" disabled=move ||state.busy.get()||projects.active_project.get().is_none()||current.get()||entry.with_value(|entry|entry.prepared.manifest.requires_update()) on:click=move |_|actions.enable.run(entry.get_value())><Icon name=IconName::Check/><span>{move ||if enabled.get(){"Apply installed version"}else{"Enable for project"}}</span></button>
                 <button type="button" role="menuitem" class="ui-dropdown-item recent-item" disabled=move ||state.busy.get()||!enabled.get() on:click=move |_|{if let Some(binding)=binding.get_untracked(){actions.disable.run(binding);}}><Icon name=IconName::Pause/><span>"Disable for project"</span></button>
                 <button type="button" role="menuitem" class="ui-dropdown-item recent-item" disabled=move ||state.busy.get() on:click=move |_|confirming.set(true)><Icon name=IconName::Trash2/><span>"Uninstall"</span></button>
             </ActionMenu>
         </PluginRow>
+        <Show when=move ||requires_update.get()><p class="form-hint">"This version uses retired built-in tool groups. Choose an executable release, then apply it to this project. Your data and update preferences are retained."</p></Show>
         <Show when=move ||update.get().is_some()><p class="form-hint">{move ||update.get().map(|update|format!("Update available: {}",update.version))}</p></Show>
         <Show when=move ||preferences.get()><div class="plugin-details ui-section-content"><FormField label="Updates"><DropdownSelect label="Plugin update policy" value=Signal::derive(move ||entry.with_value(|entry|match entry.update_policy {PluginUpdatePolicy::Notify=>"notify",PluginUpdatePolicy::Automatic=>"automatic",PluginUpdatePolicy::Off=>"off"}.to_string())) options=Signal::derive(||vec![SelectOption::new("notify","Notify"),SelectOption::new("automatic","Automatic"),SelectOption::new("off","Off")]) on_change=Callback::new(move |value: String|{
             let policy=match value.as_str(){"automatic"=>PluginUpdatePolicy::Automatic,"off"=>PluginUpdatePolicy::Off,_=>PluginUpdatePolicy::Notify};

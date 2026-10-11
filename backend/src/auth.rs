@@ -147,6 +147,7 @@ pub async fn issue_token(
 }
 
 fn bridge_principal(headers: &HeaderMap, secret: Option<&str>) -> Result<Option<UserId>, ApiError> {
+    reject_plugin_transport(headers)?;
     let Some(auth) = headers.get("authorization") else {
         return Ok(None);
     };
@@ -166,6 +167,7 @@ fn bridge_principal(headers: &HeaderMap, secret: Option<&str>) -> Result<Option<
 
 /// Authenticate a request from its headers, returning the account.
 pub async fn authenticate(state: &AppState, headers: &HeaderMap) -> Result<User, ApiError> {
+    reject_plugin_transport(headers)?;
     if headers.contains_key("authorization") {
         let secret = crate::bridge::bridge_secret(&state.store).await?;
         if let Some(id) = bridge_principal(headers, secret.as_deref())? {
@@ -223,8 +225,18 @@ fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
     a.iter().zip(b).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
 }
 
+fn reject_plugin_transport(headers: &HeaderMap) -> Result<(), ApiError> {
+    if headers.contains_key(openwebide_core::plugins::execution::PLUGIN_HTTP_HEADER) {
+        return Err(ApiError::unauthorized(
+            "Plugin HTTP cannot authenticate to host control endpoints",
+        ));
+    }
+    Ok(())
+}
+
 /// Internal delivery dispatcher: authenticates the service without assuming a user identity.
 pub async fn require_bridge_service(state: &AppState, headers: &HeaderMap) -> Result<(), ApiError> {
+    reject_plugin_transport(headers)?;
     let secret = crate::bridge::bridge_secret(&state.store).await?;
     let token = headers
         .get("authorization")
@@ -242,6 +254,68 @@ mod tests {
     use super::*;
     use spin_sdk::http::HeaderMap;
 
+    #[test]
+    fn plugin_http_cannot_authenticate_as_a_bridge_service_or_account() {
+        futures::executor::block_on(async {
+            let state = AppState::new().await.unwrap();
+            state
+                .store
+                .set_setting("bridge_secret_cache", "secret")
+                .await
+                .unwrap();
+            let user = state
+                .store
+                .insert_user(
+                    "plugin-boundary-owner",
+                    "hash",
+                    openwebide_core::UserRole::Admin,
+                    1,
+                )
+                .await
+                .unwrap();
+            let cookie = issue_token(&state, &user).await.unwrap();
+            for marker in ["1", "", "0"] {
+                let mut headers = HeaderMap::new();
+                headers.insert(
+                    openwebide_core::plugins::execution::PLUGIN_HTTP_HEADER,
+                    marker.parse().unwrap(),
+                );
+                headers.insert("authorization", "Bearer secret".parse().unwrap());
+                headers.insert("x-openwebide-user", user.id.to_string().parse().unwrap());
+                assert_eq!(
+                    require_bridge_service(&state, &headers)
+                        .await
+                        .unwrap_err()
+                        .into_response()
+                        .status()
+                        .as_u16(),
+                    401
+                );
+                assert!(bridge_principal(&headers, Some("secret")).is_err());
+                assert_eq!(
+                    authenticate(&state, &headers)
+                        .await
+                        .unwrap_err()
+                        .into_response()
+                        .status()
+                        .as_u16(),
+                    401
+                );
+                headers.remove("authorization");
+                headers.insert("cookie", format!("owide_session={cookie}").parse().unwrap());
+                headers.insert("x-openwebide", "1".parse().unwrap());
+                assert_eq!(
+                    authenticate(&state, &headers)
+                        .await
+                        .unwrap_err()
+                        .into_response()
+                        .status()
+                        .as_u16(),
+                    401
+                );
+            }
+        });
+    }
     #[test]
     fn shared_secret_comparison() {
         assert!(constant_time_eq(b"secret", b"secret"));

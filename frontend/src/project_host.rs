@@ -112,10 +112,7 @@ impl ProjectHost {
         if !current() {
             return Err("Project access changed".into());
         }
-        Ok(openwebide_core::scheduled::HostBinding {
-            host_id: host.id,
-            path,
-        })
+        Ok(openwebide_core::scheduled::HostBinding::new(host.id, path))
     }
     pub async fn discover_servers(self) -> Result<Vec<openwebide_core::ServerDiscovery>, String> {
         let local = self
@@ -245,6 +242,36 @@ impl ProjectHost {
         None
     }
 
+    /// Plugin processes run on the host independently of browser folder visibility.
+    pub fn plugin_host(
+        self,
+        project_id: Option<i64>,
+        current: impl Fn() -> bool,
+    ) -> Result<PluginExecutionHost, String> {
+        if !current() {
+            return Err("Plugin action context changed".into());
+        }
+        if let Some(id) = project_id {
+            let project = self
+                .projects
+                .project(id)
+                .ok_or("Project is no longer available")?;
+            if project.mode == WorkspaceMode::Local {
+                let config = BridgeConfig::new(&self.settings.bridge_url.get_untracked());
+                return Ok(PluginExecutionHost::Local(
+                    crate::plugin_bridge::PluginBridgeClient::new(
+                        config.http_url,
+                        BridgeCredentials::new(self.api),
+                    ),
+                ));
+            }
+        }
+        Ok(PluginExecutionHost::Remote {
+            api: self.api,
+            project_id,
+        })
+    }
+
     pub async fn resolve(self, project_id: Option<i64>) -> Result<ProjectExecution, String> {
         self.resolve_guarded(project_id, false, || true).await
     }
@@ -344,10 +371,30 @@ pub enum ProjectExecution {
     Local(BrowserBridgeClient),
 }
 impl ProjectExecution {
+    pub fn local_bridge(&self) -> Option<BrowserBridgeClient> {
+        match self {
+            Self::Local(client) => Some(client.clone()),
+            Self::Remote { .. } => None,
+        }
+    }
     pub fn cwd(&self) -> Option<String> {
         match self {
             Self::Remote { cwd, .. } => cwd.clone(),
             Self::Local(client) => Some(client.cwd().to_owned()),
+        }
+    }
+}
+
+/// Native plugin transport selection; workspace access is a separate capability.
+pub enum PluginExecutionHost {
+    Remote { api: Api, project_id: Option<i64> },
+    Local(crate::plugin_bridge::PluginBridgeClient),
+}
+impl PluginExecutionHost {
+    pub fn local_bridge(self) -> Option<crate::plugin_bridge::PluginBridgeClient> {
+        match self {
+            Self::Local(client) => Some(client),
+            Self::Remote { .. } => None,
         }
     }
 }

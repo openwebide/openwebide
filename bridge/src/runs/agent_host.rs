@@ -5,10 +5,10 @@ use std::sync::{
 };
 use std::time::Duration;
 
-use openwebide_agent::{BridgeClient, CancelCheck, PermissionGate, WebClient};
+use openwebide_agent::{BridgeClient, CancelCheck, PermissionGate};
 use openwebide_core::{
     CommandOutcome, GitCheckoutRequest, GitCheckoutResult, GitCommitRequest, GitCommitResult,
-    GitRepoStatus, ToolCall, WebSearchResult,
+    GitRepoStatus, ToolCall,
 };
 use tokio::sync::{Notify, oneshot};
 
@@ -103,20 +103,6 @@ impl InProcessBridgeClient {
             })
             .await
             .map_err(|error| error.to_string())
-    }
-}
-
-pub struct BackendWebClient<B> {
-    pub backend: Arc<B>,
-    pub user_id: i64,
-}
-
-impl<B: RunBackend> WebClient for BackendWebClient<B> {
-    async fn search(&self, query: &str, limit: usize) -> Result<Vec<WebSearchResult>, String> {
-        self.backend.web_search(self.user_id, query, limit).await
-    }
-    async fn fetch_page(&self, url: &str) -> Result<String, String> {
-        self.backend.web_fetch(self.user_id, url).await
     }
 }
 

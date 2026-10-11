@@ -18,6 +18,7 @@ impl MonitorActions {
         projects: ProjectsState,
         chat: ChatState,
     ) -> Self {
+        let host = expect_context::<crate::project_host::ProjectHost>();
         let generation = StoredValue::new(0u64);
         let command = Callback::new(move |command| {
             let Some(session) = chat.active_session.get_untracked() else {
@@ -31,16 +32,47 @@ impl MonitorActions {
             let ticket = generation.get_value();
             state.busy.set(true);
             spawn_local(async move {
-                let result = api
-                    .with_value(Clone::clone)
-                    .scheduled_session_command(
-                        session,
-                        &TaskCommand::Monitor {
-                            session_id: 0,
+                let current = move || {
+                    generation.try_get_value() == Some(ticket)
+                        && auth.generation.try_get_untracked() == Some(account)
+                        && projects.active_project.try_get_untracked() == Some(project)
+                        && chat.active_session.try_get_untracked() == Some(Some(session))
+                };
+                let result = async {
+                    let backend = api.with_value(Clone::clone);
+                    if !matches!(command, MonitorCommand::List {}) {
+                        if matches!(command, MonitorCommand::Start { .. })
+                            && let Some(binding) = host.background_binding(project, current).await?
+                        {
+                            if !current() {
+                                return Err("Plugin action context changed".into());
+                            }
+                            backend
+                                .bind_background_host(
+                                    project.ok_or("Project is no longer available")?,
+                                    &binding,
+                                )
+                                .await?;
+                        }
+                        let call = TaskCommand::Monitor {
+                            session_id: session,
                             command,
-                        },
-                    )
-                    .await;
+                        }
+                        .plugin_call()?;
+                        let outcome = crate::plugin_actions::invoke_scoped_plugin_action(
+                            api, host, project, &call, true, current,
+                        )
+                        .await?;
+                        if !outcome.ok {
+                            return Err(outcome.content);
+                        }
+                    }
+                    if !current() {
+                        return Err("Plugin action context changed".into());
+                    }
+                    backend.scheduled_monitors(session).await
+                }
+                .await;
                 if generation.try_get_value() != Some(ticket)
                     || auth.generation.try_get_untracked() != Some(account)
                     || projects.active_project.try_get_untracked() != Some(project)
@@ -67,16 +99,11 @@ impl MonitorActions {
             state.error.set(None);
             state.busy.set(false);
         });
-        let host = use_context::<crate::project_host::ProjectHost>();
         let authorize = Callback::new(move |()| {
             let Some(session) = chat.active_session.get_untracked() else {
                 return;
             };
             let Some(project) = projects.active_project.get_untracked() else {
-                return;
-            };
-            let Some(host) = host else {
-                state.error.set(Some("Project host unavailable".into()));
                 return;
             };
             if state.busy.get_untracked() {
@@ -94,16 +121,15 @@ impl MonitorActions {
             spawn_local(async move {
                 let result = async {
                     let binding = host.scheduled_binding(project, current).await?;
-                    api.with_value(Clone::clone)
-                        .scheduled_command(
-                            Some(project),
-                            &TaskCommand::Monitor {
-                                session_id: session,
-                                command: MonitorCommand::List {},
-                            },
-                            Some(&binding),
-                        )
-                        .await
+                    let backend = api.with_value(Clone::clone);
+                    if !current() {
+                        return Err("Plugin action context changed".into());
+                    }
+                    backend.bind_background_host(project, &binding).await?;
+                    if !current() {
+                        return Err("Plugin action context changed".into());
+                    }
+                    backend.scheduled_monitors(session).await
                 }
                 .await;
                 if !current() {

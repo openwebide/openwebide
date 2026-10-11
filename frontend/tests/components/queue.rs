@@ -219,6 +219,7 @@ async fn restored_queue_waits_for_run_queue_and_can_be_edited_or_removed() {
             1,
             vec![openwebide_core::QueuedPrompt {
                 scheduled_task: None,
+                plugin_run: None,
                 id: 1,
                 session_id: 1,
                 revision: 1,
@@ -272,6 +273,7 @@ async fn failed_delivery_keeps_the_queued_prompt_pauses_the_queue_and_preserves_
             1,
             vec![openwebide_core::QueuedPrompt {
                 scheduled_task: None,
+                plugin_run: None,
                 id: 1,
                 session_id: 1,
                 revision: 1,
@@ -375,6 +377,7 @@ async fn stale_queue_load_cannot_update_a_new_session_or_account() {
         sender
             .send(Ok(vec![openwebide_core::QueuedPrompt {
                 scheduled_task: None,
+                plugin_run: None,
                 id: 1,
                 session_id: 1,
                 revision: 1,
@@ -386,5 +389,73 @@ async fn stale_queue_load_cannot_update_a_new_session_or_account() {
         settle().await;
         assert!(mounted.state.chat.queued_prompts.get_untracked().is_empty());
         assert_eq!(mounted.state.chat.draft.get_untracked(), "new draft");
+    }
+}
+
+#[wasm_bindgen_test]
+async fn plugin_prompt_queue_waits_for_its_host_in_both_project_modes() {
+    for mode in [
+        openwebide_core::WorkspaceMode::Local,
+        openwebide_core::WorkspaceMode::Remote,
+    ] {
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            state.seed_connection();
+            state.seed_session();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            state.fake.projects.borrow_mut()[0].mode = mode;
+            state.fake.queued_prompts.borrow_mut().insert(
+                1,
+                vec![openwebide_core::QueuedPrompt {
+                    scheduled_task: None,
+                    plugin_run: Some(7),
+                    id: 1,
+                    session_id: 1,
+                    revision: 1,
+                    content: "Plugin-owned prompt".into(),
+                    created_at: 0,
+                    guidance: false,
+                }],
+            );
+            chat_view(state)
+        });
+        settle().await;
+        mounted.click(".tui-queue-toggle");
+        settle().await;
+        assert!(
+            mounted
+                .state
+                .fake
+                .calls
+                .borrow()
+                .iter()
+                .all(|call| !matches!(
+                    call,
+                    openwebide_frontend::testing::fake_backend::Call::SendMessage { .. }
+                ))
+        );
+        assert_eq!(mounted.state.fake.queued_prompts.borrow()[&1].len(), 1);
+        let edit = mounted
+            .root
+            .query_selector(".tui-queued-prompt .btn")
+            .unwrap()
+            .unwrap();
+        assert!(edit.has_attribute("disabled"));
+        assert_eq!(
+            mounted
+                .root
+                .query_selector(".tui-queue-kind")
+                .unwrap()
+                .unwrap()
+                .text_content()
+                .unwrap(),
+            "Plugin"
+        );
+        mounted.click(".tui-queued-prompt .btn:last-child");
+        settle().await;
+        assert!(mounted.state.fake.queued_prompts.borrow()[&1].is_empty());
     }
 }

@@ -20,6 +20,41 @@ impl<D: Db> Store<D> {
     ) -> Result<Vec<ScheduledTask>, StorageError> {
         self.tasks_in_scope(user, project, None, now).await
     }
+    /// Owned monitor data projection. Reading it does not run scheduling/expiry policy.
+    pub async fn scheduled_monitors(
+        &self,
+        user: UserId,
+        session: i64,
+        now: i64,
+    ) -> Result<Vec<ScheduledTask>, StorageError> {
+        let project = self.get_session(session, user).await?.project_id;
+        self.tasks_in_scope(user, project, Some(session), now).await
+    }
+    /// A filesystem transport binding for unattended execution, shared with core goal workers.
+    pub async fn bind_background_host(
+        &self,
+        user: UserId,
+        project: i64,
+        binding: &HostBinding,
+    ) -> Result<(), StorageError> {
+        let project = self.get_project(project, user).await?;
+        if project.mode != WorkspaceMode::Local
+            || binding.host_id.is_empty()
+            || binding.host_id.len() > 256
+            || binding.path.is_empty()
+            || binding.path.len() > 4096
+        {
+            return Err(StorageError::InvalidRequest(
+                "Invalid project execution host binding".into(),
+            ));
+        }
+        self.set_user_setting(
+            user,
+            &format!("scheduled_host_{}", project.id),
+            &encode(binding)?,
+        )
+        .await
+    }
     async fn tasks_in_scope(
         &self,
         user: UserId,
@@ -42,7 +77,7 @@ impl<D: Db> Store<D> {
                     &[DbValue::Text(host_id.clone())],
                 )
                 .await?;
-            let history = self.db.execute("SELECT id, task_id, due_at, status, detail, message_id, permission_id, session_id FROM scheduled_runs WHERE task_id = ? ORDER BY id DESC LIMIT 1", &[DbValue::Int(id)]).await?;
+            let history = self.db.execute("SELECT * FROM (SELECT id,task_id,due_at,status,detail,message_id,permission_id,session_id FROM scheduled_runs WHERE task_id=? UNION ALL SELECT id+4503599627370496,task_id,due_at,status,detail,message_id,permission_id,session_id FROM plugin_task_runs WHERE task_id=?) ORDER BY id DESC LIMIT 1", &[DbValue::Int(id),DbValue::Int(id)]).await?;
             tasks.push(ScheduledTask {
                 id,
                 revision: row.get_int(1)?,
@@ -104,6 +139,12 @@ impl<D: Db> Store<D> {
                     };
                     &normalized
                 } else { original };
+                if let TaskCommand::Update{id,..}|TaskCommand::SetEnabled{id,..}|TaskCommand::Delete{id,..}=command {
+                    let rows=store.db.execute("SELECT plugin_owner FROM scheduled_tasks WHERE id=? AND user_id=?", &[DbValue::Int(*id),DbValue::Int(user.get())]).await?;
+                    if rows.rows.first().is_some_and(|row|row.get_text_opt(0).is_some()) {
+                        return Err(StorageError::Conflict("Manage this task through its plugin".into()));
+                    }
+                }
                 let target = |id,revision| tasks.iter().find(|task|task.id==id && task.revision==revision).ok_or_else(||StorageError::Conflict("Task changed or was removed. Refresh before editing.".into()));
                 match command {
                     TaskCommand::Monitor { .. } => unreachable!("monitor command normalized"),
@@ -282,7 +323,7 @@ impl<D: Db> Store<D> {
         let expired = self
             .db
             .execute(
-                "SELECT task_id FROM monitors WHERE expires_at<=?",
+                "SELECT m.task_id FROM monitors m JOIN scheduled_tasks t ON t.id=m.task_id WHERE t.plugin_owner IS NULL AND m.expires_at<=?",
                 &[DbValue::Int(now)],
             )
             .await?;
@@ -296,7 +337,7 @@ impl<D: Db> Store<D> {
                 )
                 .await?;
         }
-        let terminal = self.db.execute("SELECT t.id,m.session_id,t.enabled,m.expires_at,r.status,r.detail FROM scheduled_tasks t JOIN monitors m ON m.task_id=t.id LEFT JOIN scheduled_runs r ON r.id=(SELECT max(id) FROM scheduled_runs WHERE task_id=t.id) WHERE (t.enabled=0 OR (t.next_run IS NULL AND r.id IS NOT NULL)) AND NOT EXISTS(SELECT 1 FROM scheduled_runs WHERE task_id=t.id AND status IN ('queued','claimed','running','blocked'))", &[]).await?;
+        let terminal = self.db.execute("SELECT t.id,m.session_id,t.enabled,m.expires_at,r.status,r.detail FROM scheduled_tasks t JOIN monitors m ON m.task_id=t.id LEFT JOIN scheduled_runs r ON r.id=(SELECT max(id) FROM scheduled_runs WHERE task_id=t.id) WHERE t.plugin_owner IS NULL AND (t.enabled=0 OR (t.next_run IS NULL AND r.id IS NOT NULL)) AND NOT EXISTS(SELECT 1 FROM scheduled_runs WHERE task_id=t.id AND status IN ('queued','claimed','running','blocked'))", &[]).await?;
         for row in terminal.rows {
             let id = row.get_int(0)?;
             let status = if row.get_int(3)? <= now {
@@ -350,7 +391,7 @@ impl<D: Db> Store<D> {
             store.db.execute("UPDATE scheduled_runs SET status='interrupted',detail='Host stopped; prompt was delivered and will not be replayed' WHERE status IN ('running','blocked') AND claimed_until < ?", &[DbValue::Int(now)]).await?;
             store.db.execute("UPDATE scheduled_tasks SET next_run=? WHERE enabled=1 AND next_run IS NULL AND id IN (SELECT g.task_id FROM goal_workers g JOIN scheduled_runs r ON r.task_id=g.task_id WHERE r.status='interrupted' AND r.id=(SELECT max(id) FROM scheduled_runs WHERE task_id=g.task_id))", &[DbValue::Int(now)]).await?;
             store.cleanup_monitors(now).await?;
-            let rows=store.db.execute("SELECT id,user_id,project_id,draft,next_run FROM scheduled_tasks WHERE host_id=? AND enabled=1 AND next_run <= ? AND NOT EXISTS(SELECT 1 FROM scheduled_runs r WHERE r.task_id=scheduled_tasks.id AND r.status IN ('queued','claimed','running','blocked')) ORDER BY next_run LIMIT 20", &[DbValue::Text(host.id.clone()),DbValue::Int(now)]).await?;
+            let rows=store.db.execute("SELECT id,user_id,project_id,draft,next_run FROM scheduled_tasks WHERE plugin_owner IS NULL AND host_id=? AND enabled=1 AND next_run <= ? AND NOT EXISTS(SELECT 1 FROM scheduled_runs r WHERE r.task_id=scheduled_tasks.id AND r.status IN ('queued','claimed','running','blocked')) ORDER BY next_run LIMIT 20", &[DbValue::Text(host.id.clone()),DbValue::Int(now)]).await?;
             for row in rows.rows {
                 let task=row.get_int(0)?;let user=UserId::new(row.get_int(1)?);let project=row.get_int_opt(2);let draft:TaskDraft=decode(row.get_text(3)?)?;
                 let Ok(session)=store.scheduled_session(user,project,&draft,now).await else {
@@ -382,7 +423,7 @@ impl<D: Db> Store<D> {
             let mut deliveries=Vec::new();
             for row in rows.rows {
                 store.db.execute("UPDATE scheduled_runs SET status='claimed',claimed_until=? WHERE id=? AND status='queued'", &[DbValue::Int(now+120),DbValue::Int(row.get_int(0)?)]).await?;
-                deliveries.push(TaskDelivery{run_id:row.get_int(0)?,task_id:row.get_int(1)?,user_id:row.get_int(2)?,session_id:row.get_int(3)?,prompt:openwebide_core::QueuedPrompt{scheduled_task:Some(row.get_int(1)?),id:row.get_int(4)?,revision:row.get_int(5)?,session_id:row.get_int(3)?,content:row.get_text(6)?.into(),created_at:row.get_int(7)?,guidance:false},binding:row.get_text_opt(8).map(|path|HostBinding{host_id:host.id.clone(),path:path.into()})});
+                deliveries.push(TaskDelivery{run_id:row.get_int(0)?,task_id:row.get_int(1)?,user_id:row.get_int(2)?,session_id:row.get_int(3)?,prompt:openwebide_core::QueuedPrompt{scheduled_task:Some(row.get_int(1)?),plugin_run:None,id:row.get_int(4)?,revision:row.get_int(5)?,session_id:row.get_int(3)?,content:row.get_text(6)?.into(),created_at:row.get_int(7)?,guidance:false},binding:row.get_text_opt(8).map(|path|HostBinding{host_id:host.id.clone(),path:path.into()})});
             }
             Ok(deliveries)
         }).await
@@ -558,7 +599,7 @@ mod tests {
             // Recreate the deployed pre-target schema, retaining an in-flight claim.
             for sql in [
                 "CREATE TABLE scheduled_tasks_legacy (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE, session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE, revision INTEGER NOT NULL DEFAULT 1, draft TEXT NOT NULL, enabled INTEGER NOT NULL, next_run INTEGER, host_id TEXT NOT NULL, path TEXT)",
-                "INSERT INTO scheduled_tasks_legacy SELECT * FROM scheduled_tasks",
+                "INSERT INTO scheduled_tasks_legacy SELECT id,user_id,project_id,session_id,revision,draft,enabled,next_run,host_id,path FROM scheduled_tasks",
                 "CREATE TABLE scheduled_runs_legacy (id INTEGER PRIMARY KEY AUTOINCREMENT, task_id INTEGER NOT NULL REFERENCES scheduled_tasks_legacy(id) ON DELETE CASCADE, due_at INTEGER NOT NULL, status TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '', permission_id TEXT, queued_id INTEGER REFERENCES queued_prompts(id) ON DELETE SET NULL, message_id INTEGER REFERENCES messages(id) ON DELETE SET NULL, claimed_until INTEGER NOT NULL DEFAULT 0, UNIQUE(task_id, due_at))",
                 "INSERT INTO scheduled_runs_legacy SELECT id,task_id,due_at,status,detail,permission_id,queued_id,message_id,claimed_until FROM scheduled_runs",
                 "DROP TABLE scheduled_runs",

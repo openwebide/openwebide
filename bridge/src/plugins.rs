@@ -1,9 +1,14 @@
 //! Native Git/object and atomic filesystem primitives for shared plugin policy.
+mod http;
 pub mod invocations;
+pub mod jobs;
+pub mod runs;
+pub mod transport;
 use openwebide_core::plugins::{
     MAX_PACKAGE_BYTES, MAX_PACKAGE_FILE_BYTES, MAX_PACKAGE_FILES, PackageFile, PackageFileKind,
     PluginError, PluginFuture, PluginHost, PluginSource, PreparedPlugin, prepare_plugin,
 };
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::{
     path::{Path, PathBuf},
     process::Stdio,
@@ -11,6 +16,7 @@ use std::{
     time::Duration,
 };
 use tokio::{io::AsyncReadExt, process::Command, sync::Mutex};
+pub mod preparations;
 
 /// Only host binaries contain the bundled plugin files.
 fn bundled_files(source: &PluginSource) -> Option<Vec<PackageFile>> {
@@ -57,16 +63,23 @@ fn bundled_files(source: &PluginSource) -> Option<Vec<PackageFile>> {
         })
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct NativePluginInstaller {
     root: Option<PathBuf>,
     lock: Arc<Mutex<()>>,
+    pub(crate) preparations: preparations::Preparations,
+}
+impl Default for NativePluginInstaller {
+    fn default() -> Self {
+        Self::new(default_root())
+    }
 }
 impl NativePluginInstaller {
     pub fn new(root: Option<PathBuf>) -> Self {
         Self {
             root,
             lock: Arc::new(Mutex::new(())),
+            preparations: preparations::Preparations::default(),
         }
     }
 
@@ -86,10 +99,31 @@ impl NativePluginInstaller {
             .root
             .as_ref()
             .ok_or_else(|| host_error("Plugin cache is not configured."))?;
+        if !root.is_absolute() {
+            return Err(host_error("Plugin cache path must be absolute."));
+        }
         let host = ScopedHost {
+            cancelled: Arc::new(AtomicBool::new(false)),
             root: root.join(key(owner)),
             host_id: prepared.host_id.clone(),
         };
+        let manifest_path = host
+            .snapshot(&prepared.source, &prepared.digest)
+            .join("plugin.json");
+        reject_link(&manifest_path)?;
+        if std::fs::metadata(&manifest_path).map_err(io_error)?.len()
+            > MAX_PACKAGE_FILE_BYTES as u64
+        {
+            return Err(host_error("Cached plugin manifest exceeds its limit."));
+        }
+        let manifest: openwebide_core::plugins::PluginManifest =
+            serde_json::from_slice(&std::fs::read(manifest_path).map_err(io_error)?)
+                .map_err(|error| host_error(error.to_string()))?;
+        if manifest != prepared.manifest {
+            return Err(host_error(
+                "Plugin receipt does not match its prepared executable.",
+            ));
+        }
         load_artifact(&host.artifact(&prepared.source, &prepared.digest))
     }
     pub async fn package(
@@ -107,6 +141,7 @@ impl NativePluginInstaller {
             return Err(host_error("Plugin cache path must be absolute."));
         }
         let host = ScopedHost {
+            cancelled: Arc::new(AtomicBool::new(false)),
             root: root.join(key(owner)),
             host_id,
         };
@@ -131,6 +166,7 @@ impl NativePluginInstaller {
             return Err(host_error("Plugin cache path must be absolute."));
         }
         let host = ScopedHost {
+            cancelled: Arc::new(AtomicBool::new(false)),
             root: root.join(key(owner)),
             host_id: String::new(),
         };
@@ -231,7 +267,29 @@ impl NativePluginInstaller {
         source: &PluginSource,
     ) -> Result<PreparedPlugin, PluginError> {
         source.validate()?;
+        let adapter = preparations::NativePreparationHost {
+            installer: self,
+            owner,
+            host_id,
+            clock: std::time::Instant::now(),
+        };
+        openwebide_core::plugins::preparation::prepare_on_host(&adapter, source)
+            .await
+            .map_err(host_error)
+    }
+
+    pub(super) async fn prepare_cancellable(
+        &self,
+        owner: &str,
+        host_id: String,
+        source: &PluginSource,
+        cancelled: Arc<AtomicBool>,
+    ) -> Result<PreparedPlugin, PluginError> {
+        source.validate()?;
         let _guard = self.lock.lock().await;
+        if cancelled.load(Ordering::Acquire) {
+            return Err(host_error("Plugin preparation was cancelled."));
+        }
         let root = self
             .root
             .as_ref()
@@ -242,6 +300,7 @@ impl NativePluginInstaller {
             ));
         }
         let host = ScopedHost {
+            cancelled,
             root: root.join(key(owner)),
             host_id,
         };
@@ -270,6 +329,7 @@ fn io_error(error: std::io::Error) -> PluginError {
 }
 
 struct ScopedHost {
+    cancelled: Arc<AtomicBool>,
     root: PathBuf,
     host_id: String,
 }
@@ -423,7 +483,13 @@ impl PluginHost for ScopedHost {
             let artifact = self.artifact(source, digest);
             let snapshot = self.snapshot(source, digest);
             let manifest = manifest.clone();
+            let source = source.clone();
+            let digest = digest.to_owned();
+            let cancelled = self.cancelled.clone();
             tokio::task::spawn_blocking(move || {
+                if cancelled.load(Ordering::Acquire) {
+                    return Err(host_error("Plugin preparation was cancelled."));
+                }
                 if artifact.exists() {
                     load_artifact(&artifact)?;
                     return Ok(());
@@ -431,28 +497,34 @@ impl PluginHost for ScopedHost {
                 let parent = artifact.parent().expect("artifact parent");
                 create_directory(parent)?;
                 let stage = tempfile::tempdir_in(parent).map_err(io_error)?;
-                let rust = manifest.executable.as_ref().expect("Rust manifest");
                 let build_dir = stage.path().join("build");
-                std::fs::create_dir(&build_dir).map_err(io_error)?;
-                let bytes =
-                    openwebide_plugin_runtime::build::compile(&snapshot, &rust.library, &build_dir)
-                        .map_err(|error| host_error(format!("{error:#}")))?;
+                let bytes = if let Some(bytes) = bundled_component(&source, &digest)? {
+                    bytes
+                } else {
+                    if cfg!(feature = "bundled-defaults") && bundled_files(&source).is_some() {
+                        return Err(host_error(
+                            "The distribution is missing a compatible compiled default. Rebuild its plugin bundle.",
+                        ));
+                    }
+                    let rust = manifest.executable.as_ref().expect("Rust manifest");
+                    std::fs::create_dir(&build_dir).map_err(io_error)?;
+                    openwebide_plugin_runtime::build::compile_cancellable(&snapshot, &rust.library, &build_dir, &cancelled)
+                        .map_err(|error| host_error(format!("{error:#}")))?
+                };
                 let runtime = openwebide_plugin_runtime::Runtime::new()
                     .map_err(|error| host_error(error.to_string()))?;
-                let tools = runtime
-                    .tools(&bytes, NoPluginServices, &[])
-                    .map_err(|error| host_error(format!("Invalid plugin interface: {error:#}")))?;
-                let tools: Vec<openwebide_core::plugins::PluginTool> = serde_json::from_value(
-                    serde_json::to_value(tools).map_err(|error| host_error(error.to_string()))?,
-                )
-                .map_err(|error| host_error(error.to_string()))?;
-                if tools != manifest.contributions.tools {
-                    return Err(PluginError::Invalid(
-                        "Compiled tools do not match the manifest.".into(),
-                    ));
+                runtime
+                    .validate_exports(&bytes, &manifest)
+                    .map_err(|error| {
+                        PluginError::Invalid(format!("Invalid plugin interface: {error:#}"))
+                    })?;
+                if cancelled.load(Ordering::Acquire) {
+                    return Err(host_error("Plugin preparation was cancelled."));
                 }
                 // Build artifacts are disposable; retain only the validated component.
-                std::fs::remove_dir_all(&build_dir).map_err(io_error)?;
+                if build_dir.exists() {
+                    std::fs::remove_dir_all(&build_dir).map_err(io_error)?;
+                }
                 std::fs::write(stage.path().join("plugin.wasm"), &bytes).map_err(io_error)?;
                 std::fs::write(
                     stage.path().join("digest"),
@@ -502,11 +574,21 @@ impl PluginHost for ScopedHost {
     }
 }
 
-struct NoPluginServices;
-impl openwebide_plugin_runtime::HostServices for NoPluginServices {
-    fn request(&mut self, _capability: &str, _payload: &str) -> Result<String, String> {
-        Err("Host capabilities are unavailable during interface validation.".into())
-    }
+fn bundled_component(source: &PluginSource, digest: &str) -> Result<Option<Vec<u8>>, PluginError> {
+    use openwebide_plugin_runtime::bundled::CompiledBundle;
+    static BUNDLE: std::sync::LazyLock<Result<CompiledBundle, String>> =
+        std::sync::LazyLock::new(|| {
+            serde_json::from_slice(include_bytes!(concat!(
+                env!("OUT_DIR"),
+                "/bundled-artifacts.json"
+            )))
+            .map_err(|error| error.to_string())
+        });
+    BUNDLE
+        .as_ref()
+        .map_err(|error| host_error(error.clone()))?
+        .component(source, digest)
+        .map_err(|error| host_error(format!("{error:#}")))
 }
 fn load_artifact(path: &Path) -> Result<Vec<u8>, PluginError> {
     reject_link(path)?;
@@ -685,7 +767,7 @@ mod tests {
         testing::{review_files, source},
     };
 
-    fn command(cwd: &Path, args: &[&str]) -> String {
+    pub(super) fn command(cwd: &Path, args: &[&str]) -> String {
         let result = std::process::Command::new("git")
             .args(args)
             .current_dir(cwd)
@@ -743,6 +825,7 @@ mod tests {
         );
 
         let scoped = ScopedHost {
+            cancelled: Arc::new(AtomicBool::new(false)),
             root: root.join(key(owner)),
             host_id: "host".into(),
         };
@@ -770,6 +853,7 @@ mod tests {
             assert_eq!(prepared.manifest.name, "pr-review");
             assert_eq!(prepared.host_id, id);
             let snapshot = ScopedHost {
+                cancelled: Arc::new(AtomicBool::new(false)),
                 root: root.path().join(key(owner)),
                 host_id: id.into(),
             }
@@ -800,6 +884,7 @@ mod tests {
         let root = tempfile::tempdir().unwrap();
         let original = seed(root.path(), "seed");
         let host = ScopedHost {
+            cancelled: Arc::new(AtomicBool::new(false)),
             root: root.path().join(key("seed")),
             host_id: "seed".into(),
         };
@@ -894,6 +979,7 @@ mod tests {
             .await
             .unwrap();
         let snapshot = ScopedHost {
+            cancelled: Arc::new(AtomicBool::new(false)),
             root: root.path().join(key("paired")),
             host_id: "host".into(),
         }
@@ -962,6 +1048,19 @@ mod tests {
 #[cfg(test)]
 mod bundled_tests {
     use super::*;
+    #[test]
+    fn selected_defaults_supply_source_owned_behavior() {
+        for source in openwebide_core::plugins::bundled_plugin_sources() {
+            let files = bundled_files(&source).expect("Selected source is embedded");
+            let manifest = openwebide_core::plugins::validate_files(&files).unwrap();
+            assert!(manifest.executable.is_some());
+            assert!(manifest.contributions.tool_groups.is_empty());
+            assert!(!manifest.contributions.tools.is_empty());
+            assert!(files.iter().any(|file| file.path == "Cargo.lock"));
+            assert!(files.iter().any(|file| file.path == "src/lib.rs"));
+        }
+    }
+    #[cfg(feature = "bundled-defaults")]
     #[tokio::test]
     async fn bundled_core_plugins_prepare_offline_on_both_hosts_using_normal_validation() {
         let sources = openwebide_core::plugins::bundled_plugin_sources();
@@ -970,18 +1069,53 @@ mod bundled_tests {
             let root = tempfile::tempdir().unwrap();
             let installer = NativePluginInstaller::new(Some(root.path().to_path_buf()));
             for source in &sources {
-                let prepared = installer
-                    .prepare("owner", host.into(), source)
+                let files = bundled_files(source).unwrap();
+                assert!(
+                    bundled_component(source, &openwebide_core::plugins::package_digest(&files))
+                        .unwrap()
+                        .is_some()
+                );
+                let started = installer
+                    .preparations
+                    .start(
+                        installer.clone(),
+                        "owner".into(),
+                        host.into(),
+                        source.clone(),
+                    )
                     .await
                     .unwrap();
+                let prepared = tokio::time::timeout(Duration::from_secs(120), async {
+                    loop {
+                        let status = installer.preparations.status("owner", &started.id).await.unwrap();
+                        status.validate().unwrap();
+                        match status.state {
+                            openwebide_core::plugins::preparation::PreparationState::Ready => {
+                                break status.prepared.unwrap();
+                            }
+                            openwebide_core::plugins::preparation::PreparationState::Queued
+                            | openwebide_core::plugins::preparation::PreparationState::Preparing => {
+                                tokio::time::sleep(Duration::from_millis(10)).await;
+                            }
+                            _ => panic!("Bundled source preparation failed: {status:?}"),
+                        }
+                    }
+                }).await.unwrap();
                 let package = installer
                     .package("owner", host.into(), &prepared)
                     .await
                     .unwrap();
                 assert_eq!(package.prepared, prepared);
                 assert_eq!(prepared.host_id, host);
-                assert_eq!(prepared.manifest.contributions.tool_groups.len(), 1);
-                assert_eq!(prepared.manifest.version, "0.1.0");
+                assert!(prepared.manifest.contributions.tool_groups.is_empty());
+                assert_eq!(prepared.manifest.version, "0.2.0");
+                assert!(
+                    !installer
+                        .component("owner", &prepared)
+                        .await
+                        .unwrap()
+                        .is_empty()
+                );
                 if prepared.manifest.name == "skill-authoring" {
                     assert_eq!(package.skills.len(), 1);
                 } else {
@@ -1001,7 +1135,424 @@ mod bundled_tests {
 
 #[cfg(test)]
 mod rust_plugin_tests {
-    use super::*;
+    use super::{tests::command, *};
+    use openwebide_core::plugins::execution;
+    struct DatabaseHost {
+        store: Arc<openwebide_storage::Store<openwebide_storage::rusqlite_db::RusqliteDb>>,
+        user: openwebide_core::UserId,
+        session: Option<i64>,
+        now: i64,
+    }
+    impl openwebide_agent::plugins::execution::GrantedHost for DatabaseHost {
+        async fn request(&self, request: &execution::PluginHostRequest) -> Result<String, String> {
+            let result = match self.session {
+                Some(session) => {
+                    self.store
+                        .plugin_host_request(self.user, session, request, self.now)
+                        .await
+                }
+                None => {
+                    self.store
+                        .plugin_context_host_request(self.user, request, self.now)
+                        .await
+                }
+            };
+            result.map_err(|error| error.to_string())
+        }
+    }
+    impl openwebide_agent::plugins::jobs::JobHost for DatabaseHost {
+        async fn request(
+            &self,
+            command: openwebide_core::plugins::jobs::JobServiceRequest,
+        ) -> Result<openwebide_core::plugins::jobs::JobServiceResponse, String> {
+            use openwebide_core::plugins::jobs::{
+                JobServiceRequest as Request, JobServiceResponse as Response,
+            };
+            let db = DatabaseHost {
+                store: self.store.clone(),
+                user: self.user,
+                session: None,
+                now: self.now,
+            };
+            let result: Result<Response, openwebide_storage::StorageError> =
+                tokio::task::spawn_blocking(move || {
+                    futures::executor::block_on(async {
+                        Ok(match command {
+                            Request::Renew { delivery } => Response::Renewed(
+                                db.store
+                                    .renew_plugin_job(
+                                        &delivery.host_id,
+                                        delivery.id,
+                                        &delivery.lease,
+                                        db.now,
+                                    )
+                                    .await?,
+                            ),
+                            Request::Grant {
+                                user_id: _,
+                                delivery,
+                            } => {
+                                let grant = format!("{:032x}", delivery.id);
+                                let (prepared, context) = db
+                                    .store
+                                    .issue_plugin_job_grant(
+                                        db.user,
+                                        &delivery.host_id,
+                                        delivery.id,
+                                        &delivery.lease,
+                                        &grant,
+                                        db.now,
+                                    )
+                                    .await?;
+                                Response::Authorized {
+                                    prepared: Box::new(prepared),
+                                    context,
+                                    grant,
+                                }
+                            }
+                            Request::Callback {
+                                user_id: _,
+                                request,
+                            } => Response::Callback(
+                                db.store
+                                    .plugin_context_host_request(db.user, &request, db.now)
+                                    .await?,
+                            ),
+                            Request::Finish {
+                                delivery,
+                                success,
+                                detail,
+                            } => {
+                                db.store
+                                    .finish_plugin_job(
+                                        &delivery.host_id,
+                                        delivery.id,
+                                        &delivery.lease,
+                                        success,
+                                        &detail,
+                                        db.now,
+                                    )
+                                    .await?;
+                                Response::Finished
+                            }
+                            Request::Claim { .. } => panic!("fixture already claimed its job"),
+                        })
+                    })
+                })
+                .await
+                .map_err(|error| error.to_string())?;
+            result.map_err(|error| error.to_string())
+        }
+        fn now(&self) -> i64 {
+            self.now
+        }
+        async fn wait(&self, duration: Duration) {
+            tokio::time::sleep(duration).await;
+        }
+    }
+    struct NoBuiltin;
+    impl openwebide_agent::ToolExecutor for NoBuiltin {
+        fn describe(&self, call: &openwebide_core::ToolCall) -> String {
+            call.name.clone()
+        }
+        async fn execute(&self, _: &openwebide_core::ToolCall) -> openwebide_agent::ToolOutcome {
+            panic!("Plugin tool must not fall through to a built-in executor")
+        }
+    }
+    async fn exercise_records(
+        installer: &NativePluginInstaller,
+        owner: &str,
+        prepared: &PreparedPlugin,
+    ) {
+        use openwebide_agent::{
+            ToolExecutor,
+            plugins::execution::{GrantedServices, PluginTools},
+        };
+        use openwebide_core::{
+            NewProject, UserRole, WorkspaceMode,
+            plugins::{PluginPackage, RecordPlugin},
+        };
+        let store = Arc::new(openwebide_storage::Store::new(
+            openwebide_storage::rusqlite_db::RusqliteDb::open_in_memory().unwrap(),
+        ));
+        store.migrate().await.unwrap();
+        let user = store
+            .insert_user("owner", "hash", UserRole::Admin, 0)
+            .await
+            .unwrap()
+            .id;
+        let mode = if owner == "paired" {
+            WorkspaceMode::Local
+        } else {
+            WorkspaceMode::Remote
+        };
+        let project = store
+            .create_project(
+                &NewProject {
+                    name: "project".into(),
+                    mode,
+                    path: Some("p".into()),
+                },
+                user,
+                0,
+            )
+            .await
+            .unwrap()
+            .id;
+        let session = store
+            .create_session("session", None, None, Some(project), user, 0)
+            .await
+            .unwrap()
+            .id;
+        store
+            .record_plugin(
+                user,
+                &RecordPlugin {
+                    approved_capabilities: Vec::new(),
+                    prepared: prepared.clone(),
+                    revision: None,
+                    update_policy: None,
+                    package: Some(Box::new(PluginPackage {
+                        prepared: prepared.clone(),
+                        skills: Vec::new(),
+                    })),
+                },
+                1,
+            )
+            .await
+            .unwrap();
+        let token = "d".repeat(32);
+        store
+            .issue_plugin_grant(user, session, prepared, &token, 2)
+            .await
+            .unwrap();
+        let executor = PluginTools {
+            executor: NoBuiltin,
+            transport: transport::NativePluginTransport {
+                installer: installer.clone(),
+                invocations: invocations::Invocations::default(),
+                owner: owner.into(),
+            },
+            services: GrantedServices {
+                host: DatabaseHost {
+                    store: store.clone(),
+                    user,
+                    session: Some(session),
+                    now: 10,
+                },
+                grants: Arc::new([(prepared.digest.clone(), token)].into_iter().collect()),
+            },
+            plugins: Arc::new(vec![prepared.clone()]),
+        };
+        let call = openwebide_core::ToolCall {id:"fixture".into(), name:"fixture_echo".into(),
+            arguments:serde_json::json!({"collection":"notes","operation":{"action":"create","value":{"text":"plugin-owned state"}}}).to_string()};
+        let outcome = executor.execute(&call).await;
+        assert!(outcome.ok, "{}", outcome.content);
+        let result: serde_json::Value = serde_json::from_str(&outcome.content).unwrap();
+        assert_eq!(result["records"][0]["value"]["text"], "plugin-owned state");
+        let id = result["records"][0]["id"].as_i64().unwrap();
+        let read = openwebide_core::ToolCall {
+            arguments:
+                serde_json::json!({"collection":"notes","operation":{"action":"read","id":id}})
+                    .to_string(),
+            ..call
+        };
+        let outcome = executor.execute(&read).await;
+        assert!(outcome.ok);
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&outcome.content).unwrap(),
+            result
+        );
+        // Raw run requests execute inside source code through normal callback grants.
+        let raw = executor.execute(&openwebide_core::ToolCall {
+            id: "raw-run".into(), name: "fixture_echo".into(),
+            arguments: serde_json::json!({"runs":{"action":"submit","key":"raw-one","prompt":"Source-owned prompt","target":{"kind":"origin"},"completion":{"event":"job_due","payload":{"text":"raw completion callback"}}}}).to_string(),
+        }).await;
+        assert!(raw.ok, "{}", raw.content);
+        let raw: openwebide_core::plugins::runs::RunResult =
+            serde_json::from_str(&raw.content).unwrap();
+        assert_eq!(
+            raw.runs[0].state,
+            openwebide_core::plugins::runs::RunState::Pending
+        );
+        assert_eq!(raw.runs[0].session_id, Some(session));
+        let pending = store
+            .list_queued_prompts(user, session)
+            .await
+            .unwrap()
+            .remove(0);
+        assert_eq!(pending.plugin_run, Some(raw.runs[0].id));
+        assert!(
+            store
+                .consume_queued_prompt(user, session, pending.key(), &pending.content, 3)
+                .await
+                .is_err()
+        );
+        let cancelled = executor.execute(&openwebide_core::ToolCall {
+            id: "raw-cancel".into(), name: "fixture_echo".into(),
+            arguments: serde_json::json!({"runs":{"action":"cancel","id":raw.runs[0].id,"revision":raw.runs[0].revision}}).to_string(),
+        }).await;
+        assert!(cancelled.ok, "{}", cancelled.content);
+        assert!(
+            store
+                .list_queued_prompts(user, session)
+                .await
+                .unwrap()
+                .is_empty()
+        );
+        // A real compiled SDK submission reserves and releases its declared completion event.
+        let completion = store
+            .claim_plugin_jobs(&prepared.host_id, 0, &"d".repeat(32), 20)
+            .await
+            .unwrap()
+            .jobs
+            .remove(0);
+        assert_eq!(completion.job.payload["run"]["id"], raw.runs[0].id);
+        assert_eq!(completion.job.payload["run"]["state"], "cancelled");
+        assert_eq!(
+            completion.job.payload["data"]["text"],
+            "raw completion callback"
+        );
+        openwebide_agent::plugins::jobs::deliver(
+            &DatabaseHost {
+                store: store.clone(),
+                user,
+                session: None,
+                now: 21,
+            },
+            &executor.transport,
+            completion,
+        )
+        .await
+        .unwrap();
+        let conversations = executor.execute(&openwebide_core::ToolCall {
+            id:"discover".into(),name:"fixture_echo".into(),
+            arguments:serde_json::json!({"collections":{"collection":"conversations","operation":{"action":"list"}}}).to_string(),
+        }).await;
+        assert!(conversations.ok, "{}", conversations.content);
+        let metadata: openwebide_core::plugins::records::CollectionResult =
+            serde_json::from_str(&conversations.content).unwrap();
+        assert_eq!(metadata.records.len(), 1);
+        assert_eq!(metadata.records[0].id, session);
+        assert_eq!(metadata.records[0].value["origin"], true);
+        let task = executor.execute(&openwebide_core::ToolCall {
+            id:"task-record".into(),name:"fixture_echo".into(),
+            arguments:serde_json::json!({"collections":{"collection":"tasks","operation":{"action":"create","value":{
+                "draft":{"title":"Plugin-owned task","prompt":"Source chooses the prompt","session_id":session,"session_target":"existing","schedule":{"kind":"once","at":100},"enabled":true},
+                "next_run":111,"state":{"proof":"SDK task state"},"monitor":null
+            }}}}).to_string(),
+        }).await;
+        assert!(task.ok, "{}", task.content);
+        let task: openwebide_core::plugins::records::CollectionResult =
+            serde_json::from_str(&task.content).unwrap();
+        assert_eq!(task.records[0].value["owner"], prepared.storage_namespace());
+        let visible = store.scheduled_tasks(user, Some(project), 3).await.unwrap();
+        assert_eq!(visible[0].id, task.records[0].id);
+        assert_eq!(visible[0].next_run, Some(111));
+        let stale_submission = serde_json::json!({"runs":{"action":"submit","key":"guarded-task","prompt":"Only queue current tasks","target":{"kind":"origin"},"prerequisites":[{"capability":"collections","collection":"tasks","id":task.records[0].id,"revision":task.records[0].revision + 1}]}});
+        let stale = executor
+            .execute(&openwebide_core::ToolCall {
+                id: "task-stale".into(),
+                name: "fixture_echo".into(),
+                arguments: stale_submission.to_string(),
+            })
+            .await;
+        assert!(!stale.ok);
+        let removed=executor.execute(&openwebide_core::ToolCall {
+            id:"task-delete".into(),name:"fixture_echo".into(),
+            arguments:serde_json::json!({"collections":{"collection":"tasks","operation":{"action":"delete","id":task.records[0].id,"revision":task.records[0].revision}}}).to_string(),
+        }).await;
+        assert!(removed.ok, "{}", removed.content);
+        let mut deleted_submission = stale_submission;
+        deleted_submission["runs"]["prerequisites"][0]["revision"] =
+            serde_json::json!(task.records[0].revision);
+        let deleted = executor
+            .execute(&openwebide_core::ToolCall {
+                id: "task-deleted".into(),
+                name: "fixture_echo".into(),
+                arguments: deleted_submission.to_string(),
+            })
+            .await;
+        assert!(!deleted.ok);
+        // Public SDK code schedules a real durable event; delivery uses the same executor.
+        let scheduled = executor.execute(&openwebide_core::ToolCall {
+            id:"schedule".into(), name:"fixture_echo".into(),
+            arguments:serde_json::json!({"jobs":{"action":"schedule","key":"event-one","scope":"project","due_at":20,"expires_at":null,"event":"job_due","payload":{"text":"durable plugin event","discover":true}}}).to_string(),
+        }).await;
+        assert!(scheduled.ok, "{}", scheduled.content);
+        let queued: openwebide_core::plugins::jobs::JobResult =
+            serde_json::from_str(&scheduled.content).unwrap();
+        let delivery = store
+            .claim_plugin_jobs(&prepared.host_id, 0, &"e".repeat(32), 20)
+            .await
+            .unwrap()
+            .jobs
+            .remove(0);
+        assert_eq!(delivery.job.id, queued.jobs[0].id);
+        assert_eq!(delivery.context.session_id, None);
+        openwebide_agent::plugins::jobs::deliver(
+            &DatabaseHost {
+                store: store.clone(),
+                user,
+                session: None,
+                now: 21,
+            },
+            &executor.transport,
+            delivery,
+        )
+        .await
+        .unwrap();
+        let completed = executor
+            .execute(&openwebide_core::ToolCall {
+                id: "job-state".into(),
+                name: "fixture_echo".into(),
+                arguments: serde_json::json!({"jobs":{"action":"read","id":queued.jobs[0].id}})
+                    .to_string(),
+            })
+            .await;
+        assert!(completed.ok, "{}", completed.content);
+        let state: openwebide_core::plugins::jobs::JobResult =
+            serde_json::from_str(&completed.content).unwrap();
+        assert_eq!(
+            state.jobs[0].state,
+            openwebide_core::plugins::jobs::JobState::Completed
+        );
+        let events = executor
+            .execute(&openwebide_core::ToolCall {
+                id: "event-effect".into(),
+                name: "fixture_echo".into(),
+                arguments: serde_json::json!({"collection":"events","operation":{"action":"list"}})
+                    .to_string(),
+            })
+            .await;
+        assert!(events.ok, "{}", events.content);
+        assert!(events.content.contains("durable plugin event"));
+        assert!(events.content.contains("raw completion callback"));
+        let effects: serde_json::Value = serde_json::from_str(&events.content).unwrap();
+        let project_event = effects["records"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|record| record["value"]["payload"]["discover"] == true)
+            .unwrap();
+        assert_eq!(
+            project_event["value"]["conversations"]["records"][0]["value"]["origin"],
+            false
+        );
+        let grant = format!("{:032x}", queued.jobs[0].id);
+        let callback = execution::PluginHostRequest {
+            grant,
+            capability: "records".into(),
+            payload: serde_json::json!({"collection":"events","operation":{"action":"list"}})
+                .to_string(),
+        };
+        assert!(
+            store
+                .plugin_context_host_request(user, &callback, 23)
+                .await
+                .is_err()
+        );
+    }
     #[tokio::test]
     async fn source_compilation_validates_tools_caches_offline_and_rejects_artifact_corruption() {
         let root = tempfile::tempdir().unwrap();
@@ -1009,8 +1560,8 @@ mod rust_plugin_tests {
             "schemaVersion":1,"publisher":"example","name":"fixture","version":"0.1.0",
             "displayName":"Fixture","description":"SDK adapter contract","license":"MIT",
             "compatibility":{"pluginApi":3},
-            "executable":{"manifest":"Cargo.toml","library":"sdk_fixture","sdkVersion":"0.1.0","capabilities":["records"]},
-            "contributions":{"skills":[],"tools":[{"name":"fixture_echo","description":"Exercise the public host contract.","parameters":{"type":"object","properties":{}},"requires_approval":false}]}
+            "executable":{"manifest":"Cargo.toml","library":"sdk_fixture","sdkVersion":"0.1.0","capabilities":["records","jobs","runs","collections"]},
+            "contributions":{"skills":[],"events":["job_due"],"tools":[{"name":"fixture_echo","description":"Exercise the public host contract.","parameters":{"type":"object","properties":{}},"requires_approval":false}]}
         })).unwrap();
         let cargo = include_str!("../../crates/plugin-sdk/examples/fixture/Cargo.toml")
             .replace("{ path = \"../..\" }", "\"=0.1.0\"");
@@ -1034,20 +1585,342 @@ mod rust_plugin_tests {
         })
         .collect::<Vec<_>>();
         openwebide_core::plugins::validate_files(&files).unwrap();
-        let source = openwebide_core::plugins::testing::source();
+        let repository = tempfile::tempdir().unwrap();
+        for file in &files {
+            let path = repository.path().join(&file.path);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, &file.content).unwrap();
+        }
+        command(repository.path(), &["init", "-q"]);
+        command(repository.path(), &["add", "."]);
+        command(
+            repository.path(),
+            &[
+                "-c",
+                "user.name=Test",
+                "-c",
+                "user.email=test@example.org",
+                "commit",
+                "-qm",
+                "Rust source fixture",
+            ],
+        );
+        let commit = command(repository.path(), &["rev-parse", "HEAD"]);
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        drop(listener);
+        let mut daemon = Command::new("git")
+            .args([
+                "daemon",
+                "--export-all",
+                "--reuseaddr",
+                "--listen=127.0.0.1",
+                &format!("--port={port}"),
+                &format!("--base-path={}", repository.path().display()),
+                repository.path().to_str().unwrap(),
+            ])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .kill_on_drop(true)
+            .spawn()
+            .unwrap();
+        let mut ready = false;
+        for _ in 0..100 {
+            if tokio::net::TcpStream::connect(("127.0.0.1", port))
+                .await
+                .is_ok()
+            {
+                ready = true;
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+        assert!(ready, "public Git source fixture did not start");
+        let source = PluginSource {
+            repository: format!("git://127.0.0.1:{port}/"),
+            commit,
+            path: ".".into(),
+        };
         let digest = openwebide_core::plugins::package_digest(&files);
+        let installer = NativePluginInstaller::new(Some(root.path().to_path_buf()));
         for host_id in ["server-host", "paired-local-host"] {
+            let owner = if host_id == "server-host" {
+                "user:1"
+            } else {
+                "paired"
+            };
             let host = ScopedHost {
-                root: root.path().to_path_buf(),
+                cancelled: Arc::new(AtomicBool::new(false)),
+                root: root.path().join(key(owner)),
                 host_id: host_id.into(),
             };
-            host.publish(&source, &digest, &files).await.unwrap();
-            host.compile(&source, &digest, &manifest).await.unwrap();
+            assert!(!host.artifact(&source, &digest).exists());
+            let prepared = PreparedPlugin {
+                source: source.clone(),
+                manifest: manifest.clone(),
+                digest: digest.clone(),
+                host_id: host_id.into(),
+            };
+            exercise_records(&installer, owner, &prepared).await;
+            // The shared run workflow fetched source and compiled this previously cold host.
             let bytes = load_artifact(&host.artifact(&source, &digest)).unwrap();
             assert!(!bytes.is_empty());
+            assert_eq!(
+                installer
+                    .prepare(owner, host_id.into(), &source)
+                    .await
+                    .unwrap(),
+                prepared
+            );
+
+            let invocations = invocations::Invocations::default();
+            let event = invocations
+                .start(
+                    &installer,
+                    owner,
+                    execution::InvokePlugin {
+                        operation: execution::PluginOperation::Event,
+                        prepared: prepared.clone(),
+                        name: String::new(),
+                        arguments: serde_json::json!({"name":"job_due","payload":{"job_id":7}})
+                            .to_string(),
+                    },
+                )
+                .await
+                .unwrap();
+            let event_import = invocations
+                .resume(
+                    owner,
+                    execution::ContinuePlugin {
+                        id: event.id.clone(),
+                        sequence: 0,
+                        response: Ok(String::new()),
+                    },
+                )
+                .await
+                .unwrap();
+            let execution::PluginStep::HostCall {
+                capability,
+                payload,
+                ..
+            } = event_import.step
+            else {
+                panic!("event did not execute plugin code")
+            };
+            assert_eq!(capability, "records");
+            let value: serde_json::Value = serde_json::from_str(&payload).unwrap();
+            assert_eq!(value["operation"]["value"]["event"], "job_due");
+            assert_eq!(value["operation"]["value"]["payload"]["job_id"], 7);
+            let event_result = invocations
+                .resume(
+                    owner,
+                    execution::ContinuePlugin {
+                        id: event.id,
+                        sequence: 1,
+                        response: Ok("{\"stored\":true}".into()),
+                    },
+                )
+                .await
+                .unwrap();
+            assert!(matches!(
+                event_result.step,
+                execution::PluginStep::Complete { ok: true, .. }
+            ));
+            let context = invocations
+                .start(
+                    &installer,
+                    owner,
+                    execution::InvokePlugin {
+                        operation: execution::PluginOperation::Context,
+                        prepared: prepared.clone(),
+                        name: String::new(),
+                        arguments: "{\"budget_bytes\":64}".into(),
+                    },
+                )
+                .await
+                .unwrap();
+            let context_read = invocations
+                .resume(
+                    owner,
+                    execution::ContinuePlugin {
+                        id: context.id.clone(),
+                        sequence: 0,
+                        response: Ok(String::new()),
+                    },
+                )
+                .await
+                .unwrap();
+            let execution::PluginStep::HostCall {
+                capability,
+                payload,
+                ..
+            } = context_read.step
+            else {
+                panic!("context did not request its general record read");
+            };
+            assert_eq!(capability, "records");
+            assert_eq!(
+                serde_json::from_str::<serde_json::Value>(&payload).unwrap()["operation"]["action"],
+                "list"
+            );
+            let complete = invocations
+                .resume(
+                    owner,
+                    execution::ContinuePlugin {
+                        id: context.id,
+                        sequence: 1,
+                        response: Ok("{}".into()),
+                    },
+                )
+                .await
+                .unwrap();
+            let execution::PluginStep::Complete {
+                content, ok: true, ..
+            } = complete.step
+            else {
+                panic!("context did not complete");
+            };
+            assert_eq!(
+                serde_json::from_str::<serde_json::Value>(&content).unwrap()["prompt"],
+                "Stored fact"
+            );
+            let mutation = invocations
+                .start(
+                    &installer,
+                    owner,
+                    execution::InvokePlugin {
+                        operation: execution::PluginOperation::Context,
+                        prepared: prepared.clone(),
+                        name: String::new(),
+                        arguments: "{\"budget_bytes\":1}".into(),
+                    },
+                )
+                .await
+                .unwrap();
+            let failed = invocations
+                .resume(
+                    owner,
+                    execution::ContinuePlugin {
+                        id: mutation.id,
+                        sequence: 0,
+                        response: Ok(String::new()),
+                    },
+                )
+                .await
+                .unwrap();
+            assert!(matches!(failed.step, execution::PluginStep::Failed { .. }));
+            let ready = invocations
+                .start(
+                    &installer,
+                    owner,
+                    execution::InvokePlugin {
+                        operation: execution::PluginOperation::Tool,
+                        prepared: prepared.clone(),
+                        name: "fixture_echo".into(),
+                        arguments: "{}".into(),
+                    },
+                )
+                .await
+                .unwrap();
+            assert!(matches!(ready.step, execution::PluginStep::Ready));
+            assert!(
+                invocations
+                    .cancel("another-owner", &ready.id)
+                    .await
+                    .is_err()
+            );
+            let callback = invocations
+                .resume(
+                    owner,
+                    execution::ContinuePlugin {
+                        id: ready.id.clone(),
+                        sequence: 0,
+                        response: Ok(String::new()),
+                    },
+                )
+                .await
+                .unwrap();
+            assert!(matches!(
+                callback.step,
+                execution::PluginStep::HostCall { sequence: 1, .. }
+            ));
+            let response = execution::ContinuePlugin {
+                id: ready.id.clone(),
+                sequence: 1,
+                response: Ok("{\"value\":42}".into()),
+            };
+            assert!(
+                invocations
+                    .resume("another-owner", response.clone())
+                    .await
+                    .is_err()
+            );
+            let stale = execution::ContinuePlugin {
+                sequence: 0,
+                ..response.clone()
+            };
+            assert!(invocations.resume(owner, stale).await.is_err());
+            let result = invocations.resume(owner, response.clone()).await.unwrap();
+            assert!(matches!(
+                result.step,
+                execution::PluginStep::Complete { ok: true, .. }
+            ));
+            assert!(invocations.resume(owner, response).await.is_err());
+            let ready = invocations
+                .start(
+                    &installer,
+                    owner,
+                    execution::InvokePlugin {
+                        operation: execution::PluginOperation::Tool,
+                        prepared,
+                        name: "fixture_echo".into(),
+                        arguments: "{}".into(),
+                    },
+                )
+                .await
+                .unwrap();
+            let callback = invocations
+                .resume(
+                    owner,
+                    execution::ContinuePlugin {
+                        id: ready.id.clone(),
+                        sequence: 0,
+                        response: Ok(String::new()),
+                    },
+                )
+                .await
+                .unwrap();
+            assert!(matches!(
+                callback.step,
+                execution::PluginStep::HostCall { sequence: 1, .. }
+            ));
+            invocations.cancel(owner, &ready.id).await.unwrap();
+            assert!(
+                invocations
+                    .resume(
+                        owner,
+                        execution::ContinuePlugin {
+                            id: ready.id,
+                            sequence: 1,
+                            response: Ok("{}".into()),
+                        }
+                    )
+                    .await
+                    .is_err()
+            );
+        }
+        daemon.kill().await.unwrap();
+        // Repeat preparation/execution with the source endpoint offline.
+        for (owner, host_id) in [("user:1", "server-host"), ("paired", "paired-local-host")] {
+            let prepared = installer
+                .prepare(owner, host_id.into(), &source)
+                .await
+                .unwrap();
+            exercise_records(&installer, owner, &prepared).await;
         }
         let host = ScopedHost {
-            root: root.path().to_path_buf(),
+            cancelled: Arc::new(AtomicBool::new(false)),
+            root: root.path().join(key("user:1")),
             host_id: "server-host".into(),
         };
         std::fs::write(

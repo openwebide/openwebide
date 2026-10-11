@@ -37,8 +37,12 @@ enum Route {
     PushDispatch,
     ScheduledList,
     ScheduledCommand,
+    ScheduledMonitors,
+    BindBackgroundHost,
     ScheduledSessionCommand,
     ScheduledDue,
+    PluginJobService,
+    PluginRunService,
     HostJournal,
     HostInspect,
     HostConnection,
@@ -62,6 +66,13 @@ enum Route {
     ProjectSkillCommand,
     GetSessionSkills,
     SessionSkillCommand,
+    PluginExecutionGrants,
+    PluginHostRequest,
+    PluginContextGrants,
+    PluginContextHostRequest,
+    PluginStartInvocation,
+    PluginContinueInvocation,
+    PluginCancelInvocation,
     ListProjects,
     ListPlugins,
     ListMarketplaces,
@@ -73,6 +84,7 @@ enum Route {
     PluginPackage,
     RecordPlugin,
     PreparePlugin,
+    PluginPreparation,
     GetEditorRecovery,
     SaveEditorRecovery,
     CreateProject,
@@ -188,6 +200,10 @@ fn resolve(method: &str, segments: &[&str]) -> Option<Route> {
         ("DELETE", ["push", "subscriptions"]) => Some(Route::PushUnsubscribe),
         ("POST", ["push", "dispatch"]) => Some(Route::PushDispatch),
         ("POST", ["sessions", id, "notifications"]) if numeric_id(id) => Some(Route::PushNotify),
+        ("GET", ["sessions", id, "monitors"]) if numeric_id(id) => Some(Route::ScheduledMonitors),
+        ("POST", ["projects", id, "execution-host"]) if numeric_id(id) => {
+            Some(Route::BindBackgroundHost)
+        }
         ("GET", ["scheduled-tasks"]) => Some(Route::ScheduledList),
         ("POST", ["scheduled-tasks"]) => Some(Route::ScheduledCommand),
         ("GET", ["host", "connection"]) => Some(Route::HostConnection),
@@ -197,6 +213,8 @@ fn resolve(method: &str, segments: &[&str]) -> Option<Route> {
         ("POST", ["host", "journal"]) => Some(Route::HostJournal),
         ("POST", ["sessions", id, "host"]) if numeric_id(id) => Some(Route::HostInspect),
         ("POST", ["scheduled-tasks", "due"]) => Some(Route::ScheduledDue),
+        ("POST", ["plugins", "jobs", "service"]) => Some(Route::PluginJobService),
+        ("POST", ["plugins", "runs", "service"]) => Some(Route::PluginRunService),
         ("POST", ["scheduled-tasks", "result"]) => Some(Route::ScheduledResult),
         ("POST", ["sessions", id, "scheduled-tasks"]) if numeric_id(id) => {
             Some(Route::ScheduledSessionCommand)
@@ -226,6 +244,17 @@ fn resolve(method: &str, segments: &[&str]) -> Option<Route> {
         ("POST", ["projects", id, "skills"]) if numeric_id(id) => Some(Route::ProjectSkillCommand),
         ("GET", ["sessions", id, "skills"]) if numeric_id(id) => Some(Route::GetSessionSkills),
         ("POST", ["sessions", id, "skills"]) if numeric_id(id) => Some(Route::SessionSkillCommand),
+        ("POST", ["sessions", id, "plugin-grants"]) if numeric_id(id) => {
+            Some(Route::PluginExecutionGrants)
+        }
+        ("POST", ["plugins", "execution-grants"]) => Some(Route::PluginContextGrants),
+        ("POST", ["plugins", "host"]) => Some(Route::PluginContextHostRequest),
+        ("POST", ["plugins", "invoke"]) => Some(Route::PluginStartInvocation),
+        ("POST", ["plugins", "continue"]) => Some(Route::PluginContinueInvocation),
+        ("POST", ["plugins", "cancel"]) => Some(Route::PluginCancelInvocation),
+        ("POST", ["sessions", id, "plugin-host"]) if numeric_id(id) => {
+            Some(Route::PluginHostRequest)
+        }
         ("GET", ["projects"]) => Some(Route::ListProjects),
         ("GET", ["plugin-marketplaces"]) => Some(Route::ListMarketplaces),
         ("POST", ["plugin-marketplaces"]) => Some(Route::SaveMarketplaces),
@@ -241,6 +270,10 @@ fn resolve(method: &str, segments: &[&str]) -> Option<Route> {
         ("GET", ["plugins"]) => Some(Route::ListPlugins),
         ("POST", ["plugins"]) => Some(Route::RecordPlugin),
         ("POST", ["plugins", "prepare"]) => Some(Route::PreparePlugin),
+        ("POST", ["plugins", "preparation"]) => Some(Route::PluginPreparation),
+        ("POST", ["projects", id, "plugins", "preparation"]) if numeric_id(id) => {
+            Some(Route::PluginPreparation)
+        }
         ("POST", ["plugins", "package"]) => Some(Route::PluginPackage),
         ("POST", ["projects", id, "plugins", "prepare"]) if numeric_id(id) => {
             Some(Route::PreparePlugin)
@@ -390,12 +423,19 @@ pub async fn route(req: Request) -> JsonResp {
     if matches!(
         route,
         Some(
-            Route::PushDispatch | Route::ScheduledDue | Route::ScheduledResult | Route::HostJournal
+            Route::PushDispatch
+                | Route::ScheduledDue
+                | Route::ScheduledResult
+                | Route::HostJournal
+                | Route::PluginJobService
+                | Route::PluginRunService
         )
     ) {
         let result = match crate::auth::require_bridge_service(&state, req.headers()).await {
             Ok(()) => match route {
                 Some(Route::HostJournal) => api::host_admin::journal(req, &state).await,
+                Some(Route::PluginJobService) => api::plugin_jobs::service(req, &state).await,
+                Some(Route::PluginRunService) => api::plugin_runs::service(req, &state).await,
                 Some(Route::ScheduledDue) => api::scheduled::due(req, &state).await,
                 Some(Route::ScheduledResult) => api::scheduled::result(req, &state).await,
                 _ => api::push::dispatch(&state).await,
@@ -479,6 +519,27 @@ pub async fn route(req: Request) -> JsonResp {
         (Some(Route::SessionMemoryCommand), Some(user)) => {
             api::memories::command(req, &state, &path, user, true).await
         }
+        (Some(Route::PluginExecutionGrants), Some(user)) => {
+            api::plugins::grant_execution(req, &state, &path, user).await
+        }
+        (Some(Route::PluginHostRequest), Some(user)) => {
+            api::plugins::host_request(req, &state, &path, user).await
+        }
+        (Some(Route::PluginContextGrants), Some(user)) => {
+            api::plugins::grant_context(req, &state, user).await
+        }
+        (Some(Route::PluginContextHostRequest), Some(user)) => {
+            api::plugins::context_host_request(req, &state, user).await
+        }
+        (Some(Route::PluginStartInvocation), Some(user)) => {
+            api::plugins::start_invocation(req, &state, user).await
+        }
+        (Some(Route::PluginContinueInvocation), Some(user)) => {
+            api::plugins::continue_invocation(req, &state, user).await
+        }
+        (Some(Route::PluginCancelInvocation), Some(user)) => {
+            api::plugins::cancel_invocation(req, &state, user).await
+        }
         (Some(Route::GetProjectSkills), Some(user)) => {
             api::skills::get(&state, &path, user, false).await
         }
@@ -505,6 +566,9 @@ pub async fn route(req: Request) -> JsonResp {
         (Some(Route::RecordPlugin), Some(user)) => api::plugins::record(req, &state, user).await,
         (Some(Route::PreparePlugin), Some(user)) => {
             api::plugins::prepare(req, &state, &path, user).await
+        }
+        (Some(Route::PluginPreparation), Some(user)) => {
+            api::plugins::preparation(req, &state, &path, user).await
         }
         (Some(Route::ProjectSkillCommand), Some(user)) => {
             api::skills::command(req, &state, &path, user, false).await
@@ -549,6 +613,12 @@ pub async fn route(req: Request) -> JsonResp {
         }
         (Some(Route::HostInspect), Some(user)) => {
             api::host_admin::inspect(req, &state, &path, user).await
+        }
+        (Some(Route::ScheduledMonitors), Some(user)) => {
+            api::scheduled::monitors(&state, &path, user).await
+        }
+        (Some(Route::BindBackgroundHost), Some(user)) => {
+            api::scheduled::bind_host(req, &state, &path, user).await
         }
         (Some(Route::ScheduledSessionCommand), Some(user)) => {
             api::scheduled::session_command(req, &state, &path, user).await
@@ -987,6 +1057,14 @@ mod tests {
                 Route::ListPlugins,
                 Route::RecordPlugin,
                 Route::PreparePlugin,
+                Route::PluginPreparation,
+                Route::PluginExecutionGrants,
+                Route::PluginHostRequest,
+                Route::PluginContextGrants,
+                Route::PluginContextHostRequest,
+                Route::PluginStartInvocation,
+                Route::PluginContinueInvocation,
+                Route::PluginCancelInvocation,
                 Route::GetProjectSkills,
                 Route::ProjectSkillCommand,
                 Route::GetSessionSkills,
@@ -1000,6 +1078,8 @@ mod tests {
                 Route::FilesGet,
                 Route::SendSessionMessage,
                 Route::WebFetch,
+                Route::PluginJobService,
+                Route::PluginRunService,
             ] {
                 let error = authenticate_route(&state, &headers, Some(route), "")
                     .await
@@ -1035,9 +1115,32 @@ mod tests {
             ("PUT", "system-prompts/5", Route::UpdateSystemPrompt),
             ("DELETE", "system-prompts/5", Route::DeleteSystemPrompt),
             ("GET", "projects/5/skills", Route::GetProjectSkills),
+            ("GET", "sessions/5/monitors", Route::ScheduledMonitors),
+            (
+                "POST",
+                "projects/5/execution-host",
+                Route::BindBackgroundHost,
+            ),
             ("POST", "projects/5/skills", Route::ProjectSkillCommand),
             ("GET", "sessions/5/skills", Route::GetSessionSkills),
             ("POST", "sessions/5/skills", Route::SessionSkillCommand),
+            (
+                "POST",
+                "sessions/5/plugin-grants",
+                Route::PluginExecutionGrants,
+            ),
+            ("POST", "sessions/5/plugin-host", Route::PluginHostRequest),
+            (
+                "POST",
+                "plugins/execution-grants",
+                Route::PluginContextGrants,
+            ),
+            ("POST", "plugins/host", Route::PluginContextHostRequest),
+            ("POST", "plugins/invoke", Route::PluginStartInvocation),
+            ("POST", "plugins/jobs/service", Route::PluginJobService),
+            ("POST", "plugins/runs/service", Route::PluginRunService),
+            ("POST", "plugins/continue", Route::PluginContinueInvocation),
+            ("POST", "plugins/cancel", Route::PluginCancelInvocation),
             ("GET", "projects/5/memories", Route::GetProjectMemories),
             ("POST", "projects/5/memories", Route::ProjectMemoryCommand),
             ("GET", "sessions/5/memories", Route::GetSessionMemories),
@@ -1147,6 +1250,12 @@ mod tests {
             ("POST", "plugins", Route::RecordPlugin),
             ("POST", "projects/5/plugins/prepare", Route::PreparePlugin),
             ("POST", "plugins/prepare", Route::PreparePlugin),
+            ("POST", "plugins/preparation", Route::PluginPreparation),
+            (
+                "POST",
+                "projects/5/plugins/preparation",
+                Route::PluginPreparation,
+            ),
             ("POST", "plugins/package", Route::PluginPackage),
             ("GET", "git/status", Route::GitGet),
             ("GET", "git/path-status", Route::GitGet),

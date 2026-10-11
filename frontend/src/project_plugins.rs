@@ -1,8 +1,8 @@
 //! Shared catalog, installation and activation workflows with thin host transports.
 use crate::{
     backend::Api,
-    local_agent::BrowserBridgeClient,
-    project_host::{ProjectExecution, ProjectHost},
+    plugin_bridge::PluginBridgeClient,
+    project_host::{PluginExecutionHost, ProjectHost},
     state::{
         auth::AuthState, chat::ChatState, plugins::PluginsState, projects::ProjectsState,
         settings::SettingsState,
@@ -11,19 +11,24 @@ use crate::{
 use leptos::{prelude::*, task::spawn_local};
 use openwebide_core::plugins::{marketplace::*, *};
 
-enum PluginTransport {
+#[derive(Clone)]
+pub(crate) enum PluginTransport {
     Remote(Api, Option<i64>),
-    Local(BrowserBridgeClient),
+    Local(PluginBridgeClient),
 }
 impl PluginTransport {
-    async fn prepare(&self, source: &PluginSource) -> Result<PreparedPlugin, String> {
+    async fn preparation(
+        &self,
+        command: &preparation::PreparationCommand,
+    ) -> Result<preparation::PluginPreparation, String> {
         match self {
             Self::Remote(api, id) => {
-                api.with_value(Clone::clone)
-                    .prepare_plugin(*id, source)
+                api.try_with_value(Clone::clone)
+                    .ok_or("Plugin host context changed")?
+                    .plugin_preparation(*id, command)
                     .await
             }
-            Self::Local(client) => client.prepare_plugin(source).await,
+            Self::Local(client) => client.preparation(command).await,
         }
     }
     async fn package(&self, expected: &PreparedPlugin) -> Result<PluginPackage, String> {
@@ -37,6 +42,80 @@ impl PluginTransport {
         }
     }
 }
+
+struct BrowserPreparationHost<'a> {
+    transport: send_wrapper::SendWrapper<PluginTransport>,
+    clock: send_wrapper::SendWrapper<web_sys::Performance>,
+    current: send_wrapper::SendWrapper<&'a dyn Fn() -> bool>,
+    cancelled: send_wrapper::SendWrapper<&'a dyn Fn() -> bool>,
+    progress: send_wrapper::SendWrapper<&'a dyn Fn(preparation::PreparationState)>,
+}
+impl preparation::PreparationClientHost for BrowserPreparationHost<'_> {
+    fn request<'a>(
+        &'a self,
+        command: &'a preparation::PreparationCommand,
+    ) -> preparation::PreparationFuture<'a, Result<preparation::PluginPreparation, String>> {
+        Box::pin(send_wrapper::SendWrapper::new(
+            self.transport.preparation(command),
+        ))
+    }
+    fn sleep(&self, milliseconds: u32) -> preparation::PreparationFuture<'_, ()> {
+        Box::pin(send_wrapper::SendWrapper::new(crate::util::sleep_ms(
+            i32::try_from(milliseconds).unwrap_or(i32::MAX),
+        )))
+    }
+    fn now_millis(&self) -> f64 {
+        self.clock.now()
+    }
+    fn active(&self) -> bool {
+        (self.current)()
+    }
+    fn cancelled(&self) -> bool {
+        (self.cancelled)()
+    }
+    fn progress(&self, state: preparation::PreparationState) {
+        (self.progress)(state);
+    }
+    fn abandon(&self, id: String) {
+        let transport = self.transport.clone();
+        let clock = self.clock.clone();
+        spawn_local(async move {
+            let cleanup = BrowserPreparationHost {
+                transport,
+                clock,
+                current: send_wrapper::SendWrapper::new(&|| true),
+                cancelled: send_wrapper::SendWrapper::new(&|| false),
+                progress: send_wrapper::SendWrapper::new(&|_| {}),
+            };
+            let _ = preparation::preparation_request(
+                &cleanup,
+                &preparation::PreparationCommand::Cancel { id },
+            )
+            .await;
+        });
+    }
+}
+
+/// Thin browser primitives for the shared preparation client policy.
+pub(crate) async fn prepare_on_host(
+    transport: PluginTransport,
+    source: &PluginSource,
+    current: impl Fn() -> bool,
+    cancelled: impl Fn() -> bool,
+    progress: impl Fn(preparation::PreparationState),
+) -> Result<PreparedPlugin, String> {
+    let clock = web_sys::window()
+        .and_then(|window| window.performance())
+        .ok_or("Plugin preparation clock is unavailable")?;
+    let adapter = BrowserPreparationHost {
+        transport: send_wrapper::SendWrapper::new(transport),
+        clock: send_wrapper::SendWrapper::new(clock),
+        current: send_wrapper::SendWrapper::new(&current),
+        cancelled: send_wrapper::SendWrapper::new(&cancelled),
+        progress: send_wrapper::SendWrapper::new(&progress),
+    };
+    preparation::prepare_on_host(&adapter, source).await
+}
 #[derive(Clone, Debug)]
 pub struct CatalogSelection {
     pub marketplace: MarketplaceSource,
@@ -49,6 +128,7 @@ enum Operation {
     Refresh,
     Catalogs,
     UpdateAll,
+    ApproveUpdate(PluginSource),
     Policy(Box<PluginInstallation>, PluginUpdatePolicy),
     Sources(Vec<MarketplaceSource>),
     Install(Option<CatalogSelection>),
@@ -61,6 +141,8 @@ pub struct ProjectPluginActions {
     pub refresh: Callback<()>,
     pub refresh_catalogs: Callback<()>,
     pub update_all: Callback<()>,
+    pub approve_update: Callback<PluginSource>,
+    pub dismiss_update: Callback<PluginSource>,
     pub set_update_policy: Callback<(PluginInstallation, PluginUpdatePolicy)>,
     pub save_sources: Callback<Vec<MarketplaceSource>>,
     pub install: Callback<()>,
@@ -102,12 +184,28 @@ impl ProjectPluginActions {
             )
         };
         let perform = Callback::new(move |operation: Operation| {
+            // Check synchronously as well as in the invalidation effect: a
+            // pending review cannot cross a scope change before effects run.
+            if state
+                .review_current
+                .get_untracked()
+                .is_some_and(|check| !check())
+            {
+                state.pending_updates.set(Vec::new());
+                state.review_current.set(None);
+            }
             if state.busy.get_untracked() {
                 return;
             }
             generation.update(|g| *g += 1);
             let ticket = generation.get_untracked();
             let identity = scope();
+            if state.pending_updates.with_untracked(Vec::is_empty) {
+                let review_identity = identity.clone();
+                state.review_current.set(Some(std::sync::Arc::new(move || {
+                    scope() == review_identity
+                })));
+            }
             let current = move || {
                 generation.try_get_untracked() == Some(ticket)
                     && auth.generation.try_get_untracked().is_some()
@@ -115,12 +213,15 @@ impl ProjectPluginActions {
             };
             let project = projects.active_project.get_untracked();
             state.busy.set(true);
+            state.preparation.set(None);
+            state.cancel_preparation.set(false);
             state.error.set(None);
             spawn_local(async move {
                 let refresh_skills = matches!(
                     operation,
                     Operation::Install(_)
                         | Operation::UpdateAll
+                        | Operation::ApproveUpdate(_)
                         | Operation::Catalogs
                         | Operation::Refresh
                         | Operation::Enable(_)
@@ -133,8 +234,11 @@ impl ProjectPluginActions {
                     return;
                 }
                 state.busy.set(false);
+                state.preparation.set(None);
                 if let Err(error) = result {
-                    state.error.set(Some(error));
+                    if !state.cancel_preparation.get_untracked() {
+                        state.error.set(Some(error));
+                    }
                 } else if refresh_skills && let Some(actions) = skill_actions {
                     actions.refresh.run(());
                 }
@@ -150,11 +254,15 @@ impl ProjectPluginActions {
             projects.local_handles.track();
             generation.update(|g| *g += 1);
             state.installations.set(Vec::new());
+            state.pending_updates.set(Vec::new());
+            state.review_current.set(None);
             state.project_plugins.set(Vec::new());
             state.marketplaces.set(MarketplaceSettings::default());
             state.failures.set(Vec::new());
             state.loaded.set(false);
             state.busy.set(false);
+            state.preparation.set(None);
+            state.cancel_preparation.set(false);
             state.error.set(None);
             state.repository.set(String::new());
             state.commit.set(String::new());
@@ -197,6 +305,14 @@ impl ProjectPluginActions {
             refresh,
             refresh_catalogs: Callback::new(move |()| perform.run(Operation::Catalogs)),
             update_all: Callback::new(move |()| perform.run(Operation::UpdateAll)),
+            approve_update: Callback::new(move |source| {
+                perform.run(Operation::ApproveUpdate(source));
+            }),
+            dismiss_update: Callback::new(move |source| {
+                state
+                    .pending_updates
+                    .update(|updates| updates.retain(|update| update.prepared.source != source));
+            }),
             set_update_policy: Callback::new(move |(entry, policy)| {
                 perform.run(Operation::Policy(Box::new(entry), policy));
             }),
@@ -223,6 +339,31 @@ async fn run_operation(
     let backend = api.with_value(Clone::clone);
 
     match operation {
+        Operation::ApproveUpdate(source) => {
+            let request = state
+                .pending_updates
+                .with_untracked(|updates| {
+                    updates
+                        .iter()
+                        .find(|update| update.prepared.source == source)
+                        .cloned()
+                })
+                .ok_or("This plugin update is no longer pending.")?;
+            let entries = backend.record_plugin(&request).await?;
+            if !current() {
+                return Ok(());
+            }
+            state.installations.set(entries);
+            state
+                .pending_updates
+                .update(|updates| updates.retain(|update| update.prepared.source != source));
+            if let Some(id) = project {
+                let bindings = backend.project_plugins(id).await?;
+                if current() {
+                    state.project_plugins.set(bindings);
+                }
+            }
+        }
         Operation::Refresh => {
             let entries = backend.plugin_installations().await?;
             if !current() {
@@ -249,9 +390,11 @@ async fn run_operation(
                 .into_iter()
                 .filter(|entry| !entry.default_enabled)
             {
-                let transport = match host.resolve_guarded(project, true, current.clone()).await? {
-                    ProjectExecution::Remote { api, .. } => PluginTransport::Remote(api, project),
-                    ProjectExecution::Local(client) => PluginTransport::Local(client),
+                let transport = match host.plugin_host(project, current.clone())? {
+                    PluginExecutionHost::Remote { api, .. } => {
+                        PluginTransport::Remote(api, project)
+                    }
+                    PluginExecutionHost::Local(client) => PluginTransport::Local(client),
                 };
                 if !current() {
                     return Ok(());
@@ -263,6 +406,7 @@ async fn run_operation(
                 }
                 entries = backend
                     .record_plugin(&RecordPlugin {
+                        approved_capabilities: Vec::new(),
                         update_policy: None,
                         prepared: package.prepared.clone(),
                         revision: Some(entry.revision),
@@ -348,6 +492,7 @@ async fn run_operation(
         Operation::Policy(entry, policy) => {
             let entries = backend
                 .record_plugin(&RecordPlugin {
+                    approved_capabilities: Vec::new(),
                     prepared: entry.prepared.clone(),
                     revision: Some(entry.revision),
                     package: None,
@@ -359,6 +504,11 @@ async fn run_operation(
             }
         }
         Operation::Enable(entry) => {
+            entry
+                .prepared
+                .manifest
+                .validate_activation()
+                .map_err(|error| error.to_string())?;
             let id = project.ok_or("Open a project before enabling a plugin.")?;
             let revision = state.project_plugins.with_untracked(|entries| {
                 entries
@@ -369,12 +519,9 @@ async fn run_operation(
                     })
                     .map(|e| e.revision)
             });
-            let transport = match host
-                .resolve_guarded(Some(id), true, current.clone())
-                .await?
-            {
-                ProjectExecution::Remote { api, .. } => PluginTransport::Remote(api, Some(id)),
-                ProjectExecution::Local(client) => PluginTransport::Local(client),
+            let transport = match host.plugin_host(Some(id), current.clone())? {
+                PluginExecutionHost::Remote { api, .. } => PluginTransport::Remote(api, Some(id)),
+                PluginExecutionHost::Local(client) => PluginTransport::Local(client),
             };
             if !current() {
                 return Ok(());
@@ -392,6 +539,7 @@ async fn run_operation(
             }
             let entries = backend
                 .record_plugin(&RecordPlugin {
+                    approved_capabilities: Vec::new(),
                     update_policy: None,
                     package: None,
                     prepared: package.prepared.clone(),
@@ -472,23 +620,41 @@ async fn install_plugin(
         )
     };
     source.validate().map_err(|e| e.to_string())?;
-    let revision = state.installations.with_untracked(|entries| {
+    let previous = state.installations.with_untracked(|entries| {
         entries
             .iter()
             .find(|e| {
                 e.prepared.source.repository == source.repository
                     && e.prepared.source.path == source.path
             })
-            .map(|e| e.revision)
+            .cloned()
     });
-    let transport = match host.resolve_guarded(project, true, current.clone()).await? {
-        ProjectExecution::Remote { api, .. } => PluginTransport::Remote(api, project),
-        ProjectExecution::Local(client) => PluginTransport::Local(client),
+    let revision = previous.as_ref().map(|entry| entry.revision);
+    let transport = match host.plugin_host(project, current.clone())? {
+        PluginExecutionHost::Remote { api, .. } => PluginTransport::Remote(api, project),
+        PluginExecutionHost::Local(client) => PluginTransport::Local(client),
     };
     if !current() {
         return Ok(());
     }
-    let prepared = transport.prepare(&source).await?;
+    let prepared = prepare_on_host(
+        transport.clone(),
+        &source,
+        current.clone(),
+        move || state.cancel_preparation.try_get_untracked().unwrap_or(true),
+        {
+            let current = current.clone();
+            move |progress| {
+                if current() {
+                    state.preparation.set(Some(progress));
+                }
+            }
+        },
+    )
+    .await?;
+    if current() {
+        state.preparation.set(None);
+    }
     prepared.validate().map_err(|e| e.to_string())?;
     if prepared.source != source {
         return Err("Plugin host returned a different source.".into());
@@ -508,14 +674,27 @@ async fn install_plugin(
     if !current() {
         return Ok(());
     }
-    let entries = backend
-        .record_plugin(&RecordPlugin {
-            update_policy: None,
-            prepared: package.prepared.clone(),
-            revision,
-            package: Some(Box::new(package)),
-        })
-        .await?;
+    let capabilities = previous.as_ref().map_or_else(Vec::new, |entry| {
+        added_capabilities(&entry.prepared, &prepared)
+    });
+    let request = RecordPlugin {
+        approved_capabilities: capabilities.clone(),
+        update_policy: None,
+        prepared: package.prepared.clone(),
+        revision,
+        package: Some(Box::new(package)),
+    };
+    if !capabilities.is_empty() {
+        state.pending_updates.update(|updates| {
+            updates.retain(|update| {
+                update.prepared.source.repository != source.repository
+                    || update.prepared.source.path != source.path
+            });
+            updates.push(request);
+        });
+        return Ok(());
+    }
+    let entries = backend.record_plugin(&request).await?;
     if !current() {
         return Ok(());
     }
@@ -548,7 +727,7 @@ async fn update_plugins(
         .into_iter()
         .filter(|update| !automatic_only || update.automatic)
     {
-        if !current() {
+        if !current() || state.cancel_preparation.get_untracked() {
             return Ok(());
         }
         let name = update.installation.prepared.manifest.display_name.clone();
@@ -567,6 +746,9 @@ async fn update_plugins(
         )
         .await
         {
+            if !current() || state.cancel_preparation.get_untracked() {
+                return Ok(());
+            }
             failures.push(format!("{name}: {error}"));
         }
     }

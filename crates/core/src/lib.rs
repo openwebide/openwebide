@@ -119,6 +119,8 @@ mod tests {
         ] {
             assert_eq!(serde_json::to_value(&kind).unwrap(), json);
             let plan = RunPlan {
+                plugin_executables: Vec::new(),
+                plugin_grants: Default::default(),
                 plugin_skills: Vec::new(),
                 transport: Default::default(),
                 environment: RunEnvironment::default(),
@@ -558,3 +560,5 @@ pub use tasks::{
 
 pub mod file_nesting;
 pub mod workspace_entries;
+
+pub mod network;

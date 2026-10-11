@@ -4,9 +4,28 @@ use common::{HttpResponse, http, post};
 use openwebide_bridge::{ServerConfig, plugins::NativePluginInstaller, run_server};
 use openwebide_core::plugins::{
     PreparedPlugin, content_digest,
+    preparation::{PluginPreparation, PreparationState},
     testing::{review_files, source},
 };
 use std::path::Path;
+
+async fn preparation_request(
+    port: u16,
+    paired: bool,
+    path: &str,
+    payload: serde_json::Value,
+) -> HttpResponse {
+    let body = payload.to_string();
+    if paired {
+        let raw = format!(
+            "POST {path} HTTP/1.1\r\nHost: localhost:{port}\r\nOrigin: http://localhost:3000\r\nAuthorization: Bearer paired-token\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len(),
+        );
+        HttpResponse::parse(&http(port, &raw).await)
+    } else {
+        post(port, path, &body, &[("Content-Type", "application/json")]).await
+    }
+}
 
 fn git(root: &Path, args: &[&str]) -> String {
     let output = std::process::Command::new("git")
@@ -130,6 +149,79 @@ async fn local_pairing_and_remote_backend_install_the_same_package_without_works
         serde_json::from_str(&local_package.body).unwrap();
     assert_eq!(local_package, remote_package);
     assert!(!local_package.skills[0].resources.is_empty());
+
+    // Source preparation uses short authenticated requests on both transports.
+    let mut preparation_ids = Vec::new();
+    for paired in [false, true] {
+        let started = preparation_request(
+            port,
+            paired,
+            "/plugins/prepare/start",
+            serde_json::json!({"source":source,"user":42}),
+        )
+        .await;
+        assert_eq!(started.status, 200, "{}", started.body);
+        let started: PluginPreparation = serde_json::from_str(&started.body).unwrap();
+        assert_eq!(started.state, PreparationState::Queued);
+        let ready = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+            loop {
+                let response = preparation_request(
+                    port,
+                    paired,
+                    "/plugins/prepare/status",
+                    serde_json::json!({"id":started.id,"user":42}),
+                )
+                .await;
+                assert_eq!(response.status, 200, "{}", response.body);
+                let status: PluginPreparation = serde_json::from_str(&response.body).unwrap();
+                match status.state {
+                    PreparationState::Queued | PreparationState::Preparing => {
+                        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+                    }
+                    PreparationState::Ready => break status,
+                    _ => panic!("Preparation failed: {status:?}"),
+                }
+            }
+        })
+        .await
+        .unwrap();
+        assert_eq!(ready.prepared.as_ref().unwrap(), &remote);
+        for path in ["/plugins/prepare/status", "/plugins/prepare/cancel"] {
+            let response = preparation_request(
+                port,
+                !paired,
+                path,
+                serde_json::json!({"id":started.id,"user":42}),
+            )
+            .await;
+            assert_ne!(
+                response.status, 200,
+                "A preparation must not cross authenticated owners"
+            );
+        }
+        let complete = preparation_request(
+            port,
+            paired,
+            "/plugins/prepare/cancel",
+            serde_json::json!({"id":started.id,"user":42}),
+        )
+        .await;
+        assert_eq!(complete.status, 200);
+        let complete: PluginPreparation = serde_json::from_str(&complete.body).unwrap();
+        assert_eq!(complete.state, PreparationState::Ready);
+        preparation_ids.push(started.id);
+    }
+    assert_ne!(preparation_ids[0], preparation_ids[1]);
+    for path in [
+        "/plugins/prepare/start",
+        "/plugins/prepare/status",
+        "/plugins/prepare/cancel",
+    ] {
+        let unauth = format!(
+            "POST {path} HTTP/1.1\r\nHost: localhost:{port}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+        );
+        assert_eq!(HttpResponse::parse(&http(port, &unauth).await).status, 401);
+    }
 
     // Browser-supplied user IDs cannot select another cache namespace.
     assert!(!cache.path().join(content_digest(b"user:999")).exists());
