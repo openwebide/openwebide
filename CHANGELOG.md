@@ -10,6 +10,12 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 - Check plugin marketplaces on server and paired hosts with browsers closed, using shared account leases, persisted results, bounded retries and restart recovery. Restore update indicators and source failures from the database when clients reconnect; keep Notify as the default and existing Automatic activation while a client is open.
 
+- Cancel wrapped measurement immediately after a frame that unmounts its editor, before reading reactive coverage state. Release hidden probes instead of accessing disposed signals.
+
+- Prepare dense Unicode paragraph offsets, DOM text nodes and native node references cooperatively before glyph-range reads. Preserve complete exact geometry and reject changed source, font, layout or owners in both project modes.
+
+- Check native caret queries for additional measurement probes independently of ongoing background preparation, then require complete probe cleanup before the horizontal-fragment browser contract finishes.
+
 - Yield between bounded native glyph-range batches during long-paragraph preparation, rejecting changed source, font, dimensions and canceled owners before publishing complete geometry. Keep critical viewport work ahead of held background preparation.
 
 - Snapshot editor viewport geometry before scroll-paint style updates and skip unchanged CSS values, keeping the shared scroll/caret alignment path in both project modes.

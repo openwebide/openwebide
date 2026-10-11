@@ -1,0 +1,34 @@
+{
+  "baseline": {
+    "sourceHead": "2cca9be330dda22792641d63bd44dba4394b54d3",
+    "sourceFilesSha256": {
+      "frontend/src/components/editor_geometry.rs": "5009ce53beff13b6392f4eb109def8ac71d4973588e5b014bdb35b1a3016e0a8",
+      "frontend/src/components/editor_rows.rs": "db69e5f878986fadf3e07010aa3725d74f7cea208d434c2f02d8855c9e4a524e",
+      "frontend/src/components/mod.rs": "c5e31f7281ec5c35598b893212316a8f0ee7f04e26e2627c1a5296f483da6630",
+      "frontend/src/viewport.rs": "2ba6f4d721fee2bcd72c466aa55fee8b8c984a6281524a8a0f2201bd63293b4c",
+      "frontend/tests/components/editor.rs": "9744c06cac2ef1aa6d95f582d0f3794db142ab4c2c17f00bf0558848efece977"
+    },
+    "frontendWasmSha256": {
+      "openwebide-frontend-ce6d80e407592185_bg.wasm": "036a5e917ea0f3c69a5b33dc7970e6a4861d8c74220b8eda215bd61bc7c6bdab"
+    },
+    "backendWasmSha256": "8efc2579446963f530f5774fdcbe2223bbc6b974eb54d8221a768ff1c43232af",
+    "measurementScriptSha256": "8459ff387af784a1b4cecd2e6a9b0613cd416245f6a06c6297339db0257b87b2",
+    "scope": "Cooperative paragraph range reads on 2cca9be: one prepared source/native reader per probe, at most 128 glyph reads per native batch, ordinary task yields before viewport coverage. Retained backend and measurement harness unchanged."
+  },
+  "candidate": {
+    "sourceHead": "1745f068049675a255e1599f0b072e6664da34b1",
+    "sourceFilesSha256": {
+      "crates/core/src/editor/visual_motion.rs": "21e8aaebb2841836251d702627862d312579dea5bdf69441a70874152430e284",
+      "crates/core/src/editor/mod.rs": "552c68362ee8f0628977c349bab7c5874d4cbfd1af2bae4dfa4d275ae16824e4",
+      "frontend/src/components/editor_geometry.rs": "2fd158e1a070bfeea30b0a1f925395240d6df4861e70a604aa08cf1f1c4de809",
+      "frontend/src/components/editor_rows.rs": "be22390f64521e3db85da55dbe935dea1ee72891dd4e65543c9b5d9a6084027f"
+    },
+    "frontendWasmSha256": {
+      "openwebide-frontend-92bf8193126be12a_bg.wasm": "cadd91dd63b3608b3d2c3ca686cfdb571441a560339d490db8b7741bc9424a18"
+    },
+    "backendWasmSha256": "8efc2579446963f530f5774fdcbe2223bbc6b974eb54d8221a768ff1c43232af",
+    "measurementScriptSha256": "8459ff387af784a1b4cecd2e6a9b0613cd416245f6a06c6297339db0257b87b2",
+    "scope": "Cooperative paragraph setup and post-frame wrapped owner cancellation; final release production bundle with test-only accepted-coverage hook excluded."
+  },
+  "timingLimitations": "External build activity was observed after the initial eight samples and a zero-CPU cargo/Clippy process was present at the repeat pair start; no compiler/build processes remained after the repeat. Treat both series as diagnostic source-preservation evidence, not proof of isolated timing gains. The remote/wrapped pair reverses its timing direction between runs."
+}

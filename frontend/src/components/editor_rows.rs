@@ -408,6 +408,10 @@ async fn measure_wrapped_paragraph(
             coverage(prefix);
             coverage_published = true;
             published_coverage = true;
+            #[cfg(feature = "test-support")]
+            if let Some(trace) = &timing {
+                trace.report(paint, "paragraph-coverage", 0.0, 0);
+            }
         }
         paint.set_inner_html("");
         probes += 1;
@@ -418,6 +422,12 @@ async fn measure_wrapped_paragraph(
             || probes % openwebide_core::editor::MAX_MEASURE_BATCHES_PER_FRAME == 0;
         if needs_frame {
             crate::util::yield_frame().await;
+        }
+        // A frame can unmount the editor. Reject that owner before consulting
+        // reactive coverage state so the probe is released without a disposed-
+        // signal panic (WASM panics do not unwind the probe's Drop).
+        if !current() {
+            return Ok(None);
         }
         if coverage_published && actions.paragraph_viewport_published(scope, logical) {
             crate::util::yield_background_task().await;

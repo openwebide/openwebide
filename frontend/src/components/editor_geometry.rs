@@ -328,15 +328,12 @@ fn paragraph_range_reader<'a>(
     row: &'a web_sys::Element,
     body: &'a str,
     glyph_start: usize,
+    offsets: Vec<(usize, usize)>,
+    nodes: TextNodes,
+    native_nodes: js_sys::Array,
 ) -> Option<impl Fn(&[usize]) -> Option<Vec<openwebide_core::editor::GlyphRectangle>> + 'a> {
     if row.text_content()?.as_str() != body {
         return None;
-    }
-    let offsets = openwebide_core::editor::visual_line_offsets(body).ok()?;
-    let nodes = TextNodes::new(row)?;
-    let native_nodes = js_sys::Array::new();
-    for (node, _, _) in &nodes.0 {
-        native_nodes.push(node.as_ref());
     }
     let range = document().create_range().ok()?;
     Some(move |targets: &[usize]| {
@@ -390,7 +387,13 @@ pub(super) fn paragraph_rectangles(
     glyph_start: usize,
     targets: &[usize],
 ) -> Option<Vec<openwebide_core::editor::GlyphRectangle>> {
-    paragraph_range_reader(row, body, glyph_start)?(targets)
+    let offsets = openwebide_core::editor::visual_line_offsets(body).ok()?;
+    let nodes = TextNodes::new(row)?;
+    let native_nodes = js_sys::Array::new();
+    for (node, _, _) in &nodes.0 {
+        native_nodes.push(node.as_ref());
+    }
+    paragraph_range_reader(row, body, glyph_start, offsets, nodes, native_nodes)?(targets)
 }
 
 /// Bound native range reads per task without publishing a partially measured
@@ -420,7 +423,32 @@ pub async fn paragraph_rectangles_cooperatively(
         latest.width().to_bits() == bounds.width().to_bits()
             && latest.height().to_bits() == bounds.height().to_bits()
     };
-    let read = paragraph_range_reader(row, body, glyph_start)?;
+    let mut preparation = openwebide_core::editor::VisualOffsetsPreparation::new(body).ok()?;
+    while !preparation.advance(openwebide_core::editor::VISUAL_OFFSET_SCAN_BATCH) {
+        if !valid() || row.text_content()?.as_str() != body {
+            return None;
+        }
+        crate::util::yield_task().await;
+    }
+    let offsets = preparation.finish()?;
+    let nodes = TextNodes::prepare(row, &valid).await?;
+    let native_nodes = js_sys::Array::new();
+    for (batch, chunk) in nodes
+        .0
+        .chunks(openwebide_core::editor::ROW_GEOMETRY_BATCH)
+        .enumerate()
+    {
+        if batch > 0 {
+            crate::util::yield_task().await;
+        }
+        if !valid() || row.text_content()?.as_str() != body {
+            return None;
+        }
+        for (node, _, _) in chunk {
+            native_nodes.push(node.as_ref());
+        }
+    }
+    let read = paragraph_range_reader(row, body, glyph_start, offsets, nodes, native_nodes)?;
     let mut rectangles = Vec::with_capacity(targets.len());
     for (batch, chunk) in targets
         .chunks(openwebide_core::editor::ROW_GEOMETRY_BATCH)

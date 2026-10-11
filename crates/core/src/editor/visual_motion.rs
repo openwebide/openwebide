@@ -61,17 +61,60 @@ pub fn visual_caret_offsets(text: &str) -> Result<Vec<usize>, SelectionError> {
 /// Index a bounded logical line independently of the number of measured carets.
 /// Each pair is a grapheme boundary in source bytes and browser UTF-16 units.
 pub fn visual_line_offsets(text: &str) -> Result<Vec<(usize, usize)>, SelectionError> {
-    if text.len() > super::MAX_STRUCTURE_BYTES {
-        return Err(SelectionError::TooLarge);
+    let mut preparation = VisualOffsetsPreparation::new(text)?;
+    preparation.advance(usize::MAX);
+    preparation.finish().ok_or(SelectionError::TooLarge)
+}
+
+/// Bounded source/context scan units per cooperative dense-offset batch.
+pub const VISUAL_OFFSET_SCAN_BATCH: usize = 8;
+
+/// Exact dense source-byte/UTF-16 boundaries, published only after a complete scan.
+pub struct VisualOffsetsPreparation<'a> {
+    body: &'a str,
+    scan: super::grapheme_scan::GraphemeScan<'a>,
+    offsets: Vec<(usize, usize)>,
+    cluster: (usize, usize),
+    native: usize,
+}
+impl<'a> VisualOffsetsPreparation<'a> {
+    pub fn new(body: &'a str) -> Result<Self, SelectionError> {
+        if body.len() > super::MAX_STRUCTURE_BYTES {
+            return Err(SelectionError::TooLarge);
+        }
+        Ok(Self {
+            body,
+            scan: super::grapheme_scan::GraphemeScan::new(body),
+            offsets: Vec::new(),
+            cluster: (0, 0),
+            native: 0,
+        })
     }
-    let mut utf16 = 0;
-    let mut offsets = Vec::new();
-    for (byte, grapheme) in text.grapheme_indices(true) {
-        offsets.push((byte, utf16));
-        utf16 += grapheme.encode_utf16().count();
+    /// Budget includes bounded context requests and progress inside a large cluster.
+    pub fn advance(&mut self, budget: usize) -> bool {
+        for _ in 0..budget {
+            if self.scan.is_done() {
+                break;
+            }
+            let body = self.body;
+            self.scan.advance(|step| {
+                self.native += body[step.consumed].encode_utf16().count();
+                if let Some(end) = step.boundary {
+                    self.offsets.push(self.cluster);
+                    self.cluster = (end, self.native);
+                }
+                false
+            });
+        }
+        self.scan.is_done()
     }
-    offsets.push((text.len(), utf16));
-    Ok(offsets)
+    pub fn finish(mut self) -> Option<Vec<(usize, usize)>> {
+        if !self.scan.is_done() {
+            return None;
+        }
+        self.offsets.push((self.body.len(), self.native));
+        Some(self.offsets)
+    }
 }
 
 /// Keep browser shaping/range primitives on short text runs without splitting
@@ -470,6 +513,47 @@ mod tests {
             })
             .collect();
         assert!(valid_caret_offsets(&document.projection(), &carets));
+    }
+
+    #[test]
+    fn cooperative_dense_offsets_match_independent_unicode_boundaries() {
+        for body in [
+            String::new(),
+            "ASCII\r\n文😀e\u{301} 👩‍👩‍👧‍👦 ".repeat(300),
+            format!("a{} tail", "\u{301}".repeat(6000)),
+            "🇺🇸🇨🇦🇯🇵".repeat(1200),
+            "\u{600}a क्‍ष 각".repeat(600),
+        ] {
+            let mut native = 0;
+            let mut expected = Vec::new();
+            for (byte, cluster) in body.grapheme_indices(true) {
+                expected.push((byte, native));
+                native += cluster.encode_utf16().count();
+            }
+            expected.push((body.len(), native));
+            assert!(
+                VisualOffsetsPreparation::new(&body)
+                    .unwrap()
+                    .finish()
+                    .is_none()
+            );
+            for budget in [1, 7, VISUAL_OFFSET_SCAN_BATCH, 128, usize::MAX] {
+                let mut preparation = VisualOffsetsPreparation::new(&body).unwrap();
+                assert!(!preparation.advance(0));
+                let mut steps = 0;
+                while !preparation.advance(budget) {
+                    steps += 1;
+                    assert!(steps < 100_000, "scan must finish");
+                }
+                assert_eq!(preparation.finish().unwrap(), expected, "budget={budget}");
+            }
+            assert_eq!(visual_line_offsets(&body).unwrap(), expected);
+            if body.len() > 512 {
+                let mut canceled = VisualOffsetsPreparation::new(&body).unwrap();
+                assert!(!canceled.advance(1));
+                assert!(canceled.finish().is_none());
+            }
+        }
     }
 
     #[test]
