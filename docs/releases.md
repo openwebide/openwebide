@@ -1,6 +1,6 @@
 # Releases and upgrades
 
-Open WebIDE is preparing its first alpha (`1.0.0-alpha.4`). Registry installation files and the
+Open WebIDE is preparing its first alpha (`1.0.0-alpha.5`). Registry installation files and the
 release workflow are prepared; published alpha/beta/RC builds can be distributed
 before stable `v1.0.0`. Download instructions become available when the first
 release or prerelease is published and its GHCR package is made public.
@@ -178,7 +178,7 @@ Each published build has a versioned image tag and a rolling channel tag:
 
 | Git tag / versioned image tag | Rolling image tag | GitHub Release |
 | --- | --- | --- |
-| `v1.0.0-alpha.4` | `alpha` | Prerelease |
+| `v1.0.0-alpha.5` | `alpha` | Prerelease |
 | `v1.0.0-beta.1` | `beta` | Prerelease |
 | `v1.0.0-rc.1` | `rc` | Prerelease |
 | `v1.0.0` | `latest` | Stable |
@@ -189,7 +189,7 @@ published build; publish version tags sequentially so an older build finishing
 later does not replace a newer channel image.
 
 For Compose, set `OPENWEBIDE_IMAGE=ghcr.io/openwebide/openwebide:alpha` in `.env`
-to follow alphas, or use `:v1.0.0-alpha.4` to pin one build. For Podman, set the
+to follow alphas, or use `:v1.0.0-alpha.5` to pin one build. For Podman, set the
 same image in `openwebide.image`; the auto-update timer follows the chosen channel.
 Downloaded prerelease Quadlet assets already select their own channel rather than
 `latest`. A channel exists only after its first build is published.
@@ -229,7 +229,7 @@ with your version, deployment method, browser and workspace mode.
    move shipped changelog entries into its versioned section, leaving Unreleased
    for subsequent work. Supported versions are `MAJOR.MINOR.PATCH` and
    `MAJOR.MINOR.PATCH-alpha.N`, `-beta.N` or `-rc.N` (numeric `N`, no leading zeros).
-   For an initial alpha, use `1.0.0-alpha.4` and `## [1.0.0-alpha.4] - YYYY-MM-DD`;
+   For an initial alpha, use `1.0.0-alpha.5` and `## [1.0.0-alpha.5] - YYYY-MM-DD`;
    for stable 1.0, use `1.0.0`. Update the README/site/guide to describe the actual
    release status. Run `python3 tools/release.py validate --tag v<version>`.
 4. Commit the reviewed release changes and push the corresponding `v<version>` tag.
