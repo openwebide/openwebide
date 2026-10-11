@@ -878,8 +878,8 @@ walkthroughs against the final app before public launch.
   `ghcr.io/openwebide/openwebide:v1.0.0` and `latest`, and publishes changelog-derived
   notes, archives, install files and checksums using `GITHUB_TOKEN`. Make the GHCR
   package public and verify anonymous pulls and clean installs on both architectures.
-  The workspace currently remains `0.1.0`; a prerelease version can be adopted before
-  the stable-release gates pass.
+  The workspace is preparing `1.0.0-alpha.1`; alpha publication does not complete
+  the stable-release gates.
 - **Public launch:** update the [site landing page](project-site.md) and pre-release
   documentation wording for the actual release, then prepare community announcements
   and directory submissions. Support uses the new GitHub issue forms; an optional

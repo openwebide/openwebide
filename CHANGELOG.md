@@ -3,11 +3,12 @@
 All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-The workspace is at `0.1.0` with no tags and no releases yet, so everything
-to date lives under [Unreleased](#unreleased). See [docs/roadmap.md](docs/roadmap.md)
-for what's still ahead.
+The first alpha is prepared as `1.0.0-alpha.1`. See
+[docs/roadmap.md](docs/roadmap.md) for what is still ahead.
 
 ## [Unreleased]
+
+## [1.0.0-alpha.1] - 2026-10-10
 
 - Compile Git-pinned Rust plugins to WASM on bridge hosts using the public SDK, locked dependencies and an isolated compiler. Cache validated components by source, SDK and toolchain; bound execution, memory, host calls and errors without ambient WASI access.
 - Provide capability-gated HTTP, scoped records/shared collections, clocks, model completion, durable jobs and raw prompt runs. Grants retain authenticated account/project/conversation scope and the selected source; executing components keep their original version across updates. Plugin HTTP cannot bypass grants through Open WebIDE control APIs.

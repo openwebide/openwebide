@@ -1,6 +1,6 @@
 # Releases and upgrades
 
-Open WebIDE is currently pre-release (`0.1.0`). Registry installation files and the
+Open WebIDE is preparing its first alpha (`1.0.0-alpha.1`). Registry installation files and the
 release workflow are prepared; published alpha/beta/RC builds can be distributed
 before stable `v1.0.0`. Download instructions become available when the first
 release or prerelease is published and its GHCR package is made public.

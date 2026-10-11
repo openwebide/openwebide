@@ -152,6 +152,19 @@ with open(os.environ['COMMAND_LOG'], 'a') as stream:
                     release.validate(self.root)
                 path.write_text(previous)
 
+    def test_public_plugin_sdk_keeps_its_independent_locked_version(self):
+        cargo = self.root / "Cargo.toml"
+        cargo.write_text(cargo.read_text().replace('["bridge"]', '["bridge", "crates/plugin-sdk"]'))
+        sdk = self.root / "crates/plugin-sdk/Cargo.toml"
+        sdk.parent.mkdir(parents=True)
+        sdk.write_text('[package]\nname = "openwebide-plugin-sdk"\nversion = "0.1.0"\n')
+        lock = self.root / "Cargo.lock"
+        lock.write_text(lock.read_text() + '\n[[package]]\nname = "openwebide-plugin-sdk"\nversion = "0.1.0"\n')
+        self.assertEqual(release.version(self.root), "1.0.0")
+        sdk.write_text(sdk.read_text().replace('"0.1.0"', '"0.2.0"'))
+        with self.assertRaises(ValueError):
+            release.version(self.root)
+
     def test_missing_empty_or_duplicate_notes_block_release(self):
         for changelog in ["## [Unreleased]\n- Only unreleased.\n", "## [1.0.0]\n\n", "## [1.0.0]\n- One.\n## [1.0.0]\n- Two.\n"]:
             (self.root / "CHANGELOG.md").write_text(changelog)

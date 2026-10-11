@@ -40,10 +40,14 @@ def version(root=ROOT):
     for member in cargo["workspace"]["members"]:
         package = tomllib.loads((root / member / "Cargo.toml").read_text())["package"]
         declared = package["version"]
-        if declared != {"workspace": True} and declared != current:
+        independent_sdk = package["name"] == "openwebide-plugin-sdk"
+        expected = declared if independent_sdk else current
+        if independent_sdk:
+            release_channel(expected)
+        elif declared != {"workspace": True} and declared != current:
             raise ValueError(f"{member} does not use workspace version {current}")
         locked = [p for p in lock["package"] if p["name"] == package["name"] and "source" not in p]
-        if len(locked) != 1 or locked[0]["version"] != current:
+        if len(locked) != 1 or locked[0]["version"] != expected:
             raise ValueError(f"Cargo.lock version for {package['name']} differs")
     return current
 
