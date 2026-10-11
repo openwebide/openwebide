@@ -13748,6 +13748,93 @@ impl Drop for ResumeTasks {
 }
 
 #[wasm_bindgen_test]
+async fn wrapped_preparation_unmount_releases_frame_held_probes_in_both_modes() {
+    #[wasm_bindgen::prelude::wasm_bindgen(inline_js = r#"
+    export function holdWrappedProbeFrame() {
+        const sink = window.__openwebideEditorProbeTiming;
+        const raf = window.requestAnimationFrame;
+        const cancel = window.cancelAnimationFrame;
+        const pending = new Map();
+        let held = false, next = 2000000;
+        window.__openwebideEditorProbeTiming = (paint, phase, elapsed, units) => {
+            if (!held && phase === 'paragraph-coverage' && paint.textContent?.includes('unmount-probe-cancel')) {
+                held = true;
+                window.requestAnimationFrame = callback => { const id = next++; pending.set(id, callback); return id; };
+                window.cancelAnimationFrame = id => { if (!pending.delete(id)) cancel.call(window, id); };
+            }
+            sink?.(paint, phase, elapsed, units);
+        };
+        return (resume = true) => {
+            if (!resume) return pending.size;
+            window.__openwebideEditorProbeTiming = sink;
+            if (held) {
+                window.requestAnimationFrame = raf;
+                window.cancelAnimationFrame = cancel;
+                pending.forEach(callback => raf.call(window, callback));
+                pending.clear();
+            }
+        };
+    }
+    "#)]
+    extern "C" {
+        fn holdWrappedProbeFrame() -> js_sys::Function;
+    }
+    for mode in [
+        openwebide_core::WorkspaceMode::Local,
+        openwebide_core::WorkspaceMode::Remote,
+    ] {
+        let frames = ResumeTasks(holdWrappedProbeFrame());
+        let source = format!(
+            "let text = \"{}\";",
+            "unmount-probe-cancel 文😀 wrapped words ".repeat(2500)
+        );
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            state.workspace.open_file.set(Some("unmount.rs".into()));
+            state.workspace.content.set(source.into());
+            state
+                .settings
+                .editor_preferences
+                .update(|preferences| preferences.word_wrap = true);
+            view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:420px;height:320px">{editor_view(state)}</div> }
+        });
+        wait_until("wrapped measurement frame held", || {
+            frames
+                .0
+                .call1(&wasm_bindgen::JsValue::NULL, &wasm_bindgen::JsValue::FALSE)
+                .unwrap()
+                .as_f64()
+                .unwrap()
+                > 0.0
+                && web_sys::window()
+                    .unwrap()
+                    .document()
+                    .unwrap()
+                    .query_selector(".editor-row-measure")
+                    .unwrap()
+                    .is_some()
+        })
+        .await;
+        drop(mounted);
+        drop(frames);
+        wait_until("unmounted wrapped measurement probe released", || {
+            web_sys::window()
+                .unwrap()
+                .document()
+                .unwrap()
+                .query_selector(".editor-row-measure")
+                .unwrap()
+                .is_none()
+        })
+        .await;
+    }
+}
+
+#[wasm_bindgen_test]
 async fn indexed_terminal_fallback_paints_bounded_unwrapped_input_in_both_modes() {
     use openwebide_core::{WorkspaceMode, editor::Selection};
     use openwebide_frontend::state_actions::editor::EditorActions;
@@ -17111,6 +17198,14 @@ async fn horizontal_fragments_preserve_tabs_scroll_extent_and_native_hits_in_bot
                 width
             );
             assert_editor_native_source(&input, mounted.state.workspace, &original);
+            // Visible coverage can precede complete background geometry. A
+            // synchronous caret query must not add a measurement probe; it need
+            // not wait for an already-running preparation to finish.
+            let document = web_sys::window().unwrap().document().unwrap();
+            let probes_before = document
+                .query_selector_all(".editor-row-measure")
+                .unwrap()
+                .length();
             let bounds = input.get_bounding_client_rect();
             let hit = openwebide_frontend::viewport::editor_caret_from_point(
                 &input,
@@ -17129,16 +17224,31 @@ async fn horizontal_fragments_preserve_tabs_scroll_extent_and_native_hits_in_bot
                 );
             }
             assert_eq!(
-                web_sys::window()
+                document
+                    .query_selector_all(".editor-row-measure")
+                    .unwrap()
+                    .length(),
+                probes_before,
+                "native caret queries must not create or leak measurement probes"
+            );
+        }
+        wait_until("horizontal background probes released", || {
+            mounted
+                .state
+                .workspace
+                .editor_row_preparation
+                .get_untracked()
+                .is_none()
+                && web_sys::window()
                     .unwrap()
                     .document()
                     .unwrap()
                     .query_selector_all(".editor-row-measure")
                     .unwrap()
-                    .length(),
-                0
-            );
-        }
+                    .length()
+                    == 0
+        })
+        .await;
         let largest_measured_source = js_sys::Reflect::get(&measured_source, &"max".into())
             .unwrap()
             .as_f64()
@@ -22326,76 +22436,97 @@ async fn cooperative_paragraph_ranges_preserve_geometry_and_reject_stale_probes_
     };
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         for wrapped in [false, true] {
-            for change in 0..6 {
-                let source = "e\u{301} 文😀 café != -> words ".repeat(40);
-                let rendered = source.clone();
-                let mounted = mount_test(move |state| {
-                    state.seed_project();
-                    state
-                        .projects
-                        .projects
-                        .update(|projects| projects[0].mode = mode);
-                    view! {
-                        <style>{include_str!("../../styles.css")}</style>
-                        <div class="probe-font" style="font-family:monospace;font-size:14px">
-                            <div class="editor-source-line" style=format!("width:240px;white-space:{}", if wrapped { "pre-wrap" } else { "pre" })>
-                                <span class="tok-string">{rendered}</span>
+            for phase in 0..3 {
+                for change in 0..6 {
+                    let source =
+                        "e\u{301} 文😀 café != -> words ".repeat(if phase == 1 { 400 } else { 40 });
+                    let pieces: Vec<_> = if phase == 2 {
+                        source.chars().map(|ch| ch.to_string()).collect()
+                    } else {
+                        vec![source.clone()]
+                    };
+                    let mounted = mount_test(move |state| {
+                        state.seed_project();
+                        state
+                            .projects
+                            .projects
+                            .update(|projects| projects[0].mode = mode);
+                        view! {
+                            <style>{include_str!("../../styles.css")}</style>
+                            <div class="probe-font" style="font-family:monospace;font-size:14px">
+                                <div class="editor-source-line" style=format!("width:240px;white-space:{}", if wrapped { "pre-wrap" } else { "pre" })>
+                                    {pieces.into_iter().map(|piece| view! { <span class="tok-string">{piece}</span> }).collect_view()}
+                                </div>
                             </div>
-                        </div>
+                        }
+                    });
+                    let row = mounted.element(".editor-source-line");
+                    let glyphs = VisualLineIndex::new(&source).unwrap().len() - 1;
+                    let targets: Vec<_> = if phase == 0 {
+                        (50..50 + glyphs).collect()
+                    } else {
+                        vec![50, 53, 50 + glyphs / 2, 50 + glyphs - 1]
+                    };
+                    if phase == 0 {
+                        assert!(targets.len() > openwebide_core::editor::ROW_GEOMETRY_BATCH);
+                    } else {
+                        assert!(targets.len() < openwebide_core::editor::ROW_GEOMETRY_BATCH);
+                        if phase == 1 {
+                            assert!(
+                                source.len()
+                                    > 1024 * openwebide_core::editor::VISUAL_OFFSET_SCAN_BATCH
+                            );
+                        }
                     }
-                });
-                let row = mounted.element(".editor-source-line");
-                let targets: Vec<_> =
-                    (50..50 + VisualLineIndex::new(&source).unwrap().len() - 1).collect();
-                assert!(targets.len() > openwebide_core::editor::ROW_GEOMETRY_BATCH);
-                let expected =
-                    paragraph_rectangles_individual(&row, &source, 50, &targets).unwrap();
-                let current = Cell::new(true);
-                let current_owner = || current.get();
-                let mut future = Box::pin(paragraph_rectangles_cooperatively(
-                    &row,
-                    &source,
-                    50,
-                    &targets,
-                    &current_owner,
-                ));
-                assert!(matches!(
-                    future
-                        .as_mut()
-                        .poll(&mut Context::from_waker(Waker::noop())),
-                    Poll::Pending
-                ));
-                match change {
-                    1 => current.set(false),
-                    2 => row.set_text_content(Some("changed source")),
-                    3 => row.remove(),
-                    4 => {
-                        row.set_attribute("style", "width:300px;white-space:pre-wrap")
-                            .unwrap();
+                    let expected =
+                        paragraph_rectangles_individual(&row, &source, 50, &targets).unwrap();
+                    let current = Cell::new(true);
+                    let current_owner = || current.get();
+                    let mut future = Box::pin(paragraph_rectangles_cooperatively(
+                        &row,
+                        &source,
+                        50,
+                        &targets,
+                        &current_owner,
+                    ));
+                    assert!(matches!(
+                        future
+                            .as_mut()
+                            .poll(&mut Context::from_waker(Waker::noop())),
+                        Poll::Pending
+                    ));
+                    match change {
+                        1 => current.set(false),
+                        2 => row.set_text_content(Some("changed source")),
+                        3 => row.remove(),
+                        4 => {
+                            row.set_attribute("style", "width:300px;white-space:pre-wrap")
+                                .unwrap();
+                        }
+                        5 => {
+                            mounted
+                                .element(".probe-font")
+                                .set_attribute(
+                                    "style",
+                                    "font-family:monospace;font-size:14px;font-weight:bold",
+                                )
+                                .unwrap();
+                        }
+                        _ => {}
                     }
-                    5 => {
-                        mounted
-                            .element(".probe-font")
-                            .set_attribute(
-                                "style",
-                                "font-family:monospace;font-size:14px;font-weight:bold",
-                            )
-                            .unwrap();
+                    let actual = future.await;
+                    if change == 0 {
+                        assert_eq!(
+                            actual.as_ref(),
+                            Some(&expected),
+                            "{mode:?}: wrapped={wrapped}, phase={phase}"
+                        );
+                    } else {
+                        assert!(
+                            actual.is_none(),
+                            "{mode:?}: wrapped={wrapped}, phase={phase}, change={change}"
+                        );
                     }
-                    _ => {}
-                }
-                let actual = future.await;
-                if change == 0 {
-                    assert_eq!(
-                        actual.as_ref(),
-                        Some(&expected),
-                        "{mode:?}: wrapped={wrapped}"
-                    );
-                } else {
-                    assert!(
-                        actual.is_none(),
-                        "{mode:?}: wrapped={wrapped}, change={change}"
-                    );
                 }
             }
         }

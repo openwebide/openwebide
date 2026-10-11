@@ -1,0 +1,12 @@
+{
+  "sourceHead": "1745f068049675a255e1599f0b072e6664da34b1",
+  "sourceFilesSha256": {
+    "crates/core/src/editor/visual_motion.rs": "21e8aaebb2841836251d702627862d312579dea5bdf69441a70874152430e284",
+    "crates/core/src/editor/mod.rs": "552c68362ee8f0628977c349bab7c5874d4cbfd1af2bae4dfa4d275ae16824e4",
+    "frontend/src/components/editor_geometry.rs": "2fd158e1a070bfeea30b0a1f925395240d6df4861e70a604aa08cf1f1c4de809",
+    "frontend/tests/components/editor.rs": "f15f5465fc62ecbff29e71506d8a6e43b8921b9c6706064aafd9b19fdcd332a1"
+  },
+  "componentWasmSha256": "e65a475959e9237fe762987fff6a456a4a0996e1305a80029f320f440390e6d5",
+  "bindingsWasmSha256": "495aeddc16e1f1d151143830c1d47dd0b73533a80372426d29ac4ede568642af",
+  "scope": "Cooperative dense source offsets, DOM-node enumeration and native-reference assembly before exact paragraph range batches; three yield phases tested in both modes."
+}

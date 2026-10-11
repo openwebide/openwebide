@@ -1,0 +1,13 @@
+{
+  "sourceHead": "1745f068049675a255e1599f0b072e6664da34b1",
+  "sourceFilesSha256": {
+    "crates/core/src/editor/visual_motion.rs": "21e8aaebb2841836251d702627862d312579dea5bdf69441a70874152430e284",
+    "crates/core/src/editor/mod.rs": "552c68362ee8f0628977c349bab7c5874d4cbfd1af2bae4dfa4d275ae16824e4",
+    "frontend/src/components/editor_geometry.rs": "2fd158e1a070bfeea30b0a1f925395240d6df4861e70a604aa08cf1f1c4de809",
+    "frontend/tests/components/editor.rs": "8daddf922fc03f7f756b0242463f30f8a9293ea65eead4442b871f20e7d4da9d",
+    "frontend/src/components/editor_rows.rs": "be22390f64521e3db85da55dbe935dea1ee72891dd4e65543c9b5d9a6084027f"
+  },
+  "componentWasmSha256": "4c2fc1eb0e015f988d7a822e4e535241c971bf96c5925cbffd13af1143c2ad7e",
+  "bindingsWasmSha256": "94b126e67db98388e6d284d302605ed87fcb950cdcda64de4c1177f5bcf4c15e",
+  "scope": "Cooperative paragraph setup and post-frame owner cancellation; test hook pauses only after current-source viewport coverage is accepted."
+}

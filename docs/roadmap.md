@@ -97,7 +97,19 @@ independent replay partitions now preserve coverage and deadlines. Hosted CI for
 the partition fix passes all five jobs
 ([receipt](editor-performance/grouped-ci-2bdd9a8-success.json)); the newer checkpoints `d26efa9` and `f251d89` each pass all five jobs
 ([receipts](editor-performance/editor-ci-d26-success.json),
-[latest fully green checkpoint](editor-performance/editor-ci-f251-success.json)).
+[receipt](editor-performance/editor-ci-f251-success.json)).
+
+The newer `2cca9be` checkpoint passes all five hosted jobs
+([receipt](editor-performance/editor-ci-2cca-success.json)). Latest checkpoint
+`1745f06` fails two browser contracts: horizontal-fragment probe cleanup and
+navigation paint-count isolation. The other four jobs pass; reliable combined CI
+remains open while post-frame owner cancellation and probe cleanup are corrected
+and reverified in the affected group and hosted CI. An accepted-coverage held-frame unmount
+regression passes both modes with post-frame owner rejection and complete probe
+cleanup ([receipt](editor-performance/wrapped-unmount-browser.json)). Two consecutive affected
+58-test groups pass without disposed-signal panics after the cancellation fix
+([receipt](editor-performance/wrapped-unmount-group-browser.json)); hosted CI
+still needs verification.
 
 **Remaining implementation** (all items remain part of this editor goal):
 
@@ -134,7 +146,18 @@ the partition fix passes all five jobs
   batches, reject stale font/source/layout ownership, and preserve first paint
   while background geometry is held
   ([receipt](editor-performance/cooperative-paragraph-ranges-browser.json)).
-  Offset/node setup, paragraph layout and synchronous viewport queries remain.
+  Dense Unicode offsets now use the shared bounded Rust scanner; DOM text-node
+  enumeration and native-reference setup yield before glyph reads, retaining
+  complete-only publication and stale-owner rejection in both project modes
+  ([receipt](editor-performance/cooperative-paragraph-setup-browser.json)).
+  Eight production samples preserve complete edited source
+  ([samples](editor-performance/cooperative-paragraph-setup-production.jsonl));
+  the repeated remote/wrapped pair also preserves source
+  ([repeat](editor-performance/cooperative-paragraph-setup-pair-repeat.jsonl)).
+  External build activity limits timing interpretation; the remote/wrapped pair
+  reverses direction on repeat. Input remains 206–519 ms in candidate samples;
+  no stable latency or memory gain is established.
+  Capacity allocation, paragraph layout and synchronous viewport queries remain.
   Preserve exact browser extents and anchors; approximate widths are insufficient.
 - [ ] **Incremental syntax, structure and paint:** finish retained-container reuse,
   warm semantic lists, bounded incremental row-key traversal, shifted suffix metadata, parser
@@ -191,24 +214,17 @@ the partition fix passes all five jobs
   matrices and every other UI partition. Repeat warm highlight/row reuse,
   file-switch cancellation, cold queued-input source/selection ownership,
   host-plugin focus/layout and explicit Output/terminal targeting. Validate bounded
-  setup retries after upstream Chrome download failures. Last fully green checkpoint
-  `120ea5c` passes all five jobs
-  ([receipt](editor-performance/editor-ci-120-success.json)); the retained-span checkpoint passes six focused browser contracts, ten WASM
-  library geometry/ownership contracts, strict WASM frontend lint and 16 fresh
-  production samples. Hosted UI CI at `b4c9aa7` failed the wrapped-origin crop-rejection contract.
-  Its wait correction passes in isolation with the original scroll adapter
-  ([receipt](editor-performance/wrapped-crop-wait-regression.json)); full hosted
-  Hosted CI at `e40e3cc` passes backend/crates, frontend,
-  Windows bridge and Docker, but fails three browser contracts: pending-source
-  newline paint, burst highlight coalescing and localized wrapped-row reuse.
-  The candidate fixes pass all seven combined pending-paint/geometry contracts,
-  including exact per-input pending paint, one final grammar paint and unchanged
-  localized wrapped-row probe limits
-  ([receipt](editor-performance/pending-frame-browser.json)). Full hosted CI for
-  the pending-paint correction (`d26efa9`) and repeated-row planning (`f251d89`)
-  passes all five jobs. `120ea5c` now passes all five jobs, including the full browser partition
-  ([receipt](editor-performance/editor-ci-120-success.json)). This gate remains open
-  for the final integrated editor implementation.
+  setup retries after upstream Chrome download failures. Latest fully green
+  checkpoint `2cca9be` passes all five jobs
+  ([receipt](editor-performance/editor-ci-2cca-success.json)). `1745f06` fails
+  horizontal-fragment probe cleanup and navigation paint-count isolation. The
+  post-frame owner-cancellation fix passes two consecutive affected 58-test runs and an
+  accepted-coverage wrapped-unmount regression in both modes
+  ([group](editor-performance/wrapped-unmount-group-browser.json),
+  [repeat](editor-performance/wrapped-unmount-group-browser-repeat.json),
+  [unmount](editor-performance/wrapped-unmount-browser.json)). Verify hosted CI
+  for this fix and the final integrated editor implementation before closing.
+
 - [ ] **Physical Chrome/Edge PWA input:** verify real input-method commit/cancel,
   Unicode and LF/CRLF undo/redo, multiple-cursor clipboard transactions and touch
   without rewriting unrelated source. Automated Chromium composition/pointer
