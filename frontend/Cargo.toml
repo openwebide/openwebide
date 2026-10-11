@@ -31,7 +31,7 @@ web-sys = { workspace = true, features = ["css", "CustomEvent", "Performance", "
 test-support = ["openwebide-core/test-support"]
 
 [dev-dependencies]
-web-sys = { workspace = true, features = ["DomRect", "NodeList", "PointerEventInit", "DataTransferItemList", "DataTransferItem"] }
+web-sys = { workspace = true, features = ["DomRect", "NodeList", "PointerEventInit", "TouchEvent", "DataTransferItemList", "DataTransferItem"] }
 openwebide-core = { workspace = true, features = ["test-support"] }
 wasm-bindgen-test = "0.3.78"
 openwebide-frontend = { path = ".", features = ["test-support"] }

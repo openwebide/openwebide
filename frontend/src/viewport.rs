@@ -307,6 +307,10 @@ export function forward_editor_wheel(input, event) {
         x *= scroll.clientWidth; y *= scroll.clientHeight;
     }
     event.preventDefault();
+    forward_editor_scroll_delta(input, x, y);
+}
+function forward_editor_scroll_delta(input, x, y) {
+    const scroll = editor_scroll_element(input);
     const extent = input.parentElement.querySelector('.editor-scroll-extent');
     const current = extent && extent.dataset.editorScope === input.dataset.editorScope && extent.dataset.editorView === input.parentElement.dataset.editorView && extent.dataset.editorAccount === input.parentElement.dataset.editorAccount;
     const width = current ? Number(extent.dataset.sourceWidth) : NaN;
@@ -315,6 +319,34 @@ export function forward_editor_wheel(input, event) {
     }
     scroll.scrollLeft += x; scroll.scrollTop += y;
     sync_editor_scroll(input, false);
+}
+const editor_touch_gestures = new WeakMap();
+export function forward_editor_touch(input, event) {
+    if (event.type === 'touchend' || event.type === 'touchcancel' || event.touches.length !== 1) {
+        editor_touch_gestures.delete(input);
+        return;
+    }
+    const touch = event.touches[0];
+    const identity = JSON.stringify([input.dataset.editorProject, input.dataset.editorPath,
+        input.dataset.editorScope, input.parentElement.dataset.editorView, input.parentElement.dataset.editorAccount]);
+    if (event.type === 'touchstart') {
+        editor_touch_gestures.set(input, {id:touch.identifier, x:touch.clientX, y:touch.clientY, identity, panning:false});
+        return;
+    }
+    const gesture = editor_touch_gestures.get(input);
+    if (!gesture || gesture.id !== touch.identifier || gesture.identity !== identity || !input.isConnected) {
+        editor_touch_gestures.delete(input);
+        return;
+    }
+    const x = gesture.x - touch.clientX, y = gesture.y - touch.clientY;
+    if (!gesture.panning && Math.hypot(x, y) < 6) return;
+    // The input is layered over a sibling scroll surface: the browser cannot
+    // pan that sibling itself. Leave taps and pinch gestures to native input.
+    if (!event.cancelable || editor_scroll_element(input) === input) return;
+    event.preventDefault();
+    gesture.panning = true;
+    gesture.x = touch.clientX; gesture.y = touch.clientY;
+    forward_editor_scroll_delta(input, x, y);
 }
 function editor_font_style_identity(style) {
     return ['font-family', 'font-size', 'font-style', 'font-weight',
@@ -423,6 +455,7 @@ extern "C" {
     );
     pub fn sync_editor_scroll(input: &web_sys::HtmlTextAreaElement, from_native: bool) -> bool;
     pub fn forward_editor_wheel(input: &web_sys::HtmlTextAreaElement, event: &web_sys::WheelEvent);
+    pub fn forward_editor_touch(input: &web_sys::HtmlTextAreaElement, event: &web_sys::TouchEvent);
     pub fn editor_font_identity(input: &web_sys::Element) -> String;
     #[wasm_bindgen(catch)]
     pub async fn settle_editor_font(

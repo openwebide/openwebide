@@ -3678,6 +3678,16 @@ pub fn Editor(
                 {move || {
                     let editor_project = workspace.active_project.get();
                     let editor_account_generation = editor_actions.account_generation();
+                    let touch_scroll = Callback::new(move |event: web_sys::TouchEvent| {
+                        if let Some(textarea) = event
+                            .current_target()
+                            .and_then(|target| target.dyn_into::<web_sys::HtmlTextAreaElement>().ok())
+                            && editor_actions.account_generation() == editor_account_generation
+                            && current_editor_target(editor_actions, &textarea)
+                        {
+                            crate::viewport::forward_editor_touch(&textarea, &event);
+                        }
+                    });
                     let mode = view_mode.get();
                     if let Some(limit) = editor_actions.limit() {
                         let old = pending_diff.with(|diff| diff.as_ref().and_then(|diff| diff.old.clone())).or_else(|| {
@@ -3814,6 +3824,10 @@ pub fn Editor(
                                                 aria-label=move || open_file.get().map_or_else(|| "Code editor".into(), |path| format!("Code editor: {path}"))
                                                 aria-description=move || if read_only.get() || tab_moves_focus.get() { "Tab and Shift+Tab move keyboard focus. Ctrl+M toggles Tab navigation." } else { "Tab indents and Shift+Tab outdents. Press Ctrl+M to let Tab move keyboard focus." }
                                                 title=move || if read_only.get() { "Read-only editor; Tab moves focus" } else if tab_moves_focus.get() { "Tab moves focus; Ctrl+M restores indentation" } else { "Tab indents; Ctrl+M enables focus navigation" }
+                                                on:touchstart:capture=move |event| touch_scroll.run(event)
+                                                on:touchmove:capture=move |event| touch_scroll.run(event)
+                                                on:touchend:capture=move |event| touch_scroll.run(event)
+                                                on:touchcancel:capture=move |event| touch_scroll.run(event)
                                             /> }}
                                             data-editor-project=editor_project.map(|project| project.to_string())
                                             data-editor-path=open_file.get()

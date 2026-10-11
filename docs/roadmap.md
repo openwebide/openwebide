@@ -162,7 +162,10 @@ prepared only one token row per unit. Small rows now share the existing 64-recor
   broader retained decoration ownership remain unfinished.
 - [ ] **Cold startup and native input:** bound remaining complete-source shaping,
   projection/native normalization, remaining word/context traversal and synchronous
-  selection publication. Finish source-owned touch caret/selection and native
+  selection publication. Editable one-finger scrolling now forwards through the
+  same browser scroll primitive as wheel input; headless Chrome touch/wheel,
+  caret and wrapped-geometry contracts pass in both modes. Physical-device
+  verification and source-owned touch caret/selection remain open. Finish native
   input windows. Prepared long-row coordinates now retain sparse category runs
   for exact word jumps, including giant Unicode clusters. The full core suite,
   three local/remote browser contracts and strict lint pass; native release

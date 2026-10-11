@@ -5664,6 +5664,12 @@ async fn edit_scrollbars_stay_above_paint_and_outside_gutter_in_both_modes() {
 }
 
 #[wasm_bindgen::prelude::wasm_bindgen(inline_js = r#"
+export function editorTouch(target, type, x, y, count) {
+    const touches = Array.from({length:count}, (_, identifier) => new Touch({identifier, target, clientX:x + identifier * 10, clientY:y}));
+    const event = new TouchEvent(type, {bubbles:true, cancelable:true, touches, targetTouches:touches, changedTouches:touches});
+    target.dispatchEvent(event);
+    return event.defaultPrevented;
+}
 export function editorWheel(target, x, y, mode, shift, control) {
     const event = new WheelEvent('wheel', {bubbles:true,cancelable:true,deltaX:x,deltaY:y,deltaMode:mode,shiftKey:shift,ctrlKey:control});
     target.dispatchEvent(event); return event.defaultPrevented;
@@ -5739,6 +5745,13 @@ export async function editorConfigCleanup(folder) {
 }
 "#)]
 extern "C" {
+    fn editorTouch(
+        target: &web_sys::HtmlTextAreaElement,
+        kind: &str,
+        x: f64,
+        y: f64,
+        count: u32,
+    ) -> bool;
     fn editorWheel(
         target: &web_sys::HtmlTextAreaElement,
         x: f64,
@@ -5802,6 +5815,23 @@ async fn editor_scroll_surface_preserves_wheel_native_navigation_and_scope_in_bo
                 mounted.element(".editor-textarea").unchecked_into();
             let scroll = mounted.element(".editor-scroll-surface");
             let actions = EditorActions::new(mounted.state.workspace);
+            assert!(!editorTouch(&input, "touchstart", 150.0, 200.0, 1));
+            assert!(!editorTouch(&input, "touchmove", 148.0, 198.0, 1));
+            assert!(editorTouch(&input, "touchmove", 125.0, 160.0, 1));
+            wait_until("touch scroll reaches source surface", || {
+                (scroll.scroll_top() - 40.0).abs() < 1.0
+                    && (scroll.scroll_left() - if word_wrap { 0.0 } else { 25.0 }).abs() < 1.0
+            })
+            .await;
+            assert!(!editorTouch(&input, "touchmove", 100.0, 100.0, 2));
+            assert!(!editorTouch(&input, "touchmove", 100.0, 100.0, 1));
+            assert!(!editorTouch(&input, "touchend", 100.0, 100.0, 0));
+            scroll.set_scroll_top(0.0);
+            scroll.set_scroll_left(0.0);
+            scroll
+                .dispatch_event(&web_sys::Event::new("scroll").unwrap())
+                .unwrap();
+            frame().await;
             assert!(editorWheel(&input, 25.0, 40.0, 0, false, false));
             // Cold uniform views publish height before width. The request must
             // survive that frame and apply once horizontal measurements finish.
@@ -5866,9 +5896,11 @@ async fn editor_scroll_surface_preserves_wheel_native_navigation_and_scope_in_bo
             assert!((saved.top - 333.0).abs() < 1.0);
             assert_eq!(mounted.state.workspace.content.get_untracked(), original);
             assert!(!mounted.state.workspace.dirty.get_untracked());
+            assert!(!editorTouch(&input, "touchstart", 100.0, 200.0, 1));
             mounted.click_text("Preview");
             settle().await;
             assert!(!scroll.is_connected());
+            assert!(!editorTouch(&input, "touchmove", 100.0, 100.0, 1));
             mounted.click_text("Edit");
             wait_until("remounted document scroll surface", || {
                 mounted
@@ -5887,11 +5919,15 @@ async fn editor_scroll_surface_preserves_wheel_native_navigation_and_scope_in_bo
                 "detached scroll events cannot update the remounted view"
             );
             let current = mounted.element(".editor-scroll-surface");
+            let current_input: web_sys::HtmlTextAreaElement =
+                mounted.element(".editor-textarea").unchecked_into();
+            assert!(!editorTouch(&current_input, "touchstart", 100.0, 200.0, 1));
             mounted
                 .state
                 .auth
                 .generation
                 .update(|generation| *generation += 1);
+            assert!(!editorTouch(&current_input, "touchmove", 100.0, 100.0, 1));
             current.set_scroll_top(555.0);
             current
                 .dispatch_event(&web_sys::Event::new("scroll").unwrap())
