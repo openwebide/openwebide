@@ -48,7 +48,8 @@ pub use editor::{
 #[cfg(feature = "test-support")]
 pub use editor_geometry::{
     cooperative_geometry_matches_complete_and_cancels,
-    cooperative_text_nodes_match_complete_and_cancel, paragraph_rectangles_match_individual,
+    cooperative_text_nodes_match_complete_and_cancel, paragraph_rectangles_cooperatively,
+    paragraph_rectangles_individual, paragraph_rectangles_match_individual,
 };
 pub use file_browser::FileBrowser;
 pub use file_tree::{FileTree, SearchPane};

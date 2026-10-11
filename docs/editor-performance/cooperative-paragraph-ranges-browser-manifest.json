@@ -1,0 +1,13 @@
+{
+  "sourceHead": "2cca9be330dda22792641d63bd44dba4394b54d3",
+  "sourceFilesSha256": {
+    "frontend/src/components/editor_geometry.rs": "5009ce53beff13b6392f4eb109def8ac71d4973588e5b014bdb35b1a3016e0a8",
+    "frontend/src/components/editor_rows.rs": "db69e5f878986fadf3e07010aa3725d74f7cea208d434c2f02d8855c9e4a524e",
+    "frontend/src/components/mod.rs": "c5e31f7281ec5c35598b893212316a8f0ee7f04e26e2627c1a5296f483da6630",
+    "frontend/src/viewport.rs": "2ba6f4d721fee2bcd72c466aa55fee8b8c984a6281524a8a0f2201bd63293b4c",
+    "frontend/tests/components/editor.rs": "9744c06cac2ef1aa6d95f582d0f3794db142ab4c2c17f00bf0558848efece977"
+  },
+  "componentWasmSha256": "5f0aef333de8364a7405ebb7b1ceabba3cd399c23fa4516713b9117238b9245f",
+  "bindingsWasmSha256": "cedf5f18b76db86c944759513bd98ce2760dbc7f8ff2fb3548a483f78fee909f",
+  "scope": "Cooperative paragraph range batches with one prepared source/native reader per probe and ordinary task yields before viewport coverage."
+}

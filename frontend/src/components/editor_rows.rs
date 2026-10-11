@@ -214,7 +214,9 @@ async fn measure_paragraph(
         if !current() {
             return Ok(None);
         }
-        let Some(layout) = measure_paragraph_probe(paint, scope, logical, &plan, &targets, render)?
+        let Some(layout) =
+            measure_paragraph_probe(paint, scope, logical, &plan, &targets, render, current)
+                .await?
         else {
             return Ok(None);
         };
@@ -369,12 +371,15 @@ async fn measure_wrapped_paragraph(
             );
         }
         let started = timing.as_ref().map(|trace| trace.clock.now());
-        let Some(rectangles) = super::editor_geometry::paragraph_rectangles(
+        let Some(rectangles) = super::editor_geometry::paragraph_rectangles_cooperatively(
             &row,
             &body[probe.bytes.clone()],
             probe.glyph_start,
             &targets,
-        ) else {
+            current,
+        )
+        .await
+        else {
             return Ok(None);
         };
         if !plan.record(
@@ -437,13 +442,14 @@ struct ParagraphLayout {
     rectangles: Vec<openwebide_core::editor::GlyphRectangle>,
 }
 
-fn measure_paragraph_probe(
+async fn measure_paragraph_probe(
     paint: &web_sys::Element,
     scope: &crate::state::workspace::EditorRowPaint,
     logical: usize,
     plan: &openwebide_core::editor::ParagraphMeasurementPlan<'_>,
     targets: &[usize],
     render: &impl Fn(&[usize], bool, &[crate::state_actions::editor::EditorRowSourceSlice]) -> String,
+    current: &impl Fn() -> bool,
 ) -> Result<Option<ParagraphLayout>, ()> {
     let Some(probe) = plan.probe() else {
         return Ok(None);
@@ -517,12 +523,15 @@ fn measure_paragraph_probe(
         );
     }
     let started = timing.as_ref().map(|trace| trace.clock.now());
-    let Some(mut rectangles) = super::editor_geometry::paragraph_rectangles(
+    let Some(mut rectangles) = super::editor_geometry::paragraph_rectangles_cooperatively(
         &row,
         &body[probe.bytes.clone()],
         probe.glyph_start,
         targets,
-    ) else {
+        current,
+    )
+    .await
+    else {
         return Ok(None);
     };
     for rectangle in &mut rectangles {

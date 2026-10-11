@@ -6713,3 +6713,53 @@ The previous row-reuse implementation checkpoint `120ea5c` now passes all five
 hosted jobs, including the full browser partition
 ([receipt](editor-performance/editor-ci-120-success.json)). The new scroll-paint
 checkpoint still requires its own hosted CI verification.
+
+
+### Cooperative native paragraph ranges
+
+Wrapped and unwrapped long-paragraph preparation now share a cooperative native
+range reader. Each batch reads at most the core's 128-glyph geometry budget,
+then yields an ordinary browser task. The existing orchestrator lowers priority
+after viewport coverage is proved. Rectangle coordinates still come from the
+same exact native primitive; partial batches never authorize a geometry record.
+Source matching, mounted-row connection, font identity, dimensions and the caller's
+preparation ticket are checked before publishing the complete result.
+
+The first candidate put native sub-batches at background priority too early.
+The held-background regression detected that this parked first-paint work before
+coverage could publish. Ordinary task yields fix that ordering, preserving the
+original test and its deadline. All eight combined release browser contracts
+now pass in both project modes, including independent per-range geometry,
+cancellation during actual yields, early origin paint, shifted suffix reuse,
+localized wrapped reuse, pending grammar paint and held-background supersession
+([receipt](editor-performance/cooperative-paragraph-ranges-browser.json),
+[source and artifact identity](editor-performance/cooperative-paragraph-ranges-browser-manifest.json)).
+Strict release WASM frontend lint passes with test support and all targets.
+Source offsets and DOM-node references are now prepared once per probe;
+that setup and paragraph layout remain synchronous,
+and a count budget does not prove the 12 ms wall-clock requirement. Native
+pointer/fallback queries and final geometry publication still need bounded work.
+
+
+The initial batching candidate repeated source-offset segmentation and DOM-node
+enumeration for every native sub-batch. Eight interleaved production samples
+preserved complete source but showed slower wrapped input: 518–554 ms versus
+490–491 ms in the paired baseline
+([samples](editor-performance/paragraph-ranges-repeated-setup-comparison.jsonl),
+[initial candidate identity](editor-performance/paragraph-ranges-repeated-setup-manifest.json)).
+That repeated setup was removed before committing: a prepared native reader now
+retains offsets, node references and its range for all batches of one probe.
+The independent per-range oracle remains separate from that reader.
+
+
+The prepared-reader candidate passes eight interleaved production samples in
+both modes with wrapping on/off, preserving complete source after every input
+([samples](editor-performance/cooperative-paragraph-ranges-production.jsonl),
+[release identity](editor-performance/cooperative-paragraph-ranges-production-manifest.json)).
+Candidate input paint is 205–207 ms unwrapped and 458–475 ms wrapped; cold
+complete geometry is 1.44–1.56 seconds. These single samples per mode/wrap setting
+do not establish a stable responsiveness improvement. The local unwrapped
+baseline is an outlier at 324 ms input and 2.21 seconds cold readiness; it must
+not be used alone to claim a speedup. The remaining input, startup and memory
+gates stay open. The shipped property is bounded native target batches with
+cancellation and exact geometry, rather than a completed latency target.

@@ -130,6 +130,11 @@ the partition fix passes all five jobs
   measurements, complete DOM installation and synchronous pointer/neighborhood
   queries. Finish arbitrary nonorigin coverage, failed-proof fallbacks,
   nonreconnecting wrapped updates and changed long-token/plain-run boundaries.
+  Native range reads in cold paragraph preparation now yield between 128-glyph
+  batches, reject stale font/source/layout ownership, and preserve first paint
+  while background geometry is held
+  ([receipt](editor-performance/cooperative-paragraph-ranges-browser.json)).
+  Offset/node setup, paragraph layout and synchronous viewport queries remain.
   Preserve exact browser extents and anchors; approximate widths are insufficient.
 - [ ] **Incremental syntax, structure and paint:** finish retained-container reuse,
   warm semantic lists, bounded incremental row-key traversal, shifted suffix metadata, parser

@@ -414,7 +414,7 @@ extern "C" {
     );
     pub fn sync_editor_scroll(input: &web_sys::HtmlTextAreaElement, from_native: bool) -> bool;
     pub fn forward_editor_wheel(input: &web_sys::HtmlTextAreaElement, event: &web_sys::WheelEvent);
-    pub fn editor_font_identity(input: &web_sys::HtmlTextAreaElement) -> String;
+    pub fn editor_font_identity(input: &web_sys::Element) -> String;
     #[wasm_bindgen(catch)]
     pub async fn settle_editor_font(
         input: &web_sys::HtmlTextAreaElement,
