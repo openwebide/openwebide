@@ -1,0 +1,157 @@
+{
+  "scope": "Bound surrounding native text by logical rows and bytes, including ordinary edit retention; active composition retains its value until completion",
+  "baseline": "shared-blank-row-production.jsonl",
+  "candidate": "native-row-bound-production.jsonl",
+  "comparisonScope": "Only the four wrapped beginning-edit cases match prior input position; unwrapped samples establish current source preservation, not a before/after comparison",
+  "matchedConditions": {
+    "backendWasmSha256": false,
+    "measurementImage": true,
+    "measurementScriptSha256": true,
+    "browser": true,
+    "cgroupCpuMax": true,
+    "cgroupMemoryMax": true
+  },
+  "completeSourceChecks": 16,
+  "sourceCaretBeforeInput": 0,
+  "summaries": [
+    {
+      "case": "dense-rows",
+      "wrap": true,
+      "mode": "local",
+      "samples": 2,
+      "median": {
+        "inputViewportPaintMs": 86.19999999552965,
+        "inputSyntaxReadyMs": 86.19999999552965,
+        "coldSyntaxReadyMs": 1199.2500000074506,
+        "peakChromePssKiB": 623488.5,
+        "wasmCommittedBytes": 30212096.0,
+        "afterInputWasmCommittedBytes": 33193984.0,
+        "nativeInputLength": 128.0
+      },
+      "baselineMedian": {
+        "inputViewportPaintMs": 82.70000000298023,
+        "inputSyntaxReadyMs": 82.70000000298023,
+        "coldSyntaxReadyMs": 1425.2000000029802,
+        "peakChromePssKiB": 711308.5,
+        "wasmCommittedBytes": 31064064.0,
+        "afterInputWasmCommittedBytes": 33816576.0,
+        "nativeInputLength": 12288.0
+      }
+    },
+    {
+      "case": "dense-rows",
+      "wrap": true,
+      "mode": "remote",
+      "samples": 2,
+      "median": {
+        "inputViewportPaintMs": 82.75,
+        "inputSyntaxReadyMs": 82.80000000447035,
+        "coldSyntaxReadyMs": 1241.25,
+        "peakChromePssKiB": 683691.0,
+        "wasmCommittedBytes": 30212096.0,
+        "afterInputWasmCommittedBytes": 33193984.0,
+        "nativeInputLength": 128.0
+      },
+      "baselineMedian": {
+        "inputViewportPaintMs": 95.70000000298023,
+        "inputSyntaxReadyMs": 95.70000000298023,
+        "coldSyntaxReadyMs": 1290.25,
+        "peakChromePssKiB": 707308.0,
+        "wasmCommittedBytes": 30801920.0,
+        "afterInputWasmCommittedBytes": 33816576.0,
+        "nativeInputLength": 12288.0
+      }
+    },
+    {
+      "case": "dense-rows",
+      "wrap": false,
+      "mode": "local",
+      "samples": 2,
+      "median": {
+        "inputViewportPaintMs": 11.399999998509884,
+        "inputSyntaxReadyMs": 45.0,
+        "coldSyntaxReadyMs": 1299.9500000029802,
+        "peakChromePssKiB": 656169.5,
+        "wasmCommittedBytes": 29491200.0,
+        "afterInputWasmCommittedBytes": 33226752.0,
+        "nativeInputLength": 128.0
+      }
+    },
+    {
+      "case": "dense-rows",
+      "wrap": false,
+      "mode": "remote",
+      "samples": 2,
+      "median": {
+        "inputViewportPaintMs": 10.199999995529652,
+        "inputSyntaxReadyMs": 48.44999999552965,
+        "coldSyntaxReadyMs": 1238.7999999970198,
+        "peakChromePssKiB": 665145.5,
+        "wasmCommittedBytes": 30310400.0,
+        "afterInputWasmCommittedBytes": 32997376.0,
+        "nativeInputLength": 128.0
+      }
+    },
+    {
+      "case": "embedded-html",
+      "wrap": false,
+      "mode": "local",
+      "samples": 2,
+      "median": {
+        "inputViewportPaintMs": 21.850000001490116,
+        "inputSyntaxReadyMs": 52.400000005960464,
+        "coldSyntaxReadyMs": 1271.1500000059605,
+        "peakChromePssKiB": 638945.0,
+        "wasmCommittedBytes": 23527424.0,
+        "afterInputWasmCommittedBytes": 23527424.0,
+        "nativeInputLength": 11848.0
+      }
+    },
+    {
+      "case": "embedded-html",
+      "wrap": false,
+      "mode": "remote",
+      "samples": 2,
+      "median": {
+        "inputViewportPaintMs": 19.099999994039536,
+        "inputSyntaxReadyMs": 47.20000000298023,
+        "coldSyntaxReadyMs": 1177.0999999940395,
+        "peakChromePssKiB": 665588.5,
+        "wasmCommittedBytes": 23592960.0,
+        "afterInputWasmCommittedBytes": 23592960.0,
+        "nativeInputLength": 11848.0
+      }
+    },
+    {
+      "case": "embedded-markdown",
+      "wrap": false,
+      "mode": "local",
+      "samples": 2,
+      "median": {
+        "inputViewportPaintMs": 11.599999994039536,
+        "inputSyntaxReadyMs": 55.149999998509884,
+        "coldSyntaxReadyMs": 1208.1000000014901,
+        "peakChromePssKiB": 703440.5,
+        "wasmCommittedBytes": 23003136.0,
+        "afterInputWasmCommittedBytes": 23199744.0,
+        "nativeInputLength": 1664.0
+      }
+    },
+    {
+      "case": "embedded-markdown",
+      "wrap": false,
+      "mode": "remote",
+      "samples": 2,
+      "median": {
+        "inputViewportPaintMs": 13.25,
+        "inputSyntaxReadyMs": 51.400000005960464,
+        "coldSyntaxReadyMs": 1208.9000000059605,
+        "peakChromePssKiB": 705855.5,
+        "wasmCommittedBytes": 23068672.0,
+        "afterInputWasmCommittedBytes": 23265280.0,
+        "nativeInputLength": 1664.0
+      }
+    }
+  ],
+  "interpretation": "Dense native values fall from 12288 to 128 characters. Wrapped input timing remains mixed; these samples do not establish a general latency improvement. Backend and unrelated frontend login/touch changes differ from the earlier baseline. Cold startup, physical devices and broader memory/geometry work remain open."
+}

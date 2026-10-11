@@ -23422,3 +23422,127 @@ async fn pending_grammar_paints_current_text_and_retains_matching_colors_in_both
         }
     }
 }
+
+#[wasm_bindgen_test]
+async fn newline_dense_small_files_use_row_bounded_native_contexts_in_both_modes() {
+    use openwebide_core::{WorkspaceMode, editor::Selection};
+    use openwebide_frontend::state_actions::editor::EditorActions;
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        for wrap in [false, true] {
+            for head in [0, 175, 350] {
+                let source = "\n".repeat(350);
+                let original = source.clone();
+                let slot = std::rc::Rc::new(std::cell::Cell::new(None::<EditorActions>));
+                let captured = slot.clone();
+                let mounted = mount_test(move |state| {
+                    state.seed_project();
+                    state
+                        .projects
+                        .projects
+                        .update(|projects| projects[0].mode = mode);
+                    state
+                        .workspace
+                        .open_file
+                        .set(Some("small-dense.txt".into()));
+                    state.workspace.content.set(source.clone().into());
+                    state
+                        .settings
+                        .editor_preferences
+                        .update(|prefs| prefs.word_wrap = wrap);
+                    let actions = EditorActions::new(state.workspace);
+                    actions.record_selection(Selection::caret(head)).unwrap();
+                    captured.set(Some(actions));
+                    view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:500px;height:400px">{editor_view(state)}</div> }
+                });
+                let input: web_sys::HtmlTextAreaElement =
+                    mounted.element(".editor-textarea").unchecked_into();
+                wait_until("row-bounded native context for a small dense file", || {
+                    input.get_attribute("data-editor-native-bound").as_deref() == Some("true")
+                        && input.value().len() <= 129
+                })
+                .await;
+                let actions = slot.get().unwrap();
+                let context = actions.bound_native_context().unwrap();
+                assert!(context.projection().lines().len() <= 129);
+                let native = context.native_selection().unwrap();
+                assert_eq!(
+                    context.source_selection(native).unwrap(),
+                    Selection::caret(head)
+                );
+                let mut value = context.projection().textarea_text().to_owned();
+                value.insert(native.head, 'X');
+                let mut commit = actions
+                    .native_context_input(
+                        &context,
+                        &value,
+                        Selection::caret(native.head + 1),
+                        "insertText",
+                        1.0,
+                    )
+                    .unwrap();
+                let mut expected = original;
+                expected.insert(head, 'X');
+                assert_eq!(actions.source(), expected);
+                assert_eq!(
+                    actions.selection(&expected),
+                    Some(Selection::caret(head + 1))
+                );
+                for added in 1..=2 {
+                    let context = commit.context;
+                    let native = context.native_selection().unwrap();
+                    let mut value = context.projection().textarea_text().to_owned();
+                    value.insert(native.head, '\n');
+                    commit = actions
+                        .native_context_input(
+                            &context,
+                            &value,
+                            Selection::caret(native.head + 1),
+                            "insertLineBreak",
+                            2.0,
+                        )
+                        .unwrap();
+                    assert!(commit.context.projection().fits_input_context(16 * 1024));
+                    expected.insert(head + added, '\n');
+                    assert_eq!(actions.source(), expected);
+                    assert_eq!(
+                        actions.selection(&expected),
+                        Some(Selection::caret(head + added + 1))
+                    );
+                }
+                assert!(
+                    !commit.retain_native_value,
+                    "Enter must rebind an overflowing row window"
+                );
+                actions.begin_composition();
+                let context = actions.native_context().unwrap();
+                let native = context.native_selection().unwrap();
+                let mut value = context.projection().textarea_text().to_owned();
+                value.insert_str(native.head, "\n\n\n日");
+                let commit = actions
+                    .native_context_input(
+                        &context,
+                        &value,
+                        Selection::caret(native.head + "\n\n\n日".len()),
+                        "insertCompositionText",
+                        3.0,
+                    )
+                    .unwrap();
+                assert!(
+                    commit.retain_native_value,
+                    "Active composition must keep its native value"
+                );
+                assert!(!commit.context.projection().fits_input_context(16 * 1024));
+                expected.insert_str(head + 3, "\n\n\n日");
+                assert_eq!(actions.source(), expected);
+                assert!(actions.end_composition().unwrap().is_some());
+                assert!(
+                    actions
+                        .native_context()
+                        .unwrap()
+                        .projection()
+                        .fits_input_context(16 * 1024)
+                );
+            }
+        }
+    }
+}

@@ -1,0 +1,55 @@
+{
+  "scope": "Document::input_context -> FoldProjection::input_context and fits_input_context; EditorActions shares native input replay/ownership across local and remote projects",
+  "sourceSha256": {
+    "crates/core/src/editor/projection.rs": "5033ed317094d52a57fe7132d053306a9f2d27df8c8b730b260cae2d1a188e49",
+    "frontend/src/state_actions/editor/input.rs": "ad845adc13b9e59207691fda787d2433116f830af68bc4756b167687f8705380",
+    "frontend/tests/components/editor.rs": "6aa1ce5817f8fe233541f4db5d91c8516e9be570884cd94c201a9497f07b9609"
+  },
+  "browserFixtureSha256": "4b1fce36787b1d77fcd60cac6748c2e5dd3bef401c85ff6441c8d08558b28d97",
+  "coreTests": {
+    "passed": 716,
+    "failed": 0,
+    "ignored": 1,
+    "command": "cargo test -p openwebide-core --release --features editor-parser"
+  },
+  "strictLint": {
+    "nativeCore": true,
+    "wasmFrontendAllTargets": true
+  },
+  "newContracts": [
+    "LF/CRLF and folded Unicode native windows preserve complete-source coordinates at start, middle and end",
+    "Row count and byte limits both govern ordinary retained windows",
+    "Twelve mounted local/remote, wrapped/unwrapped, start/middle/end dense-file fixtures preserve source and caret through typing and repeated Enter",
+    "Active multiline composition keeps an overflowing native value; completed composition gets a bounded window"
+  ],
+  "browser": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "console": "Invoking test: editor::wrapping_whitespace_fold_geometry_and_navigation_share_both_modes\nInvoking test: editor::primary_caret_and_selection_follow_source_motion_and_scroll_in_both_modes\nInvoking test: editor::newline_dense_small_files_use_row_bounded_native_contexts_in_both_modes\nInvoking test: editor::editor_scroll_surface_preserves_wheel_native_navigation_and_scope_in_both_modes\nInvoking test: editor::bounded_native_declarations_keep_global_offsets_and_full_selection_edits_in_both_modes\nInvoking test: editor::bounded_native_context_replaces_complete_selections_and_preserves_history_in_both_modes\nInvoking test: editor::bounded_native_context_rejects_stale_source_selection_and_owner_scopes_in_both_modes\nInvoking test: editor::bounded_native_context_multicursor_replay_and_failures_share_source_contract_in_both_modes\nInvoking test: editor::bounded_native_context_keeps_composition_values_through_clipped_replacements_in_both_modes\n",
+    "output": "\nrunning 9 tests\ntest editor::wrapping_whitespace_fold_geometry_and_navigation_share_both_modes ... ok\ntest editor::primary_caret_and_selection_follow_source_motion_and_scroll_in_both_modes ... ok\ntest editor::newline_dense_small_files_use_row_bounded_native_contexts_in_both_modes ... ok\ntest editor::editor_scroll_surface_preserves_wheel_native_navigation_and_scope_in_both_modes ... ok\ntest editor::bounded_native_declarations_keep_global_offsets_and_full_selection_edits_in_both_modes ... ok\ntest editor::bounded_native_context_replaces_complete_selections_and_preserves_history_in_both_modes ... ok\ntest editor::bounded_native_context_rejects_stale_source_selection_and_owner_scopes_in_both_modes ... ok\ntest editor::bounded_native_context_multicursor_replay_and_failures_share_source_contract_in_both_modes ... ok\ntest editor::bounded_native_context_keeps_composition_values_through_clipped_replacements_in_both_modes ... ok\n\ntest result: ok. 9 passed; 0 failed; 0 ignored; 0 filtered out; finished in 2.65s\n\n",
+    "passed": true,
+    "tests": [
+      "__wbgt__components::editor::bounded_native_context_keeps_composition_values_through_clipped_replacements_in_both_modes",
+      "__wbgt__components::editor::bounded_native_context_multicursor_replay_and_failures_share_source_contract_in_both_modes",
+      "__wbgt__components::editor::bounded_native_context_rejects_stale_source_selection_and_owner_scopes_in_both_modes",
+      "__wbgt__components::editor::bounded_native_context_replaces_complete_selections_and_preserves_history_in_both_modes",
+      "__wbgt__components::editor::bounded_native_declarations_keep_global_offsets_and_full_selection_edits_in_both_modes",
+      "__wbgt__components::editor::editor_scroll_surface_preserves_wheel_native_navigation_and_scope_in_both_modes",
+      "__wbgt__components::editor::newline_dense_small_files_use_row_bounded_native_contexts_in_both_modes",
+      "__wbgt__components::editor::primary_caret_and_selection_follow_source_motion_and_scroll_in_both_modes",
+      "__wbgt__components::editor::wrapping_whitespace_fold_geometry_and_navigation_share_both_modes"
+    ],
+    "servedFonts": {
+      "/fonts/MonaspaceNeon-v1.400.woff2": "6569968f448ae856ab5b57dff1f13b109b220ca8e3f664169e135fcb5c4f0721"
+    },
+    "libraryStartSuppressed": false,
+    "testModuleRoute": "/tests.js"
+  },
+  "limits": {
+    "nativeContextRows": 128,
+    "trailingEndpointRows": 1,
+    "normalContextBytes": 12288,
+    "retainedNativeBytes": 16384,
+    "browserTimeoutSeconds": 300
+  },
+  "remaining": "Complete-source startup/normalization, wrapped input latency, source-owned touch selection, unsupported-layout fallbacks and final integrated CI/device gates remain open."
+}

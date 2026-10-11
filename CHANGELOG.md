@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Bound native editor input windows by rows as well as bytes, and rebind overflowing windows after ordinary edits. Preserve complete-source selections, history and active composition in both project modes; reclip after composition finishes. Larger startup and wrapped-input performance work remains open.
+
 - Validate generated Quadlet services against the `stable` release image channel, matching the deployment configuration.
 
 - Forward one-finger drags in the editable editor to the shared document scroll surface, preserving taps and multi-touch gestures and rejecting stale file/account events in both project modes.

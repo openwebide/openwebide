@@ -41,6 +41,10 @@ pub struct FoldProjection {
     coordinates: Arc<Vec<super::coordinates::LineCoordinates>>,
 }
 
+// Bound native shaping and coordinate copies independently of byte density.
+// Window mapping may retain one empty endpoint row at its exclusive boundary.
+const INPUT_CONTEXT_ROWS: usize = 128;
+
 // Folded/windowed tables own only visible rows; do not retain spare growth
 // capacity when publishing their immutable coordinate storage.
 fn shared_coordinates(
@@ -329,6 +333,26 @@ impl FoldProjection {
         let mut start = head.saturating_sub(max_bytes / 2);
         let mut end = start.saturating_add(max_bytes).min(self.text.len());
         start = end.saturating_sub(max_bytes);
+        let head_row = self
+            .lines
+            .partition_point(|line| line.visible_start <= head)
+            .saturating_sub(1);
+        let last_row = head_row
+            .saturating_sub(INPUT_CONTEXT_ROWS / 2)
+            .saturating_add(INPUT_CONTEXT_ROWS)
+            .min(self.lines.len());
+        let first_row = last_row.saturating_sub(INPUT_CONTEXT_ROWS);
+        start = start.max(
+            self.lines
+                .get(first_row)
+                .ok_or(ProjectionError::InvalidOffset)?
+                .visible_start,
+        );
+        end = end.min(
+            self.lines
+                .get(last_row)
+                .map_or(self.text.len(), |line| line.visible_start),
+        );
         while !self.text.is_char_boundary(start) {
             start += 1;
         }
@@ -348,6 +372,12 @@ impl FoldProjection {
             end -= 1;
         }
         self.window(start..end)
+    }
+
+    /// Whether surrounding input text can be retained after an ordinary edit.
+    /// A window may include one empty row at its trailing endpoint.
+    pub fn fits_input_context(&self, max_bytes: usize) -> bool {
+        self.text.len() <= max_bytes && self.lines.len() <= INPUT_CONTEXT_ROWS + 1
     }
 
     /// Selection for the native context, without changing document selections.
@@ -1111,6 +1141,73 @@ mod tests {
                 Err(ProjectionError::InvalidOffset)
             );
         }
+    }
+
+    #[test]
+    fn dense_native_contexts_bound_rows_and_preserve_folded_source_coordinates() {
+        for ending in ["\n", "\r\n"] {
+            let source = format!("文🦀{ending}").repeat(1024);
+            for folded in [false, true] {
+                let mut folds = FoldState::default();
+                if folded {
+                    folds.set_ranges(
+                        vec![super::super::FoldRange {
+                            start_line: 400,
+                            end_line: 700,
+                        }],
+                        1025,
+                    );
+                    assert!(folds.toggle(400));
+                }
+                let full = FoldProjection::new(&source, &folds);
+                for head in [0, 800 * (7 + ending.len()), source.len()] {
+                    let selection = Selection::caret(head);
+                    let context = full.input_context(selection, 12 * 1024).unwrap();
+                    assert!(context.lines().len() <= INPUT_CONTEXT_ROWS + 1);
+                    assert!(context.text().len() <= 12 * 1024);
+                    assert!(context.fits_input_context(12 * 1024));
+                    let local = context.input_selection(selection).unwrap();
+                    assert_eq!(context.source_selection(local).unwrap(), selection);
+                    assert_eq!(
+                        context.textarea_text(),
+                        context.text().replace("\r\n", "\n")
+                    );
+                    assert!(
+                        context
+                            .lines()
+                            .iter()
+                            .any(|line| line.source.contains(&head) || line.source.end == head)
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn row_bound_leaves_long_single_line_contexts_byte_bounded() {
+        let source = "文🦀".repeat(20_000);
+        let full = FoldProjection::new(&source, &FoldState::default());
+        let head = source.len() / 2;
+        let context = full
+            .input_context(Selection::caret(head), 12 * 1024)
+            .unwrap();
+        assert!(context.text().len() >= 12 * 1024 - 6);
+        assert!(context.text().len() <= 12 * 1024);
+        assert_eq!(
+            context
+                .source_selection(context.input_selection(Selection::caret(head)).unwrap())
+                .unwrap(),
+            Selection::caret(head)
+        );
+    }
+
+    #[test]
+    fn retained_input_contexts_enforce_both_bounds() {
+        let projection = |source: &str| FoldProjection::new(source, &FoldState::default());
+        assert!(projection(&"\n".repeat(INPUT_CONTEXT_ROWS)).fits_input_context(1024));
+        assert!(!projection(&"\n".repeat(INPUT_CONTEXT_ROWS + 1)).fits_input_context(1024));
+        assert!(!projection("文🦀").fits_input_context(6));
+        assert!(projection("文🦀").fits_input_context(7));
     }
 
     #[test]

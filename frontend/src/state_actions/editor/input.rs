@@ -414,6 +414,9 @@ impl EditorActions {
                         ..context.original.textarea_to_byte(end),
                 )
                 .ok()?;
+            if !self.is_composing() && !projection.fits_input_context(NATIVE_CONTEXT_BYTES) {
+                return None;
+            }
             (projection.textarea_text() == value).then_some(projection)
         })();
         let retain_native_value = retained.is_some();

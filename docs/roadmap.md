@@ -165,8 +165,19 @@ prepared only one token row per unit. Small rows now share the existing 64-recor
   selection publication. Editable one-finger scrolling now forwards through the
   same browser scroll primitive as wheel input; headless Chrome touch/wheel,
   caret and wrapped-geometry contracts pass in both modes. Physical-device
-  verification and source-owned touch caret/selection remain open. Finish native
-  input windows. Prepared long-row coordinates now retain sparse category runs
+  verification, source-owned touch caret/selection and native fallback transitions
+  remain open. Boundable native windows now cap bytes and 128 rows plus endpoint
+  mapping. Ordinary edits rebind overflowing windows; active composition retains
+  its value and reclips on completion. All 716 core tests, nine local/remote
+  browser contracts and strict native/WASM lint pass
+  ([receipt](editor-performance/native-row-bound-browser.json)). Sixteen production
+  beginning-edit cases preserve complete source, including dense rows and embedded
+  HTML/Markdown. Dense native values fall from 12,288 to 128 characters; wrapped
+  paint remains 78–92 ms, with mixed before/after results and differing backend
+  artifacts, so this establishes a bound rather than a general speedup
+  ([measurements](editor-performance/native-row-bound-production-summary.json)).
+  Complete-source startup, normalization and wrapped input latency remain open.
+  Prepared long-row coordinates now retain sparse category runs
   for exact word jumps, including giant Unicode clusters. The full core suite,
   three local/remote browser contracts and strict lint pass; native release
   measurements show 2–8 ms long-run scans becoming sub-0.001 ms queries
