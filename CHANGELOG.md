@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+## [1.0.0-alpha.6] - 2026-10-11
+
 - Add host-side stdio MCP discovery and tool execution for server runs and paired local hosts, with run-pinned catalogs, normal approvals, bounded requests and process cleanup.
 - Show a per-account What’s new notice after login and bundle the installed version’s release notes in About for offline reading.
 
