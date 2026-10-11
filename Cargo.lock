@@ -2806,7 +2806,7 @@ checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 
 [[package]]
 name = "openwebide-agent"
-version = "1.0.0-alpha.3"
+version = "1.0.0-alpha.4"
 dependencies = [
  "futures",
  "openwebide-core",
@@ -2817,7 +2817,7 @@ dependencies = [
 
 [[package]]
 name = "openwebide-auth"
-version = "1.0.0-alpha.3"
+version = "1.0.0-alpha.4"
 dependencies = [
  "argon2",
  "base64 0.23.1",
@@ -2829,7 +2829,7 @@ dependencies = [
 
 [[package]]
 name = "openwebide-backend"
-version = "1.0.0-alpha.3"
+version = "1.0.0-alpha.4"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -2852,7 +2852,7 @@ dependencies = [
 
 [[package]]
 name = "openwebide-bridge"
-version = "1.0.0-alpha.3"
+version = "1.0.0-alpha.4"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -2884,7 +2884,7 @@ dependencies = [
 
 [[package]]
 name = "openwebide-core"
-version = "1.0.0-alpha.3"
+version = "1.0.0-alpha.4"
 dependencies = [
  "base64 0.23.1",
  "chrono",
@@ -2933,7 +2933,7 @@ dependencies = [
 
 [[package]]
 name = "openwebide-editor-bench"
-version = "1.0.0-alpha.3"
+version = "1.0.0-alpha.4"
 dependencies = [
  "crop",
  "js-sys",
@@ -2944,7 +2944,7 @@ dependencies = [
 
 [[package]]
 name = "openwebide-frontend"
-version = "1.0.0-alpha.3"
+version = "1.0.0-alpha.4"
 dependencies = [
  "ammonia",
  "base64 0.23.1",
@@ -2969,7 +2969,7 @@ dependencies = [
 
 [[package]]
 name = "openwebide-llm"
-version = "1.0.0-alpha.3"
+version = "1.0.0-alpha.4"
 dependencies = [
  "bytes",
  "futures",
@@ -2980,7 +2980,7 @@ dependencies = [
 
 [[package]]
 name = "openwebide-plugin-build"
-version = "1.0.0-alpha.3"
+version = "1.0.0-alpha.4"
 dependencies = [
  "anyhow",
  "landlock",
@@ -2991,7 +2991,7 @@ dependencies = [
 
 [[package]]
 name = "openwebide-plugin-runtime"
-version = "1.0.0-alpha.3"
+version = "1.0.0-alpha.4"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -3018,7 +3018,7 @@ dependencies = [
 
 [[package]]
 name = "openwebide-storage"
-version = "1.0.0-alpha.3"
+version = "1.0.0-alpha.4"
 dependencies = [
  "base64 0.23.1",
  "futures",
