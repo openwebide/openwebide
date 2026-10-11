@@ -144,9 +144,16 @@ remains a completion gate as the remaining implementation ships.
   Full physical timing, remaining boundary workloads and
   broader retained decoration ownership remain unfinished.
 - [ ] **Cold startup and native input:** bound remaining complete-source shaping,
-  projection/native normalization, long word/context traversal and synchronous
+  projection/native normalization, remaining word/context traversal and synchronous
   selection publication. Finish source-owned touch caret/selection and native
-  input windows; preserve composition mapping and complete-native fallback when
+  input windows. Prepared long-row coordinates now retain sparse category runs
+  for exact word jumps, including giant Unicode clusters. The full core suite,
+  three local/remote browser contracts and strict lint pass; native release
+  measurements show 2–8 ms long-run scans becoming sub-0.001 ms queries
+  ([receipt](editor-performance/indexed-word-navigation.json)). These exclude
+  browser paint and startup. Cross-row whitespace
+  and unindexed/noncanonical traversal still need bounded work. Preserve
+  composition mapping and complete-native fallback when
   bounded geometry cannot be proved. Finish startup and memory measurements
   across admitted boundaries, including unsupported layouts. Repeated scroll getters now resolve the mounted
   surface once; row-limit comparison samples still reach 100 ms, so native

@@ -7,6 +7,92 @@ use wasm_bindgen_test::*;
 use super::support::{Mounted, editor_view, mount_test, settle, wait_until};
 
 #[wasm_bindgen_test]
+async fn long_word_motion_retains_exact_source_after_edits_and_undo_in_both_modes() {
+    use openwebide_core::{
+        WorkspaceMode,
+        editor::{Indentation, Selection, SelectionMotion},
+    };
+    use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let body = "word_".repeat(16_000);
+        let source = format!("prefix\n{body}  ++ tail\n");
+        let initial = source.clone();
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            state.workspace.open_file.set(Some("words.txt".into()));
+            state.workspace.content.set(initial.clone().into());
+            view! { <div/> }
+        });
+        let actions = EditorActions::new(mounted.state.workspace);
+        let project = mounted
+            .state
+            .workspace
+            .active_project
+            .get_untracked()
+            .unwrap();
+        for prefix in [false, true] {
+            if prefix {
+                actions.record_selection(Selection::caret(0)).unwrap();
+                actions.insert_native_text("\n", 1.0).unwrap();
+            }
+            let current = actions.source();
+            let start = current.as_str().find(&body).unwrap();
+            actions.record_selection(Selection::caret(start)).unwrap();
+            let (ticket, _) = actions
+                .queue_current_motion(project, "words.txt", SelectionMotion::WordRight, false)
+                .unwrap()
+                .unwrap();
+            assert_eq!(
+                actions.apply_queued_motion(ticket, None).unwrap().unwrap(),
+                [Selection::caret(start + body.len() + 2)]
+            );
+            let left = actions
+                .move_selections(
+                    project,
+                    "words.txt",
+                    current.as_str(),
+                    SelectionMotion::WordLeft,
+                    true,
+                )
+                .unwrap()
+                .unwrap();
+            assert_eq!(
+                left,
+                [Selection {
+                    anchor: start + body.len() + 2,
+                    head: start
+                }]
+            );
+            assert_eq!(actions.source().as_str(), current.as_str());
+        }
+        actions
+            .command(
+                EditorCommand::Undo,
+                Selection::caret(0),
+                Indentation::default(),
+            )
+            .unwrap();
+        assert_eq!(actions.source().as_str(), source);
+        assert!(
+            actions
+                .move_selections(
+                    project,
+                    "words.txt",
+                    &format!("\n{source}"),
+                    SelectionMotion::WordRight,
+                    false
+                )
+                .unwrap()
+                .is_none()
+        );
+    }
+}
+
+#[wasm_bindgen_test]
 async fn changed_markdown_section_end_opens_retained_collapse_in_both_modes() {
     use openwebide_core::{
         WorkspaceMode,

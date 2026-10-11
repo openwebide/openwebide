@@ -16,6 +16,14 @@ struct Coordinates {
     end: Position,
     horizontal: bool,
     tabs: bool,
+    word_runs: Vec<WordRun>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct WordRun {
+    start: usize,
+    end: usize,
+    kind: u8,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -31,6 +39,9 @@ pub struct VisualLinePreparation<'a> {
     scan: super::grapheme_scan::GraphemeScan<'a>,
     coordinates: Coordinates,
     cluster: Position,
+    whitespace: bool,
+    word: bool,
+    word_run: Option<WordRun>,
 }
 impl<'a> VisualLinePreparation<'a> {
     pub fn new(body: &'a str) -> Option<Self> {
@@ -43,8 +54,12 @@ impl<'a> VisualLinePreparation<'a> {
                 end: Position::default(),
                 horizontal: body.len() > super::MAX_MEASURE_BYTES,
                 tabs: false,
+                word_runs: Vec::new(),
             },
             cluster: Position::default(),
+            whitespace: true,
+            word: false,
+            word_run: None,
         })
     }
     /// Budget counts bounded source/context scan units, including suspensions
@@ -64,16 +79,45 @@ impl<'a> VisualLinePreparation<'a> {
             let coordinates = &mut self.coordinates;
             let cluster = &mut self.cluster;
             let body = self.body;
+            let whitespace = &mut self.whitespace;
+            let word = &mut self.word;
+            let word_run = &mut self.word_run;
             self.scan.advance(|step| {
                 for (offset, ch) in body[step.consumed.clone()].char_indices() {
                     visit(step.consumed.start + offset, ch);
                     coordinates.end.native += ch.len_utf16();
                     coordinates.tabs |= ch == '\t';
+                    *whitespace &= ch.is_whitespace();
+                    *word |= ch.is_alphanumeric() || ch == '_';
                     if coordinates.horizontal && !super::viewport::horizontal_paint_character(ch) {
                         coordinates.horizontal = false;
                     }
                 }
                 if let Some(end) = step.boundary {
+                    let kind = if *whitespace {
+                        0
+                    } else if *word {
+                        1
+                    } else {
+                        2
+                    };
+                    if word_run.as_ref().is_some_and(|run| run.kind == kind) {
+                        word_run.as_mut().unwrap().end = end;
+                    } else {
+                        if let Some(run) = word_run
+                            .take()
+                            .filter(|run| run.end - run.start >= STEP_BYTES)
+                        {
+                            coordinates.word_runs.push(run);
+                        }
+                        *word_run = Some(WordRun {
+                            start: cluster.byte,
+                            end,
+                            kind,
+                        });
+                    }
+                    *whitespace = true;
+                    *word = false;
                     if cluster.byte - coordinates.points.last().unwrap().byte >= STEP_BYTES {
                         coordinates.points.push(*cluster);
                     }
@@ -99,6 +143,12 @@ impl<'a> VisualLinePreparation<'a> {
             return None;
         }
         self.coordinates.end.byte = self.body.len();
+        if let Some(run) = self
+            .word_run
+            .filter(|run| run.end - run.start >= STEP_BYTES)
+        {
+            self.coordinates.word_runs.push(run);
+        }
         if self.coordinates.points.last()?.byte != self.body.len() {
             self.coordinates.points.push(self.coordinates.end);
         }
@@ -112,6 +162,52 @@ impl<'a> VisualLinePreparation<'a> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VisualLineIndex(Arc<Coordinates>);
 impl VisualLineIndex {
+    /// Skip long category runs; short runs retain the original grapheme rules.
+    /// A noncanonical byte caret uses the caller's complete-source fallback.
+    pub(super) fn word_boundary(
+        &self,
+        body: &str,
+        at: usize,
+        left: bool,
+    ) -> Option<(usize, Option<u8>)> {
+        let glyph = self.index_at_byte(body, at)?;
+        if self.at(body, glyph)?.0 != at {
+            return None;
+        }
+        let mut cursor = at;
+        let mut kind = None;
+        while if left {
+            cursor > 0
+        } else {
+            cursor < body.len()
+        } {
+            let key = if left { cursor - 1 } else { cursor };
+            let run = self
+                .0
+                .word_runs
+                .partition_point(|run| run.start <= key)
+                .checked_sub(1)
+                .and_then(|index| self.0.word_runs.get(index))
+                .filter(|run| key < run.end);
+            let (boundary, current) = if let Some(run) = run {
+                (if left { run.start } else { run.end }, run.kind)
+            } else if left {
+                let (byte, glyph) = body[..cursor].grapheme_indices(true).next_back()?;
+                (byte, super::motion::category(glyph))
+            } else {
+                let glyph = body[cursor..].graphemes(true).next()?;
+                (cursor + glyph.len(), super::motion::category(glyph))
+            };
+            if kind.is_some_and(|kind| kind != current) && (left || current != 0) {
+                break;
+            }
+            cursor = boundary;
+            if !left || current != 0 {
+                kind = Some(current);
+            }
+        }
+        Some((cursor, kind))
+    }
     #[cfg(any(test, feature = "test-support"))]
     pub fn shared_with(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.0, &other.0)
@@ -358,6 +454,41 @@ impl VisualLineIndex {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn word_run_summaries_are_sparse_cooperative_and_complete_only() {
+        for body in [
+            "x".repeat(100_000),
+            "!x".repeat(50_000),
+            format!("a{}", "\u{301}".repeat(40_000)),
+        ] {
+            let mut preparation = VisualLinePreparation::new(&body).unwrap();
+            assert!(!preparation.advance(1));
+            assert!(preparation.finish().is_none());
+            let mut preparation = VisualLinePreparation::new(&body).unwrap();
+            let mut batches = 0;
+            while !preparation.advance(1) {
+                batches += 1;
+                assert!(batches < 10_000);
+            }
+            assert!(batches > 1);
+            let index = preparation.finish().unwrap();
+            assert_eq!(index, VisualLineIndex::new(&body).unwrap());
+            assert!(index.0.word_runs.len() <= body.len() / STEP_BYTES);
+            if body.starts_with('a') || body.starts_with('x') {
+                assert_eq!(index.0.word_runs.len(), 1);
+                assert_eq!(
+                    index.word_boundary(&body, 0, false),
+                    Some((body.len(), Some(1)))
+                );
+                assert_eq!(
+                    index.word_boundary(&body, body.len(), true),
+                    Some((0, Some(1)))
+                );
+            } else {
+                assert!(index.0.word_runs.is_empty());
+            }
+        }
+    }
     #[test]
     fn cooperative_indexes_visit_source_once_and_publish_only_complete_coordinates() {
         for body in [

@@ -193,8 +193,33 @@ impl Document {
                 match motion {
                     SelectionMotion::Left => previous(text, at),
                     SelectionMotion::Right => next(text, at),
-                    SelectionMotion::WordLeft => word_left(text, at),
-                    SelectionMotion::WordRight => word_right(text, at),
+                    SelectionMotion::WordLeft | SelectionMotion::WordRight => {
+                        let left = motion == SelectionMotion::WordLeft;
+                        let indexed = (at <= line.body_end)
+                            .then(|| {
+                                self.line_index.coordinates[rows[row].source_line]
+                                    .visual()?
+                                    .word_boundary(
+                                        &text[line.start..line.body_end],
+                                        at - line.start,
+                                        left,
+                                    )
+                            })
+                            .flatten();
+                        if let Some((offset, kind)) = indexed {
+                            if left && offset == 0 && kind.is_none() {
+                                word_left(text, line.start)
+                            } else if !left && offset == line.body_end - line.start {
+                                line.body_end + word_right(&text[line.body_end..], 0)
+                            } else {
+                                line.start + offset
+                            }
+                        } else if left {
+                            word_left(text, at)
+                        } else {
+                            word_right(text, at)
+                        }
+                    }
                     SelectionMotion::LineStart => line.start,
                     SelectionMotion::LineEnd => line.body_end,
                     SelectionMotion::DocumentStart => 0,
@@ -269,6 +294,61 @@ impl Document {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn indexed_word_motion_matches_complete_grapheme_traversal() {
+        for body in [
+            format!("{}  ++ next", "word_".repeat(20_000)),
+            format!("{}word ++ tail", " \t".repeat(40_000)),
+            format!("word{}tail", "!".repeat(80_000)),
+            format!("! a{} ++ end", "\u{301}".repeat(40_000)),
+            format!(
+                "{} ++ {}  tail",
+                "🇺🇸🇨🇦👩‍💻".repeat(2000),
+                "文_אב".repeat(4000)
+            ),
+            format!("{}_word ++ end", "\u{600}a\u{301}".repeat(16_000)),
+        ] {
+            for ending in ["\n", "\r\n"] {
+                let source = format!("prefix{ending}{body}{ending}  tail{ending}");
+                let mut document = super::Document::new(&source);
+                assert!(document.line_index.coordinates[1].visual().is_some());
+                let count = source.chars().count();
+                let positions: Vec<_> = source
+                    .char_indices()
+                    .step_by((count / 16).max(1))
+                    .map(|(at, _)| at)
+                    .chain([
+                        source.len(),
+                        source.find(&body).unwrap(),
+                        source.find(&body).unwrap() + body.len(),
+                    ])
+                    .collect();
+                for at in positions {
+                    for motion in [
+                        super::SelectionMotion::WordLeft,
+                        super::SelectionMotion::WordRight,
+                    ] {
+                        let expected = if motion == super::SelectionMotion::WordLeft {
+                            super::word_left(&source, at)
+                        } else {
+                            super::word_right(&source, at)
+                        };
+                        document
+                            .set_selections(vec![super::Selection::caret(at)])
+                            .unwrap();
+                        document
+                            .move_selections(motion, false, super::Indentation::default())
+                            .unwrap();
+                        assert_eq!(
+                            document.selections(),
+                            [super::Selection::caret(expected)],
+                            "at={at}, motion={motion:?}"
+                        );
+                    }
+                }
+            }
+        }
+    }
     use super::*;
     #[test]
     fn admitted_large_documents_support_basic_motion_without_structure_analysis() {

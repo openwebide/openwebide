@@ -558,6 +558,14 @@ materialization and retained versions still prevent complete viewport memory bou
 
 ## Document coordinates and caches
 
+Long-row coordinate preparation also records long runs of whitespace, word
+characters or punctuation. Word motion reuses these immutable summaries at
+exact grapheme boundaries instead of rescanning long tokens or indivisible
+Unicode clusters. Short runs retain the existing grapheme traversal; noncanonical
+carets and row crossings retain the complete-source fallback. Summaries publish
+only with completed coordinates and survive unchanged-row edits and undo/redo.
+
+
 The shared document maintains logical-line and UTF-16 prefixes across transactions,
 grouped undo/redo and composition. Commands reuse indexed rows; native caret mapping
 binary-searches the appropriate row. Long rows retain sparse, Unicode-safe

@@ -1,0 +1,88 @@
+{
+  "sourceBase": "dbcaf97e49f81432acc7264f3ad889992b32688f",
+  "sourceSha256": {
+    "crates/core/src/editor/motion.rs": "a9e9870601f0161651d5a46a7d3ce06852b1d4d2b4993be31fb3edac4543ee9c",
+    "crates/core/src/editor/visual_index.rs": "da8b9359a32389e879261a64f517a8931f92af99016d87cb28f9a1bfd0b66701",
+    "frontend/tests/components/editor.rs": "3c2fce8b895f4cd23f0bfe378c65a14a1601b8672a0f25efcd87a6ee3b8c6ff6"
+  },
+  "wasmArtifactSha256": "d679d2212cd6cd0b76767c1736369b9eeffc6cb533e66b4b966bedae22faa880",
+  "report": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "console": "Invoking test: editor::queued_motion_cannot_cross_accounts_files_or_newer_tickets_in_both_modes\nInvoking test: editor::pending_paint_motion_preserves_key_order_and_flushes_before_edits_in_both_modes\nInvoking test: editor::long_word_motion_retains_exact_source_after_edits_and_undo_in_both_modes\n",
+    "output": "\nrunning 3 tests\ntest editor::queued_motion_cannot_cross_accounts_files_or_newer_tickets_in_both_modes ... ok\ntest editor::pending_paint_motion_preserves_key_order_and_flushes_before_edits_in_both_modes ... ok\ntest editor::long_word_motion_retains_exact_source_after_edits_and_undo_in_both_modes ... ok\n\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.38s\n\n",
+    "passed": true,
+    "tests": [
+      "__wbgt__components::editor::long_word_motion_retains_exact_source_after_edits_and_undo_in_both_modes",
+      "__wbgt__components::editor::pending_paint_motion_preserves_key_order_and_flushes_before_edits_in_both_modes",
+      "__wbgt__components::editor::queued_motion_cannot_cross_accounts_files_or_newer_tickets_in_both_modes"
+    ]
+  },
+  "checks": {
+    "coreAll": [
+      "test editor::visual_index::tests::probe_anchor_ranges_match_complete_anchor_filtering ... ok",
+      "test editor::coordinates::tests::cooperative_row_coordinates_keep_native_and_admission_contracts_at_every_budget ... ok",
+      "",
+      "test result: ok. 521 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 27.27s",
+      ""
+    ],
+    "coreLint": [
+      "    Checking ppv-lite86 v0.2.21",
+      "    Checking rand_chacha v0.9.0",
+      "    Checking proptest v1.11.0",
+      "    Checking openwebide-core v1.0.0-alpha.6 (/Users/BWestnes/source/repos/open-webide/crates/core)",
+      "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 11.74s"
+    ],
+    "wasmLint": [
+      "    Checking leptos v0.8.20",
+      "    Checking lepticons v0.13.1",
+      "    Finished `release` profile [optimized] target(s) in 4m 29s",
+      "warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1",
+      "note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`"
+    ]
+  },
+  "nativeSamples": [
+    {
+      "case": "ascii",
+      "sourceBytes": 900009,
+      "preparationMs": 28.7565,
+      "baselineQueryMs": 8.020132275,
+      "indexedDocumentQueryMs": 0.0005999500000000002,
+      "repetitions": 40,
+      "exactTarget": 900002
+    },
+    {
+      "case": "whitespace",
+      "sourceBytes": 900013,
+      "preparationMs": 25.982333,
+      "baselineQueryMs": 7.291657275,
+      "indexedDocumentQueryMs": 0.0007281250000000003,
+      "repetitions": 40,
+      "exactTarget": 900000
+    },
+    {
+      "case": "combining",
+      "sourceBytes": 600010,
+      "preparationMs": 9.733083,
+      "baselineQueryMs": 1.8647885249999998,
+      "indexedDocumentQueryMs": 0.00033537500000000006,
+      "repetitions": 40,
+      "exactTarget": 600003
+    },
+    {
+      "case": "alternating",
+      "sourceBytes": 900009,
+      "preparationMs": 27.007791,
+      "baselineQueryMs": 2.2924999999999998e-05,
+      "indexedDocumentQueryMs": 0.00041880000000000015,
+      "repetitions": 40,
+      "exactTarget": 1
+    }
+  ],
+  "nativeBenchmarkSource": "use openwebide_core::editor::{Document, Indentation, Selection, SelectionMotion};\nuse std::{hint::black_box, time::Instant};\nuse unicode_segmentation::UnicodeSegmentation;\nfn old_right(text: &str) -> usize {\n    let mut result = 0;\n    let mut kind = None;\n    for (offset, glyph) in text.grapheme_indices(true) {\n        let current = if glyph.chars().all(char::is_whitespace) {0} else if glyph.chars().any(|c| c.is_alphanumeric() || c == '_') {1} else {2};\n        if kind.is_some_and(|kind| kind != current) && current != 0 {break;}\n        result = offset + glyph.len(); kind = Some(current);\n    }\n    result\n}\nfn main() {\n    for (name, body) in [(\"ascii\", \"word_\".repeat(180_000)), (\"whitespace\", format!(\"{}word\", \" \".repeat(900_000))), (\"combining\", format!(\"a{}\", \"\\u{301}\".repeat(300_000))), (\"alternating\", \"w!\".repeat(450_000))] {\n        let source = format!(\"{body}  ++ tail\");\n        let started = Instant::now(); let mut doc = Document::new(&source); let preparation_ms = started.elapsed().as_secs_f64() * 1000.0;\n        let expected = old_right(&source); let repetitions = 40;\n        let started = Instant::now(); for _ in 0..repetitions { assert_eq!(black_box(old_right(black_box(&source))), expected); } let baseline_ms = started.elapsed().as_secs_f64() * 1000.0 / f64::from(repetitions);\n        let mut elapsed = 0.0;\n        for _ in 0..repetitions {doc.set_selections(vec![Selection::caret(0)]).unwrap(); let started = Instant::now(); doc.move_selections(SelectionMotion::WordRight, false, Indentation::default()).unwrap(); elapsed += started.elapsed().as_secs_f64() * 1000.0; assert_eq!(doc.selections(), [Selection::caret(expected)]);}\n        println!(\"{{\\\"case\\\":\\\"{name}\\\",\\\"sourceBytes\\\":{},\\\"preparationMs\\\":{preparation_ms},\\\"baselineQueryMs\\\":{baseline_ms},\\\"indexedDocumentQueryMs\\\":{},\\\"repetitions\\\":{repetitions},\\\"exactTarget\\\":{expected}}}\",source.len(),elapsed/f64::from(repetitions));\n    }\n}\n",
+  "nativeBenchmarkFlags": [
+    "opt-level=3",
+    "lto=thin",
+    "panic=abort"
+  ],
+  "scope": "Native release microbenchmark compares original raw word traversal with the new complete Document movement, excluding document preparation from query timings. Exact targets are checked; short alternating categories preserve a small constant overhead. Three Chrome contracts exercise local/remote source ownership, queue ordering and stale owners. This is not a production browser latency or cold-memory comparison. Cross-row, unindexed and noncanonical traversal remain unfinished."
+}
