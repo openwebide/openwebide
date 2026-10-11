@@ -122,12 +122,26 @@ impl Hash for PaintRowKey<'_> {
 struct PaintRowKeys<'a>(&'a EditorRowPaint);
 impl<'a> PaintRowKeys<'a> {
     fn new(paint: &'a EditorRowPaint) -> Option<Self> {
-        // Validate once without allocating descriptors; the projection and
-        // source remain immutable through every indexed comparison.
-        for row in 0..paint.projection.lines().len() {
-            paint.projection.line_body(row)?;
+        let rows = Self(paint);
+        rows.valid_range(0..rows.len()).then_some(rows)
+    }
+    fn valid_range(self, rows: std::ops::Range<usize>) -> bool {
+        rows.into_iter()
+            .all(|row| self.0.projection.line_body(row).is_some())
+    }
+    async fn cooperatively(paint: &'a EditorRowPaint, current: &impl Fn() -> bool) -> Option<Self> {
+        let rows = Self(paint);
+        let budget = openwebide_core::editor::MAX_MEASURE_ROWS
+            * openwebide_core::editor::MAX_MEASURE_BATCHES_PER_FRAME;
+        for start in (0..rows.len()).step_by(budget) {
+            if !current() || !rows.valid_range(start..(start + budget).min(rows.len())) {
+                return None;
+            }
+            if start + budget < rows.len() {
+                crate::util::yield_background_task().await;
+            }
         }
-        Some(Self(paint))
+        current().then_some(rows)
     }
     fn len(self) -> usize {
         self.0.projection.lines().len()
@@ -779,27 +793,72 @@ impl EditorActions {
         paint: EditorRowPaint,
         current: impl Fn() -> bool,
     ) -> Option<(EditorRowPaint, RowMeasurementPlan)> {
-        let (paint, plan) = self.row_measurement_plan(paint)?;
-        let rows = PaintRowKeys(&paint);
-        let mut preparation = openwebide_core::editor::RepeatedRowPreparation::new(plan)?;
-        while !preparation.is_complete() {
-            if !current() || !self.row_paint_current(&paint) {
+        if !self.full_row_paint_ready() {
+            return None;
+        }
+        let eligible = || current() && self.row_paint_current(&paint);
+        let rows = PaintRowKeys::cooperatively(&paint, &eligible).await?;
+        let budget = openwebide_core::editor::MAX_MEASURE_ROWS
+            * openwebide_core::editor::MAX_MEASURE_BATCHES_PER_FRAME;
+        let plan = if let Some(cache) = self.row_reuse_cache(&paint) {
+            let old = PaintRowKeys::cooperatively(&cache.paint, &eligible).await;
+            if !eligible() {
                 return None;
             }
-            preparation.advance(
-                openwebide_core::editor::MAX_MEASURE_ROWS
-                    * openwebide_core::editor::MAX_MEASURE_BATCHES_PER_FRAME,
-                |row| rows.key(row),
-            );
+            let reused = old.and_then(|old| {
+                cache.rows.width()?;
+                Some((
+                    old,
+                    openwebide_core::editor::RowReusePreparation::new(
+                        old.len(),
+                        rows.len(),
+                        &cache.rows,
+                    )?,
+                ))
+            });
+            if let Some((old, mut reuse)) = reused {
+                while !reuse.is_complete() {
+                    if !eligible() {
+                        return None;
+                    }
+                    reuse.advance(budget, |row| old.key(row), |row| rows.key(row));
+                    if !reuse.is_complete() {
+                        crate::util::yield_background_task().await;
+                    }
+                }
+                reuse.finish()?
+            } else {
+                RowMeasurementPlan::new(rows.len())?
+            }
+        } else {
+            RowMeasurementPlan::new(rows.len())?
+        };
+        let mut preparation = openwebide_core::editor::RepeatedRowPreparation::new(plan)?;
+        while !preparation.is_complete() {
+            if !eligible() {
+                return None;
+            }
+            preparation.advance(budget, |row| rows.key(row));
             if !preparation.is_complete() {
                 crate::util::yield_background_task().await;
             }
         }
-        if !current() || !self.row_paint_current(&paint) {
+        if !eligible() {
             return None;
         }
         let plan = preparation.finish()?;
         Some((paint, plan))
+    }
+    fn row_reuse_cache(
+        self,
+        paint: &EditorRowPaint,
+    ) -> Option<crate::state::workspace::EditorRowCache> {
+        self.workspace.editor_row_cache.with_untracked(|cache| {
+            cache
+                .as_ref()
+                .filter(|cache| same_measurement_environment(&cache.paint, paint))
+                .cloned()
+        })
     }
     fn row_measurement_plan(
         self,
@@ -809,12 +868,8 @@ impl EditorActions {
             return None;
         }
         let current_rows = PaintRowKeys::new(&paint)?;
-        let reused = self.workspace.editor_row_cache.with_untracked(|cache| {
-            let cache = cache.as_ref()?;
+        let reused = self.row_reuse_cache(&paint).and_then(|cache| {
             let old = &cache.paint;
-            if !same_measurement_environment(old, &paint) {
-                return None;
-            }
             let previous_rows = PaintRowKeys::new(old)?;
             RowMeasurementPlan::reuse_layout_with(
                 previous_rows.len(),

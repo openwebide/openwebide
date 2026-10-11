@@ -129,8 +129,11 @@ the partition fix passes all five jobs
   ([samples](editor-performance/indexed-row-comparison.jsonl)).
   Repeated-key grouping and measurement propagation now yield between bounded
   row batches and reject stale owners in both modes
-  ([receipt](editor-performance/cooperative-row-browser.json)). Complete row
-  validation, prefix/suffix comparison, single-key byte costs and final row-table
+  ([receipt](editor-performance/cooperative-row-browser.json)). Row validation,
+  prefix/suffix comparison, retained-dimension copying and duplicate lookup now
+  also yield between bounded row batches; layout invalidation restarts planning
+  ([receipt](editor-performance/cooperative-row-reuse-browser.json)). Total
+  unchanged-row traversal, single-key byte costs, allocations and final row-table
   publication still need bounded work and production measurements.
 - [ ] **Source, worker transport and storage:** finish external parser snapshots,
   changed-revision comparisons, metadata materialization, header/capacity allocation,
@@ -177,7 +180,7 @@ the partition fix passes all five jobs
   production samples. Hosted UI CI at `b4c9aa7` failed the wrapped-origin crop-rejection contract.
   Its wait correction passes in isolation with the original scroll adapter
   ([receipt](editor-performance/wrapped-crop-wait-regression.json)); full hosted
-  CI at the latest pushed checkpoint `e40e3cc` passes backend/crates, frontend,
+  Hosted CI at `e40e3cc` passes backend/crates, frontend,
   Windows bridge and Docker, but fails three browser contracts: pending-source
   newline paint, burst highlight coalescing and localized wrapped-row reuse.
   The candidate fixes pass all seven combined pending-paint/geometry contracts,

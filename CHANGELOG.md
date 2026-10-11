@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Extend cooperative editor row planning through row validation and exact prefix/suffix reuse, preserving conflicting-duplicate rejection. Restart canceled preparations after layout invalidation.
+
 - Prepare repeated editor row keys and measurement propagation cooperatively through the shared Rust planner, rejecting stale work after yields. Skip duplicate indexing when all exact dimensions are already reused.
 
 - Reuse identical pending-syntax editor frames across native-window and preparation notifications, while publishing each eligible source edit immediately. Preserve a single coalesced final grammar paint and exact localized wrapped-row reuse.

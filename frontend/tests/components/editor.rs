@@ -18,7 +18,7 @@ async fn cooperative_row_planning_rejects_stale_owners_in_both_modes() {
         task::{Context, Poll, Waker},
     };
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        for change in 0..9 {
+        for change in 0..10 {
             let slot = Rc::new(Cell::new(None::<EditorActions>));
             let captured = slot.clone();
             let mounted = mount_test(move |state| {
@@ -77,6 +77,7 @@ async fn cooperative_row_planning_rejects_stale_owners_in_both_modes() {
                 5 => workspace.open_file.set(Some("other.txt".into())),
                 6 => actions.invalidate_measured_font(),
                 7 => current.set(false),
+                9 => actions.invalidate_measured_rows(),
                 _ => {}
             }
             assert_eq!(

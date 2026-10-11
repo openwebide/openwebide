@@ -1489,7 +1489,7 @@ fn HighlightOverlay(
     });
     let fragment_cache =
         StoredValue::new(crate::state_actions::editor::EditorFragmentCache::default());
-    let batch_key = StoredValue::new(None::<(u64, u64, String, usize, bool)>);
+    let batch_key = StoredValue::new(None::<(u64, u64, u64, String, usize, bool)>);
     let batch_ticket = StoredValue::new(None::<u64>);
     Effect::new(move || {
         layout_revision.track();
@@ -1539,6 +1539,7 @@ fn HighlightOverlay(
         let key = (
             revision,
             syntax_revision,
+            actions.layout_epoch(),
             metrics.clone(),
             std::sync::Arc::as_ptr(&prepared_tokens.1) as usize,
             whitespace,

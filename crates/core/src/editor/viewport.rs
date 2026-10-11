@@ -159,6 +159,160 @@ enum RepeatedRowSeen {
     Group(usize),
 }
 
+enum RowReusePhase {
+    Prefix,
+    Suffix,
+    RetainPrefix,
+    RetainSuffix,
+    Known,
+    Apply,
+    Complete,
+}
+
+/// Incremental exact reuse; no partial geometry escapes before completion.
+pub struct RowReusePreparation<T> {
+    plan: RowMeasurementPlan,
+    measured: MeasuredRows,
+    previous_rows: usize,
+    prefix: usize,
+    suffix: usize,
+    next: usize,
+    phase: RowReusePhase,
+    known: HashMap<T, Option<(f64, Option<f64>)>>,
+}
+impl<T: Eq + Hash> RowReusePreparation<T> {
+    pub fn new(previous_rows: usize, current_rows: usize, measured: &MeasuredRows) -> Option<Self> {
+        if previous_rows != measured.len() {
+            return None;
+        }
+        Some(Self {
+            plan: RowMeasurementPlan::new(current_rows)?,
+            measured: measured.clone(),
+            previous_rows,
+            prefix: 0,
+            suffix: 0,
+            next: 0,
+            phase: RowReusePhase::Prefix,
+            known: HashMap::new(),
+        })
+    }
+    pub fn is_complete(&self) -> bool {
+        matches!(self.phase, RowReusePhase::Complete)
+    }
+    fn dimensions(&self, row: usize) -> (f64, Option<f64>) {
+        (
+            self.measured.top(row + 1).expect("validated measured row")
+                - self.measured.top(row).expect("validated measured row"),
+            self.measured.row_width(row),
+        )
+    }
+    /// Bound comparisons, retained-row copying and duplicate lookup by rows.
+    pub fn advance(
+        &mut self,
+        budget: usize,
+        previous: impl Fn(usize) -> T,
+        current: impl Fn(usize) -> T,
+    ) -> usize {
+        let mut worked = 0;
+        let count = self.plan.heights.len();
+        let shared = self.previous_rows.min(count);
+        while worked < budget && !self.is_complete() {
+            match self.phase {
+                RowReusePhase::Prefix => {
+                    if self.prefix == shared {
+                        self.phase = RowReusePhase::Suffix;
+                        continue;
+                    }
+                    if previous(self.prefix) == current(self.prefix) {
+                        self.prefix += 1;
+                    } else {
+                        self.phase = RowReusePhase::Suffix;
+                    }
+                }
+                RowReusePhase::Suffix => {
+                    if self.suffix == shared - self.prefix {
+                        self.phase = RowReusePhase::RetainPrefix;
+                        continue;
+                    }
+                    if previous(self.previous_rows - 1 - self.suffix)
+                        == current(count - 1 - self.suffix)
+                    {
+                        self.suffix += 1;
+                    } else {
+                        self.phase = RowReusePhase::RetainPrefix;
+                    }
+                }
+                RowReusePhase::RetainPrefix => {
+                    if self.next == self.prefix {
+                        self.next = 0;
+                        self.phase = RowReusePhase::RetainSuffix;
+                        continue;
+                    }
+                    let (height, width) = self.dimensions(self.next);
+                    self.plan.heights[self.next] = Some(height);
+                    self.plan.widths[self.next] = width;
+                    self.plan.completed += 1;
+                    self.next += 1;
+                }
+                RowReusePhase::RetainSuffix => {
+                    if self.next == self.suffix {
+                        self.next = self.prefix;
+                        self.phase = if count - self.plan.completed > MAX_MEASURE_ROWS {
+                            RowReusePhase::Known
+                        } else {
+                            RowReusePhase::Complete
+                        };
+                        continue;
+                    }
+                    let (height, width) = self.dimensions(self.previous_rows - 1 - self.next);
+                    self.plan.heights[count - 1 - self.next] = Some(height);
+                    self.plan.widths[count - 1 - self.next] = width;
+                    self.plan.completed += 1;
+                    self.next += 1;
+                }
+                RowReusePhase::Known => {
+                    if self.next == self.previous_rows - self.suffix {
+                        self.next = self.prefix;
+                        self.phase = RowReusePhase::Apply;
+                        continue;
+                    }
+                    let dimensions = self.dimensions(self.next);
+                    self.known
+                        .entry(previous(self.next))
+                        .and_modify(|value| {
+                            if value.is_some_and(|old| {
+                                old.0.to_bits() != dimensions.0.to_bits()
+                                    || old.1.map(f64::to_bits) != dimensions.1.map(f64::to_bits)
+                            }) {
+                                *value = None;
+                            }
+                        })
+                        .or_insert(Some(dimensions));
+                    self.next += 1;
+                }
+                RowReusePhase::Apply => {
+                    if self.next == count - self.suffix {
+                        self.phase = RowReusePhase::Complete;
+                        continue;
+                    }
+                    if let Some(Some((height, width))) = self.known.get(&current(self.next)) {
+                        self.plan.heights[self.next] = Some(*height);
+                        self.plan.widths[self.next] = *width;
+                        self.plan.completed += 1;
+                    }
+                    self.next += 1;
+                }
+                RowReusePhase::Complete => unreachable!(),
+            }
+            worked += 1;
+        }
+        worked
+    }
+    pub fn finish(self) -> Option<RowMeasurementPlan> {
+        self.is_complete().then_some(self.plan)
+    }
+}
+
 /// Cooperatively group exact paint keys and validate every retained sample
 /// before propagating measurements. Hosts provide keys and scheduling only.
 pub struct RepeatedRowPreparation<T> {
@@ -305,57 +459,9 @@ impl RowMeasurementPlan {
         current: impl Fn(usize) -> T,
         measured: &MeasuredRows,
     ) -> Option<Self> {
-        if previous_rows != measured.len() {
-            return None;
-        }
-        let mut plan = Self::new(current_rows)?;
-        let prefix = (0..previous_rows.min(current_rows))
-            .take_while(|row| previous(*row) == current(*row))
-            .count();
-        let suffix = (0..previous_rows.min(current_rows) - prefix)
-            .take_while(|offset| {
-                previous(previous_rows - 1 - offset) == current(current_rows - 1 - offset)
-            })
-            .count();
-        for row in 0..prefix {
-            plan.heights[row] = Some(measured.top(row + 1)? - measured.top(row)?);
-            plan.widths[row] = measured.row_width(row);
-        }
-        for offset in 0..suffix {
-            let old = previous_rows - 1 - offset;
-            plan.heights[current_rows - 1 - offset] =
-                Some(measured.top(old + 1)? - measured.top(old)?);
-            plan.widths[current_rows - 1 - offset] = measured.row_width(old);
-        }
-        plan.completed = prefix + suffix;
-        if current_rows - plan.completed > MAX_MEASURE_ROWS {
-            let mut known = HashMap::<T, Option<(f64, Option<f64>)>>::new();
-            for row in prefix..previous_rows - suffix {
-                let key = previous(row);
-                let height = measured.top(row + 1)? - measured.top(row)?;
-                known
-                    .entry(key)
-                    .and_modify(|value| {
-                        // Context-sensitive or rounded duplicates are not reusable.
-                        if value.is_some_and(|(old, width)| {
-                            old.to_bits() != height.to_bits()
-                                || width.map(f64::to_bits)
-                                    != measured.row_width(row).map(f64::to_bits)
-                        }) {
-                            *value = None;
-                        }
-                    })
-                    .or_insert(Some((height, measured.row_width(row))));
-            }
-            for row in prefix..current_rows - suffix {
-                if let Some(Some((height, width))) = known.get(&current(row)) {
-                    plan.heights[row] = Some(*height);
-                    plan.widths[row] = *width;
-                    plan.completed += 1;
-                }
-            }
-        }
-        Some(plan)
+        let mut preparation = RowReusePreparation::new(previous_rows, current_rows, measured)?;
+        preparation.advance(usize::MAX, previous, current);
+        preparation.finish()
     }
     /// Geometry consumers can only reuse complete width/height measurements.
     pub fn reuse_layout<T: Eq + Hash>(
@@ -705,6 +811,78 @@ impl EditorViewport {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn cooperative_reuse_preserves_complete_layout_across_row_partitions() {
+        let count = 3 * MAX_MEASURE_ROWS;
+        let previous = (0..count).collect::<Vec<_>>();
+        let measured = MeasuredRows::layout(
+            previous.iter().map(|key| 13.125 + (*key % 3) as f64),
+            previous.iter().map(|key| 100.0 + *key as f64),
+        )
+        .unwrap();
+        let mut changed = previous.clone();
+        changed[MAX_MEASURE_ROWS - 1] = count;
+        changed[MAX_MEASURE_ROWS] = count + 1;
+        for current in [
+            std::iter::once(count)
+                .chain(previous.iter().copied())
+                .collect::<Vec<_>>(),
+            previous.iter().rev().copied().collect(),
+            previous[MAX_MEASURE_ROWS..].to_vec(),
+            changed,
+        ] {
+            for budget in [1, 7, MAX_MEASURE_ROWS, 1024, usize::MAX] {
+                let mut preparation =
+                    RowReusePreparation::new(count, current.len(), &measured).unwrap();
+                assert!(preparation.finish().is_none());
+                preparation = RowReusePreparation::new(count, current.len(), &measured).unwrap();
+                while !preparation.is_complete() {
+                    assert!(
+                        preparation.advance(budget, |row| previous[row], |row| current[row])
+                            <= budget
+                    );
+                }
+                let mut plan = preparation.finish().unwrap();
+                while let Some(rows) = plan.pending_batch(&vec![1; current.len()]) {
+                    assert!(current[rows.clone()].iter().all(|key| *key >= count));
+                    let heights = current[rows.clone()]
+                        .iter()
+                        .map(|key| 13.125 + (*key % 3) as f64)
+                        .collect::<Vec<_>>();
+                    let widths = current[rows.clone()]
+                        .iter()
+                        .map(|key| 100.0 + *key as f64)
+                        .collect::<Vec<_>>();
+                    assert!(plan.record_layout(rows, &heights, &widths));
+                }
+                assert_eq!(
+                    plan.finish(),
+                    MeasuredRows::layout(
+                        current.iter().map(|key| 13.125 + (*key % 3) as f64),
+                        current.iter().map(|key| 100.0 + *key as f64),
+                    )
+                );
+            }
+        }
+        let conflicting = MeasuredRows::layout(
+            (0..count).map(|row| 20.0 + (row % 5) as f64),
+            vec![100.0; count],
+        )
+        .unwrap();
+        for budget in [1, 7, MAX_MEASURE_ROWS, usize::MAX] {
+            let mut preparation = RowReusePreparation::new(count, count, &conflicting).unwrap();
+            while !preparation.is_complete() {
+                preparation.advance(budget, |row| row % 3, |row| (row + 1) % 3);
+            }
+            let plan = preparation.finish().unwrap();
+            assert_eq!(
+                plan.completed(),
+                0,
+                "conflicting duplicate dimensions cannot propagate"
+            );
+        }
+    }
+
     #[test]
     fn repeated_preparation_is_partition_independent_and_checks_late_conflicts() {
         let count = 4096;

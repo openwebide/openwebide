@@ -1,0 +1,13 @@
+{
+  "baseHead": "f251d89ab09461fe4e5949d20ee4a5df924a2d91",
+  "sourceHashes": {
+    "crates/core/src/editor/mod.rs": "dce348bdcf22af4517641777e9659cf680754aed6d55cc3d915db83e39f78619",
+    "crates/core/src/editor/viewport.rs": "a5ba028481e8f1f1ade370918a6be4dee772aa5cd10722fc844ccbc7c013beca",
+    "frontend/src/state_actions/editor/rows.rs": "42fec5809ca69d978bece8933b845f5d6b652ca0903c211c44bd9fcb057f3002",
+    "frontend/src/components/editor.rs": "c3a11a3fc329459f0aa0b93935137b7b9552aa3d77e0e742579fe2cdb6de415a",
+    "frontend/tests/components/editor.rs": "d8d19c06774dcd9f44d26dad5bb2676284c009dac95a230048eedbbf18b21143"
+  },
+  "browserWasmSha256": "cd0e50312c973c928f06a3e0f20ee6c404395831a8add946d1c18c4343583cad",
+  "workBudgetRows": 1024,
+  "note": "Bounds row validation, prefix/suffix comparisons, retained-dimension copying, duplicate lookup and repeated-key grouping/propagation by row count. Single-key byte costs, allocations, final tables and total unchanged-row traversal remain outstanding; no production performance gate is closed."
+}

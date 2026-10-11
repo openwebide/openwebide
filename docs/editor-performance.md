@@ -6537,7 +6537,7 @@ validation/traversal, changed row/index tables and native/layout publication sti
 need bounded incremental work. No performance completion gate is closed by this
 checkpoint.
 
-The latest pushed `e40e3cc` CI run passes four jobs but fails pending-source
+The hosted `e40e3cc` CI run passes four jobs but fails pending-source
 newline paint, burst coalescing and localized wrapped reuse. The three failures
 reproduce together in Chromium
 ([before](editor-performance/pending-frame-before-browser.json)). Wrapped reuse
@@ -6580,3 +6580,22 @@ Strict native core and WASM frontend lint pass. Complete row validation,
 prefix/suffix reuse, single-key byte costs, allocations and final row-table
 publication remain unbounded; the admitted-boundary production performance
 requirements and full hosted CI still need verification.
+
+Exact row reuse now runs through a resumable Rust planner, including prefix/suffix
+comparison, retained-dimension copying, conflicting-duplicate rejection and
+lookup. Synchronous callers drain the same planner. The shared browser facade
+also validates current/cached row bodies cooperatively, retains immutable cache
+snapshots and checks ownership between batches. Layout invalidation changes the
+preparation key so a canceled plan receives a replacement.
+
+All 515 core tests pass. Independent complete layouts match across single-row,
+seven-row, 128-row, 1,024-row and unlimited budgets for insertion, deletion,
+reordering and changed rows; ambiguous duplicate dimensions remain unreused.
+Nine combined browser contracts pass with the additional stale-layout case in
+both modes
+([receipt](editor-performance/cooperative-row-reuse-browser.json),
+[source and WASM hashes](editor-performance/cooperative-row-reuse-browser-manifest.json)).
+Strict core/WASM frontend lint and standalone WASM frontend compilation pass.
+This bounds row-level work per task, not a key's byte cost or total traversal.
+Unchanged-row rescans, scratch allocations, final row-table publication and
+admitted-boundary production measurements remain unfinished.
