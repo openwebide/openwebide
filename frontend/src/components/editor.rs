@@ -340,7 +340,7 @@ fn prepare_editor_edit(actions: EditorActions, textarea: &web_sys::HtmlTextAreaE
 }
 
 fn refresh_editor_folds(actions: EditorActions) {
-    let deadline = js_sys::Date::now() + 12.0;
+    let deadline = js_sys::Date::now() + f64::from(openwebide_core::editor::SYNTAX_INPUT_BUDGET_MS);
     actions.refresh_fold_ranges(|| js_sys::Date::now() <= deadline);
 }
 
@@ -4065,6 +4065,135 @@ pub fn Editor(
 mod tests {
     use super::{browser_matches, paint_text_range};
     use leptos::prelude::document;
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    async fn main_thread_embedded_parsing_yields_at_input_budget_before_cancellation() {
+        use crate::editor_worker::{CooperativeClient, SyntaxTransport, WorkerError};
+        use openwebide_core::{editor::SyntaxRequest, highlight::Language};
+        use std::{
+            cell::Cell,
+            future::Future,
+            task::{Context, Poll, Waker},
+        };
+
+        for (language, source) in [
+            (
+                Language::Html,
+                format!(
+                    "<script>{}</script>",
+                    "function run() { return 1; }\n".repeat(4096)
+                ),
+            ),
+            (
+                Language::Markdown,
+                format!(
+                    "```javascript\n{}```\n",
+                    "function run() { return 1; }\n".repeat(4096)
+                ),
+            ),
+        ] {
+            let client = CooperativeClient::default();
+            let message = serde_json::to_string(&SyntaxRequest::new(
+                1,
+                "embedded-input-budget".into(),
+                language,
+                &source,
+                4,
+                None,
+            ))
+            .unwrap();
+            // Reach 12 ms, then freeze. A 100 ms slice would run to completion
+            // without yielding; the input budget must return control now.
+            let now = Cell::new(0.0_f64);
+            let mut request = Box::pin(client.request_while_with_clock(
+                message.clone(),
+                || true,
+                || {
+                    let value = now.get();
+                    now.set((value + 4.0).min(12.0));
+                    value
+                },
+            ));
+            assert!(
+                matches!(
+                    request
+                        .as_mut()
+                        .poll(&mut Context::from_waker(Waker::noop())),
+                    Poll::Pending
+                ),
+                "{language:?}"
+            );
+            assert!((now.get() - 12.0).abs() < f64::EPSILON);
+            client.stop();
+            assert_eq!(request.await, Err(WorkerError::Unavailable));
+            assert_eq!(
+                client.request(2, message).await,
+                Err(WorkerError::Unavailable)
+            );
+        }
+    }
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    async fn main_thread_embedded_parsing_completes_across_input_budget_yields() {
+        use crate::editor_worker::CooperativeClient;
+        use openwebide_core::{
+            editor::{SyntaxPreparations, SyntaxRequest},
+            highlight::Language,
+        };
+        use std::cell::Cell;
+
+        for (language, source) in [
+            (
+                Language::Html,
+                format!(
+                    "<script>{}</script>",
+                    "function run() { return 1; }\n".repeat(128)
+                ),
+            ),
+            (
+                Language::Markdown,
+                format!(
+                    "```javascript\n{}```\n",
+                    "function run() { return 1; }\n".repeat(128)
+                ),
+            ),
+        ] {
+            let message = serde_json::to_string(&SyntaxRequest::new(
+                1,
+                "embedded-input-budget".into(),
+                language,
+                &source,
+                4,
+                None,
+            ))
+            .unwrap();
+            let expected = SyntaxPreparations::<String>::default()
+                .handle_message(&message, || true)
+                .unwrap();
+            let now = Cell::new(0.0);
+            let result = CooperativeClient::default()
+                .request_while_with_clock(
+                    message,
+                    || true,
+                    || {
+                        let value = now.get();
+                        now.set(value + 4.0);
+                        value
+                    },
+                )
+                .await
+                .unwrap();
+            assert!(
+                now.get() > 24.0,
+                "{language:?}: preparation must span slices"
+            );
+            assert_eq!(
+                serde_json::from_str::<serde_json::Value>(&result).unwrap(),
+                serde_json::from_str::<serde_json::Value>(&expected).unwrap(),
+                "{language:?}"
+            );
+        }
+    }
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn cooperative_syntax_transport_stops_in_flight_and_rejects_new_requests() {

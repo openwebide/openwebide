@@ -298,7 +298,11 @@ account generation, read revision, epoch and tab width before publication.
 UTF-8 ranges, folds, token coverage and bracket links are validated without parsing
 the document again on the UI thread. Transport/startup failures use the same
 preparation engine synchronously with a 12 ms parser budget; unavailable contexts
-retain ordinary lexical editing. Worker parsing has a 100 ms budget.
+retain ordinary lexical editing. Main-thread asynchronous fallback also yields
+at the shared 12 ms input deadline, preserving the source-bound job between
+slices; dedicated-worker parsing keeps its 100 ms allowance. These deadlines
+are checked at cooperative checkpoints, not a proven bound on every allocation
+or complete browser task.
 When background syntax is pending, paired typing/deletion and Enter in registered
 embedded-language containers can reuse the same immediate preparation/cache
 path. Only current-source context is used; unavailable immediate analysis keeps

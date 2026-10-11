@@ -11,8 +11,8 @@ pub use request::{SYNTAX_REQUEST_BATCH_BYTES, SyntaxRequestPublication};
 mod service;
 mod subtrees;
 pub use service::{
-    MAX_SYNTAX_REQUEST_BYTES, SYNTAX_BATCH_MS, SYNTAX_PROTOCOL_VERSION, SyntaxReply, SyntaxRequest,
-    SyntaxWorker,
+    MAX_SYNTAX_REQUEST_BYTES, SYNTAX_BATCH_MS, SYNTAX_INPUT_BUDGET_MS, SYNTAX_PROTOCOL_VERSION,
+    SyntaxReply, SyntaxRequest, SyntaxWorker,
 };
 mod transfer;
 use super::structure::fallback::FallbackContexts;

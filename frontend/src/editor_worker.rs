@@ -1,5 +1,5 @@
 //! Thin browser worker adapter. Preparation policy and wire validation live in core.
-use openwebide_core::editor::{SYNTAX_BATCH_MS, SyntaxWorker};
+use openwebide_core::editor::{SYNTAX_BATCH_MS, SYNTAX_INPUT_BUDGET_MS, SyntaxWorker};
 use std::{
     cell::{Cell, RefCell},
     collections::HashMap,
@@ -90,7 +90,17 @@ impl CooperativeClient {
     pub async fn request_while(
         &self,
         message: String,
+        should_continue: impl FnMut() -> bool,
+    ) -> Result<String, WorkerError> {
+        self.request_while_with_clock(message, should_continue, js_sys::Date::now)
+            .await
+    }
+
+    pub(crate) async fn request_while_with_clock(
+        &self,
+        message: String,
         mut should_continue: impl FnMut() -> bool,
+        mut clock: impl FnMut() -> f64,
     ) -> Result<String, WorkerError> {
         let mut service = SyntaxWorker::default();
         if self.stopped.get() {
@@ -103,10 +113,10 @@ impl CooperativeClient {
             if self.stopped.get() {
                 return Err(WorkerError::Unavailable);
             }
-            let deadline = js_sys::Date::now() + f64::from(SYNTAX_BATCH_MS);
+            let deadline = clock() + f64::from(SYNTAX_INPUT_BUDGET_MS);
             if let Some(reply) = service.advance(
                 || !self.stopped.get() && should_continue(),
-                || js_sys::Date::now() >= deadline,
+                || clock() >= deadline,
             ) {
                 if self.stopped.get() {
                     return Err(WorkerError::Unavailable);

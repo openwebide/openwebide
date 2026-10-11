@@ -1,0 +1,61 @@
+{
+  "sourceBase": "132e173d2d8b355c65d3f6c524e379186a74211c",
+  "sourceSha256": {
+    "crates/core/src/editor/syntax/service.rs": "ecdf871dfba28162f2acbe22fa7d4cd4909b069f704f5c913656d9fec775deee",
+    "frontend/src/editor_worker.rs": "5a8033d6987917e60e7cd567281cdd1bc09fda2754975ea5e6033983c22f35f3",
+    "frontend/src/state_actions/editor.rs": "a53c5c5ac3470b2a460b1da607b175ac5e89985d5b516b249f4b6b119d157fde",
+    "frontend/src/components/editor.rs": "ddebed96e7e48a467a8827fc35dde13f4091177c215e646f5cdc743d0e81cced"
+  },
+  "budgetMs": 12,
+  "dedicatedWorkerBudgetMs": 100,
+  "reports": {
+    "transport": {
+      "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+      "console": "Invoking test: components::editor::tests::main_thread_embedded_parsing_yields_at_input_budget_before_cancellation\nInvoking test: components::editor::tests::main_thread_embedded_parsing_completes_across_input_budget_yields\nInvoking test: components::editor::tests::cooperative_syntax_transport_stops_in_flight_and_rejects_new_requests\n",
+      "output": "\nrunning 3 tests\ntest components::editor::tests::main_thread_embedded_parsing_yields_at_input_budget_before_cancellation ... ok\ntest components::editor::tests::main_thread_embedded_parsing_completes_across_input_budget_yields ... ok\ntest components::editor::tests::cooperative_syntax_transport_stops_in_flight_and_rejects_new_requests ... ok\n\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.07s\n\n",
+      "passed": true,
+      "tests": [
+        "__wbgt__openwebide_frontend::components::editor::tests::cooperative_syntax_transport_stops_in_flight_and_rejects_new_requests",
+        "__wbgt__openwebide_frontend::components::editor::tests::main_thread_embedded_parsing_completes_across_input_budget_yields",
+        "__wbgt__openwebide_frontend::components::editor::tests::main_thread_embedded_parsing_yields_at_input_budget_before_cancellation"
+      ]
+    },
+    "workspace": {
+      "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+      "console": "Invoking test: editor::literal_embedded_commands_skip_parser_preparation_in_both_modes\nInvoking test: editor::held_syntax_keeps_embedded_typing_and_post_edit_context_in_both_modes\nInvoking test: editor::expired_input_budget_preserves_literal_input_history_and_stale_guards_in_both_modes\nInvoking test: editor::embedded_html_reindent_menu_prepares_and_commits_once_in_both_modes\nInvoking test: editor::embedded_comment_actions_wait_for_scopes_and_commit_once_in_both_modes\n",
+      "output": "\nrunning 5 tests\ntest editor::literal_embedded_commands_skip_parser_preparation_in_both_modes ... ok\ntest editor::held_syntax_keeps_embedded_typing_and_post_edit_context_in_both_modes ... ok\ntest editor::expired_input_budget_preserves_literal_input_history_and_stale_guards_in_both_modes ... ok\ntest editor::embedded_html_reindent_menu_prepares_and_commits_once_in_both_modes ... ok\ntest editor::embedded_comment_actions_wait_for_scopes_and_commit_once_in_both_modes ... ok\n\ntest result: ok. 5 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.49s\n\n",
+      "passed": true,
+      "tests": [
+        "__wbgt__components::editor::embedded_comment_actions_wait_for_scopes_and_commit_once_in_both_modes",
+        "__wbgt__components::editor::embedded_html_reindent_menu_prepares_and_commits_once_in_both_modes",
+        "__wbgt__components::editor::expired_input_budget_preserves_literal_input_history_and_stale_guards_in_both_modes",
+        "__wbgt__components::editor::held_syntax_keeps_embedded_typing_and_post_edit_context_in_both_modes",
+        "__wbgt__components::editor::literal_embedded_commands_skip_parser_preparation_in_both_modes"
+      ]
+    }
+  },
+  "checks": {
+    "coreContracts": [
+      "test editor::syntax::tests::input_preparation_shares_structure_without_preparing_decorations ... ok",
+      "test editor::syntax::tests::input_preparation_checks_budget_during_admission_and_reuses_cooperative_rows ... ok",
+      "",
+      "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 666 filtered out; finished in 0.02s",
+      ""
+    ],
+    "coreLint": [
+      "    Checking ignore v0.4.33",
+      "    Checking tree-sitter v0.27.0",
+      "    Checking url v2.5.8",
+      "    Checking openwebide-core v1.0.0-alpha.6 (/Users/BWestnes/source/repos/open-webide/crates/core)",
+      "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 9.23s"
+    ],
+    "wasmLint": [
+      "   Compiling openwebide-frontend v1.0.0-alpha.6 (/Users/BWestnes/source/repos/open-webide/frontend)",
+      "    Finished `release` profile [optimized] target(s) in 28.73s",
+      "warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1",
+      "note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`"
+    ]
+  },
+  "scope": "Controlled-clock transport tests verify deadline yielding, cancellation and full reply equivalence. Five UI contracts exercise both workspace modes. They do not prove every allocation or complete browser task finishes within 12 ms.",
+  "harness": "Owned headless Chrome in existing editor-view-measurements image. Library binding initialization omits native libtest entrypoint while explicitly initializing externref constants; Rust/WASM test code is unchanged. Workspace artifact precedes only the test float-assert lint fix, which does not change runtime code."
+}

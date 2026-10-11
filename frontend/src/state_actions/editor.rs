@@ -1077,7 +1077,7 @@ impl EditorActions {
                     .is_some_and(|provider| provider.injection.is_some()));
         let result = if prepare {
             let clock = self.input_clock.get_value();
-            let deadline = clock() + 12.0;
+            let deadline = clock() + f64::from(openwebide_core::editor::SYNTAX_INPUT_BUDGET_MS);
             self.workspace
                 .editor_syntax
                 .try_update(|documents| {

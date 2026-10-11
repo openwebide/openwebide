@@ -131,7 +131,13 @@ remains a completion gate as the remaining implementation ships.
   pending. Bounded early publication passes six focused browser contracts and
   sixteen production samples; small Remote Markdown input paint is about 17 ms
   ([samples](editor-performance/early-pending-production.jsonl)). Finish the
-  12 ms budget, remaining boundary workloads and retained decoration ownership.
+  Main-thread asynchronous parser fallback now yields at the shared 12 ms
+  deadline rather than using the dedicated worker’s 100 ms allowance. Controlled
+  HTML/Markdown transport contracts verify yielding, cancellation and complete
+  analysis across slices; five local/remote UI contracts and strict native core/
+  WASM lint pass ([receipt](editor-performance/main-thread-parser-budget.json)).
+  Full physical timing, remaining boundary workloads
+  and retained decoration ownership remain unfinished.
 - [ ] **Cold startup and native input:** bound remaining complete-source shaping,
   projection/native normalization, long word/context traversal and synchronous
   selection publication. Finish source-owned touch caret/selection and native

@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Yield main-thread asynchronous editor parsing at the shared 12 ms input deadline, retaining complete source-bound preparation between slices and cancellation at yields. Dedicated workers keep their existing allowance.
+
 - Verify the paragraph-setup and unmount-cancellation checkpoint against all five hosted CI jobs on integrated editor/plugin source. Record a compiled-module-sharing diagnostic that preserved source without establishing memory gains.
 
 ## [1.0.0-alpha.6] - 2026-10-11
