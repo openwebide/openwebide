@@ -107,7 +107,10 @@ the partition fix passes all five jobs
   selection publication. Finish source-owned touch caret/selection and native
   input windows; preserve composition mapping and complete-native fallback when
   bounded geometry cannot be proved. Finish startup and memory measurements
-  across admitted boundaries, including unsupported layouts.
+  across admitted boundaries, including unsupported layouts. Repeated scroll getters now resolve the mounted
+  surface once; row-limit comparison samples still reach 100 ms, so native
+  dimension/layout publication and row-table costs remain
+  ([comparison](editor-performance/scroll-reference-line-comparison.jsonl)).
 - [ ] **Tabbed, wrapped and bidirectional geometry:** extend bounded preparation
   beyond eligible source-monotonic paragraphs with complete-word seams. Finish
   bidirectional visual-run windows, fine long-row paint, incremental glyph
@@ -163,7 +166,10 @@ the partition fix passes all five jobs
   `cdc8a23` passes all five jobs
   ([receipt](editor-performance/editor-ci-cdc8a23-success.json)); the retained-span checkpoint passes six focused browser contracts, ten WASM
   library geometry/ownership contracts, strict WASM frontend lint and 16 fresh
-  production samples. Hosted CI for that checkpoint remains to be verified.
+  production samples. Hosted UI CI at `b4c9aa7` failed the wrapped-origin crop-rejection contract.
+  Its wait correction passes in isolation with the original scroll adapter
+  ([receipt](editor-performance/wrapped-crop-wait-regression.json)); full hosted
+  CI after that correction remains to be verified.
 - [ ] **Physical Chrome/Edge PWA input:** verify real input-method commit/cancel,
   Unicode and LF/CRLF undo/redo, multiple-cursor clipboard transactions and touch
   without rewriting unrelated source. Automated Chromium composition/pointer

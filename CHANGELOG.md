@@ -8,6 +8,10 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Reuse the mounted editor scroll surface in the browser adapter to avoid repeated style resolution, retaining native fallback and replacement/reparenting checks.
+
+- Keep the wrapped editor crop-failure regression waiting for injected failure and coverage rejection when retained syntax paints early, preserving its assertions and timeout.
+
 - Publish bounded, unwrapped pending-syntax editor paint without waiting for an animation-frame callback once current native text is installed. Retain shared ownership, composition and source-size guards.
 
 - Paint current editor text while grammar analysis is pending, retaining unchanged syntax fragments through a shared borrowed-span model. Promote matching provisional paragraph measurements when final grammar arrives, preserving exact caret geometry in both project modes.

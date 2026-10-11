@@ -1,0 +1,14 @@
+{
+  "sourceHead": "4044b32c268469dadb62ba45dffcde4a8127a706",
+  "sourceFilesSha256": {
+    "frontend/src/viewport.rs": "778596fe4036d47b4542509c4dd54862402401791ea9d1a7fc1ae6f7b22bdfcc",
+    "frontend/src/components/editor.rs": "e75899c6182bae15ddc3582288f3738746fb03edb9ecbc604ff8964f4f17947a",
+    "frontend/src/state_actions/editor/preparation.rs": "ea167fe490a988bfee31532cbf8de40eb35d6e32151c0ec8e2836ee131331802"
+  },
+  "backendWasmSha256": "8efc2579446963f530f5774fdcbe2223bbc6b974eb54d8221a768ff1c43232af",
+  "measurementScriptSha256": "8e810dc178ce0a2469a6b6f315d92896ed81cdc51a359c17fe521af4596d001e",
+  "frontendWasmSha256": {
+    "openwebide-frontend-bd152790975b5f9d_bg.wasm": "ec7544326c09302ad089627965306db31728df0143d0e2899be62132e8cdb703"
+  },
+  "scope": "Uncommitted stable editor scroll-surface reference cache; same production workload and CPU profiler as 4044b32 baseline."
+}

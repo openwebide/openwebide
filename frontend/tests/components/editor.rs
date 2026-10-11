@@ -15,6 +15,69 @@ fn mount_editor(content: String) -> Mounted {
     })
 }
 
+#[wasm_bindgen_test]
+fn editor_scroll_surface_reuse_preserves_adapter_selection_after_reparenting() {
+    #[wasm_bindgen::prelude::wasm_bindgen(inline_js = r#"
+    export function editor_scroll_style_reads(surface, callback) {
+        const original = window.getComputedStyle;
+        let reads = 0;
+        window.getComputedStyle = function(element, pseudo) {
+            if (element === surface) reads++;
+            return original.call(this, element, pseudo);
+        };
+        try { callback(); return reads; }
+        finally { window.getComputedStyle = original; }
+    }
+    "#)]
+    extern "C" {
+        fn editor_scroll_style_reads(
+            surface: &web_sys::Element,
+            callback: &js_sys::Function,
+        ) -> u32;
+    }
+    let document = web_sys::window().unwrap().document().unwrap();
+    let pane = document.create_element("div").unwrap();
+    let other = document.create_element("div").unwrap();
+    let input: web_sys::HtmlTextAreaElement = document
+        .create_element("textarea")
+        .unwrap()
+        .unchecked_into();
+    let surface = document.create_element("div").unwrap();
+    surface.set_class_name("editor-scroll-surface");
+    surface.set_attribute("style", "position:absolute").unwrap();
+    pane.append_child(&input).unwrap();
+    pane.append_child(&surface).unwrap();
+    document.body().unwrap().append_child(&pane).unwrap();
+    document.body().unwrap().append_child(&other).unwrap();
+    let measured_input = input.clone();
+    let expected = surface.clone();
+    let read = wasm_bindgen::closure::Closure::<dyn FnMut()>::new(move || {
+        for _ in 0..100 {
+            assert!(
+                openwebide_frontend::viewport::editor_scroll(&measured_input)
+                    .is_same_node(Some(&expected))
+            );
+        }
+    });
+    assert_eq!(
+        editor_scroll_style_reads(&surface, read.as_ref().unchecked_ref()),
+        1
+    );
+    other.append_child(&input).unwrap();
+    assert!(openwebide_frontend::viewport::editor_scroll(&input).is_same_node(Some(&input)));
+    let replacement = document.create_element("div").unwrap();
+    replacement.set_class_name("editor-scroll-surface");
+    replacement
+        .set_attribute("style", "position:absolute")
+        .unwrap();
+    other.append_child(&replacement).unwrap();
+    assert!(openwebide_frontend::viewport::editor_scroll(&input).is_same_node(Some(&replacement)));
+    replacement.remove();
+    assert!(openwebide_frontend::viewport::editor_scroll(&input).is_same_node(Some(&input)));
+    pane.remove();
+    other.remove();
+}
+
 fn editor_key(
     textarea: &web_sys::HtmlTextAreaElement,
     key: &str,
@@ -15698,8 +15761,11 @@ async fn wrapped_origin_paint_precedes_complete_geometry_in_both_modes() {
                         .ok()
                         .and_then(|value| value.as_bool())
                         == Some(true);
+                    // Retained grammar can paint before the prepared probe arms
+                    // failure injection. The failure phase must wait for that
+                    // injection and coverage rejection, rather than early paint.
                     if (phase == 2 && failed && actions.paragraph_coverage().is_none())
-                        || (actions.paragraph_coverage().is_some()
+                        || (phase != 2 && actions.paragraph_coverage().is_some()
                             && mounted
                                 .root
                                 .query_selector(

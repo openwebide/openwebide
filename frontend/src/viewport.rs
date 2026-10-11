@@ -186,9 +186,18 @@ pub fn install_action_tooltips() {
 }
 
 #[wasm_bindgen(inline_js = r#"
+const editor_scroll_surfaces = new WeakMap();
 export function editor_scroll_element(input) {
-    const scroll = input.parentElement?.querySelector('.editor-scroll-surface');
-    return scroll && getComputedStyle(scroll).position === 'absolute' ? scroll : input;
+    const pane = input.parentElement;
+    const previous = editor_scroll_surfaces.get(input);
+    // The editor component owns this absolute surface for its mounted lifetime.
+    // Repeated getters must not force style resolution after every DOM write.
+    if (previous && previous.pane === pane && previous.scroll.parentElement === pane && previous.scroll.classList.contains('editor-scroll-surface')) return previous.scroll;
+    editor_scroll_surfaces.delete(input);
+    const scroll = pane?.querySelector('.editor-scroll-surface');
+    if (!scroll || getComputedStyle(scroll).position !== 'absolute') return input;
+    editor_scroll_surfaces.set(input, {pane, scroll});
+    return scroll;
 }
 export function refresh_editor_scroll(input) {
     const scroll = editor_scroll_element(input);

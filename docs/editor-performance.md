@@ -6473,3 +6473,34 @@ Small Remote Markdown input paint is about 17 ms; the matrix ranges from
 [hashes](editor-performance/early-pending-production-manifest.json)). Four additional composition and queued-cursor ownership browser contracts pass
 ([receipt](editor-performance/early-pending-input-contracts.json)). This does
 not finish the 12 ms budget, broad boundary workloads or memory gate.
+
+Hosted UI CI at `b4c9aa7` found the wrapped-origin failure phase exiting when
+retained String paint appeared, before crop-failure injection was armed. The
+failure reproduces on the `4044b32` bindings. The wait now requires both injected
+failure and discarded coverage in that phase, preserving its original assertions
+and 300 × 10 ms loop. The contract passes with the original scroll adapter
+restored in the same test WASM, isolating the wait correction from the separate
+scroll-reference experiment
+([before/after receipt](editor-performance/wrapped-crop-wait-regression.json)).
+Seven focused contracts pass on the current experiment, but full hosted CI still
+needs verification after the correction.
+
+Repeated browser scroll getters now reuse the component's mounted absolute
+scroll surface, rejecting replaced/reparented nodes. A primitive contract verifies
+100 getters resolve style once, with unchanged native fallback and remount
+selection. Seven focused component contracts pass, including scrollbars, wheel/
+native navigation, stale scope rejection, pending syntax and exact suffix geometry
+([receipt](editor-performance/scroll-reference-browser.json)). This is a browser
+adapter optimization; shared feature policy and both workspace adapters are unchanged.
+
+Two diagnostic CPU profiles reduce sampled `editor_scroll_element` time from
+about 36–44 ms to 2–3 ms, but shift cost into scroll reconciliation and give mixed
+input timings. Twelve interleaved unprofiled baseline/candidate samples preserve
+complete source at the 100,000-line boundary. Median input paint improves from
+41.8 to 26.9 ms locally and 43.0 to 25.4 ms remotely; candidate tails still reach
+100.2 ms. Peak Chrome PSS stays around 686–695 MiB. The cache removes repeated
+style work, but these timings do not prove the responsiveness or memory gate
+([comparison](editor-performance/scroll-reference-line-comparison.jsonl),
+[artifact hashes](editor-performance/scroll-reference-production-manifest.json)).
+Continue tracing the remaining row-table, native dimension and layout publication
+costs; do not use the median improvement to claim the editor performance work is complete.
