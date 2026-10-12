@@ -132,6 +132,7 @@ pub(in crate::editor::syntax) struct PaintPreparation {
     source: Arc<String>,
     context: Arc<crate::editor::Structure>,
     semantic: Vec<(Range<usize>, TokenKind)>,
+    collection: Option<SemanticCollection>,
     semantic_preparation: Option<super::semantics::SemanticPreparation>,
     segments: Segments,
     previous: SyntaxPaint,
@@ -159,6 +160,11 @@ impl PaintPreparation {
     }
 
     #[cfg(test)]
+    pub(super) fn collection_pending(&self) -> bool {
+        self.collection.is_some()
+    }
+
+    #[cfg(test)]
     pub(in crate::editor::syntax) fn diagnostic(&self) -> String {
         format!(
             "row={}, segment={}, pieces={}, tokens={}, copying={:?}",
@@ -176,10 +182,6 @@ impl PaintPreparation {
         document: &SyntaxDocument,
         context: Arc<crate::editor::Structure>,
     ) -> Option<Self> {
-        let CollectedHighlights {
-            spans: semantic,
-            outer,
-        } = document.collect_paint_semantics()?;
         let previous = std::mem::take(&mut *document.paint.borrow_mut());
         let edit = if Arc::ptr_eq(&previous.source, &document.text) {
             super::super::input_edit("", "", None).ok()?
@@ -192,7 +194,8 @@ impl PaintPreparation {
             source: document.text.clone(),
             context,
             semantic: Vec::new(),
-            semantic_preparation: Some(super::semantics::SemanticPreparation::new(semantic, outer)),
+            collection: Some(SemanticCollection::default()),
+            semantic_preparation: None,
             segments: Segments::default(),
             #[cfg(test)]
             reused_source_change: previous.source_change.is_some(),
@@ -298,13 +301,22 @@ impl PaintPreparation {
         }
     }
     /// Independently cap copied source bytes, constructed piece rows, copied
-    /// token owners, row publications and segment/piece-row visits. Allocation/publication and initial
-    /// semantic collection remain separate work.
+    /// token owners, row publications and segment/piece-row visits. Semantic
+    /// collection and normalization also advance privately through bounded batches.
     pub(super) fn advance(&mut self, document: &SyntaxDocument) -> Option<bool> {
         let mut bytes = PAINT_BATCH_BYTES;
         let mut records = PAINT_BATCH_RECORDS;
         if !Arc::ptr_eq(&self.source, &document.text) {
             return None;
+        }
+        if let Some(work) = &mut self.collection {
+            if !work.advance(document)? {
+                return Some(false);
+            }
+            let CollectedHighlights { spans, outer } = self.collection.take()?.values;
+            self.semantic_preparation =
+                Some(super::semantics::SemanticPreparation::new(spans, outer));
+            return Some(false);
         }
         if let Some(work) = &mut self.semantic_preparation {
             if !work.advance(

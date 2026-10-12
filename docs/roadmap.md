@@ -305,7 +305,7 @@ prepared only one token row per unit. Small rows now share the existing 64-recor
   input remains near 12 ms; initially slower MiB samples return to 137–166 ms on
   repeat. Serial samples establish no stable latency/PSS improvement
   ([comparison](editor-performance/paint-assembly-production-summary.json),
-  [samples](editor-performance/paint-assembly-production.jsonl)). Initial semantic
+  [samples](editor-performance/paint-assembly-production.jsonl)). At that checkpoint semantic
   collection/sorting, capacity growth, retained-cache retirement and complete
   final table publication remain unfinished.
   Semantic paint masking, stable ordering and overlap checks now resume in
@@ -321,9 +321,24 @@ prepared only one token row per unit. Small rows now share the existing 64-recor
   edits preserve full source with unchanged main-thread WASM memory. Mixed timing
   and PSS samples establish no general gain
   ([comparison](editor-performance/semantic-normalization-production-summary.json),
-  [samples](editor-performance/semantic-normalization-production.jsonl)). Initial
-  cached-subtree classification/rebasing remains synchronous; capacity growth,
-  retained-cache retirement and final publication still need bounded work.
+  [samples](editor-performance/semantic-normalization-production.jsonl)).
+  Cached-subtree classification and relative-span rebasing now advance in private
+  256-record steps, sharing the frontier policy with structural consumers and
+  preserving aggregate visit limits and invalid-cache fallback. Numeric ancestry
+  and nearby cursors preserve parent roles without a root lookup per node.
+  Classification, cached-span mapping, ancestry cleanup and cache publication
+  have independent record budgets, preserving the existing progress limits.
+  All 728 core tests, six local/remote browser contracts, four worker startup tests
+  and strict native/WASM lint pass
+  ([receipt](editor-performance/highlight-collection-browser.json)). Both production
+  startup paths preserve the full language/config/embedded inventory and MiB
+  literal reception. Eight wrapped HTML/Markdown edits preserve complete source;
+  input paint remains 21–77 ms and cold preparation 1.2–1.4 seconds. Historical
+  serial comparisons establish no general latency/PSS improvement
+  ([comparison](editor-performance/highlight-collection-production-summary.json),
+  [samples](editor-performance/highlight-collection-production.jsonl)). Integrated CI
+  verification for this checkpoint remains pending. Cursor seeks, capacity growth, retained-cache retirement
+  and final publication still need bounded work.
 - [ ] **Source, worker transport and storage:** finish external parser snapshots,
   changed-revision comparisons, header/capacity allocation,
   JavaScript string conversion, complete message decoding/publication,

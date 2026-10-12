@@ -293,8 +293,8 @@ mod ownership_tests {
     use std::sync::Arc;
 
     #[test]
-    fn semantic_yields_remain_private_and_cancel_or_replace_exact_source() {
-        for replace in [false, true] {
+    fn collection_and_semantic_yields_remain_private_and_cancel_or_replace_exact_source() {
+        for (collection, replace) in [(true, false), (true, true), (false, false), (false, true)] {
             let source =
                 Arc::new("<script>call(1);</script><style>a { color:red; }</style>\n".repeat(250));
             let mut document = SyntaxDocument::new(Language::Html).unwrap();
@@ -311,11 +311,13 @@ mod ownership_tests {
                 );
                 assert!(result.is_none());
                 assert!(document.prepared.is_none());
-                if document
-                    .paint_progress
-                    .as_ref()
-                    .is_some_and(super::super::preparation::PaintPreparation::semantic_pending)
-                {
+                if document.paint_progress.as_ref().is_some_and(|work| {
+                    if collection {
+                        work.collection_pending()
+                    } else {
+                        work.semantic_pending()
+                    }
+                }) {
                     break;
                 }
                 assert!(turn < 9999);

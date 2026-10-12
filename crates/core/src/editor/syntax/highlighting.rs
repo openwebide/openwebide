@@ -9,9 +9,66 @@ use crate::highlight::{highlight_lines, share_token_rows};
 pub(super) use preparation::PaintPreparation;
 use std::{collections::HashMap, ops::Range, sync::Arc};
 
+#[derive(Default)]
 struct CollectedHighlights {
     spans: Vec<(Range<usize>, TokenKind)>,
     outer: usize,
+}
+
+#[derive(Default)]
+struct SemanticCollection {
+    values: CollectedHighlights,
+    tree: usize,
+    visited: usize,
+    first: bool,
+    collecting: Option<super::highlights::HighlightCollection>,
+}
+impl SemanticCollection {
+    fn advance(&mut self, document: &SyntaxDocument) -> Option<bool> {
+        if self.tree > document.embedded.len() {
+            return Some(true);
+        }
+        let source = if self.tree == 0 {
+            document
+                .tree
+                .as_ref()
+                .zip(document.provider)
+                .map(|(tree, provider)| (tree, provider, &document.highlights))
+        } else {
+            document.embedded.get(self.tree - 1).and_then(|body| {
+                body.tree
+                    .as_ref()
+                    .map(|tree| (tree, body.provider, &body.highlights))
+            })
+        };
+        if let Some((tree, provider, cache)) = source {
+            let work = self.collecting.get_or_insert_with(|| {
+                super::highlights::HighlightCollection::new(
+                    tree,
+                    provider,
+                    std::mem::take(&mut *cache.borrow_mut()),
+                )
+            });
+            if !work
+                .advance(
+                    &document.text,
+                    &mut self.visited,
+                    &mut self.values.spans,
+                    256,
+                )
+                .ok()?
+            {
+                return Some(false);
+            }
+            *cache.borrow_mut() = self.collecting.take()?.finish();
+            if !self.first {
+                self.values.outer = self.values.spans.len();
+                self.first = true;
+            }
+        }
+        self.tree += 1;
+        Some(self.tree > document.embedded.len())
+    }
 }
 
 /// Merge validated ordered span endpoints into disjoint paint segments.
@@ -307,34 +364,11 @@ impl SyntaxDocument {
         }
     }
 
+    #[cfg(test)]
     fn collect_paint_semantics(&self) -> Option<CollectedHighlights> {
-        let mut semantic = Vec::new();
-        let mut visited = 0;
-        let mut outer = 0;
-        for (index, (tree, provider, cache)) in self
-            .tree
-            .iter()
-            .zip(self.provider)
-            .map(|(tree, provider)| (tree, provider, &self.highlights))
-            .chain(self.embedded.iter().filter_map(|body| {
-                body.tree
-                    .as_ref()
-                    .map(|tree| (tree, body.provider, &body.highlights))
-            }))
-            .enumerate()
-        {
-            cache
-                .borrow_mut()
-                .collect(tree, provider, &self.text, &mut visited, &mut semantic)
-                .ok()?;
-            if index == 0 {
-                outer = semantic.len();
-            }
-        }
-        Some(CollectedHighlights {
-            spans: semantic,
-            outer,
-        })
+        let mut work = SemanticCollection::default();
+        while !work.advance(self)? {}
+        Some(work.values)
     }
 
     #[cfg(test)]

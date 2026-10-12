@@ -1,0 +1,88 @@
+{
+  "observations": 8,
+  "completeSourceAndCaretVerified": true,
+  "limitations": [
+    "Historical serial comparison with the prior checkpoint, not interleaved. Two new samples per case/mode.",
+    "No general latency or PSS improvement established.",
+    "Cursor seek internals, capacity growth, retained cache retirement and final publication remain unfinished.",
+    "Local fixtures recover source without native folder permissions."
+  ],
+  "comparisons": [
+    {
+      "case": "embedded-html",
+      "mode": "local",
+      "previousCheckpoint": {
+        "inputViewportPaintMs": 21.75000000745058,
+        "coldSyntaxReadyMs": 1197.9000000059605,
+        "wasmCommittedBytes": 23527424.0,
+        "afterInputWasmCommittedBytes": 23527424.0,
+        "peakChromePssKiB": 590800.5
+      },
+      "candidate": {
+        "inputViewportPaintMs": 39.25,
+        "inputSyntaxReadyMs": 45.80000000447035,
+        "coldSyntaxReadyMs": 1341.0499999970198,
+        "wasmCommittedBytes": 23527424,
+        "afterInputWasmCommittedBytes": 23527424,
+        "peakChromePssKiB": 644985
+      }
+    },
+    {
+      "case": "embedded-html",
+      "mode": "remote",
+      "previousCheckpoint": {
+        "inputViewportPaintMs": 55.400000005960464,
+        "coldSyntaxReadyMs": 1180.4499999955297,
+        "wasmCommittedBytes": 23592960.0,
+        "afterInputWasmCommittedBytes": 23592960.0,
+        "peakChromePssKiB": 601342.0
+      },
+      "candidate": {
+        "inputViewportPaintMs": 39.850000001490116,
+        "inputSyntaxReadyMs": 45.79999999701977,
+        "coldSyntaxReadyMs": 1172.3000000044703,
+        "wasmCommittedBytes": 23592960,
+        "afterInputWasmCommittedBytes": 23592960,
+        "peakChromePssKiB": 602608.5
+      }
+    },
+    {
+      "case": "embedded-markdown",
+      "mode": "local",
+      "previousCheckpoint": {
+        "inputViewportPaintMs": 50.75,
+        "coldSyntaxReadyMs": 1214.7000000029802,
+        "wasmCommittedBytes": 23003136.0,
+        "afterInputWasmCommittedBytes": 23265280.0,
+        "peakChromePssKiB": 650891.0
+      },
+      "candidate": {
+        "inputViewportPaintMs": 58.899999998509884,
+        "inputSyntaxReadyMs": 58.899999998509884,
+        "coldSyntaxReadyMs": 1286.6500000059605,
+        "wasmCommittedBytes": 23003136,
+        "afterInputWasmCommittedBytes": 23265280,
+        "peakChromePssKiB": 645814
+      }
+    },
+    {
+      "case": "embedded-markdown",
+      "mode": "remote",
+      "previousCheckpoint": {
+        "inputViewportPaintMs": 42.00000000745058,
+        "coldSyntaxReadyMs": 1237.3999999910593,
+        "wasmCommittedBytes": 23068672.0,
+        "afterInputWasmCommittedBytes": 23298048.0,
+        "peakChromePssKiB": 657513.0
+      },
+      "candidate": {
+        "inputViewportPaintMs": 68.95000000298023,
+        "inputSyntaxReadyMs": 68.95000000298023,
+        "coldSyntaxReadyMs": 1212.3500000014901,
+        "wasmCommittedBytes": 23068672,
+        "afterInputWasmCommittedBytes": 23298048,
+        "peakChromePssKiB": 627746
+      }
+    }
+  ]
+}

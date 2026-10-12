@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Resume syntax highlight collection in bounded tree-node and cached-span steps in the shared Rust engine. Retain descendant classifications while refreshing external parent roles, validate rebased Unicode ranges before charging retained work, and keep incomplete results private through cancellation or source replacement.
+
 - Normalize semantic paint spans across bounded steps using the shared metadata sorter. Index parsed embedded-body coverage instead of scanning every body for every outer span; preserve opaque-region filtering, overlap rejection, cache reuse and source ownership in both project modes.
 
 - Resume grammar paint across bounded source-copy, piece-row, token-owner and row-publication steps in the shared Rust engine. Keep incomplete paint private, preserve the original parse status across yields, cancel superseded work, and share the same assembly with synchronous consumers.

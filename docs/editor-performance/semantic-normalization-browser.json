@@ -71,5 +71,76 @@
       "yaml_bytes": 1043026,
       "yaml_yields": 62
     }
-  ]
+  ],
+  "hostedCi": {
+    "run": 38197750072,
+    "commit": "04f6e57619d5cf9ee8f4b5fc8e0fb5b614d6a0d5",
+    "checks": {
+      "conclusion": "cancelled",
+      "jobs": [
+        {
+          "conclusion": "success",
+          "name": "validate",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "checks / docker",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "checks / frontend-ui-tests",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "checks / frontend",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "checks / bridge-windows",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "checks / backend-and-crates",
+          "status": "completed"
+        },
+        {
+          "conclusion": "cancelled",
+          "name": "images (ubuntu-24.04-arm, arm64, aarch64-unknown-linux-gnu)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "cancelled",
+          "name": "images (ubuntu-24.04, amd64, x86_64-unknown-linux-gnu)",
+          "status": "completed"
+        },
+        {
+          "conclusion": "skipped",
+          "name": "macos-bridges",
+          "status": "completed"
+        },
+        {
+          "conclusion": "cancelled",
+          "name": "assets",
+          "status": "completed"
+        },
+        {
+          "conclusion": "cancelled",
+          "name": "publish-nightly",
+          "status": "completed"
+        },
+        {
+          "conclusion": "cancelled",
+          "name": "publish",
+          "status": "completed"
+        }
+      ],
+      "status": "completed"
+    },
+    "note": "All five source-check jobs passed. Release image/assets publication was cancelled after a newer main checkpoint was pushed."
+  }
 }

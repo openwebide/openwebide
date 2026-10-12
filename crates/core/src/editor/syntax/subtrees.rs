@@ -78,7 +78,6 @@ pub(super) fn visit_parts<'tree>(
     root: Node<'tree>,
     mut visit: impl FnMut(Node<'tree>, Option<Node<'tree>>, bool) -> Result<(), SyntaxStatus>,
 ) -> Result<(), SyntaxStatus> {
-    const MAX_PART_BYTES: usize = 4096;
     let mut cursor = root.walk();
     if !cursor.goto_first_child() {
         return Ok(());
@@ -86,16 +85,7 @@ pub(super) fn visit_parts<'tree>(
     let mut parents = vec![root];
     loop {
         let node = cursor.node();
-        // Transparent wrappers may be rebuilt around retained expressions.
-        let wraps_subtree = node.named_child_count() == 1
-            && node
-                .named_child(0)
-                .is_some_and(|child| child.child_count() > 0);
-        let descend = node.child_count() > 0
-            && (node.byte_range().len() > MAX_PART_BYTES
-                || wraps_subtree
-                || (node.named_child_count() > 0
-                    && node.end_position().row > node.start_position().row));
+        let descend = descend_part(node);
         visit(node, parents.last().copied(), !descend)?;
         if descend && cursor.goto_first_child() {
             parents.push(node);
@@ -114,6 +104,20 @@ pub(super) fn visit_parts<'tree>(
             }
         }
     }
+}
+
+pub(super) fn descend_part(node: Node<'_>) -> bool {
+    const MAX_PART_BYTES: usize = 4096;
+    // Transparent wrappers may be rebuilt around retained expressions.
+    let wraps_subtree = node.named_child_count() == 1
+        && node
+            .named_child(0)
+            .is_some_and(|child| child.child_count() > 0);
+    node.child_count() > 0
+        && (node.byte_range().len() > MAX_PART_BYTES
+            || wraps_subtree
+            || (node.named_child_count() > 0
+                && node.end_position().row > node.start_position().row))
 }
 
 pub(super) fn charge_visits(visited: &mut usize, visits: usize) -> Result<(), SyntaxStatus> {
