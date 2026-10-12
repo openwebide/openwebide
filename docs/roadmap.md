@@ -718,6 +718,13 @@ combined-source CI result.
   pass ([receipt](editor-performance/recovery-guard-browser.json)). Candidate
   capture, fold/selection copying, final field equality and serialization remain
   synchronous; fresh production and final integrated CI are still required.
+  Collapsed-range capture now visits collapsed headers directly instead of
+  scanning every current range. Recovery, fold refresh and projection sharing
+  use the same core iterator; pending indicators cannot authorize a range.
+  The 50,000-range regression, 771 core tests, 51 WASM library tests, 45
+  recovery/fold browser contracts and strict core/WASM/WASI lint pass
+  ([receipt](editor-performance/collapsed-range-capture-browser.json)).
+  Large all-collapsed collections still require bounded copying and capture.
 
 **Remaining completion gates**:
 

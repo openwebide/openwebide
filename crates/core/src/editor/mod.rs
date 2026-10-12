@@ -459,15 +459,8 @@ impl Document {
         self.folds.set_ranges(ranges, self.line_index.rows.len());
         let changed = before != self.folds;
         if changed {
-            let before_collapsed = before
-                .ranges()
-                .iter()
-                .filter_map(|range| before.collapsed_at(range.start_line));
-            let after_collapsed = self
-                .folds
-                .ranges()
-                .iter()
-                .filter_map(|range| self.folds.collapsed_at(range.start_line));
+            let before_collapsed = before.collapsed_ranges();
+            let after_collapsed = self.folds.collapsed_ranges();
             if !before_collapsed.eq(after_collapsed) {
                 self.projection.0.take();
                 self.motion_columns = None;

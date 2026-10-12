@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Capture collapsed editor folds directly in canonical order during recovery and fold refresh, avoiding a scan of every open fold. Preserve pending-indicator and projection behavior.
+
 - Reuse validated recovery guard state for unchanged snapshot checks. Reject changed project, epoch, read or document revisions before rebuilding state, while preserving full source, selection, fold, scroll and read-only equality.
 
 - Compare recovered-file review disk versions cooperatively, preserving missing/empty semantics and rejecting stale scope. Use cheap scope checks between decoding/comparison batches, with full recovery guards before publishing or applying a review decision.

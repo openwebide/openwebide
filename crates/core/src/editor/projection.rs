@@ -79,9 +79,9 @@ impl FoldProjection {
         index: &super::index::LineIndex,
     ) -> Self {
         let shared = folds
-            .ranges()
-            .iter()
-            .all(|range| folds.collapsed_at(range.start_line).is_none())
+            .collapsed_ranges()
+            .next()
+            .is_none()
             .then(|| source.clone());
         Self::build(source, folds, index, shared, identity.clone())
     }

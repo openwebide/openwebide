@@ -66,13 +66,7 @@ impl Document {
             text: document.shared_text(),
             saved: document.saved.clone(),
             selections: document.selections.clone(),
-            collapsed: document
-                .folds
-                .ranges()
-                .iter()
-                .filter(|range| document.folds.collapsed_at(range.start_line).is_some())
-                .copied()
-                .collect(),
+            collapsed: document.folds.collapsed_ranges().collect(),
         }
     }
 }

@@ -176,6 +176,16 @@ impl FoldState {
             .ok()
             .map(|index| self.ranges[index])
     }
+    /// Current collapsed ranges in canonical header order. Pending indicators
+    /// do not authorize ranges, and uncollapsed fold tables are never traversed.
+    pub fn collapsed_ranges(&self) -> impl Iterator<Item = FoldRange> + '_ {
+        self.collapsed.iter().filter_map(|header| {
+            self.ranges
+                .binary_search_by_key(header, |range| range.start_line)
+                .ok()
+                .map(|index| self.ranges[index])
+        })
+    }
     pub fn toggle(&mut self, header: usize) -> bool {
         if self
             .ranges
@@ -387,6 +397,40 @@ impl FoldState {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn collapsed_range_capture_visits_only_collapsed_headers_and_rejects_pending_ranges() {
+        use super::{FoldRange, FoldState};
+        let ranges = (0..50_000)
+            .map(|index| FoldRange {
+                start_line: index * 2,
+                end_line: index * 2 + 1,
+            })
+            .collect::<Vec<_>>();
+        let mut state = FoldState::default();
+        state.set_ranges(ranges.clone(), 100_001);
+        assert_eq!(state.collapsed_ranges().size_hint(), (0, Some(0)));
+        assert_eq!(state.collapsed_ranges().next(), None);
+        for header in [99_998, 0, 50_000] {
+            assert!(state.toggle(header));
+        }
+        assert_eq!(state.collapsed_ranges().size_hint().1, Some(3));
+        assert_eq!(
+            state.collapsed_ranges().collect::<Vec<_>>(),
+            vec![ranges[0], ranges[25_000], ranges[49_999]]
+        );
+        let original = state
+            .ranges()
+            .iter()
+            .filter_map(|range| state.collapsed_at(range.start_line))
+            .collect::<Vec<_>>();
+        assert_eq!(state.collapsed_ranges().collect::<Vec<_>>(), original);
+        state.pending.clone_from(&state.ranges);
+        state.ranges.clear();
+        assert!(state.indicator_collapsed(0));
+        assert_eq!(state.collapsed_ranges().next(), None);
+        state.set_ranges(ranges, 100_001);
+        assert_eq!(state.collapsed_ranges().count(), 3);
+    }
     #[test]
     fn cooperative_fold_validation_budgets_deep_ancestor_pops() {
         let mut ranges = (0..128)
