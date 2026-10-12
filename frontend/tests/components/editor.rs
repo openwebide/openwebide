@@ -7,6 +7,90 @@ use wasm_bindgen_test::*;
 use super::support::{Mounted, editor_view, mount_test, settle, wait_until};
 
 #[wasm_bindgen_test]
+async fn cancelled_recovery_disk_decoding_keeps_overwrite_permits_in_both_modes() {
+    use openwebide_core::WorkspaceMode;
+    use openwebide_frontend::{
+        state::workspace::RecoveryOverwrite, state_actions::editor_recovery::verify_recovered_save,
+        workspace::Workspace,
+    };
+    use std::{
+        cell::Cell,
+        future::Future,
+        task::{Context, Poll, Waker},
+    };
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let folder = if mode == WorkspaceMode::Local {
+            Some(editorConfigFolder().await.unwrap())
+        } else {
+            None
+        };
+        let handle = folder.as_ref().map(editorConfigHandle);
+        let key = (1, "src/a.rs".to_string());
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            sign_in_recovery(&state);
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            if let Some(handle) = handle {
+                state.projects.local_handles.update(|handles| {
+                    handles.insert(1, handle.unchecked_into());
+                });
+            }
+            state.workspace.content.set("draft".into());
+            state.workspace.editor_recovered.update(|files| {
+                files.insert((1, "src/a.rs".into()));
+            });
+            state
+                .workspace
+                .editor_recovery_overwrites
+                .update(|permits| {
+                    permits.insert(
+                        (1, "src/a.rs".into()),
+                        RecoveryOverwrite {
+                            disk: None,
+                            draft: "draft".into(),
+                        },
+                    );
+                });
+            view! { <span/> }
+        });
+        let workspace = mounted.state.workspace;
+        let ws = Workspace::for_project(mounted.state.api, mounted.state.projects, 1).unwrap();
+        let source = "ASCII 文😀\r\n".repeat(8000);
+        ws.write("src/a.rs", &source).await.unwrap();
+        let active = Cell::new(true);
+        let mut pending = Box::pin(verify_recovered_save(
+            workspace,
+            mounted.state.projects,
+            &ws,
+            1,
+            "src/a.rs",
+            || active.get(),
+        ));
+        assert!(matches!(
+            pending
+                .as_mut()
+                .poll(&mut Context::from_waker(Waker::noop())),
+            Poll::Pending
+        ));
+        active.set(false);
+        assert!(pending.await.is_err());
+        assert!(
+            workspace
+                .editor_recovery_overwrites
+                .with_untracked(|permits| permits.contains_key(&key))
+        );
+        assert_eq!(ws.read("src/a.rs").await.unwrap(), source);
+        drop(mounted);
+        if let Some(folder) = folder {
+            editorConfigCleanup(&folder).await.unwrap();
+        }
+    }
+}
+
+#[wasm_bindgen_test]
 async fn cross_row_word_motion_preserves_source_and_queue_ownership_in_both_modes() {
     use openwebide_core::{
         WorkspaceMode,

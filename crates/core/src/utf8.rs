@@ -1,3 +1,66 @@
+/// Strict, complete-only text decoding without copying the owned byte buffer.
+/// Each unit validates at most 8 KiB, retaining incomplete scalar bytes for the
+/// next unit. Invalid text is never replaced or exposed as a partial String.
+pub struct Utf8TextPreparation {
+    bytes: Vec<u8>,
+    offset: usize,
+    result: Option<Result<(), InvalidUtf8>>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct InvalidUtf8 {
+    pub offset: usize,
+    pub length: Option<usize>,
+}
+impl std::fmt::Display for InvalidUtf8 {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "Invalid UTF-8 at byte {}", self.offset)
+    }
+}
+impl std::error::Error for InvalidUtf8 {}
+
+impl Utf8TextPreparation {
+    pub fn new(bytes: Vec<u8>) -> Self {
+        Self {
+            result: bytes.is_empty().then_some(Ok(())),
+            bytes,
+            offset: 0,
+        }
+    }
+    pub fn advance(&mut self, budget: usize) -> bool {
+        for _ in 0..budget {
+            if self.result.is_some() {
+                break;
+            }
+            let end = (self.offset + 8192).min(self.bytes.len());
+            match std::str::from_utf8(&self.bytes[self.offset..end]) {
+                Ok(_) => self.offset = end,
+                Err(error) if error.error_len().is_none() && end < self.bytes.len() => {
+                    self.offset += error.valid_up_to();
+                }
+                Err(error) => {
+                    self.result = Some(Err(InvalidUtf8 {
+                        offset: self.offset + error.valid_up_to(),
+                        length: error.error_len(),
+                    }));
+                }
+            }
+            if self.offset == self.bytes.len() {
+                self.result = Some(Ok(()));
+            }
+        }
+        self.result.is_some()
+    }
+    pub fn finish(self) -> Option<Result<String, InvalidUtf8>> {
+        Some(self.result?.map(|()| {
+            // SAFETY: bytes are privately owned and never mutated. Every byte
+            // was validated by from_utf8 in contiguous complete-scalar slices;
+            // successful completion requires reaching the entire buffer's end.
+            unsafe { String::from_utf8_unchecked(self.bytes) }
+        }))
+    }
+}
+
 pub struct Utf8Decoder {
     pending: Vec<u8>,
 }
@@ -74,6 +137,60 @@ impl Default for Utf8Decoder {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn strict_preparation_preserves_utf8_errors_ownership_and_unit_bounds() {
+        for padding in [0, 8189, 8190, 8191, 8192] {
+            for tail in [
+                "文😀e\u{301}\r\n".as_bytes(),
+                &[0xff],
+                &[0xf0, 0x9f],
+                &[0xe0, 0x80, 0x80],
+            ] {
+                let mut bytes = vec![b'a'; padding];
+                bytes.extend_from_slice(tail);
+                bytes.extend_from_slice(b" tail");
+                let reference = String::from_utf8(bytes.clone());
+                let pointer = bytes.as_ptr();
+                let mut preparation = Utf8TextPreparation::new(bytes);
+                assert!(!preparation.advance(0));
+                while preparation.result.is_none() {
+                    let before = preparation.offset;
+                    preparation.advance(1);
+                    assert!(preparation.offset - before <= 8192);
+                }
+                match (preparation.finish().unwrap(), reference) {
+                    (Ok(actual), Ok(expected)) => {
+                        assert_eq!(actual, expected);
+                        assert_eq!(actual.as_ptr(), pointer);
+                    }
+                    (Err(actual), Err(expected)) => {
+                        assert_eq!(actual.offset, expected.utf8_error().valid_up_to());
+                        assert_eq!(actual.length, expected.utf8_error().error_len());
+                    }
+                    _ => panic!("strict decoding disagreed with the standard library"),
+                }
+            }
+        }
+        let mut preparation = Utf8TextPreparation::new(vec![b'x'; 32 * 1024]);
+        assert!(!preparation.advance(1));
+        assert!(preparation.finish().is_none());
+        assert_eq!(
+            Utf8TextPreparation::new(Vec::new()).finish(),
+            Some(Ok(String::new()))
+        );
+        let mut bytes = vec![b'x'; 8191];
+        bytes.extend_from_slice(&[0xf0, 0x9f]);
+        let mut preparation = Utf8TextPreparation::new(bytes);
+        while !preparation.advance(1) {}
+        assert_eq!(
+            preparation.finish(),
+            Some(Err(InvalidUtf8 {
+                offset: 8191,
+                length: None
+            }))
+        );
+    }
 
     #[test]
     fn test_utf8_decoder() {

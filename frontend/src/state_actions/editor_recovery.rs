@@ -617,21 +617,24 @@ fn check_files(ctx: RecoveryContext, id: i64) {
             if !current() {
                 return;
             }
-            let result = disk
-                .map_err(|error| {
-                    if error.needs_folder_access() {
-                        ctx.projects.needs_grant.update(|ids| {
-                            ids.insert(id);
-                        });
-                    }
-                    error.to_string()
-                })
-                .and_then(|bytes| {
-                    bytes
-                        .map(String::from_utf8)
-                        .transpose()
-                        .map_err(|_| "The disk file is no longer valid UTF-8".into())
-                });
+            let result = disk.map_err(|error| {
+                if error.needs_folder_access() {
+                    ctx.projects.needs_grant.update(|ids| {
+                        ids.insert(id);
+                    });
+                }
+                error.to_string()
+            });
+            let result = match result {
+                Ok(bytes) => {
+                    decode_disk_bytes(bytes, &current, "The disk file is no longer valid UTF-8")
+                        .await
+                }
+                Err(error) => Err(error),
+            };
+            if !current() {
+                return;
+            }
             let key = (id, path.clone());
             // Always reconcile the latest committed document, never an old draft
             // captured before the disk read. Edits during verification are retained.
@@ -886,21 +889,23 @@ pub async fn verify_recovered_save(
     if !current() {
         return Err("The editor changed while checking the disk file".into());
     }
-    let disk = disk
-        .map_err(|error| {
-            if error.needs_folder_access() {
-                projects.needs_grant.update(|ids| {
-                    ids.insert(id);
-                });
-            }
-            error.to_string()
-        })
-        .and_then(|bytes| {
-            bytes
-                .map(String::from_utf8)
-                .transpose()
-                .map_err(|_| "The disk file is no longer valid UTF-8".into())
-        });
+    let disk = disk.map_err(|error| {
+        if error.needs_folder_access() {
+            projects.needs_grant.update(|ids| {
+                ids.insert(id);
+            });
+        }
+        error.to_string()
+    });
+    let disk = match disk {
+        Ok(bytes) => {
+            decode_disk_bytes(bytes, &current, "The disk file is no longer valid UTF-8").await
+        }
+        Err(error) => Err(error),
+    };
+    if !current() {
+        return Err("The editor changed while checking the disk file".into());
+    }
     let approved = workspace
         .editor_recovery_overwrites
         .try_update(|permits| permits.remove(&key))
@@ -997,7 +1002,7 @@ impl RecoveryContext {
             disk: None,
         };
         spawn_local(async move {
-            let result = read_review_disk(&ws, &path).await;
+            let result = read_review_disk(&ws, &path, || self.review_current(&scope)).await;
             if !self.review_current(&scope) {
                 return;
             }
@@ -1034,7 +1039,7 @@ impl RecoveryContext {
         ws: &Workspace,
         scope: &FileReviewGuard,
     ) -> Option<Option<String>> {
-        let result = read_review_disk(ws, &scope.path).await;
+        let result = read_review_disk(ws, &scope.path, || self.review_current(scope)).await;
         if !self.review_current(scope) {
             self.invalidate_review(scope);
             return None;
@@ -1160,13 +1165,52 @@ impl RecoveryContext {
     }
 }
 
-async fn read_review_disk(ws: &Workspace, path: &str) -> Result<Option<String>, String> {
-    ws.read_optional_bytes(path)
+async fn decode_disk_bytes(
+    bytes: Option<Vec<u8>>,
+    current: &impl Fn() -> bool,
+    invalid: &str,
+) -> Result<Option<String>, String> {
+    if !current() {
+        return Err("The editor changed while checking the disk file".into());
+    }
+    let Some(bytes) = bytes else {
+        return Ok(None);
+    };
+    let mut preparation = openwebide_core::utf8::Utf8TextPreparation::new(bytes);
+    loop {
+        if !current() {
+            return Err("The editor changed while checking the disk file".into());
+        }
+        if preparation.advance(1) {
+            break;
+        }
+        crate::util::yield_task().await;
+    }
+    if !current() {
+        return Err("The editor changed while checking the disk file".into());
+    }
+    preparation
+        .finish()
+        .unwrap()
+        .map(Some)
+        .map_err(|_| invalid.to_string())
+}
+
+async fn read_review_disk(
+    ws: &Workspace,
+    path: &str,
+    current: impl Fn() -> bool,
+) -> Result<Option<String>, String> {
+    let bytes = ws
+        .read_optional_bytes(path)
         .await
-        .map_err(|error| error.to_string())?
-        .map(String::from_utf8)
-        .transpose()
-        .map_err(|_| "The disk file cannot be reviewed as UTF-8 text".into())
+        .map_err(|error| error.to_string())?;
+    decode_disk_bytes(
+        bytes,
+        &current,
+        "The disk file cannot be reviewed as UTF-8 text",
+    )
+    .await
 }
 
 #[cfg(test)]
@@ -1177,6 +1221,39 @@ mod disk_tests {
         future::Future,
         task::{Context, Poll, Waker},
     };
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    async fn strict_disk_decoding_yields_and_rejects_lost_scope_before_publication() {
+        crate::testing::initialize_runtime();
+        let source = "ASCII 文😀e\u{301}\r\n".repeat(8000);
+        let active = Cell::new(true);
+        let current = || active.get();
+        let mut pending = Box::pin(decode_disk_bytes(
+            Some(source.clone().into_bytes()),
+            &current,
+            "invalid",
+        ));
+        assert!(matches!(
+            pending
+                .as_mut()
+                .poll(&mut Context::from_waker(Waker::noop())),
+            Poll::Pending
+        ));
+        active.set(false);
+        assert!(pending.await.is_err());
+        active.set(true);
+        assert_eq!(
+            decode_disk_bytes(Some(source.clone().into_bytes()), &current, "invalid").await,
+            Ok(Some(source))
+        );
+        assert_eq!(decode_disk_bytes(None, &current, "invalid").await, Ok(None));
+        assert_eq!(
+            decode_disk_bytes(Some(vec![0xff]), &current, "invalid").await,
+            Err("invalid".into())
+        );
+        active.set(false);
+        assert!(decode_disk_bytes(None, &current, "invalid").await.is_err());
+    }
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn disk_reconciliation_yields_retries_current_sources_and_discards_lost_owners() {

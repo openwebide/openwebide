@@ -667,8 +667,19 @@ combined-source CI result.
   passes: 744 core tests, five lifecycle/current-source browser tests, fifteen
   recovery/cache contracts, strict native/WASM/WASI lint and production build
   ([receipt](editor-performance/recovery-disk-browser.json)). Overwrite-permit
-  comparisons, UTF-8 decoding, capture/guard checks,
+  comparisons, serialized snapshot UTF-8 decoding, capture/guard checks,
   serialization, allocation growth and other history/publication costs remain open.
+  Recovered disk UTF-8 decoding now validates privately in 8 KiB slices and moves
+  the validated byte allocation into its complete String. Background checks, save
+  verification and review use the same scoped decoder above both workspace
+  adapters. Invalid and truncated scalars preserve strict validation errors;
+  lost scopes cannot publish text, change recovery checks or consume overwrite
+  permits. All 768 core tests, 49 WASM library checks and 23 recovery-related
+  browser contracts pass, including cancellation through both real adapters;
+  strict native core, WASM frontend and WASI backend lint pass
+  ([receipt](editor-performance/recovery-disk-utf8-browser.json)). Serialized
+  snapshot decoding, overwrite/guard comparisons, capture, serialization,
+  allocation growth and final history/selection publication remain unfinished.
 
 **Remaining completion gates**:
 
