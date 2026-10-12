@@ -1,0 +1,18 @@
+body.panel-playground-page { overflow: auto; height: auto; min-height: 100vh; }
+.panel-playground { max-width: 1440px; padding: 24px; margin: 0 auto; }
+.playground-heading, .playground-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
+.playground-heading { justify-content: space-between; margin-bottom: 20px; }
+.panel-playground h1 { font-size: 22px; margin: 0 0 8px; }
+.panel-playground h2 { font-size: 16px; margin: 0 0 12px; }
+.panel-playground p, .panel-playground footer { color: var(--text-muted); font-size: 13px; line-height: 1.5; }
+.playground-toolbar { margin-bottom: 20px; }
+.playground-columns { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(0, 1.3fr); gap: 24px; }
+.playground-editor, .playground-preview { min-width: 0; }
+.playground-editor > textarea { font-family: var(--mono); resize: vertical; min-height: 320px; }
+.playground-validation { font-size: 12px; padding: 8px 0; overflow-wrap: anywhere; }
+.panel-playground details { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px; }
+.panel-playground summary { cursor: pointer; font-size: 13px; font-weight: 600; }
+.playground-preview-frame { width: 100%; padding: 16px; box-sizing: border-box; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-panel); margin: 12px 0; }
+.playground-action-input { min-height: 60px; max-height: 280px; overflow: auto; font-family: var(--mono); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.panel-playground footer { margin-top: 24px; }
+@media (max-width: 760px) { .panel-playground { padding: 16px; } .playground-columns { grid-template-columns: minmax(0, 1fr); } }

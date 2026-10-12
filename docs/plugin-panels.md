@@ -1,5 +1,8 @@
 # Plugin panels
 
+Use the [panel playground](panel-playground.md) to explore every supported block,
+edit JSON with live validation, simulate actions and export a Rust SDK example.
+
 API 4 adds host-executed, declarative panels. An enabled plugin's panels appear
 beside the built-in workspace navigation entries. Open a panel by selecting its
 entry; minimize it to return to your work. Its menu moves it left or right.

@@ -8,6 +8,7 @@ Repository working conventions live in `AGENTS.md` at the repository root.
 | --- | --- |
 | [Architecture](architecture.md) | Components, transports, shared behavior and data flow. |
 | [API examples](api-examples.md) | HTTP requests and response examples. |
+| [Panel playground](panel-playground.md) | Live component examples, JSON validation and Rust exports. |
 | [Design system](design-system.md) | Shared components, visual tokens and interaction patterns. |
 | [Editor performance](editor-performance.md) | Performance baselines and measurement procedures. |
 | [Project website](project-site.md) | Build, organize and publish these docs. |

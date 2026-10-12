@@ -38,7 +38,8 @@ follow the device's light/dark preference when the page loads.
 
 ## Build and preview
 
-Install Rust/Cargo (as for app development), then run from the repository root:
+Install the pinned Rust toolchain, the `wasm32-unknown-unknown` target and Trunk
+0.21.14 (as for app development), then run from the repository root:
 
 ```sh
 python3 -m venv /tmp/openwebide-pages-venv
@@ -82,8 +83,16 @@ once GitHub has provisioned its certificate. See
 for DNS configuration and propagation checks. To build for another deployment,
 pass `--site-url https://example.com/` to the build command.
 
-The build does not compile the Rust/WASM app and works the same for visitors
-using either workspace mode. It links GitHub Issues for feedback and support.
+The build compiles the standalone [panel playground](panel-playground.md) using
+the app's Rust/WASM renderer and copies its bundle into the site. It does not
+launch the app backend or connect to a bridge. To reuse an existing Trunk bundle,
+pass `--playground-dist /path/to/bundle`; the bundle must include `index.html`
+and a WASM module. Visitors can use it without an account or workspace.
+With a compatible ChromeDriver available, check the compiled tool with
+`CHROMEDRIVER=/path/to/chromedriver python3 tools/check-panel-playground.py --site /tmp/openwebide-site`.
+This runs a disposable headless browser and checks both responsive themes,
+downloads and the embedded renderer without accessing personal browser profiles.
+The site links GitHub Issues for feedback and support.
 Issue forms cover bugs, feature requests and setup/usage help. An optional demo
 and launch announcements remain part of the 1.0 public-release work.
 

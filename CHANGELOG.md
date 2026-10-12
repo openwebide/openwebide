@@ -9,6 +9,7 @@ The first alpha is published as `1.0.0-alpha.5`. See
 ## [Unreleased]
 
 - Batch printable ASCII coordinate construction to reduce long-line edit work while preserving native offsets, grapheme and paint boundaries, word summaries, and CR/LF admission totals.
+- Add a docs-site panel playground using the production Rust/WASM renderer and UI schema. Explore every block, edit and validate JSON, preview light/dark themes and phone/desktop widths, simulate action inputs, approvals and replacement documents, and export valid JSON or a Rust SDK example without executing host capabilities.
 
 - Verify complete-source beginning edits at the editor's byte, row and styled long-line admission boundaries in both workspace modes, with wrapping on/off. Record current input, geometry and Chrome PSS results; responsiveness and memory work remains open.
 

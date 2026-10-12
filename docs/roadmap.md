@@ -976,14 +976,11 @@ capability.
   phones. Clients consume plugin metadata, instructions and service results
   through the shared facade/bridge; they do not maintain plugin clones, execute
   plugin WASM modules or install plugin runtimes.
-- Provide a plugin UI component gallery and interactive playground on the docs
-  website. Reuse the app's Rust/WASM renderer and versioned schema so previews
-  match production. Include examples for each supported block, light/dark themes
-  and phone/desktop widths. Begin with editable JSON, live validation and preview,
-  plus simulated action inputs/results that never execute host capabilities.
-  Export a valid UI document and Rust SDK example for plugin authors. A visual
-  block builder can follow once the schema and renderer are stable; keep it on
-  the same validation/export path rather than introducing another UI format.
+- Extend the docs [panel playground](panel-playground.md) with a visual block
+  builder once the schema and renderer are stable. Keep visual editing on the
+  existing JSON document, production validation, simulation and export path
+  rather than introducing another UI format. The component gallery, editable
+  JSON, live preview, theme/width previews and JSON/Rust exports are available.
 - Add editor hooks later as typed contributions in the same package format,
   after the shared editor transaction/save APIs are stable. Start with bounded
   host notifications such as document opened/changed/saved/closed; debounce

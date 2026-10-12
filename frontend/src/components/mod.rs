@@ -130,3 +130,5 @@ pub use monitors::ConversationMonitors;
 
 pub mod git_changes;
 pub mod git_history;
+
+pub mod panel_playground;

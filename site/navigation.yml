@@ -35,6 +35,7 @@
     - Overview: docs/development.md
     - Architecture: docs/architecture.md
     - Plugin authoring: docs/plugin-authoring.md
+    - Panel playground: docs/panel-playground.md
     - API examples: docs/api-examples.md
     - Design system: docs/design-system.md
     - Editor performance: docs/editor-performance.md

@@ -3,9 +3,9 @@ name: Project site
 on:
   push:
     branches: [main]
-    paths: ['Cargo.toml', 'Cargo.lock', '**/Cargo.toml', 'rust-toolchain.toml', 'site/**', 'tools/open_source.py', 'third-party/**', 'frontend/fonts/**', 'docs/**', 'README.md', 'CHANGELOG.md', 'LICENSE', 'frontend/styles.css', 'frontend/pwa/favicon.svg', '.github/workflows/pages.yml']
+    paths: ['Cargo.toml', 'Cargo.lock', '**/Cargo.toml', 'rust-toolchain.toml', 'site/**', 'tools/open_source.py', 'third-party/**', 'frontend/fonts/**', 'docs/**', 'README.md', 'CHANGELOG.md', 'LICENSE', 'frontend/styles.css', 'frontend/playground/**', 'frontend/src/**', 'frontend/build.rs', 'crates/core/src/plugins/panels.rs', 'tools/setup-wasm-compiler.sh', 'tools/check-panel-playground.py', 'tools/check-editor-recovery.py', '.github/actions/setup-editor-browser/**', 'frontend/pwa/favicon.svg', '.github/workflows/pages.yml']
   pull_request:
-    paths: ['Cargo.toml', 'Cargo.lock', '**/Cargo.toml', 'rust-toolchain.toml', 'site/**', 'tools/open_source.py', 'third-party/**', 'frontend/fonts/**', 'docs/**', 'README.md', 'CHANGELOG.md', 'LICENSE', 'frontend/styles.css', 'frontend/pwa/favicon.svg', '.github/workflows/pages.yml']
+    paths: ['Cargo.toml', 'Cargo.lock', '**/Cargo.toml', 'rust-toolchain.toml', 'site/**', 'tools/open_source.py', 'third-party/**', 'frontend/fonts/**', 'docs/**', 'README.md', 'CHANGELOG.md', 'LICENSE', 'frontend/styles.css', 'frontend/playground/**', 'frontend/src/**', 'frontend/build.rs', 'crates/core/src/plugins/panels.rs', 'tools/setup-wasm-compiler.sh', 'tools/check-panel-playground.py', 'tools/check-editor-recovery.py', '.github/actions/setup-editor-browser/**', 'frontend/pwa/favicon.svg', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -19,7 +19,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      RUSTUP_TOOLCHAIN: stable
+      RUSTUP_TOOLCHAIN: 1.98.1
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -27,16 +27,32 @@ jobs:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: site/requirements.txt
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.98.1
+          targets: wasm32-unknown-unknown
+          components: llvm-tools
+      - name: Prepare the browser parser compiler
+        run: bash tools/setup-wasm-compiler.sh
+      - name: Install Trunk
+        run: |
+          curl -sSL https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-x86_64-unknown-linux-gnu.tar.gz | tar -xz -C /usr/local/bin trunk
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: pages-metadata
-          cache-targets: false
+          cache-targets: true
       - run: pip install -r site/requirements.txt
       - name: Check documentation navigation
         run: python -m unittest discover -s site -p 'test_*.py'
       - name: Build and validate site
         run: python site/build.py --output "$RUNNER_TEMP/project-site"
+      - uses: ./.github/actions/setup-editor-browser
+        id: chrome
+      - name: Check the compiled panel playground
+        env:
+          CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: python tools/check-panel-playground.py --site "$RUNNER_TEMP/project-site"
       # The Pages convenience action excludes dot directories, including .well-known.
       - name: Package site including WebFinger discovery
         run: |

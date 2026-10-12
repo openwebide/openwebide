@@ -3,6 +3,7 @@
 
 import argparse
 import re
+import os
 import shutil
 import subprocess
 import sys
@@ -76,7 +77,17 @@ def shared_styles():
     return "\n".join(rules)
 
 
-def build(output, site_url):
+def build_playground(destination):
+    env = dict(os.environ)
+    env["NO_COLOR"] = "true"
+    common = Path(subprocess.check_output(["git", "rev-parse", "--git-common-dir"], cwd=ROOT, text=True).strip())
+    if not common.is_absolute():
+        common = ROOT / common
+    env.setdefault("CARGO_TARGET_DIR", str(common.resolve().parent / "target"))
+    subprocess.run(["trunk", "build", "--release", "--config", str(ROOT / "frontend/playground/Trunk.toml"), "--dist", str(destination), "--public-url", "./"], cwd=ROOT, env=env, check=True)
+
+
+def build(output, site_url, playground_dist=None):
     output = output.resolve()
     marker = output / ".openwebide-site"
     legacy_marker = output / ".open-webide-site"
@@ -84,6 +95,11 @@ def build(output, site_url):
         raise ValueError(f"Refusing to replace non-site output directory: {output}")
     with tempfile.TemporaryDirectory(prefix="openwebide-docs-") as temporary:
         staging = Path(temporary)
+        if playground_dist is None:
+            playground_dist = staging / "playground"
+            build_playground(playground_dist)
+        if not (playground_dist / "index.html").is_file() or not list(playground_dist.glob("*.wasm")):
+            raise ValueError("The panel playground must be a compiled Rust/WASM bundle")
         content = staging / "content"
         shutil.copytree(ROOT / "docs", content / "docs")
         credits = content / "docs/open-source-software.md"
@@ -92,6 +108,10 @@ def build(output, site_url):
             shutil.copy2(ROOT / name, content / name)
         shutil.copy2(ROOT / "site/index.md", content / "index.md")
         shutil.copytree(ROOT / "site/assets", content / "assets")
+        shutil.copytree(playground_dist, content / "tools/panel-playground")
+        (content / "fonts").mkdir()
+        for font in (ROOT / "frontend/fonts").glob("*.woff2"):
+            shutil.copy2(font, content / "fonts" / font.name)
         # Preserve README image paths without bundling the application itself.
         (content / "frontend/pwa").mkdir(parents=True)
         shutil.copy2(ROOT / "frontend/pwa/favicon.svg", content / "frontend/pwa/favicon.svg")
@@ -134,8 +154,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True, help="Generated output directory (outside the repository)")
     parser.add_argument("--site-url", default="https://openwebide.com/")
+    parser.add_argument("--playground-dist", type=Path, help="Reuse an already compiled playground bundle")
     args = parser.parse_args()
     destination = args.output.resolve()
     if destination == ROOT or ROOT in destination.parents or destination in ROOT.parents:
         parser.error("Use an output directory outside the repository to keep generated files out of source control")
-    build(destination, args.site_url)
+    build(destination, args.site_url, args.playground_dist)

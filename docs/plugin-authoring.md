@@ -3,6 +3,8 @@
 Current nightly hosts execute plugin-owned Rust compiled to WASM on the bridge.
 API 1 supports skills; API 3 adds tools, read-only context hooks and durable events.
 API 4 adds [declarative workspace panels](plugin-panels.md) and scoped view/action handlers.
+The [panel playground](panel-playground.md) previews the production components
+and exports validated documents and Rust SDK examples without running host code.
 The SDK is version 0.1.0, independently of the app. API 2 tool groups are retired.
 First-party Web, Project Memory, Scheduling and Skill Authoring implement their
 behavior through the same public SDK and grants as community plugins.
