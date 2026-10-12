@@ -1,0 +1,115 @@
+{
+  "coreTests": {
+    "passed": 738,
+    "ignored": 1
+  },
+  "strictCoreLint": "passed",
+  "productionBuild": "passed",
+  "fullComposition": [
+    {
+      "mode": "local",
+      "ending": "LF",
+      "windowed": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "CRLF",
+      "windowed": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "LF",
+      "windowed": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "CRLF",
+      "windowed": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    }
+  ],
+  "windowedComposition": [
+    {
+      "mode": "local",
+      "ending": "LF",
+      "windowed": true,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "CRLF",
+      "windowed": true,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "LF",
+      "windowed": true,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "CRLF",
+      "windowed": true,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    }
+  ],
+  "normalizationDiagnostic": {
+    "method": "Median of five batches of 50 calls after five warmups; rustc -O; identical outputs asserted; original helper extracted from HEAD. Concurrent production compilation; isolated native helper only, not browser paint or full-editor memory.",
+    "samples": [
+      {
+        "case": "lf",
+        "bytes": 1800000,
+        "originalMs": 1.4003475,
+        "bulkMs": 0.07341
+      },
+      {
+        "case": "crlf",
+        "bytes": 1900000,
+        "originalMs": 1.45464918,
+        "bulkMs": 1.18951166
+      },
+      {
+        "case": "cr",
+        "bytes": 1800000,
+        "originalMs": 1.47665166,
+        "bulkMs": 1.2945025
+      },
+      {
+        "case": "long-crlf",
+        "bytes": 1700002,
+        "originalMs": 1.366395,
+        "bulkMs": 0.07110334
+      }
+    ]
+  },
+  "remaining": "Initial capacity allocation, full-source normalization latency, native shaping, complete startup and general input/PSS remain unverified or unfinished.",
+  "sourceSha256": "01923aa070fc1b0a5622ab3081be05eaf96e0445c334066476ef07fd373175e3"
+}

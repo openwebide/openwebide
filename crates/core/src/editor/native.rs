@@ -48,8 +48,13 @@ pub fn textarea_value_matches(source: &str, value: &str) -> bool {
 
 pub(super) fn textarea_text(source: &str) -> String {
     let mut text = String::with_capacity(source.len());
-    for (_, ch) in TextareaCharacters::new(source) {
-        text.push(ch);
+    // CR is an ASCII boundary: unchanged UTF-8 spans can be copied intact.
+    // Each CR emits one LF and consumes an immediately following LF.
+    let mut pieces = source.split('\r');
+    text.push_str(pieces.next().unwrap_or_default());
+    for piece in pieces {
+        text.push('\n');
+        text.push_str(piece.strip_prefix('\n').unwrap_or(piece));
     }
     text
 }
@@ -553,6 +558,24 @@ mod tests {
         Document, Edit, TextareaCharacters, native_inserted_text, text_change,
         textarea_value_matches,
     };
+
+    proptest::proptest! {
+        #[test]
+        fn native_normalization_matches_browser_newlines(source in ".*") {
+            let expected = source.replace("\r\n", "\n").replace('\r', "\n");
+            proptest::prop_assert_eq!(super::textarea_text(&source), expected);
+        }
+    }
+
+    #[test]
+    fn native_normalization_preserves_adjacent_endings_and_large_unicode_spans() {
+        for ending in ["", "\n", "\r", "\r\n", "\r\r\n", "\r\n\r", "\n\r\n"] {
+            let span = "文😀e\u{301} ".repeat(100_000);
+            let source = format!("{ending}{span}{ending}{span}{ending}");
+            let expected = source.replace("\r\n", "\n").replace('\r', "\n");
+            assert_eq!(super::textarea_text(&source), expected);
+        }
+    }
 
     #[test]
     fn borrowed_textarea_changes_match_normalized_diff_and_source_offsets() {

@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Normalize native editor newlines by copying unchanged UTF-8 spans instead of decoding and appending each character. Share the implementation across projections and inserted text while preserving CRLF, lone-CR and Unicode behavior.
+
 - Update browser release checks to discover optional memory, skill and delegation tools before calling them, and wait for editor source readiness before testing command-palette capture.
 
 - Run editor browser checks even when the other frontend checks fail, and finish every independently validated editor group before reporting failures. Keep the full test inventory, existing deadlines and failing build gate.

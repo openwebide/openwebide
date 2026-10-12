@@ -237,6 +237,14 @@ remain required.
   [samples](editor-performance/native-value-production.jsonl)). Integrated release
   checks remain pending;
   initial encoding, native input reads, shaping and normalization remain open.
+  Native newline normalization now copies unchanged UTF-8 spans rather than
+  decoding every character, sharing the implementation across projections and
+  inserted text. All 738 core tests, strict core lint, production build and eight
+  full/windowed LF/CRLF composition checks pass in both modes
+  ([receipt](editor-performance/native-normalization-spans.json)). Isolated native
+  helper timings improve, especially for long Unicode spans; concurrent builds
+  and exclusion of browser work prevent a whole-editor latency claim. Initial
+  capacity allocation and full-source normalization remain part of startup work.
   Editable one-finger scrolling now forwards through the
   same browser scroll primitive as wheel input; headless Chrome touch/wheel,
   caret and wrapped-geometry contracts pass in both modes. Chromium-generated
