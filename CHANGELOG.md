@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Build visual ASCII coordinates by word, space and punctuation groups, preserving the complete scalar checkpoint table and removing unused character callbacks from visual-only preparation.
+
 - Batch printable ASCII coordinate construction to reduce long-line edit work while preserving native offsets, grapheme and paint boundaries, word summaries, and CR/LF admission totals.
 - Add a docs-site panel playground using the production Rust/WASM renderer and UI schema. Explore every block, edit and validate JSON, preview light/dark themes and phone/desktop widths, simulate action inputs, approvals and replacement documents, and export valid JSON or a Rust SDK example without executing host capabilities.
 

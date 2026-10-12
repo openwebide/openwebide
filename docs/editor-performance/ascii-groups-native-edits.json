@@ -1,0 +1,239 @@
+{
+  "baseline": "08fae03d",
+  "description": "20 beginning edit/undo pairs per sample, interleaved before/after/after/before binaries; source and UTF-16 midpoint verified outside timing. Same compiler, dependencies and fixture as the previous checkpoint.",
+  "medianMicroseconds": {
+    "ascii": {
+      "before": 154589.5,
+      "after": 107203.5
+    },
+    "mixed": {
+      "before": 469107.0,
+      "after": 447199.5
+    }
+  },
+  "samples": [
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 0,
+      "editUndoPairs": 20,
+      "microseconds": 156842,
+      "phase": "before",
+      "run": 0
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 1,
+      "editUndoPairs": 20,
+      "microseconds": 153998,
+      "phase": "before",
+      "run": 0
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 2,
+      "editUndoPairs": 20,
+      "microseconds": 154332,
+      "phase": "before",
+      "run": 0
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 0,
+      "editUndoPairs": 20,
+      "microseconds": 467398,
+      "phase": "before",
+      "run": 0
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 1,
+      "editUndoPairs": 20,
+      "microseconds": 464142,
+      "phase": "before",
+      "run": 0
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 2,
+      "editUndoPairs": 20,
+      "microseconds": 465681,
+      "phase": "before",
+      "run": 0
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 0,
+      "editUndoPairs": 20,
+      "microseconds": 108681,
+      "phase": "after",
+      "run": 1
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 1,
+      "editUndoPairs": 20,
+      "microseconds": 107000,
+      "phase": "after",
+      "run": 1
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 2,
+      "editUndoPairs": 20,
+      "microseconds": 106970,
+      "phase": "after",
+      "run": 1
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 0,
+      "editUndoPairs": 20,
+      "microseconds": 446075,
+      "phase": "after",
+      "run": 1
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 1,
+      "editUndoPairs": 20,
+      "microseconds": 446693,
+      "phase": "after",
+      "run": 1
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 2,
+      "editUndoPairs": 20,
+      "microseconds": 445787,
+      "phase": "after",
+      "run": 1
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 0,
+      "editUndoPairs": 20,
+      "microseconds": 107864,
+      "phase": "after",
+      "run": 2
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 1,
+      "editUndoPairs": 20,
+      "microseconds": 106445,
+      "phase": "after",
+      "run": 2
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 2,
+      "editUndoPairs": 20,
+      "microseconds": 107407,
+      "phase": "after",
+      "run": 2
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 0,
+      "editUndoPairs": 20,
+      "microseconds": 447706,
+      "phase": "after",
+      "run": 2
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 1,
+      "editUndoPairs": 20,
+      "microseconds": 448855,
+      "phase": "after",
+      "run": 2
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 2,
+      "editUndoPairs": 20,
+      "microseconds": 448903,
+      "phase": "after",
+      "run": 2
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 0,
+      "editUndoPairs": 20,
+      "microseconds": 156321,
+      "phase": "before",
+      "run": 3
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 1,
+      "editUndoPairs": 20,
+      "microseconds": 154839,
+      "phase": "before",
+      "run": 3
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 2,
+      "editUndoPairs": 20,
+      "microseconds": 154340,
+      "phase": "before",
+      "run": 3
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 0,
+      "editUndoPairs": 20,
+      "microseconds": 470816,
+      "phase": "before",
+      "run": 3
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 1,
+      "editUndoPairs": 20,
+      "microseconds": 471044,
+      "phase": "before",
+      "run": 3
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 2,
+      "editUndoPairs": 20,
+      "microseconds": 474474,
+      "phase": "before",
+      "run": 3
+    }
+  ],
+  "binarySha256": {
+    "before": "0aafac8018f810c95062d66b6b92d185c189bb52fb48f32094cf54fa92f74d66",
+    "after": "975588e352af1c7015350f6447deffe79a39c4ce2f285bf4659eb1e3fa9ded17"
+  },
+  "compilerActivity": "No compiler process before or after each invocation.",
+  "benchmarkSource": "use openwebide_core::editor::{Document,Edit,Selection};\nuse std::{hint::black_box,time::Instant};\nfn main() {\n for (kind,unit) in [(\"ascii\",\"words VALUE 123; \"),(\"mixed\",\"\u6587\ud83d\ude00 words \")] {\n  let source=unit.repeat(1024*1024/unit.len());\n  let mut doc=Document::new(source.clone());\n  for _ in 0..5 { doc.apply(vec![Edit::replace(0..0,\"z\")],vec![Selection::caret(1)],None).unwrap();doc.undo(); }\n  for repeat in 0..3 {\n   let start=Instant::now();\n   for _ in 0..20 { doc.apply(vec![Edit::replace(0..0,\"z\")],vec![Selection::caret(1)],None).unwrap();doc.undo();black_box(doc.text()); }\n   let elapsed=start.elapsed().as_micros();\n   assert_eq!(doc.text(),source);\n   let at=source.floor_char_boundary(source.len()/2);\n   assert_eq!(doc.byte_to_textarea(at).unwrap(),source[..at].encode_utf16().count());\n   println!(\"{{\\\"kind\\\":\\\"{kind}\\\",\\\"bytes\\\":{},\\\"repeat\\\":{repeat},\\\"editUndoPairs\\\":20,\\\"microseconds\\\":{elapsed}}}\",source.len());\n  }\n }\n}\n",
+  "limits": "Native document cost only, not browser viewport/startup/PSS or physical input performance."
+}

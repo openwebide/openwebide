@@ -65,8 +65,9 @@ impl<'a> VisualLinePreparation<'a> {
     /// Budget counts bounded source/context scan units, including suspensions
     /// within large graphemes. No partial index authorizes coordinates or paint.
     pub fn advance(&mut self, budget: usize) -> bool {
-        self.advance_with_character_scan(budget, |_, _| {})
+        self.advance_with_source_scan(budget, |_, _| {})
     }
+    #[cfg(test)]
     pub(super) fn advance_with_character_scan(
         &mut self,
         budget: usize,
@@ -97,17 +98,16 @@ impl<'a> VisualLinePreparation<'a> {
             self.scan.advance_spans(|step| {
                 visit(step.consumed.clone(), step.ascii);
                 if step.ascii {
-                    for byte in step.consumed {
-                        let ch = body.as_bytes()[byte];
-                        let kind = if ch == b' ' {
-                            0
-                        } else if ch.is_ascii_alphanumeric() || ch == b'_' {
-                            1
-                        } else {
-                            2
-                        };
-                        coordinates.end.native += 1;
-                        record_boundary(coordinates, cluster, word_run, byte + 1, kind);
+                    let mut start = step.consumed.start;
+                    while start < step.consumed.end {
+                        let bytes = &body.as_bytes()[start..step.consumed.end];
+                        let kind = ascii_word_kind(bytes[0]);
+                        let length = bytes
+                            .iter()
+                            .position(|byte| ascii_word_kind(*byte) != kind)
+                            .unwrap_or(bytes.len());
+                        record_ascii(coordinates, cluster, word_run, length, kind);
+                        start += length;
                     }
                     *whitespace = true;
                     *word = false;
@@ -163,21 +163,7 @@ fn record_boundary(
     end: usize,
     kind: u8,
 ) {
-    if word_run.as_ref().is_some_and(|run| run.kind == kind) {
-        word_run.as_mut().unwrap().end = end;
-    } else {
-        if let Some(run) = word_run
-            .take()
-            .filter(|run| run.end - run.start >= STEP_BYTES)
-        {
-            coordinates.word_runs.push(run);
-        }
-        *word_run = Some(WordRun {
-            start: cluster.byte,
-            end,
-            kind,
-        });
-    }
+    record_word(coordinates, word_run, cluster.byte, end, kind);
     if cluster.byte - coordinates.points.last().unwrap().byte >= STEP_BYTES {
         coordinates.points.push(*cluster);
     }
@@ -192,6 +178,65 @@ fn record_boundary(
         byte: end,
         ..coordinates.end
     };
+}
+
+fn ascii_word_kind(byte: u8) -> u8 {
+    if byte == b' ' {
+        0
+    } else if byte.is_ascii_alphanumeric() || byte == b'_' {
+        1
+    } else {
+        2
+    }
+}
+
+fn record_ascii(
+    coordinates: &mut Coordinates,
+    cluster: &mut Position,
+    word_run: &mut Option<WordRun>,
+    length: usize,
+    kind: u8,
+) {
+    let end = cluster.byte + length;
+    record_word(coordinates, word_run, cluster.byte, end, kind);
+    let mut byte = cluster
+        .byte
+        .max(coordinates.points.last().unwrap().byte + STEP_BYTES);
+    while byte < end {
+        let offset = byte - cluster.byte;
+        coordinates.points.push(Position {
+            byte,
+            native: cluster.native + offset,
+            glyph: cluster.glyph + offset,
+        });
+        byte += STEP_BYTES;
+    }
+    coordinates.end.native += length;
+    coordinates.end.glyph += length;
+    *cluster = Position {
+        byte: end,
+        ..coordinates.end
+    };
+}
+
+fn record_word(
+    coordinates: &mut Coordinates,
+    word_run: &mut Option<WordRun>,
+    start: usize,
+    end: usize,
+    kind: u8,
+) {
+    if word_run.as_ref().is_some_and(|run| run.kind == kind) {
+        word_run.as_mut().unwrap().end = end;
+    } else {
+        if let Some(run) = word_run
+            .take()
+            .filter(|run| run.end - run.start >= STEP_BYTES)
+        {
+            coordinates.word_runs.push(run);
+        }
+        *word_run = Some(WordRun { start, end, kind });
+    }
 }
 
 /// Immutable coordinates for one exact logical-line body. Callers retain the
@@ -284,16 +329,8 @@ impl VisualLineIndex {
         Arc::ptr_eq(&self.0, &other.0)
     }
     pub fn new(body: &str) -> Option<Self> {
-        Self::with_character_scan(body, |_, _| {})
-    }
-    /// Share the exact character traversal with source-coordinate construction.
-    /// Grapheme checkpoints and original plain paint boundaries stay unchanged.
-    pub(super) fn with_character_scan(
-        body: &str,
-        mut visit: impl FnMut(usize, char),
-    ) -> Option<Self> {
         let mut preparation = VisualLinePreparation::new(body)?;
-        preparation.advance_with_character_scan(usize::MAX, &mut visit);
+        preparation.advance(usize::MAX);
         preparation.finish()
     }
     /// Exact cluster checkpoints for a styled geometry adapter; omit EOF.
@@ -525,6 +562,61 @@ impl VisualLineIndex {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn ascii_groups_keep_the_complete_scalar_coordinate_table() {
+        for body in [
+            "words _VALUE123 ! ".repeat(5000),
+            "x".repeat(1025),
+            "!x".repeat(5000),
+            format!("{}a\u{301} {}", "x".repeat(511), "y".repeat(1025)),
+            "ASCII 文😀e\u{301}\t\r words ".repeat(1000),
+            format!("{}ab {}", "\u{0600}".repeat(600), "x".repeat(2000)),
+        ] {
+            let mut reference = Coordinates {
+                points: vec![Position::default()],
+                long_clusters: Vec::new(),
+                end: Position::default(),
+                horizontal: body.len() > super::super::MAX_MEASURE_BYTES,
+                tabs: false,
+                word_runs: Vec::new(),
+            };
+            let mut cluster = Position::default();
+            let mut word_run = None;
+            for (byte, text) in body.grapheme_indices(true) {
+                for ch in text.chars() {
+                    reference.end.native += ch.len_utf16();
+                    reference.tabs |= ch == '\t';
+                    reference.horizontal &= super::super::viewport::horizontal_paint_character(ch);
+                }
+                let kind = if text.chars().all(char::is_whitespace) {
+                    0
+                } else if text.chars().any(|ch| ch.is_alphanumeric() || ch == '_') {
+                    1
+                } else {
+                    2
+                };
+                record_boundary(
+                    &mut reference,
+                    &mut cluster,
+                    &mut word_run,
+                    byte + text.len(),
+                    kind,
+                );
+            }
+            if let Some(run) = word_run.filter(|run| run.end - run.start >= STEP_BYTES) {
+                reference.word_runs.push(run);
+            }
+            reference.end.byte = body.len();
+            if reference.points.last().unwrap().byte != body.len() {
+                reference.points.push(reference.end);
+            }
+            for budget in [1, 8, 64] {
+                let mut preparation = VisualLinePreparation::new(&body).unwrap();
+                while !preparation.advance(budget) {}
+                assert_eq!(*preparation.finish().unwrap().0, reference);
+            }
+        }
+    }
     #[test]
     fn word_run_summaries_are_sparse_cooperative_and_complete_only() {
         for body in [

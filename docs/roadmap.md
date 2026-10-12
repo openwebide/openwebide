@@ -277,6 +277,17 @@ combined-source CI result.
   improvement ([summary](editor-performance/ascii-spans-production-summary.json)).
   Complete changed-row traversal remains synchronous; incremental row reuse and
   the broader responsiveness/memory gates remain open.
+  Visual ASCII coordinates now update by word/space/punctuation groups and
+  visual-only preparation avoids an unused character traversal. A complete-table
+  regression compares every field with full Unicode grapheme traversal at
+  budgets 1/8/64. All 767 core tests, 48 WASM library checks and six local/remote
+  geometry/fallback contracts pass with strict native/WASM lint
+  ([receipt](editor-performance/ascii-groups-browser.json)). Compiler-checked,
+  interleaved native samples for 20 edit/undo pairs fall from 155 to 107 ms for
+  ASCII and 469 to 447 ms for mixed Unicode
+  ([benchmark](editor-performance/ascii-groups-native-edits.json)). Production
+  input/viewport measurements and the full release checks still need repeating;
+  this does not close the synchronous traversal or performance gates.
   Isolated native timings improve for ASCII and mixed text
   ([receipt](editor-performance/ascii-grapheme-scan.json)); whole-editor latency,
   full-row edit rebuilding and startup memory remain open.
