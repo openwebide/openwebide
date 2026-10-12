@@ -539,6 +539,17 @@ remain required.
 
 **Remaining completion gates**:
 
+Hosted run `38255429450` attempts every compiled editor partition and reports three
+failed browser runs: cached horizontal readiness, wrapped replay renderer
+responsiveness, and 15 isolated library tests without an initialized Leptos
+executor. The recovery checkpoint guards the reproduced disposed-cache effects;
+isolated editor library fixtures now initialize the shared runtime explicitly.
+All 30 isolated library contracts pass with the official runner (two CPUs/four
+GiB), alongside strict WASM lint
+([receipt](editor-performance/isolated-library-runtime.json)). Hosted verification
+of the fixture repair and the remaining renderer failures is pending.
+Keep the full inventory and existing contract/browser deadlines.
+
 - [ ] **Responsiveness and memory:** remove measured input, cold-paint, wrapped
   geometry and process-memory stalls. Repeat admitted byte, row-count and long-line
   boundary workloads in both modes, wrapping on/off, beginning edits and startup/

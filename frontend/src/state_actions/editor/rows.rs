@@ -1624,6 +1624,7 @@ mod tests {
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn styled_run_preparation_yields_preserves_boundaries_and_rejects_stale_owners() {
+        crate::testing::initialize_runtime();
         use std::{
             future::Future,
             task::{Context, Poll, Waker},
@@ -1731,6 +1732,7 @@ mod tests {
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn uncapped_paragraph_runs_yield_without_expanding_the_retained_cache() {
+        crate::testing::initialize_runtime();
         use std::{
             future::Future,
             task::{Context, Poll, Waker},
@@ -1815,6 +1817,7 @@ mod tests {
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn paragraph_anchor_setup_yields_without_rescanning_and_rejects_stale_owners() {
+        crate::testing::initialize_runtime();
         use std::{
             future::Future,
             task::{Context, Poll, Waker},
@@ -1901,6 +1904,7 @@ mod tests {
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     fn unavailable_styled_run_tables_are_scoped_bounded_and_not_rescanned() {
+        crate::testing::initialize_runtime();
         Owner::new().with(|| {
             let workspace = crate::state::workspace::WorkspaceState::new();
             workspace.active_project.set(Some(1));
@@ -2150,6 +2154,7 @@ mod tests {
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     fn paragraph_prefix_stops_before_a_changed_token_style_or_span_topology() {
+        crate::testing::initialize_runtime();
         let plain = Token {
             kind: TokenKind::Plain,
             text: std::sync::Arc::new("let value = ".into()),
@@ -2193,6 +2198,7 @@ mod tests {
     }
     #[wasm_bindgen_test::wasm_bindgen_test]
     fn paragraph_prefix_rejects_changed_guides_and_line_ending_paint() {
+        crate::testing::initialize_runtime();
         let old = PaintRow {
             tokens: RowPaintTokens::prepared(&[], false),
             plain: Some("same words"),

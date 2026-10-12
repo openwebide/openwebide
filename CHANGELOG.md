@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Initialize the Leptos runtime explicitly in isolated editor library fixtures, so independently selected browser tests can create effects without depending on an earlier UI mount.
+
 - Default host administration SSH connections to the deployment host using an SSH username, retaining address and port overrides under advanced settings and preserving existing saved destinations. Configure host gateway access in Compose and Quadlet deployments.
 
 - Validate recovered editor documents in bounded source and fold batches before publishing them. Reuse an immutable snapshot validation proof during hydration, while retaining project, account, read and source guards and the existing recovery limits.

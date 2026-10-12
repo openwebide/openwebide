@@ -2260,15 +2260,7 @@ mod source_tests {
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn released_workspace_cannot_run_queued_native_cache_effects() {
-        use wasm_bindgen::JsCast;
-        let root = web_sys::window()
-            .unwrap()
-            .document()
-            .unwrap()
-            .create_element("div")
-            .unwrap()
-            .unchecked_into();
-        let _mount = leptos::mount::mount_to(root, || view! { <span/> });
+        crate::testing::initialize_runtime();
         let workspace_owner = Owner::new();
         let workspace = workspace_owner.with(|| {
             let workspace = crate::state::workspace::WorkspaceState::new();
@@ -2295,6 +2287,7 @@ mod source_tests {
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     fn rule_queries_share_detection_and_refresh_source_defaults_overrides_and_file_ownership() {
+        crate::testing::initialize_runtime();
         Owner::new().with(|| {
             let workspace = crate::state::workspace::WorkspaceState::new();
             let settings = crate::state::settings::SettingsState::new(
@@ -2341,6 +2334,7 @@ mod source_tests {
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     fn publication_shares_document_buffer_and_project_source_and_preserves_retained_views() {
+        crate::testing::initialize_runtime();
         Owner::new().with(|| {
             let workspace = crate::state::workspace::WorkspaceState::new();
             workspace.active_project.set(Some(1));

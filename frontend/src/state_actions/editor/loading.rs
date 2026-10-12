@@ -284,6 +284,7 @@ mod tests {
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn recovery_validation_yields_and_cancels_before_publishing_a_snapshot_proof() {
+        crate::testing::initialize_runtime();
         use openwebide_core::{
             WorkspaceMode,
             editor::{
@@ -332,6 +333,7 @@ mod tests {
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn recovery_hydration_yields_and_publishes_complete_documents_only() {
+        crate::testing::initialize_runtime();
         use openwebide_core::{
             Project, WorkspaceMode,
             editor::{
@@ -467,6 +469,7 @@ mod tests {
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn incoming_documents_yield_and_preserve_drafts_and_ownership() {
+        crate::testing::initialize_runtime();
         for phase in ["admission", "index"] {
             let incoming = if phase == "admission" {
                 "文😀\r\n".repeat(12_000)
@@ -557,6 +560,7 @@ mod tests {
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn unchanged_reads_retain_selection_and_undo_history() {
+        crate::testing::initialize_runtime();
         use openwebide_core::editor::{Document, Edit, Selection};
         let owner = Owner::new();
         let (workspace, actions) = owner.with(|| {
@@ -596,6 +600,7 @@ mod tests {
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn oversized_reads_keep_the_read_only_source_without_document_indexes() {
+        crate::testing::initialize_runtime();
         let owner = Owner::new();
         let (workspace, actions) = owner.with(|| {
             let workspace = crate::state::workspace::WorkspaceState::new();

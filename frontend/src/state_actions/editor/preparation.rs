@@ -853,6 +853,7 @@ mod tests {
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn request_publication_yields_and_rejects_replaced_owners_in_both_modes() {
+        crate::testing::initialize_runtime();
         use crate::state::projects::ProjectsState;
         use openwebide_core::{Project, WorkspaceMode, highlight::Language};
         for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
@@ -989,11 +990,13 @@ mod tests {
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn token_reception_yields_and_rejects_replaced_owners_in_both_modes() {
+        crate::testing::initialize_runtime();
         reconstruction_rejects_replaced_owners_in_both_modes(false).await;
     }
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn structure_reception_yields_and_rejects_replaced_owners_in_both_modes() {
+        crate::testing::initialize_runtime();
         reconstruction_rejects_replaced_owners_in_both_modes(true).await;
     }
 
@@ -1082,6 +1085,7 @@ mod tests {
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     fn syntax_requests_share_source_across_pending_queries_and_tab_settings() {
+        crate::testing::initialize_runtime();
         Owner::new().with(|| {
             let workspace = WorkspaceState::new();
             workspace.active_project.set(Some(1));
@@ -1128,6 +1132,7 @@ mod tests {
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     fn syntax_source_cache_rejects_content_and_ownership_changes_and_reset() {
+        crate::testing::initialize_runtime();
         Owner::new().with(|| {
             let auth = AuthState::new();
             provide_context(auth);

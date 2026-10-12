@@ -4088,6 +4088,7 @@ mod tests {
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn main_thread_embedded_parsing_yields_at_input_budget_before_cancellation() {
+        crate::testing::initialize_runtime();
         use crate::editor_worker::{CooperativeClient, SyntaxTransport, WorkerError};
         use openwebide_core::{editor::SyntaxRequest, highlight::Language};
         use std::{
@@ -4155,6 +4156,7 @@ mod tests {
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn in_process_syntax_keeps_shared_source_and_yield_cancellation() {
+        crate::testing::initialize_runtime();
         use crate::editor_worker::{CooperativeClient, SyntaxTransport, WorkerError};
         use openwebide_core::{editor::SyntaxPreparations, highlight::Language};
         use std::future::Future;
@@ -4243,6 +4245,7 @@ mod tests {
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn main_thread_embedded_parsing_completes_across_input_budget_yields() {
+        crate::testing::initialize_runtime();
         use crate::editor_worker::CooperativeClient;
         use openwebide_core::{
             editor::{SyntaxPreparations, SyntaxRequest},
@@ -4305,6 +4308,7 @@ mod tests {
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn cooperative_syntax_transport_stops_in_flight_and_rejects_new_requests() {
+        crate::testing::initialize_runtime();
         use crate::editor_worker::{CooperativeClient, SyntaxTransport, WorkerError};
         let client = CooperativeClient::default();
         let source = "fn f() { call(); }\n".repeat(256);
@@ -4332,6 +4336,7 @@ mod tests {
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn deferred_caret_reveal_retries_once_and_rejects_new_intent() {
+        crate::testing::initialize_runtime();
         use super::*;
         use openwebide_core::editor::Selection;
         use std::sync::{
@@ -4454,6 +4459,7 @@ mod tests {
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     fn find_uses_utf16_offsets_and_logical_lines() {
+        crate::testing::initialize_runtime();
         assert_eq!(
             find_matches("😀 café\n😀 café", "café"),
             vec![(3, 7, 1), (11, 15, 2)]
@@ -4468,6 +4474,7 @@ mod tests {
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     fn cropped_text_keeps_the_complete_paints_shaping_boundaries() {
+        crate::testing::initialize_runtime();
         let source = format!(
             "{}e{} tail",
             "文😀e\u{301} <&> ".repeat(200),
