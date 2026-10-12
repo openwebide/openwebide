@@ -13,7 +13,8 @@ permissions:
 
 concurrency:
   group: pages-${{ github.ref }}
-  cancel-in-progress: true
+  # Finish compilation and cache it; newer pushes replace only the pending build.
+  cancel-in-progress: false
 
 jobs:
   build:
