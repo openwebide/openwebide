@@ -321,6 +321,12 @@ function forward_editor_scroll_delta(input, x, y) {
     sync_editor_scroll(input, false);
 }
 const editor_touch_gestures = new WeakMap();
+export function editor_native_value_matches(input, value) {
+    return input.value === value;
+}
+export function set_editor_native_value(input, value) {
+    input.value = value;
+}
 export function forward_editor_touch(input, event) {
     if (event.type === 'touchend' || event.type === 'touchcancel' || event.touches.length !== 1) {
         editor_touch_gestures.delete(input);
@@ -465,6 +471,11 @@ extern "C" {
     pub fn sync_editor_scroll(input: &web_sys::HtmlTextAreaElement, from_native: bool) -> bool;
     pub fn forward_editor_wheel(input: &web_sys::HtmlTextAreaElement, event: &web_sys::WheelEvent);
     pub fn forward_editor_touch(input: &web_sys::HtmlTextAreaElement, event: &web_sys::TouchEvent);
+    pub fn editor_native_value_matches(
+        input: &web_sys::HtmlTextAreaElement,
+        value: &js_sys::JsString,
+    ) -> bool;
+    pub fn set_editor_native_value(input: &web_sys::HtmlTextAreaElement, value: &js_sys::JsString);
     pub fn editor_font_identity(input: &web_sys::Element) -> String;
     #[wasm_bindgen(catch)]
     pub async fn settle_editor_font(

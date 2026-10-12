@@ -173,7 +173,21 @@ prepared only one token row per unit. Small rows now share the existing 64-recor
   broader retained decoration ownership remain unfinished.
 - [ ] **Cold startup and native input:** bound remaining complete-source shaping,
   projection/native normalization, remaining word/context traversal and synchronous
-  selection publication. Editable one-finger scrolling now forwards through the
+  selection publication. Native value synchronization now retains a browser string
+  for the exact immutable normalized text owner and compares the actual textarea
+  value in the DOM adapter. Source/file/read/project/account changes release cached
+  owners. All 730 core tests, thirteen local/remote browser contracts, four worker
+  startup tests, strict native/WASM lint and both full production worker inventories
+  pass. Eight full/windowed LF/CRLF composition checks and eight trusted touch
+  checks preserve text, history and selection
+  ([receipt](editor-performance/native-value-browser.json)). Sixteen serial
+  baseline/candidate observations preserve complete source; MiB input remains
+  145–175 ms with no general latency/PSS improvement
+  ([comparison](editor-performance/native-value-production-summary.json),
+  [samples](editor-performance/native-value-production.jsonl)). Integrated release
+  checks remain pending;
+  initial encoding, native input reads, shaping and normalization remain open.
+  Editable one-finger scrolling now forwards through the
   same browser scroll primitive as wheel input; headless Chrome touch/wheel,
   caret and wrapped-geometry contracts pass in both modes. Chromium-generated
   touch gestures, enabled before startup or after desktop preparation, also

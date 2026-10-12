@@ -22,8 +22,56 @@ pub struct EditorNativeCommit {
 
 const CONTEXT_HEADROOM_BYTES: usize = 4 * 1024;
 
+pub(super) struct EditorNativeText {
+    pub scope: super::EditorPresentationScope,
+    pub source: u64,
+    text: std::sync::Arc<String>,
+    value: js_sys::JsString,
+}
+
 pub(super) fn same_projection(first: &FoldProjection, second: &FoldProjection) -> bool {
     first.shares_text_version(second)
+}
+
+impl EditorActions {
+    /// Reuse a browser string only for the exact immutable native text owner.
+    /// The DOM adapter still compares the actual value, including composition.
+    pub fn native_text_value(self, projection: &FoldProjection) -> js_sys::JsString {
+        let Some(scope) = self.presentation_scope() else {
+            self.native_text.set_value(None);
+            return js_sys::JsString::from(projection.textarea_text());
+        };
+        let source = self.workspace.editor_source_revision.get_untracked();
+        self.native_text.update_value(|cached| {
+            if !cached.as_ref().is_some_and(|cached| {
+                cached.scope == scope
+                    && cached.source == source
+                    && std::sync::Arc::ptr_eq(&cached.text, projection.textarea_text_snapshot())
+            }) {
+                #[cfg(feature = "test-support")]
+                self.native_text_encodings.update_value(|count| *count += 1);
+                *cached = Some(EditorNativeText {
+                    scope,
+                    source,
+                    text: projection.textarea_text_snapshot().clone(),
+                    value: js_sys::JsString::from(projection.textarea_text()),
+                });
+            }
+        });
+        self.native_text
+            .with_value(|cached| cached.as_ref().unwrap().value.clone())
+    }
+
+    #[cfg(feature = "test-support")]
+    pub fn native_text_encoding_count(self) -> usize {
+        self.native_text_encodings.get_value()
+    }
+
+    #[cfg(feature = "test-support")]
+    pub fn cached_native_text_bytes(self) -> usize {
+        self.native_text
+            .with_value(|cached| cached.as_ref().map_or(0, |cached| cached.text.len()))
+    }
 }
 
 impl EditorNativeContext {

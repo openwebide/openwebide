@@ -377,13 +377,14 @@ pub(super) fn render_editor_selection(
     if let Some(projection) = actions.input_projection()
         && let Ok(visible) = projection.input_selection(selection)
     {
-        let changed = textarea.value() != projection.textarea_text();
+        let value = actions.native_text_value(&projection);
+        let changed = !crate::viewport::editor_native_value_matches(textarea, &value);
         let scroll = (
             crate::viewport::editor_scroll(textarea).scroll_top(),
             crate::viewport::editor_scroll(textarea).scroll_left(),
         );
         if changed {
-            textarea.set_value(projection.text());
+            crate::viewport::set_editor_native_value(textarea, &value);
         }
         if changed || !native {
             restore_editor_selection(textarea, &projection, visible);
@@ -3343,9 +3344,9 @@ pub fn Editor(
             );
         }
         let current_projection = editor_actions.input_projection().unwrap_or(full_projection);
-        let value = current_projection.textarea_text();
+        let value = editor_actions.native_text_value(&current_projection);
         // FoldProjection already owns the textarea-normalized value.
-        let changed = el.value() != value;
+        let changed = !crate::viewport::editor_native_value_matches(&el, &value);
         if mounted || changed {
             let scroll = if mounted {
                 editor_actions.scroll()
@@ -3356,7 +3357,7 @@ pub fn Editor(
                 }
             };
             if changed {
-                el.set_value(value);
+                crate::viewport::set_editor_native_value(&el, &value);
             }
             if let Some(selection) = editor_actions
                 .current_selection()

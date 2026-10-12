@@ -23561,3 +23561,77 @@ async fn newline_dense_small_files_use_row_bounded_native_contexts_in_both_modes
         }
     }
 }
+
+#[wasm_bindgen_test]
+async fn native_text_reuse_preserves_dom_changes_and_releases_stale_scopes_in_both_modes() {
+    use openwebide_core::{WorkspaceMode, editor::Selection};
+    use openwebide_frontend::{state_actions::editor::EditorActions, viewport};
+    use std::{cell::Cell, rc::Rc};
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        for invalidation in ["account", "file", "read", "project", "source"] {
+            let slot = Rc::new(Cell::new(None::<EditorActions>));
+            let captured = slot.clone();
+            let mounted = mount_test(move |state| {
+                state.seed_project();
+                state
+                    .projects
+                    .projects
+                    .update(|projects| projects[0].mode = mode);
+                state
+                    .workspace
+                    .open_file
+                    .set(Some("native-value.txt".into()));
+                state.workspace.content.set("文😀\r\nnext".into());
+                captured.set(Some(EditorActions::new(state.workspace)));
+                view! { <div/> }
+            });
+            let actions = slot.get().unwrap();
+            actions.prepare_edit(Selection::caret(0)).unwrap();
+            let projection = actions.input_projection().unwrap();
+            let input = document()
+                .create_element("textarea")
+                .unwrap()
+                .dyn_into::<web_sys::HtmlTextAreaElement>()
+                .unwrap();
+            let value = actions.native_text_value(&projection);
+            assert_eq!(value.as_string().unwrap(), "文😀\nnext");
+            viewport::set_editor_native_value(&input, &value);
+            assert!(viewport::editor_native_value_matches(&input, &value));
+            assert_eq!(actions.native_text_encoding_count(), 1);
+            for _ in 0..20 {
+                let again = actions.native_text_value(&projection.clone());
+                assert!(viewport::editor_native_value_matches(&input, &again));
+            }
+            assert_eq!(actions.native_text_encoding_count(), 1);
+            // A native composition or unsupported edit must still be observed.
+            input.set_value("temporary composition 😀");
+            assert!(!viewport::editor_native_value_matches(
+                &input,
+                &actions.native_text_value(&projection)
+            ));
+            assert_eq!(input.value(), "temporary composition 😀");
+            assert_eq!(actions.native_text_encoding_count(), 1);
+            assert!(actions.cached_native_text_bytes() > 0);
+            settle().await;
+            match invalidation {
+                "account" => mounted.state.auth.generation.update(|value| *value += 1),
+                "file" => mounted.state.workspace.open_file.set(None),
+                "read" => mounted
+                    .state
+                    .workspace
+                    .editor_read_revision
+                    .update(|value| *value += 1),
+                "project" => mounted.state.workspace.active_project.set(None),
+                _ => {
+                    actions.insert_native_text("!", 1.0).unwrap();
+                }
+            }
+            settle().await;
+            assert_eq!(
+                actions.cached_native_text_bytes(),
+                0,
+                "{mode:?}: {invalidation}"
+            );
+        }
+    }
+}

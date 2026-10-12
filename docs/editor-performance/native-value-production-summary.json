@@ -1,0 +1,92 @@
+{
+  "observations": 16,
+  "completeSourceAndCaretVerified": true,
+  "limitations": [
+    "Serial comparison, not interleaved; two samples per case/mode/variant.",
+    "No general latency or PSS gain established.",
+    "Local fixtures recover source without native folder permission.",
+    "Initial encoding, native input reads, normalization and shaping remain unfinished."
+  ],
+  "comparisons": [
+    {
+      "case": "small",
+      "mode": "local",
+      "baseline": {
+        "inputViewportPaintMs": 13.649999998509884,
+        "inputSyntaxReadyMs": 45.849999994039536,
+        "coldSyntaxReadyMs": 1213.9999999925494,
+        "wasmCommittedBytes": 23658496,
+        "afterInputWasmCommittedBytes": 24018944,
+        "peakChromePssKiB": 629401
+      },
+      "candidate": {
+        "inputViewportPaintMs": 13.99999999254942,
+        "inputSyntaxReadyMs": 45.19999999552965,
+        "coldSyntaxReadyMs": 1278.2000000029802,
+        "wasmCommittedBytes": 23658496,
+        "afterInputWasmCommittedBytes": 24117248,
+        "peakChromePssKiB": 636149.5
+      }
+    },
+    {
+      "case": "small",
+      "mode": "remote",
+      "baseline": {
+        "inputViewportPaintMs": 12.200000002980232,
+        "inputSyntaxReadyMs": 37.94999999552965,
+        "coldSyntaxReadyMs": 1165.2500000074506,
+        "wasmCommittedBytes": 23724032,
+        "afterInputWasmCommittedBytes": 24084480,
+        "peakChromePssKiB": 599626
+      },
+      "candidate": {
+        "inputViewportPaintMs": 15.700000002980232,
+        "inputSyntaxReadyMs": 49.55000000447035,
+        "coldSyntaxReadyMs": 1291.5000000074506,
+        "wasmCommittedBytes": 23724032,
+        "afterInputWasmCommittedBytes": 24182784,
+        "peakChromePssKiB": 621433.5
+      }
+    },
+    {
+      "case": "styled-long-line",
+      "mode": "local",
+      "baseline": {
+        "inputViewportPaintMs": 145.39999999850988,
+        "inputSyntaxReadyMs": 145.39999999850988,
+        "coldSyntaxReadyMs": 1638.3500000014901,
+        "wasmCommittedBytes": 31195136,
+        "afterInputWasmCommittedBytes": 39845888,
+        "peakChromePssKiB": 703278
+      },
+      "candidate": {
+        "inputViewportPaintMs": 156.10000000149012,
+        "inputSyntaxReadyMs": 156.10000000149012,
+        "coldSyntaxReadyMs": 2012.75,
+        "wasmCommittedBytes": 31162368,
+        "afterInputWasmCommittedBytes": 40337408,
+        "peakChromePssKiB": 664609
+      }
+    },
+    {
+      "case": "styled-long-line",
+      "mode": "remote",
+      "baseline": {
+        "inputViewportPaintMs": 165.40000000596046,
+        "inputSyntaxReadyMs": 165.40000000596046,
+        "coldSyntaxReadyMs": 2992.60000000149,
+        "wasmCommittedBytes": 31817728,
+        "afterInputWasmCommittedBytes": 40370176,
+        "peakChromePssKiB": 702695
+      },
+      "candidate": {
+        "inputViewportPaintMs": 174.75,
+        "inputSyntaxReadyMs": 174.79999999701977,
+        "coldSyntaxReadyMs": 1719.1499999910593,
+        "wasmCommittedBytes": 31096832,
+        "afterInputWasmCommittedBytes": 40337408,
+        "peakChromePssKiB": 699580
+      }
+    }
+  ]
+}

@@ -197,6 +197,10 @@ impl FoldProjection {
     pub fn textarea_text(&self) -> &str {
         &self.textarea_text
     }
+    /// Immutable normalized text owner for adapters retaining a native value.
+    pub fn textarea_text_snapshot(&self) -> &Arc<String> {
+        &self.textarea_text
+    }
     /// The native offsets in a context are local; this is its offset in the
     /// complete projected input. Source offsets always remain document offsets.
     pub fn textarea_origin(&self) -> usize {

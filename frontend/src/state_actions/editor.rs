@@ -118,6 +118,9 @@ pub struct EditorActions {
     native_binding: RwSignal<Option<EditorNativeContext>>,
     native_binding_generation: StoredValue<u64>,
     input_clock: StoredValue<std::rc::Rc<dyn Fn() -> f64>, LocalStorage>,
+    native_text: StoredValue<Option<input::EditorNativeText>, LocalStorage>,
+    #[cfg(feature = "test-support")]
+    native_text_encodings: StoredValue<usize>,
 }
 
 impl EditorActions {
@@ -147,7 +150,7 @@ impl EditorActions {
     ) -> Self {
         let preferences = use_context::<crate::state::settings::SettingsState>();
         let capacity_documents = ArcRwSignal::from(workspace.editor_documents);
-        Self {
+        let actions = Self {
             workspace,
             auth: use_context::<crate::state::auth::AuthState>(),
             preferences,
@@ -178,7 +181,22 @@ impl EditorActions {
             native_binding: workspace.editor_native_binding,
             native_binding_generation: workspace.editor_native_generation,
             input_clock: StoredValue::new_local(input_clock),
-        }
+            native_text: StoredValue::new_local(None),
+            #[cfg(feature = "test-support")]
+            native_text_encodings: StoredValue::new(0),
+        };
+        Effect::new(move |_| {
+            let scope = actions.presentation_scope();
+            let source = actions.workspace.editor_source_revision.get();
+            actions.native_text.update_value(|cached| {
+                if cached.as_ref().is_some_and(|cached| {
+                    Some(&cached.scope) != scope.as_ref() || cached.source != source
+                }) {
+                    *cached = None;
+                }
+            });
+        });
+        actions
     }
 
     pub fn rules(self) -> openwebide_core::editor::EditorRules {
