@@ -733,7 +733,10 @@ combined-source CI result.
   tests, 52 WASM library checks and 45 recovery/fold browser contracts pass,
   with strict core/WASM/WASI lint
   ([receipt](editor-performance/recovery-wire-decoding-browser.json)).
-  Production verification and final integrated CI remain pending.
+  The full Spin build and five production recovery checks also pass: real
+  edits, autosave, restart and reload/new-window restoration in both modes
+  ([receipt](editor-performance/recovery-wire-production.json)). Physical
+  folder/PWA/IME verification and final integrated CI remain pending.
 
 **Remaining completion gates**:
 

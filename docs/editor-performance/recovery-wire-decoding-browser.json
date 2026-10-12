@@ -138,5 +138,5 @@
     "libraryStartSuppressed": false,
     "testModuleRoute": "/tests.js"
   },
-  "limits": "Complete JSON parsing, response buffers and initial allocation remain synchronous. Capture, final equality, serialization and physical-device gates remain open. Production fixture and final integrated CI are pending."
+  "limits": "Complete JSON parsing, response buffers and initial allocation remain synchronous. Capture, final equality, serialization and physical-device gates remain open. Production fixture passes separately in recovery-wire-production.json; final integrated CI remains pending."
 }

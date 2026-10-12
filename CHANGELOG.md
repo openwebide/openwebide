@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Verify production edits, autosave, restart and reload/new-window recovery after bounded snapshot decoding in both workspace modes.
+
 - Decode recovered editor sources in bounded base64 and UTF-8 steps, borrowing unescaped encoded fields from the response. Reject account changes between batches and publish only complete validated records. Storage and browser loading share the same decoder.
 
 - Verify integrated hosted release checks after cooperative disk decoding and recovery comparisons, including 220 editor checks, both font matrices and nightly publication.

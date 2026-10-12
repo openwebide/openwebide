@@ -1,0 +1,19 @@
+{
+  "implementationCommit": "19ec840319f1bc66d403cc1f6f6a8c1547e14b26",
+  "build": "NO_COLOR=true spin build passed; working source was committed as 19ec8403 during the build.",
+  "artifactsSha256": {
+    "backend": "fe19b658dece6746699a49511a47fcc079fe0909c9ea5542e63949b50639f808",
+    "frontend": "c5df7f7947c1fd5cf83114b92f1f3632861ee1090cabef10d7d362ea831a488b"
+  },
+  "distWasmSha256": {
+    "openwebide-frontend-e3bc1eb5c01ce544_bg.wasm": "1fe4e3dbb584c31a24679695aad4f045468ebe5137349eb383f3d72bec4701c8"
+  },
+  "productionChecks": [
+    "PASS: both modes, UTF-8/CRLF, selected/hidden tabs, validation and stale saves",
+    "PASS: authenticated recovery after actual Spin restart with the same SQLite state",
+    "PASS: close-all tombstones survive restart and reject stale-window resurrection",
+    "PASS: local actual edits, WASM worker preparation, autosave, server restart, reload/new-window tabs and draft",
+    "PASS: remote actual edits, WASM worker preparation, autosave, server restart, reload/new-window tabs and draft"
+  ],
+  "limits": "Local browser recovery uses a project without granting a native directory handle. Real FSA/remote adapter contracts passed separately. Physical permission/PWA/IME and final integrated CI gates remain open; no overall performance claim."
+}
