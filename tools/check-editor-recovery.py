@@ -273,16 +273,51 @@ class Browser:
                 window.Worker = class extends NativeWorker {
                     constructor(url, options) {
                         super(url, options);
-                        if (!/\/editor-worker(?:-[a-f0-9]+)?\.js$/.test(new URL(url, location.href).pathname)) return;
-                        window.editorWorkerEvidence.instances++;
+                        const pending = new Map(), completed = new Map();
+                        let ready = false;
                         this.addEventListener('message', event => {
-                            if (typeof event.data !== 'string' || !event.data.startsWith('{')) return;
-                            const reply = JSON.parse(event.data);
-                            if (reply.status?.Ready && reply.analysis?.source !== undefined) {
-                                const sources = window.editorWorkerEvidence.sources;
-                                sources.push(reply.analysis.source.replace(/\r\n/g, '\n'));
-                                if (sources.length > 32) sources.shift();
+                            if (event.data === 'openwebide-editor-ready:6:frames:1') {
+                                if (!ready) window.editorWorkerEvidence.instances++;
+                                ready = true;
+                                return;
                             }
+                            if (!ready || typeof event.data !== 'string' || !event.data.startsWith('{')) return;
+                            const frame = JSON.parse(event.data);
+                            if (frame.version !== 6 || frame.framing !== 1) return;
+                            if (frame.sequence === 0 && frame.part?.Begin) {
+                                pending.set(frame.ticket, {sequence:0, begin:frame.part.Begin, chunks:[]});
+                            }
+                            const state = pending.get(frame.ticket);
+                            if (!state || state.sequence !== frame.sequence) {
+                                pending.delete(frame.ticket);
+                                return;
+                            }
+                            state.sequence++;
+                            if (typeof frame.part?.Source === 'string') state.chunks.push(frame.part.Source);
+                            if (frame.part !== 'End') return;
+                            pending.delete(frame.ticket);
+                            const header = state.begin.analysis;
+                            if (!state.begin.status?.Ready || !header) return;
+                            const bytes = new TextEncoder().encode(state.chunks.join(''));
+                            let source;
+                            if (header.source.Full) {
+                                if (bytes.length !== header.source.Full.bytes) return;
+                                source = bytes;
+                            } else if (header.source.Replace) {
+                                const base = completed.get(header.base_ticket), edit = header.source.Replace;
+                                if (!base || bytes.length !== edit.bytes || edit.start > edit.end || edit.end > base.length) return;
+                                source = new Uint8Array(edit.start + bytes.length + base.length - edit.end);
+                                source.set(base.subarray(0, edit.start));
+                                source.set(bytes, edit.start);
+                                source.set(base.subarray(edit.end), edit.start + bytes.length);
+                            } else return;
+                            let text;
+                            try { text = new TextDecoder('utf-8', {fatal:true}).decode(source); } catch { return; }
+                            completed.set(frame.ticket, source);
+                            if (completed.size > 32) completed.delete(completed.keys().next().value);
+                            const sources = window.editorWorkerEvidence.sources;
+                            sources.push(text.replace(/\r\n/g, '\n'));
+                            if (sources.length > 32) sources.shift();
                         });
                     }
                 };

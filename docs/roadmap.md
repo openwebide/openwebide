@@ -689,8 +689,14 @@ combined-source CI result.
   core, WASM frontend and WASI backend lint pass
   ([receipt](editor-performance/recovery-overwrite-browser.json)). Broader review/
   snapshot guard comparisons, capture, serialization, allocation and final
-  history/selection publication remain open; fresh production and final CI
-  verification are still required.
+  history/selection publication remain open. The fresh production build now
+  passes API validation/stale-save/tombstone checks plus actual edits, worker
+  preparation, autosave, Spin restart and reload/new-window restoration in both
+  modes; eight full/windowed LF/CRLF composition/undo/redo/cancel cases also pass
+  ([receipt](editor-performance/recovery-latest-production.json)). The recovery
+  probe now observes blob/module workers and complete framed source deltas;
+  its full/delta UTF-8, sequence and cancellation regression passes. Real folder
+  permissions, physical input, overall performance and final CI remain open.
 
 **Remaining completion gates**:
 

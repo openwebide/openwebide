@@ -1,0 +1,90 @@
+{
+  "checkoutHead": "92ca9ccf",
+  "description": "Production recovery after cooperative strict UTF-8 decoding and overwrite comparison: authenticated API validation, stale saves, selected/hidden tabs, UTF-8/CRLF, close-all tombstones, actual browser edits, worker preparation, autosave, Spin restart, reload and new windows in both modes. Eight trusted full/windowed composition/undo/redo/cancel/Tab cases also pass.",
+  "productionBuild": "NO_COLOR=true spin build passed",
+  "recoveryOutput": "PASS: both modes, UTF-8/CRLF, selected/hidden tabs, validation and stale saves\nPASS: authenticated recovery after actual Spin restart with the same SQLite state\nPASS: close-all tombstones survive restart and reject stale-window resurrection\nPASS: local actual edits, WASM worker preparation, autosave, server restart, reload/new-window tabs and draft\nPASS: remote actual edits, WASM worker preparation, autosave, server restart, reload/new-window tabs and draft\n",
+  "input": [
+    {
+      "mode": "local",
+      "ending": "LF",
+      "windowed": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "CRLF",
+      "windowed": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "LF",
+      "windowed": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "CRLF",
+      "windowed": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "LF",
+      "windowed": true,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "CRLF",
+      "windowed": true,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "LF",
+      "windowed": true,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "CRLF",
+      "windowed": true,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    }
+  ],
+  "artifacts": {
+    "backend.wasm": "e97731e39f9824a758729830be3d2109ddf7cd2c5a3bb65e3a0e8710fd7d5712",
+    "frontend.wasm": "dd8a8e41e398ec6bf286e2b274a6e5a8b5018680982f2e34896f11e0ec56b6df"
+  },
+  "frontendBundle": {
+    "openwebide-frontend-59bd6f87846cd315_bg.wasm": "75088f88c4d818081adcb426fc8c7b9bc36a9d67c4e21d86bdd28eac8d456a69"
+  },
+  "workerObserverCorrection": "The old fixture identified only file-URL workers and expected one unframed full-source reply. Current observation uses the versioned ready handshake, contiguous frame sequences, End-only publication and UTF-8 byte-offset source delta reconstruction, including blob/module workers. The initial worker-evidence timeout was a probe mismatch, not evidence of an app failure.",
+  "observerRegression": "python3 -m unittest tools/test_editor_recovery_observer.py passed: full/delta UTF-8, no partial evidence, ordering/cancellation rejection and blob worker identification.",
+  "limits": "Local cases restore drafts without a native directory handle. Physical IME/touch/PWA, real permission recovery, general input/startup/memory performance and final integrated CI remain open."
+}
