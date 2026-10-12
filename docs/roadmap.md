@@ -236,7 +236,21 @@ remain required.
   broader retained decoration ownership remain unfinished.
 - [ ] **Cold startup and native input:** bound remaining complete-source shaping,
   projection/native normalization, remaining word/context traversal and synchronous
-  selection publication. Native value synchronization now retains a browser string
+  selection publication. The shared bounded grapheme scanner now skips general
+  segmentation for adjacent printable ASCII scalars at proven boundaries; Unicode
+  lookahead and suspended clusters retain the original scanner. All 751 core tests
+  and strict core lint pass, including arbitrary Unicode, long clusters and chunk
+  seams. The full production build, WASI core lint and eight full/windowed
+  LF/CRLF composition/undo/redo/cancel checks pass in both modes.
+  Isolated native timings improve for ASCII and mixed text
+  ([receipt](editor-performance/ascii-grapheme-scan.json)); whole-editor latency,
+  full-row edit rebuilding and startup memory remain open.
+  Current instrumented near-MiB styled-line observations preserve source in both
+  modes: viewport input paint is 136–139 ms and peak Chrome PSS is 676–681 MiB
+  ([profiles](editor-performance/ascii-grapheme-production-profile.jsonl)).
+  These are diagnostics, not a matched improvement claim; native input handling
+  still takes about 35 ms and paragraph layout/geometry still repeats after input.
+  Native value synchronization now retains a browser string
   for the exact immutable normalized text owner and compares the actual textarea
   value in the DOM adapter. Source/file/read/project/account changes release cached
   owners. All 730 core tests, thirteen local/remote browser contracts, four worker

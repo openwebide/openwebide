@@ -1,0 +1,156 @@
+{
+  "description": "Isolated scanner timings only; optimized native wrapper, same debug unicode-segmentation dependency for both variants. Not a production browser latency or memory claim.",
+  "host": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "baseline": "c84c3e88e6a91f11bb2e31dbe887d3fc26f243fa",
+  "baselineScannerSha256": "54341950618d57fc0a328e3ce57e95f5b449ea29c94b2466114bed10b6186a2d",
+  "scannerSha256": "0d00fa48c375c951d343e5b02f176df7fbf5aa75ee9cbad4ecdb1e9d3ea1ada2",
+  "command": "rustc --edition 2024 -O benchmark.rs --extern unicode_segmentation=<same built dependency> -o benchmark; ./benchmark",
+  "benchmarkSource": "#[path=\"/tmp/openwebide-grapheme-before.rs\"] mod before;\n#[path=\"/Users/BWestnes/source/repos/open-webide/crates/core/src/editor/grapheme_scan.rs\"] mod after;\nfn main() {\n for (name, unit) in [(\"ascii\", \"const VALUE = words; \"), (\"mixed\", \"\u6587\ud83d\ude00 words \"), (\"combining\", \"a\\u{0301}\ud83d\udc69\ud83c\udffd\u200d\ud83d\udcbb\ud83c\uddfa\ud83c\uddf8 \")] {\n  let text=unit.repeat(1_048_576/unit.len());\n  for variant in [\"before\", \"after\"] {\n   let start=std::time::Instant::now(); let mut count=0usize;\n   for _ in 0..10 {\n    if variant==\"before\" { let mut s=before::GraphemeScan::new(&text); while !s.is_done() { s.advance(|step| {count+=usize::from(step.boundary.is_some()); false}); } std::hint::black_box(s.progress()); }\n    else {let mut s=after::GraphemeScan::new(&text); while !s.is_done() {s.advance(|step| {count+=usize::from(step.boundary.is_some()); false});} std::hint::black_box(s.progress());}\n   }\n   println!(\"{} {} {} {}\",name,variant,start.elapsed().as_micros(),count);\n  }\n }\n}\n",
+  "samples": [
+    {
+      "case": "ascii",
+      "variant": "before",
+      "ten_scans_us": 124828,
+      "boundaries": 10485720
+    },
+    {
+      "case": "ascii",
+      "variant": "after",
+      "ten_scans_us": 25806,
+      "boundaries": 10485720
+    },
+    {
+      "case": "mixed",
+      "variant": "before",
+      "ten_scans_us": 141416,
+      "boundaries": 6740820
+    },
+    {
+      "case": "mixed",
+      "variant": "after",
+      "ten_scans_us": 89216,
+      "boundaries": 6740820
+    },
+    {
+      "case": "combining",
+      "variant": "before",
+      "ten_scans_us": 157424,
+      "boundaries": 1553440
+    },
+    {
+      "case": "combining",
+      "variant": "after",
+      "ten_scans_us": 151880,
+      "boundaries": 1553440
+    }
+  ],
+  "verification": {
+    "core": "751 passed, 1 ignored",
+    "nativeClippy": "passed with editor-parser and all targets",
+    "wasiClippy": "passed for production core features",
+    "productionBuild": "NO_COLOR=true spin build passed",
+    "hostUpdateTests": "5 repeated runs of 5 tests passed; existing 10-second deadline retained",
+    "frontendWasmSha256": {
+      "openwebide-frontend-61a27c91a315a06c_bg.wasm": "ea6d23dc810bc9d30875ade238f2cb3487d04a6b9b0115ef1b0c8a224c03329b"
+    },
+    "backendWasmSha256": "e0edb5694cd962af357de551bdc700b7a3995b5076311e3bb770a767fa84136f",
+    "browserInputCases": [
+      {
+        "mode": "local",
+        "ending": "LF",
+        "windowed": false,
+        "pending_syntax": true,
+        "trusted_events": 34,
+        "commit_undo_redo_cancel": true,
+        "tab_focus_escape_and_accessible_name": true
+      },
+      {
+        "mode": "local",
+        "ending": "CRLF",
+        "windowed": false,
+        "pending_syntax": true,
+        "trusted_events": 34,
+        "commit_undo_redo_cancel": true,
+        "tab_focus_escape_and_accessible_name": true
+      },
+      {
+        "mode": "remote",
+        "ending": "LF",
+        "windowed": false,
+        "pending_syntax": true,
+        "trusted_events": 34,
+        "commit_undo_redo_cancel": true,
+        "tab_focus_escape_and_accessible_name": true
+      },
+      {
+        "mode": "remote",
+        "ending": "CRLF",
+        "windowed": false,
+        "pending_syntax": true,
+        "trusted_events": 34,
+        "commit_undo_redo_cancel": true,
+        "tab_focus_escape_and_accessible_name": true
+      },
+      {
+        "mode": "local",
+        "ending": "LF",
+        "windowed": true,
+        "pending_syntax": false,
+        "trusted_events": 34,
+        "commit_undo_redo_cancel": true,
+        "tab_focus_escape_and_accessible_name": true
+      },
+      {
+        "mode": "local",
+        "ending": "CRLF",
+        "windowed": true,
+        "pending_syntax": false,
+        "trusted_events": 34,
+        "commit_undo_redo_cancel": true,
+        "tab_focus_escape_and_accessible_name": true
+      },
+      {
+        "mode": "remote",
+        "ending": "LF",
+        "windowed": true,
+        "pending_syntax": false,
+        "trusted_events": 34,
+        "commit_undo_redo_cancel": true,
+        "tab_focus_escape_and_accessible_name": true
+      },
+      {
+        "mode": "remote",
+        "ending": "CRLF",
+        "windowed": true,
+        "pending_syntax": false,
+        "trusted_events": 34,
+        "commit_undo_redo_cancel": true,
+        "tab_focus_escape_and_accessible_name": true
+      }
+    ]
+  },
+  "productionDiagnostics": {
+    "description": "One traced/profiled near-MiB styled-line observation per mode. Instrumentation overhead and an unmatched prior baseline prevent a causal latency or memory comparison. Complete source and beginning caret are verified.",
+    "samples": [
+      {
+        "mode": "local",
+        "sourceBytes": 1048567,
+        "inputViewportPaintMs": 139,
+        "coldCompleteGeometryMs": 1512.1000000238419,
+        "peakChromePssKiB": 691917,
+        "completeSourceAfterInputVerified": true,
+        "verifiedSourceCaretBeforeInput": 0
+      },
+      {
+        "mode": "remote",
+        "sourceBytes": 1048567,
+        "inputViewportPaintMs": 136.09999999403954,
+        "coldCompleteGeometryMs": 1584.5,
+        "peakChromePssKiB": 697191,
+        "completeSourceAfterInputVerified": true,
+        "verifiedSourceCaretBeforeInput": 0
+      }
+    ],
+    "raw": "ascii-grapheme-production-profile.jsonl"
+  }
+}

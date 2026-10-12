@@ -8,6 +8,9 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Skip general Unicode segmentation for adjacent printable ASCII characters at proven grapheme boundaries. Keep bounded scanning, Unicode lookahead and suspended-cluster handling shared across editor preparation paths.
+- Wait for the host-update supervisor's terminal receipt in CI, rather than treating its child's output file as proof of job completion.
+
 - Extend editor touch-scroll regression coverage to focused and unfocused editable/read-only surfaces in local and remote projects.
 
 - Reconcile recovered files with disk using bounded admission and byte-comparison batches. Share decisions between background checks and save verification, retry when committed source owners change, and discard results after their account/project scope is lost.

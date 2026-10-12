@@ -12,6 +12,7 @@ pub(super) struct GraphemeScan<'a> {
     cursor: GraphemeCursor,
     chunk: Range<usize>,
     progress: usize,
+    at_boundary: bool,
     done: bool,
 }
 impl<'a> GraphemeScan<'a> {
@@ -21,6 +22,7 @@ impl<'a> GraphemeScan<'a> {
             cursor: GraphemeCursor::new(0, text.len(), true),
             chunk: 0..text.floor_char_boundary(512.min(text.len())),
             progress: 0,
+            at_boundary: true,
             done: false,
         }
     }
@@ -41,6 +43,35 @@ impl<'a> GraphemeScan<'a> {
                 break;
             }
             let offset = self.cursor.cur_cursor();
+            // At a proven boundary, adjacent printable ASCII scalars cannot
+            // combine. Do not skip Unicode lookahead (Extend/ZWJ/SpacingMark),
+            // CRLF, or a cursor suspended inside an unfinished cluster.
+            if self.at_boundary
+                && offset < self.chunk.end
+                && self
+                    .text
+                    .as_bytes()
+                    .get(offset)
+                    .is_some_and(|byte| (0x20..=0x7e).contains(byte))
+                && (offset + 1 == self.text.len()
+                    || self
+                        .text
+                        .as_bytes()
+                        .get(offset + 1)
+                        .is_some_and(|byte| (0x20..=0x7e).contains(byte)))
+            {
+                let end = offset + 1;
+                self.cursor.set_cursor(end);
+                self.progress += 1;
+                self.done = end == self.text.len();
+                if consume(GraphemeStep {
+                    consumed: offset..end,
+                    boundary: Some(end),
+                }) {
+                    break;
+                }
+                continue;
+            }
             let result = self
                 .cursor
                 .next_boundary(&self.text[self.chunk.clone()], self.chunk.start);
@@ -73,11 +104,108 @@ impl<'a> GraphemeScan<'a> {
                     unreachable!("forward cursor always retains its exact source chunk");
                 }
             };
+            self.at_boundary = boundary.is_some();
             if consume(GraphemeStep {
                 consumed: offset..end,
                 boundary,
             }) {
                 break;
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use proptest::prelude::*;
+    use unicode_segmentation::UnicodeSegmentation;
+
+    fn check(text: &str) {
+        let expected: Vec<_> = text
+            .grapheme_indices(true)
+            .map(|(start, glyph)| start + glyph.len())
+            .collect();
+        let mut scan = GraphemeScan::new(text);
+        let mut boundaries = Vec::new();
+        let mut consumed = 0;
+        while !scan.is_done() {
+            scan.advance(|step| {
+                assert_eq!(step.consumed.start, consumed);
+                consumed = step.consumed.end;
+                if let Some(boundary) = step.boundary {
+                    boundaries.push(boundary);
+                }
+                true
+            });
+        }
+        assert_eq!(consumed, text.len());
+        assert_eq!(boundaries, expected);
+    }
+
+    proptest! {
+        #[test]
+        fn sparse_ascii_and_arbitrary_unicode_match_full_segmentation(
+            prefix in 0..1025usize,
+            characters in prop::collection::vec(any::<char>(), 0..300),
+        ) {
+            check(&format!("{}{} tail", "x".repeat(prefix), characters.into_iter().collect::<String>()));
+        }
+    }
+
+    #[test]
+    fn suspended_long_clusters_never_use_ascii_shortcuts() {
+        for text in [
+            format!("{}a{} tail", "x".repeat(511), "\u{0301}".repeat(2048)),
+            format!("{}ab tail", "\u{0600}".repeat(2048)),
+            format!("{}ab tail", "🇺".repeat(2049)),
+        ] {
+            check(&text);
+        }
+    }
+
+    #[test]
+    fn ascii_shortcuts_preserve_unicode_boundaries_and_consumed_source() {
+        let atoms = [
+            "ab",
+            " ",
+            "\r\n",
+            "\u{0600}a",
+            "a\u{0301}",
+            "a\u{200d}",
+            "🇺🇸🇨🇦",
+            "👩🏽‍💻",
+            "क\u{093e}",
+            "\t",
+            "文",
+        ];
+        for left in atoms {
+            for right in atoms {
+                for padding in [0, 510, 511, 512, 513] {
+                    let text = format!("{}{left}{right} tail", "x".repeat(padding));
+                    let expected: Vec<_> = text
+                        .grapheme_indices(true)
+                        .map(|(start, glyph)| start + glyph.len())
+                        .collect();
+                    let mut scan = GraphemeScan::new(&text);
+                    let mut boundaries = Vec::new();
+                    let mut consumed = 0;
+                    while !scan.is_done() {
+                        scan.advance(|step| {
+                            assert_eq!(step.consumed.start, consumed);
+                            consumed = step.consumed.end;
+                            if let Some(boundary) = step.boundary {
+                                boundaries.push(boundary);
+                            }
+                            true // Exercise suspension after every step.
+                        });
+                    }
+                    assert_eq!(consumed, text.len());
+                    assert_eq!(
+                        boundaries, expected,
+                        "{left:?} + {right:?}, padding {padding}"
+                    );
+                }
             }
         }
     }

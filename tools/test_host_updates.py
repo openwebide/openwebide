@@ -91,12 +91,17 @@ class HostUpdates(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
         duplicate = subprocess.run([sys.executable, str(HELPER), 'start', json.dumps(request)], env=env, capture_output=True, text=True, timeout=5)
         self.assertNotEqual(duplicate.returncode, 0)
-        deadline = time.monotonic() + 10
-        while not output.exists() and time.monotonic() < deadline:
-            time.sleep(.05)
-        self.assertEqual(output.read_text(), 'done')
         receipt = self.root / 'state/openwebide/updates' / identity / 'status.json'
-        self.assertEqual(json.loads(receipt.read_text())['phase'], 'succeeded')
+        deadline = time.monotonic() + 10
+        phase = None
+        while time.monotonic() < deadline:
+            if receipt.exists():
+                phase = json.loads(receipt.read_text())['phase']
+                if phase in {'succeeded', 'failed'}:
+                    break
+            time.sleep(.05)
+        self.assertEqual(phase, 'succeeded')
+        self.assertEqual(output.read_text(), 'done')
 
     def test_invalid_job_identity_cannot_escape_host_state_directory(self):
         for identity in ['../escaped', 'g' * 32, 'a' * 31]:
