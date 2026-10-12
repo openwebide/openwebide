@@ -53,7 +53,7 @@ jobs:
     uses: ./.github/workflows/ci.yml
 
   images:
-    needs: [validate, checks]
+    needs: validate
     permissions:
       contents: read
       packages: write
@@ -143,7 +143,7 @@ jobs:
 
   macos-bridges:
     if: needs.validate.outputs.rolling != 'true'
-    needs: [validate, checks]
+    needs: validate
     strategy:
       fail-fast: false
       matrix:
@@ -198,7 +198,7 @@ jobs:
 
   publish:
     if: needs.validate.outputs.publish == 'true' && needs.validate.outputs.rolling != 'true'
-    needs: [validate, assets]
+    needs: [validate, checks, assets]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -248,7 +248,7 @@ jobs:
 
   publish-nightly:
     if: needs.validate.outputs.rolling == 'true'
-    needs: [validate, images]
+    needs: [validate, checks, images]
     runs-on: ubuntu-24.04
     permissions:
       contents: read

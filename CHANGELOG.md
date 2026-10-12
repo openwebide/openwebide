@@ -8,6 +8,10 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Build release images and standalone bridge artifacts alongside CI, retaining the full check gate before publishing release channels.
+
+- Display About release notes in a full-width scrolling column, keeping the GitHub release link below the notes in narrow windows.
+
 - Transfer validated syntax-cache entries into the next cache and drain leftover entries in bounded preparation steps. Keep node IDs pinned during disposal, preserve complete-only publication, and rebuild visit counts when invalid cached spans request fresh extraction.
 
 - Resume syntax highlight collection in bounded tree-node and cached-span steps in the shared Rust engine. Retain descendant classifications while refreshing external parent roles, validate rebased Unicode ranges before charging retained work, and keep incomplete results private through cancellation or source replacement.

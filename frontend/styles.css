@@ -3738,7 +3738,6 @@ button.browser-item {
 .phone-layout .app-drawer-status .spacer { display: none; }
 .phone-layout .app-drawer-status .editor-footer { flex-wrap: wrap; }
 
-.about-content:has(.release-notes) { text-align: start; }
 .release-notes { overflow-wrap: anywhere; }
 
 .phone-layout .tui-host-status .ui-dropdown-label > span:not(.ui-icon-glyph) { display: none; }

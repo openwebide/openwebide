@@ -60,7 +60,7 @@ pub fn About() -> impl IntoView {
                 super::ui::DialogTab::new("Open-source software", "about-tab-software", "about-panel"),
                 super::ui::DialogTab::new("Release notes", "about-tab-release-notes", "about-panel"),
             ] selected=tab.read_only().into() on_change=Callback::new(move |index| tab.set(index)) />
-            <DialogBody class="about-body"><div class="about-content" class:about-overview=move || !software.get() class:about-software=move || software.get() id="about-panel" role="tabpanel" tabindex="0" aria-labelledby=move || match tab.get() { 1 => "about-tab-software", 2 => "about-tab-release-notes", _ => "about-tab-overview" }>
+            <DialogBody class="about-body"><div class="about-content" class:about-overview=move || tab.get() == 0 class:about-software=move || software.get() id="about-panel" role="tabpanel" tabindex="0" aria-labelledby=move || match tab.get() { 1 => "about-tab-software", 2 => "about-tab-release-notes", _ => "about-tab-overview" }>
                 {move || if tab.get() == 2 {
                     view! { <ReleaseNotes /> }.into_any()
                 } else if software.get() {
