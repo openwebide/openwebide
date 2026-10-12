@@ -1,6 +1,7 @@
 //! Resident host execution and transport adapters for shared administration policy.
 pub mod interactive;
 pub mod ssh;
+pub mod updates;
 use crate::{exec::ToolExecution, runs::backend_client::RunBackend};
 use openwebide_core::host_admin::{
     HostAdapter, HostCommand, HostJournalCommand, HostJournalResult, HostOperation,

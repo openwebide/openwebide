@@ -7,6 +7,7 @@ mod editor_recovery;
 mod goals;
 pub use goals::GoalTurnAssessment;
 mod host_admin;
+mod host_updates;
 mod memories;
 mod model_setup;
 mod plugin_background;

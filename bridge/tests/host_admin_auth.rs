@@ -62,6 +62,7 @@ async fn host_routes_require_the_server_secret_and_reject_browser_and_companion_
             "/host/admin",
             "/host/input",
             "/host/input-key",
+            "/host/updates",
             "/host/probe",
         ] {
             assert_eq!(status(port, path, None, None).await, 401);

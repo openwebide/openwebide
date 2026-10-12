@@ -144,6 +144,9 @@ impl<D: Db> Store<D> {
             if store.host_connection().await?.revision != connection_revision {
                 return Err(StorageError::Conflict("Host connection changed; inspect and prepare a fresh operation.".into()));
             }
+            if store.host_update_job().await?.is_some_and(|job| job.phase.active()) {
+                return Err(StorageError::Conflict("Wait for the current host update before starting another host operation.".into()));
+            }
         let mut operation = store.host_operation(user, session, id).await?;
         if operation.plan.target != target
             || operation.boot_id != boot_id
@@ -266,6 +269,15 @@ impl<D: Db> Store<D> {
                     return Err(StorageError::Conflict(
                         "Wait for active host operations to finish before changing the connection."
                             .into(),
+                    ));
+                }
+                if store
+                    .host_update_job()
+                    .await?
+                    .is_some_and(|job| job.phase.active())
+                {
+                    return Err(StorageError::Conflict(
+                        "Wait for the host update before changing SSH access.".into(),
                     ));
                 }
                 let mut saved = connection.clone();

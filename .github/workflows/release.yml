@@ -25,8 +25,12 @@ jobs:
       rolling: ${{ steps.version.outputs.rolling }}
       channel: ${{ steps.version.outputs.channel }}
       prerelease: ${{ steps.version.outputs.prerelease }}
+      schema: ${{ steps.metadata.outputs.schema }}
     steps:
       - uses: actions/checkout@v4
+      - name: Read database compatibility metadata
+        id: metadata
+        run: python3 tools/release.py schema >> "$GITHUB_OUTPUT"
       - name: Validate versions and changelog
         id: version
         env:
@@ -94,6 +98,7 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ needs.validate.outputs.version }}
             org.opencontainers.image.licenses=MIT
+            io.openwebide.database-schema=${{ needs.validate.outputs.schema }}
       - name: Smoke-test bundled bridge and mounted Git access
         run: |
           docker run --rm openwebide:release-test openwebide-bridge --help

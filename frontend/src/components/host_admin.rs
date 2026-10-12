@@ -31,6 +31,7 @@ pub fn HostSettings() -> impl IntoView {
             <Show when=move||host.error.get().is_some()><p class="form-hint" role="alert">{move||host.error.get().unwrap_or_default()}</p></Show>
             <Show when=move||host.environment.get().is_some()><p class="form-hint" role="status">{move||host.environment.with(|value|value.as_ref().map(|host|format!("Connected to {} ({})",host.target,host.info.os.as_deref().unwrap_or("OS unavailable"))).unwrap_or_default())}</p></Show>
         </FormSection>
+        <super::host_updates::HostUpdates/>
     }
 }
 #[component]

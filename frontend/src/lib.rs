@@ -20,6 +20,7 @@ pub mod git_timeline;
 pub mod history;
 #[cfg(target_arch = "wasm32")]
 pub mod host_admin;
+pub mod host_updates;
 #[cfg(target_arch = "wasm32")]
 pub mod idb;
 #[cfg(target_arch = "wasm32")]

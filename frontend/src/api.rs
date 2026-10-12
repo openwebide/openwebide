@@ -114,6 +114,12 @@ impl BackendApi {
     ) -> Result<openwebide_core::host_admin::HostConnection, String> {
         self.get("/host/connection").await
     }
+    pub async fn host_updates(
+        &self,
+        request: &openwebide_core::host_admin::updates::UpdateRequest,
+    ) -> Result<openwebide_core::host_admin::updates::UpdateResponse, String> {
+        self.post("/host/updates", request).await
+    }
     pub async fn save_host_connection(
         &self,
         connection: &openwebide_core::host_admin::HostConnection,

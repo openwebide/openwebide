@@ -119,3 +119,49 @@ Compose restart policy and Quadlet user service already provide their normal
 restart behavior. Linux user services may need lingering to start before login.
 Project sessions and paired browser companion bridges cannot acquire these host
 administration tools. Only the authenticated server bridge uses this connection.
+
+## Updates
+
+**Settings → Host → Updates** manages the Open WebIDE deployment on the server's
+physical host. It uses the same saved SSH connection regardless of which local or
+remote project is open; it does not update paired companion bridges.
+
+Choose **Alpha** (the rolling `nightly` image), **Preview**, or **Stable**, then save
+the update settings. Checking reads registry metadata without downloading image
+layers. The host needs Python 3, `skopeo`, a running user systemd manager and access
+to its container runtime. Registry authentication stays on the host; use
+`skopeo login ghcr.io` if anonymous inspection is unavailable. Enable user lingering
+for a service that must continue after SSH disconnects, as described in the
+[Quadlet guide](podman-quadlet.md).
+
+For **Docker Compose**, enter the absolute installation directory, all Compose
+files in their normal order (including SSH/HTTPS overlays), and the app service
+name, normally `openwebide`. The updater retains existing `.env` entries and pins
+`OPENWEBIDE_IMAGE` to the approved digest. Compose files must use that image
+variable, as the downloadable installation files do. The host account needs Docker
+access and Compose v2 with `up --wait` support.
+
+For **Podman / systemd**, enter the absolute path to the user-owned
+`openwebide.image` Quadlet and its container service, normally `openwebide.service`.
+The updater pulls the approved image, changes the image reference, reloads the
+user manager and restarts that service. Both deployment methods retain volumes and
+project mounts. The pinned digest remains in deployment configuration; registry
+auto-update timers do not advance an image while it is pinned.
+
+**Install release** explicitly approves a restart. Active agent runs and terminals
+are interrupted. The host runs a detached user systemd job, so the update can
+finish after the app container stops. Its receipt and deployment-file backups are
+kept under `$XDG_STATE_HOME/openwebide/updates/<id>` (normally
+`~/.local/state/openwebide/updates/<id>`), readable only by the host account.
+The app records the update claim in SQLite before launching it, polls its status,
+and confirms success only when the selected build answers again. Reload the app
+after success to load the matching frontend. Reopening Settings resumes status
+checks; disconnecting never automatically replays an update.
+
+Images include their commit, version and supported database schema. Updates that
+cannot read the current schema are rejected, including incompatible channel
+downgrades. Images published before this metadata was added cannot be installed
+through this UI. Back up the data directory before upgrading; a failed deployment
+does not trigger an automatic rollback across possible database migrations. Inspect
+the retained receipt, deployment backups and `journalctl --user -u
+openwebide-update` before retrying or manually restoring configuration.

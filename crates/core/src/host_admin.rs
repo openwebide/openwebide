@@ -3,6 +3,8 @@ use crate::{CommandOutcome, HostInfo};
 use serde::{Deserialize, Serialize};
 use std::future::Future;
 
+pub mod updates;
+
 pub const MAX_RESOURCES: usize = 256;
 pub const MAX_STEPS: usize = 16;
 pub const MAX_OUTPUT_BYTES: usize = 256 * 1024;

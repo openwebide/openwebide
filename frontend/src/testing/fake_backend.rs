@@ -97,6 +97,9 @@ pub struct FakeBackend {
     pub question_commands: RefCell<Vec<(i64, openwebide_core::questions::QuestionCommand)>>,
     pub question_loads: RefCell<VecDeque<Deferred<openwebide_core::questions::QuestionResult>>>,
     pub host_connection: RefCell<openwebide_core::host_admin::HostConnection>,
+    pub host_update_requests: RefCell<Vec<openwebide_core::host_admin::updates::UpdateRequest>>,
+    pub host_update_results:
+        RefCell<VecDeque<Deferred<openwebide_core::host_admin::updates::UpdateResponse>>>,
     pub host_operations: RefCell<Vec<openwebide_core::host_admin::HostOperation>>,
     pub host_results: RefCell<VecDeque<Deferred<openwebide_core::host_admin::HostResponse>>>,
     pub host_requests: RefCell<Vec<(i64, openwebide_core::host_admin::HostRequest)>>,
@@ -428,6 +431,22 @@ impl FakeBackend {
 }
 
 impl Backend for FakeBackend {
+    fn host_updates<'a>(
+        &'a self,
+        request: &'a openwebide_core::host_admin::updates::UpdateRequest,
+    ) -> LocalBoxFuture<'a, Result<openwebide_core::host_admin::updates::UpdateResponse, String>>
+    {
+        self.host_update_requests.borrow_mut().push(request.clone());
+        let response = self.host_update_results.borrow_mut().pop_front();
+        Box::pin(async move {
+            match response {
+                Some(response) => response
+                    .await
+                    .map_err(|_| "Host update fixture cancelled".to_owned())?,
+                None => Err("No host update fixture".into()),
+            }
+        })
+    }
     fn plugin_marketplaces(
         &self,
     ) -> LocalBoxFuture<

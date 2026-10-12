@@ -545,3 +545,212 @@ async fn configured_host_refresh_retains_geometry_nodes_and_expanded_resources()
         assert!(host.environment.get_untracked().is_some());
     }
 }
+
+#[wasm_bindgen_test]
+async fn host_updates_use_the_same_settings_and_actions_in_both_project_modes() {
+    use openwebide_core::host_admin::updates::*;
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let slot = Rc::new(Cell::new(None));
+        let capture = slot.clone();
+        let settings = UpdateSettings {
+            deployment: Deployment::Quadlet {
+                image_file: "/home/test/.config/containers/systemd/openwebide.image".into(),
+                service: "openwebide.service".into(),
+            },
+            revision: 1,
+            ..UpdateSettings::default()
+        };
+        let running = Build {
+            version: "1.0.0-alpha.6".into(),
+            commit: "a".repeat(40),
+            schema: 58,
+        };
+        let candidate = Candidate {
+            digest: format!("sha256:{}", "b".repeat(64)),
+            architecture: "amd64".into(),
+            build: Build {
+                commit: "c".repeat(40),
+                ..running.clone()
+            },
+        };
+        let initial = UpdateResponse::Settings {
+            settings: settings.clone(),
+            running: running.clone(),
+            job: None,
+        };
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            let (sender, receiver) = futures::channel::oneshot::channel();
+            sender.send(Ok(initial)).unwrap();
+            state
+                .fake
+                .host_update_results
+                .borrow_mut()
+                .push_back(receiver);
+            let host = HostState::new(state.api, state.auth, state.chat, state.projects);
+            capture.set(Some(host));
+            provide_context(host);
+            view! { <HostSettings/> }
+        });
+        settle().await;
+        let host = slot.get().unwrap();
+        assert_eq!(host.updates.settings.get_untracked(), settings);
+        let check = UpdateCheck {
+            connection_revision: 0,
+            running,
+            settings: settings.clone(),
+            candidate: candidate.clone(),
+            available: true,
+        };
+        let (sender, receiver) = futures::channel::oneshot::channel();
+        sender.send(Ok(UpdateResponse::Check { check })).unwrap();
+        mounted
+            .state
+            .fake
+            .host_update_results
+            .borrow_mut()
+            .push_back(receiver);
+        host.updates.request(UpdateRequest::Check);
+        settle().await;
+        assert!(
+            mounted
+                .root
+                .text_content()
+                .unwrap()
+                .contains("Available: 1.0.0-alpha.6")
+        );
+        let button = mounted.root.query_selector_all("button").unwrap();
+        let install = (0..button.length())
+            .filter_map(|index| button.item(index))
+            .find(|button| {
+                button
+                    .text_content()
+                    .is_some_and(|text| text.contains("Install release"))
+            })
+            .unwrap();
+        install.unchecked_ref::<web_sys::HtmlElement>().click();
+        settle().await;
+        assert!(mounted.state.fake.host_update_requests.borrow().iter().any(|request|matches!(request,
+            UpdateRequest::Start{candidate: requested,settings_revision:1,..} if requested==&candidate)));
+        mounted.state.chat.active_session.set(Some(99));
+        settle().await;
+        assert_eq!(host.updates.settings.get_untracked(), settings);
+    }
+}
+
+#[wasm_bindgen_test]
+async fn host_update_results_are_discarded_after_account_changes() {
+    use openwebide_core::host_admin::updates::*;
+    let slot = Rc::new(Cell::new(None));
+    let capture = slot.clone();
+    let mounted = mount_test(move |state| {
+        let host = HostState::new(state.api, state.auth, state.chat, state.projects);
+        capture.set(Some(host));
+        view! {<div>"Host update scope"</div>}
+    });
+    settle().await;
+    let host = slot.get().unwrap();
+    let (sender, receiver) = futures::channel::oneshot::channel();
+    mounted
+        .state
+        .fake
+        .host_update_results
+        .borrow_mut()
+        .push_back(receiver);
+    host.updates.request(UpdateRequest::Settings);
+    settle().await;
+    mounted.state.auth.generation.update(|epoch| *epoch += 1);
+    settle().await;
+    sender
+        .send(Ok(UpdateResponse::Settings {
+            settings: UpdateSettings {
+                revision: 44,
+                ..UpdateSettings::default()
+            },
+            running: Build {
+                version: "1.0.0".into(),
+                commit: "a".repeat(40),
+                schema: 58,
+            },
+            job: None,
+        }))
+        .unwrap();
+    settle().await;
+    assert_eq!(host.updates.settings.get_untracked().revision, 0);
+    assert!(host.updates.running.get_untracked().is_none());
+    assert!(!host.updates.busy.get_untracked());
+}
+
+#[wasm_bindgen_test]
+async fn lost_host_update_acknowledgement_keeps_tracking_the_durable_claim() {
+    use openwebide_core::host_admin::updates::*;
+    let slot = Rc::new(Cell::new(None));
+    let capture = slot.clone();
+    let mounted = mount_test(move |state| {
+        let host = HostState::new(state.api, state.auth, state.chat, state.projects);
+        capture.set(Some(host));
+        view! {<div>"Update reconnect fixture"</div>}
+    });
+    settle().await;
+    let updates = slot.get().unwrap().updates;
+    let candidate = Candidate {
+        digest: format!("sha256:{}", "b".repeat(64)),
+        architecture: "amd64".into(),
+        build: Build {
+            version: "1.0.0-alpha.6".into(),
+            commit: "c".repeat(40),
+            schema: 58,
+        },
+    };
+    let (sender, receiver) = futures::channel::oneshot::channel();
+    sender
+        .send(Err("Connection closed during restart".into()))
+        .unwrap();
+    mounted
+        .state
+        .fake
+        .host_update_results
+        .borrow_mut()
+        .push_back(receiver);
+    updates.request(UpdateRequest::Start {
+        connection_revision: 0,
+        candidate: candidate.clone(),
+        settings_revision: 0,
+    });
+    settle().await;
+    assert!(updates.tracking.get_untracked());
+    let job = UpdateJob {
+        id: "a".repeat(32),
+        candidate: candidate.clone(),
+        phase: UpdatePhase::Succeeded,
+        detail: "The selected build is running.".into(),
+        settings_revision: 0,
+        connection_revision: 0,
+        created_at: 1,
+    };
+    let (sender, receiver) = futures::channel::oneshot::channel();
+    sender
+        .send(Ok(UpdateResponse::Status {
+            job: Some(job),
+            running: candidate.build,
+        }))
+        .unwrap();
+    mounted
+        .state
+        .fake
+        .host_update_results
+        .borrow_mut()
+        .push_back(receiver);
+    updates.request(UpdateRequest::Status);
+    settle().await;
+    assert!(!updates.tracking.get_untracked());
+    assert!(updates.error.get_untracked().is_none());
+    assert_eq!(
+        updates.job.get_untracked().unwrap().phase,
+        UpdatePhase::Succeeded
+    );
+}

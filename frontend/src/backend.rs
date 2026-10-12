@@ -471,6 +471,13 @@ pub trait Backend {
     ) -> LocalBoxFuture<'_, Result<openwebide_core::host_admin::HostConnection, String>> {
         Box::pin(async { Err("Host administration unavailable".into()) })
     }
+    fn host_updates<'a>(
+        &'a self,
+        _request: &'a openwebide_core::host_admin::updates::UpdateRequest,
+    ) -> LocalBoxFuture<'a, Result<openwebide_core::host_admin::updates::UpdateResponse, String>>
+    {
+        Box::pin(async { Err("Host updates unavailable".into()) })
+    }
     fn save_host_connection<'a>(
         &'a self,
         _connection: &'a openwebide_core::host_admin::HostConnection,
@@ -852,6 +859,13 @@ pub trait Backend {
 }
 
 impl Backend for BackendApi {
+    fn host_updates<'a>(
+        &'a self,
+        request: &'a openwebide_core::host_admin::updates::UpdateRequest,
+    ) -> LocalBoxFuture<'a, Result<openwebide_core::host_admin::updates::UpdateResponse, String>>
+    {
+        Box::pin(BackendApi::host_updates(self, request))
+    }
     fn host_connection(
         &self,
     ) -> LocalBoxFuture<'_, Result<openwebide_core::host_admin::HostConnection, String>> {

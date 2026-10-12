@@ -193,3 +193,168 @@ pub(crate) async fn input_key(
         .map_err(ApiError::conflict)?;
     Ok(json_response(200, &key))
 }
+
+/// Host-scoped updates are independent of the currently selected workspace mode.
+pub(crate) async fn updates(
+    req: Request,
+    state: &AppState,
+    user: AuthedUser,
+) -> Result<JsonResp, ApiError> {
+    use openwebide_core::host_admin::updates::{
+        Build, UpdateCheck, UpdateHostRequest, UpdateJob, UpdatePhase, UpdateRequest,
+        UpdateResponse,
+    };
+    admin(user)?;
+    let request: UpdateRequest = parse_json(read_body(req, 16384).await?)?;
+    let running = Build {
+        version: env!("CARGO_PKG_VERSION").into(),
+        commit: option_env!("OPENWEBIDE_BUILD_COMMIT")
+            .unwrap_or("unknown")
+            .into(),
+        schema: openwebide_storage::migrations::SCHEMA_VERSION,
+    };
+    let relay = async |request: UpdateHostRequest| -> Result<Vec<u8>, ApiError> {
+        let body = serde_json::to_string(&request)
+            .map_err(|error| ApiError::internal(error.to_string()))?;
+        let (status, body) = crate::bridge::send(&state.store, "/host/updates", body).await?;
+        if status != 200 {
+            #[derive(Deserialize)]
+            struct Failure {
+                error: String,
+            }
+            let detail = serde_json::from_slice::<Failure>(&body).map_or_else(
+                |_| "Host updater unavailable. Check SSH and host update prerequisites.".into(),
+                |failure| failure.error.chars().take(1024).collect::<String>(),
+            );
+            return Err(ApiError::bad_gateway(detail));
+        }
+        Ok(body.to_vec())
+    };
+    let mut response = match request {
+        UpdateRequest::Settings => UpdateResponse::Settings {
+            settings: state.store.host_update_settings().await?,
+            running,
+            job: state.store.host_update_job().await?,
+        },
+        UpdateRequest::Save { settings } => UpdateResponse::Settings {
+            settings: state.store.save_host_update_settings(&settings).await?,
+            running,
+            job: state.store.host_update_job().await?,
+        },
+        UpdateRequest::Check => {
+            let settings = state.store.host_update_settings().await?;
+            let body = relay(UpdateHostRequest::Check { settings, running }).await?;
+            let check: UpdateCheck = serde_json::from_slice(&body)
+                .map_err(|error| ApiError::internal(error.to_string()))?;
+            UpdateResponse::Check { check }
+        }
+        UpdateRequest::Start {
+            candidate,
+            settings_revision,
+            connection_revision,
+        } => {
+            candidate
+                .validate(&running)
+                .map_err(ApiError::bad_request)?;
+            if !candidate.differs_from(&running) {
+                return Err(ApiError::bad_request(
+                    "The selected build is already running.",
+                ));
+            }
+            let settings = state.store.host_update_settings().await?;
+            if !state.store.host_connection().await?.is_configured() {
+                return Err(ApiError::bad_request(
+                    "Configure the host SSH connection before installing a release.",
+                ));
+            }
+            if matches!(
+                settings.deployment,
+                openwebide_core::host_admin::updates::Deployment::Unconfigured
+            ) {
+                return Err(ApiError::bad_request("Configure a host updater first."));
+            }
+            let identity: [u8; 16] = rand::random();
+            let mut job = UpdateJob {
+                id: identity.iter().map(|byte| format!("{byte:02x}")).collect(),
+                candidate,
+                phase: UpdatePhase::Starting,
+                detail: "Starting the host updater.".into(),
+                settings_revision,
+                connection_revision,
+                created_at: now(),
+            };
+            state.store.claim_host_update(&job).await?;
+            match relay(UpdateHostRequest::Start {
+                settings,
+                running: running.clone(),
+                job: job.clone(),
+            })
+            .await
+            {
+                Ok(body) => {
+                    use openwebide_core::host_admin::updates::UpdateLaunch;
+                    match serde_json::from_slice::<UpdateLaunch>(&body)
+                        .unwrap_or(UpdateLaunch::Uncertain)
+                    {
+                        UpdateLaunch::Started => {
+                            job.phase = UpdatePhase::Running;
+                            job.detail = "Host update started; reconnecting after restart.".into();
+                        }
+                        UpdateLaunch::Rejected { detail } => {
+                            job.phase = UpdatePhase::Failed;
+                            job.detail = detail;
+                        }
+                        UpdateLaunch::Uncertain => {
+                            job.phase = UpdatePhase::Unknown;
+                            job.detail = "No launch acknowledgement. Refresh status before trying another update.".into();
+                        }
+                    }
+                }
+                Err(_) => {
+                    job.phase = UpdatePhase::Unknown;
+                    job.detail =
+                        "No launch acknowledgement. Refresh status before trying another update."
+                            .into();
+                }
+            }
+            state.store.save_host_update_job(&job).await?;
+            UpdateResponse::Status {
+                job: Some(job),
+                running,
+            }
+        }
+        UpdateRequest::Status => {
+            let mut job = state.store.host_update_job().await?;
+            if let Some(current) = job.as_mut() {
+                let receipt = if current.phase.active() && current.candidate.differs_from(&running)
+                {
+                    relay(UpdateHostRequest::Status { id: current.id.clone() }).await.ok()
+                        .map(|body| serde_json::from_slice::<openwebide_core::host_admin::updates::UpdateReceipt>(&body)
+                            .map_err(|error| ApiError::internal(error.to_string()))).transpose()?
+                } else {
+                    None
+                };
+                openwebide_core::host_admin::updates::reconcile(current, &running, receipt, now());
+                state.store.save_host_update_job(current).await?;
+            }
+            UpdateResponse::Status { job, running }
+        }
+    };
+    if let UpdateResponse::Settings {
+        job: Some(job),
+        running,
+        ..
+    }
+    | UpdateResponse::Status {
+        job: Some(job),
+        running,
+    } = &mut response
+    {
+        let previous = job.clone();
+        openwebide_core::host_admin::updates::reconcile(job, running, None, now());
+        if *job != previous {
+            state.store.save_host_update_job(job).await?;
+        }
+    }
+    Ok(json_response(200, &response))
+}

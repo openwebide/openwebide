@@ -31,6 +31,7 @@ jobs:
       - name: Validate release tooling and install configuration
         run: |
           python3 -m unittest discover -s tools -p 'test_release.py'
+          python3 -m unittest discover -s tools -p 'test_host_updates.py'
           python3 -m unittest discover -s tools -p 'test_open_source.py'
           python3 -m unittest discover -s tools -p 'test_editor_measurements.py'
           python3 -m unittest discover -s tools -p 'test_editor_browser_runner.py'

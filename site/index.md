@@ -81,3 +81,5 @@ Configure [MCP tools](docs/mcp.md) to connect more host services to the agent.
 Use [scheduled tasks](docs/scheduled-tasks.md), [goals](docs/chat-controls.md)
 and [monitors](docs/monitors.md) for ongoing work, or inspect and manage your
 homelab through [host administration](docs/host-administration.md).
+Choose Alpha, Preview or Stable and install compatible releases from
+**Settings → Host → Updates**, using a configured Compose or Podman/systemd updater.

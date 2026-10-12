@@ -94,6 +94,12 @@ installation has been verified; do not delete volumes as part of renaming.
 
 ### Routine upgrades
 
+For supported Linux hosts, **Settings → Host → Updates** can check the selected
+channel and install an approved image through the existing SSH connection.
+Configure the deployment updater first; see [host updates](host-administration.md#updates)
+for prerequisites, digest pins and restart recovery. Images need the compatibility
+metadata published with this feature; older releases still use the manual steps below.
+
 Compose uses the explicit `openwebide` project name and stable data volume name.
 Preserve any configured volume overrides on every upgrade. Read the target release's
 changelog first. Stop the app and back up its entire data directory before pulling:

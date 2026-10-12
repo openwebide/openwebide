@@ -26,6 +26,17 @@ def workflow_script(step_name):
 
 
 class ReleaseTests(unittest.TestCase):
+    def test_update_metadata_uses_the_storage_schema_and_rejects_missing_metadata(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'crates/storage/src/migrations.rs'
+            source.parent.mkdir(parents=True)
+            source.write_text('pub const SCHEMA_VERSION: i64 = 105;\n')
+            self.assertEqual(release.database_schema(root), 105)
+            source.write_text('// schema unavailable\n')
+            with self.assertRaises(ValueError):
+                release.database_schema(root)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

@@ -15,6 +15,7 @@ struct Scope {
 }
 #[derive(Clone, Copy)]
 pub struct HostState {
+    pub updates: crate::host_updates::UpdateState,
     pub connection: RwSignal<Option<HostConnection>>,
     pub environment: RwSignal<Option<HostEnvironment>>,
     pub operations: RwSignal<Vec<HostOperation>>,
@@ -31,6 +32,7 @@ pub struct HostState {
 impl HostState {
     pub fn new(api: Api, auth: AuthState, chat: ChatState, projects: ProjectsState) -> Self {
         let state = Self {
+            updates: crate::host_updates::UpdateState::new(api, auth),
             connection: RwSignal::new(None),
             environment: RwSignal::new(None),
             operations: RwSignal::new(Vec::new()),

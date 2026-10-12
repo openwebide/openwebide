@@ -134,3 +134,91 @@ async fn ssh_administration_inspects_and_changes_the_target_and_handles_interact
     drop(process);
     assert!(registry().input(7, 8, encrypted("late\n")).is_err());
 }
+
+#[tokio::test]
+#[ignore = "Run docker/host-admin-test/check.sh for the isolated SSH updater fixture"]
+async fn ssh_update_adapter_pins_both_deployments_and_survives_ssh_disconnect() {
+    use openwebide_bridge::host_admin::updates::SshUpdates;
+    use openwebide_core::host_admin::updates::*;
+    let host = SshHost::new(
+        HostConnection {
+            destination: "admin@127.0.0.1".into(),
+            port: std::env::var("OPENWEBIDE_TEST_SSH_PORT")
+                .unwrap()
+                .parse()
+                .unwrap(),
+            known_hosts: std::fs::read_to_string(
+                std::env::var("OPENWEBIDE_TEST_SSH_KNOWN_HOSTS").unwrap(),
+            )
+            .unwrap(),
+            ..HostConnection::default()
+        },
+        Arc::new(HostExecution),
+    )
+    .unwrap();
+    host.command(&command("sh", &["-c", "mkdir -p /home/admin/update-fixture; printf 'KEEP=original\nOPENWEBIDE_IMAGE=old\n' > /home/admin/update-fixture/.env; printf '[Image]\nImage=old\n' > /home/admin/update-fixture/openwebide.image; touch /home/admin/update-fixture/compose.yml"])).await.unwrap();
+    let adapter = SshUpdates(host.clone());
+    let running = Build {
+        version: "1.0.0-alpha.6".into(),
+        commit: "a".repeat(40),
+        schema: 58,
+    };
+    for (index, deployment) in [
+        Deployment::Compose {
+            directory: "/home/admin/update-fixture".into(),
+            files: vec!["/home/admin/update-fixture/compose.yml".into()],
+            service: "openwebide".into(),
+        },
+        Deployment::Quadlet {
+            image_file: "/home/admin/update-fixture/openwebide.image".into(),
+            service: "openwebide.service".into(),
+        },
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let settings = UpdateSettings {
+            deployment,
+            ..UpdateSettings::default()
+        };
+        let check = check(&adapter, settings.clone(), running.clone())
+            .await
+            .unwrap();
+        assert!(check.available);
+        let identity = if index == 0 { "d" } else { "e" }.repeat(32);
+        let job = UpdateJob {
+            id: identity.clone(),
+            candidate: check.candidate,
+            phase: UpdatePhase::Starting,
+            detail: String::new(),
+            settings_revision: 0,
+            connection_revision: 0,
+            created_at: 1,
+        };
+        start(&adapter, &settings, &running, &job).await.unwrap();
+        // Each poll is a new SSH connection. The launching connection has already exited.
+        tokio::time::timeout(Duration::from_secs(20), async {
+            loop {
+                let receipt = adapter.status(&identity).await.unwrap();
+                assert_ne!(receipt.phase, UpdatePhase::Failed, "{}", receipt.detail);
+                if receipt.phase == UpdatePhase::Succeeded {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(100)).await;
+            }
+        })
+        .await
+        .unwrap();
+        let path = if index == 0 {
+            "/home/admin/update-fixture/.env"
+        } else {
+            "/home/admin/update-fixture/openwebide.image"
+        };
+        let updated = host.command(&command("cat", &[path])).await.unwrap().stdout;
+        assert!(updated.contains(&job.candidate.image()));
+        if index == 0 {
+            assert!(updated.contains("KEEP=original"));
+        }
+        assert!(start(&adapter, &settings, &running, &job).await.is_err());
+    }
+}

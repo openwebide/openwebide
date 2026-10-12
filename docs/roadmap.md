@@ -1070,19 +1070,15 @@ walkthroughs against the final app before public launch.
   workflows, sessions, Git, commands/output and troubleshooting into task guides.
   Validate them on a clean installation and on both workspace modes; refresh
   editor and mobile walkthroughs after the ongoing UI work lands.
-- **Host updates in Settings:** show the running build and check the configured
-  release channel for a newer published image. Offer Alpha (currently `nightly`),
-  Preview and Stable as host-scoped settings, with release notes and an explicit
-  update action. Use a configured host updater for Compose or Podman/systemd
-  to pull and recreate the app container, retain persistent data, and reconnect
-  after restart. Compare image digests/commits for rolling builds; check database
-  compatibility before channel changes that would downgrade the app. Cover local
-  and remote project access, unavailable updaters, failed updates and recovery.
 - **Installation and upgrade rehearsal:** exercise download-only Compose and rootless
   Quadlet (including registry auto-updates), database backup/restore/upgrade and both
   workspace modes on release hosts. CI verifies both native image architectures,
   bridge archives, HTTPS transport and generated Quadlet services; actual systemd
   service and update-timer checks remain hands-on.
+  Rehearse Settings → Host → Updates on real Compose and user Quadlet installs,
+  including host prerequisites, digest pins, failed deployments and reconnects.
+  The settings/actions, durable claims and detached SSH worker have shared local/
+  remote browser contracts and controlled deployment-fixture coverage.
 - **Prerelease installation verification:** make the GHCR package public and verify
   anonymous pulls on both architectures, then validate a clean prerelease install
   before using alpha/preview distribution for feedback; this does not complete 1.0.

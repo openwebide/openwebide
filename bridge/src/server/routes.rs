@@ -94,6 +94,7 @@ pub(super) async fn route(
         || path == "/host/info"
         || path == "/host/admin"
         || path == "/host/probe"
+        || path == "/host/updates"
         || path == "/host/input-key"
         || path == "/host/input"
         || matches!(
@@ -363,7 +364,7 @@ pub(super) async fn route(
             Ok(execution_response(result, allowed_origin))
         }
 
-        ("POST", "/host/probe" | "/host/input" | "/host/input-key") => {
+        ("POST", "/host/probe" | "/host/input" | "/host/input-key" | "/host/updates") => {
             if origin.is_some() || config.pairing_token.is_some() {
                 return Ok(execution_response(
                     Err(BridgeError::Forbidden(
@@ -378,7 +379,59 @@ pub(super) async fn route(
                     config.secret.clone(),
                     crate::runs::http_client::ReqwestHttpClient::default(),
                 );
-                if path == "/host/probe" {
+                if path == "/host/updates" {
+                    use openwebide_core::host_admin::updates::{self, UpdateHostRequest};
+                    let request: UpdateHostRequest = read_json(req.into_body(), 16384).await?;
+                    let host =
+                        match crate::host_admin::connection(&backend)
+                            .await
+                            .and_then(|connection| {
+                                crate::host_admin::ssh::SshHost::new(
+                                    connection,
+                                    config.execution.clone(),
+                                )
+                            }) {
+                            Ok(host) => host,
+                            Err(detail) if matches!(&request, UpdateHostRequest::Start { .. }) => {
+                                return serde_json::to_string(&updates::UpdateLaunch::Rejected {
+                                    detail,
+                                })
+                                .map_err(|error| BridgeError::Execution(error.to_string()));
+                            }
+                            Err(error) => return Err(BridgeError::Execution(error)),
+                        };
+                    let adapter = crate::host_admin::updates::SshUpdates(host);
+                    let result = match request {
+                        UpdateHostRequest::Check { settings, running } => serde_json::to_value(
+                            updates::check(&adapter, settings, running)
+                                .await
+                                .map_err(BridgeError::Execution)?,
+                        ),
+                        UpdateHostRequest::Start {
+                            settings,
+                            running,
+                            job,
+                        } => {
+                            let launch =
+                                match updates::start(&adapter, &settings, &running, &job).await {
+                                    Ok(()) => updates::UpdateLaunch::Started,
+                                    Err(updates::UpdateFailure::Rejected(detail)) => {
+                                        updates::UpdateLaunch::Rejected { detail }
+                                    }
+                                    Err(updates::UpdateFailure::Uncertain(_)) => {
+                                        updates::UpdateLaunch::Uncertain
+                                    }
+                                };
+                            serde_json::to_value(launch)
+                        }
+                        UpdateHostRequest::Status { id } => serde_json::to_value(
+                            adapter.status(&id).await.map_err(BridgeError::Execution)?,
+                        ),
+                    }
+                    .map_err(|error| BridgeError::Execution(error.to_string()))?;
+                    serde_json::to_string(&result)
+                        .map_err(|error| BridgeError::Execution(error.to_string()))
+                } else if path == "/host/probe" {
                     use openwebide_core::host_admin::HostInventoryAdapter;
                     let connection = crate::host_admin::connection(&backend)
                         .await

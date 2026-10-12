@@ -47,6 +47,7 @@ enum Route {
     HostJournal,
     HostInspect,
     HostConnection,
+    HostUpdates,
     SaveHostConnection,
     HostProbe,
     HostInput,
@@ -210,6 +211,7 @@ fn resolve(method: &str, segments: &[&str]) -> Option<Route> {
         ("GET", ["scheduled-tasks"]) => Some(Route::ScheduledList),
         ("POST", ["scheduled-tasks"]) => Some(Route::ScheduledCommand),
         ("GET", ["host", "connection"]) => Some(Route::HostConnection),
+        ("POST", ["host", "updates"]) => Some(Route::HostUpdates),
         ("PUT", ["host", "connection"]) => Some(Route::SaveHostConnection),
         ("POST", ["host", "probe"]) => Some(Route::HostProbe),
         ("POST", ["sessions", id, "host-input-key"]) if numeric_id(id) => Some(Route::HostInputKey),
@@ -617,6 +619,7 @@ pub async fn route(req: Request) -> JsonResp {
         (Some(Route::HostConnection), Some(user)) => {
             api::host_admin::connection(req, &state, user, false).await
         }
+        (Some(Route::HostUpdates), Some(user)) => api::host_admin::updates(req, &state, user).await,
         (Some(Route::SaveHostConnection), Some(user)) => {
             api::host_admin::connection(req, &state, user, true).await
         }
@@ -1084,6 +1087,7 @@ mod tests {
                 );
             }
             for route in [
+                Route::HostUpdates,
                 Route::HostInputKey,
                 Route::HostInput,
                 Route::ListPlugins,
@@ -1130,6 +1134,7 @@ mod tests {
             ("POST", "auth/register", Route::Register),
             ("POST", "auth/login", Route::Login),
             ("GET", "auth/me", Route::Me),
+            ("POST", "host/updates", Route::HostUpdates),
             ("POST", "sessions/1/host-input-key", Route::HostInputKey),
             ("POST", "sessions/1/host-input", Route::HostInput),
             ("POST", "auth/logout", Route::Logout),

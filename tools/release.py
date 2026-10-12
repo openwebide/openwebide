@@ -143,9 +143,18 @@ def github_outputs(current):
     return f"version={current}\nchannel={channel}\nprerelease={str(channel != 'stable').lower()}\n"
 
 
+def database_schema(root):
+    source = (root / 'crates/storage/src/migrations.rs').read_text()
+    match = re.search(r'^pub const SCHEMA_VERSION: i64 = (\d+);$', source, re.MULTILINE)
+    if not match:
+        raise ValueError('Missing database schema version')
+    return int(match[1])
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("schema")
     check = sub.add_parser("validate")
     check.add_argument("--tag")
     check.add_argument("--notes", type=Path)
@@ -160,7 +169,9 @@ def main():
     install.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
     try:
-        if args.command == "validate":
+        if args.command == "schema":
+            print(f"schema={database_schema(ROOT)}")
+        elif args.command == "validate":
             current, body = validate(ROOT, args.tag)
             if args.notes:
                 args.notes.write_text(body)

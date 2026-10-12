@@ -97,10 +97,14 @@ is [Tailscale Serve in a separate container](docs/tailscale.md).
 ## Host administration
 
 Host administration is included by default. Configure **Settings → Host** with an
-SSH destination, operating system and verified public host keys. Project-less chat
+SSH username, operating system and verified public host keys; the address defaults
+to the deployment host. Project-less chat
 can inspect that machine and propose changes for approval, with private terminal
 replies for interactive prompts. Container deployments use the same SSH agent
 setup as Git below. See [host administration](docs/host-administration.md).
+**Settings → Host → Updates** selects a release channel, checks published images
+and installs a compatible release through a configured Compose or user Quadlet
+updater. The update runs on the host and survives the app restarting.
 
 ## Git authentication
 
