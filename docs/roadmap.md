@@ -8,7 +8,9 @@ welcome, database-backed agent skills and skill import/export — moved to [CHAN
 [Host administration](host-administration.md), with automatic deployment-host SSH
 addresses and optional advanced connection overrides, structured agent questions and
 [Monitors](monitors.md) are implemented, with an active-only status-line flyout;
-their shipped behavior is in the changelog.
+their shipped behavior is in the changelog. Private host terminal replies use
+browser-to-bridge encryption; the Host flyout offers setup navigation and retains
+its layout during refresh.
 The [Git pane](git.md) includes commit history, staged-only commits and repository
 actions, with retained refresh results, primary-model drafting, resizable history
 inspection and shared Git-status icons in both project modes.

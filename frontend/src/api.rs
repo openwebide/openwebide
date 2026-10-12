@@ -133,6 +133,14 @@ impl BackendApi {
         self.post(&format!("/sessions/{session}/host"), request)
             .await
     }
+    pub async fn host_input_key(
+        &self,
+        session: i64,
+        prompt: &openwebide_core::host_admin::HostInputKeyRequest,
+    ) -> Result<openwebide_core::host_admin::HostInputKey, String> {
+        self.post(&format!("/sessions/{session}/host-input-key"), prompt)
+            .await
+    }
     pub async fn host_input(
         &self,
         session: i64,

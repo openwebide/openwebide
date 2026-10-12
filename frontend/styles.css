@@ -3731,6 +3731,10 @@ button.browser-item {
 
 /* Host inspection uses the same statusline flyout as goals and monitors. */
 .tui-statusline .tui-host-status { flex: none; }
+.tui-host-actions { margin-left: auto; display: flex; align-items: center; gap: var(--space-2); flex: none; }
+.tui-host-actions .tui-goal-status, .tui-host-actions .tui-monitor-status { margin-left: 0; }
+.host-panel-configured { height: max(0px, min(300px, calc(var(--dropdown-available-height, 320px) - 10px))); box-sizing: border-box; }
+.host-summary { min-height: 5em; }
 .tui-host-menu { white-space: normal; overflow-y: auto; }
 .tui-host-menu .host-panel { border: 0; max-height: none; padding: var(--space-3); }
 .phone-layout .app-drawer-status { border-top: 1px solid var(--border); margin-top: var(--space-3); padding-top: var(--space-3); }
@@ -3740,5 +3744,4 @@ button.browser-item {
 
 .release-notes { overflow-wrap: anywhere; }
 
-.phone-layout .tui-host-status .ui-dropdown-label > span:not(.ui-icon-glyph) { display: none; }
 .phone-layout .tui-host-status .ui-dropdown-trigger { padding-inline: var(--space-2); }

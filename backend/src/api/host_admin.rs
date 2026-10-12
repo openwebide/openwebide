@@ -150,6 +150,7 @@ pub(crate) async fn input(
         .await?;
     let input: openwebide_core::host_admin::HostInput =
         parse_json(read_body(req, 16 * 1024).await?)?;
+    input.validate().map_err(ApiError::bad_request)?;
     let payload =
         serde_json::json!({"user":user.id.get(),"session":session,"input":input}).to_string();
     let (status, body) = crate::bridge::send(&state.store, "/host/input", payload).await?;
@@ -161,4 +162,34 @@ pub(crate) async fn input(
     let _: serde_json::Value =
         serde_json::from_slice(&body).map_err(|error| ApiError::internal(error.to_string()))?;
     Ok(json_response(200, &serde_json::json!({"ok":true})))
+}
+
+pub(crate) async fn input_key(
+    req: Request,
+    state: &AppState,
+    path: &str,
+    user: AuthedUser,
+) -> Result<JsonResp, ApiError> {
+    admin(user)?;
+    let session = session_id(path)?;
+    state
+        .store
+        .require_host_session(user.id.get(), session)
+        .await?;
+    let prompt: openwebide_core::host_admin::HostInputKeyRequest =
+        parse_json(read_body(req, 4096).await?)?;
+    prompt.validate().map_err(ApiError::bad_request)?;
+    let payload = serde_json::json!({"user": user.id.get(), "session": session, "prompt": prompt})
+        .to_string();
+    let (status, body) = crate::bridge::send(&state.store, "/host/input-key", payload).await?;
+    if status != 200 {
+        return Err(ApiError::conflict(
+            "This host prompt is no longer available; refresh the operation.",
+        ));
+    }
+    let key: openwebide_core::host_admin::HostInputKey =
+        serde_json::from_slice(&body).map_err(|error| ApiError::internal(error.to_string()))?;
+    key.validate_scope(user.id.get(), session, &prompt)
+        .map_err(ApiError::conflict)?;
+    Ok(json_response(200, &key))
 }

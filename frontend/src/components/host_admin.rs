@@ -1,7 +1,7 @@
 use super::ui::{FormField, FormSection, InlineActions};
 use crate::host_admin::HostState;
 use leptos::prelude::*;
-use openwebide_core::host_admin::{HostConnection, HostInput, HostPlatform};
+use openwebide_core::host_admin::{HostConnection, HostPlatform};
 
 #[component]
 pub fn HostSettings() -> impl IntoView {
@@ -37,12 +37,25 @@ pub fn HostSettings() -> impl IntoView {
 pub fn HostPanel() -> impl IntoView {
     let host = expect_context::<HostState>();
     let chat = expect_context::<crate::state::chat::ChatState>();
+    let settings = expect_context::<crate::state::settings::SettingsState>();
+    let auth = expect_context::<crate::state::auth::AuthState>();
+    Effect::new(move || {
+        auth.generation.track();
+        host.load_connection();
+    });
+    let configured = Memo::new(move |_| {
+        host.connection.with(|connection| {
+            connection
+                .as_ref()
+                .is_some_and(HostConnection::is_configured)
+        })
+    });
     let filter = RwSignal::new(String::new());
     let environment = Memo::new(move |_| host.environment.get());
     let ticks = std::cell::Cell::new(0_u8);
     let timer = set_interval_with_handle(
         move || {
-            if host.open.get_untracked() {
+            if host.open.get_untracked() && configured.get_untracked() {
                 ticks.set((ticks.get() + 1) % 5);
                 host.refresh(ticks.get() == 0);
             }
@@ -56,18 +69,22 @@ pub fn HostPanel() -> impl IntoView {
         }
     });
     view! {
-        <super::dropdown::Dropdown class="tui-host-status" trigger_class="btn sm ghost" menu_class="tui-host-menu" menu_role="dialog" aria_label="Host environment" open=host.open above=true hide_caret=true on_open=Callback::new(move |()| host.refresh(true)) label=|| view! { <super::ui::Icon name=super::ui::IconName::Server /><span>"Host"</span> }>
-        <section class="host-panel" aria-label="Host environment details">
-            <InlineActions><strong>"Host environment"</strong><button class="btn ghost" disabled=move||host.busy.get() || chat.active_session.get().is_none() on:click=move|_|host.refresh(true)><super::ui::Icon name=super::ui::IconName::RefreshCw />"Refresh"</button></InlineActions>
+        <super::dropdown::Dropdown class="tui-host-status" trigger_class="btn sm ghost" menu_class="tui-host-menu" menu_role="dialog" aria_label="Host environment" open=host.open above=true hide_caret=true on_open=Callback::new(move |()| host.refresh(true)) label=|| view! { <span>"Host"</span> }>
+        <section class="host-panel" class:host-panel-configured=move||configured.get() aria-label="Host environment details">
+        <Show when=move||configured.get() fallback=move||view!{
+            <p class="form-hint">"Set up host administration to inspect and manage your homelab."</p>
+            <button class="btn ghost" on:click=move|_|{host.open.set(false); settings.requested_tab.set(4); settings.show_settings.set(true);}>"Open host settings"</button>
+        }>
+            <InlineActions><strong>"Host environment"</strong><button class="btn ghost" aria-label="Refresh host environment" title="Refresh host environment" disabled=move||host.busy.get() || chat.active_session.get().is_none() on:click=move|_|host.refresh(true)><super::ui::Icon name=super::ui::IconName::RefreshCw /></button></InlineActions>
             <Show when=move||host.open.get()>
                 <Show when=move||chat.active_session.get().is_none()><p class="form-hint">"Start a project-less chat to inspect and manage the host."</p></Show>
                 <Show when=move||host.error.get().is_some()><p class="form-hint" role="alert">{move||host.error.get().unwrap_or_default()}</p></Show>
-                {move||environment.get().map(|environment|view!{
-                    <p><strong>{environment.target.clone()}</strong>" · "{environment.info.os.clone().unwrap_or_default()}</p>
-                    <p class="form-hint">{environment.info.scope.clone()}</p>
-                    <p class="form-hint">{format!("{} logical CPUs · {} / {} MiB RAM available",environment.info.logical_cores,environment.info.ram_available_bytes/1048576,environment.info.ram_total_bytes/1048576)}</p>
-                    {environment.notes.into_iter().map(|note|view!{<p class="form-hint">{note}</p>}).collect::<Vec<_>>()}
-                })}
+                <div class="host-summary">
+                    <p><strong>{move||environment.with(|value|value.as_ref().map(|host|host.target.clone()).unwrap_or_else(||"Loading host…".into()))}</strong>" · "{move||environment.with(|value|value.as_ref().and_then(|host|host.info.os.clone()).unwrap_or_default())}</p>
+                    <p class="form-hint">{move||environment.with(|value|value.as_ref().map(|host|host.info.scope.clone()).unwrap_or_default())}</p>
+                    <p class="form-hint">{move||environment.with(|value|value.as_ref().map(|host|format!("{} logical CPUs · {} / {} MiB RAM available",host.info.logical_cores,host.info.ram_available_bytes/1048576,host.info.ram_total_bytes/1048576)).unwrap_or_default())}</p>
+                </div>
+                <For each=move||environment.with(|value|value.as_ref().map(|host|host.notes.clone()).unwrap_or_default()) key=|note|note.clone() children=|note|view!{<p class="form-hint">{note}</p>}/>
                 <super::ui::PanelSearchRow unpadded=true><input class="form-input" type="search" aria-label="Filter host resources" placeholder="Filter services, processes, ports, storage…" prop:value=move||filter.get() on:input=move|event|filter.set(event_target_value(&event))/></super::ui::PanelSearchRow>
                 <div class="host-resources"><For each=move || {
                     let query = filter.get().to_lowercase();
@@ -76,6 +93,7 @@ pub fn HostPanel() -> impl IntoView {
                 <p class="form-hint">"Showing up to 100 matching resources. Filter to narrow the view."</p>
                 <For each=move||host.operations.with(|operations|operations.iter().map(|operation|operation.id).collect::<Vec<_>>()) key=|id|*id children=move|id|view!{<HostOperationView id=id/>}/>
             </Show>
+        </Show>
         </section>
         </super::dropdown::Dropdown>
     }
@@ -156,11 +174,7 @@ fn HostOperationView(id: i64) -> impl IntoView {
         {
             let data = reply.get_untracked();
             reply.set(String::new());
-            host.reply(HostInput {
-                operation: id,
-                token,
-                data: format!("{data}\n"),
-            });
+            host.reply(id, token, format!("{data}\n"));
         }
     });
     view! {
@@ -169,7 +183,7 @@ fn HostOperationView(id: i64) -> impl IntoView {
             <pre class="host-output">{move||operation.with(|value|value.as_ref().map(|operation|operation.live_output.clone()).unwrap_or_default())}</pre>
             <Show when=move||operation.with(|value|value.as_ref().is_some_and(|operation|operation.input_token.is_some()))>
                 <label>"Private terminal reply"<input class="form-input" type="password" autocomplete="off" aria-label="Private host prompt reply" prop:value=move||reply.get() on:input=move|event|reply.set(event_target_value(&event)) on:keydown=move|event: web_sys::KeyboardEvent|{if event.key()=="Enter"{event.prevent_default();send.run(());}}/></label>
-                <InlineActions><button class="btn" on:click=move|_|send.run(())>"Send reply"</button><button class="btn stop" on:click=move|_|{if let Some(operation)=operation.get_untracked() && let Some(token)=operation.input_token{host.reply(HostInput {operation:id,token,data:"\u{3}".into()});}}>"Interrupt command"</button></InlineActions>
+                <InlineActions><button class="btn" on:click=move|_|send.run(())>"Send reply"</button><button class="btn stop" on:click=move|_|{if let Some(operation)=operation.get_untracked() && let Some(token)=operation.input_token{host.reply(id,token,"\u{3}".into());}}>"Interrupt command"</button></InlineActions>
                 <p class="form-hint">"Replies go directly to the terminal and are hidden from chat and the model."</p>
             </Show>
             <details><summary>"Approved plan and retained results"</summary><pre>{move||operation.with(|value|value.as_ref().map(|operation|operation.plan.preview()).unwrap_or_default())}</pre><pre>{move||operation.with(|value|value.as_ref().map(|operation|operation.outputs.iter().map(|result|result.outcome.to_model_text()).collect::<Vec<_>>().join("\n")).unwrap_or_default())}</pre></details>

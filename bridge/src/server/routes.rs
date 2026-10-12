@@ -94,6 +94,7 @@ pub(super) async fn route(
         || path == "/host/info"
         || path == "/host/admin"
         || path == "/host/probe"
+        || path == "/host/input-key"
         || path == "/host/input"
         || matches!(
             path.as_str(),
@@ -362,7 +363,7 @@ pub(super) async fn route(
             Ok(execution_response(result, allowed_origin))
         }
 
-        ("POST", "/host/probe" | "/host/input") => {
+        ("POST", "/host/probe" | "/host/input" | "/host/input-key") => {
             if origin.is_some() || config.pairing_token.is_some() {
                 return Ok(execution_response(
                     Err(BridgeError::Forbidden(
@@ -386,6 +387,28 @@ pub(super) async fn route(
                         crate::host_admin::ssh::SshHost::new(connection, config.execution.clone())
                             .map_err(BridgeError::Execution)?;
                     serde_json::to_string(&host.overview().await.map_err(BridgeError::Execution)?)
+                        .map_err(|error| BridgeError::Execution(error.to_string()))
+                } else if path == "/host/input-key" {
+                    #[derive(Deserialize)]
+                    #[serde(deny_unknown_fields)]
+                    struct KeyPayload {
+                        user: i64,
+                        session: i64,
+                        prompt: openwebide_core::host_admin::HostInputKeyRequest,
+                    }
+                    let body: KeyPayload = read_json(req.into_body(), 4096).await?;
+                    use crate::runs::backend_client::RunBackend;
+                    backend
+                        .host_journal(&openwebide_core::host_admin::HostJournalCommand::List {
+                            user: body.user,
+                            session: body.session,
+                        })
+                        .await
+                        .map_err(BridgeError::Execution)?;
+                    let key = crate::host_admin::interactive::registry()
+                        .key(body.user, body.session, &body.prompt)
+                        .map_err(BridgeError::Validation)?;
+                    serde_json::to_string(&key)
                         .map_err(|error| BridgeError::Execution(error.to_string()))
                 } else {
                     #[derive(Deserialize)]

@@ -116,6 +116,10 @@ pub fn Dropdown(
         let _ = style.set_property("width", &format!("{width}px"));
         let _ = style.set_property("max-height", &format!("{}px", available.min(320.0)));
         let _ = style.set_property(
+            "--dropdown-available-height",
+            &format!("{}px", available.min(320.0)),
+        );
+        let _ = style.set_property(
             "left",
             &format!(
                 "{}px",

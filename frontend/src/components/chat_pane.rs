@@ -691,12 +691,14 @@ fn TuiStatusLine(
             <span class="tui-tools-count">
                 {move || format!("{} tools", session_telemetry.with(|telemetry| telemetry.tool_calls_count))}
             </span>
+            <div class="tui-host-actions">
             {use_context::<crate::host_admin::HostState>().map(|_| {
                 let projects = expect_context::<ProjectsState>();
                 view! { <Show when=move || projects.active_project.get().is_none()><super::host_admin::HostPanel /></Show> }
             })}
             <super::monitors::ConversationMonitors />
             <super::goal::GoalStatusIndicator />
+            </div>
         </div>
     }
 }

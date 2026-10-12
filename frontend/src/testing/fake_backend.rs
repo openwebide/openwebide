@@ -101,6 +101,12 @@ pub struct FakeBackend {
     pub host_results: RefCell<VecDeque<Deferred<openwebide_core::host_admin::HostResponse>>>,
     pub host_requests: RefCell<Vec<(i64, openwebide_core::host_admin::HostRequest)>>,
     pub host_inputs: RefCell<Vec<(i64, i64, String)>>,
+    pub host_encrypted_inputs: RefCell<Vec<openwebide_core::host_admin::HostInput>>,
+    pub host_input_key_results:
+        RefCell<VecDeque<Deferred<openwebide_core::host_admin::HostInputKey>>>,
+    host_input_recipients: RefCell<
+        BTreeMap<String, openwebide_core::host_admin::private_input::PrivateInputRecipient>,
+    >,
     pub assistance_requests: RefCell<Vec<openwebide_core::AssistanceRequest>>,
     pub assistance_results: RefCell<VecDeque<Deferred<Option<String>>>>,
     pub monitors: RefCell<BTreeMap<i64, Vec<openwebide_core::scheduled::ScheduledTask>>>,
@@ -1012,15 +1018,46 @@ impl Backend for FakeBackend {
             ))
         })
     }
+    fn host_input_key<'a>(
+        &'a self,
+        session: i64,
+        prompt: &'a openwebide_core::host_admin::HostInputKeyRequest,
+    ) -> LocalBoxFuture<'a, Result<openwebide_core::host_admin::HostInputKey, String>> {
+        Box::pin(async move {
+            let pending = self.host_input_key_results.borrow_mut().pop_front();
+            if let Some(result) = pending {
+                return result
+                    .await
+                    .map_err(|_| "Private key request cancelled".to_owned())?;
+            }
+            let mut recipients = self.host_input_recipients.borrow_mut();
+            let recipient = recipients.entry(prompt.token.clone()).or_insert_with(|| {
+                openwebide_core::host_admin::private_input::PrivateInputRecipient::new(
+                    1,
+                    session,
+                    prompt.clone(),
+                    [7; 32],
+                )
+            });
+            Ok(recipient.public_key())
+        })
+    }
     fn host_input<'a>(
         &'a self,
         session: i64,
         input: &'a openwebide_core::host_admin::HostInput,
     ) -> LocalBoxFuture<'a, Result<(), String>> {
         Box::pin(async move {
+            self.host_encrypted_inputs.borrow_mut().push(input.clone());
+            let data = self
+                .host_input_recipients
+                .borrow_mut()
+                .get_mut(&input.prompt.token)
+                .ok_or("Unknown private prompt")?
+                .open(1, session, input)?;
             self.host_inputs
                 .borrow_mut()
-                .push((session, input.operation, input.data.clone()));
+                .push((session, input.prompt.operation, data));
             Ok(())
         })
     }

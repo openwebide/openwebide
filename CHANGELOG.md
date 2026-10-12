@@ -10,6 +10,9 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 - Initialize the Leptos runtime explicitly in isolated editor library fixtures, so independently selected browser tests can create effects without depending on an earlier UI mount.
 
+- Encrypt private host terminal replies from browser to bridge using prompt-scoped HPKE keys, authenticated scope binding and replay rejection, with no plaintext API fallback. Retain terminal secret redaction and reject stale account, session, project and prompt results.
+- Align the text-only Host flyout with Goal and Monitor, link unconfigured hosts to their Settings tab, and retain inventory and a stable scrollable layout during automatic refresh. Use an inline refresh icon for manual retries.
+
 - Default host administration SSH connections to the deployment host using an SSH username, retaining address and port overrides under advanced settings and preserving existing saved destinations. Configure host gateway access in Compose and Quadlet deployments.
 
 - Validate recovered editor documents in bounded source and fold batches before publishing them. Reuse an immutable snapshot validation proof during hydration, while retaining project, account, read and source guards and the existing recovery limits.

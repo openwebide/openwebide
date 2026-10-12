@@ -58,7 +58,12 @@ async fn host_routes_require_the_server_secret_and_reject_browser_and_companion_
         let server = tokio::spawn(run_server_until(listener, config, async {
             let _ = stopped.await;
         }));
-        for path in ["/host/admin", "/host/input", "/host/probe"] {
+        for path in [
+            "/host/admin",
+            "/host/input",
+            "/host/input-key",
+            "/host/probe",
+        ] {
             assert_eq!(status(port, path, None, None).await, 401);
             assert_eq!(status(port, path, Some(&browser), None).await, 401);
             assert_eq!(

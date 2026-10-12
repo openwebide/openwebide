@@ -50,6 +50,7 @@ enum Route {
     SaveHostConnection,
     HostProbe,
     HostInput,
+    HostInputKey,
     Questions,
     ScheduledResult,
     SessionRunLease,
@@ -211,6 +212,7 @@ fn resolve(method: &str, segments: &[&str]) -> Option<Route> {
         ("GET", ["host", "connection"]) => Some(Route::HostConnection),
         ("PUT", ["host", "connection"]) => Some(Route::SaveHostConnection),
         ("POST", ["host", "probe"]) => Some(Route::HostProbe),
+        ("POST", ["sessions", id, "host-input-key"]) if numeric_id(id) => Some(Route::HostInputKey),
         ("POST", ["sessions", id, "host-input"]) if numeric_id(id) => Some(Route::HostInput),
         ("POST", ["host", "journal"]) => Some(Route::HostJournal),
         ("POST", ["sessions", id, "host"]) if numeric_id(id) => Some(Route::HostInspect),
@@ -619,6 +621,9 @@ pub async fn route(req: Request) -> JsonResp {
             api::host_admin::connection(req, &state, user, true).await
         }
         (Some(Route::HostProbe), Some(user)) => api::host_admin::probe(&state, user).await,
+        (Some(Route::HostInputKey), Some(user)) => {
+            api::host_admin::input_key(req, &state, &path, user).await
+        }
         (Some(Route::HostInput), Some(user)) => {
             api::host_admin::input(req, &state, &path, user).await
         }
@@ -1079,6 +1084,8 @@ mod tests {
                 );
             }
             for route in [
+                Route::HostInputKey,
+                Route::HostInput,
                 Route::ListPlugins,
                 Route::RecordPlugin,
                 Route::PreparePlugin,
@@ -1123,6 +1130,8 @@ mod tests {
             ("POST", "auth/register", Route::Register),
             ("POST", "auth/login", Route::Login),
             ("GET", "auth/me", Route::Me),
+            ("POST", "sessions/1/host-input-key", Route::HostInputKey),
+            ("POST", "sessions/1/host-input", Route::HostInput),
             ("POST", "auth/logout", Route::Logout),
             ("POST", "bridge/token", Route::BridgeToken),
             ("GET", "connections", Route::ListConnections),

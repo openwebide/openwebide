@@ -39,8 +39,11 @@ default, but need the SSH credentials and connection above before use.
 ## Inspect and manage
 
 Open a project-less session and select **Host** in the chat statusline to open
-a compact flyout. Inventory and operations refresh while it is open; closing it
-restores the space to chat. Use it to view the machine identity,
+a compact flyout, aligned with Goal and Monitor on the right of the chat statusline.
+The entry uses a text label. Before configuration, the flyout links directly to
+Settings → Host. Configured inventory and operations refresh while the flyout is
+open, retaining the last results and a stable scrollable size. The inline refresh
+icon allows manual retries; closing the flyout stops polling. Use it to view the machine identity,
 OS/version, CPU and RAM, services, processes, containers, ports, storage and
 configuration. Filter resources and select **Ask about this** to add the observed
 resource to your next message. Missing utilities appear as inventory notes;
@@ -71,12 +74,24 @@ review the operation's retained results to see whether commands and checks passe
 
 Interactive commands get an SSH terminal. Expand their host operation to see
 live output and enter a **Private terminal reply** for sudo passwords or other
-prompts. Replies are forwarded to that terminal rather than through the model or
-chat history. Use HTTPS for the app: browser-to-server transport protects these
-replies only when TLS is configured. They are not application-level end-to-end
-encrypted; the backend and bridge handle plaintext while forwarding them. SSH
-encrypts the bridge-to-host connection, and private SSH keys remain in the agent
-or bridge key files. Exact echoed replies are redacted from retained output. You can
+prompts. The browser encrypts each reply to an ephemeral bridge key using HPKE
+(RFC 9180: X25519/HKDF-SHA256/AES-256-GCM). The backend forwards ciphertext; only
+the bridge decrypts it before terminal input. Keys live in bridge memory for one
+live prompt. Replies are bound to the account, session, operation, prompt and key,
+with bounded single-use request IDs; modified, replayed and retired-prompt replies
+are rejected. There is no plaintext fallback. New prompts advertise a
+`private_reply_token` rather than the old plaintext-input token, so older clients
+do not show their reply form for new prompts. Upgrade the server and bridge
+together and reload older clients; legacy stored operations remain readable.
+
+Public keys are delivered through the existing authenticated server/bridge
+connection. Use HTTPS to trust the delivered app code and keys. This protects
+reply bodies from ordinary backend handling and intermediate transport/logging;
+it does not protect against a malicious app server substituting keys or browser
+code, or against a compromised bridge/target. The bridge necessarily handles
+plaintext and temporarily retains replies in memory to redact echoed secrets.
+Replies never enter model context, chat history or database records. Ordinary
+terminal output remains inspectable; exact echoed replies are redacted. You can
 send an interrupt from the same operation. Noninteractive commands use `sudo -n`
 when elevation is requested, and fail if authentication needs a prompt.
 

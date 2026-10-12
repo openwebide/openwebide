@@ -1,4 +1,4 @@
-use super::support::{mount_test, settle};
+use super::support::{mount_test, settle, wait_until};
 use leptos::prelude::*;
 use openwebide_core::{WorkspaceMode, host_admin::*};
 use openwebide_frontend::{
@@ -48,6 +48,13 @@ async fn host_replies_survive_output_polling_and_never_enter_chat() {
     let capture = slot.clone();
     let mounted = mount_test(move |state| {
         state.chat.active_session.set(Some(1));
+        state.fake.host_connection.borrow_mut().username = "admin".into();
+        state.auth.set_user(openwebide_core::User {
+            id: openwebide_core::UserId::new(1),
+            username: "admin".into(),
+            role: openwebide_core::UserRole::Admin,
+            created_at: 0,
+        });
         let host = HostState::new(state.api, state.auth, state.chat, state.projects);
         provide_context(host);
         capture.set(Some(host));
@@ -71,12 +78,31 @@ async fn host_replies_survive_output_polling_and_never_enter_chat() {
     settle().await;
     assert_eq!(field.value(), "secret-test-reply");
     mounted.click_text("Send reply");
+    wait_until("encrypted private reply delivered", || {
+        !mounted.state.fake.host_inputs.borrow().is_empty()
+    })
+    .await;
     settle().await;
     assert_eq!(field.value(), "");
     assert_eq!(
         mounted.state.fake.host_inputs.borrow().as_slice(),
         &[(1, 1, "secret-test-reply\n".into())]
     );
+    field.set_value("secret-test-reply");
+    field
+        .dispatch_event(&web_sys::Event::new("input").unwrap())
+        .unwrap();
+    mounted.click_text("Send reply");
+    wait_until("second encrypted private reply delivered", || {
+        mounted.state.fake.host_inputs.borrow().len() == 2
+    })
+    .await;
+    {
+        let replies = mounted.state.fake.host_encrypted_inputs.borrow();
+        assert_ne!(replies[0].request_id, replies[1].request_id);
+        assert_ne!(replies[0].encapsulated_key, replies[1].encapsulated_key);
+        assert_ne!(replies[0].ciphertext, replies[1].ciphertext);
+    }
     assert!(
         !mounted
             .state
@@ -92,7 +118,17 @@ async fn host_replies_survive_output_polling_and_never_enter_chat() {
             .unwrap()
             .contains("secret-test-reply")
     );
-    assert!(mounted.state.fake.calls.borrow().is_empty());
+    assert!(
+        mounted
+            .state
+            .fake
+            .host_encrypted_inputs
+            .borrow()
+            .iter()
+            .all(|input| !serde_json::to_string(input)
+                .unwrap()
+                .contains("secret-test-reply"))
+    );
     host.operations
         .update(|operations| operations[0].input_token = None);
     settle().await;
@@ -125,6 +161,10 @@ async fn host_results_cannot_cross_project_session_or_account_transitions() {
             .host_results
             .borrow_mut()
             .push_back(receiver);
+        host.connection.set(Some(HostConnection {
+            username: "admin".into(),
+            ..Default::default()
+        }));
         host.refresh(false);
         settle().await;
         assert!(host.busy.get_untracked());
@@ -186,6 +226,7 @@ async fn host_settings_load_on_first_mount_and_fit_a_phone_width() {
 async fn host_inspection_is_closed_by_default_and_only_polls_while_open() {
     let mounted = mount_test(move |state| {
         state.chat.active_session.set(Some(1));
+        state.fake.host_connection.borrow_mut().username = "admin".into();
         provide_context(HostState::new(
             state.api,
             state.auth,
@@ -231,7 +272,7 @@ async fn host_inspection_is_closed_by_default_and_only_polls_while_open() {
 }
 
 #[wasm_bindgen_test]
-async fn phone_host_flyout_retains_a_visible_touch_target_and_icon() {
+async fn phone_host_flyout_retains_a_visible_text_touch_target() {
     let mounted = mount_test(move |state| {
         provide_context(HostState::new(
             state.api,
@@ -248,11 +289,21 @@ async fn phone_host_flyout_retains_a_visible_touch_target_and_icon() {
     let button = mounted
         .element("button[aria-label='Host environment']")
         .get_bounding_client_rect();
-    let icon = mounted
-        .element(".tui-host-status .ui-icon-glyph")
-        .get_bounding_client_rect();
     assert!(button.height() >= 44.0);
-    assert!(icon.width() > 0.0 && icon.height() > 0.0);
+    assert!(
+        mounted
+            .root
+            .query_selector(".tui-host-status .ui-icon-glyph")
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        mounted
+            .element(".tui-host-status .ui-dropdown-label")
+            .text_content()
+            .unwrap()
+            .contains("Host")
+    );
     mounted.click("button[aria-label='Host environment']");
     settle().await;
     assert!(
@@ -328,5 +379,169 @@ async fn host_settings_default_address_and_advanced_overrides_in_both_modes() {
             toggle.get_attribute("aria-expanded").as_deref(),
             Some("false")
         );
+    }
+}
+
+#[wasm_bindgen_test]
+async fn unconfigured_host_offers_settings_without_polling() {
+    let mounted = mount_test(move |state| {
+        state.chat.active_session.set(Some(1));
+        provide_context(HostState::new(
+            state.api,
+            state.auth,
+            state.chat,
+            state.projects,
+        ));
+        view! { <style>{include_str!("../../styles.css")}</style><HostPanel/> }
+    });
+    settle().await;
+    mounted.click("[aria-label='Host environment']");
+    settle().await;
+    assert!(mounted.state.fake.host_requests.borrow().is_empty());
+    assert!(
+        mounted
+            .root
+            .query_selector("[aria-label='Filter host resources']")
+            .unwrap()
+            .is_none()
+    );
+    mounted.click_text("Open host settings");
+    settle().await;
+    assert!(mounted.state.settings.show_settings.get_untracked());
+    assert_eq!(mounted.state.settings.requested_tab.get_untracked(), 4);
+}
+
+#[wasm_bindgen_test]
+async fn private_reply_key_failures_and_scope_changes_never_send_plaintext() {
+    for change in 0..6 {
+        let slot = Rc::new(Cell::new(None));
+        let capture = slot.clone();
+        let mounted = mount_test(move |state| {
+            state.chat.active_session.set(Some(1));
+            state.auth.set_user(openwebide_core::User {
+                id: openwebide_core::UserId::new(1),
+                username: "admin".into(),
+                role: openwebide_core::UserRole::Admin,
+                created_at: 0,
+            });
+            let host = HostState::new(state.api, state.auth, state.chat, state.projects);
+            host.operations.set(vec![operation()]);
+            capture.set(Some(host));
+            view! { <div>"private reply fixture"</div> }
+        });
+        settle().await;
+        let host = slot.get().unwrap();
+        let (sender, receiver) = futures::channel::oneshot::channel();
+        mounted
+            .state
+            .fake
+            .host_input_key_results
+            .borrow_mut()
+            .push_back(receiver);
+        host.reply(1, "private-terminal".into(), "never-forward-this".into());
+        settle().await;
+        match change {
+            0 => mounted.state.auth.logout(),
+            1 => mounted.state.chat.active_session.set(Some(2)),
+            2 => {
+                mounted.state.seed_project();
+                mounted.state.projects.active_project.set(Some(1));
+            }
+            3 => host
+                .operations
+                .update(|operations| operations[0].input_token = Some("replacement".into())),
+            _ => {}
+        }
+        settle().await;
+        let prompt = HostInputKeyRequest {
+            operation: 1,
+            token: "private-terminal".into(),
+        };
+        let mut key = private_input::PrivateInputRecipient::new(1, 1, prompt, [7; 32]).public_key();
+        if change == 5 {
+            key.session = 2;
+        }
+        sender
+            .send(if change == 4 {
+                Err("Encryption unavailable".into())
+            } else {
+                Ok(key)
+            })
+            .unwrap();
+        settle().await;
+        assert!(mounted.state.fake.host_encrypted_inputs.borrow().is_empty());
+        assert!(mounted.state.fake.host_inputs.borrow().is_empty());
+    }
+}
+
+#[wasm_bindgen_test]
+fn private_reply_crypto_contract_in_browser() {
+    private_input::testing::assert_private_reply_contract();
+}
+
+#[wasm_bindgen_test]
+async fn configured_host_refresh_retains_geometry_nodes_and_expanded_resources() {
+    let slot = Rc::new(Cell::new(None));
+    let capture = slot.clone();
+    let mounted = mount_test(move |state| {
+        state.chat.active_session.set(Some(1));
+        state.fake.host_connection.borrow_mut().username = "admin".into();
+        let host = HostState::new(state.api, state.auth, state.chat, state.projects);
+        provide_context(host);
+        capture.set(Some(host));
+        view! { <style>{include_str!("../../styles.css")}</style><HostPanel/> }
+    });
+    settle().await;
+    let host = slot.get().unwrap();
+    let mut environment = HostEnvironment {
+        target: "host".into(),
+        boot_id: "boot".into(),
+        info: openwebide_core::HostInfo::default(),
+        resources: vec![HostResource {
+            id: "service".into(),
+            kind: ResourceKind::Service,
+            name: "Service".into(),
+            status: "running".into(),
+            detail: "details".into(),
+        }],
+        relationships: vec![],
+        notes: vec![],
+    };
+    host.environment.set(Some(environment.clone()));
+    host.open.set(true);
+    settle().await;
+    let panel = mounted.element(".host-panel");
+    let resource = mounted.element(".host-resource");
+    resource.set_attribute("open", "").unwrap();
+    let summary = mounted.element(".host-summary");
+    let height = panel.get_bounding_client_rect().height();
+    let refresh = mounted.element("[aria-label='Refresh host environment']");
+    assert_eq!(refresh.text_content().unwrap().trim(), "");
+    for outcome in [true, false] {
+        let (sender, receiver) = futures::channel::oneshot::channel();
+        mounted
+            .state
+            .fake
+            .host_results
+            .borrow_mut()
+            .push_back(receiver);
+        host.refresh(true);
+        settle().await;
+        assert_eq!(panel.get_bounding_client_rect().height(), height);
+        environment.info.ram_available_bytes += 1024;
+        environment.notes.push("Collector note".into());
+        sender
+            .send(if outcome {
+                Ok(HostResponse::Environment(environment.clone()))
+            } else {
+                Err("Refresh unavailable".into())
+            })
+            .unwrap();
+        settle().await;
+        assert_eq!(panel.get_bounding_client_rect().height(), height);
+        assert!(summary.is_same_node(Some(&mounted.element(".host-summary"))));
+        assert!(resource.is_same_node(Some(&mounted.element(".host-resource"))));
+        assert!(resource.has_attribute("open"));
+        assert!(host.environment.get_untracked().is_some());
     }
 }

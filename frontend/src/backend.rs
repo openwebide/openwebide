@@ -489,6 +489,13 @@ pub trait Backend {
     ) -> LocalBoxFuture<'a, Result<openwebide_core::host_admin::HostResponse, String>> {
         Box::pin(async { Err("Host administration unavailable".into()) })
     }
+    fn host_input_key<'a>(
+        &'a self,
+        _session: i64,
+        _prompt: &'a openwebide_core::host_admin::HostInputKeyRequest,
+    ) -> LocalBoxFuture<'a, Result<openwebide_core::host_admin::HostInputKey, String>> {
+        Box::pin(async { Err("Private terminal encryption unavailable".into()) })
+    }
     fn host_input<'a>(
         &'a self,
         _session: i64,
@@ -867,6 +874,13 @@ impl Backend for BackendApi {
         request: &'a openwebide_core::host_admin::HostRequest,
     ) -> LocalBoxFuture<'a, Result<openwebide_core::host_admin::HostResponse, String>> {
         Box::pin(BackendApi::host_view(self, session, request))
+    }
+    fn host_input_key<'a>(
+        &'a self,
+        session: i64,
+        prompt: &'a openwebide_core::host_admin::HostInputKeyRequest,
+    ) -> LocalBoxFuture<'a, Result<openwebide_core::host_admin::HostInputKey, String>> {
+        Box::pin(BackendApi::host_input_key(self, session, prompt))
     }
     fn host_input<'a>(
         &'a self,

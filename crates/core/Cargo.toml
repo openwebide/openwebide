@@ -53,7 +53,11 @@ tree-sitter-md = { version = "0.5.3", optional = true }
 tree-sitter-ini = { version = "1.4.0", optional = true }
 tree-sitter-xml = { version = "0.7.0", optional = true }
 
+hpke = { version = "0.13.0", default-features = false, features = ["alloc", "x25519"], optional = true }
+rand_chacha = { version = "0.9", optional = true }
+
 [features]
+private-input = ["dep:hpke", "dep:rand_chacha"]
 test-support = []
 editor-parser = [
     "dep:tree-sitter", "dep:tree-sitter-rust",

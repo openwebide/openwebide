@@ -105,16 +105,16 @@ async fn ssh_administration_inspects_and_changes_the_target_and_handles_interact
     })
     .await
     .unwrap();
+    let prompt = HostInputKeyRequest {
+        operation: id,
+        token: token.clone(),
+    };
+    let key = registry().key(7, 8, &prompt).unwrap();
+    let encrypted = |data: &str| {
+        private_input::encrypt_reply(&key, 7, 8, &prompt, data, rand::random()).unwrap()
+    };
     registry()
-        .input(
-            7,
-            8,
-            HostInput {
-                operation: id,
-                token: token.clone(),
-                data: "fixture-password\n".into(),
-            },
-        )
+        .input(7, 8, encrypted("fixture-password\n"))
         .unwrap();
     let outcome = tokio::time::timeout(Duration::from_secs(10), async {
         loop {
@@ -132,17 +132,5 @@ async fn ssh_administration_inspects_and_changes_the_target_and_handles_interact
     assert!(stdout.lines().any(|line| line.trim() == "0"));
     assert!(!stdout.contains("fixture-password"));
     drop(process);
-    assert!(
-        registry()
-            .input(
-                7,
-                8,
-                HostInput {
-                    operation: id,
-                    token,
-                    data: "late\n".into()
-                }
-            )
-            .is_err()
-    );
+    assert!(registry().input(7, 8, encrypted("late\n")).is_err());
 }

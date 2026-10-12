@@ -5,7 +5,7 @@ use crate::{
 };
 use leptos::prelude::*;
 use openwebide_core::host_admin::{
-    HostConnection, HostEnvironment, HostInput, HostOperation, HostRequest, HostResponse,
+    HostConnection, HostEnvironment, HostInputKeyRequest, HostOperation, HostRequest, HostResponse,
 };
 #[derive(Clone, Copy, PartialEq, Eq)]
 struct Scope {
@@ -22,6 +22,7 @@ pub struct HostState {
     pub busy: RwSignal<bool>,
     pub open: RwSignal<bool>,
     generation: RwSignal<u64>,
+    connection_generation: RwSignal<u64>,
     api: Api,
     auth: AuthState,
     chat: ChatState,
@@ -37,6 +38,7 @@ impl HostState {
             busy: RwSignal::new(false),
             open: RwSignal::new(false),
             generation: RwSignal::new(0),
+            connection_generation: RwSignal::new(0),
             api,
             auth,
             chat,
@@ -83,21 +85,34 @@ impl HostState {
         (self.scope(), self.generation.get_untracked())
     }
     pub fn load_connection(self) {
-        let (scope, generation) = self.begin();
+        let epoch = self.auth.generation.get_untracked();
+        self.connection_generation
+            .update(|generation| *generation += 1);
+        let generation = self.connection_generation.get_untracked();
         let api = self.api.get_value();
         wasm_bindgen_futures::spawn_local(async move {
             let result = api.host_connection().await;
-            if !self.current(scope, generation) {
+            if self.auth.generation.try_get_untracked() != Some(epoch)
+                || self.connection_generation.try_get_untracked() != Some(generation)
+            {
                 return;
             }
             match result {
                 Ok(connection) => self.connection.set(Some(connection)),
                 Err(error) => self.error.set(Some(error)),
             }
-            self.busy.set(false);
         });
     }
+    pub fn configured(self) -> bool {
+        self.connection.with_untracked(|connection| {
+            connection
+                .as_ref()
+                .is_some_and(HostConnection::is_configured)
+        })
+    }
     pub fn save_connection(self, connection: HostConnection) {
+        self.connection_generation
+            .update(|generation| *generation += 1);
         let (scope, generation) = self.begin();
         let api = self.api.get_value();
         wasm_bindgen_futures::spawn_local(async move {
@@ -135,10 +150,12 @@ impl HostState {
         let Some(session) = scope.session.filter(|_| scope.project.is_none()) else {
             return;
         };
-        if self.busy.get_untracked() {
+        if self.busy.get_untracked() || !self.configured() {
             return;
         }
-        let (_, generation) = self.begin();
+        self.generation.update(|generation| *generation += 1);
+        self.busy.set(true);
+        let generation = self.generation.get_untracked();
         let api = self.api.get_value();
         wasm_bindgen_futures::spawn_local(async move {
             if inspect {
@@ -148,6 +165,7 @@ impl HostState {
                 }
                 match result {
                     Ok(HostResponse::Environment(environment)) => {
+                        self.error.set(None);
                         self.environment.set(Some(environment));
                     }
                     Ok(_) => self
@@ -170,15 +188,60 @@ impl HostState {
             self.busy.set(false);
         });
     }
-    pub fn reply(self, input: HostInput) {
+    pub fn reply(self, operation: i64, token: String, data: String) {
         let scope = self.scope();
         let Some(session) = scope.session.filter(|_| scope.project.is_none()) else {
             return;
         };
+        let Some(user) = self
+            .auth
+            .user
+            .with_untracked(|value| value.as_ref().map(|user| user.id.get()))
+        else {
+            return;
+        };
         let api = self.api.get_value();
+        let prompt = HostInputKeyRequest { operation, token };
         wasm_bindgen_futures::spawn_local(async move {
-            let result = api.host_input(session, &input).await;
-            if self.auth.generation.try_get_untracked().is_none() || self.scope() != scope {
+            let current = || {
+                self.auth.generation.try_get_untracked().is_some()
+                    && self.scope() == scope
+                    && self
+                        .operations
+                        .try_with_untracked(|operations| {
+                            operations.iter().any(|operation| {
+                                operation.id == prompt.operation
+                                    && operation.input_token.as_deref()
+                                        == Some(prompt.token.as_str())
+                            })
+                        })
+                        .unwrap_or(false)
+            };
+            let result = async {
+                if !current() {
+                    return Ok(());
+                }
+                let key = api.host_input_key(session, &prompt).await?;
+                if !current() {
+                    return Ok(());
+                }
+                let mut entropy = [0_u8; 32];
+                web_sys::window()
+                    .ok_or("Private terminal encryption unavailable")?
+                    .crypto()
+                    .map_err(|_| "Private terminal encryption unavailable")?
+                    .get_random_values_with_u8_array(&mut entropy)
+                    .map_err(|_| "Private terminal randomness unavailable")?;
+                let encrypted = openwebide_core::host_admin::private_input::encrypt_reply(
+                    &key, user, session, &prompt, &data, entropy,
+                )?;
+                if !current() {
+                    return Ok(());
+                }
+                api.host_input(session, &encrypted).await
+            }
+            .await;
+            if !current() {
                 return;
             }
             if let Err(error) = result {

@@ -187,6 +187,7 @@ pub struct HostOperation {
     pub connection_revision: i64,
     pub steps_started: usize,
     pub state: OperationState,
+    #[serde(rename = "private_reply_token", alias = "input_token")]
     pub input_token: Option<String>,
     pub live_output: String,
     pub outputs: Vec<HostCommandResult>,
@@ -832,14 +833,8 @@ async fn run_command<A: HostOperationAdapter>(
     }
     Err("Host process ended without an exit result.".into())
 }
-/// User-only interactive input; never a model tool or persisted chat payload.
-#[derive(Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct HostInput {
-    pub operation: i64,
-    pub token: String,
-    pub data: String,
-}
+pub mod private_input;
+pub use private_input::{HostInput, HostInputKey, HostInputKeyRequest};
 
 fn outcome_exit(operation: &HostOperation) -> Option<i32> {
     operation
@@ -966,6 +961,22 @@ mod tests {
             assert!(custom.validate().is_err());
         }
         assert!(connection.ssh_destination("host;command").is_err());
+    }
+
+    #[test]
+    fn private_reply_token_is_not_advertised_to_plaintext_clients() {
+        let mut current = operation();
+        current.input_token = Some("private-prompt".into());
+        let mut wire = serde_json::to_value(&current).unwrap();
+        assert!(wire.get("input_token").is_none());
+        assert_eq!(wire["private_reply_token"], "private-prompt");
+        let restored: HostOperation = serde_json::from_value(wire.clone()).unwrap();
+        assert_eq!(restored.input_token, current.input_token);
+        let object = wire.as_object_mut().unwrap();
+        let token = object.remove("private_reply_token").unwrap();
+        object.insert("input_token".into(), token);
+        let legacy: HostOperation = serde_json::from_value(wire).unwrap();
+        assert_eq!(legacy.input_token, current.input_token);
     }
 
     #[test]

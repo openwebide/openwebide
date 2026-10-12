@@ -5,7 +5,10 @@ use crate::{
 };
 use openwebide_core::{
     BridgeServerMessage, CommandOutcome,
-    host_admin::{HostCommandContext, HostInput, HostProcessEvent, HostProcessStream},
+    host_admin::{
+        HostCommandContext, HostInput, HostInputKey, HostInputKeyRequest, HostProcessEvent,
+        HostProcessStream,
+    },
 };
 use std::{
     collections::HashMap,
@@ -19,6 +22,7 @@ struct Entry {
     operation: i64,
     terminal: Arc<Session>,
     secrets: Mutex<Vec<String>>,
+    recipient: Mutex<openwebide_core::host_admin::private_input::PrivateInputRecipient>,
 }
 #[derive(Default)]
 pub struct InputRegistry {
@@ -29,15 +33,21 @@ pub fn registry() -> &'static InputRegistry {
     REGISTRY.get_or_init(InputRegistry::default)
 }
 impl InputRegistry {
-    pub fn input(&self, user: i64, session: i64, input: HostInput) -> Result<(), String> {
-        if input.data.len() > 4096 || input.token.len() > 256 {
-            return Err("Host input exceeds the terminal limit.".into());
-        }
-        let entries = self.entries.lock().unwrap();
-        let entry = entries
-            .get(&input.token)
+    fn entry(
+        &self,
+        user: i64,
+        session: i64,
+        prompt: &HostInputKeyRequest,
+    ) -> Result<Arc<Entry>, String> {
+        prompt.validate()?;
+        let entry = self
+            .entries
+            .lock()
+            .unwrap()
+            .get(&prompt.token)
+            .cloned()
             .ok_or("This host prompt is no longer active.")?;
-        if entry.user != user || entry.session != session || entry.operation != input.operation {
+        if entry.user != user || entry.session != session || entry.operation != prompt.operation {
             return Err("This input belongs to another host session.".into());
         }
         if !entry
@@ -47,7 +57,24 @@ impl InputRegistry {
         {
             return Err("This host prompt has ended.".into());
         }
-        let secret = input.data.trim_end_matches(['\r', '\n']).to_owned();
+        Ok(entry)
+    }
+    pub fn key(
+        &self,
+        user: i64,
+        session: i64,
+        prompt: &HostInputKeyRequest,
+    ) -> Result<HostInputKey, String> {
+        let entry = self.entry(user, session, prompt)?;
+        let key = entry.recipient.lock().unwrap().public_key();
+        Ok(key)
+    }
+    pub fn input(&self, user: i64, session: i64, input: HostInput) -> Result<(), String> {
+        let entry = self.entry(user, session, &input.prompt)?;
+        // Serialize authentication, replay consumption, redaction registration and delivery.
+        let mut recipient = entry.recipient.lock().unwrap();
+        let data = recipient.open(user, session, &input)?;
+        let secret = data.trim_end_matches(['\r', '\n']).to_owned();
         if !secret.is_empty() && !secret.chars().all(char::is_control) {
             let mut secrets = entry.secrets.lock().unwrap();
             if secrets.len() >= 128 {
@@ -55,10 +82,7 @@ impl InputRegistry {
             }
             secrets.push(secret);
         }
-        entry
-            .terminal
-            .try_send_input(input.data)
-            .map_err(str::to_owned)
+        entry.terminal.try_send_input(data).map_err(str::to_owned)
     }
 }
 struct Guard {
@@ -93,6 +117,17 @@ pub fn start(
         operation: context.operation,
         terminal: terminal.clone(),
         secrets: Mutex::new(Vec::new()),
+        recipient: Mutex::new(
+            openwebide_core::host_admin::private_input::PrivateInputRecipient::new(
+                context.user,
+                context.session,
+                HostInputKeyRequest {
+                    operation: context.operation,
+                    token: token.clone(),
+                },
+                rand::random(),
+            ),
+        ),
     });
     registry()
         .entries
@@ -230,19 +265,24 @@ mod tests {
         let Some(Ok(HostProcessEvent::InputReady(token))) = stream.next().await else {
             panic!("Expected an interactive input token")
         };
-        assert!(
-            registry()
-                .input(
-                    6,
-                    8,
-                    HostInput {
-                        operation: 9,
-                        token: token.clone(),
-                        data: "forbidden\n".into()
-                    }
-                )
-                .is_err()
-        );
+        let prompt = HostInputKeyRequest {
+            operation: 9,
+            token: token.clone(),
+        };
+        assert!(registry().key(6, 8, &prompt).is_err());
+        let key = registry().key(7, 8, &prompt).unwrap();
+        let encrypt = |data: &str| {
+            openwebide_core::host_admin::private_input::encrypt_reply(
+                &key,
+                7,
+                8,
+                &prompt,
+                data,
+                rand::random(),
+            )
+            .unwrap()
+        };
+        assert!(registry().input(6, 8, encrypt("forbidden\n")).is_err());
         loop {
             let event = tokio::time::timeout(Duration::from_secs(10), stream.next())
                 .await
@@ -255,17 +295,9 @@ mod tests {
                 break;
             }
         }
-        registry()
-            .input(
-                7,
-                8,
-                HostInput {
-                    operation: 9,
-                    token: token.clone(),
-                    data: "sensitive-value\n".into(),
-                },
-            )
-            .unwrap();
+        let reply = encrypt("sensitive-value\n");
+        registry().input(7, 8, reply.clone()).unwrap();
+        assert!(registry().input(7, 8, reply).is_err());
         let mut finished = false;
         while let Some(event) = tokio::time::timeout(Duration::from_secs(10), stream.next())
             .await
@@ -285,18 +317,7 @@ mod tests {
             }
         }
         assert!(finished);
-        assert!(
-            registry()
-                .input(
-                    7,
-                    8,
-                    HostInput {
-                        operation: 9,
-                        token,
-                        data: "late\n".into()
-                    }
-                )
-                .is_err()
-        );
+        assert!(registry().key(7, 8, &prompt).is_err());
+        assert!(registry().input(7, 8, encrypt("late\n")).is_err());
     }
 }
