@@ -8,6 +8,8 @@ services:
     ports:
       - "8080:3000"
       - "3001:3001"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - openwebide-data:/app/.spin
       - ${OPENWEBIDE_WORKSPACE:-${HOME}/source}:/workspace

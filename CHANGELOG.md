@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Default host administration SSH connections to the deployment host using an SSH username, retaining address and port overrides under advanced settings and preserving existing saved destinations. Configure host gateway access in Compose and Quadlet deployments.
+
 - Normalize native editor newlines by copying unchanged UTF-8 spans instead of decoding and appending each character. Share the implementation across projections and inserted text while preserving CRLF, lone-CR and Unicode behavior.
 
 - Update browser release checks to discover optional memory, skill and delegation tools before calling them, and wait for editor source readiness before testing command-palette capture.

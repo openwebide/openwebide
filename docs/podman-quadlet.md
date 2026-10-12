@@ -6,8 +6,9 @@ support and systemd. See [Podman's Quadlet reference](https://docs.podman.io/en/
 This deployment is not available on macOS/Windows.
 
 Host administration is included in the image. Configure its SSH connection in
-**Settings → Host** to manage the actual Linux host, using the SSH credentials
-below; no privileged container or second bridge is required. See
+**Settings → Host** with your SSH username to manage the actual Linux host.
+The host address is automatic. Use the SSH credentials below; no privileged
+container or second bridge is required. See
 [host administration](host-administration.md).
 
 For Git over SSH, see [agent forwarding and public SSH configuration](git-ssh.md#podman-quadlet).

@@ -5,7 +5,8 @@ What's left, grouped by how soon it's coming: **Next** (queued up), **Later**
 phases 1 through 14, telemetry, hardening, streaming, `/test`, database-backed
 theme and prompt history, frontend performance & polish, app branding and the chat
 welcome, database-backed agent skills and skill import/export — moved to [CHANGELOG.md](../CHANGELOG.md).
-[Host administration](host-administration.md), structured agent questions and
+[Host administration](host-administration.md), with automatic deployment-host SSH
+addresses and optional advanced connection overrides, structured agent questions and
 [Monitors](monitors.md) are implemented, with an active-only status-line flyout;
 their shipped behavior is in the changelog.
 The [Git pane](git.md) includes commit history, staged-only commits and repository

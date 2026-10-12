@@ -11,6 +11,9 @@ services:
       - TS_STATE_DIR=/var/lib/tailscale
       - TS_USERSPACE=true
       - TS_SERVE_CONFIG=/config/serve.json
+    # Open WebIDE shares this service's network namespace and host mappings.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - tailscale-data:/var/lib/tailscale
       - ${OPENWEBIDE_SERVE_CONFIG_DIR:?Set the directory containing serve.json}:/config:ro

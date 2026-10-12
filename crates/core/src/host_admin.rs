@@ -685,6 +685,8 @@ pub enum HostPlatform {
 #[serde(deny_unknown_fields)]
 pub struct HostConnection {
     pub enabled: bool,
+    #[serde(default)]
+    pub username: String,
     pub destination: String,
     pub port: u16,
     pub platform: HostPlatform,
@@ -697,6 +699,7 @@ impl Default for HostConnection {
     fn default() -> Self {
         Self {
             enabled: true,
+            username: String::new(),
             destination: String::new(),
             port: 22,
             platform: HostPlatform::Linux,
@@ -707,11 +710,11 @@ impl Default for HostConnection {
 }
 impl HostConnection {
     pub fn is_configured(&self) -> bool {
-        self.enabled && !self.destination.is_empty()
+        self.enabled && (!self.destination.is_empty() || !self.username.is_empty())
     }
     pub fn validate(&self) -> Result<(), String> {
         if self.enabled
-            && (self.destination.is_empty()
+            && ((self.destination.is_empty() && self.username.is_empty())
                 || self.destination.len() > 256
                 || self.destination.starts_with('-')
                 || !self
@@ -719,7 +722,16 @@ impl HostConnection {
                     .chars()
                     .all(|ch| ch.is_ascii_alphanumeric() || "._-@[]:".contains(ch)))
         {
-            return Err("Provide an SSH alias or user@hostname.".into());
+            return Err("Provide an SSH username or an address override.".into());
+        }
+        if self.username.len() > 128
+            || self.username.starts_with('-')
+            || !self
+                .username
+                .chars()
+                .all(|ch| ch.is_ascii_alphanumeric() || "._-".contains(ch))
+        {
+            return Err("Provide a valid SSH username.".into());
         }
         if self.port == 0 || self.known_hosts.len() > 64 * 1024 || self.known_hosts.contains('\0') {
             return Err(
@@ -727,6 +739,30 @@ impl HostConnection {
             );
         }
         Ok(())
+    }
+
+    /// Transport supplies its host address; policy and legacy override handling stay shared.
+    pub fn ssh_destination(&self, default_host: &str) -> Result<String, String> {
+        self.validate()?;
+        let address = if self.destination.is_empty() {
+            default_host
+        } else {
+            &self.destination
+        };
+        if address.is_empty()
+            || address.len() > 256
+            || address.starts_with('-')
+            || !address
+                .chars()
+                .all(|ch| ch.is_ascii_alphanumeric() || "._-@[]:".contains(ch))
+        {
+            return Err("The bridge's default SSH host address is invalid.".into());
+        }
+        Ok(if self.username.is_empty() || address.contains('@') {
+            address.to_owned()
+        } else {
+            format!("{}@{address}", self.username)
+        })
     }
 }
 
@@ -885,6 +921,53 @@ mod tests {
             fail_save,
         }
     }
+    #[test]
+    fn ssh_destination_defaults_overrides_and_legacy_settings() {
+        let connection = HostConnection {
+            username: "admin".into(),
+            ..Default::default()
+        };
+        assert!(connection.is_configured());
+        for host in [
+            "host.docker.internal",
+            "host.containers.internal",
+            "127.0.0.1",
+        ] {
+            assert_eq!(
+                connection.ssh_destination(host).unwrap(),
+                format!("admin@{host}")
+            );
+        }
+        let mut custom = connection.clone();
+        custom.destination = "other-host".into();
+        assert_eq!(
+            custom.ssh_destination("host.docker.internal").unwrap(),
+            "admin@other-host"
+        );
+        custom.destination = "legacy@other-host".into();
+        assert_eq!(
+            custom.ssh_destination("host.docker.internal").unwrap(),
+            "legacy@other-host"
+        );
+        custom.username.clear();
+        custom.destination = "ssh-alias".into();
+        let mut legacy = serde_json::to_value(&custom).unwrap();
+        legacy.as_object_mut().unwrap().remove("username");
+        let restored: HostConnection = serde_json::from_value(legacy).unwrap();
+        assert_eq!(restored.ssh_destination("127.0.0.1").unwrap(), "ssh-alias");
+        for username in [
+            "-bad",
+            "user@other-host",
+            "user name",
+            "user;command",
+            "user\n",
+        ] {
+            custom.username = username.into();
+            assert!(custom.validate().is_err());
+        }
+        assert!(connection.ssh_destination("host;command").is_err());
+    }
+
     #[test]
     fn default_connection_is_enabled_but_needs_setup_and_recovery_tracks_identity() {
         let connection = HostConnection::default();

@@ -2135,7 +2135,7 @@ fn host_tools_require_configured_ssh_admin_and_projectless_scope_in_both_modes()
         state
             .store
             .save_host_connection(&openwebide_core::host_admin::HostConnection {
-                destination: "admin@host".into(),
+                username: "admin".into(),
                 ..Default::default()
             })
             .await

@@ -60,6 +60,7 @@ impl Journal {
 }
 #[derive(Default)]
 struct Execution {
+    expected_destination: Option<String>,
     probes: AtomicUsize,
     changes: AtomicUsize,
     checks: AtomicUsize,
@@ -70,6 +71,10 @@ struct Execution {
 impl ToolExecution for Execution {
     fn run_command(&self, spec: SpawnSpec) -> ExecutionFuture<ExecOutput> {
         assert_eq!(spec.command, "ssh");
+        if let Some(destination) = &self.expected_destination {
+            let separator = spec.args.iter().position(|arg| arg == "--").unwrap();
+            assert_eq!(&spec.args[separator + 1], destination);
+        }
         assert!(spec.args.contains(&"-oStrictHostKeyChecking=yes".into()));
         let script = spec.args.last().unwrap();
         let (output, hold) = if script.starts_with("sh -c ") {
@@ -393,4 +398,29 @@ async fn paired_in_process_adapter_rejects_host_tools_before_ssh_or_journal_acce
     );
     assert_eq!(fixture.execution.probes.load(Ordering::SeqCst), 0);
     assert_eq!(fixture.execution.changes.load(Ordering::SeqCst), 0);
+}
+
+#[tokio::test]
+async fn default_host_addresses_use_the_same_ssh_adapter_and_pinned_key_policy() {
+    for address in [
+        "host.docker.internal",
+        "host.containers.internal",
+        "127.0.0.1",
+    ] {
+        let execution = Arc::new(Execution {
+            expected_destination: Some(format!("admin@{address}")),
+            ..Default::default()
+        });
+        let host = SshHost::with_default_host(
+            HostConnection {
+                username: "admin".into(),
+                ..Default::default()
+            },
+            execution.clone(),
+            address,
+        )
+        .unwrap();
+        assert!(host.overview().await.is_ok());
+        assert_eq!(execution.probes.load(Ordering::SeqCst), 1);
+    }
 }

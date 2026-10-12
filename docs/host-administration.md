@@ -14,14 +14,22 @@ Until you configure a connection, host tools are unavailable.
    [SSH agent forwarding overlay](git-ssh.md#docker-opt-in-agent-forwarding) or the commented agent mounts
    in the [Quadlet template](podman-quadlet.md). Keys remain in the agent;
    the app does not upload or store private keys. SSH login uses key authentication.
-3. In **Settings → Host**, enter an SSH alias or `user@hostname`, port and OS.
-   Enable host administration (selected by default). Use an address reachable
-   **from the bridge**, such as the host's LAN address. Container `localhost`
-   refers to the container, not your physical machine. Aliases must exist in the
-   bridge's public SSH configuration.
+3. In **Settings → Host**, enter the SSH username for your host account and its
+   OS. The host address is automatic: the supplied Compose files use Docker's
+   host gateway, Quadlet uses `host.containers.internal`, and a native bridge uses
+   `127.0.0.1`. SSH defaults to port 22. **Advanced connection settings** provides
+   an address and port override for another machine, SSH aliases or unusual
+   networking. Existing saved destinations remain unchanged. An alias must exist
+   in the bridge's public SSH configuration.
 4. Paste public `known_hosts` entries verified through another trusted channel,
    or use the bridge's existing verified host-key file. Strict host-key checking
    stays enabled. Save the connection, then select **Test connection**.
+
+For a custom Linux `docker run` deployment, add
+`--add-host=host.docker.internal:host-gateway` so the image can reach its host.
+`OPENWEBIDE_HOST_SSH_HOST` overrides the bridge's automatic address if needed.
+Docker Desktop and Podman machine deployments may route the hostname through
+their container VM; use the address override if the SSH server is elsewhere.
 
 This is shared, administrator-owned server configuration, stored in SQLite.
 Changes invalidate prepared operations; connection settings cannot change during
@@ -63,8 +71,12 @@ review the operation's retained results to see whether commands and checks passe
 
 Interactive commands get an SSH terminal. Expand their host operation to see
 live output and enter a **Private terminal reply** for sudo passwords or other
-prompts. Replies go directly to that terminal rather than through the model or
-chat history. Exact echoed replies are redacted from retained output. You can
+prompts. Replies are forwarded to that terminal rather than through the model or
+chat history. Use HTTPS for the app: browser-to-server transport protects these
+replies only when TLS is configured. They are not application-level end-to-end
+encrypted; the backend and bridge handle plaintext while forwarding them. SSH
+encrypts the bridge-to-host connection, and private SSH keys remain in the agent
+or bridge key files. Exact echoed replies are redacted from retained output. You can
 send an interrupt from the same operation. Noninteractive commands use `sudo -n`
 when elevation is requested, and fail if authentication needs a prompt.
 

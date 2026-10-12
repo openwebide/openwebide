@@ -330,6 +330,26 @@ mod tests {
         (store, user, session)
     }
     #[test]
+    fn username_only_host_connection_is_persisted_without_an_address() {
+        futures::executor::block_on(async {
+            let (store, _, _) = setup().await;
+            let mut connection = store.host_connection().await.unwrap();
+            connection.username = "admin".into();
+            connection.destination.clear();
+            let saved = store.save_host_connection(&connection).await.unwrap();
+            let restored = store.host_connection().await.unwrap();
+            assert_eq!(restored, saved);
+            assert!(restored.is_configured());
+            assert_eq!(
+                restored
+                    .ssh_destination("host.containers.internal")
+                    .unwrap(),
+                "admin@host.containers.internal"
+            );
+        });
+    }
+
+    #[test]
     fn connection_changes_are_versioned_blocked_by_maintenance_and_admin_only() {
         futures::executor::block_on(async {
             let (store, user, session) = setup().await;

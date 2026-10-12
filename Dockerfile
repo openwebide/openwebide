@@ -81,6 +81,8 @@ EXPOSE 3000 3001
 VOLUME /app/.spin
 ENV OPENWEBIDE_PLUGIN_DIR=/app/.spin/plugins
 ENV OPENWEBIDE_MCP_CONFIG=/app/.spin/mcp.json
+# Compose maps this name to Docker's host gateway; Podman provides it automatically.
+ENV OPENWEBIDE_HOST_SSH_HOST=host.docker.internal
 VOLUME /workspace
 
 RUN sed -i 's#source = "../.."#source = "/workspace"#' spin.toml && grep -q 'source = "/workspace"' spin.toml && mkdir -p /workspace

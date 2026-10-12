@@ -3,6 +3,7 @@ Image=openwebide.image
 Pull=newer
 AutoUpdate=registry
 ContainerName=openwebide
+Environment=OPENWEBIDE_HOST_SSH_HOST=host.containers.internal
 # Ports default to IPv4 loopback on 8080/3001. If port 8080 is in use (e.g. by a local LLM),
 # change the host port (e.g. 8081:3000). To listen on IPv6/localhost (::1) or LAN/Tailnet,
 # omit the IP prefix (PublishPort=8080:3000) or specify both 127.0.0.1 and [::1].

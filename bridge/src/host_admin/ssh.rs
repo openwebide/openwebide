@@ -25,9 +25,18 @@ impl SshHost {
         connection: openwebide_core::host_admin::HostConnection,
         execution: Arc<dyn ToolExecution>,
     ) -> Result<Self, String> {
+        let default_host =
+            std::env::var("OPENWEBIDE_HOST_SSH_HOST").unwrap_or_else(|_| "127.0.0.1".into());
+        Self::with_default_host(connection, execution, &default_host)
+    }
+    pub(super) fn with_default_host(
+        connection: openwebide_core::host_admin::HostConnection,
+        execution: Arc<dyn ToolExecution>,
+        default_host: &str,
+    ) -> Result<Self, String> {
         connection.validate()?;
         if !connection.enabled {
-            return Err("Enable and configure Host administration in Settings to connect to the physical host over SSH.".into());
+            return Err("Enable host administration and configure SSH access in Settings.".into());
         }
         let known_hosts = if connection.known_hosts.is_empty() {
             None
@@ -39,7 +48,7 @@ impl SshHost {
             Some(Arc::new(file))
         };
         Ok(Self {
-            destination: connection.destination,
+            destination: connection.ssh_destination(default_host)?,
             platform: connection.platform,
             port: connection.port,
             revision: connection.revision,

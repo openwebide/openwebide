@@ -170,6 +170,8 @@ async fn host_settings_load_on_first_mount_and_fit_a_phone_width() {
         view! {<style>{include_str!("../../styles.css")}</style><div style="width: 360px; max-width: 100%; padding: 12px; box-sizing: border-box;"><HostSettings/></div>}
     });
     settle().await;
+    mounted.click_text("Advanced connection settings");
+    settle().await;
     let host = mounted
         .element("[aria-label='Administration SSH host']")
         .unchecked_into::<web_sys::HtmlInputElement>();
@@ -260,4 +262,71 @@ async fn phone_host_flyout_retains_a_visible_touch_target_and_icon() {
             .unwrap()
             .is_some()
     );
+}
+
+#[wasm_bindgen_test]
+async fn host_settings_default_address_and_advanced_overrides_in_both_modes() {
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            provide_context(HostState::new(
+                state.api,
+                state.auth,
+                state.chat,
+                state.projects,
+            ));
+            view! { <style>{include_str!("../../styles.css")}</style><HostSettings/> }
+        });
+        settle().await;
+        let toggle = mounted.element(".ui-disclosure-toggle");
+        assert_eq!(
+            toggle.get_attribute("aria-expanded").as_deref(),
+            Some("false")
+        );
+        let username = mounted
+            .element("[aria-label='Administration SSH username']")
+            .unchecked_into::<web_sys::HtmlInputElement>();
+        username.set_value("admin");
+        username
+            .dispatch_event(&web_sys::Event::new("input").unwrap())
+            .unwrap();
+        mounted.click_text("Save host connection");
+        settle().await;
+        {
+            let saved = mounted.state.fake.host_connection.borrow();
+            assert_eq!(saved.username, "admin");
+            assert!(saved.destination.is_empty());
+            assert_eq!(saved.port, 22);
+            assert!(saved.is_configured());
+        }
+        mounted.click_text("Advanced connection settings");
+        settle().await;
+        assert_eq!(
+            toggle.get_attribute("aria-expanded").as_deref(),
+            Some("true")
+        );
+        let address = mounted
+            .element("[aria-label='Administration SSH host']")
+            .unchecked_into::<web_sys::HtmlInputElement>();
+        address.set_value("other-host");
+        address
+            .dispatch_event(&web_sys::Event::new("input").unwrap())
+            .unwrap();
+        mounted.click_text("Save host connection");
+        settle().await;
+        assert_eq!(
+            mounted.state.fake.host_connection.borrow().destination,
+            "other-host"
+        );
+        mounted.click_text("Advanced connection settings");
+        settle().await;
+        assert_eq!(
+            toggle.get_attribute("aria-expanded").as_deref(),
+            Some("false")
+        );
+    }
 }
