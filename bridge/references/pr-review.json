@@ -1,0 +1,6 @@
+{
+  "repository": "https://github.com/openwebide/plugins.git",
+  "commit": "e517f4c0dff6182a26ca7283832021a148a9f82e",
+  "path": "plugins/pr-review",
+  "version": "0.2.0"
+}

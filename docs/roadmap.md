@@ -949,11 +949,6 @@ capability.
   phones. Clients consume plugin metadata, instructions and service results
   through the shared facade/bridge; they do not maintain plugin clones, execute
   plugin WASM modules or install plugin runtimes.
-- Publish the executable PR Review panel release in the official marketplace,
-  pin contributor CI to the API 4 SDK, and add the cross-repository reference
-  component checks to CI. The shared panel renderer, host actions, canonical
-  revisions/claims and responsive navigation are implemented and verified in both
-  project modes; this publication step completes the first-party reference.
 - Provide a plugin UI component gallery and interactive playground on the docs
   website. Reuse the app's Rust/WASM renderer and versioned schema so previews
   match production. Include examples for each supported block, light/dark themes

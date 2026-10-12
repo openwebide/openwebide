@@ -124,7 +124,7 @@ impl MarketplaceCatalog {
                 || plugin
                     .categories
                     .iter()
-                    .any(|category| !matches!(category.as_str(), "skills" | "tools"))
+                    .any(|category| !matches!(category.as_str(), "skills" | "tools" | "panels"))
                 || plugin.categories.iter().collect::<BTreeSet<_>>().len()
                     != plugin.categories.len()
             {
@@ -325,6 +325,14 @@ pub fn cache_catalogs(
 mod tests {
     use super::*;
     use crate::plugins::testing::catalog;
+    #[test]
+    fn panel_categories_are_supported_without_admitting_arbitrary_contributions() {
+        let mut value = catalog().catalog;
+        value.plugins[0].categories = vec!["skills".into(), "panels".into()];
+        value.validate().unwrap();
+        value.plugins[0].categories.push("browser-code".into());
+        assert!(value.validate().is_err());
+    }
     #[test]
     fn official_marketplace_is_required_and_restored_for_legacy_settings() {
         let legacy = MarketplaceSettings {

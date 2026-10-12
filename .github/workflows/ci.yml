@@ -83,6 +83,42 @@ jobs:
       - name: Build backend component
         run: cargo build -p openwebide-backend --target wasm32-wasip2 --release
 
+  plugin-panels:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: openwebide/plugins
+          ref: e517f4c0dff6182a26ca7283832021a148a9f82e
+          path: .panel-reference
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.98.1
+          targets: wasm32-wasip2
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Build and verify the first-party panel reference
+        env:
+          CARGO_TARGET_DIR: ${{ github.workspace }}/target
+          OPENWEBIDE_PR_REVIEW_COMPONENT: ${{ github.workspace }}/target/wasm32-wasip2/release/pr_review.wasm
+          OPENWEBIDE_PR_REVIEW_MANIFEST: ${{ github.workspace }}/.panel-reference/plugins/pr-review/plugin.json
+        run: |
+          python3 - <<'PYREF'
+          import json, subprocess
+          from pathlib import Path
+          reference = json.loads(Path("bridge/references/pr-review.json").read_text())
+          checkout = Path(".panel-reference")
+          actual = subprocess.check_output(["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True).strip()
+          assert actual == reference["commit"], "Panel reference checkout must match the immutable pin"
+          manifest = json.loads((checkout / reference["path"] / "plugin.json").read_text())
+          assert manifest["version"] == reference["version"]
+          PYREF
+          python3 .panel-reference/scripts/validate_rust.py --sdk crates/plugin-sdk --package .panel-reference/plugins/pr-review
+          cargo test -p openwebide-plugin-runtime --test reference_panel -- --ignored
+          cargo test -p openwebide-bridge --test plugin_panels -- --ignored
+
   bridge-windows:
     runs-on: windows-latest
     steps:
