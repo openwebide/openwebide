@@ -73,6 +73,9 @@ enum Route {
     PluginExecutionGrants,
     PluginHostRequest,
     PluginContextGrants,
+    PluginPanelBegin,
+    PluginPanelFinish,
+    PluginPanelClose,
     PluginContextHostRequest,
     PluginStartInvocation,
     PluginContinueInvocation,
@@ -258,6 +261,9 @@ fn resolve(method: &str, segments: &[&str]) -> Option<Route> {
             Some(Route::PluginExecutionGrants)
         }
         ("POST", ["plugins", "execution-grants"]) => Some(Route::PluginContextGrants),
+        ("POST", ["plugins", "panels", "begin"]) => Some(Route::PluginPanelBegin),
+        ("POST", ["plugins", "panels", "finish"]) => Some(Route::PluginPanelFinish),
+        ("POST", ["plugins", "panels", "close"]) => Some(Route::PluginPanelClose),
         ("POST", ["plugins", "host"]) => Some(Route::PluginContextHostRequest),
         ("POST", ["plugins", "invoke"]) => Some(Route::PluginStartInvocation),
         ("POST", ["plugins", "continue"]) => Some(Route::PluginContinueInvocation),
@@ -542,6 +548,16 @@ pub async fn route(req: Request) -> JsonResp {
         }
         (Some(Route::PluginContextHostRequest), Some(user)) => {
             api::plugins::context_host_request(req, &state, user).await
+        }
+
+        (Some(Route::PluginPanelBegin), Some(user)) => {
+            api::plugins::begin_panel(req, &state, user).await
+        }
+        (Some(Route::PluginPanelFinish), Some(user)) => {
+            api::plugins::finish_panel(req, &state, user).await
+        }
+        (Some(Route::PluginPanelClose), Some(user)) => {
+            api::plugins::close_panel(req, &state, user).await
         }
         (Some(Route::PluginStartInvocation), Some(user)) => {
             api::plugins::start_invocation(req, &state, user).await
@@ -1097,6 +1113,9 @@ mod tests {
                 Route::PluginExecutionGrants,
                 Route::PluginHostRequest,
                 Route::PluginContextGrants,
+                Route::PluginPanelBegin,
+                Route::PluginPanelFinish,
+                Route::PluginPanelClose,
                 Route::PluginContextHostRequest,
                 Route::PluginStartInvocation,
                 Route::PluginContinueInvocation,
@@ -1181,6 +1200,9 @@ mod tests {
                 Route::PluginContextGrants,
             ),
             ("POST", "plugins/host", Route::PluginContextHostRequest),
+            ("POST", "plugins/panels/begin", Route::PluginPanelBegin),
+            ("POST", "plugins/panels/finish", Route::PluginPanelFinish),
+            ("POST", "plugins/panels/close", Route::PluginPanelClose),
             ("POST", "plugins/invoke", Route::PluginStartInvocation),
             ("POST", "plugins/jobs/service", Route::PluginJobService),
             (

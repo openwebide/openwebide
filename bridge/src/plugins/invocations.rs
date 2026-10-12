@@ -165,6 +165,7 @@ impl Invocations {
             .as_ref()
             .ok_or("Plugin has no executable")?;
         let declared = match call.operation {
+            PluginOperation::Panel => call.name == openwebide_core::plugins::panels::VIEW_HANDLER,
             PluginOperation::Context | PluginOperation::Event => call.name.is_empty(),
             PluginOperation::Tool => call
                 .prepared
@@ -269,6 +270,9 @@ impl Invocations {
                     let result = Runtime::new().and_then(|runtime| match call.operation {
                         PluginOperation::Tool => {
                             runtime.execute(&bytes, services, &grants, &call.name, &call.arguments)
+                        }
+                        PluginOperation::Panel => {
+                            runtime.panel(&bytes, services, &grants, &call.arguments)
                         }
                         PluginOperation::Context => {
                             let input = serde_json::from_str(&call.arguments)?;

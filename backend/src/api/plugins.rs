@@ -739,3 +739,43 @@ pub(crate) async fn management(
             .await?,
     ))
 }
+
+pub(crate) async fn begin_panel(
+    req: Request,
+    state: &AppState,
+    user: AuthedUser,
+) -> Result<JsonResp, ApiError> {
+    let input: openwebide_core::plugins::panels::coordination::BeginPanel =
+        parse_json(read_body(req, 1024 * 1024).await?)?;
+    let claim = state
+        .store
+        .begin_plugin_panel(user.id, &input, now())
+        .await?;
+    Ok(json_response(200, &claim))
+}
+pub(crate) async fn finish_panel(
+    req: Request,
+    state: &AppState,
+    user: AuthedUser,
+) -> Result<JsonResp, ApiError> {
+    let input: openwebide_core::plugins::panels::coordination::FinishPanel =
+        parse_json(read_body(req, 512 * 1024).await?)?;
+    state
+        .store
+        .finish_plugin_panel(user.id, &input, now())
+        .await?;
+    Ok(json_response(200, &json!({"ok":true})))
+}
+pub(crate) async fn close_panel(
+    req: Request,
+    state: &AppState,
+    user: AuthedUser,
+) -> Result<JsonResp, ApiError> {
+    let input: openwebide_core::plugins::panels::coordination::ClosePanel =
+        parse_json(read_body(req, 1024).await?)?;
+    state
+        .store
+        .close_plugin_panel(user.id, &input.instance, now())
+        .await?;
+    Ok(json_response(200, &json!({"ok":true})))
+}

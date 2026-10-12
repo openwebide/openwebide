@@ -98,14 +98,17 @@ pub fn Button(
 /// Shared text entry with the same form styling and disabled behavior as selects.
 #[component]
 pub fn TextInput(
-    label: &'static str,
+    #[prop(into)] label: String,
     #[prop(into)] value: Signal<String>,
     on_change: Callback<String>,
+    #[prop(default = "text")] input_type: &'static str,
+    #[prop(optional)] autocomplete: Option<&'static str>,
     #[prop(default = "")] placeholder: &'static str,
     #[prop(optional)] maxlength: Option<u32>,
+    #[prop(default = false)] required: bool,
     #[prop(into, optional)] disabled: Option<Signal<bool>>,
 ) -> impl IntoView {
-    view! { <input type="text" class="form-input" aria-label=label placeholder=placeholder maxlength=maxlength
+    view! { <input type=input_type autocomplete=autocomplete class="form-input" aria-label=label placeholder=placeholder maxlength=maxlength required=required
     prop:value=move ||value.get() disabled=move ||disabled.is_some_and(|value|value.get())
     on:input=move |event|on_change.run(event_target_value(&event))/> }
 }
@@ -113,14 +116,15 @@ pub fn TextInput(
 /// Shared multiline form entry.
 #[component]
 pub fn TextArea(
-    label: &'static str,
+    #[prop(into)] label: String,
     #[prop(into)] value: Signal<String>,
     on_change: Callback<String>,
     #[prop(default = 4)] rows: u32,
     #[prop(optional)] maxlength: Option<u32>,
+    #[prop(default = false)] required: bool,
     #[prop(into, optional)] disabled: Option<Signal<bool>>,
 ) -> impl IntoView {
-    view! { <textarea class="form-input" aria-label=label rows=rows maxlength=maxlength
+    view! { <textarea class="form-input" aria-label=label rows=rows maxlength=maxlength required=required
     prop:value=move ||value.get() disabled=move ||disabled.is_some_and(|value|value.get())
     on:input=move |event|on_change.run(event_target_value(&event))></textarea> }
 }
@@ -267,13 +271,14 @@ pub fn DialogActions(children: Children) -> impl IntoView {
 /// A named group of related fields with optional supporting guidance.
 #[component]
 pub fn FormSection(
-    title: &'static str,
+    #[prop(into)] title: String,
     #[prop(default = "")] description: &'static str,
     #[prop(default = "")] class: &'static str,
     children: Children,
 ) -> impl IntoView {
+    let accessible_title = title.clone();
     view! {
-        <section class=format!("ui-section {class}") aria-label=title>
+        <section class=format!("ui-section {class}") aria-label=accessible_title>
             <header class="ui-section-heading">
                 <h3>{title}</h3>
                 {(!description.is_empty()).then(|| view! { <p class="form-hint">{description}</p> })}
@@ -287,7 +292,7 @@ pub fn FormSection(
 /// Keep buttons outside a single-control field to avoid nested labelable elements.
 #[component]
 pub fn FormField(
-    label: &'static str,
+    #[prop(into)] label: String,
     #[prop(default = false)] group: bool,
     children: Children,
 ) -> impl IntoView {
@@ -345,12 +350,13 @@ pub fn FormNotice(
 pub fn CheckboxField(
     #[prop(into)] label: String,
     checked: Signal<bool>,
+    #[prop(default = false)] required: bool,
     on_change: Callback<bool>,
     #[prop(into, optional)] disabled: Option<Signal<bool>>,
 ) -> impl IntoView {
     view! {
         <label class="ui-check">
-            <input type="checkbox" prop:checked=move || checked.get() disabled=move || disabled.is_some_and(|disabled| disabled.get())
+            <input type="checkbox" required=required prop:checked=move || checked.get() disabled=move || disabled.is_some_and(|disabled| disabled.get())
                 on:change=move |event| on_change.run(event_target_checked(&event)) />
             <span>{label}</span>
         </label>

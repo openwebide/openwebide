@@ -1610,9 +1610,9 @@ mod rust_plugin_tests {
         let manifest: openwebide_core::plugins::PluginManifest = serde_json::from_value(serde_json::json!({
             "schemaVersion":1,"publisher":"example","name":"fixture","version":"0.1.0",
             "displayName":"Fixture","description":"SDK adapter contract","license":"MIT",
-            "compatibility":{"pluginApi":3},
+            "compatibility":{"pluginApi":4},
             "executable":{"manifest":"Cargo.toml","library":"sdk_fixture","sdkVersion":"0.1.0","capabilities":["records","jobs","runs","collections"]},
-            "contributions":{"skills":[],"events":["job_due"],"tools":[{"name":"fixture_echo","description":"Exercise the public host contract.","parameters":{"type":"object","properties":{}},"requires_approval":false}]}
+            "contributions":{"skills":[],"panels":[{"id":"fixture-panel","title":"Fixture panel","icon":"puzzle","view":"render","actions":[{"id":"write","handler":"write","title":"Write record","requires_approval":true}]}],"events":["job_due"],"tools":[{"name":"fixture_echo","description":"Exercise the public host contract.","parameters":{"type":"object","properties":{}},"requires_approval":false}]}
         })).unwrap();
         let cargo = include_str!("../../crates/plugin-sdk/examples/fixture/Cargo.toml")
             .replace("{ path = \"../..\" }", "\"=0.1.0\"");

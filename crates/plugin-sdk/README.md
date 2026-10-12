@@ -2,8 +2,8 @@
 
 Public Rust interfaces for plugin-owned behavior executed as WASM components on
 an Open WebIDE bridge host. First-party and community plugins use the same
-interfaces and capability grants. Plugin API 3 ships in current alpha hosts;
-remaining lifecycle checks are tracked in the app roadmap. SDK 0.1.0 is
+interfaces and capability grants. API 3 covers tools/context/events; API 4 adds
+declarative panels in nightly hosts. SDK 0.1.0 is
 independently versioned from the app and registry publication is pending.
 
 Implement `Plugin`, then use `openwebide_plugin_sdk::export!(YourPlugin)` to export the component
@@ -19,6 +19,15 @@ those exports before accepting an installation.
   jobs, periodic reconciliation and agent-run completion.
 - Skills and their resources are declared in the manifest alongside executable
   contributions; they do not require a Rust handler.
+
+## Declarative panels (API 4)
+
+Implement `panels()` to return the exact manifest panel definitions, and `panel()`
+to handle their views/actions. The `panels` module provides typed version-1 UI
+blocks, forms, buttons, documents and inputs. Return the next revision for each
+request. Host views are read-only; actions use normal capability grants and their
+declared approval policy. UI documents contain data, never browser code or markup.
+See the app's [panel contract](../../docs/plugin-panels.md).
 
 ## Host capabilities
 

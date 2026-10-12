@@ -6,6 +6,7 @@ pub mod icon;
 pub mod jobs;
 pub mod management;
 pub mod marketplace;
+pub mod panels;
 pub mod preparation;
 pub mod records;
 pub mod runs;
@@ -115,6 +116,8 @@ pub struct PluginCompatibility {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PluginContributions {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub panels: Vec<panels::PanelDefinition>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub background: Option<PluginBackground>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -140,7 +143,7 @@ pub struct PluginSkill {
     pub path: String,
 }
 
-/// API 3 source package. The host provides this pinned SDK and compiler.
+/// API 3/4 source package. The host provides this pinned SDK and compiler.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RustPlugin {
@@ -183,7 +186,7 @@ impl PluginManifest {
         ).expect("static SemVer pattern")
         });
         if self.schema_version != 1
-            || !matches!(self.compatibility.plugin_api, 1..=3)
+            || !matches!(self.compatibility.plugin_api, 1..=4)
             || self
                 .schema
                 .as_deref()
@@ -228,6 +231,7 @@ impl PluginManifest {
             && self.contributions.tool_groups.is_empty()
             && self.contributions.tools.is_empty())
             && self.contributions.events.is_empty()
+            && self.contributions.panels.is_empty()
             || self.contributions.skills.len() > crate::skills::MAX_SKILLS
             || self.contributions.tool_groups.len() > 4
             || self
@@ -244,6 +248,27 @@ impl PluginManifest {
             ));
         }
         let executable = self.executable.as_ref();
+        if self.contributions.panels.len() > 16
+            || (!self.contributions.panels.is_empty()
+                && (executable.is_none() || self.compatibility.plugin_api != 4))
+            || self
+                .contributions
+                .panels
+                .iter()
+                .any(|panel| panels::validate_definition(panel).is_err())
+            || self
+                .contributions
+                .panels
+                .iter()
+                .map(|panel| &panel.id)
+                .collect::<std::collections::BTreeSet<_>>()
+                .len()
+                != self.contributions.panels.len()
+        {
+            return Err(invalid(
+                "Panels require API 4, a Rust executable and unique validated contributions.",
+            ));
+        }
         if self.contributions.events.len() > 100
             || (!self.contributions.events.is_empty() && executable.is_none())
             || self
@@ -273,12 +298,12 @@ impl PluginManifest {
                 "Background events require a declared event, jobs capability and an interval of 60–86,400 seconds.",
             ));
         }
-        if executable.is_some() != (self.compatibility.plugin_api == 3)
+        if executable.is_some() != matches!(self.compatibility.plugin_api, 3 | 4)
             || (executable.is_none() && !self.contributions.tools.is_empty())
             || self.contributions.tools.len() > 100
         {
             return Err(invalid(
-                "Executable tools require a Rust plugin using API 3.",
+                "Executable contributions require a Rust plugin using API 3 or 4.",
             ));
         }
         if let Some(rust) = executable
@@ -310,7 +335,9 @@ impl PluginManifest {
                     .collect::<std::collections::BTreeSet<_>>()
                     .len()
                     != rust.capabilities.len()
-                || (self.contributions.tools.is_empty() && self.contributions.events.is_empty())
+                || (self.contributions.tools.is_empty()
+                    && self.contributions.events.is_empty()
+                    && self.contributions.panels.is_empty())
                 || !self.contributions.tool_groups.is_empty())
         {
             return Err(invalid(
@@ -1202,7 +1229,7 @@ mod tests {
         assert!(validate_files(&files).is_err());
         let mut files = review_files();
         let mut json: serde_json::Value = serde_json::from_slice(&files[0].content).unwrap();
-        json["contributions"]["panels"] = serde_json::json!([]);
+        json["contributions"]["hooks"] = serde_json::json!([]);
         files[0].content = serde_json::to_vec(&json).unwrap();
         assert!(validate_files(&files).is_err());
         let mut files = review_files();

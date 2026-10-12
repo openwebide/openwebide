@@ -24,8 +24,9 @@ pub fn ConfirmDialog() -> impl IntoView {
                     <button
                         class="btn danger"
                         on:click=move |_| {
-                            if let Some(r) = req.get() {
-                                r.action.run(());
+                            if let Some(r) = req.get()
+                                && r.action.try_run(()).is_none() {
+                                ui.notify("This action is no longer available. Review the current view and try again.");
                             }
                             on_close.run(());
                         }

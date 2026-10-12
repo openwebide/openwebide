@@ -15,7 +15,7 @@ futures = { workspace = true }
 gloo-net = { workspace = true }
 js-sys = { workspace = true }
 leptos = { workspace = true }
-lepticons = { version = "0.13.1", default-features = false, features = ["social", "account", "navigation", "arrows", "files", "layout", "tools", "development", "communication", "security", "text", "multimedia", "people", "notifications"] }
+lepticons = { version = "0.13.1", default-features = false, features = ["social", "account", "navigation", "arrows", "files", "layout", "tools", "development", "communication", "security", "text", "multimedia", "people", "notifications", "time"] }
 openwebide-agent = { workspace = true }
 openwebide-core = { workspace = true, features = ["editor-parser", "private-input"] }
 openwebide-llm = { workspace = true }

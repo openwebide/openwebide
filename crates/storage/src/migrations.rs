@@ -22,7 +22,7 @@ use crate::StorageError;
 use crate::db::Db;
 
 /// The highest schema version this build knows how to apply.
-pub const SCHEMA_VERSION: i64 = 58;
+pub const SCHEMA_VERSION: i64 = 59;
 
 pub const MIGRATIONS: &[&str] = &[
     "CREATE TABLE IF NOT EXISTS settings (
@@ -725,6 +725,14 @@ async fn apply_step<D: Db>(
                 names.remove(name);
                 names.insert(candidate);
             }
+            Ok(())
+        }
+        59 => {
+            db.execute("CREATE TABLE IF NOT EXISTS plugin_panel_instances (user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, instance TEXT NOT NULL, project_scope INTEGER NOT NULL, prepared TEXT NOT NULL, panel TEXT NOT NULL, document TEXT, active_request TEXT, retired INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL, PRIMARY KEY(user_id,instance))", &[]).await?;
+            db.execute("CREATE TABLE IF NOT EXISTS plugin_panel_claims (user_id INTEGER NOT NULL, instance TEXT NOT NULL, request TEXT NOT NULL, input_fingerprint TEXT NOT NULL, input_revision INTEGER NOT NULL, mutating INTEGER NOT NULL, phase TEXT NOT NULL CHECK(phase IN ('pending','completed','failed')), result TEXT, created_at INTEGER NOT NULL, PRIMARY KEY(user_id,instance,request), FOREIGN KEY(user_id,instance) REFERENCES plugin_panel_instances(user_id,instance) ON DELETE CASCADE)", &[]).await?;
+            db.execute("CREATE INDEX IF NOT EXISTS plugin_panel_instances_cleanup ON plugin_panel_instances(user_id,retired,updated_at)", &[]).await?;
+            db.execute("CREATE INDEX IF NOT EXISTS plugin_panel_claims_revision ON plugin_panel_claims(user_id,instance,input_revision)", &[]).await?;
+            db.execute("CREATE TRIGGER IF NOT EXISTS delete_project_plugin_panels AFTER DELETE ON projects BEGIN UPDATE plugin_panel_instances SET retired=1,document=NULL,prepared='',active_request=NULL WHERE project_scope=OLD.id; DELETE FROM plugin_panel_claims WHERE user_id=OLD.user_id AND instance IN (SELECT instance FROM plugin_panel_instances WHERE project_scope=OLD.id); END", &[]).await?;
             Ok(())
         }
         other => Err(StorageError::Db(format!("unknown migration step {other}"))),

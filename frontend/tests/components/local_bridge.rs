@@ -80,6 +80,12 @@ export function fakeBridgeHttp() {
         }
         if (path === '/plugins/continue') {
             const continuation = body.continuation;
+            if (mock.actor.operation === 'panel') {
+                const document = mock.waitPanel ? await mock.waitPanel : mock.panelDocuments.shift();
+                mock.waitPanel = null;
+                if (!document) throw new Error('Missing panel document fixture');
+                return new Response(JSON.stringify({id:'plugin-ui', step:{status:'complete', ok:true, content:JSON.stringify(document), summary:'Fixture panel document'}}));
+            }
             if (continuation.sequence === 0) {
                 if (mock.actor.operation === 'context') {
                     return new Response(JSON.stringify({id:'plugin-ui', step:{status:'host_call', sequence:1, capability:'collections', payload:JSON.stringify({collection:mock.collection, operation:{action:'list', after:0}})}}));
@@ -122,6 +128,9 @@ export function fakeBridgeHttp() {
     };
     return mock;
 }
+export function deferBridgePanel(mock) { mock.waitPanel = new Promise(resolve => { mock.resolvePanel = resolve; }); }
+export function releaseBridgePanel(mock, document) { mock.resolvePanel(JSON.parse(document)); }
+export function setBridgePanelDocuments(mock, documents) { mock.panelDocuments = JSON.parse(documents); }
 export function setBridgePlugin(mock, plugin) { mock.plugin = plugin; }
 export function setBridgeDiff(mock, diff) { mock.diff = diff; }
 export function restoreBridgeHttp(mock) { mock.restore(); }
@@ -141,6 +150,12 @@ export function probeDeleted(folder, name) {
 extern "C" {
     #[wasm_bindgen(js_name = fakeBridgeHttp)]
     pub(crate) fn fake_bridge_http() -> JsValue;
+    #[wasm_bindgen(js_name = deferBridgePanel)]
+    pub(crate) fn defer_bridge_panel(mock: &JsValue);
+    #[wasm_bindgen(js_name = releaseBridgePanel)]
+    pub(crate) fn release_bridge_panel(mock: &JsValue, document: &str);
+    #[wasm_bindgen(js_name = setBridgePanelDocuments)]
+    pub(crate) fn set_bridge_panel_documents(mock: &JsValue, documents: &str);
     #[wasm_bindgen(js_name = setBridgePlugin)]
     pub(crate) fn set_bridge_plugin(mock: &JsValue, plugin: &str);
     #[wasm_bindgen(js_name = setBridgeDiff)]
@@ -148,7 +163,7 @@ extern "C" {
     #[wasm_bindgen(js_name = restoreBridgeHttp)]
     pub(crate) fn restore_bridge_http(mock: &JsValue);
     #[wasm_bindgen(js_name = bridgeCalls)]
-    fn bridge_calls(mock: &JsValue) -> String;
+    pub(crate) fn bridge_calls(mock: &JsValue) -> String;
     #[wasm_bindgen(js_name = bridgeFound)]
     pub(crate) fn bridge_found(mock: &JsValue, found: bool);
     #[wasm_bindgen(js_name = bridgeHanging)]

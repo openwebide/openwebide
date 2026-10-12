@@ -60,6 +60,7 @@ pub enum PluginOperation {
     Tool,
     Context,
     Event,
+    Panel,
 }
 
 /// Host-owned execution scope. This is never passed to the plugin or model.
@@ -163,6 +164,22 @@ pub struct PluginStartRequest {
 }
 impl InvokePlugin {
     pub fn validate_event(&self) -> Result<(), String> {
+        if matches!(self.operation, PluginOperation::Panel) {
+            if self.name != super::panels::VIEW_HANDLER {
+                return Err("Invalid panel dispatcher".into());
+            }
+            let input: super::panels::PanelInput =
+                serde_json::from_str(&self.arguments).map_err(|error| error.to_string())?;
+            let panel = self
+                .prepared
+                .manifest
+                .contributions
+                .panels
+                .iter()
+                .find(|panel| panel.id == input.panel)
+                .ok_or("Panel is not declared by this plugin")?;
+            super::panels::validate_input(panel, &input, true)?;
+        }
         if matches!(self.operation, PluginOperation::Event) {
             if !self.name.is_empty() {
                 return Err("Event callbacks cannot supply a tool name".into());

@@ -177,6 +177,11 @@ pub fn App() -> impl IntoView {
     ));
     let plugins = crate::state::plugins::PluginsState::default();
     provide_context(plugins);
+    provide_context(crate::state::plugin_panels::PluginPanelsState::new(
+        plugins,
+        projects_state,
+        layout,
+    ));
     provide_context(crate::project_plugins::ProjectPluginActions::new(
         api,
         plugins,
@@ -501,6 +506,7 @@ pub fn App() -> impl IntoView {
 
                             </div>
                             </ToolPanel>
+                            <crate::components::plugin_panels::PluginPanels/>
                             <ToolPanel panel=Panel::Chat>
                             <ChatPane
                                 on_select_connection_model=chat_actions.select_connection_model

@@ -949,27 +949,19 @@ capability.
   phones. Clients consume plugin metadata, instructions and service results
   through the shared facade/bridge; they do not maintain plugin clones, execute
   plugin WASM modules or install plugin runtimes.
-- Let plugins contribute top-level panels through a versioned declarative UI
-  schema inspired by Block Kit. Declare stable panel IDs, titles, built-in icons
-  and host view/action handlers in the package manifest. Host handlers return
-  bounded UI documents composed of supported text, layout, status, form, button,
-  list/table and code/diff components; the core Rust/Leptos renderer uses existing
-  shared components, theme tokens, accessibility and responsive panel layouts.
-  Plugins provide data and action IDs, not arbitrary browser HTML/CSS/JavaScript,
-  WASM UI code or client-side expressions. Keep UI schema compatibility distinct
-  from package manifest compatibility and validate documents before rendering.
-- Route panel interactions through the same shared plugin facade and host bridge
-  as other contributions. Send validated inputs with the owning user/project,
-  panel-instance and view revision; dispatch only declared actions, apply normal
-  capability/approval rules, and return or stream replacement view revisions.
-  Prevent duplicate side effects and stale replies after navigation, account or
-  project switches, disablement and updates. Define loading/error/disconnected
-  states, subscription cleanup and bounded update rates; retain core navigation
-  when a plugin fails. Namespaced dynamic panels use the shared panel registry;
-  user layout/visibility and durable plugin configuration/state stay in the
-  database. Verify the same panel/action contracts through local and remote host
-  adapters, including mobile clients. Use a GitHub pull-request panel as a
-  first-party reference, with inspectable actions and approval before publishing.
+- Publish the executable PR Review panel release in the official marketplace,
+  pin contributor CI to the API 4 SDK, and add the cross-repository reference
+  component checks to CI. The shared panel renderer, host actions, canonical
+  revisions/claims and responsive navigation are implemented and verified in both
+  project modes; this publication step completes the first-party reference.
+- Provide a plugin UI component gallery and interactive playground on the docs
+  website. Reuse the app's Rust/WASM renderer and versioned schema so previews
+  match production. Include examples for each supported block, light/dark themes
+  and phone/desktop widths. Begin with editable JSON, live validation and preview,
+  plus simulated action inputs/results that never execute host capabilities.
+  Export a valid UI document and Rust SDK example for plugin authors. A visual
+  block builder can follow once the schema and renderer are stable; keep it on
+  the same validation/export path rather than introducing another UI format.
 - Add editor hooks later as typed contributions in the same package format,
   after the shared editor transaction/save APIs are stable. Start with bounded
   host notifications such as document opened/changed/saved/closed; debounce

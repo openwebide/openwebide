@@ -81,6 +81,25 @@ pub struct Runtime {
     engine: Engine,
 }
 impl Runtime {
+    pub fn panel<H: HostServices + 'static>(
+        &self,
+        bytes: &[u8],
+        services: H,
+        grants: &[String],
+        arguments: &str,
+    ) -> Result<sdk::Outcome> {
+        let input: sdk::panels::PanelInput = serde_json::from_str(arguments)?;
+        self.execute(
+            bytes,
+            PanelServices {
+                services,
+                readonly: input.action.is_none(),
+            },
+            grants,
+            sdk::panels::VIEW_HANDLER,
+            arguments,
+        )
+    }
     pub fn new() -> Result<Self> {
         let mut config = Config::new();
         config.wasm_component_model(true).consume_fuel(true);
@@ -105,6 +124,20 @@ impl Runtime {
         }
         if self.events(bytes)? != manifest.contributions.events {
             bail!("Compiled events do not match the manifest.");
+        }
+        if !manifest.contributions.panels.is_empty() {
+            let result = self.execute(
+                bytes,
+                NoServices,
+                &[],
+                openwebide_plugin_sdk::panels::METADATA_HANDLER,
+                "{}",
+            )?;
+            let panels: Vec<openwebide_plugin_sdk::panels::PanelDefinition> =
+                serde_json::from_str(&result.content)?;
+            if panels != manifest.contributions.panels {
+                bail!("Compiled panels do not match the manifest.");
+            }
         }
         Ok(())
     }
@@ -276,10 +309,84 @@ impl Runtime {
     }
 }
 
+struct PanelServices<H> {
+    services: H,
+    readonly: bool,
+}
+impl<H: HostServices> HostServices for PanelServices<H> {
+    fn request(&mut self, capability: &str, payload: &str) -> Result<String, String> {
+        if self.readonly
+            && !openwebide_core::plugins::panels::view_request_allowed(capability, payload)
+        {
+            return Err("Panel views cannot mutate host state".into());
+        }
+        self.services.request(capability, payload)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     struct Records;
+    #[test]
+    fn public_sdk_panels_render_and_readonly_views_cannot_write() {
+        use sdk::panels::*;
+        let runtime = Runtime::new().unwrap();
+        let bytes = fixture();
+        let mut input = PanelInput {
+            panel: "fixture-panel".into(),
+            instance: "a".repeat(32),
+            request: "b".repeat(32),
+            revision: 0,
+            handler: "render".into(),
+            action: None,
+            values: Default::default(),
+            state: serde_json::Value::Null,
+        };
+        let outcome = runtime
+            .panel(
+                &bytes,
+                Records,
+                &[],
+                &serde_json::to_string(&input).unwrap(),
+            )
+            .unwrap();
+        let doc: PanelDocument = serde_json::from_str(&outcome.content).unwrap();
+        assert_eq!(doc.revision, 1);
+        assert_eq!(
+            doc.blocks,
+            vec![Block::Text {
+                text: "Plugin-owned panel".into()
+            }]
+        );
+        input.handler = "write".into();
+        assert!(
+            runtime
+                .panel(
+                    &bytes,
+                    Records,
+                    &["records".into()],
+                    &serde_json::to_string(&input).unwrap()
+                )
+                .is_err()
+        );
+        input.action = Some("write".into());
+        assert!(
+            runtime
+                .panel(
+                    &bytes,
+                    Records,
+                    &["records".into()],
+                    &serde_json::to_string(&input).unwrap()
+                )
+                .is_ok()
+        );
+        let metadata = runtime
+            .execute(&bytes, Records, &[], METADATA_HANDLER, "{}")
+            .unwrap();
+        let panels: Vec<PanelDefinition> = serde_json::from_str(&metadata.content).unwrap();
+        assert_eq!(panels[0].id, "fixture-panel");
+    }
     impl HostServices for Records {
         fn request(&mut self, capability: &str, payload: &str) -> Result<String, String> {
             assert_eq!(capability, "records");

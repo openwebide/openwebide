@@ -1,4 +1,6 @@
 //! Public component bindings and tool types. No application internals are linked.
+pub mod panels;
+#[cfg(feature = "bindings")]
 pub mod bindings {
     wit_bindgen::generate!({path: "wit", world: "plugin", pub_export_macro: true});
 }
@@ -159,6 +161,12 @@ pub struct EventInput {
 
 /// Plugins implement their feature behavior here.
 pub trait Plugin {
+    fn panels() -> Vec<panels::PanelDefinition> {
+        Vec::new()
+    }
+    fn panel(_input: panels::PanelInput) -> Result<panels::PanelDocument, String> {
+        Err("This plugin does not provide panels".into())
+    }
     fn tools() -> Vec<Tool> {
         Vec::new()
     }
@@ -186,9 +194,17 @@ pub fn request<T: Serialize, R: for<'de> Deserialize<'de>>(
     capability: &str,
     payload: &T,
 ) -> Result<R, String> {
-    let input = serde_json::to_string(payload).map_err(|error| error.to_string())?;
-    let response = bindings::openwebide::plugin::host::request(capability, &input)?;
-    serde_json::from_str(&response).map_err(|error| error.to_string())
+    #[cfg(not(feature = "bindings"))]
+    {
+        let _ = (capability, payload);
+        Err("Host capability imports are unavailable".into())
+    }
+    #[cfg(feature = "bindings")]
+    {
+        let input = serde_json::to_string(payload).map_err(|error| error.to_string())?;
+        let response = bindings::openwebide::plugin::host::request(capability, &input)?;
+        serde_json::from_str(&response).map_err(|error| error.to_string())
+    }
 }
 
 /// Export a plugin implementation using the public versioned component contract.
@@ -206,6 +222,18 @@ macro_rules! export {
                     .expect("serializable event definitions")
             }
             fn execute(name: String, arguments: String) -> Result<String, String> {
+                if name == $crate::panels::METADATA_HANDLER {
+                    return $crate::serde_json::to_string(&$crate::Outcome {
+                        ok: true, content: $crate::serde_json::to_string(&<$plugin as $crate::Plugin>::panels()).map_err(|error|error.to_string())?, summary: String::new(),
+                    }).map_err(|error|error.to_string());
+                }
+                if name == $crate::panels::VIEW_HANDLER {
+                    let input = $crate::serde_json::from_str(&arguments).map_err(|error|error.to_string())?;
+                    let document = <$plugin as $crate::Plugin>::panel(input)?;
+                    return $crate::serde_json::to_string(&$crate::Outcome {
+                        ok: true, content: $crate::serde_json::to_string(&document).map_err(|error|error.to_string())?, summary: "Panel updated".into(),
+                    }).map_err(|error|error.to_string());
+                }
                 let arguments = $crate::serde_json::from_str(&arguments)
                     .map_err(|error| error.to_string())?;
                 let result = <$plugin as $crate::Plugin>::execute(&name, arguments)?;

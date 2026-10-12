@@ -186,6 +186,14 @@ async fn invoke_inner<T: PluginTransport, S: PluginServices>(
         call.operation,
         openwebide_core::plugins::execution::PluginOperation::Context
     );
+    let panel_view =
+        matches!(
+            call.operation,
+            openwebide_core::plugins::execution::PluginOperation::Panel
+        ) && serde_json::from_str::<openwebide_core::plugins::panels::PanelInput>(&call.arguments)
+            .map_err(|error| error.to_string())?
+            .action
+            .is_none();
     let plugin = call.prepared.clone();
     let mut invocation = transport.start(call).await?;
     let mut guard = InvocationGuard {
@@ -254,6 +262,14 @@ async fn invoke_inner<T: PluginTransport, S: PluginServices>(
                     )
                 {
                     return Err("Plugin context hooks cannot mutate host state".into());
+                }
+                if panel_view
+                    && !openwebide_core::plugins::panels::view_request_allowed(
+                        &capability,
+                        &payload,
+                    )
+                {
+                    return Err("Panel views cannot mutate host state".into());
                 }
                 let response = services.request(&plugin, &capability, &payload).await;
                 invocation = transport

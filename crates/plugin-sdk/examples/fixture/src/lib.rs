@@ -1,6 +1,17 @@
 use openwebide_plugin_sdk::{Plugin, Tool, Outcome, serde_json::{self, json}};
 struct Fixture;
 impl Plugin for Fixture {
+    fn panels()->Vec<openwebide_plugin_sdk::panels::PanelDefinition> {
+        use openwebide_plugin_sdk::panels::*;
+        vec![PanelDefinition{id:"fixture-panel".into(),title:"Fixture panel".into(),icon:PanelIcon::Puzzle,view:"render".into(),actions:vec![PanelAction{id:"write".into(),handler:"write".into(),title:"Write record".into(),requires_approval:true}],refresh_seconds:None}]
+    }
+    fn panel(input:openwebide_plugin_sdk::panels::PanelInput)->Result<openwebide_plugin_sdk::panels::PanelDocument,String> {
+        use openwebide_plugin_sdk::panels::*;
+        if input.handler=="write" {
+            let _:serde_json::Value=openwebide_plugin_sdk::records("panel-data",&json!({"action":"create","value":{"text":"from panel"}}))?;
+        }
+        Ok(PanelDocument{schema_version:UI_VERSION,revision:input.revision+1,blocks:vec![Block::Text{text:"Plugin-owned panel".into()}],state:serde_json::Value::Null})
+    }
     fn events()->Vec<String> { vec!["job_due".into()] }
     fn event(input:openwebide_plugin_sdk::EventInput)->Result<Outcome,String> {
         let conversations:Option<serde_json::Value> = if input.payload.get("discover")==Some(&json!(true)) {

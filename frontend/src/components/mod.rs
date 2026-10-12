@@ -23,6 +23,8 @@ pub(crate) mod modal;
 mod panel_resizer;
 mod plugins;
 pub use plugins::{PluginMarketplaceSources, Plugins, PluginsDialog};
+pub mod plugin_panel_view;
+pub mod plugin_panels;
 mod prompt_dialog;
 pub mod scheduled;
 mod session_list;

@@ -15,6 +15,7 @@
     - Project memory: docs/project-memory.md
     - Agent skills: docs/agent-skills.md
     - Plugins and marketplaces: docs/plugins.md
+    - Plugin panels: docs/plugin-panels.md
     - Scheduled tasks: docs/scheduled-tasks.md
     - Monitors: docs/monitors.md
     - Browser notifications: docs/web-push.md

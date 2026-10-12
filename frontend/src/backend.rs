@@ -633,6 +633,27 @@ pub trait Backend {
     ) -> LocalBoxFuture<'a, Result<String, String>> {
         Box::pin(async { Err("Plugin host capability unavailable".into()) })
     }
+    fn begin_plugin_panel<'a>(
+        &'a self,
+        _request: &'a openwebide_core::plugins::panels::coordination::BeginPanel,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<openwebide_core::plugins::panels::coordination::PanelClaim, String>,
+    > {
+        Box::pin(async { Err("Panel coordination unavailable".into()) })
+    }
+    fn finish_plugin_panel<'a>(
+        &'a self,
+        _request: &'a openwebide_core::plugins::panels::coordination::FinishPanel,
+    ) -> LocalBoxFuture<'a, Result<(), String>> {
+        Box::pin(async { Err("Panel coordination unavailable".into()) })
+    }
+    fn close_plugin_panel<'a>(
+        &'a self,
+        _instance: &'a str,
+    ) -> LocalBoxFuture<'a, Result<(), String>> {
+        Box::pin(async { Err("Panel coordination unavailable".into()) })
+    }
     fn start_plugin_invocation<'a>(
         &'a self,
         _request: &'a openwebide_core::plugins::execution::PluginStartRequest,
@@ -1653,6 +1674,27 @@ impl Backend for BackendApi {
         request: &'a openwebide_core::plugins::execution::PluginHostRequest,
     ) -> LocalBoxFuture<'a, Result<String, String>> {
         Box::pin(BackendApi::plugin_context_host_request(self, request))
+    }
+    fn begin_plugin_panel<'a>(
+        &'a self,
+        request: &'a openwebide_core::plugins::panels::coordination::BeginPanel,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<openwebide_core::plugins::panels::coordination::PanelClaim, String>,
+    > {
+        Box::pin(BackendApi::begin_plugin_panel(self, request))
+    }
+    fn finish_plugin_panel<'a>(
+        &'a self,
+        request: &'a openwebide_core::plugins::panels::coordination::FinishPanel,
+    ) -> LocalBoxFuture<'a, Result<(), String>> {
+        Box::pin(BackendApi::finish_plugin_panel(self, request))
+    }
+    fn close_plugin_panel<'a>(
+        &'a self,
+        instance: &'a str,
+    ) -> LocalBoxFuture<'a, Result<(), String>> {
+        Box::pin(BackendApi::close_plugin_panel(self, instance))
     }
     fn start_plugin_invocation<'a>(
         &'a self,

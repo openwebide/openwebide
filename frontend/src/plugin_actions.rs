@@ -39,6 +39,38 @@ pub async fn invoke_scoped_plugin_action(
     approved: bool,
     current: impl Fn() -> bool + Clone + 'static,
 ) -> Result<openwebide_agent::ToolOutcome, String> {
+    let (adapter, bindings) = scoped_action_host(api, host, project, current).await?;
+    openwebide_agent::plugins::actions::invoke_plugin_action(&adapter, &bindings, call, approved)
+        .await
+}
+
+pub async fn invoke_scoped_plugin_panel(
+    api: Api,
+    host: ProjectHost,
+    project: Option<i64>,
+    panel: &openwebide_core::plugins::panels::registry::RegisteredPanel,
+    input: &openwebide_core::plugins::panels::PanelInput,
+    approved: bool,
+    current: impl Fn() -> bool + Clone + 'static,
+) -> Result<openwebide_core::plugins::panels::PanelDocument, String> {
+    let (adapter, bindings) = scoped_action_host(api, host, project, current).await?;
+    openwebide_agent::plugins::panels::invoke_panel(
+        &adapter,
+        &bindings,
+        &panel.plugin_namespace,
+        &panel.digest,
+        input,
+        approved,
+    )
+    .await
+}
+
+async fn scoped_action_host(
+    api: Api,
+    host: ProjectHost,
+    project: Option<i64>,
+    current: impl Fn() -> bool + Clone + 'static,
+) -> Result<(ActionHost, Vec<openwebide_core::plugins::ProjectPlugin>), String> {
     let revision = host.revision();
     let current = move || current() && host.revision() == revision;
     if !current() {
@@ -51,7 +83,9 @@ pub async fn invoke_scoped_plugin_action(
         Some(project) => backend.project_plugins(project).await?,
         None => openwebide_core::plugins::default_bindings(&backend.plugin_installations().await?),
     };
-    openwebide_agent::plugins::actions::select_plugin_action(&bindings, call, approved)?;
+    if !current() {
+        return Err("Plugin action context changed".into());
+    }
     let execution = host.plugin_host(project, current.clone())?;
     let transport = match execution {
         PluginExecutionHost::Remote {
@@ -71,8 +105,7 @@ pub async fn invoke_scoped_plugin_action(
         current: SendWrapper::new(Rc::new(current)),
         grants: Arc::default(),
     };
-    openwebide_agent::plugins::actions::invoke_plugin_action(&adapter, &bindings, call, approved)
-        .await
+    Ok((adapter, bindings))
 }
 
 #[derive(Clone)]
@@ -218,5 +251,37 @@ impl GrantedHost for ActionHost {
     async fn request(&self, request: &PluginHostRequest) -> Result<String, String> {
         SendWrapper::new(async move { self.backend()?.plugin_context_host_request(request).await })
             .await
+    }
+}
+
+impl openwebide_agent::plugins::panels::PanelActionHost for ActionHost {
+    async fn begin_panel(
+        &self,
+        plugin: &PreparedPlugin,
+        input: &openwebide_core::plugins::panels::PanelInput,
+        approved: bool,
+    ) -> Result<openwebide_core::plugins::panels::coordination::PanelClaim, String> {
+        SendWrapper::new(async move {
+            self.backend()?
+                .begin_plugin_panel(
+                    &openwebide_core::plugins::panels::coordination::BeginPanel {
+                        project: self.context.project_id,
+                        prepared: plugin.clone(),
+                        input: input.clone(),
+                        approved,
+                    },
+                )
+                .await
+        })
+        .await
+    }
+    async fn finish_panel(
+        &self,
+        request: &openwebide_core::plugins::panels::coordination::FinishPanel,
+    ) -> Result<(), String> {
+        SendWrapper::new(async move { self.backend()?.finish_plugin_panel(request).await }).await
+    }
+    async fn close_panel(&self, instance: &str) -> Result<(), String> {
+        SendWrapper::new(async move { self.backend()?.close_plugin_panel(instance).await }).await
     }
 }

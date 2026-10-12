@@ -72,6 +72,13 @@ pub struct FakeBackend {
     >,
     pub plugin_actor_contexts:
         RefCell<BTreeMap<String, openwebide_core::plugins::execution::PluginExecutionContext>>,
+    pub panel_coordination: std::cell::Cell<bool>,
+    pub panel_begins: RefCell<Vec<openwebide_core::plugins::panels::coordination::BeginPanel>>,
+    pub panel_finishes: RefCell<Vec<openwebide_core::plugins::panels::coordination::FinishPanel>>,
+    pub panel_closes: RefCell<Vec<String>>,
+    pub panel_document_results:
+        RefCell<VecDeque<Deferred<openwebide_core::plugins::panels::PanelDocument>>>,
+    pub panel_documents: RefCell<VecDeque<openwebide_core::plugins::panels::PanelDocument>>,
     pub plugin_action_calls: RefCell<Vec<(Option<i64>, openwebide_core::ToolCall)>>,
     pub plugin_actors: RefCell<BTreeMap<String, openwebide_core::plugins::execution::InvokePlugin>>,
     pub plugin_commands: RefCell<Vec<(i64, openwebide_core::plugins::ProjectPluginCommand)>>,
@@ -521,6 +528,43 @@ impl Backend for FakeBackend {
             Ok(grants)
         })
     }
+    fn begin_plugin_panel<'a>(
+        &'a self,
+        request: &'a openwebide_core::plugins::panels::coordination::BeginPanel,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<openwebide_core::plugins::panels::coordination::PanelClaim, String>,
+    > {
+        Box::pin(async move {
+            self.panel_begins.borrow_mut().push(request.clone());
+            if !self.panel_coordination.get() {
+                return Err("Panel coordination unavailable".into());
+            }
+            Ok(
+                openwebide_core::plugins::panels::coordination::PanelClaim::Claimed {
+                    input: request.input.clone(),
+                },
+            )
+        })
+    }
+    fn finish_plugin_panel<'a>(
+        &'a self,
+        request: &'a openwebide_core::plugins::panels::coordination::FinishPanel,
+    ) -> LocalBoxFuture<'a, Result<(), String>> {
+        Box::pin(async move {
+            self.panel_finishes.borrow_mut().push(request.clone());
+            Ok(())
+        })
+    }
+    fn close_plugin_panel<'a>(
+        &'a self,
+        instance: &'a str,
+    ) -> LocalBoxFuture<'a, Result<(), String>> {
+        Box::pin(async move {
+            self.panel_closes.borrow_mut().push(instance.into());
+            Ok(())
+        })
+    }
     fn start_plugin_invocation<'a>(
         &'a self,
         request: &'a openwebide_core::plugins::execution::PluginStartRequest,
@@ -575,6 +619,27 @@ impl Backend for FakeBackend {
                 .get(&request.id)
                 .cloned()
                 .ok_or("Missing actor")?;
+            if matches!(call.operation, PluginOperation::Panel) {
+                let pending = self.panel_document_results.borrow_mut().pop_front();
+                let document = if let Some(pending) = pending {
+                    pending.await.map_err(|error| error.to_string())??
+                } else {
+                    self.panel_documents
+                        .borrow_mut()
+                        .pop_front()
+                        .ok_or("Missing panel document fixture")?
+                };
+                self.plugin_actors.borrow_mut().remove(&request.id);
+                self.plugin_actor_contexts.borrow_mut().remove(&request.id);
+                return Ok(PluginInvocation {
+                    id: request.id.clone(),
+                    step: PluginStep::Complete {
+                        ok: true,
+                        content: serde_json::to_string(&document).unwrap(),
+                        summary: "Fixture panel document".into(),
+                    },
+                });
+            }
             if call.name.starts_with("schedule_") || call.name == "monitor" {
                 let mut args: serde_json::Value =
                     serde_json::from_str(&call.arguments).map_err(|error| error.to_string())?;

@@ -3745,3 +3745,17 @@ button.browser-item {
 .release-notes { overflow-wrap: anywhere; }
 
 .phone-layout .tui-host-status .ui-dropdown-trigger { padding-inline: var(--space-2); }
+
+/* Shared declarative plugin documents, including the authoring playground. */
+.plugin-panel-document { display: grid; gap: var(--space-4); min-width: 0; padding: var(--space-4); }
+.plugin-panel-document :is(p, h3, ul) { margin: 0; overflow-wrap: anywhere; }
+.plugin-panel-text { white-space: pre-wrap; }
+.plugin-panel-table { min-width: 0; overflow-x: auto; }
+.plugin-panel-table table { width: 100%; border-collapse: collapse; }
+.plugin-panel-table :is(th, td) { padding: var(--space-2); border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.plugin-panel-code { margin: 0; padding: var(--space-3); overflow: auto; background: var(--bg-panel); font-family: var(--mono); }
+.plugin-panel-document hr { width: 100%; margin: 0; border: 0; border-top: 1px solid var(--border); }
+.plugin-panel-content { overflow: auto; }
+.plugin-panel-host { width: 100%; min-width: 0; }
+.plugin-panel-feedback { min-height: var(--control-height); padding: var(--space-2) var(--space-3); justify-content: flex-end; }
+.plugin-panel-host > .ui-notice { margin: var(--space-3); }

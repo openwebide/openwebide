@@ -127,3 +127,6 @@ mod release_notes;
 
 #[path = "components/mcp.rs"]
 mod mcp;
+
+#[path = "components/plugin_panels.rs"]
+mod plugin_panels;

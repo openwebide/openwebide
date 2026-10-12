@@ -5,6 +5,7 @@ pub mod execution;
 pub mod jobs;
 pub mod management;
 pub mod management_tools;
+pub mod panels;
 pub mod runs;
 pub mod updates;
 mod worker;

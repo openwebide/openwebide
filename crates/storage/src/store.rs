@@ -15,6 +15,7 @@ mod plugin_collections;
 mod plugin_conversation_collection;
 mod plugin_grants;
 mod plugin_jobs;
+mod plugin_panels;
 mod plugin_records;
 mod plugin_runs;
 mod plugin_skill_collection;

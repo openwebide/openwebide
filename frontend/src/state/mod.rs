@@ -28,3 +28,5 @@ pub mod questions;
 
 #[cfg(target_arch = "wasm32")]
 pub mod monitors;
+
+pub mod plugin_panels;

@@ -31,6 +31,24 @@ pub async fn invoke_plugin_action<H: PluginActionHost>(
 ) -> Result<ToolOutcome, String> {
     current(host)?;
     let selected = select_plugin_action(bindings, call, approved)?;
+    invoke_selected_action(
+        host,
+        selected,
+        PluginOperation::Tool,
+        &call.name,
+        &call.arguments,
+    )
+    .await
+}
+
+pub(crate) async fn invoke_selected_action<H: PluginActionHost>(
+    host: &H,
+    selected: &PreparedPlugin,
+    operation: PluginOperation,
+    name: &str,
+    arguments: &str,
+) -> Result<ToolOutcome, String> {
+    current(host)?;
     let prepared = host.prepare(selected).await?;
     current(host)?;
     super::execution::validate_prepared_selection(selected, &prepared)?;
@@ -48,10 +66,10 @@ pub async fn invoke_plugin_action<H: PluginActionHost>(
         &guarded,
         &services,
         InvokePlugin {
-            operation: PluginOperation::Tool,
+            operation,
             prepared,
-            name: call.name.clone(),
-            arguments: call.arguments.clone(),
+            name: name.into(),
+            arguments: arguments.into(),
         },
     )
     .await?;

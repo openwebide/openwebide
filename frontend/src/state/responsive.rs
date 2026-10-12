@@ -42,10 +42,17 @@ pub enum FilesView {
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
+pub struct PluginPanelLayout {
+    pub visible: bool,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct LayoutPreferences {
     pub mode: LayoutMode,
     pub files_view: FilesView,
     pub include_hidden: bool,
+    pub plugin_panels: BTreeMap<String, PluginPanelLayout>,
     sides: BTreeMap<String, PanelSide>,
     order: Vec<String>,
 }
@@ -77,6 +84,7 @@ impl LayoutPreferences {
             "git" => 4,
             "editor" => 5,
             "terminal" => 6,
+            id if id.starts_with("plugin:") => 7,
             _ => 8,
         };
         match self.sides.get(panel) {
@@ -86,7 +94,8 @@ impl LayoutPreferences {
         }
     }
     pub fn move_panel(&mut self, panel: &str, right: bool, visible: &[&str]) -> bool {
-        let mut panels = ["sessions", "files", "history", "editor", "terminal", "chat"];
+        let mut panels = vec!["sessions", "files", "history", "editor", "terminal", "chat"];
+        panels.extend(self.plugin_panels.keys().map(String::as_str));
         panels.sort_by_key(|id| self.order(id));
         let Some(index) = panels.iter().position(|id| *id == panel) else {
             return false;
@@ -123,6 +132,7 @@ impl LayoutPreferences {
             "sessions", "files", "editor", "chat", "terminal", "git", "search", "history",
         ]
         .contains(&panel)
+            && !self.plugin_panels.contains_key(panel)
         {
             return false;
         }

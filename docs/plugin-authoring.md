@@ -1,7 +1,8 @@
 # Plugin authoring
 
-Current alpha hosts execute plugin-owned Rust compiled to WASM on the bridge.
+Current nightly hosts execute plugin-owned Rust compiled to WASM on the bridge.
 API 1 supports skills; API 3 adds tools, read-only context hooks and durable events.
+API 4 adds [declarative workspace panels](plugin-panels.md) and scoped view/action handlers.
 The SDK is version 0.1.0, independently of the app. API 2 tool groups are retired.
 First-party Web, Project Memory, Scheduling and Skill Authoring implement their
 behavior through the same public SDK and grants as community plugins.
@@ -39,7 +40,8 @@ records, documented shared collections, durable jobs and raw agent runs. Grants
 are scoped and capability checked. Components have bounded memory, fuel and host
 calls, and no ambient filesystem, environment or network access. `workspace` is
 reserved, with no adapter yet. Arbitrary shell execution, MCP servers, language
-services, editor contributions and declarative UI panels are not current SDK APIs.
+services and editor contributions are not current SDK APIs. Declarative workspace
+panels use API 4 and the independent version-1 UI schema.
 Core file editing, shell and Git tools remain built in.
 
 Validate manifest/export agreement and use fixture-based component checks before

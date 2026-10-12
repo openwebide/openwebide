@@ -13,10 +13,13 @@ pub const TARGET: &str = "wasm32-wasip2";
 const SDK_MANIFEST: &str = include_str!("../../plugin-sdk/Cargo.toml");
 const SDK_SOURCE: &str = include_str!("../../plugin-sdk/src/lib.rs");
 const SDK_WIT: &str = include_str!("../../plugin-sdk/wit/plugin.wit");
+const SDK_PANELS: &str = include_str!("../../plugin-sdk/src/panels.rs");
 
 pub fn sdk_digest() -> String {
     use sha2::{Digest, Sha256};
-    let bytes = Sha256::digest(format!("{SDK_MANIFEST}\n{SDK_SOURCE}\n{SDK_WIT}"));
+    let bytes = Sha256::digest(format!(
+        "{SDK_MANIFEST}\n{SDK_SOURCE}\n{SDK_WIT}\n{SDK_PANELS}"
+    ));
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
@@ -58,6 +61,7 @@ pub fn compile_cancellable(
     for (path, contents) in [
         ("Cargo.toml", SDK_MANIFEST),
         ("src/lib.rs", SDK_SOURCE),
+        ("src/panels.rs", SDK_PANELS),
         ("wit/plugin.wit", SDK_WIT),
     ] {
         let path = sdk.join(path);

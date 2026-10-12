@@ -1252,6 +1252,30 @@ impl BackendApi {
     ) -> Result<String, String> {
         self.post("/plugins/host", request).await
     }
+    pub async fn begin_plugin_panel(
+        &self,
+        request: &openwebide_core::plugins::panels::coordination::BeginPanel,
+    ) -> Result<openwebide_core::plugins::panels::coordination::PanelClaim, String> {
+        self.post("/plugins/panels/begin", request).await
+    }
+    pub async fn finish_plugin_panel(
+        &self,
+        request: &openwebide_core::plugins::panels::coordination::FinishPanel,
+    ) -> Result<(), String> {
+        let _: serde_json::Value = self.post("/plugins/panels/finish", request).await?;
+        Ok(())
+    }
+    pub async fn close_plugin_panel(&self, instance: &str) -> Result<(), String> {
+        let _: serde_json::Value = self
+            .post(
+                "/plugins/panels/close",
+                &openwebide_core::plugins::panels::coordination::ClosePanel {
+                    instance: instance.into(),
+                },
+            )
+            .await?;
+        Ok(())
+    }
     pub async fn start_plugin_invocation(
         &self,
         request: &openwebide_core::plugins::execution::PluginStartRequest,

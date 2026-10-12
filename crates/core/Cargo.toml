@@ -8,6 +8,7 @@ license.workspace = true
 authors.workspace = true
 
 [dependencies]
+openwebide-plugin-sdk = { path = "../plugin-sdk", default-features = false }
 futures = { workspace = true }
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 chrono-tz = "0.10"

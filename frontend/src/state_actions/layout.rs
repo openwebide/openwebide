@@ -15,6 +15,8 @@ pub struct LayoutActions {
     pub save_width: Callback<ActiveResizer>,
     pub save_size: Callback<(String, f64)>,
     pub toggle: Callback<Panel>,
+    pub plugin_panel: Callback<(String, bool)>,
+    pub move_plugin_panel: Callback<(String, bool)>,
     pub select_files_view: Callback<FilesView>,
     pub set_tree_preferences: Callback<bool>,
     pub show: Callback<Panel>,
@@ -36,6 +38,7 @@ impl LayoutActions {
             layout.preferences.set(LayoutPreferences::default());
             layout.preference_revision.set(0);
             layout.sheet.set(None);
+            layout.plugin_sheet.set(None);
             layout
                 .sidebar_width
                 .set(crate::state::layout::ActiveResizer::Sidebar.default());
@@ -55,6 +58,7 @@ impl LayoutActions {
         Effect::new(move |_| {
             layout.active_project.track();
             layout.sheet.set(None);
+            layout.plugin_sheet.set(None);
             layout.active_resizer.set(Default::default());
             let viewport = web_sys::window()
                 .and_then(|window| window.inner_width().ok())
@@ -67,6 +71,7 @@ impl LayoutActions {
                 return;
             }
             if layout.phone.get_untracked() && panel != Panel::Terminal {
+                layout.plugin_sheet.set(None);
                 layout.sheet.set(if visible && panel != Panel::Chat {
                     Some(panel)
                 } else {
@@ -129,6 +134,7 @@ impl LayoutActions {
             layout.preferences.set(preferences.clone());
             layout.preference_revision.update(|revision| *revision += 1);
             layout.sheet.set(None);
+            layout.plugin_sheet.set(None);
             layout.fit(layout.viewport_width.get_untracked());
             if auth.user.get_untracked().is_none() {
                 return;
@@ -233,10 +239,29 @@ impl LayoutActions {
             save_width,
             save_size,
             select_files_view,
-            move_panel: Callback::new(move |(panel, right): (Panel, bool)| {
+            plugin_panel: Callback::new(move |(namespace, visible): (String, bool)| {
+                if !layout
+                    .plugin_panels
+                    .with_untracked(|panels| panels.contains(&namespace))
+                {
+                    return;
+                }
+                let mut preferences = layout.preferences.get_untracked();
+                preferences
+                    .plugin_panels
+                    .entry(namespace.clone())
+                    .or_default()
+                    .visible = visible;
+                save_preferences.run(preferences);
+                if layout.phone.get_untracked() {
+                    layout.sheet.set(None);
+                    layout.plugin_sheet.set(visible.then_some(namespace));
+                }
+            }),
+            move_plugin_panel: Callback::new(move |(namespace, right): (String, bool)| {
                 let mut preferences = layout.preferences.get_untracked();
                 let visibility = layout.visible_panels.get_untracked();
-                let visible = [
+                let mut visible = [
                     Panel::Sessions,
                     Panel::Files,
                     Panel::History,
@@ -246,9 +271,54 @@ impl LayoutActions {
                 ]
                 .into_iter()
                 .filter(|panel| visibility.visible(*panel))
-                .map(Panel::id)
+                .map(|panel| panel.id().to_owned())
                 .collect::<Vec<_>>();
-                if preferences.move_panel(panel.id(), right, &visible) {
+                visible.extend(
+                    preferences
+                        .plugin_panels
+                        .iter()
+                        .filter(|(id, panel)| {
+                            panel.visible
+                                && layout
+                                    .plugin_panels
+                                    .with_untracked(|panels| panels.contains(*id))
+                        })
+                        .map(|(id, _)| id.clone()),
+                );
+                let ids = visible.iter().map(String::as_str).collect::<Vec<_>>();
+                if preferences.move_panel(&namespace, right, &ids) {
+                    save_preferences.run(preferences);
+                }
+            }),
+            move_panel: Callback::new(move |(panel, right): (Panel, bool)| {
+                let mut preferences = layout.preferences.get_untracked();
+                let visibility = layout.visible_panels.get_untracked();
+                let mut visible = [
+                    Panel::Sessions,
+                    Panel::Files,
+                    Panel::History,
+                    Panel::Editor,
+                    Panel::Terminal,
+                    Panel::Chat,
+                ]
+                .into_iter()
+                .filter(|panel| visibility.visible(*panel))
+                .map(|panel| panel.id().to_owned())
+                .collect::<Vec<_>>();
+                visible.extend(
+                    preferences
+                        .plugin_panels
+                        .iter()
+                        .filter(|(id, panel)| {
+                            panel.visible
+                                && layout
+                                    .plugin_panels
+                                    .with_untracked(|panels| panels.contains(*id))
+                        })
+                        .map(|(id, _)| id.clone()),
+                );
+                let ids = visible.iter().map(String::as_str).collect::<Vec<_>>();
+                if preferences.move_panel(panel.id(), right, &ids) {
                     save_preferences.run(preferences);
                 }
             }),

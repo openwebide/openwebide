@@ -170,6 +170,15 @@ impl<D: Db> Store<D> {
                             "Plugin invocation does not match its execution grant".into(),
                         ));
                     }
+                    if matches!(
+                        request.call.operation,
+                        openwebide_core::plugins::execution::PluginOperation::Panel
+                    ) && !context.user_action
+                    {
+                        return Err(StorageError::InvalidRequest(
+                            "Panel invocations require user-interface authority".into(),
+                        ));
+                    }
                     Ok((plugin, context))
                 })
                 .await
@@ -247,16 +256,7 @@ impl<D: Db> Store<D> {
                 && !store.get_connection(primary.server_id).await?.enabled {
                 return Err(StorageError::InvalidRequest("Plugin model server is disabled".into()));
             }
-            let bindings = match context.project_id {
-                Some(project) => store.project_plugins(user, project).await?,
-                None => default_bindings(&store.plugin_installations(user).await?),
-            };
-            if plugin.manifest.executable.is_none() || !bindings.iter().any(|binding| {
-                binding.enabled && binding.prepared.source == plugin.source
-                    && binding.prepared.manifest == plugin.manifest && binding.prepared.digest == plugin.digest
-            }) {
-                return Err(StorageError::Conflict("Plugin is no longer enabled at the selected version".into()));
-            }
+            store.validate_enabled_plugin(user, context.project_id, plugin).await?;
             let expires = now.checked_add(86_400).ok_or_else(|| StorageError::InvalidRequest("Invalid grant expiry".into()))?;
             store.db.execute("DELETE FROM plugin_execution_grants WHERE expires_at<=?", &[DbValue::Int(now)]).await?;
             store.db.execute("INSERT INTO plugin_execution_grants(token,user_id,session_id,project_scope,prepared,expires_at,primary_model,user_action) VALUES(?,?,?,?,?,?,?,?)", &[
@@ -269,6 +269,30 @@ impl<D: Db> Store<D> {
             ]).await?;
             Ok(())
         }).await
+    }
+    pub(super) async fn validate_enabled_plugin(
+        &self,
+        user: UserId,
+        project: Option<i64>,
+        plugin: &PreparedPlugin,
+    ) -> Result<(), StorageError> {
+        let bindings = match project {
+            Some(project) => self.project_plugins(user, project).await?,
+            None => default_bindings(&self.plugin_installations(user).await?),
+        };
+        if plugin.manifest.executable.is_none()
+            || !bindings.iter().any(|binding| {
+                binding.enabled
+                    && binding.prepared.source == plugin.source
+                    && binding.prepared.manifest == plugin.manifest
+                    && binding.prepared.digest == plugin.digest
+            })
+        {
+            return Err(StorageError::Conflict(
+                "Plugin is no longer enabled at the selected version".into(),
+            ));
+        }
+        Ok(())
     }
     pub fn plugin_host_request<'a>(
         &'a self,

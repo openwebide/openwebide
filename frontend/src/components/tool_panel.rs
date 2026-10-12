@@ -33,13 +33,11 @@ pub fn ToolPanel(panel: Panel, children: Children) -> impl IntoView {
         Panel::Terminal => ActiveResizer::Terminal,
         _ => ActiveResizer::None,
     };
-    view! { <section id=format!("panel-{}", panel.id()) class="tool-panel"
-        class:tool-panel-center=move ||layout.flexible_panel()==Some(panel)
-        style=move || {
-            let order = if panel == Panel::Terminal { 255 } else { layout.preferences.with(|prefs| prefs.order(panel.id())) };
-            format!("display: {}; order: {order}; --files-panel-width: {}px; --tool-window-width: {}px; --tool-window-height: {}px;", if layout.visible_panels.get().visible(panel) { "flex" } else { "none" }, layout.tree_width.get(), if kind == ActiveResizer::None { 260.0 } else { layout.width(kind).get() }, layout.terminal_height.get())
-        }
-        aria-label=panel.label()>
+    view! { <PanelFrame id=panel.id().to_owned() label=panel.label().to_owned()
+        visible=Signal::derive(move || layout.visible_panels.get().visible(panel))
+        center=Signal::derive(move || layout.flexible_panel()==Some(panel))
+        order=Signal::derive(move || if panel == Panel::Terminal {255} else {layout.preferences.with(|prefs| prefs.order(panel.id()))})
+        width=Signal::derive(move || if kind == ActiveResizer::None {260.0} else {layout.width(kind).get()})>
         <div class="tool-panel-heading" data-context-menu="" hidden=panel == Panel::Terminal || panel == Panel::Editor || panel == Panel::Files>
             <span>{panel.label()}</span>
             <Show when=move || panel != Panel::Terminal>
@@ -60,7 +58,25 @@ pub fn ToolPanel(panel: Panel, children: Children) -> impl IntoView {
         </div>
         {(panel == Panel::Terminal).then(|| view! { <super::panel_resizer::PanelResizer kind=ActiveResizer::Terminal /> })}
         {(panel != Panel::Terminal).then(|| view! { <DockBoundary panel=panel /> })}
-    </section> }
+    </PanelFrame> }
+}
+
+/// Shared shell for built-in and namespaced contributed panels.
+#[component]
+pub fn PanelFrame(
+    id: String,
+    label: String,
+    visible: Signal<bool>,
+    center: Signal<bool>,
+    order: Signal<u8>,
+    width: Signal<f64>,
+    children: Children,
+) -> impl IntoView {
+    let layout = expect_context::<LayoutState>();
+    view! { <section id=format!("panel-{id}") class="tool-panel"
+    class:tool-panel-center=move ||center.get()
+    style=move ||format!("display: {}; order: {}; --files-panel-width: {}px; --tool-window-width: {}px; --tool-window-height: {}px;", if visible.get() {"flex"} else {"none"}, order.get(),layout.tree_width.get(),width.get().clamp(140.0,1200.0),layout.terminal_height.get())
+    aria-label=label>{children()}</section> }
 }
 
 #[component]
@@ -78,6 +94,7 @@ pub fn PanelRail(panels: Vec<Panel>) -> impl IntoView {
 
             </div>
         }).collect_view()}
+        <super::plugin_panels::PluginPanelRailItems/>
     </nav> }
 }
 

@@ -11,7 +11,7 @@ the Installed gear menu. Uninstalling returns a plugin to Available. Listings sh
 source named Open WebIDE. Click a row’s name to inspect plugin details
 and use the gear menu to choose a release. Install it on the open project's
 execution host, or on the server host when no project is open. Plugins currently
-contribute agent skills and host-executed Rust tools through the public SDK.
+contribute agent skills, host-executed Rust tools and [declarative workspace panels](plugin-panels.md) through the public SDK.
 Older platform tool-group installations require an update to executable handlers.
 
 Execution hosts bundle a commit-pinned subset of the official marketplace: Web,
@@ -134,7 +134,7 @@ credentials; credentials cannot be embedded in repository URLs.
 
 The shared plugin facade selects the project host. Both transports use the same
 core validation and installation policy. The native bridge reads Git objects from
-a bare cache, validates API 1 skills, API 3 executables and skill resources, rejects
+a bare cache, validates API 1 skills, API 3/4 executables and skill resources, rejects
 retired API 2 tool-group activation, and
 publishes a commit/content-addressed snapshot by atomic rename. Hooks, checkout
 filters, package scripts and runtime installers are not run. Symlinks, submodules,
@@ -196,7 +196,8 @@ when a plugin is missing, disabled or fails. Skill-only contributions may remain
 instructions/resources without an executable.
 
 The executable path ships Rust source and a committed Cargo.lock. API 3 declares
-the library, SDK version, capabilities, exported tool schemas and event names. Installation
+the library, SDK version, capabilities, exported tool schemas and event names.
+API 4 adds typed panel definitions and their exported view/action handlers. Installation
 compiles source in isolation on the execution host, against its pinned compiler
 and embedded public SDK, then validates the exported schemas before activation.
 The artifact cache includes source, SDK and toolchain fingerprints. Compilation

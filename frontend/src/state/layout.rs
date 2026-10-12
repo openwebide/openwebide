@@ -272,6 +272,8 @@ pub struct LayoutState {
     pub viewport_width: RwSignal<f64>,
     pub phone: Memo<bool>,
     pub sheet: RwSignal<Option<Panel>>,
+    pub plugin_sheet: RwSignal<Option<String>>,
+    pub plugin_panels: RwSignal<std::collections::BTreeSet<String>>,
     pub terminal_cmd: RwSignal<Option<String>>,
     pub sidebar_width: RwSignal<f64>,
     pub tree_width: RwSignal<f64>,
@@ -295,6 +297,7 @@ impl LayoutState {
         let phone =
             Memo::new(move |_| preferences.with(|prefs| prefs.mode.phone(viewport_width.get())));
         let sheet = RwSignal::new(None::<Panel>);
+        let plugin_sheet = RwSignal::new(None::<String>);
         let visible_panels = Memo::new(move |_| {
             let mut visible = panels.get().for_project(active_project.get().is_some());
             visible.files |= visible.git || visible.search;
@@ -312,7 +315,8 @@ impl LayoutState {
                 ] {
                     visible.set(
                         panel,
-                        sheet.get().unwrap_or(Panel::Chat) == panel
+                        plugin_sheet.get().is_none()
+                            && sheet.get().unwrap_or(Panel::Chat) == panel
                             && (!panel.requires_project() || active_project.get().is_some()),
                     );
                 }
@@ -330,6 +334,8 @@ impl LayoutState {
             viewport_width,
             phone,
             sheet,
+            plugin_sheet,
+            plugin_panels: RwSignal::new(Default::default()),
             terminal_cmd: RwSignal::new(None),
             sidebar_width: RwSignal::new(ActiveResizer::Sidebar.default()),
             tree_width: RwSignal::new(ActiveResizer::Tree.default()),
@@ -398,8 +404,21 @@ impl LayoutState {
         if flexible_history {
             widths[4] = ActiveResizer::History.min();
         }
+        let plugin_width = self.preferences.with_untracked(|prefs| {
+            prefs
+                .plugin_panels
+                .iter()
+                .filter(|(namespace, panel)| {
+                    panel.visible
+                        && self
+                            .plugin_panels
+                            .with_untracked(|registered| registered.contains(*namespace))
+                })
+                .count()
+        }) as f64
+            * 360.0;
         for (kind, width) in kinds.into_iter().zip(fit_history_panels(
-            viewport,
+            (viewport - plugin_width).max(0.0),
             widths,
             self.visible_panels.get_untracked(),
         )) {
