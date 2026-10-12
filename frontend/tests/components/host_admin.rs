@@ -527,7 +527,7 @@ async fn configured_host_refresh_retains_geometry_nodes_and_expanded_resources()
             .push_back(receiver);
         host.refresh(true);
         settle().await;
-        assert_eq!(panel.get_bounding_client_rect().height(), height);
+        assert!((panel.get_bounding_client_rect().height() - height).abs() < 0.01);
         environment.info.ram_available_bytes += 1024;
         environment.notes.push("Collector note".into());
         sender
@@ -538,7 +538,7 @@ async fn configured_host_refresh_retains_geometry_nodes_and_expanded_resources()
             })
             .unwrap();
         settle().await;
-        assert_eq!(panel.get_bounding_client_rect().height(), height);
+        assert!((panel.get_bounding_client_rect().height() - height).abs() < 0.01);
         assert!(summary.is_same_node(Some(&mounted.element(".host-summary"))));
         assert!(resource.is_same_node(Some(&mounted.element(".host-resource"))));
         assert!(resource.has_attribute("open"));

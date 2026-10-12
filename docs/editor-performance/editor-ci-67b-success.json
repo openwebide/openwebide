@@ -1,0 +1,74 @@
+{
+  "databaseId": 38264345670,
+  "headSha": "67b3a529ab9694c80cc9d69b2ea0237a85031e5b",
+  "status": "completed",
+  "conclusion": "success",
+  "url": "https://github.com/openwebide/openwebide/actions/runs/38264345670",
+  "jobs": [
+    {
+      "name": "validate",
+      "conclusion": "success"
+    },
+    {
+      "name": "images (ubuntu-24.04, amd64, x86_64-unknown-linux-gnu)",
+      "conclusion": "success"
+    },
+    {
+      "name": "images (ubuntu-24.04-arm, arm64, aarch64-unknown-linux-gnu)",
+      "conclusion": "success"
+    },
+    {
+      "name": "checks / frontend",
+      "conclusion": "success"
+    },
+    {
+      "name": "checks / frontend-ui-tests",
+      "conclusion": "success"
+    },
+    {
+      "name": "checks / bridge-windows",
+      "conclusion": "success"
+    },
+    {
+      "name": "checks / docker",
+      "conclusion": "success"
+    },
+    {
+      "name": "checks / backend-and-crates",
+      "conclusion": "success"
+    },
+    {
+      "name": "macos-bridges",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "assets",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "publish-nightly",
+      "conclusion": "success"
+    },
+    {
+      "name": "publish",
+      "conclusion": "skipped"
+    }
+  ],
+  "editorInventory": {
+    "tests": 216,
+    "browserRuns": 8,
+    "groupResults": [
+      61,
+      61,
+      60,
+      1,
+      1,
+      1,
+      1,
+      30
+    ],
+    "allPassed": true,
+    "browserDeadlineSeconds": 300,
+    "contractDeadlines": "unchanged"
+  }
+}

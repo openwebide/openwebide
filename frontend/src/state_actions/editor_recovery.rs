@@ -635,15 +635,32 @@ fn check_files(ctx: RecoveryContext, id: i64) {
             let key = (id, path.clone());
             // Always reconcile the latest committed document, never an old draft
             // captured before the disk read. Edits during verification are retained.
-            let result = ctx.workspace.editor_documents.with_untracked(|documents| {
-                documents.get(&key).map(|document| {
-                    result.and_then(|disk| {
-                        document
-                            .recovery_disk_state(disk.as_deref())
-                            .map(|state| (state, disk))
-                    })
-                })
-            });
+            if ctx
+                .workspace
+                .editor_documents
+                .try_with_untracked(|documents| documents.contains_key(&key))
+                != Some(true)
+            {
+                ctx.workspace.editor_recovery_checks.update(|checks| {
+                    checks.remove(&key);
+                });
+                continue;
+            }
+            let result = match result {
+                Ok(disk) => {
+                    match classify_recovery_disk(ctx.workspace, &key, disk.as_deref(), current)
+                        .await
+                    {
+                        Ok(Some(state)) => Some(Ok((state, disk))),
+                        Ok(None) => None,
+                        Err(error) => Some(Err(error)),
+                    }
+                }
+                Err(error) => Some(Err(error)),
+            };
+            if !current() {
+                return;
+            }
             let Some(result) = result else {
                 ctx.workspace.editor_recovery_checks.update(|checks| {
                     checks.remove(&key);
@@ -796,6 +813,58 @@ fn update_buffer_source(
     });
 }
 
+/// Compare fresh disk data with current committed versions without holding a
+/// document-store borrow across yields. Core owns admission and disk decisions.
+async fn classify_recovery_disk(
+    workspace: WorkspaceState,
+    key: &(i64, String),
+    disk: Option<&str>,
+    current: impl Fn() -> bool,
+) -> Result<Option<RecoveryDiskState>, String> {
+    loop {
+        if !current() {
+            return Ok(None);
+        }
+        let Some(sources) = workspace
+            .editor_documents
+            .try_with_untracked(|documents| {
+                documents
+                    .get(key)
+                    .map(openwebide_core::editor::Document::recovery_sources)
+            })
+            .flatten()
+        else {
+            return Ok(None);
+        };
+        let owns_sources = || {
+            workspace.editor_documents.try_with_untracked(|documents| {
+                documents
+                    .get(key)
+                    .is_some_and(|document| document.matches_recovery_sources(&sources))
+            }) == Some(true)
+        };
+        let mut preparation = sources.prepare_disk(disk);
+        while !preparation.advance(8) {
+            crate::util::yield_task().await;
+            if !current() {
+                return Ok(None);
+            }
+            if !owns_sources() {
+                break;
+            }
+        }
+        if !current() {
+            return Ok(None);
+        }
+        // A user edit or save acknowledgement changes either immutable owner.
+        // Retry against the latest committed versions, not an obsolete draft.
+        if !owns_sources() {
+            continue;
+        }
+        return preparation.finish().unwrap().map(Some);
+    }
+}
+
 /// Recheck a recovered document's baseline immediately before the normal save
 /// facade prepares its write. Verification failures never authorize overwrites.
 pub async fn verify_recovered_save(
@@ -842,14 +911,17 @@ pub async fn verify_recovered_save(
     {
         return Ok(());
     }
-    let result = disk.and_then(|disk| {
-        workspace.editor_documents.with_untracked(|documents| {
-            documents
-                .get(&key)
-                .ok_or_else(|| "The recovered document's baseline is not ready".to_string())?
-                .recovery_disk_state(disk.as_deref())
-        })
-    });
+    let result = match disk {
+        Ok(disk) => classify_recovery_disk(workspace, &key, disk.as_deref(), &current)
+            .await
+            .and_then(|state| {
+                state.ok_or_else(|| "The recovered document's baseline is not ready".to_string())
+            }),
+        Err(error) => Err(error),
+    };
+    if !current() {
+        return Err("The editor changed while checking the disk file".into());
+    }
     let issue = match result {
         Ok(RecoveryDiskState::Current | RecoveryDiskState::AlreadySaved) => return Ok(()),
         Ok(RecoveryDiskState::Missing) => RecoveredFileIssue::Missing,
@@ -1095,4 +1167,81 @@ async fn read_review_disk(ws: &Workspace, path: &str) -> Result<Option<String>, 
         .map(String::from_utf8)
         .transpose()
         .map_err(|_| "The disk file cannot be reviewed as UTF-8 text".into())
+}
+
+#[cfg(test)]
+mod disk_tests {
+    use super::*;
+    use std::{
+        cell::Cell,
+        future::Future,
+        task::{Context, Poll, Waker},
+    };
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    async fn disk_reconciliation_yields_retries_current_sources_and_discards_lost_owners() {
+        crate::testing::initialize_runtime();
+        for change in ["complete", "draft", "saved", "remove", "cancel", "dispose"] {
+            let owner = Owner::new();
+            let key = (1, "disk.txt".to_owned());
+            let source = "x\n".repeat(40_000);
+            let workspace = owner.with(|| {
+                let workspace = WorkspaceState::new();
+                workspace.editor_documents.update(|documents| {
+                    documents.insert(
+                        key.clone(),
+                        openwebide_core::editor::Document::for_editor(source.clone()).unwrap(),
+                    );
+                });
+                workspace
+            });
+            let active = Cell::new(true);
+            let disk = if change == "draft" {
+                "external change"
+            } else {
+                source.as_str()
+            };
+            let current = || active.get() && !workspace.editor_documents.is_disposed();
+            let mut pending =
+                Box::pin(classify_recovery_disk(workspace, &key, Some(disk), current));
+            assert!(matches!(
+                pending
+                    .as_mut()
+                    .poll(&mut Context::from_waker(Waker::noop())),
+                Poll::Pending
+            ));
+            match change {
+                "draft" => workspace.editor_documents.update(|documents| {
+                    documents
+                        .get_mut(&key)
+                        .unwrap()
+                        .replace_selections("edit", None)
+                        .unwrap();
+                }),
+                "saved" => workspace.editor_documents.update(|documents| {
+                    documents
+                        .get_mut(&key)
+                        .unwrap()
+                        .mark_saved_source(std::sync::Arc::new("other".into()));
+                }),
+                "remove" => workspace.editor_documents.update(|documents| {
+                    documents.remove(&key);
+                }),
+                "cancel" => active.set(false),
+                "dispose" => owner.cleanup(),
+                _ => {}
+            }
+            let result = pending.await.unwrap();
+            assert_eq!(
+                result,
+                match change {
+                    "complete" => Some(RecoveryDiskState::Current),
+                    "draft" => Some(RecoveryDiskState::Conflict),
+                    "saved" => Some(RecoveryDiskState::AlreadySaved),
+                    _ => None,
+                },
+                "{change}"
+            );
+        }
+    }
 }

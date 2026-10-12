@@ -58,8 +58,9 @@ mod recovery;
 pub use recovery::{
     DocumentRecovery, DocumentRecoveryValidation, EditorRecovery, EditorRecoveryFile,
     EditorRecoveryRecord, EditorRecoveryRoot, EditorRecoveryValidation, MAX_RECOVERY_BYTES,
-    MAX_RECOVERY_FILES, RecoveryDiskState, RecoveryRestoration, RecoveryScroll,
-    ValidatedDocumentRecovery, ValidatedEditorRecovery, recovery_body_limit,
+    MAX_RECOVERY_FILES, RecoveryDiskPreparation, RecoveryDiskState, RecoveryRestoration,
+    RecoveryScroll, RecoverySources, ValidatedDocumentRecovery, ValidatedEditorRecovery,
+    recovery_body_limit,
 };
 mod folds;
 pub use folds::{FoldCommand, FoldRange, FoldState, normalize_folds};

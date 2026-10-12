@@ -32,8 +32,28 @@ impl Document {
             .composition
             .as_ref()
             .map_or(self, |composition| composition.committed_document());
-        validate_sources(document.text(), &document.saved)?;
-        classify_disk(document.text(), &document.saved, disk)
+        document.recovery_sources().disk_state(disk)
+    }
+
+    /// Retain committed source versions without copying selections, folds or history.
+    pub fn recovery_sources(&self) -> RecoverySources {
+        let document = self
+            .composition
+            .as_ref()
+            .map_or(self, |composition| composition.committed_document());
+        RecoverySources {
+            text: document.text.clone(),
+            saved: document.saved.clone(),
+        }
+    }
+
+    pub fn matches_recovery_sources(&self, sources: &RecoverySources) -> bool {
+        let document = self
+            .composition
+            .as_ref()
+            .map_or(self, |composition| composition.committed_document());
+        std::sync::Arc::ptr_eq(&document.text, &sources.text)
+            && std::sync::Arc::ptr_eq(&document.saved, &sources.saved)
     }
 
     /// IME previews are transient; persistence captures the last committed state.
@@ -203,8 +223,12 @@ impl DocumentRecovery {
     /// Classify disk changes without rebuilding recovered document indexes.
     /// Save verification and hydration use the same reconciliation decisions.
     pub fn disk_state(&self, disk: Option<&str>) -> Result<RecoveryDiskState, String> {
-        self.validate_editor()?;
-        classify_disk(&self.text, &self.saved, disk)
+        self.validate()?;
+        RecoverySources {
+            text: self.text.clone(),
+            saved: self.saved.clone(),
+        }
+        .disk_state(disk)
     }
 
     fn validate_editor(&self) -> Result<(), String> {
@@ -399,21 +423,147 @@ fn validate_sources(text: &str, saved: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn classify_disk(text: &str, saved: &str, disk: Option<&str>) -> Result<RecoveryDiskState, String> {
-    match disk {
-        None => Ok(RecoveryDiskState::Missing),
-        Some(source) if source == saved => Ok(RecoveryDiskState::Current),
-        Some(source) if source == text => Ok(RecoveryDiskState::AlreadySaved),
-        Some(source) if text == saved => {
-            if source.len() > MAX_DOCUMENT_BYTES {
-                return Err("Disk document exceeds the editor's size limit".into());
-            }
-            if let Some(limit) = super::editor_limit(source) {
-                return Err(super::EditError::Capacity(limit).to_string());
-            }
-            Ok(RecoveryDiskState::Reloaded)
+/// Immutable committed draft and saved versions used by disk reconciliation.
+pub struct RecoverySources {
+    text: std::sync::Arc<String>,
+    saved: std::sync::Arc<String>,
+}
+
+impl RecoverySources {
+    pub fn prepare_disk<'a>(&'a self, disk: Option<&'a str>) -> RecoveryDiskPreparation<'a> {
+        let result = (self.text.len() > MAX_DOCUMENT_BYTES
+            || self.saved.len() > MAX_DOCUMENT_BYTES)
+            .then(|| Err("Recovered document exceeds the editor's size limit".into()));
+        RecoveryDiskPreparation {
+            sources: self,
+            disk,
+            phase: DiskPhase::AdmitSaved,
+            next: 0,
+            admission: Some(super::EditorAdmission::new(&self.saved)),
+            result,
         }
-        Some(_) => Ok(RecoveryDiskState::Conflict),
+    }
+
+    fn disk_state(&self, disk: Option<&str>) -> Result<RecoveryDiskState, String> {
+        let mut preparation = self.prepare_disk(disk);
+        while !preparation.advance(64) {}
+        preparation.finish().unwrap()
+    }
+}
+
+#[derive(Clone, Copy)]
+enum DiskPhase {
+    AdmitSaved,
+    AdmitDraft,
+    SavedDisk,
+    DraftDisk,
+    Sources,
+    AdmitReload,
+    Complete,
+}
+
+/// Admission and equality each consume at most one 8 KiB unit per step.
+/// No disk decision is exposed before source validation and comparisons finish.
+pub struct RecoveryDiskPreparation<'a> {
+    sources: &'a RecoverySources,
+    disk: Option<&'a str>,
+    phase: DiskPhase,
+    next: usize,
+    admission: Option<super::EditorAdmission<'a>>,
+    result: Option<Result<RecoveryDiskState, String>>,
+}
+
+impl RecoveryDiskPreparation<'_> {
+    fn complete(&mut self, state: RecoveryDiskState) {
+        self.result = Some(Ok(state));
+        self.phase = DiskPhase::Complete;
+    }
+
+    fn equal(&mut self, left: &str, right: &str) -> Option<bool> {
+        if left.len() != right.len() {
+            return Some(false);
+        }
+        if std::ptr::eq(left, right) {
+            return Some(true);
+        }
+        let end = self.next.saturating_add(8192).min(left.len());
+        if left.as_bytes()[self.next..end] != right.as_bytes()[self.next..end] {
+            return Some(false);
+        }
+        self.next = end;
+        (end == left.len()).then_some(true)
+    }
+
+    pub fn advance(&mut self, budget: usize) -> bool {
+        for _ in 0..budget {
+            if self.result.is_some() {
+                break;
+            }
+            match self.phase {
+                DiskPhase::AdmitSaved | DiskPhase::AdmitDraft | DiskPhase::AdmitReload => {
+                    if !self.admission.as_mut().unwrap().advance(1) {
+                        continue;
+                    }
+                    if let Some(limit) = self.admission.take().unwrap().finish().unwrap() {
+                        self.result = Some(Err(super::EditError::Capacity(limit).to_string()));
+                        break;
+                    }
+                    match self.phase {
+                        DiskPhase::AdmitSaved => {
+                            self.phase = DiskPhase::AdmitDraft;
+                            self.admission = Some(super::EditorAdmission::new(&self.sources.text));
+                        }
+                        DiskPhase::AdmitDraft => {
+                            if self.disk.is_none() {
+                                self.complete(RecoveryDiskState::Missing);
+                            } else {
+                                self.phase = DiskPhase::SavedDisk;
+                            }
+                        }
+                        _ => self.complete(RecoveryDiskState::Reloaded),
+                    }
+                }
+                DiskPhase::SavedDisk => {
+                    if let Some(equal) = self.equal(&self.sources.saved, self.disk.unwrap()) {
+                        if equal {
+                            self.complete(RecoveryDiskState::Current);
+                        } else {
+                            self.phase = DiskPhase::DraftDisk;
+                            self.next = 0;
+                        }
+                    }
+                }
+                DiskPhase::DraftDisk => {
+                    if let Some(equal) = self.equal(&self.sources.text, self.disk.unwrap()) {
+                        if equal {
+                            self.complete(RecoveryDiskState::AlreadySaved);
+                        } else {
+                            self.phase = DiskPhase::Sources;
+                            self.next = 0;
+                        }
+                    }
+                }
+                DiskPhase::Sources => {
+                    if let Some(equal) = self.equal(&self.sources.text, &self.sources.saved) {
+                        if !equal {
+                            self.complete(RecoveryDiskState::Conflict);
+                        } else if self.disk.unwrap().len() > MAX_DOCUMENT_BYTES {
+                            self.result =
+                                Some(Err("Disk document exceeds the editor's size limit".into()));
+                        } else {
+                            self.phase = DiskPhase::AdmitReload;
+                            self.admission = Some(super::EditorAdmission::new(self.disk.unwrap()));
+                        }
+                    }
+                }
+                DiskPhase::Complete => break,
+            }
+        }
+        self.result.is_some()
+    }
+
+    pub fn finish(self) -> Option<Result<RecoveryDiskState, String>> {
+        self.result
     }
 }
 
@@ -1007,6 +1157,67 @@ mod encoded_text {
 mod tests {
     use super::super::NativeInputKind;
     use super::*;
+
+    #[test]
+    fn cooperative_disk_reconciliation_matches_original_decisions_and_stays_private() {
+        fn original(
+            text: &str,
+            saved: &str,
+            disk: Option<&str>,
+        ) -> Result<RecoveryDiskState, String> {
+            validate_sources(text, saved)?;
+            match disk {
+                None => Ok(RecoveryDiskState::Missing),
+                Some(source) if source == saved => Ok(RecoveryDiskState::Current),
+                Some(source) if source == text => Ok(RecoveryDiskState::AlreadySaved),
+                Some(source) if text == saved => {
+                    if source.len() > MAX_DOCUMENT_BYTES {
+                        return Err("Disk document exceeds the editor's size limit".into());
+                    }
+                    if let Some(limit) = super::super::editor_limit(source) {
+                        return Err(super::super::EditError::Capacity(limit).to_string());
+                    }
+                    Ok(RecoveryDiskState::Reloaded)
+                }
+                Some(_) => Ok(RecoveryDiskState::Conflict),
+            }
+        }
+        let large = "文😀\r\n".repeat(20_000);
+        for saved in ["".to_owned(), "base\r\n".to_owned(), large] {
+            for text in [saved.clone(), format!("{saved}draft 文😀")] {
+                let sources = RecoverySources {
+                    text: text.clone().into(),
+                    saved: saved.clone().into(),
+                };
+                for disk in [
+                    None,
+                    Some(saved.as_str()),
+                    Some(text.as_str()),
+                    Some("changed 文😀\r\n"),
+                ] {
+                    for budget in [1, 3, 64] {
+                        let mut preparation = sources.prepare_disk(disk);
+                        assert!(!preparation.advance(0));
+                        let mut steps = 0;
+                        while !preparation.advance(budget) {
+                            steps += 1;
+                            assert!(steps < 1000);
+                        }
+                        assert_eq!(preparation.finish().unwrap(), original(&text, &saved, disk));
+                    }
+                }
+            }
+        }
+        let document = Document::for_editor("x\n".repeat(40_000)).unwrap();
+        let sources = document.recovery_sources();
+        let mut cancelled = sources.prepare_disk(Some(document.text()));
+        assert!(!cancelled.advance(1));
+        assert!(cancelled.finish().is_none());
+        assert!(document.matches_recovery_sources(&sources));
+        let mut changed = document;
+        changed.replace_selections("changed", None).unwrap();
+        assert!(!changed.matches_recovery_sources(&sources));
+    }
 
     #[test]
     fn recovery_validation_bounds_source_scans_and_keeps_results_private() {

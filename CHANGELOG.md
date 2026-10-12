@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Reconcile recovered files with disk using bounded admission and byte-comparison batches. Share decisions between background checks and save verification, retry when committed source owners change, and discard results after their account/project scope is lost.
+
 - Let running releases finish instead of cancelling them on every main push. Keep one pending build for newer commits, with publication still gated on the complete test suite and both platform images.
 
 - Reuse validated recovery documents while preparing saved/draft indexes, and assemble restored collapse state in bounded batches. Install only complete restored documents; preserve the existing recovery admission, source ownership and undo behavior.

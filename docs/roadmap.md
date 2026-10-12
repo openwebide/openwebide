@@ -135,7 +135,8 @@ group plus the new regression passes all 62 contracts with the official runner
 on Linux arm64 (two CPUs/four GiB). Production build, eight full/windowed
 composition checks, eight touch checks and strict WASM lint pass
 ([receipt](editor-performance/initial-native-readiness-browser.json)). Hosted
-Linux/x64 verification remains pending; this is not yet an established CI fix.
+Linux/x64 verification of the combined disposal/runtime/readiness fixes passes
+at `67b3a529`; the isolated contribution of this readiness change is not proved.
 Paired native-value/selection restorations now update both source scroll axes
 through one viewport refresh. Fourteen browser contracts, eight production touch
 checks, eight full/windowed composition checks and strict WASM lint pass
@@ -144,7 +145,8 @@ and duplicate geometry preparation remain open.
 Fourteen focused local/remote browser contracts and strict WASM lint now pass.
 Full hosted UI run `38207691623` exposed a 3-second horizontal-cache readiness
 timeout. The failed contract and its complete 61-test group pass locally,
-including a two-CPU/four-GiB repeat, but the Linux/x64 failure is unresolved
+including a two-CPU/four-GiB repeat. Hosted Linux/x64 checkpoint `67b3a529`
+subsequently passes this group, both font matrices and all other editor partitions
 ([investigation](editor-performance/horizontal-cache-ci-investigation.json)). Keep
 the existing deadlines, source/probe limits and full inventory while diagnosing it.
 The official wasm-bindgen runner also passes the exact 61-test selection with
@@ -547,6 +549,15 @@ remain required.
   ([receipt](editor-performance/recovery-restoration-browser.json)). Source comparisons,
   allocation growth, final history/selection publication, snapshot capture and
   serialization remain unfinished.
+  Disk reconciliation now retains committed draft/baseline owners and advances
+  source admission and equality in 8 KiB units. Background verification and the
+  save facade share the same scheduling path, retry changed owners and reject
+  lost scope. The prior synchronous API drives the same core policy. Verification
+  passes: 744 core tests, five lifecycle/current-source browser tests, fifteen
+  recovery/cache contracts, strict native/WASM/WASI lint and production build
+  ([receipt](editor-performance/recovery-disk-browser.json)). Overwrite-permit
+  comparisons, UTF-8 decoding, capture/guard checks,
+  serialization, allocation growth and other history/publication costs remain open.
 
 **Remaining completion gates**:
 
@@ -558,12 +569,13 @@ isolated editor library fixtures now initialize the shared runtime explicitly.
 All 30 isolated library contracts pass with the official runner (two CPUs/four
 GiB), alongside strict WASM lint
 ([receipt](editor-performance/isolated-library-runtime.json)). Hosted verification
-of the fixture repair and the remaining renderer failures is pending.
+of the fixture repair and renderer failures now passes at `67b3a529`
+([receipt](editor-performance/editor-ci-67b-success.json)).
 Keep the full inventory and existing contract/browser deadlines. The unchanged
 wrapped replay contract now passes the official runner on Linux arm64 with two
 CPUs/four GiB in 87.29 seconds
 ([receipt](editor-performance/wrapped-replay-current-official.json)); hosted
-Linux/x64 verification remains pending.
+Linux/x64 verification also passes in the complete `67b3a529` inventory.
 
 - [ ] **Responsiveness and memory:** remove measured input, cold-paint, wrapped
   geometry and process-memory stalls. Repeat admitted byte, row-count and long-line
@@ -584,7 +596,7 @@ Linux/x64 verification remains pending.
   Running releases now finish while newer pushes replace only the pending build;
   the complete test and platform-image gates still apply before publication.
   Investigate the
-  unresolved historical readiness/order failures and repeat near-limit Linux/x64
+  any new readiness/order failures and repeat near-limit Linux/x64
   readiness with parser/paint/geometry diagnostics, unchanged timeouts and probe
   limits. Preserve complete compiled inventories, independently checked disjoint
   groups of at most 64 editor tests, the 300-second browser deadline, separate font
@@ -592,9 +604,10 @@ Linux/x64 verification remains pending.
   file-switch cancellation, cold queued-input source/selection ownership,
   host-plugin focus/layout and explicit Output/terminal targeting. Validate bounded
   setup retries after upstream Chrome download failures. Latest verified checkpoint
-  `1b63c9ab` passes all five hosted jobs on integrated editor/plugin source
-  ([receipt](editor-performance/editor-ci-1b63-success.json)), with the historical
-  probe-cleanup/navigation failures corrected. Repeat this gate for the final
+  `67b3a529` passes all five check jobs, both platform images and nightly
+  publication on integrated editor/plugin/host source, including all 216 editor
+  contracts and both font matrices
+  ([receipt](editor-performance/editor-ci-67b-success.json)). Repeat this gate for the final
   integrated editor implementation before closing.
 
 - [ ] **Physical Chrome/Edge PWA input:** verify real input-method commit/cancel,
