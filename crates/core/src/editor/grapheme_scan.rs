@@ -7,6 +7,12 @@ pub(super) struct GraphemeStep {
     pub boundary: Option<usize>,
 }
 
+pub(super) struct GraphemeSpan {
+    pub consumed: Range<usize>,
+    pub boundary: Option<usize>,
+    pub ascii: bool,
+}
+
 pub(super) struct GraphemeScan<'a> {
     text: &'a str,
     cursor: GraphemeCursor,
@@ -31,6 +37,57 @@ impl<'a> GraphemeScan<'a> {
     }
     pub fn is_done(&self) -> bool {
         self.done
+    }
+
+    fn take_ascii(&mut self, maximum: usize) -> Option<Range<usize>> {
+        if !self.at_boundary || self.done {
+            return None;
+        }
+        let start = self.cursor.cur_cursor();
+        let limit = self.chunk.end.min(start.saturating_add(maximum.min(512)));
+        let bytes = self.text.as_bytes();
+        let mut end = start;
+        while end < limit
+            && (0x20..=0x7e).contains(&bytes[end])
+            && (end + 1 == bytes.len() || (0x20..=0x7e).contains(&bytes[end + 1]))
+        {
+            end += 1;
+        }
+        if end == start {
+            return None;
+        }
+        self.cursor.set_cursor(end);
+        self.progress += end - start;
+        self.done = end == bytes.len();
+        Some(start..end)
+    }
+
+    /// Complete printable-ASCII spans share one cursor update. Other source and
+    /// Unicode context use the same single-step scanner; no span crosses an
+    /// unproved grapheme boundary or exceeds the source/context unit budget.
+    pub fn advance_spans(&mut self, mut consume: impl FnMut(GraphemeSpan)) {
+        let before = self.progress;
+        for _ in 0..512 {
+            if self.done || self.progress - before >= 512 {
+                break;
+            }
+            if let Some(consumed) = self.take_ascii(512 - (self.progress - before)) {
+                consume(GraphemeSpan {
+                    boundary: Some(consumed.end),
+                    consumed,
+                    ascii: true,
+                });
+            } else {
+                self.advance(|step| {
+                    consume(GraphemeSpan {
+                        consumed: step.consumed,
+                        boundary: step.boundary,
+                        ascii: false,
+                    });
+                    true
+                });
+            }
+        }
     }
 
     /// One bounded scan unit. A consumer can stop at an exact boundary earlier.
@@ -138,6 +195,25 @@ mod tests {
                 }
                 true
             });
+        }
+        assert_eq!(consumed, text.len());
+        assert_eq!(boundaries, expected);
+        let mut scan = GraphemeScan::new(text);
+        let mut boundaries = Vec::new();
+        let mut consumed = 0;
+        while !scan.is_done() {
+            let before = scan.progress();
+            scan.advance_spans(|step| {
+                assert_eq!(step.consumed.start, consumed);
+                consumed = step.consumed.end;
+                if step.ascii {
+                    assert!(step.consumed.len() <= 512);
+                    boundaries.extend(step.consumed.start + 1..=step.consumed.end);
+                } else if let Some(boundary) = step.boundary {
+                    boundaries.push(boundary);
+                }
+            });
+            assert!(scan.progress() - before <= 1536);
         }
         assert_eq!(consumed, text.len());
         assert_eq!(boundaries, expected);

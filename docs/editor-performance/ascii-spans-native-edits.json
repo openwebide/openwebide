@@ -1,0 +1,457 @@
+{
+  "description": "Matched native long-row Document apply/undo benchmark: 20 beginning edit/undo pairs per sample, three repeats per invocation, interleaved before/after/after/before binaries. Source and UTF-16 midpoint verified outside timed loops. Both builds use Rust 1.98.1, default release profile and workspace-pinned dependencies, including vendored ec4rs.",
+  "baseline": "17934e1c",
+  "binarySha256": {
+    "before": "d966eac74ee5a34fe9e563ebc2fba178e421eb83cc2eace2d22aa5d6b69c9b91",
+    "after": "0aafac8018f810c95062d66b6b92d185c189bb52fb48f32094cf54fa92f74d66"
+  },
+  "medianMicroseconds": {
+    "ascii": {
+      "before": 647528.5,
+      "after": 158084.0
+    },
+    "mixed": {
+      "before": 690968.5,
+      "after": 464253.0
+    }
+  },
+  "limits": "Native document measurements exclude DOM shaping, browser/WASM input, filesystem and physical input. Do not infer overall browser latency or memory gains.",
+  "compilerActivity": "No cargo/rustc/trunk/clippy-driver/wasm-opt/wasm-bindgen process before or after each timed binary invocation.",
+  "discardedContendedSamples": [
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 0,
+      "editUndoPairs": 20,
+      "microseconds": 650540,
+      "phase": "before",
+      "run": 0
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 1,
+      "editUndoPairs": 20,
+      "microseconds": 648376,
+      "phase": "before",
+      "run": 0
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 2,
+      "editUndoPairs": 20,
+      "microseconds": 657959,
+      "phase": "before",
+      "run": 0
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 0,
+      "editUndoPairs": 20,
+      "microseconds": 656950,
+      "phase": "before",
+      "run": 0
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 1,
+      "editUndoPairs": 20,
+      "microseconds": 666040,
+      "phase": "before",
+      "run": 0
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 2,
+      "editUndoPairs": 20,
+      "microseconds": 678988,
+      "phase": "before",
+      "run": 0
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 0,
+      "editUndoPairs": 20,
+      "microseconds": 153863,
+      "phase": "after",
+      "run": 1
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 1,
+      "editUndoPairs": 20,
+      "microseconds": 155599,
+      "phase": "after",
+      "run": 1
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 2,
+      "editUndoPairs": 20,
+      "microseconds": 154584,
+      "phase": "after",
+      "run": 1
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 0,
+      "editUndoPairs": 20,
+      "microseconds": 461891,
+      "phase": "after",
+      "run": 1
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 1,
+      "editUndoPairs": 20,
+      "microseconds": 465003,
+      "phase": "after",
+      "run": 1
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 2,
+      "editUndoPairs": 20,
+      "microseconds": 464411,
+      "phase": "after",
+      "run": 1
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 0,
+      "editUndoPairs": 20,
+      "microseconds": 154907,
+      "phase": "after",
+      "run": 2
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 1,
+      "editUndoPairs": 20,
+      "microseconds": 155932,
+      "phase": "after",
+      "run": 2
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 2,
+      "editUndoPairs": 20,
+      "microseconds": 154643,
+      "phase": "after",
+      "run": 2
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 0,
+      "editUndoPairs": 20,
+      "microseconds": 464303,
+      "phase": "after",
+      "run": 2
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 1,
+      "editUndoPairs": 20,
+      "microseconds": 470320,
+      "phase": "after",
+      "run": 2
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 2,
+      "editUndoPairs": 20,
+      "microseconds": 470436,
+      "phase": "after",
+      "run": 2
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 0,
+      "editUndoPairs": 20,
+      "microseconds": 656887,
+      "phase": "before",
+      "run": 3
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 1,
+      "editUndoPairs": 20,
+      "microseconds": 647908,
+      "phase": "before",
+      "run": 3
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 2,
+      "editUndoPairs": 20,
+      "microseconds": 687303,
+      "phase": "before",
+      "run": 3
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 0,
+      "editUndoPairs": 20,
+      "microseconds": 870080,
+      "phase": "before",
+      "run": 3
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 1,
+      "editUndoPairs": 20,
+      "microseconds": 663153,
+      "phase": "before",
+      "run": 3
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 2,
+      "editUndoPairs": 20,
+      "microseconds": 767581,
+      "phase": "before",
+      "run": 3
+    }
+  ],
+  "samples": [
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 0,
+      "editUndoPairs": 20,
+      "microseconds": 654714,
+      "phase": "before",
+      "run": 0
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 1,
+      "editUndoPairs": 20,
+      "microseconds": 651701,
+      "phase": "before",
+      "run": 0
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 2,
+      "editUndoPairs": 20,
+      "microseconds": 653401,
+      "phase": "before",
+      "run": 0
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 0,
+      "editUndoPairs": 20,
+      "microseconds": 666108,
+      "phase": "before",
+      "run": 0
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 1,
+      "editUndoPairs": 20,
+      "microseconds": 821566,
+      "phase": "before",
+      "run": 0
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 2,
+      "editUndoPairs": 20,
+      "microseconds": 715829,
+      "phase": "before",
+      "run": 0
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 0,
+      "editUndoPairs": 20,
+      "microseconds": 160026,
+      "phase": "after",
+      "run": 1
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 1,
+      "editUndoPairs": 20,
+      "microseconds": 158615,
+      "phase": "after",
+      "run": 1
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 2,
+      "editUndoPairs": 20,
+      "microseconds": 169271,
+      "phase": "after",
+      "run": 1
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 0,
+      "editUndoPairs": 20,
+      "microseconds": 470376,
+      "phase": "after",
+      "run": 1
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 1,
+      "editUndoPairs": 20,
+      "microseconds": 465651,
+      "phase": "after",
+      "run": 1
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 2,
+      "editUndoPairs": 20,
+      "microseconds": 462779,
+      "phase": "after",
+      "run": 1
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 0,
+      "editUndoPairs": 20,
+      "microseconds": 153802,
+      "phase": "after",
+      "run": 2
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 1,
+      "editUndoPairs": 20,
+      "microseconds": 157553,
+      "phase": "after",
+      "run": 2
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 2,
+      "editUndoPairs": 20,
+      "microseconds": 152956,
+      "phase": "after",
+      "run": 2
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 0,
+      "editUndoPairs": 20,
+      "microseconds": 464340,
+      "phase": "after",
+      "run": 2
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 1,
+      "editUndoPairs": 20,
+      "microseconds": 462996,
+      "phase": "after",
+      "run": 2
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 2,
+      "editUndoPairs": 20,
+      "microseconds": 464166,
+      "phase": "after",
+      "run": 2
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 0,
+      "editUndoPairs": 20,
+      "microseconds": 642885,
+      "phase": "before",
+      "run": 3
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 1,
+      "editUndoPairs": 20,
+      "microseconds": 641425,
+      "phase": "before",
+      "run": 3
+    },
+    {
+      "kind": "ascii",
+      "bytes": 1048560,
+      "repeat": 2,
+      "editUndoPairs": 20,
+      "microseconds": 643356,
+      "phase": "before",
+      "run": 3
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 0,
+      "editUndoPairs": 20,
+      "microseconds": 657066,
+      "phase": "before",
+      "run": 3
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 1,
+      "editUndoPairs": 20,
+      "microseconds": 654294,
+      "phase": "before",
+      "run": 3
+    },
+    {
+      "kind": "mixed",
+      "bytes": 1048572,
+      "repeat": 2,
+      "editUndoPairs": 20,
+      "microseconds": 722574,
+      "phase": "before",
+      "run": 3
+    }
+  ],
+  "benchmarkSource": "use openwebide_core::editor::{Document,Edit,Selection};\nuse std::{hint::black_box,time::Instant};\nfn main() {\n for (kind,unit) in [(\"ascii\",\"words VALUE 123; \"),(\"mixed\",\"\u6587\ud83d\ude00 words \")] {\n  let source=unit.repeat(1024*1024/unit.len());\n  let mut doc=Document::new(source.clone());\n  for _ in 0..5 { doc.apply(vec![Edit::replace(0..0,\"z\")],vec![Selection::caret(1)],None).unwrap();doc.undo(); }\n  for repeat in 0..3 {\n   let start=Instant::now();\n   for _ in 0..20 { doc.apply(vec![Edit::replace(0..0,\"z\")],vec![Selection::caret(1)],None).unwrap();doc.undo();black_box(doc.text()); }\n   let elapsed=start.elapsed().as_micros();\n   assert_eq!(doc.text(),source);\n   let at=source.floor_char_boundary(source.len()/2);\n   assert_eq!(doc.byte_to_textarea(at).unwrap(),source[..at].encode_utf16().count());\n   println!(\"{{\\\"kind\\\":\\\"{kind}\\\",\\\"bytes\\\":{},\\\"repeat\\\":{repeat},\\\"editUndoPairs\\\":20,\\\"microseconds\\\":{elapsed}}}\",source.len());\n  }\n }\n}\n"
+}

@@ -72,6 +72,18 @@ impl<'a> VisualLinePreparation<'a> {
         budget: usize,
         mut visit: impl FnMut(usize, char),
     ) -> bool {
+        let body = self.body;
+        self.advance_with_source_scan(budget, |range, _| {
+            for (offset, ch) in body[range.clone()].char_indices() {
+                visit(range.start + offset, ch);
+            }
+        })
+    }
+    pub(super) fn advance_with_source_scan(
+        &mut self,
+        budget: usize,
+        mut visit: impl FnMut(std::ops::Range<usize>, bool),
+    ) -> bool {
         for _ in 0..budget {
             if self.scan.is_done() {
                 break;
@@ -82,9 +94,26 @@ impl<'a> VisualLinePreparation<'a> {
             let whitespace = &mut self.whitespace;
             let word = &mut self.word;
             let word_run = &mut self.word_run;
-            self.scan.advance(|step| {
-                for (offset, ch) in body[step.consumed.clone()].char_indices() {
-                    visit(step.consumed.start + offset, ch);
+            self.scan.advance_spans(|step| {
+                visit(step.consumed.clone(), step.ascii);
+                if step.ascii {
+                    for byte in step.consumed {
+                        let ch = body.as_bytes()[byte];
+                        let kind = if ch == b' ' {
+                            0
+                        } else if ch.is_ascii_alphanumeric() || ch == b'_' {
+                            1
+                        } else {
+                            2
+                        };
+                        coordinates.end.native += 1;
+                        record_boundary(coordinates, cluster, word_run, byte + 1, kind);
+                    }
+                    *whitespace = true;
+                    *word = false;
+                    return;
+                }
+                for ch in body[step.consumed].chars() {
                     coordinates.end.native += ch.len_utf16();
                     coordinates.tabs |= ch == '\t';
                     *whitespace &= ch.is_whitespace();
@@ -101,39 +130,10 @@ impl<'a> VisualLinePreparation<'a> {
                     } else {
                         2
                     };
-                    if word_run.as_ref().is_some_and(|run| run.kind == kind) {
-                        word_run.as_mut().unwrap().end = end;
-                    } else {
-                        if let Some(run) = word_run
-                            .take()
-                            .filter(|run| run.end - run.start >= STEP_BYTES)
-                        {
-                            coordinates.word_runs.push(run);
-                        }
-                        *word_run = Some(WordRun {
-                            start: cluster.byte,
-                            end,
-                            kind,
-                        });
-                    }
+                    record_boundary(coordinates, cluster, word_run, end, kind);
                     *whitespace = true;
                     *word = false;
-                    if cluster.byte - coordinates.points.last().unwrap().byte >= STEP_BYTES {
-                        coordinates.points.push(*cluster);
-                    }
-                    if end - cluster.byte > STEP_BYTES {
-                        coordinates.long_clusters.push(LongCluster {
-                            start: *cluster,
-                            end,
-                        });
-                    }
-                    coordinates.end.glyph += 1;
-                    *cluster = Position {
-                        byte: end,
-                        ..coordinates.end
-                    };
                 }
-                false
             });
         }
         self.scan.is_done()
@@ -154,6 +154,44 @@ impl<'a> VisualLinePreparation<'a> {
         }
         Some(VisualLineIndex(Arc::new(self.coordinates)))
     }
+}
+
+fn record_boundary(
+    coordinates: &mut Coordinates,
+    cluster: &mut Position,
+    word_run: &mut Option<WordRun>,
+    end: usize,
+    kind: u8,
+) {
+    if word_run.as_ref().is_some_and(|run| run.kind == kind) {
+        word_run.as_mut().unwrap().end = end;
+    } else {
+        if let Some(run) = word_run
+            .take()
+            .filter(|run| run.end - run.start >= STEP_BYTES)
+        {
+            coordinates.word_runs.push(run);
+        }
+        *word_run = Some(WordRun {
+            start: cluster.byte,
+            end,
+            kind,
+        });
+    }
+    if cluster.byte - coordinates.points.last().unwrap().byte >= STEP_BYTES {
+        coordinates.points.push(*cluster);
+    }
+    if end - cluster.byte > STEP_BYTES {
+        coordinates.long_clusters.push(LongCluster {
+            start: *cluster,
+            end,
+        });
+    }
+    coordinates.end.glyph += 1;
+    *cluster = Position {
+        byte: end,
+        ..coordinates.end
+    };
 }
 
 /// Immutable coordinates for one exact logical-line body. Callers retain the

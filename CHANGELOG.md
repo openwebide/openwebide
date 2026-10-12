@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Batch printable ASCII coordinate construction to reduce long-line edit work while preserving native offsets, grapheme and paint boundaries, word summaries, and CR/LF admission totals.
+
 - Verify complete-source beginning edits at the editor's byte, row and styled long-line admission boundaries in both workspace modes, with wrapping on/off. Record current input, geometry and Chrome PSS results; responsiveness and memory work remains open.
 
 - Publish PR Review 0.2.0 as an optional Rust-owned GitHub pull-request panel. Configure repository access, inspect descriptions/diffs/reviews and approve review publishing through the same public SDK as community plugins. Pin source/SDK checks in both repositories; document panel authoring and custom marketplaces without browser plugin code or privileged first-party endpoints.

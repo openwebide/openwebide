@@ -70,9 +70,15 @@ impl<'a> LineCoordinatePreparation<'a> {
                     self.visual
                         .as_mut()
                         .unwrap()
-                        .advance_with_character_scan(1, |byte, ch| {
-                            collector.visit(text, byte, ch);
-                            *next = byte + ch.len_utf8();
+                        .advance_with_source_scan(1, |range, ascii| {
+                            if ascii {
+                                collector.visit_ascii(range.clone());
+                            } else {
+                                for (offset, ch) in text[range.clone()].char_indices() {
+                                    collector.visit(text, range.start + offset, ch);
+                                }
+                            }
+                            *next = range.end;
                         });
                 self.done = self.visual_complete && self.next == self.text.len();
             } else {
@@ -152,6 +158,28 @@ impl NativeCoordinates {
         }
         self.previous_cr = ch == '\r';
     }
+    fn visit_ascii(&mut self, range: std::ops::Range<usize>) {
+        if self.sparse {
+            let mut byte = range.start.max(self.last + STEP_BYTES);
+            while byte < range.end {
+                let offset = byte - range.start;
+                self.checkpoints.push(Coordinate {
+                    byte,
+                    native: self.position.native + offset,
+                    chars: self.position.chars + offset,
+                });
+                self.last = byte;
+                self.position.byte = byte;
+                byte += STEP_BYTES;
+            }
+        }
+        self.position.native += range.len();
+        self.position.chars += range.len();
+        self.summary.utf16_len += range.len();
+        self.width += range.len();
+        self.summary.oversized |= self.width > super::MAX_EDITOR_LINE_BYTES;
+        self.previous_cr = false;
+    }
 }
 
 impl LineCoordinates {
@@ -218,6 +246,41 @@ impl LineCoordinates {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn ascii_spans_preserve_every_native_checkpoint_and_admission_total() {
+        for text in [
+            "word 123 _; ".repeat(9000),
+            format!("{}\r\n{}\r\n", "x".repeat(511), "y".repeat(1024)),
+            format!("{}a{} tail", "\u{0600}".repeat(900), "\u{301}".repeat(900)),
+            "ASCII 文😀e\u{301}\t\r\n".repeat(9000),
+        ] {
+            let mut reference = NativeCoordinates::new(true);
+            for (byte, ch) in text.char_indices() {
+                reference.visit(&text, byte, ch);
+            }
+            let mut actual = NativeCoordinates::new(true);
+            let mut scan = super::super::grapheme_scan::GraphemeScan::new(&text);
+            while !scan.is_done() {
+                scan.advance_spans(|step| {
+                    if step.ascii {
+                        actual.visit_ascii(step.consumed);
+                    } else {
+                        for (offset, ch) in text[step.consumed.clone()].char_indices() {
+                            actual.visit(&text, step.consumed.start + offset, ch);
+                        }
+                    }
+                });
+            }
+            assert_eq!(actual.checkpoints, reference.checkpoints);
+            assert_eq!(actual.position, reference.position);
+            assert_eq!(actual.summary.utf16_len, reference.summary.utf16_len);
+            assert_eq!(actual.summary.breaks, reference.summary.breaks);
+            assert_eq!(actual.summary.oversized, reference.summary.oversized);
+            assert_eq!(actual.width, reference.width);
+            assert_eq!(actual.last, reference.last);
+            assert_eq!(actual.previous_cr, reference.previous_cr);
+        }
+    }
     #[test]
     fn cooperative_row_coordinates_keep_native_and_admission_contracts_at_every_budget() {
         for text in [

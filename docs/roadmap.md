@@ -263,6 +263,20 @@ combined-source CI result.
   four local/remote panel contracts pass
   ([receipt](editor-performance/width-observer-browser.json)). Repeat matched
   production measurements before claiming a latency improvement.
+  Coordinate construction now groups printable ASCII into bounded spans, sharing
+  one cursor update and bulk native totals while retaining the original visual
+  checkpoints, word summaries, eligibility and Unicode/CRLF boundaries. All 766
+  core tests, 48 WASM library checks and six local/remote complete-render geometry
+  contracts pass with strict native/WASM lint
+  ([receipt](editor-performance/ascii-spans-browser.json)). Compiler-checked,
+  interleaved native measurements for 20 beginning edit/undo pairs fall from
+  648 to 158 ms for ASCII and 691 to 464 ms for mixed Unicode
+  ([benchmark](editor-performance/ascii-spans-native-edits.json)). Four same-backend
+  production cases preserve source; native input handlers fall from about 35 to
+  28–29 ms, but viewport results are mixed and do not establish an overall UI
+  improvement ([summary](editor-performance/ascii-spans-production-summary.json)).
+  Complete changed-row traversal remains synchronous; incremental row reuse and
+  the broader responsiveness/memory gates remain open.
   Isolated native timings improve for ASCII and mixed text
   ([receipt](editor-performance/ascii-grapheme-scan.json)); whole-editor latency,
   full-row edit rebuilding and startup memory remain open.
