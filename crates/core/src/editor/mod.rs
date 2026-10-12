@@ -57,13 +57,16 @@ pub use selections::{
     normalize_selections,
 };
 mod recovery;
+mod recovery_decode;
 pub use recovery::{
     DocumentRecovery, DocumentRecoveryValidation, EditorRecovery, EditorRecoveryFile,
     EditorRecoveryRecord, EditorRecoveryRoot, EditorRecoveryValidation, MAX_RECOVERY_BYTES,
-    MAX_RECOVERY_FILES, RecoveryDiskPreparation, RecoveryDiskState, RecoveryOverwritePreparation,
-    RecoveryRestoration, RecoveryScroll, RecoverySources, RecoveryTextComparison,
-    ValidatedDocumentRecovery, ValidatedEditorRecovery, recovery_body_limit,
+    MAX_RECOVERY_FILES, RecoveryDiskPreparation, RecoveryDiskState, RecoveryFile,
+    RecoveryOverwritePreparation, RecoveryRecord, RecoveryRestoration, RecoveryScroll,
+    RecoverySources, RecoveryState, RecoveryTextComparison, ValidatedDocumentRecovery,
+    ValidatedEditorRecovery, recovery_body_limit,
 };
+pub use recovery_decode::{EncodedDocumentRecovery, RecoveryRecordDecoding};
 mod folds;
 pub use folds::{FoldCommand, FoldRange, FoldState, normalize_folds};
 mod capacity;

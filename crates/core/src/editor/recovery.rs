@@ -959,11 +959,13 @@ pub struct RecoveryScroll {
     pub left: f64,
 }
 
+pub type EditorRecoveryFile = RecoveryFile<DocumentRecovery>;
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct EditorRecoveryFile {
+pub struct RecoveryFile<D> {
     pub path: String,
-    pub document: Option<DocumentRecovery>,
+    pub document: Option<D>,
     pub scroll: RecoveryScroll,
     pub read_only: bool,
 }
@@ -1001,15 +1003,17 @@ impl EditorRecoveryRoot {
     }
 }
 
+pub type EditorRecovery = RecoveryState<DocumentRecovery>;
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct EditorRecovery {
+pub struct RecoveryState<D> {
     pub format: u32,
     pub root: Option<EditorRecoveryRoot>,
     pub selected: Option<String>,
-    pub files: Vec<EditorRecoveryFile>,
+    pub files: Vec<RecoveryFile<D>>,
 }
-impl Default for EditorRecovery {
+impl<D> Default for RecoveryState<D> {
     fn default() -> Self {
         Self {
             format: 1,
@@ -1173,15 +1177,24 @@ impl<'a> EditorRecoveryValidation<'a> {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub type EditorRecoveryRecord = RecoveryRecord<DocumentRecovery>;
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct EditorRecoveryRecord {
+pub struct RecoveryRecord<D> {
     pub revision: i64,
-    pub state: EditorRecovery,
+    pub state: RecoveryState<D>,
+}
+impl<D> Default for RecoveryRecord<D> {
+    fn default() -> Self {
+        Self {
+            revision: 0,
+            state: RecoveryState::default(),
+        }
+    }
 }
 // Encoding bounds escaped Unicode/control-heavy files without a second JSON layer.
 mod encoded_text {
-    use super::MAX_DOCUMENT_BYTES;
     use base64::{Engine, engine::general_purpose::STANDARD};
     use serde::{
         Deserializer, Serializer,
@@ -1205,14 +1218,11 @@ mod encoded_text {
         }
 
         fn visit_str<E: Error>(self, value: &str) -> Result<Self::Value, E> {
-            if value.len() > MAX_DOCUMENT_BYTES.div_ceil(3) * 4 {
-                return Err(E::custom("Recovered text exceeds document size limit"));
-            }
-            let bytes = STANDARD.decode(value).map_err(E::custom)?;
-            if bytes.len() > MAX_DOCUMENT_BYTES {
-                return Err(E::custom("Recovered text exceeds document size limit"));
-            }
-            String::from_utf8(bytes)
+            let mut decoding = super::super::recovery_decode::RecoveryTextDecoding::new(value);
+            decoding.advance(usize::MAX);
+            decoding
+                .finish()
+                .unwrap()
                 .map(std::sync::Arc::new)
                 .map_err(E::custom)
         }

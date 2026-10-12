@@ -1,0 +1,144 @@
+{
+  "description": "Integrated hosted release at 5ba57f8e passes after disk UTF-8 decoding, overwrite approvals and review comparison changes. Later guard, collapsed-capture and wire-decoder checkpoints still require their own release verification.",
+  "run": {
+    "headSha": "5ba57f8e865c909e128752ec8cb2b1565202b04d",
+    "status": "completed",
+    "conclusion": "success",
+    "url": "https://github.com/openwebide/openwebide/actions/runs/38318137783"
+  },
+  "jobs": [
+    {
+      "name": "validate",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115041701969
+    },
+    {
+      "name": "images (ubuntu-24.04, amd64, x86_64-unknown-linux-gnu)",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115041737362
+    },
+    {
+      "name": "images (ubuntu-24.04-arm, arm64, aarch64-unknown-linux-gnu)",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115041737459
+    },
+    {
+      "name": "checks / frontend-ui-tests",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115041737534
+    },
+    {
+      "name": "checks / docker",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115041737626
+    },
+    {
+      "name": "checks / plugin-panels",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115041737723
+    },
+    {
+      "name": "checks / frontend",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115041737741
+    },
+    {
+      "name": "checks / backend-and-crates",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115041737879
+    },
+    {
+      "name": "checks / bridge-windows",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115041737931
+    },
+    {
+      "name": "macos-bridges",
+      "status": "completed",
+      "conclusion": "skipped",
+      "databaseId": 115041739505
+    },
+    {
+      "name": "assets",
+      "status": "completed",
+      "conclusion": "skipped",
+      "databaseId": 115048164624
+    },
+    {
+      "name": "publish",
+      "status": "completed",
+      "conclusion": "skipped",
+      "databaseId": 115050907345
+    },
+    {
+      "name": "publish-nightly",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115050946293
+    }
+  ],
+  "uiLogSha256": "e1b7a12db3c7d2849568a0c4f8219c880e1296f5e6ea4b918c14321423de3bd7",
+  "editorPartitions": [
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 61,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 61,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 61,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 1,
+      "matrix": true,
+      "independent": true
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 1,
+      "matrix": false,
+      "independent": true
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 1,
+      "matrix": true,
+      "independent": true
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 1,
+      "matrix": false,
+      "independent": true
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/openwebide_frontend-5bd7bd212937d9e7.wasm",
+      "tests": 33,
+      "matrix": false,
+      "independent": false
+    }
+  ],
+  "editorChecks": 220,
+  "fontMatrices": 2,
+  "otherComponentChecks": 397,
+  "limits": "This source predates the later recovery guard, collapsed capture and cooperative wire decoder. Full editor completion and physical-device gates remain open."
+}

@@ -353,8 +353,10 @@ impl BackendApi {
         &self,
         project: i64,
     ) -> Result<openwebide_core::editor::EditorRecoveryRecord, crate::backend::RecoveryError> {
-        let record: openwebide_core::editor::EditorRecoveryRecord = self
-            .request_typed::<(), _>(
+        let revision = self.session_revision.get_untracked();
+        let current = || self.session_revision.try_get_untracked() == Some(revision);
+        let (response, _guard) = self
+            .request_response::<()>(
                 Method::GET,
                 &format!("/projects/{project}/editor-recovery"),
                 None,
@@ -362,16 +364,13 @@ impl BackendApi {
             )
             .await
             .map_err(RequestError::into_recovery)?;
-        record
-            .state
-            .validate()
-            .map_err(crate::backend::RecoveryError::Unavailable)?;
-        if record.revision < 0 {
-            return Err(crate::backend::RecoveryError::Unavailable(
-                "Invalid editor recovery revision returned by server".into(),
-            ));
-        }
-        Ok(record)
+        let text = response
+            .text()
+            .await
+            .map_err(|error| crate::backend::RecoveryError::Unavailable(error.to_string()))?;
+        let encoded = serde_json::from_str(&text)
+            .map_err(|error| crate::backend::RecoveryError::Unavailable(error.to_string()))?;
+        decode_editor_recovery(encoded, current).await
     }
 
     pub async fn save_editor_recovery(
@@ -1831,8 +1830,28 @@ impl BackendApi {
         T: Serialize,
         R: DeserializeOwned,
     {
-        let url = format!("{}{path}", self.base());
         let is_delete = method == Method::DELETE;
+        let (resp, _guard) = self
+            .request_response(method, path, body, abort_on_drop)
+            .await?;
+        if is_delete {
+            // Delete responses need no decoded body.
+            return serde_json::from_value(serde_json::Value::Null)
+                .map_err(|e| RequestError::transport(e.to_string()));
+        }
+        resp.json()
+            .await
+            .map_err(|e| RequestError::transport(e.to_string()))
+    }
+
+    async fn request_response<T: Serialize>(
+        &self,
+        method: Method,
+        path: &str,
+        body: Option<&T>,
+        abort_on_drop: bool,
+    ) -> Result<(gloo_net::http::Response, Option<CommandFetchGuard>), RequestError> {
+        let url = format!("{}{path}", self.base());
         let guard = if abort_on_drop {
             Some(CommandFetchGuard(web_sys::AbortController::new().map_err(
                 |e| RequestError::transport(format!("request cancellation error: {e:?}")),
@@ -1866,14 +1885,7 @@ impl BackendApi {
                 message: self.error_from(resp).await,
             });
         }
-        if is_delete {
-            // Delete responses need no decoded body.
-            return serde_json::from_value(serde_json::Value::Null)
-                .map_err(|e| RequestError::transport(e.to_string()));
-        }
-        resp.json()
-            .await
-            .map_err(|e| RequestError::transport(e.to_string()))
+        Ok((resp, guard))
     }
 
     async fn error_from(&self, resp: gloo_net::http::Response) -> String {
@@ -1899,6 +1911,57 @@ fn query_param(query: &str, key: &str) -> Option<String> {
 }
 
 pub use crate::text::urlenc;
+
+async fn decode_editor_recovery(
+    encoded: openwebide_core::editor::RecoveryRecord<
+        openwebide_core::editor::EncodedDocumentRecovery<'_>,
+    >,
+    current: impl Fn() -> bool,
+) -> Result<openwebide_core::editor::EditorRecoveryRecord, crate::backend::RecoveryError> {
+    let stale = || {
+        crate::backend::RecoveryError::Unavailable(
+            "The account changed while loading editor recovery".into(),
+        )
+    };
+    if !current() {
+        return Err(stale());
+    }
+    let mut decoding = openwebide_core::editor::RecoveryRecordDecoding::new(encoded);
+    loop {
+        if !current() {
+            return Err(stale());
+        }
+        if decoding.advance(1) {
+            break;
+        }
+        crate::util::yield_task().await;
+    }
+    if !current() {
+        return Err(stale());
+    }
+    let record = decoding
+        .finish()
+        .unwrap()
+        .map_err(crate::backend::RecoveryError::Unavailable)?;
+    let mut validation = openwebide_core::editor::EditorRecoveryValidation::new(&record.state);
+    loop {
+        if !current() {
+            return Err(stale());
+        }
+        if validation.advance(1) {
+            break;
+        }
+        crate::util::yield_task().await;
+    }
+    if !current() {
+        return Err(stale());
+    }
+    validation
+        .finish()
+        .unwrap()
+        .map_err(crate::backend::RecoveryError::Unavailable)?;
+    Ok(record)
+}
 
 #[cfg(test)]
 mod cancellation_tests {
@@ -2074,6 +2137,49 @@ mod recovery_transport_tests {
         fn header(state: &JsValue) -> String;
         #[wasm_bindgen(js_name = recoveryRequestCache)]
         fn cache(state: &JsValue) -> String;
+    }
+
+    #[wasm_bindgen_test]
+    async fn recovery_source_decoding_yields_and_rejects_account_changes_in_both_modes() {
+        use openwebide_core::editor::{
+            Document, EditorRecovery, EditorRecoveryFile, EditorRecoveryRecord, EditorRecoveryRoot,
+            RecoveryScroll,
+        };
+        for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+            let record = EditorRecoveryRecord {
+                revision: 1,
+                state: EditorRecovery {
+                    root: Some(EditorRecoveryRoot {
+                        mode,
+                        path: (mode == WorkspaceMode::Remote).then(|| "/project".into()),
+                    }),
+                    selected: Some("test.txt".into()),
+                    files: vec![EditorRecoveryFile {
+                        path: "test.txt".into(),
+                        document: Some(Document::new("é😀".repeat(10_000)).recovery()),
+                        scroll: RecoveryScroll::default(),
+                        read_only: false,
+                    }],
+                    ..EditorRecovery::default()
+                },
+            };
+            let json = serde_json::to_string(&record).unwrap();
+            let current = std::cell::Cell::new(true);
+            let mut pending = Box::pin(decode_editor_recovery(
+                serde_json::from_str(&json).unwrap(),
+                || current.get(),
+            ));
+            assert!(futures::poll!(&mut pending).is_pending());
+            current.set(false);
+            assert!(matches!(
+                pending.await,
+                Err(crate::backend::RecoveryError::Unavailable(_))
+            ));
+            let decoded = decode_editor_recovery(serde_json::from_str(&json).unwrap(), || true)
+                .await
+                .unwrap();
+            assert_eq!(decoded, record);
+        }
     }
 
     #[wasm_bindgen_test]

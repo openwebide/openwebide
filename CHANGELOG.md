@@ -8,6 +8,10 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Decode recovered editor sources in bounded base64 and UTF-8 steps, borrowing unescaped encoded fields from the response. Reject account changes between batches and publish only complete validated records. Storage and browser loading share the same decoder.
+
+- Verify integrated hosted release checks after cooperative disk decoding and recovery comparisons, including 220 editor checks, both font matrices and nightly publication.
+
 - Capture collapsed editor folds directly in canonical order during recovery and fold refresh, avoiding a scan of every open fold. Preserve pending-indicator and projection behavior.
 
 - Reuse validated recovery guard state for unchanged snapshot checks. Reject changed project, epoch, read or document revisions before rebuilding state, while preserving full source, selection, fold, scroll and read-only equality.

@@ -725,6 +725,15 @@ combined-source CI result.
   recovery/fold browser contracts and strict core/WASM/WASI lint pass
   ([receipt](editor-performance/collapsed-range-capture-browser.json)).
   Large all-collapsed collections still require bounded copying and capture.
+  Serialized recovery sources now decode through the same bounded base64/UTF-8
+  engine in storage and browser loading. Browser loading borrows unescaped
+  encoded fields from the response and checks account ownership between batches.
+  Complete JSON parsing, network buffers, initial allocation, snapshot capture
+  and serialization still need work. All 774 core tests, 133 native frontend
+  tests, 52 WASM library checks and 45 recovery/fold browser contracts pass,
+  with strict core/WASM/WASI lint
+  ([receipt](editor-performance/recovery-wire-decoding-browser.json)).
+  Production verification and final integrated CI remain pending.
 
 **Remaining completion gates**:
 
@@ -792,7 +801,11 @@ Linux/x64 verification also passes in the complete `67b3a529` inventory.
   all six check jobs, both platform images, 219 editor checks, both font matrices,
   397 other component checks and nightly publication
   ([receipt](editor-performance/editor-ci-91f-success.json)). Later recovery
-  decoding/comparison/guard changes still need the same final release gate.
+  decoding/comparison changes pass the same gate at `5ba57f8e` in hosted run
+  `38318137783`: all six check jobs, both images, 220 editor checks, both font
+  matrices, 397 other component checks and nightly publication pass
+  ([receipt](editor-performance/editor-ci-5ba-success.json)). Later guard,
+  collapsed capture and cooperative wire decoding still need this release gate.
 
 - [ ] **Physical Chrome/Edge PWA input:** verify real input-method commit/cancel,
   Unicode and LF/CRLF undo/redo, multiple-cursor clipboard transactions and touch
