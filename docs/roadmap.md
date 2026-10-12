@@ -66,7 +66,20 @@ tracks the remaining work rather than every optimization already shipped.
 | Selection and browser input | Multiple/rectangular selections and clipboard transactions; scoped native windows with bounded desktop startup for unwrapped, wrapped and nonuniform views, including long tabbed/bidirectional rows; automated Chromium composition and pointer checks. The recorded line-end caret bug is fixed and user-verified in the localhost PWA. |
 | Preparation and ownership | Rust/WASM worker and cooperative fallback; retained source/token/structure allocations; bounded worker delta reconstruction/reply-source publication and final structure metadata, parsed/lexical region reconciliation and retained fallback collection; bounded eligible unwrapped and wrapped paragraph probes, retained paint-run clipping and cooperative sampled cold-row glyph measurements, exact overlap validation, exact carets from retained anchors/current painted coverage and conservative complete-layout fallback. Current-file progress is shown during preparation. Matching trusted font notifications retain current in-flight work and ordinary-row replay after edits. |
 
-Current-production styled-line observations preserve complete source and a verified
+The latest integrated production matrix at `e3b2ee59` preserves complete source
+after verified beginning edits in all twelve local/remote cases: the 8 MiB byte
+limit, 100,000-row limit and near-1-MiB styled line, with wrapping on/off. Styled
+viewport paint takes 139–181 ms; cold complete geometry across the matrix takes
+1.6–3.5 seconds and peak Chrome PSS is about 588–756 MiB
+([summary](editor-performance/integrated-boundary-summary.json),
+[unwrapped samples](editor-performance/integrated-boundary-unwrapped.jsonl),
+[wrapped samples](editor-performance/integrated-boundary-wrapped.jsonl)).
+The styled native input handler takes 34–61 ms, including synchronous changed-row
+coordinate reconstruction. Paragraph geometry timings include internal task
+yields and do not establish individual task stalls. These instrumented samples
+confirm remaining work; they are not a matched before/after improvement.
+
+Earlier styled-line observations preserve complete source and a verified
 beginning caret in all four Local/Remote samples. Input viewport paint is 167–269 ms
 and peak Chrome PSS about 640–683 MiB
 ([summary](editor-performance/current-styled-production-summary.json),

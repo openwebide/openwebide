@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Verify complete-source beginning edits at the editor's byte, row and styled long-line admission boundaries in both workspace modes, with wrapping on/off. Record current input, geometry and Chrome PSS results; responsiveness and memory work remains open.
+
 - Publish PR Review 0.2.0 as an optional Rust-owned GitHub pull-request panel. Configure repository access, inspect descriptions/diffs/reviews and approve review publishing through the same public SDK as community plugins. Pin source/SDK checks in both repositories; document panel authoring and custom marketplaces without browser plugin code or privileged first-party endpoints.
 
 - Avoid repeated panel-width layout reads and reactive updates when only height changes. Keep native padded widths, actual resize/hide/show notifications and observer cleanup.
