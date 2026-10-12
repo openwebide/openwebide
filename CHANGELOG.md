@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Compare paragraph-replay token styles in resumable byte chunks, sharing the same policy between synchronous callers and wrapped/unwrapped browser preparation. Reject cancelled or stale project, file, source, account and layout work after each yield.
+
 - Reuse large pending-row token reconciliation for repeated reads and paragraph rendering of the exact immutable source and token owners, retaining at most eight row matches per paint snapshot.
 - Keep the host-update browser facade behind the WASM platform boundary so native frontend library checks compile again.
 

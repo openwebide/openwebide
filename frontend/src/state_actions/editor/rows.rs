@@ -6,7 +6,7 @@ use leptos::prelude::*;
 use openwebide_core::highlight::Token;
 use openwebide_core::{
     editor::{FoldProjection, Indentation, RowMeasurementPlan},
-    highlight::{PaintToken, RowPaintTokens},
+    highlight::RowPaintTokens,
 };
 use std::{
     hash::{Hash, Hasher},
@@ -173,83 +173,69 @@ impl<'a> PaintRowKeys<'a> {
         PaintRowKey { paint: self.0, row }
     }
 }
-fn paint_prefix_end(old: &PaintRow<'_>, new: &PaintRow<'_>) -> usize {
+struct PaintComparison<'a> {
+    styled: Option<openwebide_core::editor::PaintStyleComparison<'a>>,
+    result: Option<usize>,
+}
+impl PaintComparison<'_> {
+    fn complete(result: Option<usize>) -> Self {
+        Self {
+            styled: None,
+            result,
+        }
+    }
+    fn advance(&mut self, units: usize) -> bool {
+        self.styled
+            .as_mut()
+            .is_none_or(|comparison| comparison.advance(units))
+    }
+    fn finish(self) -> Option<usize> {
+        match self.styled {
+            Some(comparison) => comparison.finish(),
+            None => self.result,
+        }
+    }
+}
+fn prepare_paint_comparison<'a>(
+    old: &PaintRow<'a>,
+    new: &PaintRow<'a>,
+    suffix: bool,
+) -> PaintComparison<'a> {
+    let unavailable = if suffix { None } else { Some(0) };
     if old.guide != new.guide || old.ending != new.ending {
-        return 0;
+        return PaintComparison::complete(unavailable);
     }
     if let (Some(old), Some(new)) = (old.plain, new.plain) {
-        return old.len().min(new.len());
+        return PaintComparison::complete(Some(if suffix { 0 } else { old.len().min(new.len()) }));
     }
     if old.plain.is_some() || new.plain.is_some() || old.normalize_cr != new.normalize_cr {
-        return 0;
+        return PaintComparison::complete(unavailable);
     }
-    let mut end = 0;
-    for (old, new) in old.tokens.iter().zip(new.tokens.iter()) {
-        if old.kind != new.kind || (old.text.len() > 512) != (new.text.len() > 512) {
-            break;
-        }
-        let same = old
-            .text
-            .bytes()
-            .zip(new.text.bytes())
-            .take_while(|(a, b)| a == b)
-            .count();
-        end += same;
-        if same != old.text.len() || same != new.text.len() {
-            break;
-        }
+    PaintComparison {
+        styled: Some(if suffix {
+            openwebide_core::editor::PaintStyleComparison::suffix(
+                old.tokens.clone(),
+                new.tokens.clone(),
+                old.normalize_cr,
+            )
+        } else {
+            openwebide_core::editor::PaintStyleComparison::prefix(
+                old.tokens.clone(),
+                new.tokens.clone(),
+            )
+        }),
+        result: None,
     }
-    end
+}
+fn paint_prefix_end(old: &PaintRow<'_>, new: &PaintRow<'_>) -> usize {
+    let mut comparison = prepare_paint_comparison(old, new, false);
+    comparison.advance(usize::MAX);
+    comparison.finish().unwrap_or(0)
 }
 fn paint_suffix_start(old: &PaintRow<'_>, new: &PaintRow<'_>) -> Option<usize> {
-    if old.guide != new.guide || old.ending != new.ending {
-        return None;
-    }
-    if old.plain.is_some() && new.plain.is_some() {
-        return Some(0);
-    }
-    if old.plain.is_some() || new.plain.is_some() || old.normalize_cr != new.normalize_cr {
-        return None;
-    }
-    fn text<'a>(row: &PaintRow<'_>, token: PaintToken<'a>, last: bool) -> &'a str {
-        if row.normalize_cr && last {
-            token.text.strip_suffix('\r').unwrap_or(token.text)
-        } else {
-            token.text
-        }
-    }
-    let length = |row: &PaintRow<'_>| {
-        row.tokens
-            .iter()
-            .enumerate()
-            .map(|(index, token)| text(row, token, index + 1 == row.tokens.len()).len())
-            .sum::<usize>()
-    };
-    let mut start = length(new);
-    for (index, (a, b)) in old
-        .tokens
-        .iter()
-        .rev()
-        .zip(new.tokens.iter().rev())
-        .enumerate()
-    {
-        let a_text = text(old, a, index == 0);
-        let b_text = text(new, b, index == 0);
-        if a.kind != b.kind || (a_text.len() > 512) != (b_text.len() > 512) {
-            break;
-        }
-        let same = a_text
-            .bytes()
-            .rev()
-            .zip(b_text.bytes().rev())
-            .take_while(|(a, b)| a == b)
-            .count();
-        start -= same;
-        if same != a_text.len() || same != b_text.len() {
-            break;
-        }
-    }
-    Some(start)
+    let mut comparison = prepare_paint_comparison(old, new, true);
+    comparison.advance(usize::MAX);
+    comparison.finish()
 }
 const MAX_PAINT_RUN_ROWS: usize = 8;
 const MAX_RETAINED_PAINT_RUNS: usize = 16 * 1024;
@@ -468,6 +454,25 @@ impl EditorActions {
         paint: &EditorRowPaint,
         row: usize,
     ) -> Option<EditorParagraphPrefix> {
+        let (previous, measurements) = self.paragraph_candidate(paint, row)?;
+        let (old, new) = paint_row(&previous, row).zip(paint_row(paint, row))?;
+        let style_end = paint_prefix_end(&old, &new);
+        Some(EditorParagraphPrefix {
+            scope: paint.clone(),
+            previous,
+            row,
+            measurements,
+            style_end,
+        })
+    }
+    fn paragraph_candidate(
+        self,
+        paint: &EditorRowPaint,
+        row: usize,
+    ) -> Option<(
+        EditorRowPaint,
+        Arc<openwebide_core::editor::ParagraphMeasurements>,
+    )> {
         if !self.row_paint_current(paint) {
             return None;
         }
@@ -478,15 +483,73 @@ impl EditorActions {
                     .as_ref()
                     .filter(|cache| same_measurement_environment(&cache.paint, paint))?;
                 let (_, measurements) = cache.rows.iter().find(|(index, _)| *index == row)?;
-                let (old, new) = paint_row(&cache.paint, row).zip(paint_row(paint, row))?;
-                Some(EditorParagraphPrefix {
-                    scope: paint.clone(),
-                    previous: cache.paint.clone(),
-                    row,
-                    measurements: measurements.clone(),
-                    style_end: paint_prefix_end(&old, &new),
-                })
+                Some((cache.paint.clone(), measurements.clone()))
             })
+    }
+    async fn compare_paint_rows_cooperatively(
+        self,
+        paint: &EditorRowPaint,
+        previous: &EditorRowPaint,
+        row: usize,
+        suffix: bool,
+        current: &impl Fn() -> bool,
+    ) -> Option<usize> {
+        if !current() || !self.row_paint_current(paint) {
+            return None;
+        }
+        let (old, new) = paint_row(previous, row).zip(paint_row(paint, row))?;
+        let mut comparison = prepare_paint_comparison(&old, &new, suffix);
+        loop {
+            if !current() || !self.row_paint_current(paint) {
+                return None;
+            }
+            if comparison.advance(8) {
+                return comparison.finish();
+            }
+            crate::util::yield_task().await;
+        }
+    }
+    pub async fn paragraph_prefix_cooperatively(
+        self,
+        paint: &EditorRowPaint,
+        row: usize,
+        current: &impl Fn() -> bool,
+    ) -> Option<EditorParagraphPrefix> {
+        if !current() {
+            return None;
+        }
+        let (previous, measurements) = self.paragraph_candidate(paint, row)?;
+        let style_end = self
+            .compare_paint_rows_cooperatively(paint, &previous, row, false, current)
+            .await?;
+        Some(EditorParagraphPrefix {
+            scope: paint.clone(),
+            previous,
+            row,
+            measurements,
+            style_end,
+        })
+    }
+    pub async fn paragraph_suffix_cooperatively(
+        self,
+        paint: &EditorRowPaint,
+        row: usize,
+        current: &impl Fn() -> bool,
+    ) -> Option<EditorParagraphSuffix> {
+        if !current() {
+            return None;
+        }
+        let (previous, measurements) = self.paragraph_candidate(paint, row)?;
+        let style_start = self
+            .compare_paint_rows_cooperatively(paint, &previous, row, true, current)
+            .await?;
+        Some(EditorParagraphSuffix {
+            scope: paint.clone(),
+            previous,
+            row,
+            measurements,
+            style_start,
+        })
     }
     pub fn resume_paragraph_prefix_batch(
         self,
@@ -518,26 +581,16 @@ impl EditorActions {
         paint: &EditorRowPaint,
         row: usize,
     ) -> Option<EditorParagraphSuffix> {
-        if !self.row_paint_current(paint) {
-            return None;
-        }
-        self.workspace
-            .editor_paragraph_cache
-            .with_untracked(|cache| {
-                let cache = cache
-                    .as_ref()
-                    .filter(|cache| same_measurement_environment(&cache.paint, paint))?;
-                let (_, measurements) = cache.rows.iter().find(|(index, _)| *index == row)?;
-                let (old, new) = paint_row(&cache.paint, row).zip(paint_row(paint, row))?;
-                let style_start = paint_suffix_start(&old, &new)?;
-                Some(EditorParagraphSuffix {
-                    scope: paint.clone(),
-                    previous: cache.paint.clone(),
-                    row,
-                    measurements: measurements.clone(),
-                    style_start,
-                })
-            })
+        let (previous, measurements) = self.paragraph_candidate(paint, row)?;
+        let (old, new) = paint_row(&previous, row).zip(paint_row(paint, row))?;
+        let style_start = paint_suffix_start(&old, &new)?;
+        Some(EditorParagraphSuffix {
+            scope: paint.clone(),
+            previous,
+            row,
+            measurements,
+            style_start,
+        })
     }
     pub fn resume_paragraph_suffix(
         self,
@@ -1863,6 +1916,101 @@ mod tests {
                     );
                     assert_eq!(PAINT_RUN_PREPARATIONS.get(), 1);
                 }
+            }
+        }
+    }
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    async fn paragraph_style_comparison_yields_and_rejects_cancelled_or_stale_owners() {
+        crate::testing::initialize_runtime();
+        use std::{
+            cell::Cell,
+            future::Future,
+            task::{Context, Poll, Waker},
+        };
+        for suffix in [false, true] {
+            for stale in [
+                "complete", "cancel", "source", "read", "project", "path", "account", "layout",
+                "font", "view", "dispose",
+            ] {
+                let owner = Owner::new();
+                let (workspace, auth, actions, old, paint) = owner.with(|| {
+                    let auth = crate::state::auth::AuthState::new();
+                    provide_context(auth);
+                    let workspace = crate::state::workspace::WorkspaceState::new();
+                    workspace.active_project.set(Some(1));
+                    workspace.open_file.set(Some("styles.rs".into()));
+                    let body = "word 文😀 ".repeat(12000);
+                    workspace.content.set(body.clone().into());
+                    let actions = EditorActions::new(workspace);
+                    let old = actions
+                        .row_paint_snapshot(
+                            "font metrics".into(),
+                            FoldProjection::new(&body, &Default::default()),
+                            (
+                                true,
+                                Arc::new(vec![
+                                    vec![Token {
+                                        kind: TokenKind::String,
+                                        text: Arc::new(body.clone()),
+                                    }]
+                                    .into(),
+                                ]),
+                            ),
+                            Arc::from([]),
+                            Indentation::default(),
+                            false,
+                        )
+                        .unwrap();
+                    let paint = EditorRowPaint {
+                        tokens: Arc::new(vec![
+                            vec![Token {
+                                kind: TokenKind::String,
+                                text: Arc::new(body),
+                            }]
+                            .into(),
+                        ]),
+                        ..old.clone()
+                    };
+                    (workspace, auth, actions, old, paint)
+                });
+                let live = Cell::new(true);
+                let current = || live.get();
+                let mut pending = Box::pin(
+                    actions.compare_paint_rows_cooperatively(&paint, &old, 0, suffix, &current),
+                );
+                assert!(matches!(
+                    pending
+                        .as_mut()
+                        .poll(&mut Context::from_waker(Waker::noop())),
+                    Poll::Pending
+                ));
+                match stale {
+                    "cancel" => live.set(false),
+                    "source" => workspace.pending_epoch.update(|v| *v += 1),
+                    "read" => workspace.editor_read_revision.update(|v| *v += 1),
+                    "project" => workspace.active_project.set(Some(2)),
+                    "path" => workspace.open_file.set(Some("other.rs".into())),
+                    "account" => auth.generation.update(|v| *v += 1),
+                    "layout" => workspace.editor_layout_epoch.update(|v| *v += 1),
+                    "font" => workspace.editor_font_epoch.update(|v| *v += 1),
+                    "view" => workspace.editor_fold_revision.update(|v| *v += 1),
+                    "dispose" => owner.cleanup(),
+                    _ => {}
+                }
+                assert_eq!(
+                    pending.await,
+                    if stale == "complete" {
+                        Some(if suffix {
+                            0
+                        } else {
+                            paint.projection.line_body(0).unwrap().len()
+                        })
+                    } else {
+                        None
+                    },
+                    "{stale}, suffix={suffix}"
+                );
             }
         }
     }

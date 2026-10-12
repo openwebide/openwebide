@@ -202,8 +202,11 @@ publication ([receipt](editor-performance/editor-ci-67b-success.json)). Its comp
 editor inventory contained 216 contracts across eight browser runs, with unchanged
 deadlines. Editor checks run after a failed frontend step, and the runner executes
 every verified group while still failing on any failed group. Newer combined source
-and a reliable repeat of the full release remain required. The later host-update
-receipt race is fixed; its newer hosted result remains pending.
+and a reliable repeat of the full release remain required. Run `38283033218` at
+`99212ba5` also passed every check, both images and nightly publication
+([receipt](editor-performance/editor-ci-992-success.json)), verifying the host-update
+receipt and native frontend import fixes. Current changes still need their own
+combined-source CI result.
 
 - [ ] **Parser-aware input and decorations:** finish admitted HTML/Markdown cold
   readiness and release input costs, the 12 ms budget/fallback behavior, and
@@ -400,9 +403,16 @@ receipt race is fixed; its newer hosted result remains pending.
   production build ([receipt](editor-performance/pending-row-matches-browser.json)).
   Current instrumented input observations are 134–170 ms, with peak Chrome PSS
   about 669–689 MiB ([profiles](editor-performance/pending-row-matches-production-profile.jsonl));
-  they do not establish a matched latency/memory improvement. First reconciliation,
-  complete style comparisons, layout repetition and the full performance gates
-  remain open.
+  they do not establish a matched latency/memory improvement.
+  Paragraph prefix/suffix style comparisons now share a complete-only resumable
+  engine, with 8 KiB byte-pair chunks and immutable-slice shortcuts. Wrapped and
+  unwrapped preparation check cancellation and current ownership between batches;
+  synchronous callers drive the same policy. All 754 core tests, 47 WASM library
+  checks, six local/remote geometry/fallback contracts and eight full/windowed
+  input cases pass with strict native/WASM lint and the full production build
+  ([receipt](editor-performance/paragraph-style-comparison-browser.json)). First
+  token reconciliation, underlying token-window seeking, other complete style
+  comparisons, layout repetition and the full performance gates remain open.
   Grammar paint now retains private piece/row assembly across cooperative yields,
   with an 8 KiB source-copy budget and independent 256-record construction,
   owner-copy, visitation and row-publication budgets. Synchronous consumers drive

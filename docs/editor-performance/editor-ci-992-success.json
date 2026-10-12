@@ -1,0 +1,57 @@
+{
+  "conclusion": "success",
+  "databaseId": 38283033218,
+  "headSha": "99212ba528dc6e5b3224471bb6b939d3307b9dfa",
+  "jobs": [
+    {
+      "name": "validate",
+      "conclusion": "success"
+    },
+    {
+      "name": "images (ubuntu-24.04-arm, arm64, aarch64-unknown-linux-gnu)",
+      "conclusion": "success"
+    },
+    {
+      "name": "images (ubuntu-24.04, amd64, x86_64-unknown-linux-gnu)",
+      "conclusion": "success"
+    },
+    {
+      "name": "checks / backend-and-crates",
+      "conclusion": "success"
+    },
+    {
+      "name": "checks / frontend-ui-tests",
+      "conclusion": "success"
+    },
+    {
+      "name": "checks / frontend",
+      "conclusion": "success"
+    },
+    {
+      "name": "checks / docker",
+      "conclusion": "success"
+    },
+    {
+      "name": "checks / bridge-windows",
+      "conclusion": "success"
+    },
+    {
+      "name": "macos-bridges",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "assets",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "publish-nightly",
+      "conclusion": "success"
+    },
+    {
+      "name": "publish",
+      "conclusion": "skipped"
+    }
+  ],
+  "status": "completed",
+  "url": "https://github.com/openwebide/openwebide/actions/runs/38283033218"
+}
