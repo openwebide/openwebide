@@ -188,9 +188,9 @@ impl EditorActions {
                     == Some(true)
         };
         let mut documents = std::collections::HashMap::new();
-        for file in &recovery.files {
-            if let Some(saved) = &file.document {
-                let Some(document) = Self::prepare_recovery(saved, owned).await? else {
+        for (index, file) in recovery.files.iter().enumerate() {
+            if let Some(saved) = validated.document(index) {
+                let Some(document) = Self::prepare_recovery(&saved, owned).await? else {
                     return Ok(None);
                 };
                 documents.insert((project.id, file.path.clone()), document);
@@ -225,23 +225,13 @@ impl EditorActions {
     }
 
     pub(crate) async fn prepare_recovery(
-        recovery: &openwebide_core::editor::DocumentRecovery,
+        validated: &openwebide_core::editor::ValidatedDocumentRecovery<'_>,
         current: impl Fn() -> bool,
     ) -> Result<Option<openwebide_core::editor::Document>, String> {
         if !current() {
             return Ok(None);
         }
-        let mut validation = openwebide_core::editor::DocumentRecoveryValidation::new(recovery);
-        while !validation.advance(8) {
-            crate::util::yield_task().await;
-            if !current() {
-                return Ok(None);
-            }
-        }
-        if !current() {
-            return Ok(None);
-        }
-        validation.finish().unwrap()?;
+        let recovery = validated.recovery();
         let saved_source = recovery.saved.clone();
         let Some(saved) = prepare_document(&saved_source, &current)
             .await
@@ -269,7 +259,29 @@ impl EditorActions {
         if !current() {
             return Ok(None);
         }
-        recovery.restore_prepared(saved, draft).map(Some)
+        Self::finish_recovery(validated, saved, draft, current).await
+    }
+
+    async fn finish_recovery(
+        validated: &openwebide_core::editor::ValidatedDocumentRecovery<'_>,
+        saved: openwebide_core::editor::Document,
+        draft: openwebide_core::editor::Document,
+        current: impl Fn() -> bool,
+    ) -> Result<Option<openwebide_core::editor::Document>, String> {
+        if !current() {
+            return Ok(None);
+        }
+        let mut restoration = validated.prepare_restore(saved, draft);
+        while !restoration.advance(8) {
+            crate::util::yield_task().await;
+            if !current() {
+                return Ok(None);
+            }
+        }
+        if !current() {
+            return Ok(None);
+        }
+        restoration.finish().unwrap().map(Some)
     }
 }
 
@@ -281,6 +293,75 @@ mod tests {
         future::Future,
         task::{Context, Poll, Waker},
     };
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    async fn recovery_fold_installation_yields_and_cancels_in_both_modes() {
+        crate::testing::initialize_runtime();
+        use openwebide_core::{
+            WorkspaceMode,
+            editor::{
+                Document, DocumentRecovery, EditorRecovery, EditorRecoveryFile, EditorRecoveryRoot,
+                FoldRange, RecoveryScroll,
+            },
+        };
+        for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+            for cancel in [false, true] {
+                let saved = Document::for_editor("x\n".repeat(10_000)).unwrap();
+                let draft = saved.clone();
+                let mut document = DocumentRecovery::clean_source(saved.shared_text());
+                document.collapsed = (0..3000)
+                    .map(|start_line| FoldRange {
+                        start_line,
+                        end_line: 7000 - start_line,
+                    })
+                    .collect();
+                let recovery = EditorRecovery {
+                    root: Some(EditorRecoveryRoot { mode, path: None }),
+                    selected: Some("folded.txt".into()),
+                    files: vec![EditorRecoveryFile {
+                        path: "folded.txt".into(),
+                        document: Some(document),
+                        scroll: RecoveryScroll::default(),
+                        read_only: false,
+                    }],
+                    ..Default::default()
+                };
+                let proof = EditorActions::validate_recovery(&recovery, || true)
+                    .await
+                    .unwrap()
+                    .unwrap();
+                let document = proof.document(0).unwrap();
+                let current = Cell::new(true);
+                let mut pending = Box::pin(EditorActions::finish_recovery(
+                    &document,
+                    saved,
+                    draft,
+                    || current.get(),
+                ));
+                assert!(matches!(
+                    pending
+                        .as_mut()
+                        .poll(&mut Context::from_waker(Waker::noop())),
+                    Poll::Pending
+                ));
+                current.set(!cancel);
+                let result = pending.await.unwrap();
+                if cancel {
+                    assert!(result.is_none());
+                } else {
+                    let restored = result.unwrap();
+                    assert_eq!(restored.fold_state().ranges().len(), 3000);
+                    assert!(
+                        (0..3000).all(|header| restored.fold_state().indicator_collapsed(header))
+                    );
+                    assert_eq!(
+                        restored.text(),
+                        recovery.files[0].document.as_ref().unwrap().text.as_str()
+                    );
+                }
+            }
+        }
+    }
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn recovery_validation_yields_and_cancels_before_publishing_a_snapshot_proof() {

@@ -1,0 +1,55 @@
+{
+  "coreTests": {
+    "passed": 742,
+    "ignored": 1
+  },
+  "strictNativeCoreLint": "passed",
+  "strictWasmFrontendLint": "passed",
+  "strictWasiBackendLint": "passed",
+  "productionBuild": "passed",
+  "components": {
+    "passed": true,
+    "tests": [
+      "__wbgt__components::editor::automatic_editor_recovery_restores_and_saves_drafts_in_both_modes",
+      "__wbgt__components::editor::editor_recovery_changed_root_blocks_saves_without_discarding_the_draft",
+      "__wbgt__components::editor::editor_recovery_coalesces_slow_writes_and_preserves_errors_and_revision_conflicts",
+      "__wbgt__components::editor::editor_recovery_disk_conflict_blocks_host_save_and_retry_keeps_the_draft",
+      "__wbgt__components::editor::editor_recovery_late_load_preserves_new_files_and_does_not_cross_accounts",
+      "__wbgt__components::editor::editor_recovery_retains_local_draft_until_folder_access_returns",
+      "__wbgt__components::editor::native_text_reuse_preserves_dom_changes_and_releases_stale_scopes_in_both_modes",
+      "__wbgt__components::editor::recovered_file_review_recreates_a_missing_clean_empty_file_in_both_modes",
+      "__wbgt__components::editor::recovered_file_review_rejects_changed_disk_and_editor_and_cancelled_actions",
+      "__wbgt__components::editor::recovered_file_review_reload_and_overwrite_share_both_real_adapters",
+      "__wbgt__components::editor::recovery_busy_status_distinguishes_pending_checks_from_stable_issues_in_both_modes",
+      "__wbgt__components::editor::recovery_disk_publication_shares_clean_and_completed_write_sources_in_both_modes",
+      "__wbgt__components::editor::recovery_document_format_restores_committed_browser_edits_in_both_modes",
+      "__wbgt__components::editor::recovery_hydration_and_disk_reconciliation_use_both_real_workspace_adapters",
+      "__wbgt__components::editor::workspace_recovery_collects_active_and_hidden_drafts_without_composition_previews"
+    ],
+    "output": "\nrunning 15 tests\ntest editor::workspace_recovery_collects_active_and_hidden_drafts_without_composition_previews ... ok\ntest editor::recovery_hydration_and_disk_reconciliation_use_both_real_workspace_adapters ... ok\ntest editor::recovery_document_format_restores_committed_browser_edits_in_both_modes ... ok\ntest editor::recovery_disk_publication_shares_clean_and_completed_write_sources_in_both_modes ... ok\ntest editor::recovery_busy_status_distinguishes_pending_checks_from_stable_issues_in_both_modes ... ok\ntest editor::recovered_file_review_reload_and_overwrite_share_both_real_adapters ... ok\ntest editor::recovered_file_review_rejects_changed_disk_and_editor_and_cancelled_actions ... ok\ntest editor::recovered_file_review_recreates_a_missing_clean_empty_file_in_both_modes ... ok\ntest editor::native_text_reuse_preserves_dom_changes_and_releases_stale_scopes_in_both_modes ... ok\ntest editor::editor_recovery_retains_local_draft_until_folder_access_returns ... ok\ntest editor::editor_recovery_late_load_preserves_new_files_and_does_not_cross_accounts ... ok\ntest editor::editor_recovery_disk_conflict_blocks_host_save_and_retry_keeps_the_draft ... ok\ntest editor::editor_recovery_coalesces_slow_writes_and_preserves_errors_and_revision_conflicts ... ok\ntest editor::editor_recovery_changed_root_blocks_saves_without_discarding_the_draft ... ok\ntest editor::automatic_editor_recovery_restores_and_saves_drafts_in_both_modes ... ok\n\ntest result: ok. 15 passed; 0 failed; 0 ignored; 0 filtered out; finished in 6.91s\n\n"
+  },
+  "library": {
+    "passed": true,
+    "tests": [
+      "__wbgt__openwebide_frontend::state_actions::editor::source_tests::released_workspace_cannot_run_queued_native_cache_effects",
+      "__wbgt__openwebide_frontend::state_actions::editor::loading::tests::recovery_fold_installation_yields_and_cancels_in_both_modes",
+      "__wbgt__openwebide_frontend::state_actions::editor::loading::tests::recovery_hydration_yields_and_publishes_complete_documents_only",
+      "__wbgt__openwebide_frontend::state_actions::editor::loading::tests::recovery_validation_yields_and_cancels_before_publishing_a_snapshot_proof"
+    ],
+    "output": "\nrunning 4 tests\ntest state_actions::editor::loading::tests::recovery_validation_yields_and_cancels_before_publishing_a_snapshot_proof ... ok\ntest state_actions::editor::loading::tests::recovery_hydration_yields_and_publishes_complete_documents_only ... ok\ntest state_actions::editor::loading::tests::recovery_fold_installation_yields_and_cancels_in_both_modes ... ok\ntest state_actions::editor::source_tests::released_workspace_cannot_run_queued_native_cache_effects ... ok\n\ntest result: ok. 4 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.07s\n\n"
+  },
+  "officialLibrary": {
+    "passed": 31,
+    "failed": 0,
+    "cpus": 2,
+    "memoryGiB": 4,
+    "browserDeadlineSeconds": 300,
+    "elapsedSeconds": 1.41
+  },
+  "sourceHashes": {
+    "crates/core/src/editor/recovery.rs": "5bcc2538bcdf6b62e713565a4273f46daff6d94d2af662c97e665ca094916188",
+    "crates/core/src/editor/folds.rs": "1e43d8be1f6ce3ec7063fc2295cdd404763276c7438d107edfb80a0f8db9d32a",
+    "frontend/src/state_actions/editor/loading.rs": "ac81b168f49d62a77b34f4df7612851e2e44bec1a9e4a9ab0193913be92db646"
+  },
+  "remaining": "Source comparisons, allocation growth, final history/selection publication, snapshot capture and serialization remain unfinished."
+}

@@ -229,10 +229,9 @@ impl DocumentRecovery {
     /// no document indexes are rebuilt during this final recovery transition.
     pub fn restore_prepared(
         &self,
-        mut document: Document,
+        document: Document,
         draft: Document,
     ) -> Result<Document, String> {
-        let saved_matches = document.matches_text(&self.saved);
         let draft_matches = draft.matches_text(&self.text);
         self.validate_with_lines(|| {
             if draft_matches {
@@ -241,6 +240,15 @@ impl DocumentRecovery {
                 self.text.bytes().filter(|byte| *byte == b'\n').count() + 1
             }
         })?;
+        let mut preparation =
+            ValidatedDocumentRecovery { recovery: self }.prepare_restore(document, draft);
+        while !preparation.advance(64) {}
+        preparation.finish().unwrap()
+    }
+
+    fn check_prepared_sources(&self, document: &Document, draft: &Document) -> Result<(), String> {
+        let saved_matches = document.matches_text(&self.saved);
+        let draft_matches = draft.matches_text(&self.text);
         // Complete source-owned indexes prove admission without repeating the
         // preparation scan. Unmatched inputs retain the original validation
         // errors before reporting the source mismatch.
@@ -265,6 +273,15 @@ impl DocumentRecovery {
                 return Err("Recovery preparation must contain fresh document indexes".into());
             }
         }
+        Ok(())
+    }
+
+    fn install_prepared(
+        &self,
+        mut document: Document,
+        draft: Document,
+        folds: super::FoldState,
+    ) -> Result<Document, String> {
         document.enforce_editor_limits();
         document.selections = vec![Selection::caret(0)];
         document.selection_history.clear();
@@ -298,12 +315,75 @@ impl DocumentRecovery {
         } else {
             document.selections = after;
         }
-        let lines = document.line_count();
-        document
-            .fold_state_mut()
-            .set_ranges(self.collapsed.clone(), lines);
-        document.fold_state_mut().collapse_all();
+        document.folds = folds;
         Ok(document)
+    }
+}
+
+/// Metadata validation remains tied to its exact immutable document record.
+pub struct ValidatedDocumentRecovery<'a> {
+    recovery: &'a DocumentRecovery,
+}
+
+impl<'a> ValidatedDocumentRecovery<'a> {
+    pub fn recovery(&self) -> &'a DocumentRecovery {
+        self.recovery
+    }
+
+    pub fn prepare_restore(&self, document: Document, draft: Document) -> RecoveryRestoration<'a> {
+        RecoveryRestoration {
+            recovery: self.recovery,
+            result: self
+                .recovery
+                .check_prepared_sources(&document, &draft)
+                .err()
+                .map(Err),
+            document: Some(document),
+            draft: Some(draft),
+            folds: Default::default(),
+            next: 0,
+        }
+    }
+}
+
+/// Build validated persisted collapse state privately; hosts yield between
+/// batches and discard cancelled preparation without installing a partial view.
+pub struct RecoveryRestoration<'a> {
+    recovery: &'a DocumentRecovery,
+    document: Option<Document>,
+    draft: Option<Document>,
+    folds: super::FoldState,
+    next: usize,
+    result: Option<Result<Document, String>>,
+}
+
+impl RecoveryRestoration<'_> {
+    pub fn advance(&mut self, budget: usize) -> bool {
+        for _ in 0..budget {
+            if self.result.is_some() {
+                break;
+            }
+            let end = self
+                .next
+                .saturating_add(64)
+                .min(self.recovery.collapsed.len());
+            for range in &self.recovery.collapsed[self.next..end] {
+                self.folds.append_normalized_collapsed(*range);
+            }
+            self.next = end;
+            if end == self.recovery.collapsed.len() {
+                self.result = Some(self.recovery.install_prepared(
+                    self.document.take().unwrap(),
+                    self.draft.take().unwrap(),
+                    std::mem::take(&mut self.folds),
+                ));
+            }
+        }
+        self.result.is_some()
+    }
+
+    pub fn finish(self) -> Option<Result<Document, String>> {
+        self.result
     }
 }
 
@@ -340,6 +420,51 @@ fn classify_disk(text: &str, saved: &str, disk: Option<&str>) -> Result<Recovery
 #[cfg(test)]
 mod prepared_tests {
     use super::*;
+
+    #[test]
+    fn collapse_restoration_is_bounded_private_and_matches_normalized_installation() {
+        let saved = Document::for_editor("x\n".repeat(10_000)).unwrap();
+        let draft = saved.clone();
+        let recovery = DocumentRecovery {
+            text: saved.shared_text(),
+            saved: saved.shared_text(),
+            selections: vec![Selection::caret(0)],
+            collapsed: (0..3000)
+                .map(|start_line| FoldRange {
+                    start_line,
+                    end_line: 7000 - start_line,
+                })
+                .collect(),
+        };
+        recovery.validate().unwrap();
+        let proof = ValidatedDocumentRecovery {
+            recovery: &recovery,
+        };
+        let mut expected = saved.clone();
+        let lines = expected.line_count();
+        expected
+            .fold_state_mut()
+            .set_ranges(recovery.collapsed.clone(), lines);
+        expected.fold_state_mut().collapse_all();
+        let mut preparation = proof.prepare_restore(saved.clone(), draft.clone());
+        assert!(!preparation.advance(0));
+        let mut steps = 0;
+        while !preparation.advance(1) {
+            steps += 1;
+            assert!(preparation.next <= steps * 64);
+            assert!(steps < 100);
+        }
+        assert!(steps >= 3000 / 64);
+        let restored = preparation.finish().unwrap().unwrap();
+        assert_eq!(restored.fold_state(), expected.fold_state());
+        assert_eq!(restored.text(), expected.text());
+        assert_eq!(restored.selections(), expected.selections());
+        assert!(!restored.is_dirty());
+        let mut cancelled = proof.prepare_restore(saved, draft);
+        assert!(!cancelled.advance(1));
+        assert!(cancelled.finish().is_none());
+        assert_eq!(recovery.collapsed.len(), 3000);
+    }
 
     #[test]
     fn replacing_recovered_redo_releases_prepared_version_indexes() {
@@ -709,9 +834,18 @@ pub struct ValidatedEditorRecovery<'a> {
     recovery: &'a EditorRecovery,
 }
 
-impl ValidatedEditorRecovery<'_> {
-    pub fn recovery(&self) -> &EditorRecovery {
+impl<'a> ValidatedEditorRecovery<'a> {
+    pub fn recovery(&self) -> &'a EditorRecovery {
         self.recovery
+    }
+
+    pub fn document(&self, index: usize) -> Option<ValidatedDocumentRecovery<'a>> {
+        self.recovery
+            .files
+            .get(index)?
+            .document
+            .as_ref()
+            .map(|recovery| ValidatedDocumentRecovery { recovery })
     }
 }
 

@@ -128,6 +128,12 @@ pub(super) struct FoldRebase {
 }
 
 impl FoldState {
+    /// Only recovery's private builder calls this after normalized-range proof.
+    pub(super) fn append_normalized_collapsed(&mut self, range: FoldRange) {
+        self.ranges.push(range);
+        self.collapsed.insert(range.start_line);
+    }
+
     pub fn ranges(&self) -> &[FoldRange] {
         &self.ranges
     }

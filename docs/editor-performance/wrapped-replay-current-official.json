@@ -1,0 +1,13 @@
+{
+  "contract": "editor::wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes",
+  "artifact": "preserved 10babb components",
+  "runner": "official wasm-bindgen 0.2.128",
+  "platform": "Linux arm64 Chromium 154",
+  "cpus": 2,
+  "memoryGiB": 4,
+  "browserDeadlineSeconds": 300,
+  "perContractDeadlines": "unchanged",
+  "passed": true,
+  "elapsedSeconds": 87.29,
+  "scope": "Exact original fixture, including all local/remote, styled/plain, reconnect/nonreconnect and near-limit variants. Does not establish a Linux/x64 hosted fix."
+}

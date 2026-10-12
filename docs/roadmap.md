@@ -538,6 +538,15 @@ remain required.
   disposed owners; the lifecycle regression and both-mode recovery contracts
   now pass without the reproduced panics. This does not establish a general
   memory improvement.
+  Restored collapse state now assembles privately in 64-record units from the
+  immutable validated document proof. Preparation reuses that proof instead of
+  recounting/validating folds; final installation avoids sorting already normalized
+  ranges. All 742 core tests, four lifecycle/cancellation browser contracts, fifteen
+  recovery/cache contracts and the complete 31-test isolated library selection
+  pass. Strict native/WASM/WASI lint and production build pass
+  ([receipt](editor-performance/recovery-restoration-browser.json)). Source comparisons,
+  allocation growth, final history/selection publication, snapshot capture and
+  serialization remain unfinished.
 
 **Remaining completion gates**:
 
@@ -550,7 +559,11 @@ All 30 isolated library contracts pass with the official runner (two CPUs/four
 GiB), alongside strict WASM lint
 ([receipt](editor-performance/isolated-library-runtime.json)). Hosted verification
 of the fixture repair and the remaining renderer failures is pending.
-Keep the full inventory and existing contract/browser deadlines.
+Keep the full inventory and existing contract/browser deadlines. The unchanged
+wrapped replay contract now passes the official runner on Linux arm64 with two
+CPUs/four GiB in 87.29 seconds
+([receipt](editor-performance/wrapped-replay-current-official.json)); hosted
+Linux/x64 verification remains pending.
 
 - [ ] **Responsiveness and memory:** remove measured input, cold-paint, wrapped
   geometry and process-memory stalls. Repeat admitted byte, row-count and long-line
