@@ -69,6 +69,21 @@ impl Document {
             collapsed: document.folds.collapsed_ranges().collect(),
         }
     }
+
+    /// Compare committed recovery fields without copying selection/fold tables.
+    pub fn matches_recovery(&self, recovery: &DocumentRecovery) -> bool {
+        let document = self
+            .composition
+            .as_ref()
+            .map_or(self, |composition| composition.committed_document());
+        document.text == recovery.text
+            && document.saved == recovery.saved
+            && document.selections == recovery.selections
+            && document
+                .folds
+                .collapsed_ranges()
+                .eq(recovery.collapsed.iter().copied())
+    }
 }
 
 /// Private, complete-only validation of an immutable recovery document.
@@ -148,6 +163,21 @@ pub enum RecoveryDiskState {
 }
 
 impl DocumentRecovery {
+    /// Conservative metadata cost shared by capture and validated guard checks.
+    pub fn recovery_bytes(&self) -> usize {
+        self.text
+            .len()
+            .saturating_add(self.saved.len())
+            .saturating_add(self.collapsed.len().saturating_mul(96))
+            .saturating_add(self.selections.len().saturating_mul(64))
+    }
+
+    pub fn matches_clean_source(&self, source: &std::sync::Arc<String>) -> bool {
+        self.text == *source
+            && self.saved == *source
+            && self.selections == [Selection::caret(0)]
+            && self.collapsed.is_empty()
+    }
     /// Capture a clean source that has no live editor document. Recovery needs
     /// source and baseline, not coordinate indexes or an undo history.
     pub fn clean(source: &str) -> Self {
@@ -973,14 +1003,11 @@ pub struct RecoveryFile<D> {
 impl EditorRecoveryFile {
     /// Conservative metadata costs keep encoded payloads within the wire budget.
     pub fn recovery_bytes(&self) -> usize {
-        self.document.as_ref().map_or(self.path.len(), |document| {
-            self.path
-                .len()
-                .saturating_add(document.text.len())
-                .saturating_add(document.saved.len())
-                .saturating_add(document.collapsed.len().saturating_mul(96))
-                .saturating_add(document.selections.len().saturating_mul(64))
-        })
+        self.path.len().saturating_add(
+            self.document
+                .as_ref()
+                .map_or(0, DocumentRecovery::recovery_bytes),
+        )
     }
 }
 
@@ -1744,9 +1771,54 @@ mod tests {
             )
             .unwrap();
         assert_eq!(document.recovery(), before);
+        assert!(document.matches_recovery(&before));
         document.mark_saved_version("written");
+        assert!(!document.matches_recovery(&before));
+        assert!(document.matches_recovery(&document.recovery()));
         assert_eq!(document.recovery().saved.as_str(), "written");
         assert_eq!(document.recovery().text.as_str(), "xbase");
+    }
+
+    #[test]
+    fn borrowed_recovery_comparison_matches_capture_with_large_fold_tables() {
+        let mut document = Document::new("x\n".repeat(20_001));
+        document.set_fold_ranges(
+            (0..10_000)
+                .map(|index| FoldRange {
+                    start_line: index * 2,
+                    end_line: index * 2 + 1,
+                })
+                .collect(),
+        );
+        document.fold_state_mut().collapse_all();
+        let recovery = document.recovery();
+        assert_eq!(recovery.collapsed.len(), 10_000);
+        assert!(document.matches_recovery(&recovery));
+        for field in ["text", "saved", "selection", "fold", "owner"] {
+            let mut changed = recovery.clone();
+            match field {
+                "text" => changed.text = std::sync::Arc::new("other".into()),
+                "saved" => changed.saved = std::sync::Arc::new("other".into()),
+                "selection" => changed.selections = vec![Selection::caret(1)],
+                "fold" => {
+                    changed.collapsed.pop();
+                }
+                "owner" => {
+                    changed.text = std::sync::Arc::new(changed.text.as_str().to_owned());
+                    changed.saved = std::sync::Arc::new(changed.saved.as_str().to_owned());
+                }
+                _ => unreachable!(),
+            }
+            assert_eq!(
+                document.matches_recovery(&changed),
+                document.recovery() == changed,
+                "{field}"
+            );
+        }
+        let clean = DocumentRecovery::clean_source(std::sync::Arc::new("text".into()));
+        assert!(clean.matches_clean_source(&std::sync::Arc::new("text".into())));
+        assert!(!clean.matches_clean_source(&std::sync::Arc::new("other".into())));
+        assert!(!recovery.matches_clean_source(&recovery.text));
     }
 
     #[test]

@@ -6,6 +6,25 @@ use std::{
 use leptos::prelude::*;
 use openwebide_core::{EditDecision, FileDiff, FileEntry, PersistedEdit, SearchHit};
 
+enum RecoveryDocument<'a> {
+    Live(&'a openwebide_core::editor::Document),
+    Clean(Arc<String>),
+}
+impl RecoveryDocument<'_> {
+    fn capture(self) -> openwebide_core::editor::DocumentRecovery {
+        match self {
+            Self::Live(document) => document.recovery(),
+            Self::Clean(source) => openwebide_core::editor::DocumentRecovery::clean_source(source),
+        }
+    }
+    fn matches(&self, recovery: &openwebide_core::editor::DocumentRecovery) -> bool {
+        match self {
+            Self::Live(document) => document.matches_recovery(recovery),
+            Self::Clean(source) => recovery.matches_clean_source(source),
+        }
+    }
+}
+
 /// Immutable editor source shared by documents, buffers and project snapshots.
 #[derive(Clone, Debug, Default)]
 pub struct EditorText(
@@ -656,8 +675,21 @@ impl WorkspaceState {
         project: &openwebide_core::Project,
         active_read_only: bool,
     ) -> Result<openwebide_core::editor::EditorRecovery, String> {
+        self.editor_recovery_candidate_with(project, active_read_only, |_, document| {
+            let document = document.capture();
+            let bytes = document.recovery_bytes();
+            Ok((document, bytes))
+        })
+    }
+
+    fn editor_recovery_candidate_with<D>(
+        &self,
+        project: &openwebide_core::Project,
+        active_read_only: bool,
+        mut capture: impl FnMut(&str, RecoveryDocument<'_>) -> Result<(D, usize), String>,
+    ) -> Result<openwebide_core::editor::RecoveryState<D>, String> {
         use openwebide_core::editor::{
-            Document, EditorRecovery, EditorRecoveryFile, EditorRecoveryRoot, RecoveryScroll,
+            EditorRecoveryRoot, RecoveryFile, RecoveryScroll, RecoveryState,
         };
         let active = self.active_project.get_untracked() == Some(project.id);
         let snapshot = (!active)
@@ -718,7 +750,7 @@ impl WorkspaceState {
                         .get(&key)
                         .filter(|document| document.matches_text(text))
                     {
-                        return Ok(Some(document.recovery()));
+                        return Ok(Some(capture(&path, RecoveryDocument::Live(document))?));
                     }
                     if *dirty {
                         return Err(format!(
@@ -728,17 +760,23 @@ impl WorkspaceState {
                     if text.editor_limit().is_some() {
                         return Ok(None);
                     }
-                    return Ok(Some(
-                        openwebide_core::editor::DocumentRecovery::clean_source(text.shared()),
-                    ));
+                    return Ok(Some(capture(
+                        &path,
+                        RecoveryDocument::Clean(text.shared()),
+                    )?));
                 }
-                Ok(documents.get(&key).map(Document::recovery))
+                documents
+                    .get(&key)
+                    .map(|document| capture(&path, RecoveryDocument::Live(document)))
+                    .transpose()
             })?;
+            let (document, document_bytes) =
+                document.map_or((None, 0), |(document, bytes)| (Some(document), bytes));
             let scroll = self
                 .editor_scroll
                 .with_untracked(|positions| positions.get(&key).copied())
                 .unwrap_or_default();
-            let file = EditorRecoveryFile {
+            let file = RecoveryFile {
                 path,
                 document,
                 scroll: RecoveryScroll {
@@ -751,7 +789,9 @@ impl WorkspaceState {
                     buffer_read_only
                 },
             };
-            bytes = bytes.saturating_add(file.recovery_bytes());
+            bytes = bytes
+                .saturating_add(file.path.len())
+                .saturating_add(document_bytes);
             if bytes > openwebide_core::editor::MAX_RECOVERY_BYTES {
                 return Err(
                     "Editor recovery exceeds 128 MiB; keep these files open while saving them"
@@ -760,7 +800,7 @@ impl WorkspaceState {
             }
             files.push(file);
         }
-        let state = EditorRecovery {
+        let state = RecoveryState {
             format: 1,
             root: Some(EditorRecoveryRoot::for_project(project)),
             selected,
@@ -819,11 +859,36 @@ impl WorkspaceState {
         }) {
             return false;
         }
-        // The guard's private state was validated when captured. Exact candidate
-        // equality therefore proves the same validity without rescanning source
-        // lines/fold ancestry or allocating another document-revision map.
-        self.editor_recovery_candidate(project, active_read_only)
-            .is_ok_and(|current| current == guard.state)
+        // Exact equality with the private validated snapshot proves validity.
+        // Share source selection and limits with capture, but borrow each live
+        // document's fields instead of allocating its recovery metadata again.
+        self.editor_recovery_candidate_with(project, active_read_only, |path, document| {
+            let expected = guard
+                .state
+                .files
+                .iter()
+                .find(|file| file.path == path)
+                .and_then(|file| file.document.as_ref())
+                .filter(|expected| document.matches(expected))
+                .ok_or_else(|| "Editor recovery document changed".to_string())?;
+            Ok(((), expected.recovery_bytes()))
+        })
+        .is_ok_and(|current| {
+            current.format == guard.state.format
+                && current.root == guard.state.root
+                && current.selected == guard.state.selected
+                && current.files.len() == guard.state.files.len()
+                && current
+                    .files
+                    .iter()
+                    .zip(&guard.state.files)
+                    .all(|(current, expected)| {
+                        current.path == expected.path
+                            && current.scroll == expected.scroll
+                            && current.read_only == expected.read_only
+                            && current.document.is_some() == expected.document.is_some()
+                    })
+        })
     }
 
     /// Install a validated project recovery atomically. The caller guards account
@@ -1238,6 +1303,13 @@ mod tests {
                 "remove",
                 "add",
                 "root",
+                "content-clean",
+                "content-dirty",
+                "loading",
+                "tabs-empty",
+                "tabs-duplicate",
+                "same-source-owner",
+                "saved-owner",
             ] {
                 let owner = Owner::new();
                 owner.with(|| {
@@ -1309,6 +1381,26 @@ mod tests {
                             documents.insert((1, "b.rs".into()), Document::new("other"));
                         }),
                         "root" => project.path = Some("other".into()),
+                        "content-clean" => workspace.content.set("other".into()),
+                        "content-dirty" => {
+                            workspace.content.set("other".into());
+                            workspace.dirty.set(true);
+                        }
+                        "loading" => workspace.editor_loading.set(true),
+                        "tabs-empty" => workspace.editor_tabs.update(|tabs| {
+                            tabs.insert(1, vec![]);
+                        }),
+                        "tabs-duplicate" => workspace.editor_tabs.update(|tabs| {
+                            tabs.insert(1, vec!["a.rs".into(), "a.rs".into()]);
+                        }),
+                        "same-source-owner" => workspace.content.update(|source| {
+                            *source = source.as_str().to_owned().into();
+                        }),
+                        "saved-owner" => workspace.editor_documents.update(|documents| {
+                            let document = documents.get_mut(&key).unwrap();
+                            let saved = document.recovery().saved.as_str().to_owned();
+                            document.mark_saved_source(Arc::new(saved));
+                        }),
                         _ => {}
                     }
                     let read_only = change == "read-only";

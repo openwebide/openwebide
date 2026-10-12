@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Compare recovery guards against borrowed committed document fields, avoiding fold and selection table copies. Share source selection and byte-cost policy with snapshot capture while preserving exact metadata checks.
+
 - Verify production edits, autosave, restart and reload/new-window recovery after bounded snapshot decoding in both workspace modes.
 
 - Decode recovered editor sources in bounded base64 and UTF-8 steps, borrowing unescaped encoded fields from the response. Reject account changes between batches and publish only complete validated records. Storage and browser loading share the same decoder.

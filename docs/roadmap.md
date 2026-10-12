@@ -737,6 +737,16 @@ combined-source CI result.
   edits, autosave, restart and reload/new-window restoration in both modes
   ([receipt](editor-performance/recovery-wire-production.json)). Physical
   folder/PWA/IME verification and final integrated CI remain pending.
+  Guard comparison now borrows committed source, selection and collapsed-fold
+  fields through the same source-selection policy as snapshot capture. It uses
+  the matching privately validated document cost, avoiding new fold/selection
+  vectors. Initial capture, path/record metadata, source/fold equality and
+  serialization still have synchronous costs. Both-mode equivalence now covers
+  twenty state changes. All 775 core tests, 133 native frontend tests, 52 WASM
+  library checks and 45 recovery/fold browser contracts pass with strict
+  core/WASM/WASI lint
+  ([receipt](editor-performance/borrowed-recovery-guard-browser.json)).
+  Fresh production and final integrated release verification remain pending.
 
 **Remaining completion gates**:
 
