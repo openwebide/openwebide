@@ -33,6 +33,7 @@ jobs:
           python3 -m unittest discover -s tools -p 'test_release.py'
           python3 -m unittest discover -s tools -p 'test_open_source.py'
           python3 -m unittest discover -s tools -p 'test_editor_measurements.py'
+          python3 -m unittest discover -s tools -p 'test_editor_browser_runner.py'
           python3 tools/bundle_plugins.py --check
           python3 tools/release.py validate
           docker compose -f docker-compose.release.yml config --quiet
@@ -184,6 +185,7 @@ jobs:
         run: cargo install wasm-bindgen-cli --version 0.2.128 --locked
 
       - name: Tests (frontend UI)
+        id: frontend-ui-tests
         env:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
           # Run the same contracts against optimized WASM to avoid loading the
@@ -193,9 +195,14 @@ jobs:
           # editor groups of at most 64 tests. Keep expensive matrices separate;
           # per-test readiness and every browser-run deadline are unchanged.
           WASM_BINDGEN_TEST_TIMEOUT: "300"
-        run: |
-          cargo test -p openwebide-frontend --release --target wasm32-unknown-unknown -- --skip 'editor::'
-          python3 tools/run-editor-browser-tests.py
+        run: cargo test -p openwebide-frontend --release --target wasm32-unknown-unknown -- --skip 'editor::'
+
+      - name: Tests (editor UI)
+        if: ${{ !cancelled() && steps.frontend-ui-tests.outcome != 'skipped' }}
+        env:
+          CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
+          WASM_BINDGEN_TEST_TIMEOUT: "300"
+        run: python3 tools/run-editor-browser-tests.py
 
       - name: Measure shared editor storage in browser WASM
         env:

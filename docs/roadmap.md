@@ -184,6 +184,16 @@ prepared only one token row per unit. Small rows now share the existing 64-recor
 
 **Remaining implementation** (all items remain part of this editor goal):
 
+Integrated run `38215684456` includes the initial readiness checkpoint but fails
+four non-editor contracts before editor execution. Editor checks now run as a
+separate CI step after a failed frontend run, and the editor runner collects
+failures while executing its complete verified inventory. The build still fails
+on any failed group. Inventory verification assigns all 186 compiled editor
+contracts exactly once across seven runs; a regression verifies later groups
+execute after an earlier failure and the runner still exits unsuccessfully.
+Hosted editor results and a fully green integrated release
+remain required.
+
 - [ ] **Parser-aware input and decorations:** finish admitted HTML/Markdown cold
   readiness and release input costs, the 12 ms budget/fallback behavior, and
   retained-fold/current-source ownership. Keep ordinary literal input independent

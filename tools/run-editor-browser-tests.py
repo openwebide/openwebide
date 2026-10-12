@@ -100,11 +100,15 @@ def main():
     files = [path.resolve() for path in args.artifact] if args.artifact else artifacts()
     runs, total = plan(runner, files, args.max_tests)
     print(json.dumps({"editorTests": total, "browserRuns": len(runs), "planOnly": args.check}), flush=True)
+    failures = 0
     for artifact, arguments, count in runs:
         print(json.dumps({"artifact": str(artifact), "tests": count, "matrix": arguments[0].rsplit("::", 1)[-1] in MATRICES,
                           "independent": "--exact" in arguments}), flush=True)
         if not args.check:
-            subprocess.run([runner, str(artifact), *arguments], check=True, cwd=FRONTEND)
+            result = subprocess.run([runner, str(artifact), *arguments], cwd=FRONTEND)
+            failures += result.returncode != 0
+    if failures:
+        raise SystemExit(f"{failures} editor browser runs failed")
 
 
 if __name__ == "__main__":
