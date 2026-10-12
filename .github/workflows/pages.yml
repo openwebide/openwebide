@@ -3,9 +3,9 @@ name: Project site
 on:
   push:
     branches: [main]
-    paths: ['Cargo.toml', 'Cargo.lock', '**/Cargo.toml', 'rust-toolchain.toml', 'site/**', 'tools/open_source.py', 'third-party/**', 'frontend/fonts/**', 'docs/**', 'README.md', 'CHANGELOG.md', 'LICENSE', 'frontend/styles.css', 'frontend/playground/**', 'frontend/src/**', 'frontend/build.rs', 'crates/core/src/plugins/panels.rs', 'tools/setup-wasm-compiler.sh', 'tools/check-panel-playground.py', 'tools/check-editor-recovery.py', '.github/actions/setup-editor-browser/**', 'frontend/pwa/favicon.svg', '.github/workflows/pages.yml']
+    paths: ['Cargo.toml', 'Cargo.lock', '**/Cargo.toml', 'rust-toolchain.toml', 'site/**', 'tools/open_source.py', 'third-party/**', 'frontend/fonts/**', 'docs/**', 'README.md', 'CHANGELOG.md', 'LICENSE', 'frontend/styles.css', 'frontend/playground/**', 'frontend/src/**', 'frontend/build.rs', 'crates/core/src/plugins/panels.rs', 'crates/plugin-sdk/**', 'tools/setup-wasm-compiler.sh', 'tools/check-panel-playground.py', 'tools/check-editor-recovery.py', '.github/actions/setup-editor-browser/**', 'frontend/pwa/favicon.svg', '.github/workflows/pages.yml']
   pull_request:
-    paths: ['Cargo.toml', 'Cargo.lock', '**/Cargo.toml', 'rust-toolchain.toml', 'site/**', 'tools/open_source.py', 'third-party/**', 'frontend/fonts/**', 'docs/**', 'README.md', 'CHANGELOG.md', 'LICENSE', 'frontend/styles.css', 'frontend/playground/**', 'frontend/src/**', 'frontend/build.rs', 'crates/core/src/plugins/panels.rs', 'tools/setup-wasm-compiler.sh', 'tools/check-panel-playground.py', 'tools/check-editor-recovery.py', '.github/actions/setup-editor-browser/**', 'frontend/pwa/favicon.svg', '.github/workflows/pages.yml']
+    paths: ['Cargo.toml', 'Cargo.lock', '**/Cargo.toml', 'rust-toolchain.toml', 'site/**', 'tools/open_source.py', 'third-party/**', 'frontend/fonts/**', 'docs/**', 'README.md', 'CHANGELOG.md', 'LICENSE', 'frontend/styles.css', 'frontend/playground/**', 'frontend/src/**', 'frontend/build.rs', 'crates/core/src/plugins/panels.rs', 'crates/plugin-sdk/**', 'tools/setup-wasm-compiler.sh', 'tools/check-panel-playground.py', 'tools/check-editor-recovery.py', '.github/actions/setup-editor-browser/**', 'frontend/pwa/favicon.svg', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
