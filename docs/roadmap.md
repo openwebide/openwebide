@@ -197,15 +197,13 @@ prepared only one token row per unit. Small rows now share the existing 64-recor
 
 **Remaining implementation** (all items remain part of this editor goal):
 
-Integrated run `38215684456` includes the initial readiness checkpoint but fails
-four non-editor contracts before editor execution. Editor checks now run as a
-separate CI step after a failed frontend run, and the editor runner collects
-failures while executing its complete verified inventory. The build still fails
-on any failed group. Inventory verification assigns all 186 compiled editor
-contracts exactly once across seven runs; a regression verifies later groups
-execute after an earlier failure and the runner still exits unsuccessfully.
-Hosted editor results and a fully green integrated release
-remain required.
+Integrated run `38264345670` passed all checks, both platform images and nightly
+publication ([receipt](editor-performance/editor-ci-67b-success.json)). Its complete
+editor inventory contained 216 contracts across eight browser runs, with unchanged
+deadlines. Editor checks run after a failed frontend step, and the runner executes
+every verified group while still failing on any failed group. Newer combined source
+and a reliable repeat of the full release remain required. The later host-update
+receipt race is fixed; its newer hosted result remains pending.
 
 - [ ] **Parser-aware input and decorations:** finish admitted HTML/Markdown cold
   readiness and release input costs, the 12 ms budget/fallback behavior, and
@@ -393,6 +391,18 @@ remain required.
   ([comparison](editor-performance/shared-token-production-summary.json),
   [samples](editor-performance/shared-token-production.jsonl)). Remaining row
   traversal, allocation overhead and complete publication still need bounded work.
+  Large pending rows now retain their complete token reconciliation for repeated
+  descriptor reads and paragraph HTML probes. An eight-row cache checks exact
+  source/token ownership and body identity, releases replaced owners, and leaves
+  cheap rows on the direct path. All 752 core tests, 129 native frontend tests,
+  46 WASM library checks, six complete-render geometry/fallback contracts and
+  eight full/windowed input cases pass with strict native/WASM lint and the full
+  production build ([receipt](editor-performance/pending-row-matches-browser.json)).
+  Current instrumented input observations are 134–170 ms, with peak Chrome PSS
+  about 669–689 MiB ([profiles](editor-performance/pending-row-matches-production-profile.jsonl));
+  they do not establish a matched latency/memory improvement. First reconciliation,
+  complete style comparisons, layout repetition and the full performance gates
+  remain open.
   Grammar paint now retains private piece/row assembly across cooperative yields,
   with an 8 KiB source-copy budget and independent 256-record construction,
   owner-copy, visitation and row-publication budgets. Synchronous consumers drive

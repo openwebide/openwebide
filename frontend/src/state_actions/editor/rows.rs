@@ -68,13 +68,8 @@ impl Hash for PaintRow<'_> {
 fn paint_row(paint: &EditorRowPaint, index: usize) -> Option<PaintRow<'_>> {
     let source = paint.projection.lines().get(index)?.source_line;
     let current = paint.projection.line_body(index)?;
-    let mut tokens = match paint.tokens.get(source) {
-        Some(tokens) if paint.prepared_source => {
-            RowPaintTokens::prepared(tokens, source + 1 < paint.tokens.len())
-        }
-        Some(tokens) => RowPaintTokens::current(tokens, current, source + 1 < paint.tokens.len()),
-        None => RowPaintTokens::prepared(&[], false),
-    };
+    let mut tokens = EditorActions::row_paint_tokens(paint, index)
+        .unwrap_or_else(|| RowPaintTokens::prepared(&[], false));
     let mut spans = tokens.iter();
     let first = spans.next();
     let plain = if let Some(token) = first
@@ -96,6 +91,50 @@ fn paint_row(paint: &EditorRowPaint, index: usize) -> Option<PaintRow<'_>> {
         normalize_cr,
         ending: index + 1 < paint.projection.lines().len(),
     })
+}
+fn matched_row_tokens<'a>(
+    paint: &'a EditorRowPaint,
+    row: usize,
+    source_line: usize,
+    tokens: &'a [openwebide_core::highlight::Token],
+    current: &'a str,
+) -> RowPaintTokens<'a> {
+    let strip_cr = source_line + 1 < paint.tokens.len();
+    // Cheap rows do not benefit from cache locking, lookup and eviction.
+    if current.len() <= 512 && tokens.len() <= 64 {
+        return RowPaintTokens::current(tokens, current, strip_cr);
+    }
+    let mut cache = paint
+        .token_matches
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if !cache.owners.as_ref().is_some_and(|(projection, tokens)| {
+        projection.shares_text_version(&paint.projection) && Arc::ptr_eq(tokens, &paint.tokens)
+    }) {
+        cache.rows.clear();
+        cache.owners = Some((paint.projection.clone(), paint.tokens.clone()));
+    }
+    let projection = &cache.owners.as_ref().unwrap().0;
+    if let Some(entry) = cache.rows.iter().find(|entry| {
+        entry.source_line == source_line
+            && projection.line_body(entry.row).is_some_and(|body| {
+                body.as_ptr() == current.as_ptr() && body.len() == current.len()
+            })
+    }) {
+        return RowPaintTokens::matched(tokens, current, strip_cr, &entry.matched);
+    }
+    let result = RowPaintTokens::current(tokens, current, strip_cr);
+    if cache.rows.len() == MAX_PAINT_RUN_ROWS {
+        cache.rows.remove(0);
+    }
+    cache
+        .rows
+        .push(crate::state::workspace::EditorRowTokenMatch {
+            row,
+            source_line,
+            matched: result.retained_match(),
+        });
+    result
 }
 #[derive(Clone, Copy)]
 struct PaintRowKey<'a> {
@@ -316,6 +355,18 @@ pub struct EditorParagraphSuffix {
     style_start: usize,
 }
 impl EditorActions {
+    pub(crate) fn row_paint_tokens(
+        paint: &EditorRowPaint,
+        row: usize,
+    ) -> Option<RowPaintTokens<'_>> {
+        let source = paint.projection.lines().get(row)?.source_line;
+        let tokens = paint.tokens.get(source)?;
+        Some(if paint.prepared_source {
+            RowPaintTokens::prepared(tokens, source + 1 < paint.tokens.len())
+        } else {
+            matched_row_tokens(paint, row, source, tokens, paint.projection.line_body(row)?)
+        })
+    }
     pub fn prepare_wrapped_paragraph<'a>(
         self,
         paint: &'a EditorRowPaint,
@@ -752,6 +803,7 @@ impl EditorActions {
             indentation,
             whitespace,
             word_wrap: self.preferences().word_wrap,
+            token_matches: Arc::default(),
         })
     }
     pub fn prepare_row_measurements(
@@ -2103,10 +2155,8 @@ mod tests {
         }
     }
 
-    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
-    #[cfg_attr(not(target_arch = "wasm32"), test)]
-    fn paint_run_ownership_survives_reconciliation_but_rejects_stale_inputs() {
-        let old = EditorRowPaint {
+    fn paint_fixture() -> EditorRowPaint {
+        EditorRowPaint {
             view_revision: 1,
             layout_epoch: 2,
             font_epoch: 3,
@@ -2122,7 +2172,96 @@ mod tests {
             indentation: Indentation::default(),
             whitespace: false,
             word_wrap: false,
-        };
+            token_matches: Arc::default(),
+        }
+    }
+
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    #[cfg_attr(not(target_arch = "wasm32"), test)]
+    fn pending_row_matches_require_exact_owners_and_keep_a_bounded_cache() {
+        let mut paint = paint_fixture();
+        paint.prepared_source = false;
+        let original = format!("{}let value = 1;", "a".repeat(1024));
+        let changed = format!("{}let value = 2;", "a".repeat(1024));
+        paint.projection = FoldProjection::new(&original, &Default::default());
+        paint.tokens = Arc::new(vec![
+            vec![Token {
+                kind: openwebide_core::highlight::TokenKind::String,
+                text: Arc::new(original),
+            }]
+            .into(),
+        ]);
+        for _ in 0..3 {
+            assert_eq!(
+                paint_row(&paint, 0)
+                    .unwrap()
+                    .tokens
+                    .iter()
+                    .next()
+                    .unwrap()
+                    .kind,
+                openwebide_core::highlight::TokenKind::String
+            );
+            assert_eq!(paint.token_matches.lock().unwrap().rows.len(), 1);
+        }
+        let previous_source = Arc::downgrade(paint.projection.textarea_text_snapshot());
+        paint.projection = FoldProjection::new(&changed, &Default::default());
+        let current = paint_row(&paint, 0).unwrap();
+        assert_eq!(
+            current.tokens.iter().collect::<Vec<_>>(),
+            RowPaintTokens::current(&paint.tokens[0], &changed, false)
+                .iter()
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(paint.token_matches.lock().unwrap().rows.len(), 1);
+        assert!(previous_source.upgrade().is_none());
+        let previous_tokens = Arc::downgrade(&paint.tokens);
+        paint.tokens = Arc::new(vec![
+            vec![Token {
+                kind: openwebide_core::highlight::TokenKind::Comment,
+                text: Arc::new(changed),
+            }]
+            .into(),
+        ]);
+        assert_eq!(
+            paint_row(&paint, 0)
+                .unwrap()
+                .tokens
+                .iter()
+                .next()
+                .unwrap()
+                .kind,
+            openwebide_core::highlight::TokenKind::Comment
+        );
+        assert_eq!(paint.token_matches.lock().unwrap().rows.len(), 1);
+        assert!(previous_tokens.upgrade().is_none());
+        let body = "a".repeat(1024);
+        paint.projection =
+            FoldProjection::new(&format!("{body}\n").repeat(12), &Default::default());
+        paint.tokens = Arc::new(
+            (0..12)
+                .map(|_| {
+                    vec![Token {
+                        kind: openwebide_core::highlight::TokenKind::String,
+                        text: Arc::new(body.clone()),
+                    }]
+                    .into()
+                })
+                .collect(),
+        );
+        for row in 0..12 {
+            assert!(paint_row(&paint, row).is_some());
+        }
+        assert_eq!(
+            paint.token_matches.lock().unwrap().rows.len(),
+            MAX_PAINT_RUN_ROWS
+        );
+    }
+
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    #[cfg_attr(not(target_arch = "wasm32"), test)]
+    fn paint_run_ownership_survives_reconciliation_but_rejects_stale_inputs() {
+        let old = paint_fixture();
         let mut fresh = old.clone();
         fresh.layout_epoch += 1;
         assert!(same_paint_runs(&old, &fresh));

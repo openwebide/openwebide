@@ -922,6 +922,7 @@ pub fn wrapped_coverage_matches_complete(
         paint.prepared_source,
         &paint.guides,
         PaintRows {
+            paint: None,
             indices: &[0],
             projection: None,
             source: Some(&paint.projection),
@@ -961,6 +962,7 @@ pub async fn bounded_wrapped_matches_complete(
                 scope.prepared_source,
                 &scope.guides,
                 PaintRows {
+                    paint: None,
                     indices: rows,
                     projection: None,
                     source: Some(&scope.projection),
@@ -1016,6 +1018,7 @@ async fn paragraph_matches_complete(
                 scope.prepared_source,
                 &scope.guides,
                 PaintRows {
+                    paint: None,
                     indices: rows,
                     projection: None,
                     source: Some(&scope.projection),
@@ -1104,6 +1107,7 @@ fn paint_text_range(
 
 /// Render the highlighted source as an HTML string for the overlay.
 struct PaintRows<'a> {
+    paint: Option<&'a crate::state::workspace::EditorRowPaint>,
     indices: &'a [usize],
     projection: Option<&'a openwebide_core::editor::FoldProjection>,
     source: Option<&'a openwebide_core::editor::FoldProjection>,
@@ -1112,6 +1116,7 @@ struct PaintRows<'a> {
 impl<'a> PaintRows<'a> {
     fn measured(indices: &'a [usize], source: &'a openwebide_core::editor::FoldProjection) -> Self {
         Self {
+            paint: None,
             indices,
             projection: None,
             source: Some(source),
@@ -1161,11 +1166,35 @@ fn highlight_html(
         let line = match lines.get(idx) {
             Some(line) => {
                 if !prepared_source && let Some(current) = current {
-                    openwebide_core::highlight::RowPaintTokens::current(
-                        line,
-                        current,
-                        idx + 1 < lines.len(),
-                    )
+                    let matched = rows
+                        .paint
+                        .filter(|paint| {
+                            !paint.prepared_source
+                                && paint.tokens.as_ptr() == lines.as_ptr()
+                                && paint.tokens.len() == lines.len()
+                                && rows.source.is_some_and(|source| {
+                                    source.shares_text_version(&paint.projection)
+                                })
+                        })
+                        .and_then(|paint| {
+                            let row = paint
+                                .projection
+                                .lines()
+                                .binary_search_by_key(&idx, |line| line.source_line)
+                                .ok()?;
+                            let body = paint.projection.line_body(row)?;
+                            if body.as_ptr() != current.as_ptr() || body.len() != current.len() {
+                                return None;
+                            }
+                            EditorActions::row_paint_tokens(paint, row)
+                        });
+                    matched.unwrap_or_else(|| {
+                        openwebide_core::highlight::RowPaintTokens::current(
+                            line,
+                            current,
+                            idx + 1 < lines.len(),
+                        )
+                    })
                 } else {
                     openwebide_core::highlight::RowPaintTokens::prepared(
                         line,
@@ -1592,6 +1621,7 @@ fn HighlightOverlay(
                 return;
             }
             let geometry_paint = paint.clone();
+            let render_paint = paint.clone();
             let progress_paint = paint.clone();
             let result = super::editor_rows::measure_batches(
                 actions,
@@ -1633,6 +1663,7 @@ fn HighlightOverlay(
                         prepared_tokens.0,
                         &guides,
                         PaintRows {
+                            paint: Some(&render_paint),
                             indices: rows,
                             projection: None,
                             source: Some(&projection),
@@ -1734,6 +1765,7 @@ fn HighlightOverlay(
                         *prepared,
                         guides,
                         PaintRows {
+                            paint: None,
                             indices: &visible.get_untracked(),
                             projection: actions.projection().as_ref(),
                             source: actions.projection().as_ref(),

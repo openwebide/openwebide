@@ -194,6 +194,21 @@ pub struct EditorRowPaint {
     pub indentation: openwebide_core::editor::Indentation,
     pub whitespace: bool,
     pub word_wrap: bool,
+    pub(crate) token_matches: Arc<std::sync::Mutex<EditorRowTokenMatches>>,
+}
+#[derive(Default, Debug)]
+pub(crate) struct EditorRowTokenMatches {
+    pub owners: Option<(
+        openwebide_core::editor::FoldProjection,
+        Arc<openwebide_core::highlight::TokenRows>,
+    )>,
+    pub rows: Vec<EditorRowTokenMatch>,
+}
+#[derive(Clone, Debug)]
+pub(crate) struct EditorRowTokenMatch {
+    pub row: usize,
+    pub source_line: usize,
+    pub matched: openwebide_core::highlight::RowPaintMatch,
 }
 #[derive(Clone, Debug)]
 pub struct EditorParagraphCache {

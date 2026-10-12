@@ -8,6 +8,9 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Reuse large pending-row token reconciliation for repeated reads and paragraph rendering of the exact immutable source and token owners, retaining at most eight row matches per paint snapshot.
+- Keep the host-update browser facade behind the WASM platform boundary so native frontend library checks compile again.
+
 - Skip general Unicode segmentation for adjacent printable ASCII characters at proven grapheme boundaries. Keep bounded scanning, Unicode lookahead and suspended-cluster handling shared across editor preparation paths.
 - Wait for the host-update supervisor's terminal receipt in CI, rather than treating its child's output file as proof of job completion.
 

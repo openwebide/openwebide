@@ -8,7 +8,7 @@
 //! altered, so the colored text stays pixel-aligned with the raw text.
 
 mod paint;
-pub use paint::{PaintToken, RowPaintIter, RowPaintTokens};
+pub use paint::{PaintToken, RowPaintIter, RowPaintMatch, RowPaintTokens};
 
 /// The syntactic category of a token, used to pick a display color.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

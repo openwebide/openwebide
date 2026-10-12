@@ -112,7 +112,49 @@ pub struct RowPaintTokens<'a> {
     length: usize,
     whole: bool,
 }
+/// Reconciliation metadata for one exact immutable token row and source body.
+/// Hosts must retain and verify both owners before supplying it to another read.
+#[derive(Clone, Debug)]
+pub struct RowPaintMatch {
+    size: usize,
+    prefix: usize,
+    suffix: usize,
+    middle: bool,
+    length: usize,
+    whole: bool,
+}
 impl<'a> RowPaintTokens<'a> {
+    pub fn retained_match(&self) -> RowPaintMatch {
+        RowPaintMatch {
+            size: self.size,
+            prefix: self.prefix,
+            suffix: self.suffix,
+            middle: self.middle.is_some(),
+            length: self.length,
+            whole: self.whole,
+        }
+    }
+    /// Restore a match only with the same token/source owners and CR policy.
+    pub fn matched(
+        tokens: &'a [Token],
+        source: &'a str,
+        strip_cr: bool,
+        matched: &RowPaintMatch,
+    ) -> Self {
+        Self {
+            tokens,
+            strip_cr,
+            size: matched.size,
+            prefix: matched.prefix,
+            suffix: matched.suffix,
+            middle: matched.middle.then(|| PaintToken {
+                kind: TokenKind::Plain,
+                text: &source[matched.prefix..source.len() - matched.suffix],
+            }),
+            length: matched.length,
+            whole: matched.whole,
+        }
+    }
     pub fn prepared(tokens: &'a [Token], strip_cr: bool) -> Self {
         Self::windows(tokens, strip_cr, 0, 0, 0, None, true)
     }
@@ -218,6 +260,28 @@ impl<'a> RowPaintTokens<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn retained_matches_preserve_exact_spans_and_native_cr_policy() {
+        let tokens = fixture();
+        for current in [
+            "const value = \"文😀\";",
+            "coxst value = \"文😀\";",
+            "",
+            "文😀",
+            "const value = \"文😀\";\r",
+        ] {
+            for strip_cr in [false, true] {
+                let expected = RowPaintTokens::current(&tokens, current, strip_cr);
+                let matched = expected.retained_match();
+                let restored = RowPaintTokens::matched(&tokens, current, strip_cr, &matched);
+                assert_eq!(restored.len(), expected.len());
+                assert_eq!(
+                    restored.iter().collect::<Vec<_>>(),
+                    expected.iter().collect::<Vec<_>>()
+                );
+            }
+        }
+    }
     fn fixture() -> Vec<Token> {
         vec![
             Token {
