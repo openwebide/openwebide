@@ -697,6 +697,17 @@ combined-source CI result.
   probe now observes blob/module workers and complete framed source deltas;
   its full/delta UTF-8, sequence and cancellation regression passes. Real folder
   permissions, physical input, overall performance and final CI remain open.
+  Review disk comparisons now share the 8 KiB complete-only equality policy,
+  including missing/empty distinctions. Decoding and comparison batches use
+  cheap root/ticket/handle checks instead of repeatedly rebuilding the full
+  recovery guard; complete guards still run before publication/application and
+  after comparison yields. All 770 core tests, 51 WASM library checks and 23
+  recovery-related browser contracts pass through both real adapters, with
+  strict native core/WASM frontend/WASI backend lint
+  ([receipt](editor-performance/recovery-review-comparison-browser.json)). Full
+  guard capture/equality, snapshot decoding, serialization, allocation and final
+  history/selection publication remain open; repeat fresh production and final
+  CI verification before closing.
 
 **Remaining completion gates**:
 

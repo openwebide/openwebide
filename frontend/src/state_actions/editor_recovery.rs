@@ -1056,7 +1056,7 @@ impl RecoveryContext {
             disk: None,
         };
         spawn_local(async move {
-            let result = read_review_disk(&ws, &path, || self.review_current(&scope)).await;
+            let result = read_review_disk(&ws, &path, || self.review_root_current(&scope)).await;
             if !self.review_current(&scope) {
                 return;
             }
@@ -1093,7 +1093,7 @@ impl RecoveryContext {
         ws: &Workspace,
         scope: &FileReviewGuard,
     ) -> Option<Option<String>> {
-        let result = read_review_disk(ws, &scope.path, || self.review_current(scope)).await;
+        let result = read_review_disk(ws, &scope.path, || self.review_root_current(scope)).await;
         if !self.review_current(scope) {
             self.invalidate_review(scope);
             return None;
@@ -1106,7 +1106,15 @@ impl RecoveryContext {
                 return None;
             }
         };
-        if disk != scope.disk {
+        let equal = compare_review_disk(disk.as_deref(), scope.disk.as_deref(), || {
+            self.review_root_current(scope)
+        })
+        .await;
+        if !self.review_current(scope) {
+            self.invalidate_review(scope);
+            return None;
+        }
+        if equal != Some(true) {
             self.state.file_review.set(None);
             self.ui.notify("The disk file changed while its review was open. Review it again before choosing an action.");
             return None;
@@ -1219,6 +1227,24 @@ impl RecoveryContext {
     }
 }
 
+async fn compare_review_disk(
+    left: Option<&str>,
+    right: Option<&str>,
+    current: impl Fn() -> bool,
+) -> Option<bool> {
+    let mut preparation = openwebide_core::editor::RecoveryTextComparison::new(left, right);
+    loop {
+        if !current() {
+            return None;
+        }
+        if preparation.advance(1) {
+            break;
+        }
+        crate::util::yield_task().await;
+    }
+    current().then(|| preparation.finish().unwrap())
+}
+
 async fn decode_disk_bytes(
     bytes: Option<Vec<u8>>,
     current: &impl Fn() -> bool,
@@ -1275,6 +1301,42 @@ mod disk_tests {
         future::Future,
         task::{Context, Poll, Waker},
     };
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    async fn review_disk_comparison_yields_without_partial_equality_or_stale_results() {
+        crate::testing::initialize_runtime();
+        let left = "ASCII 文😀\r\n".repeat(8000);
+        let right = left.clone();
+        let active = Cell::new(true);
+        let current = || active.get();
+        let mut pending = Box::pin(compare_review_disk(Some(&left), Some(&right), current));
+        assert!(matches!(
+            pending
+                .as_mut()
+                .poll(&mut Context::from_waker(Waker::noop())),
+            Poll::Pending
+        ));
+        active.set(false);
+        assert_eq!(pending.await, None);
+        active.set(true);
+        assert_eq!(
+            compare_review_disk(Some(&left), Some(&right), current).await,
+            Some(true)
+        );
+        let mut changed = right;
+        changed.replace_range(changed.len() - 2.., "xx");
+        assert_eq!(
+            compare_review_disk(Some(&left), Some(&changed), current).await,
+            Some(false)
+        );
+        assert_eq!(
+            compare_review_disk(None, Some(""), current).await,
+            Some(false)
+        );
+        assert_eq!(compare_review_disk(None, None, current).await, Some(true));
+        active.set(false);
+        assert_eq!(compare_review_disk(None, None, current).await, None);
+    }
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn overwrite_comparison_yields_retries_committed_sources_and_rejects_lost_owners() {

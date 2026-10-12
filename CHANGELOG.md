@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Compare recovered-file review disk versions cooperatively, preserving missing/empty semantics and rejecting stale scope. Use cheap scope checks between decoding/comparison batches, with full recovery guards before publishing or applying a review decision.
+
 - Verify production recovery, real browser edits, autosave, restart and reload/new-window restoration after cooperative disk decoding and overwrite checks. Observe current blob/module workers and complete framed source replies in the recovery fixture, including UTF-8 deltas.
 
 - Compare recovered-file overwrite approvals cooperatively against immutable committed draft/disk versions. Retry changed source owners and reject lost scope before authorizing a save; preserve missing-versus-empty file semantics.

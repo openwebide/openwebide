@@ -518,6 +518,37 @@ fn equal_text(left: &str, right: &str, next: &mut usize) -> Option<bool> {
     (end == left.len()).then_some(true)
 }
 
+/// Complete-only comparison of two recovered disk versions, including absence.
+/// Each step uses the same bounded equality policy as disk/overwrite checks.
+pub struct RecoveryTextComparison<'a> {
+    pair: Option<(&'a str, &'a str)>,
+    next: usize,
+    result: Option<bool>,
+}
+impl<'a> RecoveryTextComparison<'a> {
+    pub fn new(left: Option<&'a str>, right: Option<&'a str>) -> Self {
+        Self {
+            pair: left.zip(right),
+            next: 0,
+            result: (left.is_none() || right.is_none())
+                .then_some(left.is_none() && right.is_none()),
+        }
+    }
+    pub fn advance(&mut self, budget: usize) -> bool {
+        for _ in 0..budget {
+            if self.result.is_some() {
+                break;
+            }
+            let (left, right) = self.pair.unwrap();
+            self.result = equal_text(left, right, &mut self.next);
+        }
+        self.result.is_some()
+    }
+    pub fn finish(self) -> Option<bool> {
+        self.result
+    }
+}
+
 #[derive(Clone, Copy)]
 enum DiskPhase {
     AdmitSaved,
@@ -1257,6 +1288,35 @@ mod tests {
         }
         let mut preparation = sources.prepare_overwrite(&source, None, None);
         assert!(!preparation.advance(1));
+        assert!(preparation.finish().is_none());
+    }
+
+    #[test]
+    fn recovered_text_comparison_matches_optional_string_equality_at_every_budget() {
+        let source = "ASCII 文😀\r\n".repeat(8000);
+        let same = source.clone();
+        let mut changed = same.clone();
+        changed.replace_range(changed.len() - 2.., "xx");
+        let values = [
+            None,
+            Some(""),
+            Some(source.as_str()),
+            Some(same.as_str()),
+            Some(changed.as_str()),
+        ];
+        for left in values {
+            for right in values {
+                for budget in [1, 8, 64] {
+                    let mut preparation = RecoveryTextComparison::new(left, right);
+                    while !preparation.advance(budget) {}
+                    assert_eq!(preparation.finish(), Some(left == right));
+                }
+            }
+        }
+        let mut preparation = RecoveryTextComparison::new(Some(&source), Some(&same));
+        assert!(!preparation.advance(0));
+        assert!(!preparation.advance(1));
+        assert_eq!(preparation.next, 8192);
         assert!(preparation.finish().is_none());
     }
 
