@@ -307,6 +307,22 @@ prepared only one token row per unit. Small rows now share the existing 64-recor
   [samples](editor-performance/paint-assembly-production.jsonl)). Initial semantic
   collection/sorting, capacity growth, retained-cache retirement and complete
   final table publication remain unfinished.
+  Semantic paint masking, stable ordering and overlap checks now resume in
+  1,024-record numeric-metadata steps. Parsed embedded-body coverage uses ordered
+  starts and prefix maximum ends instead of a complete body scan per outer span;
+  nested, unsorted, absent-tree and zero-width cases match the original linear
+  oracle. The structure and paint paths share the same metadata sorter, including
+  its four-comparison step bound and adaptive fallback. All 726 core tests, six
+  local/remote browser contracts, four worker startup tests and strict native/WASM
+  lint pass ([receipt](editor-performance/semantic-normalization-browser.json)).
+  Both production startup paths preserve the full language/config/embedded
+  inventory and MiB literal reception. Sixteen wrapped HTML/Markdown production
+  edits preserve full source with unchanged main-thread WASM memory. Mixed timing
+  and PSS samples establish no general gain
+  ([comparison](editor-performance/semantic-normalization-production-summary.json),
+  [samples](editor-performance/semantic-normalization-production.jsonl)). Initial
+  cached-subtree classification/rebasing remains synchronous; capacity growth,
+  retained-cache retirement and final publication still need bounded work.
 - [ ] **Source, worker transport and storage:** finish external parser snapshots,
   changed-revision comparisons, header/capacity allocation,
   JavaScript string conversion, complete message decoding/publication,

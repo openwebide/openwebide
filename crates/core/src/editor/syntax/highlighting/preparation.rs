@@ -132,6 +132,7 @@ pub(in crate::editor::syntax) struct PaintPreparation {
     source: Arc<String>,
     context: Arc<crate::editor::Structure>,
     semantic: Vec<(Range<usize>, TokenKind)>,
+    semantic_preparation: Option<super::semantics::SemanticPreparation>,
     segments: Segments,
     previous: SyntaxPaint,
     edit: super::super::InputEdit,
@@ -153,6 +154,11 @@ pub(in crate::editor::syntax) struct PaintPreparation {
 }
 impl PaintPreparation {
     #[cfg(test)]
+    pub(super) fn semantic_pending(&self) -> bool {
+        self.semantic_preparation.is_some()
+    }
+
+    #[cfg(test)]
     pub(in crate::editor::syntax) fn diagnostic(&self) -> String {
         format!(
             "row={}, segment={}, pieces={}, tokens={}, copying={:?}",
@@ -170,7 +176,10 @@ impl PaintPreparation {
         document: &SyntaxDocument,
         context: Arc<crate::editor::Structure>,
     ) -> Option<Self> {
-        let semantic = document.paint_semantics(&context)?;
+        let CollectedHighlights {
+            spans: semantic,
+            outer,
+        } = document.collect_paint_semantics()?;
         let previous = std::mem::take(&mut *document.paint.borrow_mut());
         let edit = if Arc::ptr_eq(&previous.source, &document.text) {
             super::super::input_edit("", "", None).ok()?
@@ -182,7 +191,8 @@ impl PaintPreparation {
         let mut work = Self {
             source: document.text.clone(),
             context,
-            semantic,
+            semantic: Vec::new(),
+            semantic_preparation: Some(super::semantics::SemanticPreparation::new(semantic, outer)),
             segments: Segments::default(),
             #[cfg(test)]
             reused_source_change: previous.source_change.is_some(),
@@ -295,6 +305,24 @@ impl PaintPreparation {
         let mut records = PAINT_BATCH_RECORDS;
         if !Arc::ptr_eq(&self.source, &document.text) {
             return None;
+        }
+        if let Some(work) = &mut self.semantic_preparation {
+            if !work.advance(
+                &self.context,
+                document.embedded.len(),
+                |index| {
+                    document
+                        .embedded
+                        .get(index)
+                        .filter(|body| body.tree.is_some())
+                        .map(|body| body.range.start_byte..body.range.end_byte)
+                },
+                super::semantics::SEMANTIC_BATCH_RECORDS,
+            )? {
+                return Some(false);
+            }
+            self.semantic = self.semantic_preparation.take()?.finish()?;
+            return Some(false);
         }
         let mut token_records = records;
         let mut source_rows = records;

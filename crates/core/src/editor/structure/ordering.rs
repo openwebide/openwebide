@@ -1,6 +1,6 @@
 //! Stable source-metadata ordering without an unbounded sort call.
 
-pub(super) struct MetadataOrder {
+pub(in crate::editor) struct MetadataOrder {
     indices: Vec<usize>,
     spare: Vec<usize>,
     phase: Phase,
@@ -74,10 +74,15 @@ impl MetadataOrder {
             Phase::Insertion => {
                 // Parser metadata is usually ordered except for enclosing ranges.
                 // Bound this adaptive path so adversarial order cannot become quadratic.
-                if self.left > 0 && key(&values[self.left - 1]) > key(&values[self.left]) {
-                    values.swap(self.left - 1, self.left);
-                    self.left -= 1;
-                } else {
+                let complete =
+                    if self.left > 0 && key(&values[self.left - 1]) > key(&values[self.left]) {
+                        values.swap(self.left - 1, self.left);
+                        self.left -= 1;
+                        self.left == 0 || key(&values[self.left - 1]) <= key(&values[self.left])
+                    } else {
+                        true
+                    };
+                if complete {
                     self.position += 1;
                     self.left = self.position;
                     if self.position == length {

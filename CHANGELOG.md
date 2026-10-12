@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Normalize semantic paint spans across bounded steps using the shared metadata sorter. Index parsed embedded-body coverage instead of scanning every body for every outer span; preserve opaque-region filtering, overlap rejection, cache reuse and source ownership in both project modes.
+
 - Resume grammar paint across bounded source-copy, piece-row, token-owner and row-publication steps in the shared Rust engine. Keep incomplete paint private, preserve the original parse status across yields, cancel superseded work, and share the same assembly with synchronous consumers.
 
 - Share immutable token text across retained syntax pieces, assembled paint rows and cloned publications, avoiding repeated whole-token byte copies. Preserve diff trimming through copy-on-write and keep worker framing, source budgets and language behavior unchanged.

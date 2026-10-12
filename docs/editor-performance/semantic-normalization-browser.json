@@ -1,0 +1,75 @@
+{
+  "coreTests": {
+    "passed": 726,
+    "ignored": 1
+  },
+  "strictLint": [
+    "native core, all targets",
+    "WASM frontend, all targets"
+  ],
+  "workerStartup": {
+    "passed": 4,
+    "timeoutSeconds": 300
+  },
+  "newContracts": [
+    "indexed coverage versus original linear oracle, including missing/empty/nested/unsorted bodies",
+    "reversed normalization and opaque regions versus original normalization",
+    "overlap rejection after both masking passes",
+    "private normalization yields, cancellation and source replacement"
+  ],
+  "components": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "console": "Invoking test: editor::syntax_preparation_cannot_publish_after_scope_changes_in_both_modes\nInvoking test: editor::neutral_edits_paint_before_pending_worker_reply_in_both_modes\nInvoking test: editor::localized_wrapped_edits_reuse_exact_row_heights_in_both_modes\nInvoking test: editor::incremental_syntax_and_fold_provider_share_both_modes_and_account_reset\nInvoking test: editor::held_syntax_keeps_embedded_typing_and_post_edit_context_in_both_modes\nInvoking test: editor::diff_syntax_paint_keeps_word_changes_and_embedded_context_in_both_modes\n",
+    "output": "\nrunning 6 tests\ntest editor::syntax_preparation_cannot_publish_after_scope_changes_in_both_modes ... ok\ntest editor::neutral_edits_paint_before_pending_worker_reply_in_both_modes ... ok\ntest editor::localized_wrapped_edits_reuse_exact_row_heights_in_both_modes ... ok\ntest editor::incremental_syntax_and_fold_provider_share_both_modes_and_account_reset ... ok\ntest editor::held_syntax_keeps_embedded_typing_and_post_edit_context_in_both_modes ... ok\ntest editor::diff_syntax_paint_keeps_word_changes_and_embedded_context_in_both_modes ... ok\n\ntest result: ok. 6 passed; 0 failed; 0 ignored; 0 filtered out; finished in 2.46s\n\n",
+    "passed": true,
+    "tests": [
+      "__wbgt__components::editor::diff_syntax_paint_keeps_word_changes_and_embedded_context_in_both_modes",
+      "__wbgt__components::editor::held_syntax_keeps_embedded_typing_and_post_edit_context_in_both_modes",
+      "__wbgt__components::editor::incremental_syntax_and_fold_provider_share_both_modes_and_account_reset",
+      "__wbgt__components::editor::localized_wrapped_edits_reuse_exact_row_heights_in_both_modes",
+      "__wbgt__components::editor::neutral_edits_paint_before_pending_worker_reply_in_both_modes",
+      "__wbgt__components::editor::syntax_preparation_cannot_publish_after_scope_changes_in_both_modes"
+    ],
+    "servedFonts": {
+      "/fonts/MonaspaceNeon-v1.400.woff2": "6569968f448ae856ab5b57dff1f13b109b220ca8e3f664169e135fcb5c4f0721"
+    },
+    "libraryStartSuppressed": false,
+    "testModuleRoute": "/tests.js"
+  },
+  "productionWorkerInventory": [
+    {
+      "compiled_module": false,
+      "providers": 15,
+      "config_languages": 6,
+      "plain_fallback_languages": 1,
+      "nested_languages": 6,
+      "incremental": true,
+      "structural_delta": true,
+      "ui_event_during_worker": true,
+      "oversize_fallback": true,
+      "changed_row_records": 3,
+      "cooperative_yields": 2270,
+      "large_literal_bytes": 1043013,
+      "large_literal_yields": 62,
+      "yaml_bytes": 1043026,
+      "yaml_yields": 62
+    },
+    {
+      "compiled_module": true,
+      "providers": 15,
+      "config_languages": 6,
+      "plain_fallback_languages": 1,
+      "nested_languages": 6,
+      "incremental": true,
+      "structural_delta": true,
+      "ui_event_during_worker": true,
+      "oversize_fallback": true,
+      "changed_row_records": 3,
+      "cooperative_yields": 2270,
+      "large_literal_bytes": 1043013,
+      "large_literal_yields": 62,
+      "yaml_bytes": 1043026,
+      "yaml_yields": 62
+    }
+  ]
+}

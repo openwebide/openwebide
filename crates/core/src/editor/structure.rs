@@ -5,7 +5,7 @@ use std::sync::Arc;
 #[cfg(feature = "editor-parser")]
 pub(super) mod fallback;
 #[cfg(feature = "editor-parser")]
-mod ordering;
+pub(super) mod ordering;
 #[cfg(feature = "editor-parser")]
 mod publication;
 #[cfg(feature = "editor-parser")]

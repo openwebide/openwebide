@@ -1,5 +1,6 @@
 //! Shared grammar-aware paint; source bytes and line boundaries are preserved.
 mod preparation;
+mod semantics;
 use super::SyntaxDocument;
 use crate::editor::structure::RegionKind;
 use crate::highlight::{Language, Token, TokenKind, TokenRow, TokenRows, share_token_row};
@@ -7,6 +8,11 @@ use crate::highlight::{Language, Token, TokenKind, TokenRow, TokenRows, share_to
 use crate::highlight::{highlight_lines, share_token_rows};
 pub(super) use preparation::PaintPreparation;
 use std::{collections::HashMap, ops::Range, sync::Arc};
+
+struct CollectedHighlights {
+    spans: Vec<(Range<usize>, TokenKind)>,
+    outer: usize,
+}
 
 /// Merge validated ordered span endpoints into disjoint paint segments.
 /// Protected regions, embedded scopes and semantic spans each have disjoint ranges.
@@ -301,12 +307,10 @@ impl SyntaxDocument {
         }
     }
 
-    fn paint_semantics(
-        &self,
-        context: &crate::editor::Structure,
-    ) -> Option<Vec<(Range<usize>, TokenKind)>> {
+    fn collect_paint_semantics(&self) -> Option<CollectedHighlights> {
         let mut semantic = Vec::new();
         let mut visited = 0;
+        let mut outer = 0;
         for (index, (tree, provider, cache)) in self
             .tree
             .iter()
@@ -324,37 +328,37 @@ impl SyntaxDocument {
                 .collect(tree, provider, &self.text, &mut visited, &mut semantic)
                 .ok()?;
             if index == 0 {
-                // An injected grammar owns its source range. The outer grammar
-                // may also expose punctuation there (Markdown inline blocks).
-                semantic.retain(|(range, _)| {
-                    !self.embedded.iter().any(|body| {
-                        body.tree.is_some()
-                            && range.start < body.range.end_byte
-                            && range.end > body.range.start_byte
-                    })
-                });
+                outer = semantic.len();
             }
         }
-        semantic.sort_by_key(|(range, _)| (range.start, range.end));
-        // Opaque grammar contexts own their complete strings/comments. Tokens
-        // inside them cannot split their paint or override that classification.
-        semantic.retain(|(range, _)| {
-            context
-                .protected
-                .partition_point(|(protected, _, _)| protected.start <= range.start)
-                .checked_sub(1)
-                .and_then(|index| context.protected.get(index))
-                .is_none_or(|(protected, _, _)| range.end > protected.end)
-        });
-        // A selector must classify leaves or disjoint spans. Overlap is a typed
-        // analysis fallback, rather than a renderer-dependent priority rule.
-        if semantic
-            .windows(2)
-            .any(|pair| pair[0].0.end > pair[1].0.start)
-        {
-            return None;
-        }
-        Some(semantic)
+        Some(CollectedHighlights {
+            spans: semantic,
+            outer,
+        })
+    }
+
+    #[cfg(test)]
+    fn paint_semantics(
+        &self,
+        context: &crate::editor::Structure,
+    ) -> Option<Vec<(Range<usize>, TokenKind)>> {
+        let CollectedHighlights {
+            spans: values,
+            outer,
+        } = self.collect_paint_semantics()?;
+        let mut work = semantics::SemanticPreparation::new(values, outer);
+        while !work.advance(
+            context,
+            self.embedded.len(),
+            |index| {
+                self.embedded
+                    .get(index)
+                    .filter(|body| body.tree.is_some())
+                    .map(|body| body.range.start_byte..body.range.end_byte)
+            },
+            256,
+        )? {}
+        work.finish()
     }
 }
 
