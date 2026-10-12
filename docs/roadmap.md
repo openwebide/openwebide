@@ -666,7 +666,7 @@ combined-source CI result.
   lost scope. The prior synchronous API drives the same core policy. Verification
   passes: 744 core tests, five lifecycle/current-source browser tests, fifteen
   recovery/cache contracts, strict native/WASM/WASI lint and production build
-  ([receipt](editor-performance/recovery-disk-browser.json)). Overwrite-permit
+  ([receipt](editor-performance/recovery-disk-browser.json)). Review/snapshot
   comparisons, serialized snapshot UTF-8 decoding, capture/guard checks,
   serialization, allocation growth and other history/publication costs remain open.
   Recovered disk UTF-8 decoding now validates privately in 8 KiB slices and moves
@@ -680,6 +680,17 @@ combined-source CI result.
   ([receipt](editor-performance/recovery-disk-utf8-browser.json)). Serialized
   snapshot decoding, overwrite/guard comparisons, capture, serialization,
   allocation growth and final history/selection publication remain unfinished.
+  Explicit overwrite permits now use immutable committed source owners and a
+  complete-only comparison in 8 KiB units. Disk reconciliation shares the same
+  equality policy. Verification retries edited or acknowledged source owners,
+  rejects canceled/disposed/removed owners, and preserves missing versus empty
+  disk semantics. All 769 core tests, 50 WASM library checks and 23 recovery-related
+  browser contracts pass, including both real workspace adapters. Strict native
+  core, WASM frontend and WASI backend lint pass
+  ([receipt](editor-performance/recovery-overwrite-browser.json)). Broader review/
+  snapshot guard comparisons, capture, serialization, allocation and final
+  history/selection publication remain open; fresh production and final CI
+  verification are still required.
 
 **Remaining completion gates**:
 

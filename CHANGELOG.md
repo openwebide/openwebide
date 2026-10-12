@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Compare recovered-file overwrite approvals cooperatively against immutable committed draft/disk versions. Retry changed source owners and reject lost scope before authorizing a save; preserve missing-versus-empty file semantics.
+
 - Validate recovered disk text cooperatively in 8 KiB UTF-8 slices without copying its byte buffer. Reject invalid text and canceled reads before publishing text or consuming overwrite permits in either workspace mode.
 
 - Verify production composition/undo/redo and complete-source styled-line edits after grouped coordinates in both modes, with wrapping on/off; confirm the integrated nightly release passes its complete hosted checks.

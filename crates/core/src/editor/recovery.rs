@@ -430,6 +430,22 @@ pub struct RecoverySources {
 }
 
 impl RecoverySources {
+    pub fn prepare_overwrite<'a>(
+        &'a self,
+        expected_draft: &'a str,
+        disk: Option<&'a str>,
+        expected_disk: Option<&'a str>,
+    ) -> RecoveryOverwritePreparation<'a> {
+        RecoveryOverwritePreparation {
+            pairs: [
+                Some((self.text.as_str(), expected_draft)),
+                disk.zip(expected_disk),
+            ],
+            pair: 0,
+            next: 0,
+            result: (disk.is_some() != expected_disk.is_some()).then_some(false),
+        }
+    }
     pub fn prepare_disk<'a>(&'a self, disk: Option<&'a str>) -> RecoveryDiskPreparation<'a> {
         let result = (self.text.len() > MAX_DOCUMENT_BYTES
             || self.saved.len() > MAX_DOCUMENT_BYTES)
@@ -449,6 +465,57 @@ impl RecoverySources {
         while !preparation.advance(64) {}
         preparation.finish().unwrap()
     }
+}
+
+/// Validate an explicit overwrite against complete committed draft/disk versions.
+/// Each step compares at most 8 KiB; only finish exposes an approval decision.
+pub struct RecoveryOverwritePreparation<'a> {
+    pairs: [Option<(&'a str, &'a str)>; 2],
+    pair: usize,
+    next: usize,
+    result: Option<bool>,
+}
+impl RecoveryOverwritePreparation<'_> {
+    pub fn advance(&mut self, budget: usize) -> bool {
+        for _ in 0..budget {
+            if self.result.is_some() {
+                break;
+            }
+            let equal = self.pairs[self.pair].map_or(Some(true), |(left, right)| {
+                equal_text(left, right, &mut self.next)
+            });
+            match equal {
+                Some(false) => self.result = Some(false),
+                Some(true) => {
+                    self.pair += 1;
+                    self.next = 0;
+                    if self.pair == self.pairs.len() {
+                        self.result = Some(true);
+                    }
+                }
+                None => {}
+            }
+        }
+        self.result.is_some()
+    }
+    pub fn finish(self) -> Option<bool> {
+        self.result
+    }
+}
+
+fn equal_text(left: &str, right: &str, next: &mut usize) -> Option<bool> {
+    if left.len() != right.len() {
+        return Some(false);
+    }
+    if std::ptr::eq(left, right) {
+        return Some(true);
+    }
+    let end = next.saturating_add(8192).min(left.len());
+    if left.as_bytes()[*next..end] != right.as_bytes()[*next..end] {
+        return Some(false);
+    }
+    *next = end;
+    (end == left.len()).then_some(true)
 }
 
 #[derive(Clone, Copy)]
@@ -480,18 +547,7 @@ impl RecoveryDiskPreparation<'_> {
     }
 
     fn equal(&mut self, left: &str, right: &str) -> Option<bool> {
-        if left.len() != right.len() {
-            return Some(false);
-        }
-        if std::ptr::eq(left, right) {
-            return Some(true);
-        }
-        let end = self.next.saturating_add(8192).min(left.len());
-        if left.as_bytes()[self.next..end] != right.as_bytes()[self.next..end] {
-            return Some(false);
-        }
-        self.next = end;
-        (end == left.len()).then_some(true)
+        equal_text(left, right, &mut self.next)
     }
 
     pub fn advance(&mut self, budget: usize) -> bool {
@@ -1157,6 +1213,52 @@ mod encoded_text {
 mod tests {
     use super::super::NativeInputKind;
     use super::*;
+
+    #[test]
+    fn overwrite_approval_compares_complete_draft_and_disk_in_bounded_units() {
+        let source = "ASCII 文😀\r\n".repeat(8000);
+        let document = super::super::Document::new(source.clone());
+        let sources = document.recovery_sources();
+        let mut changed = source.clone();
+        changed.replace_range(changed.len() - 2.., "xx");
+        for (draft, disk, expected_disk, expected) in [
+            (
+                source.as_str(),
+                Some(source.as_str()),
+                Some(source.as_str()),
+                true,
+            ),
+            (
+                changed.as_str(),
+                Some(source.as_str()),
+                Some(source.as_str()),
+                false,
+            ),
+            (
+                source.as_str(),
+                Some(changed.as_str()),
+                Some(source.as_str()),
+                false,
+            ),
+            (source.as_str(), None, None, true),
+            (source.as_str(), Some(""), None, false),
+            (source.as_str(), None, Some(""), false),
+        ] {
+            let mut preparation = sources.prepare_overwrite(draft, disk, expected_disk);
+            while preparation.result.is_none() {
+                let pair = preparation.pair;
+                let next = preparation.next;
+                preparation.advance(1);
+                if pair == preparation.pair {
+                    assert!(preparation.next - next <= 8192);
+                }
+            }
+            assert_eq!(preparation.finish(), Some(expected));
+        }
+        let mut preparation = sources.prepare_overwrite(&source, None, None);
+        assert!(!preparation.advance(1));
+        assert!(preparation.finish().is_none());
+    }
 
     #[test]
     fn cooperative_disk_reconciliation_matches_original_decisions_and_stays_private() {

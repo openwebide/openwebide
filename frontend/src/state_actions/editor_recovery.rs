@@ -868,6 +868,57 @@ async fn classify_recovery_disk(
     }
 }
 
+async fn approved_recovery_overwrite(
+    workspace: WorkspaceState,
+    key: &(i64, String),
+    expected: &crate::state::workspace::RecoveryOverwrite,
+    disk: Option<&str>,
+    current: &impl Fn() -> bool,
+) -> bool {
+    loop {
+        if !current() {
+            return false;
+        }
+        let Some(sources) = workspace
+            .editor_documents
+            .try_with_untracked(|documents| {
+                documents
+                    .get(key)
+                    .map(openwebide_core::editor::Document::recovery_sources)
+            })
+            .flatten()
+        else {
+            return false;
+        };
+        let owns_sources = || {
+            workspace.editor_documents.try_with_untracked(|documents| {
+                documents
+                    .get(key)
+                    .is_some_and(|document| document.matches_recovery_sources(&sources))
+            }) == Some(true)
+        };
+        let mut preparation =
+            sources.prepare_overwrite(&expected.draft, disk, expected.disk.as_deref());
+        let mut done = preparation.advance(1);
+        while !done {
+            crate::util::yield_task().await;
+            if !current() {
+                return false;
+            }
+            if !owns_sources() {
+                break;
+            }
+            done = preparation.advance(1);
+        }
+        if !current() {
+            return false;
+        }
+        if owns_sources() && done {
+            return preparation.finish().unwrap();
+        }
+    }
+}
+
 /// Recheck a recovered document's baseline immediately before the normal save
 /// facade prepares its write. Verification failures never authorize overwrites.
 pub async fn verify_recovered_save(
@@ -911,10 +962,13 @@ pub async fn verify_recovered_save(
         .try_update(|permits| permits.remove(&key))
         .flatten();
     if let Some(expected) = approved
-        && workspace.content.get_untracked() == expected.draft
-        && disk.as_ref().is_ok_and(|actual| *actual == expected.disk)
+        && let Ok(disk) = &disk
+        && approved_recovery_overwrite(workspace, &key, &expected, disk.as_deref(), &current).await
     {
         return Ok(());
+    }
+    if !current() {
+        return Err("The editor changed while checking the disk file".into());
     }
     let result = match disk {
         Ok(disk) => classify_recovery_disk(workspace, &key, disk.as_deref(), &current)
@@ -1221,6 +1275,68 @@ mod disk_tests {
         future::Future,
         task::{Context, Poll, Waker},
     };
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    async fn overwrite_comparison_yields_retries_committed_sources_and_rejects_lost_owners() {
+        crate::testing::initialize_runtime();
+        for change in ["complete", "draft", "saved", "cancel", "remove", "dispose"] {
+            let owner = Owner::new();
+            let key = (1, "draft.txt".to_string());
+            let source = "ASCII 文😀\r\n".repeat(8000);
+            let workspace = owner.with(|| {
+                let workspace = WorkspaceState::new();
+                workspace.editor_documents.update(|documents| {
+                    documents.insert(
+                        key.clone(),
+                        openwebide_core::editor::Document::new(source.clone()),
+                    );
+                });
+                workspace
+            });
+            let expected = crate::state::workspace::RecoveryOverwrite {
+                draft: source.clone(),
+                disk: Some(source.clone()),
+            };
+            let active = Cell::new(true);
+            let current = || active.get() && !workspace.editor_documents.is_disposed();
+            let mut pending = Box::pin(approved_recovery_overwrite(
+                workspace,
+                &key,
+                &expected,
+                Some(&source),
+                &current,
+            ));
+            assert!(matches!(
+                pending
+                    .as_mut()
+                    .poll(&mut Context::from_waker(Waker::noop())),
+                Poll::Pending
+            ));
+            match change {
+                "draft" => workspace.editor_documents.update(|documents| {
+                    documents
+                        .get_mut(&key)
+                        .unwrap()
+                        .replace_selections("edit", None)
+                        .unwrap();
+                }),
+                "saved" => workspace.editor_documents.update(|documents| {
+                    documents
+                        .get_mut(&key)
+                        .unwrap()
+                        .mark_saved_source(std::sync::Arc::new("other".into()));
+                }),
+                "cancel" => active.set(false),
+                "remove" => workspace.editor_documents.update(|documents| {
+                    documents.remove(&key);
+                }),
+                "dispose" => owner.cleanup(),
+                _ => {}
+            }
+            assert_eq!(pending.await, matches!(change, "complete" | "saved"));
+            owner.cleanup();
+        }
+    }
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn strict_disk_decoding_yields_and_rejects_lost_scope_before_publication() {
