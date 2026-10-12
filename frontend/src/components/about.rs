@@ -88,7 +88,11 @@ pub fn About() -> impl IntoView {
 fn ReleaseNotes() -> impl IntoView {
     view! {
         <div class="release-notes" inner_html=crate::markdown::render(include_str!(concat!(env!("OUT_DIR"), "/release-notes.md"))) />
-        <a href=format!("https://github.com/openwebide/openwebide/releases/tag/v{}", env!("CARGO_PKG_VERSION")) target="_blank" rel="noopener noreferrer">"View release on GitHub"</a>
+        <a href=if env!("CARGO_PKG_VERSION").contains("-nightly") {
+            "https://github.com/openwebide/openwebide/blob/main/CHANGELOG.md".to_owned()
+        } else {
+            format!("https://github.com/openwebide/openwebide/releases/tag/v{}", env!("CARGO_PKG_VERSION"))
+        } target="_blank" rel="noopener noreferrer">{if env!("CARGO_PKG_VERSION").contains("-nightly") { "View changelog on GitHub" } else { "View release on GitHub" }}</a>
     }
 }
 

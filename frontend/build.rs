@@ -6,7 +6,12 @@ fn main() {
     println!("cargo::rerun-if-changed=../CHANGELOG.md");
     let changelog = std::fs::read_to_string("../CHANGELOG.md").expect("CHANGELOG.md");
     let version = std::env::var("CARGO_PKG_VERSION").expect("package version");
-    let heading = format!("## [{version}]");
+    let section_name = if version.contains("-nightly") {
+        "Unreleased"
+    } else {
+        &version
+    };
+    let heading = format!("## [{section_name}]");
     let start = changelog
         .find(&heading)
         .expect("current version changelog section");

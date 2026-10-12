@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RELEASE_VERSION = re.compile(
     r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"
-    r"(?:-(?P<channel>alpha|rc)\.(?:0|[1-9][0-9]*))?"
+    r"(?:-(?:(?P<channel>alpha|rc)\.(?:0|[1-9][0-9]*)|(?P<nightly>nightly)(?:\+sha\.[0-9a-f]{12})?))?"
 )
 TARGETS = {
     "x86_64-unknown-linux-gnu",
@@ -25,7 +25,9 @@ TARGETS = {
 def release_channel(current):
     match = RELEASE_VERSION.fullmatch(current)
     if match is None:
-        raise ValueError("Expected major.minor.patch, optionally followed by -alpha.N or -rc.N")
+        raise ValueError("Expected major.minor.patch, optionally followed by -nightly[+sha.COMMIT], -alpha.N or -rc.N")
+    if match['nightly']:
+        return 'nightly'
     return {'alpha': 'nightly', 'rc': 'preview', None: 'stable'}.get(match['channel'], match['channel'])
 
 
@@ -52,6 +54,31 @@ def version(root=ROOT):
     return current
 
 
+def stamp_nightly(root, commit):
+    if not re.fullmatch(r"[0-9a-f]{40}", commit):
+        raise ValueError("Nightly builds require a full lowercase Git commit SHA")
+    current = version(root)
+    stamped = current.split("-", 1)[0] + "-nightly+sha." + commit[:12]
+    for name in ("Cargo.toml", "spin.toml"):
+        path = root / name
+        path.write_text(path.read_text().replace(f'version = "{current}"', f'version = "{stamped}"', 1))
+    path = root / "Cargo.lock"
+    # Update only source-free workspace packages; dependencies and the independent SDK stay pinned.
+    cargo = tomllib.loads((root / "Cargo.toml").read_text())
+    members = set()
+    for member in cargo["workspace"]["members"]:
+        package = tomllib.loads((root / member / "Cargo.toml").read_text())["package"]
+        if package["name"] != "openwebide-plugin-sdk":
+            members.add(package["name"])
+    entries = path.read_text().split("[[package]]")
+    for index, entry in enumerate(entries[1:], 1):
+        package = tomllib.loads(entry)
+        if package["name"] in members and "source" not in package:
+            entries[index] = entry.replace(f'version = "{current}"', f'version = "{stamped}"', 1)
+    path.write_text("[[package]]".join(entries))
+    return version(root)
+
+
 def notes(changelog, section, allow_empty=False):
     headings = list(re.finditer(r"^## \[([^\]]+)\].*$", changelog, re.MULTILINE))
     matching = [index for index, heading in enumerate(headings) if heading[1] == section]
@@ -68,6 +95,8 @@ def notes(changelog, section, allow_empty=False):
 
 def validate(root, tag=None):
     current = version(root)
+    if tag is not None and "-nightly" in current:
+        raise ValueError("Nightly builds are published from main, not version tags")
     if tag is not None and tag != f"v{current}":
         raise ValueError(f"Tag must match workspace version v{current}")
     section = current if tag is not None else "Unreleased"
@@ -155,6 +184,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("schema")
+    nightly = sub.add_parser("stamp-nightly")
+    nightly.add_argument("--commit", required=True)
     check = sub.add_parser("validate")
     check.add_argument("--tag")
     check.add_argument("--notes", type=Path)
@@ -169,7 +200,9 @@ def main():
     install.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
     try:
-        if args.command == "schema":
+        if args.command == "stamp-nightly":
+            print(stamp_nightly(ROOT, args.commit))
+        elif args.command == "schema":
             print(f"schema={database_schema(ROOT)}")
         elif args.command == "validate":
             current, body = validate(ROOT, args.tag)

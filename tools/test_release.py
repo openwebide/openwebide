@@ -68,6 +68,32 @@ class ReleaseTests(unittest.TestCase):
                 self.assertEqual(release.github_outputs(value), f'version={value}\nchannel={release.release_channel(value)}\nprerelease=true\n')
             self.set_version('1.0.0', previous=value)
 
+    def test_nightly_stamps_workspace_and_preserves_sdk_and_history(self):
+        sdk = self.root / 'sdk'
+        sdk.mkdir()
+        (sdk / 'Cargo.toml').write_text('[package]\nname = "openwebide-plugin-sdk"\nversion = "0.1.0"\n')
+        cargo = self.root / 'Cargo.toml'
+        cargo.write_text(cargo.read_text().replace('["bridge"]', '["bridge", "sdk"]'))
+        lock = self.root / 'Cargo.lock'
+        lock.write_text(lock.read_text() + '\n[[package]]\nname = "openwebide-plugin-sdk"\nversion = "0.1.0"\n')
+        changelog = (self.root / 'CHANGELOG.md').read_text()
+        for commit in ('a' * 40, 'b' * 40):
+            expected = f'1.0.0-nightly+sha.{commit[:12]}'
+            self.assertEqual(release.stamp_nightly(self.root, commit), expected)
+            self.assertEqual(release.validate(self.root), (expected, '- Future.\n'))
+            self.assertEqual(release.release_channel(expected), 'nightly')
+            self.assertIn('version = "0.1.0"', lock.read_text())
+            self.assertEqual((self.root / 'CHANGELOG.md').read_text(), changelog)
+            with self.assertRaises(ValueError):
+                release.validate(self.root, f'v{expected}')
+        with self.assertRaises(ValueError):
+            release.stamp_nightly(self.root, 'unknown')
+
+    def test_development_nightly_uses_unreleased_notes(self):
+        self.set_version('1.0.0-nightly')
+        self.assertEqual(release.validate(self.root), ('1.0.0-nightly', '- Future.\n'))
+        self.assertEqual(release.release_channel('1.0.0-nightly'), 'nightly')
+
     def test_stable_versions_publish_to_stable(self):
         self.assertEqual(release.github_outputs('1.0.0'), 'version=1.0.0\nchannel=stable\nprerelease=false\n')
 
@@ -159,7 +185,7 @@ with open(os.environ['COMMAND_LOG'], 'a') as stream:
         tools.mkdir()
         (tools / 'release.py').write_text((release.ROOT / 'tools/release.py').read_text())
         output = self.root / 'outputs'
-        env = os.environ | {'RUNNER_TEMP': str(self.root), 'GITHUB_OUTPUT': str(output)}
+        env = os.environ | {'RUNNER_TEMP': str(self.root), 'GITHUB_OUTPUT': str(output), 'BUILD_COMMIT': 'a' * 40}
         cases = [
             ('true', 'true', 'main', '1.0.0', True, '- Future.'),
             ('false', 'false', 'main', '1.0.0', True, '- Future.'),
@@ -181,9 +207,13 @@ with open(os.environ['COMMAND_LOG'], 'a') as stream:
                     values = dict(line.split('=', 1) for line in output.read_text().splitlines())
                     self.assertEqual(values['publish'], publish)
                     self.assertEqual(values['rolling'], rolling)
+                    expected_version = value.split('-', 1)[0] + '-nightly+sha.' + 'a' * 12 if rolling == 'true' else value
+                    self.assertEqual(values['version'], expected_version)
                     self.assertEqual((self.root / 'release-notes.md').read_text().strip(), notes)
                 else:
                     self.assertNotIn('publish=true', output.read_text())
+            if rolling == 'true':
+                self.set_version(value, previous=expected_version)
 
     def test_rolling_nightly_promotes_only_complete_platform_manifests(self):
         script = workflow_script('Publish rolling nightly image')
@@ -228,7 +258,7 @@ if sys.argv[1] == 'inspect': print(os.environ['IMAGE'] + '@sha256:' + 'd' * 64)
         docker.chmod(0o755)
         env = os.environ | {'PATH': str(bin_dir) + os.pathsep + os.environ['PATH'],
                             'COMMAND_LOG': str(log), 'IMAGE': 'ghcr.io/openwebide/openwebide',
-                            'BUILD_COMMIT': 'c' * 40, 'ARCH': 'arm64', 'GITHUB_OUTPUT': str(output)}
+                            'BUILD_COMMIT': 'c' * 40, 'ARCH': 'arm64', 'GITHUB_OUTPUT': str(output), 'BUILD_COMMIT': 'a' * 40}
         failed = subprocess.run(['bash', '-e', '-c', script], cwd=self.root, env=env | {'FAIL_PUSH': 'true'})
         self.assertNotEqual(failed.returncode, 0)
         self.assertFalse(output.exists())

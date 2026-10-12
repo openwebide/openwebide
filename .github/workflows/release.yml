@@ -36,8 +36,12 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
           PUBLISH: ${{ github.event_name == 'push' }}
+          BUILD_COMMIT: ${{ github.sha }}
           ROLLING: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: |
+          if [ "$ROLLING" = true ]; then
+            python3 tools/release.py stamp-nightly --commit "$BUILD_COMMIT"
+          fi
           if [ "$PUBLISH" = true ] && [ "$ROLLING" = false ]; then
             python3 tools/release.py validate --tag "$RELEASE_TAG" --notes "$RUNNER_TEMP/release-notes.md" --github-output "$GITHUB_OUTPUT"
             case "$RELEASE_TAG" in
@@ -87,7 +91,9 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          build-args: OPENWEBIDE_BUILD_COMMIT=${{ github.sha }}
+          build-args: |
+            OPENWEBIDE_BUILD_COMMIT=${{ github.sha }}
+            OPENWEBIDE_NIGHTLY_BUILD=${{ needs.validate.outputs.rolling }}
           platforms: linux/${{ matrix.arch }}
           load: true
           tags: openwebide:release-test

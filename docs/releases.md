@@ -200,7 +200,10 @@ Every push to `main` starts the Release workflow, including the shared CI checks
 and native amd64/arm64 image smoke tests. It publishes the tested image to `nightly`
 and a commit-specific tag. New pushes supersede unfinished main builds. Failed
 checks leave the published channel unchanged. About displays the build commit;
-rolling builds retain the workspace version until a tagged release is prepared.
+nightly images embed `1.0.0-nightly+sha.<12-character-commit-sha>` as the Cargo and Spin
+version. Local development reports `1.0.0-nightly`. Nightly builds bundle the
+Unreleased changelog and link to the changelog rather than a numbered release.
+Tagged preview and stable builds retain their exact numbered versions.
 
 Main builds publish container images, which include the server bridge. Tagged
 preview/stable releases also publish standalone Linux/macOS bridge archives,

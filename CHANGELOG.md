@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Report commit-specific nightly versions throughout the app, API and bridge instead of alpha.6; bundle Unreleased notes for nightly builds and preserve numbered versions for tagged releases.
+
 - Bound paragraph-comparison traversal to one underlying token per step, including hidden and empty tokens. Preserve forward/reverse clipping and stop once all visible spans are consumed.
 
 - Compare paragraph-replay token styles in resumable byte chunks, sharing the same policy between synchronous callers and wrapped/unwrapped browser preparation. Reject cancelled or stale project, file, source, account and layout work after each yield.

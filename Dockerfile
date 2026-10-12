@@ -26,11 +26,15 @@ RUN set -eux; \
     curl -sSL "https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-${trunk_arch}.tar.gz" \
         | tar -xz -C /usr/local/bin trunk
 
+ARG OPENWEBIDE_NIGHTLY_BUILD=false
 ARG OPENWEBIDE_BUILD_COMMIT=unknown
 ENV OPENWEBIDE_BUILD_COMMIT=${OPENWEBIDE_BUILD_COMMIT}
 
 WORKDIR /src
 COPY . .
+RUN if [ "$OPENWEBIDE_NIGHTLY_BUILD" = true ]; then \
+        python3 tools/release.py stamp-nightly --commit "$OPENWEBIDE_BUILD_COMMIT"; \
+    fi
 # Regenerate only the locked subset from its immutable upstream Git commit.
 RUN python3 tools/bundle_plugins.py
 # Runs the [component.x.build] commands from spin.toml:
