@@ -20,7 +20,7 @@ Browser, Runtime = SUPPORT['Browser'], SUPPORT['Runtime']
 cdp, wait, snapshot = SUPPORT['cdp'], SUPPORT['wait'], SUPPORT['snapshot']
 
 
-def check(mode, read_only, touch_at_startup):
+def check(mode, read_only, touch_at_startup, focused=False):
     ending = "\n"
     row = '// 文😀 tail' + ending
     source = row * 1500
@@ -63,6 +63,8 @@ def check(mode, read_only, touch_at_startup):
             else:
                 wait('prepared input', lambda: snapshot(browser)['bound'])
             cdp(browser, 'Emulation.setTouchEmulationEnabled', {'enabled': True, 'maxTouchPoints': 5})
+            if focused:
+                browser.script("document.querySelector('textarea[data-editor-path]').focus({preventScroll:true});")
             browser.script("""
                 window.touchEvidence=[];
                 for(const type of ['touchstart','touchmove','touchend']) document.addEventListener(type,event=>{
@@ -84,7 +86,7 @@ def check(mode, read_only, touch_at_startup):
             assert (before['value'],before['start'],before['end'])==(after['value'],after['start'],after['end']), 'pan changed source or selection'
             assert evidence and all(event['trusted'] for event in evidence), 'expected browser-generated touch events'
             assert any(event['type'] == 'touchmove' and event['prevented'] for event in evidence), 'editor must claim the pan'
-            print(json.dumps({'mode':mode,'readOnly':read_only,'touchAtStartup':touch_at_startup,'scrollTop':top,'events':evidence}),flush=True)
+            print(json.dumps({'mode':mode,'readOnly':read_only,'touchAtStartup':touch_at_startup,'focused':focused,'scrollTop':top,'events':evidence}),flush=True)
         finally:
             if browser: browser.stop()
             runtime.stop()
@@ -93,4 +95,5 @@ if __name__ == '__main__':
     for mode in ['local','remote']:
         for read_only in [False,True]:
             for touch_at_startup in [False, True]:
-                check(mode,read_only,touch_at_startup)
+                for focused in [False, True]:
+                    check(mode,read_only,touch_at_startup,focused)

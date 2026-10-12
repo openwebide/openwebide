@@ -263,7 +263,9 @@ remain required.
   caret and wrapped-geometry contracts pass in both modes. Chromium-generated
   touch gestures, enabled before startup or after desktop preparation, also
   scroll editable and read-only prepared editors without
-  changing text or selection ([receipt](editor-performance/trusted-touch-browser.json)). Physical-device
+  changing text or selection ([receipt](editor-performance/trusted-touch-browser.json)).
+  Expanded coverage also passes all 16 focused/unfocused combinations in both
+  modes ([receipt](editor-performance/focused-touch-browser.json)). Physical-device
   verification, source-owned touch caret/selection and native fallback transitions
   remain open. Boundable native windows now cap bytes and 128 rows plus endpoint
   mapping. Ordinary edits rebind overflowing windows; active composition retains

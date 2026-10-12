@@ -1,0 +1,725 @@
+{
+  "description": "Chromium-generated touch scrolling with focused and unfocused editable/read-only prepared editors; full native touch startup and desktop bounded input in local and remote projects. Does not verify physical devices or installed PWA input.",
+  "samples": [
+    {
+      "mode": "local",
+      "readOnly": false,
+      "touchAtStartup": false,
+      "focused": false,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "local",
+      "readOnly": false,
+      "touchAtStartup": false,
+      "focused": true,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "local",
+      "readOnly": false,
+      "touchAtStartup": true,
+      "focused": false,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "local",
+      "readOnly": false,
+      "touchAtStartup": true,
+      "focused": true,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "local",
+      "readOnly": true,
+      "touchAtStartup": false,
+      "focused": false,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "local",
+      "readOnly": true,
+      "touchAtStartup": false,
+      "focused": true,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "local",
+      "readOnly": true,
+      "touchAtStartup": true,
+      "focused": false,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "local",
+      "readOnly": true,
+      "touchAtStartup": true,
+      "focused": true,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "readOnly": false,
+      "touchAtStartup": false,
+      "focused": false,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "readOnly": false,
+      "touchAtStartup": false,
+      "focused": true,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "readOnly": false,
+      "touchAtStartup": true,
+      "focused": false,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "readOnly": false,
+      "touchAtStartup": true,
+      "focused": true,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "readOnly": true,
+      "touchAtStartup": false,
+      "focused": false,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "readOnly": true,
+      "touchAtStartup": false,
+      "focused": true,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "readOnly": true,
+      "touchAtStartup": true,
+      "focused": false,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "readOnly": true,
+      "touchAtStartup": true,
+      "focused": true,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    }
+  ]
+}
