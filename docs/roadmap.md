@@ -411,8 +411,15 @@ combined-source CI result.
   checks, six local/remote geometry/fallback contracts and eight full/windowed
   input cases pass with strict native/WASM lint and the full production build
   ([receipt](editor-performance/paragraph-style-comparison-browser.json)). First
-  token reconciliation, underlying token-window seeking, other complete style
-  comparisons, layout repetition and the full performance gates remain open.
+  token reconciliation, other complete style comparisons, layout repetition and
+  the full performance gates remain open. Paragraph comparisons now also use
+  bounded underlying-token steps when seeking clipped windows, including hidden
+  and empty tokens. Visible-count tracking avoids scanning exhausted windows;
+  forward/reverse/mixed iteration retains exact spans. All 756 core tests,
+  47 WASM library checks, six local/remote geometry/fallback contracts and eight
+  full/windowed input cases pass with strict native/WASM lint and the production
+  build ([receipt](editor-performance/token-window-steps-browser.json)). Other
+  synchronous iterator consumers and first reconciliation still need bounded work.
   Grammar paint now retains private piece/row assembly across cooperative yields,
   with an 8 KiB source-copy budget and independent 256-record construction,
   owner-copy, visitation and row-publication budgets. Synchronous consumers drive

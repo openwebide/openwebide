@@ -39,63 +39,99 @@ impl<'a> TokenWindow<'a> {
         })
     }
 }
-impl<'a> Iterator for TokenWindow<'a> {
-    type Item = PaintToken<'a>;
-    fn next(&mut self) -> Option<Self::Item> {
-        while self.front < self.back {
+impl<'a> TokenWindow<'a> {
+    fn step(&mut self, backwards: bool) -> Option<Option<PaintToken<'a>>> {
+        if self.front == self.back {
+            return None;
+        }
+        let index = if backwards {
+            self.back -= 1;
+            self.back
+        } else {
             let index = self.front;
             self.front += 1;
-            if self.whole {
-                return Some(PaintToken {
-                    kind: self.tokens[index].kind,
-                    text: text(self.tokens, index, self.strip_cr),
-                });
-            }
-            let start = self.front_byte;
-            self.front_byte += text(self.tokens, index, self.strip_cr).len();
-            if let Some(token) = self.clipped(index, start, self.front_byte) {
-                return Some(token);
-            }
+            index
+        };
+        if self.whole {
+            return Some(Some(PaintToken {
+                kind: self.tokens[index].kind,
+                text: text(self.tokens, index, self.strip_cr),
+            }));
         }
-        None
-    }
-}
-impl DoubleEndedIterator for TokenWindow<'_> {
-    fn next_back(&mut self) -> Option<Self::Item> {
-        while self.front < self.back {
-            self.back -= 1;
-            if self.whole {
-                return Some(PaintToken {
-                    kind: self.tokens[self.back].kind,
-                    text: text(self.tokens, self.back, self.strip_cr),
-                });
-            }
+        let length = text(self.tokens, index, self.strip_cr).len();
+        let (start, end) = if backwards {
             let end = self.back_byte;
-            self.back_byte -= text(self.tokens, self.back, self.strip_cr).len();
-            if let Some(token) = self.clipped(self.back, self.back_byte, end) {
-                return Some(token);
-            }
-        }
-        None
+            self.back_byte -= length;
+            (self.back_byte, end)
+        } else {
+            let start = self.front_byte;
+            self.front_byte += length;
+            (start, self.front_byte)
+        };
+        Some(self.clipped(index, start, end))
     }
 }
-
 #[derive(Clone)]
-pub struct RowPaintIter<'a>(
-    std::iter::Chain<
-        std::iter::Chain<TokenWindow<'a>, std::option::IntoIter<PaintToken<'a>>>,
-        TokenWindow<'a>,
-    >,
-);
+pub struct RowPaintIter<'a> {
+    prefix: TokenWindow<'a>,
+    middle: Option<PaintToken<'a>>,
+    suffix: TokenWindow<'a>,
+    remaining: Option<usize>,
+}
+impl<'a> RowPaintIter<'a> {
+    /// Visit at most one underlying token, including a hidden or empty token.
+    /// Outer None means exhausted; Some(None) is a bounded skipped-token step.
+    pub fn next_step(&mut self, backwards: bool) -> Option<Option<PaintToken<'a>>> {
+        if self.remaining == Some(0) {
+            return None;
+        }
+        let step = self.step(backwards);
+        if matches!(step, Some(Some(_)))
+            && let Some(remaining) = &mut self.remaining
+        {
+            *remaining -= 1;
+        }
+        step
+    }
+    fn step(&mut self, backwards: bool) -> Option<Option<PaintToken<'a>>> {
+        if backwards {
+            if let Some(step) = self.suffix.step(true) {
+                return Some(step);
+            }
+            if let Some(token) = self.middle.take() {
+                return Some(Some(token));
+            }
+            self.prefix.step(true)
+        } else {
+            if let Some(step) = self.prefix.step(false) {
+                return Some(step);
+            }
+            if let Some(token) = self.middle.take() {
+                return Some(Some(token));
+            }
+            self.suffix.step(false)
+        }
+    }
+}
 impl<'a> Iterator for RowPaintIter<'a> {
     type Item = PaintToken<'a>;
     fn next(&mut self) -> Option<Self::Item> {
-        self.0.next()
+        while let Some(step) = self.next_step(false) {
+            if step.is_some() {
+                return step;
+            }
+        }
+        None
     }
 }
 impl DoubleEndedIterator for RowPaintIter<'_> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        self.0.next_back()
+        while let Some(step) = self.next_step(true) {
+            if step.is_some() {
+                return step;
+            }
+        }
+        None
     }
 }
 
@@ -224,11 +260,14 @@ impl<'a> RowPaintTokens<'a> {
         result.length = if whole {
             tokens.len()
         } else {
-            result.iter().count()
+            result.iter_with_length(None).count()
         };
         result
     }
     pub fn iter(&self) -> RowPaintIter<'a> {
+        self.iter_with_length(Some(self.length))
+    }
+    fn iter_with_length(&self, remaining: Option<usize>) -> RowPaintIter<'a> {
         let window = |range: Range<usize>, whole: bool| TokenWindow {
             tokens: self.tokens,
             front: 0,
@@ -243,11 +282,12 @@ impl<'a> RowPaintTokens<'a> {
             strip_cr: self.strip_cr,
             whole,
         };
-        RowPaintIter(
-            window(0..self.prefix, self.whole)
-                .chain(self.middle)
-                .chain(window(self.size - self.suffix..self.size, false)),
-        )
+        RowPaintIter {
+            prefix: window(0..self.prefix, self.whole),
+            middle: self.middle,
+            suffix: window(self.size - self.suffix..self.size, false),
+            remaining,
+        }
     }
     pub fn len(&self) -> usize {
         self.length
@@ -260,6 +300,80 @@ impl<'a> RowPaintTokens<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn bounded_steps_preserve_clipping_and_mixed_direction_iteration() {
+        let tokens: Vec<_> = (0..3000)
+            .flat_map(|_| ["a", "", "文😀", "b"])
+            .map(|body| Token {
+                kind: TokenKind::String,
+                text: std::sync::Arc::new(body.into()),
+            })
+            .collect();
+        for source in ["x", "a changed", "x文😀b", "a文😀b"] {
+            let paint = RowPaintTokens::current(&tokens, source, false);
+            let mut expected = Vec::new();
+            for range in [0..paint.prefix, paint.size - paint.suffix..paint.size] {
+                if range.start == paint.size - paint.suffix {
+                    expected.extend(paint.middle);
+                }
+                let mut position = 0;
+                for token in &tokens {
+                    let end = position + token.text.len();
+                    let left = position.max(range.start);
+                    let right = end.min(range.end);
+                    if left < right {
+                        expected.push(PaintToken {
+                            kind: token.kind,
+                            text: &token.text[left - position..right - position],
+                        });
+                    }
+                    position = end;
+                }
+            }
+            let mut iter = paint.iter();
+            let mut front = 0;
+            let mut back = expected.len();
+            let mut backwards = false;
+            loop {
+                let before = [
+                    iter.prefix.front,
+                    iter.prefix.back,
+                    iter.suffix.front,
+                    iter.suffix.back,
+                ];
+                let step = iter.next_step(backwards);
+                let after = [
+                    iter.prefix.front,
+                    iter.prefix.back,
+                    iter.suffix.front,
+                    iter.suffix.back,
+                ];
+                assert!(
+                    before
+                        .iter()
+                        .zip(after)
+                        .map(|(a, b)| a.abs_diff(b))
+                        .sum::<usize>()
+                        <= 1
+                );
+                match step {
+                    Some(Some(token)) if backwards => {
+                        back -= 1;
+                        assert_eq!(token, expected[back]);
+                        backwards = false;
+                    }
+                    Some(Some(token)) => {
+                        assert_eq!(token, expected[front]);
+                        front += 1;
+                        backwards = true;
+                    }
+                    Some(None) => {}
+                    None => break,
+                }
+            }
+            assert_eq!(front, back);
+        }
+    }
     #[test]
     fn retained_matches_preserve_exact_spans_and_native_cr_policy() {
         let tokens = fixture();

@@ -8,6 +8,7 @@ pub struct PaintStyleComparison<'a> {
     new: RowPaintIter<'a>,
     length: Option<RowPaintIter<'a>>,
     first_pair: bool,
+    pending_old: Option<PaintToken<'a>>,
     length_left: usize,
     new_length: usize,
     suffix: bool,
@@ -35,6 +36,7 @@ impl<'a> PaintStyleComparison<'a> {
             new: new.iter(),
             length: suffix.then(|| new.iter()),
             first_pair: true,
+            pending_old: None,
             length_left: new.len(),
             new_length: 0,
             suffix,
@@ -51,17 +53,19 @@ impl<'a> PaintStyleComparison<'a> {
             token.text
         }
     }
-    /// Each unit visits at most one visible token pair and compares at most
-    /// 8 KiB of byte pairs.
-    /// Identical immutable slices need no byte traversal. Iterator window seeking
-    /// remains the token iterator's contract, separate from this byte budget.
+    /// Each unit visits at most one underlying token (including hidden tokens)
+    /// and compares at most 8 KiB of byte pairs. Identical immutable slices need
+    /// no byte traversal. Partial comparisons are never published.
     pub fn advance(&mut self, units: usize) -> bool {
         for _ in 0..units {
             if self.done {
                 break;
             }
             if let Some(length) = self.length.as_mut() {
-                if let Some(token) = length.next() {
+                if let Some(step) = length.next_step(false) {
+                    let Some(token) = step else {
+                        continue;
+                    };
                     self.length_left -= 1;
                     self.new_length += self.text(token, self.length_left == 0).len();
                 } else {
@@ -70,15 +74,25 @@ impl<'a> PaintStyleComparison<'a> {
                 continue;
             }
             if self.pair.is_none() {
-                let (old, new) = if self.suffix {
-                    (self.old.next_back(), self.new.next_back())
-                } else {
-                    (self.old.next(), self.new.next())
+                if self.pending_old.is_none() {
+                    match self.old.next_step(self.suffix) {
+                        Some(token) => self.pending_old = token,
+                        None => {
+                            self.done = true;
+                            break;
+                        }
+                    }
+                    continue;
+                }
+                let new = match self.new.next_step(self.suffix) {
+                    Some(Some(token)) => token,
+                    Some(None) => continue,
+                    None => {
+                        self.done = true;
+                        break;
+                    }
                 };
-                let (Some(old), Some(new)) = (old, new) else {
-                    self.done = true;
-                    break;
-                };
+                let old = self.pending_old.take().unwrap();
                 let a = self.text(old, self.suffix && self.first_pair);
                 // Reverse traversal strips CR only on the first token. The
                 // forward prefix intentionally preserves the original policy.
@@ -143,6 +157,24 @@ mod tests {
     use super::*;
     use crate::highlight::{Token, TokenKind};
     use std::sync::Arc;
+
+    #[test]
+    fn hidden_window_seeking_yields_before_publishing_a_suffix() {
+        let tokens = vec![
+            Token {
+                kind: TokenKind::String,
+                text: Arc::new("a".into())
+            };
+            2000
+        ];
+        let old = RowPaintTokens::prepared(&tokens, false);
+        let new = RowPaintTokens::current(&tokens, "a", false);
+        let mut comparison = PaintStyleComparison::suffix(old, new, false);
+        assert!(!comparison.advance(8));
+        assert_eq!(comparison.common, 0);
+        while !comparison.advance(8) {}
+        assert_eq!(comparison.finish(), Some(0));
+    }
 
     fn oracle(old: &[Token], new: &[Token], suffix: bool, normalize: bool) -> usize {
         let text = |token: &Token, last: bool| {
@@ -262,7 +294,7 @@ mod tests {
             RowPaintTokens::prepared(&old, false),
             RowPaintTokens::prepared(&old, false),
         );
-        assert!(shared.advance(2));
+        assert!(shared.advance(4));
         assert_eq!(shared.finish(), Some(old[0].text.len()));
     }
 }
