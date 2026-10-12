@@ -60,6 +60,11 @@ struct PendingPart {
     retained: Option<Part<Spans>>,
 }
 impl HighlightCollection {
+    #[cfg(test)]
+    pub(super) fn retirement_pending(&self) -> bool {
+        self.previous.subtrees.retirement_pending()
+    }
+
     pub(super) fn new(tree: &Tree, provider: SyntaxProvider, previous: ParsedHighlights) -> Self {
         Self {
             tree: tree.clone(),
@@ -83,7 +88,7 @@ impl HighlightCollection {
         records: usize,
     ) -> Result<bool, SyntaxStatus> {
         if self.provider.highlight.is_none() {
-            return Ok(true);
+            return Ok(self.previous.subtrees.retire(records));
         }
         let root = self.tree.root_node();
         let document = self.provider.highlight_scope == SyntaxHighlightScope::Document;
@@ -158,6 +163,9 @@ impl HighlightCollection {
                         return Ok(false);
                     }
                     let mut part = self.pending.take().unwrap();
+                    // Invalid retained ranges request fresh extraction. Its
+                    // visit count must come from the current tree as well.
+                    part.template.visits = part.end - part.node - 1;
                     if part.template.visits > 0 {
                         part.template.value = std::sync::Arc::new(part.relative);
                         self.next.insert(part.id, part.template);
@@ -196,7 +204,7 @@ impl HighlightCollection {
                 continue;
             }
             if self.node == root.descendant_count() {
-                return Ok(true);
+                return Ok(self.previous.subtrees.retire(parts_left));
             }
             if !consume(&mut nodes) {
                 return Ok(false);
@@ -219,11 +227,7 @@ impl HighlightCollection {
             if document || index == 0 || descend_part(node) || node.descendant_count() == 1 {
                 continue;
             }
-            let retained = self
-                .previous
-                .subtrees
-                .candidate(root, node, parent)
-                .cloned();
+            let retained = self.previous.subtrees.take_candidate(root, node, parent);
             self.pending = Some(PendingPart {
                 node: index,
                 id: node.id(),
@@ -398,7 +402,7 @@ mod tests {
                     Part::new(
                         node,
                         parent,
-                        node.descendant_count() - 1,
+                        usize::MAX,
                         vec![(0..usize::MAX, TokenKind::Plain)],
                     ),
                 );
@@ -413,6 +417,14 @@ mod tests {
         let mut spans = Vec::new();
         while !work.advance(&source, &mut visited, &mut spans, 1).unwrap() {}
         assert_eq!((visited, spans), oracle(tree, provider, &source));
-        assert_eq!(work.finish().reused_nodes, 0);
+        let mut cache = work.finish();
+        assert_eq!(cache.reused_nodes, 0);
+        // The repaired cache must charge the current tree on the next reuse.
+        let mut visited = 0;
+        let mut spans = Vec::new();
+        cache
+            .collect(tree, provider, &source, &mut visited, &mut spans)
+            .unwrap();
+        assert_eq!((visited, spans), oracle(tree, provider, &source));
     }
 }

@@ -165,6 +165,14 @@ impl PaintPreparation {
     }
 
     #[cfg(test)]
+    pub(super) fn retirement_pending(&self) -> bool {
+        self.collection
+            .as_ref()
+            .and_then(|collection| collection.collecting.as_ref())
+            .is_some_and(super::super::highlights::HighlightCollection::retirement_pending)
+    }
+
+    #[cfg(test)]
     pub(in crate::editor::syntax) fn diagnostic(&self) -> String {
         format!(
             "row={}, segment={}, pieces={}, tokens={}, copying={:?}",

@@ -1,0 +1,53 @@
+{
+  "observations": 8,
+  "completeSourceAndCaretVerified": true,
+  "limitations": [
+    "Serial comparison, not interleaved; two samples per mode/variant.",
+    "No general latency or PSS gain established.",
+    "Local fixtures recover source without native folder permissions.",
+    "The 4000-function trial exceeds existing admission; the measured 2500-function workload prepares grammar colors without changing limits.",
+    "Iterator/table/tree destruction, cancellation disposal, other caches and final publication remain open."
+  ],
+  "comparisons": [
+    {
+      "case": "cached-functions",
+      "mode": "local",
+      "baseline": {
+        "inputViewportPaintMs": 12.899999991059303,
+        "inputSyntaxReadyMs": 57.8999999910593,
+        "coldSyntaxReadyMs": 1233.7999999970198,
+        "wasmCommittedBytes": 25460736,
+        "afterInputWasmCommittedBytes": 26050560,
+        "peakChromePssKiB": 634244.5
+      },
+      "candidate": {
+        "inputViewportPaintMs": 11.149999998509884,
+        "inputSyntaxReadyMs": 55.399999998509884,
+        "coldSyntaxReadyMs": 1161.6999999955297,
+        "wasmCommittedBytes": 25493504,
+        "afterInputWasmCommittedBytes": 26050560,
+        "peakChromePssKiB": 615405.5
+      }
+    },
+    {
+      "case": "cached-functions",
+      "mode": "remote",
+      "baseline": {
+        "inputViewportPaintMs": 10.600000008940697,
+        "inputSyntaxReadyMs": 52.100000001490116,
+        "coldSyntaxReadyMs": 1198.3999999985099,
+        "wasmCommittedBytes": 25493504,
+        "afterInputWasmCommittedBytes": 26050560,
+        "peakChromePssKiB": 609380.5
+      },
+      "candidate": {
+        "inputViewportPaintMs": 10.949999995529652,
+        "inputSyntaxReadyMs": 52.45000000298023,
+        "coldSyntaxReadyMs": 1200.5500000044703,
+        "wasmCommittedBytes": 25493504,
+        "afterInputWasmCommittedBytes": 26017792,
+        "peakChromePssKiB": 611934.5
+      }
+    }
+  ]
+}

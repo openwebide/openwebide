@@ -348,3 +348,74 @@ mod ownership_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod retirement_ownership_tests {
+    use super::super::super::SyntaxDocument;
+    use crate::{editor::SyntaxStatus, highlight::Language};
+    use std::sync::Arc;
+
+    #[test]
+    fn cache_retirement_hides_results_and_rejects_cancellation_or_new_source() {
+        for operation in ["cancel", "replace", "finish"] {
+            let old = Arc::new("fn item() { call(1); }\n".repeat(600));
+            let old_owner = Arc::downgrade(&old);
+            let source = Arc::new("fn replacement() { call(2); }\n".to_owned());
+            let mut document = SyntaxDocument::new(Language::Rust).unwrap();
+            document.prepare_shared(old.clone(), 4, || true).1.unwrap();
+            drop(old);
+            for turn in 0..1000 {
+                let mut checks = 0;
+                let result = document.prepare_cooperative(
+                    source.clone(),
+                    4,
+                    || true,
+                    || {
+                        checks += 1;
+                        checks >= 2
+                    },
+                );
+                assert!(result.is_none(), "retirement must yield before publication");
+                assert!(document.prepared.is_none());
+                if document
+                    .paint_progress
+                    .as_ref()
+                    .is_some_and(super::super::preparation::PaintPreparation::retirement_pending)
+                {
+                    break;
+                }
+                assert!(turn < 999);
+            }
+            assert!(document.structure().is_none());
+            assert!(document.folds().is_empty());
+            match operation {
+                "cancel" => {
+                    let (status, result) = document
+                        .prepare_cooperative(source, 4, || false, || false)
+                        .unwrap();
+                    assert_eq!(status, SyntaxStatus::Cancelled);
+                    assert!(result.is_none());
+                }
+                "replace" => {
+                    let replacement = "fn accepted() { call(3); }\n";
+                    let (_, result) = document.prepare(replacement, 4, || true);
+                    assert_eq!(result.unwrap().source_snapshot().as_str(), replacement);
+                }
+                _ => {
+                    let (_, result) = document.prepare_shared(source.clone(), 4, || true);
+                    let (_, expected) =
+                        SyntaxDocument::new(Language::Rust)
+                            .unwrap()
+                            .prepare(&source, 4, || true);
+                    assert_eq!(result.unwrap().highlights(), expected.unwrap().highlights());
+                }
+            }
+            assert!(document.paint_progress.is_none());
+            assert!(document.painting.is_none());
+            assert!(
+                old_owner.upgrade().is_none(),
+                "release the retired source owner"
+            );
+        }
+    }
+}

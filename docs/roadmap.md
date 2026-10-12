@@ -339,6 +339,22 @@ prepared only one token row per unit. Small rows now share the existing 64-recor
   [samples](editor-performance/highlight-collection-production.jsonl)). Integrated CI
   verification for this checkpoint remains pending. Cursor seeks, capacity growth, retained-cache retirement
   and final publication still need bounded work.
+  Reused highlight-cache entries now transfer ownership into the next cache;
+  leftover entries retire through the same preparation driver in bounded record
+  steps. Invalid-span fallback also rebuilds the current tree's visit count.
+  All 730 core tests, six local/remote browser contracts, four worker startup tests,
+  strict native/WASM lint and both full production worker inventories pass
+  ([receipt](editor-performance/cache-retirement-browser.json)). Eight serial
+  baseline/candidate edits across a 2,500-function cache preserve full source and
+  grammar colors in both modes. Input paint remains 11–13 ms, syntax readiness
+  52–58 ms and cold preparation about 1.2 seconds; no general latency/PSS gain
+  is established ([comparison](editor-performance/cache-retirement-production-summary.json),
+  [samples](editor-performance/cache-retirement-production.jsonl)). The rejected
+  4,000-function trial exceeds existing analysis admission
+  ([trial](editor-performance/cache-retirement-rejected-workload.jsonl)); limits
+  are unchanged. Integrated CI verification remains pending.
+  Iterator scans, table/tree destruction, cancellation disposal, other retained
+  caches and final publication remain unfinished.
 - [ ] **Source, worker transport and storage:** finish external parser snapshots,
   changed-revision comparisons, header/capacity allocation,
   JavaScript string conversion, complete message decoding/publication,

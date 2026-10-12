@@ -118,6 +118,8 @@ def source_for(case):
         return source + "\nlet next = 0;" if case == "styled-long-line-following-row" else source
     if case == "dense-rows":
         return "\n" * 49_000
+    if case == "cached-functions":
+        return "fn item() { call(1); }\n" * 2_500
     if case == "embedded-html":
         return "<script>const word = '文😀'; function sample() { return word; }</script><style>.word { color: red; }</style>\n" * 250
     if case == "embedded-markdown":
@@ -505,6 +507,8 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
             """, "args": []})
             assert "error" not in snapshot, snapshot
             assert not require_styled or snapshot["styledString"], "Prepared string style was unavailable"
+            if case == "cached-functions":
+                assert browser.script("return !!document.querySelector('.editor-highlight-content .tok-keyword');"), "Function workload must prepare grammar colors"
             assert snapshot["wrapped"] == wrapped, "Editor preference was not applied"
             memory = process_memory(browser.process.pid)
             phase = "scroll paint"
@@ -672,7 +676,7 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--cases", nargs="+", choices=["small", "medium", "byte-limit", "line-limit", "long-line", "styled-long-line", "styled-long-line-following-row", "dense-rows", "embedded-html", "embedded-markdown"], default=["small"])
+    parser.add_argument("--cases", nargs="+", choices=["small", "medium", "byte-limit", "line-limit", "long-line", "styled-long-line", "styled-long-line-following-row", "dense-rows", "cached-functions", "embedded-html", "embedded-markdown"], default=["small"])
     parser.add_argument("--modes", nargs="+", choices=["local", "remote"], default=["local", "remote"])
     parser.add_argument("--wrap", action="store_true")
     parser.add_argument("--trace", action="store_true", help="Record bounded probe/worker diagnostics; timings include instrumentation overhead")
