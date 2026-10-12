@@ -20,7 +20,7 @@ Browser, Runtime = SUPPORT['Browser'], SUPPORT['Runtime']
 cdp, wait, snapshot = SUPPORT['cdp'], SUPPORT['wait'], SUPPORT['snapshot']
 
 
-def check(mode, read_only):
+def check(mode, read_only, touch_at_startup):
     ending = "\n"
     row = '// 文😀 tail' + ending
     source = row * 1500
@@ -47,13 +47,21 @@ def check(mode, read_only):
                     'bridge_url': 'http://127.0.0.1:1', 'editor_preferences': json.dumps({'word_wrap': False})}.items():
                 runtime.request('PUT', '/api/settings', {'key': key, 'value': value})
             browser = Browser(state)
+            if touch_at_startup:
+                cdp(browser, 'Emulation.setTouchEmulationEnabled', {'enabled': True, 'maxTouchPoints': 5})
             browser.call('POST', '/url', {'url': runtime.url + '/offline.html'})
             for cookie in runtime.cookies:
                 browser.call('POST', '/cookie', {'cookie': {'name': cookie.name, 'value': cookie.value,
                     'domain': '127.0.0.1', 'path': cookie.path, 'httpOnly': True}})
             browser.call('POST', '/url', {'url': runtime.url + '/'})
             wait('editor hydration', lambda: snapshot(browser))
-            wait('prepared input', lambda: snapshot(browser)['bound'])
+            wait('prepared paint', lambda: browser.script("return document.querySelector('.editor-code')?.classList.contains('highlight-ready');"))
+            coarse = browser.script("return matchMedia('(any-pointer: coarse)').matches;")
+            assert coarse == touch_at_startup, 'expected touch capability at editor startup'
+            if touch_at_startup:
+                assert not snapshot(browser)['bound'], 'touch startup must retain full native selection surface'
+            else:
+                wait('prepared input', lambda: snapshot(browser)['bound'])
             cdp(browser, 'Emulation.setTouchEmulationEnabled', {'enabled': True, 'maxTouchPoints': 5})
             browser.script("""
                 window.touchEvidence=[];
@@ -76,11 +84,13 @@ def check(mode, read_only):
             assert (before['value'],before['start'],before['end'])==(after['value'],after['start'],after['end']), 'pan changed source or selection'
             assert evidence and all(event['trusted'] for event in evidence), 'expected browser-generated touch events'
             assert any(event['type'] == 'touchmove' and event['prevented'] for event in evidence), 'editor must claim the pan'
-            print(json.dumps({'mode':mode,'readOnly':read_only,'scrollTop':top,'events':evidence}),flush=True)
+            print(json.dumps({'mode':mode,'readOnly':read_only,'touchAtStartup':touch_at_startup,'scrollTop':top,'events':evidence}),flush=True)
         finally:
             if browser: browser.stop()
             runtime.stop()
 
 if __name__ == '__main__':
     for mode in ['local','remote']:
-        for read_only in [False,True]: check(mode,read_only)
+        for read_only in [False,True]:
+            for touch_at_startup in [False, True]:
+                check(mode,read_only,touch_at_startup)

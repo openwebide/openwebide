@@ -176,7 +176,8 @@ prepared only one token row per unit. Small rows now share the existing 64-recor
   selection publication. Editable one-finger scrolling now forwards through the
   same browser scroll primitive as wheel input; headless Chrome touch/wheel,
   caret and wrapped-geometry contracts pass in both modes. Chromium-generated
-  touch gestures also scroll editable and read-only prepared editors without
+  touch gestures, enabled before startup or after desktop preparation, also
+  scroll editable and read-only prepared editors without
   changing text or selection ([receipt](editor-performance/trusted-touch-browser.json)). Physical-device
   verification, source-owned touch caret/selection and native fallback transitions
   remain open. Boundable native windows now cap bytes and 128 rows plus endpoint

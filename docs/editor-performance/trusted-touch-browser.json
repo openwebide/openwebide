@@ -1,13 +1,58 @@
 {
-  "baselineCommit": "609545165445f117f7b0f1f31127c7bbb0154fdd",
-  "wasmSha256": "a28a2fe45707e7380b9a4dc8e2c8b807427f23107b64602e063ea48801041fde",
+  "baselineCommit": "04f6e57619d5cf9ee8f4b5fc8e0fb5b614d6a0d5",
+  "wasmSha256": "744680f0c41bac5950a566d06c8d34e686dfdf4e3c78c864f912e2afba75ed5d",
   "servedArtifactMatches": true,
-  "method": "Chromium CDP touch emulation, trusted touch events, real prepared editor with disposable Spin/SQLite/account state",
+  "method": "Chromium CDP trusted touch gestures with touch capability enabled before hydration or after desktop preparation; disposable Spin/SQLite/account state",
   "limitations": "No physical mobile/PWA or native folder permission validation. No backend service restart.",
   "checks": [
     {
       "mode": "local",
       "readOnly": false,
+      "touchAtStartup": false,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "local",
+      "readOnly": false,
+      "touchAtStartup": true,
       "scrollTop": 120,
       "events": [
         {
@@ -51,6 +96,51 @@
     {
       "mode": "local",
       "readOnly": true,
+      "touchAtStartup": false,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "local",
+      "readOnly": true,
+      "touchAtStartup": true,
       "scrollTop": 120,
       "events": [
         {
@@ -94,6 +184,51 @@
     {
       "mode": "remote",
       "readOnly": false,
+      "touchAtStartup": false,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "readOnly": false,
+      "touchAtStartup": true,
       "scrollTop": 120,
       "events": [
         {
@@ -137,6 +272,51 @@
     {
       "mode": "remote",
       "readOnly": true,
+      "touchAtStartup": false,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "readOnly": true,
+      "touchAtStartup": true,
       "scrollTop": 120,
       "events": [
         {
