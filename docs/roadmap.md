@@ -654,8 +654,7 @@ Linux/x64 verification also passes in the complete `67b3a529` inventory.
   run `38255429450`, and verify the subsequent runtime/owner fixes on hosted Linux.
   Running releases now finish while newer pushes replace only the pending build;
   the complete test and platform-image gates still apply before publication.
-  Investigate the
-  any new readiness/order failures and repeat near-limit Linux/x64
+  Investigate any new readiness/order failures and repeat near-limit Linux/x64
   readiness with parser/paint/geometry diagnostics, unchanged timeouts and probe
   limits. Preserve complete compiled inventories, independently checked disjoint
   groups of at most 64 editor tests, the 300-second browser deadline, separate font
@@ -668,6 +667,14 @@ Linux/x64 verification also passes in the complete `67b3a529` inventory.
   contracts and both font matrices
   ([receipt](editor-performance/editor-ci-67b-success.json)). Repeat this gate for the final
   integrated editor implementation before closing.
+  Subsequent checkpoints `607f7c46` and `420e03aa` also pass the complete hosted
+  release workflow. The nightly-version change in `915c07b7` passes native,
+  frontend, Docker, Windows and both image jobs but fails the release-notes browser
+  assertion: nightly notes now have an Unreleased heading. The contract now
+  checks that heading while retaining account acknowledgement and dismissal;
+  four fresh browser contracts pass, including About in both modes and focus
+  restoration ([receipt](editor-performance/nightly-release-notes-browser.json)).
+  Verify the complete subsequent release before treating CI as resolved.
 
 - [ ] **Physical Chrome/Edge PWA input:** verify real input-method commit/cancel,
   Unicode and LF/CRLF undo/redo, multiple-cursor clipboard transactions and touch

@@ -1,0 +1,22 @@
+{
+  "description": "Nightly bundled notes use Unreleased; release-notes browser contract still verifies account version acknowledgement, opening notes and dismissal. Four fresh browser checks include About local/remote behavior and focus restoration. Full hosted release verification remains pending.",
+  "failedHostedRun": 38293785712,
+  "failedCommit": "915c07b7",
+  "cause": "Release-notes contract expected the nightly package version in notes now headed Unreleased. The assertion panicked before dismissal, leaving its modal to interfere with subsequent tests.",
+  "artifactSha256": "63cf759ed0c5f2276db27fc489d9a1fa992a4909a98dc677d244644c30a359c2",
+  "browser": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "console": "Invoking test: release_notes::release_notice_acknowledges_the_account_and_opens_bundled_notes\nInvoking test: modals::stacked_prompt_submits_once_and_returns_focus_to_settings\nInvoking test: modals::confirm_focus_traps_live_controls_and_restores_opener\nInvoking test: modals::about_shows_build_and_local_notices_in_both_modes_and_restores_focus\n",
+    "output": "\nrunning 4 tests\ntest release_notes::release_notice_acknowledges_the_account_and_opens_bundled_notes ... ok\ntest modals::stacked_prompt_submits_once_and_returns_focus_to_settings ... ok\ntest modals::confirm_focus_traps_live_controls_and_restores_opener ... ok\ntest modals::about_shows_build_and_local_notices_in_both_modes_and_restores_focus ... ok\n\ntest result: ok. 4 passed; 0 failed; 0 ignored; 0 filtered out; finished in 1.18s\n\n",
+    "passed": true,
+    "tests": [
+      "__wbgt__components::modals::about_shows_build_and_local_notices_in_both_modes_and_restores_focus",
+      "__wbgt__components::modals::confirm_focus_traps_live_controls_and_restores_opener",
+      "__wbgt__components::modals::stacked_prompt_submits_once_and_returns_focus_to_settings",
+      "__wbgt__components::release_notes::release_notice_acknowledges_the_account_and_opens_bundled_notes"
+    ],
+    "servedFonts": {},
+    "libraryStartSuppressed": false,
+    "testModuleRoute": "/tests.js"
+  }
+}

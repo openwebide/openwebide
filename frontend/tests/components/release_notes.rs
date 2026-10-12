@@ -24,12 +24,17 @@ async fn release_notice_acknowledges_the_account_and_opens_bundled_notes() {
         Some(env!("CARGO_PKG_VERSION"))
     );
     assert!(mounted.state.ui.about_open.get_untracked());
+    let expected_heading = if env!("CARGO_PKG_VERSION").contains("-nightly") {
+        "Unreleased"
+    } else {
+        env!("CARGO_PKG_VERSION")
+    };
     assert!(
         mounted
             .element(".release-notes")
             .text_content()
             .unwrap()
-            .contains(env!("CARGO_PKG_VERSION"))
+            .contains(expected_heading)
     );
     mounted.click_text("Close");
     settle().await;
