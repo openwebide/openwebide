@@ -116,13 +116,7 @@ pub(crate) async fn prepare_on_host(
     };
     preparation::prepare_on_host(&adapter, source).await
 }
-#[derive(Clone, Debug)]
-pub struct CatalogSelection {
-    pub marketplace: MarketplaceSource,
-    pub publisher: String,
-    pub name: String,
-    pub version: String,
-}
+pub use openwebide_core::plugins::management::CatalogSelection;
 #[derive(Clone)]
 enum Operation {
     Refresh,
@@ -550,43 +544,26 @@ async fn run_operation(
             if !current() {
                 return Ok(());
             }
-            let package = transport.package(&entry.prepared).await?;
-            package.validate().map_err(|e| e.to_string())?;
-            if package.prepared.source != entry.prepared.source
-                || package.prepared.manifest != entry.prepared.manifest
-                || package.prepared.digest != entry.prepared.digest
-            {
-                return Err("Plugin host returned different plugin content.".into());
-            }
-            if !current() {
-                return Ok(());
-            }
-            let entries = backend
-                .record_plugin(&RecordPlugin {
-                    approved_capabilities: Vec::new(),
-                    update_policy: None,
-                    package: None,
-                    prepared: package.prepared.clone(),
-                    revision: Some(entry.revision),
-                })
-                .await?;
-            if !current() {
-                return Ok(());
-            }
-            let installed = entries
-                .iter()
-                .find(|e| e.prepared.source == package.prepared.source)
-                .ok_or("Installation was not recorded.")?;
-            let command = ProjectPluginCommand::Enable {
-                package: Box::new(package),
-                installation_revision: installed.revision,
-                revision,
+            let identity = management::PluginIdentity {
+                repository: entry.prepared.source.repository.clone(),
+                path: entry.prepared.source.path.clone(),
+                publisher: entry.prepared.manifest.publisher.clone(),
+                name: entry.prepared.manifest.name.clone(),
             };
-            state.installations.set(entries);
-            let bindings = backend.project_plugin_command(id, &command).await?;
-            if current() {
-                state.project_plugins.set(bindings);
-            }
+            let adapter = UiManagementHost {
+                api: send_wrapper::SendWrapper::new(api),
+                state: send_wrapper::SendWrapper::new(state),
+                transport: send_wrapper::SendWrapper::new(transport),
+                project: Some(id),
+                current: send_wrapper::SendWrapper::new(&current),
+            };
+            openwebide_agent::plugins::management::enable_plugin(
+                &adapter,
+                &identity,
+                entry.revision,
+                revision,
+            )
+            .await?;
         }
     }
     Ok(())
@@ -596,14 +573,114 @@ fn validate_loaded_plugin(
     expected: &PreparedPlugin,
     package: &PluginPackage,
 ) -> Result<(), String> {
-    package.validate().map_err(|error| error.to_string())?;
-    if package.prepared.source != expected.source
-        || package.prepared.manifest != expected.manifest
-        || package.prepared.digest != expected.digest
-    {
-        return Err("Plugin host returned different plugin content.".into());
+    management::validate_loaded_plugin(expected, package).map_err(|error| error.to_string())
+}
+
+struct UiManagementHost<'a> {
+    api: send_wrapper::SendWrapper<Api>,
+    state: send_wrapper::SendWrapper<PluginsState>,
+    transport: send_wrapper::SendWrapper<PluginTransport>,
+    project: Option<i64>,
+    current: send_wrapper::SendWrapper<&'a dyn Fn() -> bool>,
+}
+impl UiManagementHost<'_> {
+    fn snapshot(&self) -> management::ManagementSnapshot {
+        management::ManagementSnapshot {
+            project_id: self.project,
+            installations: self.state.installations.get_untracked(),
+            marketplaces: self.state.marketplaces.get_untracked(),
+            bindings: self.state.project_plugins.get_untracked(),
+        }
     }
-    Ok(())
+}
+impl openwebide_agent::plugins::management::ManagementHost for UiManagementHost<'_> {
+    fn metadata(
+        &self,
+        request: management::ManagementRequest,
+    ) -> impl std::future::Future<Output = Result<management::ManagementSnapshot, String>> + Send
+    {
+        send_wrapper::SendWrapper::new(async move {
+            if !(self.current)() {
+                return Err("Plugin management context changed.".into());
+            }
+            let mut snapshot = self.snapshot();
+            let backend = self
+                .api
+                .try_with_value(Clone::clone)
+                .ok_or("Plugin context changed")?;
+            match request {
+                management::ManagementRequest::Snapshot => return Ok(snapshot),
+                management::ManagementRequest::Record { request } => {
+                    snapshot.installations = backend.record_plugin(&request).await?;
+                    if let Some(id) = self.project {
+                        snapshot.bindings = backend.project_plugins(id).await?;
+                    }
+                }
+                management::ManagementRequest::Project { command } => {
+                    snapshot.bindings = backend
+                        .project_plugin_command(
+                            self.project
+                                .ok_or("Open a project before changing enablement.")?,
+                            &command,
+                        )
+                        .await?;
+                }
+                management::ManagementRequest::Remove { request } => {
+                    snapshot.installations = backend.remove_plugin(&request).await?;
+                    if let Some(id) = self.project {
+                        snapshot.bindings = backend.project_plugins(id).await?;
+                    }
+                }
+                management::ManagementRequest::Marketplaces { request } => {
+                    snapshot.marketplaces = backend.save_plugin_marketplaces(&request).await?;
+                }
+            }
+            if !(self.current)() {
+                return Err("Plugin management context changed.".into());
+            }
+            self.state.installations.set(snapshot.installations.clone());
+            self.state.project_plugins.set(snapshot.bindings.clone());
+            self.state.marketplaces.set(snapshot.marketplaces.clone());
+            Ok(snapshot)
+        })
+    }
+    fn prepare(
+        &self,
+        source: &PluginSource,
+    ) -> impl std::future::Future<Output = Result<PreparedPlugin, String>> + Send {
+        send_wrapper::SendWrapper::new(async move {
+            let result = prepare_on_host(
+                (*self.transport).clone(),
+                source,
+                || (self.current)(),
+                || {
+                    self.state
+                        .cancel_preparation
+                        .try_get_untracked()
+                        .unwrap_or(true)
+                },
+                |progress| {
+                    if (self.current)() {
+                        self.state.preparation.set(Some(progress));
+                    }
+                },
+            )
+            .await;
+            if (self.current)() {
+                self.state.preparation.set(None);
+            }
+            result
+        })
+    }
+    fn package(
+        &self,
+        expected: &PreparedPlugin,
+    ) -> impl std::future::Future<Output = Result<PluginPackage, String>> + Send {
+        send_wrapper::SendWrapper::new(self.transport.package(expected))
+    }
+    fn current(&self) -> bool {
+        (self.current)()
+    }
 }
 
 async fn install_plugin(
@@ -614,24 +691,11 @@ async fn install_plugin(
     current: impl Fn() -> bool + Clone + 'static,
     selection: Option<CatalogSelection>,
 ) -> Result<(), String> {
-    let backend = api.with_value(Clone::clone);
-
     let (source, expected) = if let Some(selection) = selection {
         let markets = state.marketplaces.get_untracked();
-        let catalog = markets
-            .catalogs
-            .iter()
-            .find(|c| c.source == selection.marketplace)
-            .ok_or("Refresh this marketplace first.")?;
-        let source = catalog
-            .catalog
-            .resolve(
-                &catalog.source,
-                &selection.publisher,
-                &selection.name,
-                &selection.version,
-            )
-            .map_err(|e| e.to_string())?;
+        let source = selection
+            .resolve(&markets)
+            .map_err(|error| error.to_string())?;
         (source, Some(selection))
     } else {
         (
@@ -643,17 +707,6 @@ async fn install_plugin(
             None,
         )
     };
-    source.validate().map_err(|e| e.to_string())?;
-    let previous = state.installations.with_untracked(|entries| {
-        entries
-            .iter()
-            .find(|e| {
-                e.prepared.source.repository == source.repository
-                    && e.prepared.source.path == source.path
-            })
-            .cloned()
-    });
-    let revision = previous.as_ref().map(|entry| entry.revision);
     let transport = match host.plugin_host(project, current.clone())? {
         PluginExecutionHost::Remote { api, .. } => PluginTransport::Remote(api, project),
         PluginExecutionHost::Local(client) => PluginTransport::Local(client),
@@ -661,54 +714,22 @@ async fn install_plugin(
     if !current() {
         return Ok(());
     }
-    let prepared = prepare_on_host(
-        transport.clone(),
-        &source,
-        current.clone(),
-        move || state.cancel_preparation.try_get_untracked().unwrap_or(true),
-        {
-            let current = current.clone();
-            move |progress| {
-                if current() {
-                    state.preparation.set(Some(progress));
-                }
-            }
-        },
+    let adapter = UiManagementHost {
+        api: send_wrapper::SendWrapper::new(api),
+        state: send_wrapper::SendWrapper::new(state),
+        transport: send_wrapper::SendWrapper::new(transport),
+        project,
+        current: send_wrapper::SendWrapper::new(&current),
+    };
+    let review = openwebide_agent::plugins::management::plan_installation(
+        &adapter,
+        source.clone(),
+        expected,
     )
     .await?;
-    if current() {
-        state.preparation.set(None);
-    }
-    prepared.validate().map_err(|e| e.to_string())?;
-    if prepared.source != source {
-        return Err("Plugin host returned a different source.".into());
-    }
-    if expected.is_some_and(|e| {
-        e.publisher != prepared.manifest.publisher
-            || e.name != prepared.manifest.name
-            || e.version != prepared.manifest.version
-    }) {
-        return Err("Plugin identity or version does not match its marketplace release.".into());
-    }
-    if !current() {
-        return Ok(());
-    }
-    let package = transport.package(&prepared).await?;
-    validate_loaded_plugin(&prepared, &package)?;
-    if !current() {
-        return Ok(());
-    }
-    let capabilities = previous.as_ref().map_or_else(Vec::new, |entry| {
-        added_capabilities(&entry.prepared, &prepared)
-    });
-    let request = RecordPlugin {
-        approved_capabilities: capabilities.clone(),
-        update_policy: None,
-        prepared: package.prepared.clone(),
-        revision,
-        package: Some(Box::new(package)),
-    };
+    let capabilities = review.additions().to_vec();
     if !capabilities.is_empty() {
+        let request = review.into_pending_request();
         state.pending_updates.update(|updates| {
             updates.retain(|update| {
                 update.prepared.source.repository != source.repository
@@ -718,17 +739,7 @@ async fn install_plugin(
         });
         return Ok(());
     }
-    let entries = backend.record_plugin(&request).await?;
-    if !current() {
-        return Ok(());
-    }
-    state.installations.set(entries);
-    if let Some(id) = project {
-        let bindings = backend.project_plugins(id).await?;
-        if current() {
-            state.project_plugins.set(bindings);
-        }
-    }
+    review.apply(&adapter, true).await?;
     Ok(())
 }
 async fn update_plugins(

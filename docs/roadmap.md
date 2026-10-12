@@ -891,12 +891,6 @@ capability.
   defaults and project-specific configuration alongside existing per-project
   enablement. When release archives are supported, verify their digests. Optional
   GitHub topic discovery can follow the catalog/direct-install baseline.
-- Add agent-facing tools to search/browse catalogs, inspect plugins, create and
-  validate packages, install, configure, enable/disable, update, remove and roll
-  back plugins, and manage marketplace sources. Extend the existing Plugins
-  controls to new contribution types, sharing validation, ownership, revision
-  checks and mutation-approval policy. Plugin instructions and handlers remain
-  subject to granted tool capabilities.
 - Add user/project configuration to the existing database-backed marketplace,
   installation and enablement records. Preserve source/publisher identity,
   immutable release commits and content digests, explicit activation and cached

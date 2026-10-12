@@ -1007,6 +1007,7 @@ pub async fn run_local_agent(
             .as_ref()
             .and_then(crate::project_host::ProjectExecution::local_bridge);
         let factory = BrowserTaskFactory {
+            current: SendWrapper::new(std::rc::Rc::new(current.clone())),
             mcp_catalog: Arc::new(plan.mcp.clone()),
             mcp_transport,
             plugin_skills: Arc::new(plan.plugin_skills),
@@ -1214,8 +1215,13 @@ type BrowserPluginTaskExecutor = openwebide_agent::plugins::execution::PluginToo
     BrowserPluginTransport,
     openwebide_agent::plugins::execution::GrantedServices<BrowserPluginServices>,
 >;
-type BrowserBaseTaskExecutor =
-    openwebide_agent::mcp::McpTools<BrowserPluginTaskExecutor, crate::mcp_bridge::McpBridge>;
+type BrowserBaseTaskExecutor = openwebide_agent::mcp::McpTools<
+    openwebide_agent::plugins::management_tools::ManagementTools<
+        BrowserPluginTaskExecutor,
+        BrowserManagementHost,
+    >,
+    crate::mcp_bridge::McpBridge,
+>;
 #[derive(Clone)]
 struct BrowserPluginTransport(Option<crate::plugin_bridge::PluginBridgeClient>);
 impl openwebide_agent::plugins::execution::PluginTransport for BrowserPluginTransport {
@@ -1294,11 +1300,14 @@ impl openwebide_agent::plugins::execution::GrantedHost for BrowserPluginServices
         .await
     }
 }
-type BrowserTaskGate = openwebide_agent::plugins::execution::PluginGate<
-    openwebide_agent::policy::PolicyGate<LocalPermissionGate, ApprovalAdapter>,
+type BrowserTaskGate = openwebide_agent::plugins::management_tools::ManagementGate<
+    openwebide_agent::plugins::execution::PluginGate<
+        openwebide_agent::policy::PolicyGate<LocalPermissionGate, ApprovalAdapter>,
+    >,
 >;
 #[derive(Clone)]
 struct BrowserTaskFactory {
+    current: SendWrapper<std::rc::Rc<dyn Fn() -> bool>>,
     mcp_catalog: Arc<openwebide_core::mcp::Catalog>,
     mcp_transport: crate::mcp_bridge::McpBridge,
     plugin_grants: Arc<std::collections::BTreeMap<String, String>>,
@@ -1327,7 +1336,17 @@ impl BrowserTaskFactory {
     }
     fn base_executor(&self) -> BrowserBaseTaskExecutor {
         openwebide_agent::mcp::McpTools {
-            executor: self.plugin_executor(),
+            executor: openwebide_agent::plugins::management_tools::ManagementTools::new(
+                self.plugin_executor(),
+                BrowserManagementHost {
+                    api: self.api.clone(),
+                    session: self.session,
+                    workspace: self.vfs.clone(),
+                    bridge: SendWrapper::new(self.plugin_bridge.clone()),
+                    current: self.current.clone(),
+                    cancel: self.manual.cancel.clone(),
+                },
+            ),
             transport: self.mcp_transport.clone(),
             catalog: self.mcp_catalog.clone(),
         }
@@ -1365,15 +1384,17 @@ impl BrowserTaskFactory {
         )
     }
     fn gate(&self, request: &ChatRequest) -> BrowserTaskGate {
-        openwebide_agent::plugins::execution::PluginGate {
-            plugins: self.plugin_executables.clone(),
-            gate: openwebide_agent::policy::PolicyGate {
-                manual: self.manual.clone(),
-                source: ApprovalAdapter {
-                    api: self.api.clone(),
-                    session: self.session,
-                    connection_id: request.connection_id,
-                    model: request.model.clone(),
+        openwebide_agent::plugins::management_tools::ManagementGate {
+            gate: openwebide_agent::plugins::execution::PluginGate {
+                plugins: self.plugin_executables.clone(),
+                gate: openwebide_agent::policy::PolicyGate {
+                    manual: self.manual.clone(),
+                    source: ApprovalAdapter {
+                        api: self.api.clone(),
+                        session: self.session,
+                        connection_id: request.connection_id,
+                        model: request.model.clone(),
+                    },
                 },
             },
         }
@@ -1438,3 +1459,65 @@ impl openwebide_agent::questions::QuestionStore for BrowserQuestionPersistence {
 
 type BrowserTaskExecutor =
     openwebide_agent::questions::QuestionTools<BrowserBaseTaskExecutor, BrowserQuestionPersistence>;
+
+struct BrowserManagementHost {
+    workspace: BrowserFsaVfs,
+    api: SendWrapper<Api>,
+    session: i64,
+    bridge: SendWrapper<Option<crate::plugin_bridge::PluginBridgeClient>>,
+    current: SendWrapper<std::rc::Rc<dyn Fn() -> bool>>,
+    cancel: Arc<AtomicBool>,
+}
+impl openwebide_agent::plugins::management::ManagementHost for BrowserManagementHost {
+    fn workspace(&self) -> Option<&dyn openwebide_core::Vfs> {
+        Some(&self.workspace)
+    }
+    fn metadata(
+        &self,
+        request: openwebide_core::plugins::management::ManagementRequest,
+    ) -> impl Future<
+        Output = Result<openwebide_core::plugins::management::ManagementSnapshot, String>,
+    > + Send {
+        SendWrapper::new(async move {
+            self.api
+                .with_value(Clone::clone)
+                .plugin_management(self.session, &request)
+                .await
+        })
+    }
+    fn prepare(
+        &self,
+        source: &openwebide_core::plugins::PluginSource,
+    ) -> impl Future<Output = Result<openwebide_core::plugins::PreparedPlugin, String>> + Send {
+        SendWrapper::new(async move {
+            let bridge = self
+                .bridge
+                .as_ref()
+                .ok_or("Pair this project with an execution host to install plugins.")?
+                .clone();
+            crate::project_plugins::prepare_on_host(
+                crate::project_plugins::PluginTransport::Local(bridge),
+                source,
+                || (self.current)(),
+                || self.cancel.load(Ordering::SeqCst),
+                |_| {},
+            )
+            .await
+        })
+    }
+    fn package(
+        &self,
+        prepared: &openwebide_core::plugins::PreparedPlugin,
+    ) -> impl Future<Output = Result<openwebide_core::plugins::PluginPackage, String>> + Send {
+        SendWrapper::new(async move {
+            self.bridge
+                .as_ref()
+                .ok_or("Plugin execution host unavailable.")?
+                .plugin_package(prepared)
+                .await
+        })
+    }
+    fn current(&self) -> bool {
+        (self.current)() && !self.cancel.load(Ordering::SeqCst)
+    }
+}

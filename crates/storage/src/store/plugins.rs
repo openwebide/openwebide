@@ -6,6 +6,52 @@ use openwebide_core::plugins::{
 const KEY: &str = "plugin_installations";
 
 impl<D: Db> Store<D> {
+    /// Shared persistence facade for UI/agent plugin lifecycle primitives.
+    /// The authenticated adapter supplies the account and optional project.
+    pub async fn manage_plugins(
+        &self,
+        user: UserId,
+        project: Option<i64>,
+        request: &openwebide_core::plugins::management::ManagementRequest,
+        now: i64,
+    ) -> Result<openwebide_core::plugins::management::ManagementSnapshot, StorageError> {
+        use openwebide_core::plugins::management::{ManagementRequest, ManagementSnapshot};
+        // Verify ownership before any account mutation when a project is attached.
+        if let Some(project) = project {
+            self.get_project(project, user).await?;
+        }
+        match request {
+            ManagementRequest::Snapshot => {}
+            ManagementRequest::Record { request } => {
+                self.record_plugin(user, request, now).await?;
+            }
+            ManagementRequest::Project { command } => {
+                let project = project.ok_or_else(|| {
+                    StorageError::InvalidRequest(
+                        "Open a project to change plugin enablement.".into(),
+                    )
+                })?;
+                self.project_plugin_command(user, project, command, now)
+                    .await?;
+            }
+            ManagementRequest::Remove { request } => {
+                self.remove_plugin(user, request).await?;
+            }
+            ManagementRequest::Marketplaces { request } => {
+                self.save_plugin_marketplaces(user, request).await?;
+            }
+        }
+        Ok(ManagementSnapshot {
+            project_id: project,
+            installations: self.plugin_installations(user).await?,
+            marketplaces: self.plugin_marketplaces(user).await?,
+            bindings: match project {
+                Some(project) => self.project_plugins(user, project).await?,
+                None => Vec::new(),
+            },
+        })
+    }
+
     pub async fn plugin_installations(
         &self,
         user: UserId,
@@ -1702,6 +1748,89 @@ mod bundled_tests {
                     .unwrap();
                 assert_eq!(preserved.prepared.manifest.version, "0.1.9");
                 assert_eq!(preserved.update_policy, PluginUpdatePolicy::Off);
+            }
+        });
+    }
+}
+
+#[cfg(test)]
+mod management_tests {
+    use super::*;
+    use crate::rusqlite_db::RusqliteDb;
+    use openwebide_core::{
+        NewProject, WorkspaceMode,
+        plugins::{management::ManagementRequest, testing::receipt},
+    };
+
+    #[test]
+    fn management_rejects_cross_account_projects_before_mutating_in_both_modes() {
+        futures::executor::block_on(async {
+            for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+                let store = Store::new(RusqliteDb::open_in_memory().unwrap());
+                store.migrate().await.unwrap();
+                let owner = store
+                    .insert_user("owner", "hash", UserRole::Admin, 0)
+                    .await
+                    .unwrap()
+                    .id;
+                let other = store
+                    .insert_user("other", "hash", UserRole::User, 0)
+                    .await
+                    .unwrap()
+                    .id;
+                let project = store
+                    .create_project(
+                        &NewProject {
+                            name: "project".into(),
+                            mode,
+                            path: None,
+                        },
+                        owner,
+                        0,
+                    )
+                    .await
+                    .unwrap()
+                    .id;
+                let request = ManagementRequest::Record {
+                    request: Box::new(RecordPlugin {
+                        approved_capabilities: Vec::new(),
+                        update_policy: None,
+                        package: None,
+                        prepared: receipt(),
+                        revision: None,
+                    }),
+                };
+                assert!(
+                    store
+                        .manage_plugins(other, Some(project), &request, 1)
+                        .await
+                        .is_err()
+                );
+                assert!(store.plugin_installations(other).await.unwrap().is_empty());
+                let snapshot = store
+                    .manage_plugins(owner, Some(project), &request, 1)
+                    .await
+                    .unwrap();
+                assert_eq!(snapshot.installations.len(), 1);
+                let mut changed = receipt();
+                changed.source.commit = "b".repeat(40);
+                let stale = ManagementRequest::Record {
+                    request: Box::new(RecordPlugin {
+                        approved_capabilities: Vec::new(),
+                        update_policy: None,
+                        package: None,
+                        prepared: changed,
+                        revision: Some(99),
+                    }),
+                };
+                assert!(matches!(
+                    store.manage_plugins(owner, Some(project), &stale, 2).await,
+                    Err(StorageError::Conflict(_))
+                ));
+                assert_eq!(
+                    store.plugin_installations(owner).await.unwrap(),
+                    snapshot.installations
+                );
             }
         });
     }

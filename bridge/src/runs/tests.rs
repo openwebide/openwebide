@@ -9,8 +9,16 @@ use openwebide_core::{
 use openwebide_llm::{ProviderError, StreamChunk, ToolStreamChunk};
 use std::pin::Pin;
 
+#[derive(Clone)]
+struct PluginMetadataFixture {
+    store: Arc<openwebide_storage::Store<openwebide_storage::rusqlite_db::RusqliteDb>>,
+    owner: openwebide_core::UserId,
+    project: i64,
+}
+
 #[derive(Default)]
 struct FakeBackend {
+    plugin_context: Mutex<Option<PluginMetadataFixture>>,
     todo_plan: Mutex<Option<openwebide_core::TodoUpdate>>,
     fail_todo: AtomicBool,
     messages: Mutex<Vec<ChatMessage>>,
@@ -31,6 +39,38 @@ struct FakeBackend {
 }
 
 impl RunBackend for FakeBackend {
+    async fn plugin_management(
+        &self,
+        user: i64,
+        _session: i64,
+        request: &openwebide_core::plugins::management::ManagementRequest,
+    ) -> Result<openwebide_core::plugins::management::ManagementSnapshot, String> {
+        let PluginMetadataFixture {
+            store,
+            owner,
+            project,
+        } = self
+            .plugin_context
+            .lock()
+            .unwrap()
+            .clone()
+            .ok_or("Plugin metadata unavailable")?;
+        if user != owner.get() {
+            return Err("Plugin account changed".into());
+        }
+        let request = request.clone();
+        tokio::task::spawn_blocking(move || {
+            futures::executor::block_on(async {
+                store
+                    .manage_plugins(owner, Some(project), &request, 1)
+                    .await
+                    .map_err(|error| error.to_string())
+            })
+        })
+        .await
+        .map_err(|error| error.to_string())?
+    }
+
     async fn run_lease(
         &self,
         _user: i64,
@@ -1407,6 +1447,7 @@ async fn http_and_agent_run_use_configured_execution() {
                 execution: config.execution.clone(),
                 plugins: crate::plugins::transport::PluginExecutionHost {
                     paired: false,
+                    host_id: crate::scheduled::host(&config).id,
                     installer: config.plugins.clone(),
                     invocations: config.plugin_invocations.clone(),
                 },
@@ -2252,4 +2293,256 @@ pub(crate) async fn assert_deferred_mcp_run(
             .any(|message| message.role == Role::Tool
                 && message.content.contains("deferred-result:configured:"))
     );
+}
+
+#[tokio::test]
+async fn plugin_management_lifecycle_uses_actual_server_and_paired_host_adapters() {
+    use openwebide_agent::{
+        ToolExecutor, plugins::management::ManagementHost,
+        plugins::management_tools::ManagementTools,
+    };
+    use openwebide_core::{
+        NewProject, WorkspaceMode,
+        plugins::{
+            management::{ManagementRequest, PluginIdentity},
+            marketplace::{CatalogRelease, CatalogReleaseSource, SaveMarketplaces},
+        },
+    };
+    use openwebide_storage::{Store, rusqlite_db::RusqliteDb};
+    fn call(id: &str, name: &str, args: serde_json::Value) -> ToolCall {
+        ToolCall {
+            id: id.into(),
+            name: name.into(),
+            arguments: args.to_string(),
+        }
+    }
+    for (mode, scope, paired) in [
+        (WorkspaceMode::Remote, "user:1", false),
+        (WorkspaceMode::Local, "paired", true),
+    ] {
+        let cache = tempfile::tempdir().unwrap();
+        let workspace = tempfile::tempdir().unwrap();
+        let root = cache.path().canonicalize().unwrap();
+        let source = crate::plugins::seed_test_source(&root, scope);
+        let store = Arc::new(Store::new(RusqliteDb::open_in_memory().unwrap()));
+        store.migrate().await.unwrap();
+        let owner = store
+            .insert_user("owner", "hash", openwebide_core::UserRole::Admin, 0)
+            .await
+            .unwrap()
+            .id;
+        let project = store
+            .create_project(
+                &NewProject {
+                    name: "project".into(),
+                    mode,
+                    path: None,
+                },
+                owner,
+                0,
+            )
+            .await
+            .unwrap()
+            .id;
+        let backend = Arc::new(FakeBackend::default());
+        *backend.plugin_context.lock().unwrap() = Some(PluginMetadataFixture {
+            store: store.clone(),
+            owner,
+            project,
+        });
+        let execution = crate::plugins::transport::PluginExecutionHost {
+            installer: crate::plugins::NativePluginInstaller::new(Some(root.clone())),
+            invocations: Default::default(),
+            paired,
+            host_id: scope.into(),
+        };
+        let tools = ManagementTools::new(
+            VfsToolExecutor::new(NativeFsVfs {
+                root: workspace.path().canonicalize().unwrap(),
+            }),
+            BridgeManagementHost {
+                workspace: Some(NativeFsVfs {
+                    root: workspace.path().canonicalize().unwrap(),
+                }),
+                backend,
+                run: Arc::new(Run::new("management".into(), owner.get(), 1, 16)),
+                transport: execution.transport(owner.get()),
+                host_id: execution.host_id,
+            },
+        );
+        let install = call(
+            "install",
+            "plugin_manage",
+            serde_json::json!({"action":"install","source":source}),
+        );
+        assert!(!tools.execute(&install).await.ok);
+        let preview = tools.preview(&install).await.unwrap();
+        assert!(preview.note.unwrap().contains(&source.commit));
+        let installed = tools.execute(&install).await;
+        assert!(installed.ok, "{}", installed.content);
+        let mut snapshot = tools
+            .host
+            .metadata(ManagementRequest::Snapshot)
+            .await
+            .unwrap();
+        assert_eq!(snapshot.installations.len(), 1);
+        assert!(snapshot.bindings[0].enabled);
+        let identity = PluginIdentity {
+            repository: source.repository.clone(),
+            path: source.path.clone(),
+            publisher: snapshot.installations[0]
+                .prepared
+                .manifest
+                .publisher
+                .clone(),
+            name: snapshot.installations[0].prepared.manifest.name.clone(),
+        };
+        let searched = tools
+            .execute(&call(
+                "search",
+                "plugin_search",
+                serde_json::json!({"query":"review","installed_only":true}),
+            ))
+            .await;
+        assert!(searched.ok);
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&searched.content).unwrap()[0]["identity"],
+            serde_json::json!(identity)
+        );
+        let inspected = tools
+            .execute(&call(
+                "inspect",
+                "plugin_inspect",
+                serde_json::json!({"identity":identity,"source":source}),
+            ))
+            .await;
+        assert!(inspected.ok, "{}", inspected.content);
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&inspected.content).unwrap()["prepared"]["source"],
+            serde_json::json!(source)
+        );
+        let binding = &snapshot.bindings[0];
+        let disabled = tools
+            .execute(&call(
+                "disable",
+                "plugin_manage",
+                serde_json::json!({"action":"disable","id":binding.id,"revision":binding.revision}),
+            ))
+            .await;
+        assert!(disabled.ok, "{}", disabled.content);
+        let next = crate::plugins::seed_test_release(&root, scope, &source, "0.2.0");
+        let mut catalog = openwebide_core::plugins::testing::catalog();
+        catalog.catalog.plugins[0].releases[0].source.commit = source.commit.clone();
+        catalog.catalog.plugins[0].releases.push(CatalogRelease {
+            version: "0.2.0".into(),
+            source: CatalogReleaseSource {
+                commit: next.commit.clone(),
+                path: next.path.clone(),
+            },
+        });
+        let mut sources = snapshot.marketplaces.sources.clone();
+        sources.push(catalog.source.clone());
+        let markets = store
+            .save_plugin_marketplaces(
+                owner,
+                &SaveMarketplaces {
+                    revision: snapshot.marketplaces.revision,
+                    sources,
+                },
+            )
+            .await
+            .unwrap();
+        store
+            .cache_plugin_marketplaces(owner, markets.revision, vec![catalog.clone()])
+            .await
+            .unwrap();
+        let update = call(
+            "update",
+            "plugin_manage",
+            serde_json::json!({"action":"update","identity":identity,"revision":snapshot.installations[0].revision,"selection":{"marketplace":catalog.source,"publisher":identity.publisher,"name":identity.name,"version":"0.2.0"}}),
+        );
+        assert!(
+            tools
+                .preview(&update)
+                .await
+                .unwrap()
+                .note
+                .unwrap()
+                .contains("0.2.0")
+        );
+        let updated = tools.execute(&update).await;
+        assert!(updated.ok, "{}", updated.content);
+        snapshot = tools
+            .host
+            .metadata(ManagementRequest::Snapshot)
+            .await
+            .unwrap();
+        assert_eq!(snapshot.installations[0].prepared.source, next);
+        assert!(
+            !snapshot.bindings[0].enabled,
+            "updating must preserve project opt-out"
+        );
+        let rollback = call(
+            "rollback",
+            "plugin_manage",
+            serde_json::json!({"action":"rollback","identity":identity,"revision":snapshot.installations[0].revision,"source":source}),
+        );
+        let _ = tools.preview(&rollback).await;
+        let rolled_back = tools.execute(&rollback).await;
+        assert!(rolled_back.ok, "{}", rolled_back.content);
+        snapshot = tools
+            .host
+            .metadata(ManagementRequest::Snapshot)
+            .await
+            .unwrap();
+        assert_eq!(snapshot.installations[0].prepared.source, source);
+        let enable = call(
+            "enable",
+            "plugin_manage",
+            serde_json::json!({"action":"enable","identity":identity,"revision":snapshot.installations[0].revision,"project_revision":snapshot.bindings[0].revision}),
+        );
+        let enabled = tools.execute(&enable).await;
+        assert!(enabled.ok, "{}", enabled.content);
+        snapshot = tools
+            .host
+            .metadata(ManagementRequest::Snapshot)
+            .await
+            .unwrap();
+        assert!(snapshot.bindings[0].enabled);
+        let configured=tools.execute(&call("configure","plugin_manage",serde_json::json!({"action":"configure","identity":identity,"revision":snapshot.installations[0].revision,"update_policy":"off"}))).await;
+        assert!(configured.ok, "{}", configured.content);
+        let stale = tools
+            .execute(&call(
+                "stale",
+                "plugin_manage",
+                serde_json::json!({"action":"remove","identity":identity,"revision":999}),
+            ))
+            .await;
+        assert!(!stale.ok);
+        snapshot = tools
+            .host
+            .metadata(ManagementRequest::Snapshot)
+            .await
+            .unwrap();
+        let removed=tools.execute(&call("remove","plugin_manage",serde_json::json!({"action":"remove","identity":identity,"revision":snapshot.installations[0].revision}))).await;
+        assert!(removed.ok, "{}", removed.content);
+        snapshot = tools
+            .host
+            .metadata(ManagementRequest::Snapshot)
+            .await
+            .unwrap();
+        assert!(snapshot.installations.is_empty());
+        assert!(snapshot.bindings.iter().all(|binding| !binding.enabled));
+        let catalog_only = tools
+            .execute(&call(
+                "catalog-inspect",
+                "plugin_inspect",
+                serde_json::json!({"identity":identity}),
+            ))
+            .await;
+        assert!(catalog_only.ok, "{}", catalog_only.content);
+        assert!(serde_json::from_str::<serde_json::Value>(&catalog_only.content).unwrap()["listing"]["installed"].is_null());
+        let official=tools.execute(&call("sources","plugin_manage",serde_json::json!({"action":"marketplaces","revision":snapshot.marketplaces.revision,"sources":[]}))).await;
+        assert!(!official.ok);
+    }
 }

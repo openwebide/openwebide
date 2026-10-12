@@ -401,3 +401,33 @@ contribution contracts are tracked in [the roadmap](roadmap.md).
 
 Configured host [MCP servers](mcp.md) are supported independently of plugins.
 Declaring an MCP server in a plugin manifest remains future contribution work.
+
+## Agent plugin management
+
+The agent can discover and manage plugins using the same host installation and
+database lifecycle as the Plugins dialog. `plugin_search` searches retained
+catalogs and installed plugins, including during host outages. Results include
+source identities, installed revisions and immutable release commits.
+`plugin_inspect` shows catalog metadata, installation state and project enablement;
+providing a pinned source also prepares and inspects its actual manifest on the
+selected host without activating it.
+
+`plugin_manage` supports installation, updates, rollback to a pinned source,
+project enablement, removal, update policy and marketplace sources. Changes require
+approval, including when automatic tool approval is enabled. Installation reviews
+show the prepared version and capabilities. Updates and rollback retain the
+installed source/publisher identity and require its current revision. Marketplace
+changes require the current settings revision and preserve the official source.
+Installed plugins remain enabled by default; project disablement is an opt-out.
+Running agents retain their selected plugin versions and tool grants; subsequent
+runs see installation and enablement changes.
+
+`plugin_create` creates a validated package from supplied UTF-8 files in a new or
+empty project directory after approval. It preserves existing files and reports
+partial creation if the operation is interrupted. `plugin_validate` checks a
+project package's manifest, declared files, imported skills, paths and size limits.
+It reports the source content digest, excluding Git metadata and generated Cargo
+`target` directories. Source validation does not compile Rust or verify
+its SDK exports; those checks run during host preparation. Both tools use the
+shared workspace interface for browser folders and host projects. Authoring files
+in a local project does not install or execute plugins on the browser device.

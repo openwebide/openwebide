@@ -13,6 +13,17 @@ use serde_json::{Value, json};
 use crate::runs::http_client::ReqwestHttpClient;
 
 pub trait RunBackend: Send + Sync {
+    fn plugin_management(
+        &self,
+        _user: i64,
+        _session: i64,
+        _request: &openwebide_core::plugins::management::ManagementRequest,
+    ) -> impl Future<
+        Output = Result<openwebide_core::plugins::management::ManagementSnapshot, String>,
+    > + Send {
+        async { Err("Plugin management unavailable".into()) }
+    }
+
     fn plugin_request(
         &self,
         _user: i64,
@@ -395,6 +406,21 @@ pub fn encode_query(s: &str) -> String {
 }
 
 impl RunBackend for BackendClient {
+    async fn plugin_management(
+        &self,
+        user: i64,
+        session: i64,
+        request: &openwebide_core::plugins::management::ManagementRequest,
+    ) -> Result<openwebide_core::plugins::management::ManagementSnapshot, String> {
+        self.call(
+            user,
+            "POST",
+            &format!("/sessions/{session}/plugin-management"),
+            json!(request),
+        )
+        .await
+    }
+
     async fn plugin_request(
         &self,
         user: i64,
@@ -893,6 +919,55 @@ impl<B: RunBackend> openwebide_agent::compaction::CompactionSource for ModelSour
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn plugin_management_transport_attaches_account_and_session_and_preserves_failure() {
+        use openwebide_core::plugins::{
+            management::{ManagementRequest, ManagementSnapshot},
+            marketplace::MarketplaceSettings,
+        };
+        for status in [200, 401] {
+            let snapshot = ManagementSnapshot {
+                project_id: Some(7),
+                installations: Vec::new(),
+                bindings: Vec::new(),
+                marketplaces: MarketplaceSettings::default(),
+            };
+            let body = serde_json::to_string(&snapshot).unwrap();
+            let response = format!(
+                "HTTP/1.1 {status} Result\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            );
+            let (url, captured) =
+                crate::runs::http_client::tests::capture(Box::leak(response.into_boxed_str()))
+                    .await;
+            let client = BackendClient::new(
+                format!("{url}/api"),
+                "shared-secret".into(),
+                ReqwestHttpClient::default(),
+            );
+            let result = client
+                .plugin_management(42, 7, &ManagementRequest::Snapshot)
+                .await;
+            assert_eq!(result.is_ok(), status == 200);
+            if let Ok(result) = result {
+                assert_eq!(result.project_id, Some(7));
+            }
+            let request = captured.await.unwrap();
+            assert!(request.starts_with("POST /api/sessions/7/plugin-management HTTP/1.1"));
+            assert!(
+                request
+                    .to_ascii_lowercase()
+                    .contains("authorization: bearer shared-secret\r\n")
+            );
+            assert!(
+                request
+                    .to_ascii_lowercase()
+                    .contains("x-openwebide-user: 42\r\n")
+            );
+            assert!(request.contains("\"operation\":\"snapshot\""));
+        }
+    }
 
     #[tokio::test]
     async fn plugin_update_transport_authenticates_both_host_claims_and_propagates_errors() {

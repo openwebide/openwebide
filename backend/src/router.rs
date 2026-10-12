@@ -67,6 +67,7 @@ enum Route {
     ProjectSkillCommand,
     GetSessionSkills,
     SessionSkillCommand,
+    PluginManagement,
     PluginExecutionGrants,
     PluginHostRequest,
     PluginContextGrants,
@@ -246,6 +247,9 @@ fn resolve(method: &str, segments: &[&str]) -> Option<Route> {
         ("POST", ["projects", id, "skills"]) if numeric_id(id) => Some(Route::ProjectSkillCommand),
         ("GET", ["sessions", id, "skills"]) if numeric_id(id) => Some(Route::GetSessionSkills),
         ("POST", ["sessions", id, "skills"]) if numeric_id(id) => Some(Route::SessionSkillCommand),
+        ("POST", ["sessions", id, "plugin-management"]) if numeric_id(id) => {
+            Some(Route::PluginManagement)
+        }
         ("POST", ["sessions", id, "plugin-grants"]) if numeric_id(id) => {
             Some(Route::PluginExecutionGrants)
         }
@@ -546,6 +550,9 @@ pub async fn route(req: Request) -> JsonResp {
         }
         (Some(Route::GetProjectSkills), Some(user)) => {
             api::skills::get(&state, &path, user, false).await
+        }
+        (Some(Route::PluginManagement), Some(user)) => {
+            api::plugins::management(req, &state, &path, user).await
         }
         (Some(Route::ListMarketplaces), Some(user)) => {
             api::plugins::marketplaces(&state, user).await
@@ -1149,6 +1156,11 @@ mod tests {
                 Route::PluginExecutionGrants,
             ),
             ("POST", "sessions/5/plugin-host", Route::PluginHostRequest),
+            (
+                "POST",
+                "sessions/5/plugin-management",
+                Route::PluginManagement,
+            ),
             (
                 "POST",
                 "plugins/execution-grants",

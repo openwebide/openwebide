@@ -709,3 +709,33 @@ pub(super) async fn ensure_bundled_plugins(state: &AppState, user: UserId) {
 
 #[cfg(test)]
 mod completion_tests;
+
+/// Metadata transport shared by server and paired-host agent runs. Preparation
+/// remains on the selected execution host; this endpoint supplies database primitives.
+pub(crate) async fn management(
+    req: Request,
+    state: &AppState,
+    path: &str,
+    user: AuthedUser,
+) -> Result<JsonResp, ApiError> {
+    let session = path_id(
+        path.strip_suffix("/plugin-management")
+            .ok_or_else(|| ApiError::bad_request("Expected plugin management path"))?,
+        "/api/sessions",
+    )?;
+    let session = state.store.get_session(session, user.id).await?;
+    let request: openwebide_core::plugins::management::ManagementRequest = parse_json(
+        read_body(
+            req,
+            openwebide_core::plugins::MAX_PACKAGE_BYTES + 256 * 1024,
+        )
+        .await?,
+    )?;
+    Ok(json_response(
+        200,
+        &state
+            .store
+            .manage_plugins(user.id, session.project_id, &request, now())
+            .await?,
+    ))
+}

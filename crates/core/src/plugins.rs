@@ -1,8 +1,10 @@
 //! Host-only plugin preparation policy, shared by every bridge transport.
+pub mod authoring;
 pub mod completion;
 pub mod execution;
 pub mod icon;
 pub mod jobs;
+pub mod management;
 pub mod marketplace;
 pub mod preparation;
 pub mod records;

@@ -6,6 +6,12 @@ The SDK is version 0.1.0, independently of the app. API 2 tool groups are retire
 First-party Web, Project Memory, Scheduling and Skill Authoring implement their
 behavior through the same public SDK and grants as community plugins.
 
+An agent in an open project can use `plugin_create` to create a package from
+supplied files and `plugin_validate` to check its source structure and digest.
+Creation requires approval and preserves existing files. Rust packages still
+need a committed `Cargo.lock`; compilation and SDK export checks run on the
+execution host during preparation. See [agent plugin management](plugins.md#agent-plugin-management).
+
 Author-facing examples, schemas and publisher checks live in the
 [plugins repository](https://github.com/openwebide/plugins). Start with its
 [authoring guide](https://github.com/openwebide/plugins/blob/main/docs/authoring.md),

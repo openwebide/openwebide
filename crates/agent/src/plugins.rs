@@ -3,6 +3,8 @@ pub mod actions;
 pub mod completion;
 pub mod execution;
 pub mod jobs;
+pub mod management;
+pub mod management_tools;
 pub mod runs;
 pub mod updates;
 mod worker;
@@ -25,6 +27,24 @@ pub fn configure(
             && !crate::skills::is_skill_tool(&tool.name)
             && !matches!(tool.name.as_str(), "search_web" | "fetch_web_page")
     });
+    if !tools.is_empty() {
+        let workspace = tools
+            .iter()
+            .any(|tool| matches!(tool.name.as_str(), "read_file" | "write_file"));
+        for definition in management_tools::definitions() {
+            if !workspace
+                && matches!(
+                    definition.name.as_str(),
+                    "plugin_create" | "plugin_validate"
+                )
+            {
+                continue;
+            }
+            if !tools.iter().any(|tool| tool.name == definition.name) {
+                tools.push(definition);
+            }
+        }
+    }
     let sdk_skill_reader = context.bindings.iter().any(|plugin| {
         plugin.enabled
             && plugin.prepared.manifest.executable.is_some()

@@ -761,6 +761,9 @@ async fn git(
 }
 
 #[cfg(test)]
+pub(crate) use tests::{seed as seed_test_source, seed_release as seed_test_release};
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use openwebide_core::plugins::{
@@ -781,7 +784,7 @@ mod tests {
         );
         String::from_utf8(result.stdout).unwrap().trim().into()
     }
-    fn seed(root: &Path, owner: &str) -> PluginSource {
+    pub(crate) fn seed(root: &Path, owner: &str) -> PluginSource {
         let fixture = tempfile::tempdir().unwrap();
         for file in review_files() {
             let path = fixture.path().join("plugins/pr-review").join(file.path);
@@ -842,6 +845,52 @@ mod tests {
             ],
         );
         input
+    }
+
+    pub(crate) fn seed_release(
+        root: &Path,
+        owner: &str,
+        source: &PluginSource,
+        version: &str,
+    ) -> PluginSource {
+        let host = ScopedHost {
+            root: root.join(key(owner)),
+            host_id: "fixture".into(),
+            cancelled: Arc::new(AtomicBool::new(false)),
+        };
+        let repo = host.repository(source);
+        let fixture = tempfile::tempdir().unwrap();
+        command(
+            root,
+            &[
+                "clone",
+                "--quiet",
+                repo.to_str().unwrap(),
+                fixture.path().to_str().unwrap(),
+            ],
+        );
+        let manifest_path = fixture.path().join(&source.path).join("plugin.json");
+        let mut manifest: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&manifest_path).unwrap()).unwrap();
+        manifest["version"] = serde_json::json!(version);
+        std::fs::write(manifest_path, serde_json::to_vec(&manifest).unwrap()).unwrap();
+        command(fixture.path(), &["add", "."]);
+        command(
+            fixture.path(),
+            &[
+                "-c",
+                "user.name=Test",
+                "-c",
+                "user.email=test@example.org",
+                "commit",
+                "-qm",
+                "release",
+            ],
+        );
+        let mut next = source.clone();
+        next.commit = command(fixture.path(), &["rev-parse", "HEAD"]);
+        command(fixture.path(), &["push", "--quiet", "origin", "HEAD"]);
+        next
     }
 
     #[tokio::test]

@@ -14,6 +14,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 - Restore editor scroll axes together through the shared DOM adapter, refreshing source extents once per restoration. Keep single-axis behavior and scoped native scroll echoes unchanged.
 
+- Add agent-facing plugin search, inspection, package creation/validation and approved lifecycle management for server and paired hosts. Share installation and enablement workflows with the Plugins dialog, preserve project opt-outs and immutable run selections, and support pinned updates/rollback, update preferences and marketplace source changes with ownership and revision checks.
+
 - Build release images and standalone bridge artifacts alongside CI, retaining the full check gate before publishing release channels.
 
 - Display About release notes in a full-width scrolling column, keeping the GitHub release link below the notes in narrow windows.

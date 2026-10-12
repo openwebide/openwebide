@@ -1163,6 +1163,14 @@ impl BackendApi {
         ))
         .await
     }
+    pub async fn plugin_management(
+        &self,
+        session: i64,
+        request: &openwebide_core::plugins::management::ManagementRequest,
+    ) -> Result<openwebide_core::plugins::management::ManagementSnapshot, String> {
+        self.post(&format!("/sessions/{session}/plugin-management"), request)
+            .await
+    }
     pub async fn plugin_marketplaces(
         &self,
     ) -> Result<openwebide_core::plugins::marketplace::MarketplaceSettings, String> {

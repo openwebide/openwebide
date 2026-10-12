@@ -8,6 +8,7 @@ pub struct PluginExecutionHost {
     pub installer: NativePluginInstaller,
     pub invocations: Invocations,
     pub paired: bool,
+    pub host_id: String,
 }
 impl PluginExecutionHost {
     pub fn transport(&self, owner: i64) -> NativePluginTransport {

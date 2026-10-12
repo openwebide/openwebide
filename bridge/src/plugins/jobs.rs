@@ -58,6 +58,7 @@ pub async fn serve(config: ServerConfig) {
         )),
         execution: super::transport::PluginExecutionHost {
             paired: config.pairing_token.is_some(),
+            host_id: hosts[0].clone(),
             installer: config.plugins,
             invocations: config.plugin_invocations,
         },

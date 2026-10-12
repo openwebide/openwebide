@@ -11,6 +11,7 @@ pub fn catalog() -> Vec<ToolDefinition> {
         .iter()
         .map(|tool| tool.definition())
         .collect::<Vec<_>>();
+    tools.extend(openwebide_agent::plugins::management_tools::definitions());
     tools.push(openwebide_agent::tasks::executor::definition());
     tools
 }

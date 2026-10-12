@@ -59,6 +59,7 @@ impl openwebide_agent::plugins::runs::RunHost for Host {
                         installer: self.config.plugins.clone(),
                         invocations: self.config.plugin_invocations.clone(),
                         paired: self.config.pairing_token.is_some(),
+                        host_id: crate::scheduled::host(&self.config).id,
                     },
                 },
             )

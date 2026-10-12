@@ -639,6 +639,14 @@ pub trait Backend {
     ) -> LocalBoxFuture<'a, Result<(), String>> {
         Box::pin(async { Err("Plugin execution host unavailable".into()) })
     }
+    fn plugin_management<'a>(
+        &'a self,
+        _session: i64,
+        _request: &'a openwebide_core::plugins::management::ManagementRequest,
+    ) -> LocalBoxFuture<'a, Result<openwebide_core::plugins::management::ManagementSnapshot, String>>
+    {
+        Box::pin(async { Err("Plugin management unavailable".into()) })
+    }
     fn plugin_installations(
         &self,
     ) -> LocalBoxFuture<'_, Result<Vec<openwebide_core::plugins::PluginInstallation>, String>> {
@@ -1637,6 +1645,14 @@ impl Backend for BackendApi {
         id: &'a str,
     ) -> LocalBoxFuture<'a, Result<(), String>> {
         Box::pin(BackendApi::cancel_plugin_invocation(self, id))
+    }
+    fn plugin_management<'a>(
+        &'a self,
+        session: i64,
+        request: &'a openwebide_core::plugins::management::ManagementRequest,
+    ) -> LocalBoxFuture<'a, Result<openwebide_core::plugins::management::ManagementSnapshot, String>>
+    {
+        Box::pin(BackendApi::plugin_management(self, session, request))
     }
     fn plugin_installations(
         &self,

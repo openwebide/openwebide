@@ -986,6 +986,9 @@ pub fn is_projectless_tool(name: &str) -> bool {
             | "ask_user_question"
             | "plugin_skill_list"
             | "plugin_skill_read"
+            | "plugin_search"
+            | "plugin_inspect"
+            | "plugin_manage"
     )
 }
 

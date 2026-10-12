@@ -634,6 +634,7 @@ async fn run_body<B: RunBackend + 'static, P: LlmProvider + 'static>(
                 plugin_executables: Arc::new(plan.plugin_executables.clone()),
                 plugin_grants: Arc::new(plan.plugin_grants.clone()),
                 plugin_transport: host.plugins.transport(run.owner),
+                plugin_management_host: host.plugins.host_id.clone(),
                 primary: openwebide_core::ModelRuntime {
                     connection: plan.connection.clone(),
                     transport: plan.transport.clone(),
@@ -882,8 +883,13 @@ type BridgePluginTaskExecutor<B> = openwebide_agent::plugins::execution::PluginT
     crate::plugins::transport::NativePluginTransport,
     openwebide_agent::plugins::execution::GrantedServices<BridgePluginServices<B>>,
 >;
-type BridgeBaseTaskExecutor<B> =
-    openwebide_agent::mcp::McpTools<BridgePluginTaskExecutor<B>, crate::mcp::host::NativeTransport>;
+type BridgeBaseTaskExecutor<B> = openwebide_agent::mcp::McpTools<
+    openwebide_agent::plugins::management_tools::ManagementTools<
+        BridgePluginTaskExecutor<B>,
+        BridgeManagementHost<B>,
+    >,
+    crate::mcp::host::NativeTransport,
+>;
 struct BridgePluginServices<B> {
     backend: Arc<B>,
     user: i64,
@@ -899,8 +905,10 @@ impl<B: RunBackend> openwebide_agent::plugins::execution::GrantedHost for Bridge
             .await
     }
 }
-type BridgeTaskGate<B> = openwebide_agent::plugins::execution::PluginGate<
-    openwebide_agent::policy::PolicyGate<BridgeGate, super::backend_client::ApprovalAdapter<B>>,
+type BridgeTaskGate<B> = openwebide_agent::plugins::management_tools::ManagementGate<
+    openwebide_agent::plugins::execution::PluginGate<
+        openwebide_agent::policy::PolicyGate<BridgeGate, super::backend_client::ApprovalAdapter<B>>,
+    >,
 >;
 struct BridgeTaskFactory<B> {
     mcp_catalog: Arc<openwebide_core::mcp::Catalog>,
@@ -908,6 +916,7 @@ struct BridgeTaskFactory<B> {
     plugin_grants: Arc<std::collections::BTreeMap<String, String>>,
     plugin_executables: Arc<Vec<openwebide_core::plugins::PreparedPlugin>>,
     plugin_transport: crate::plugins::transport::NativePluginTransport,
+    plugin_management_host: String,
     plugin_skills: Arc<Vec<openwebide_core::ProjectSkill>>,
     run: Arc<Run>,
     backend: Arc<B>,
@@ -925,6 +934,7 @@ impl<B> Clone for BridgeTaskFactory<B> {
             plugin_executables: self.plugin_executables.clone(),
             plugin_grants: self.plugin_grants.clone(),
             plugin_transport: self.plugin_transport.clone(),
+            plugin_management_host: self.plugin_management_host.clone(),
             plugin_skills: self.plugin_skills.clone(),
             run: self.run.clone(),
             backend: self.backend.clone(),
@@ -950,7 +960,19 @@ impl<B: RunBackend + 'static> BridgeTaskFactory<B> {
     }
     fn base_executor(&self) -> BridgeBaseTaskExecutor<B> {
         openwebide_agent::mcp::McpTools {
-            executor: self.plugin_executor(),
+            executor: openwebide_agent::plugins::management_tools::ManagementTools::new(
+                self.plugin_executor(),
+                BridgeManagementHost {
+                    backend: self.backend.clone(),
+                    run: self.run.clone(),
+                    transport: self.plugin_transport.clone(),
+                    host_id: self.plugin_management_host.clone(),
+                    workspace: self
+                        .dir
+                        .as_ref()
+                        .map(|dir| NativeFsVfs { root: dir.clone() }),
+                },
+            ),
             transport: self.mcp_transport.clone(),
             catalog: self.mcp_catalog.clone(),
         }
@@ -1009,16 +1031,18 @@ impl<B: RunBackend + 'static> BridgeTaskFactory<B> {
         )
     }
     fn gate(&self, request: &openwebide_core::ChatRequest) -> BridgeTaskGate<B> {
-        openwebide_agent::plugins::execution::PluginGate {
-            plugins: self.plugin_executables.clone(),
-            gate: openwebide_agent::policy::PolicyGate {
-                manual: self.run.gate.clone(),
-                source: super::backend_client::ApprovalAdapter {
-                    backend: self.backend.clone(),
-                    user: self.run.owner,
-                    session: self.run.session_id,
-                    connection_id: request.connection_id,
-                    model: request.model.clone(),
+        openwebide_agent::plugins::management_tools::ManagementGate {
+            gate: openwebide_agent::plugins::execution::PluginGate {
+                plugins: self.plugin_executables.clone(),
+                gate: openwebide_agent::policy::PolicyGate {
+                    manual: self.run.gate.clone(),
+                    source: super::backend_client::ApprovalAdapter {
+                        backend: self.backend.clone(),
+                        user: self.run.owner,
+                        session: self.run.session_id,
+                        connection_id: request.connection_id,
+                        model: request.model.clone(),
+                    },
                 },
             },
         }
@@ -1081,3 +1105,52 @@ type BridgeTaskExecutor<B> = openwebide_agent::questions::QuestionTools<
     BridgeBaseTaskExecutor<B>,
     BridgeQuestionPersistence<B>,
 >;
+
+struct BridgeManagementHost<B> {
+    workspace: Option<NativeFsVfs>,
+    backend: Arc<B>,
+    run: Arc<Run>,
+    transport: crate::plugins::transport::NativePluginTransport,
+    host_id: String,
+}
+impl<B: RunBackend> openwebide_agent::plugins::management::ManagementHost
+    for BridgeManagementHost<B>
+{
+    fn workspace(&self) -> Option<&dyn openwebide_core::Vfs> {
+        self.workspace
+            .as_ref()
+            .map(|vfs| vfs as &dyn openwebide_core::Vfs)
+    }
+
+    async fn metadata(
+        &self,
+        request: openwebide_core::plugins::management::ManagementRequest,
+    ) -> Result<openwebide_core::plugins::management::ManagementSnapshot, String> {
+        self.backend
+            .plugin_management(self.run.owner, self.run.session_id, &request)
+            .await
+    }
+    async fn prepare(
+        &self,
+        source: &openwebide_core::plugins::PluginSource,
+    ) -> Result<openwebide_core::plugins::PreparedPlugin, String> {
+        self.transport
+            .installer
+            .prepare(&self.transport.owner, self.host_id.clone(), source)
+            .await
+            .map_err(|error| error.to_string())
+    }
+    async fn package(
+        &self,
+        prepared: &openwebide_core::plugins::PreparedPlugin,
+    ) -> Result<openwebide_core::plugins::PluginPackage, String> {
+        self.transport
+            .installer
+            .package(&self.transport.owner, self.host_id.clone(), prepared)
+            .await
+            .map_err(|error| error.to_string())
+    }
+    fn current(&self) -> bool {
+        !self.run.cancel.is_cancelled()
+    }
+}

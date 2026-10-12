@@ -210,6 +210,32 @@ impl Vfs for NativeFsVfs {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test]
+    async fn plugin_authoring_uses_the_shared_workspace_contract() {
+        let directory = tempfile::tempdir().unwrap();
+        let vfs = NativeFsVfs {
+            root: directory.path().canonicalize().unwrap(),
+        };
+        openwebide_core::plugins::authoring::testing::contract(&vfs).await;
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(
+                "plugin.json",
+                directory.path().join("authored-plugin/alias.json"),
+            )
+            .unwrap();
+            assert!(
+                openwebide_core::plugins::authoring::validate_workspace(
+                    &vfs,
+                    "authored-plugin",
+                    || true
+                )
+                .await
+                .is_err()
+            );
+        }
+    }
+
     use openwebide_core::SearchHit;
     use openwebide_core::vfs::SearchOptions;
 
