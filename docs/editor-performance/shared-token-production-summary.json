@@ -1,0 +1,161 @@
+{
+  "limitations": [
+    "Two serial samples per case/mode; no interleaved comparison.",
+    "No stable overall latency or PSS improvement established.",
+    "Main-thread WASM heap metadata overhead increases in some cases.",
+    "Early process-memory snapshots may have incomplete coverage.",
+    "First compilation-overlapping baseline run excluded."
+  ],
+  "baseline": {
+    "host": "Linux-7.0.14-linuxkit-aarch64-with-glibc2.36",
+    "measurement": "production editor; process-tree memory",
+    "cpuCount": 14,
+    "cgroupMemoryMax": "10737418240",
+    "cgroupCpuMax": "400000 100000",
+    "repetitions": 2,
+    "fileName": "measure.rs",
+    "measurementImage": "sha256:e1a372cac8e6c496251a7ea371631a8beb560d1c5c6cddd1b70a270da19bda8c",
+    "inputTimingStart": "beforeinput",
+    "inputPosition": "beginning",
+    "cpuProfiling": false,
+    "workerStartup": "default",
+    "frontendWasmSha256": {
+      "openwebide-frontend-cf0b9c59d6b5f67e_bg.wasm": "a28a2fe45707e7380b9a4dc8e2c8b807427f23107b64602e063ea48801041fde"
+    },
+    "backendWasmSha256": "c8b058bc25a23c96aee6480005b9f673689e504f574f7ce484fba72c0e54ec4a",
+    "measurementScriptSha256": "64a657a714a2b75804e364caf37ae756b5e8c0ba1f7eb43f9a590e9d09482535",
+    "checkoutHead": "2d4cdff0854e60a4a3e7cc1940bb5c31729f02a9",
+    "browser": "Chromium 154.0.8037.92 built on Debian GNU/Linux 12 (bookworm)"
+  },
+  "candidate": {
+    "host": "Linux-7.0.14-linuxkit-aarch64-with-glibc2.36",
+    "measurement": "production editor; process-tree memory",
+    "cpuCount": 14,
+    "cgroupMemoryMax": "10737418240",
+    "cgroupCpuMax": "400000 100000",
+    "repetitions": 2,
+    "fileName": "measure.rs",
+    "measurementImage": "sha256:e1a372cac8e6c496251a7ea371631a8beb560d1c5c6cddd1b70a270da19bda8c",
+    "inputTimingStart": "beforeinput",
+    "inputPosition": "beginning",
+    "cpuProfiling": false,
+    "workerStartup": "default",
+    "frontendWasmSha256": {
+      "openwebide-frontend-17f349196da39475_bg.wasm": "2a80148fe0e57be535db9211d824c4d92c3b8500d4872ae74b3bcc3041d00fc0"
+    },
+    "backendWasmSha256": "c8b058bc25a23c96aee6480005b9f673689e504f574f7ce484fba72c0e54ec4a",
+    "measurementScriptSha256": "64a657a714a2b75804e364caf37ae756b5e8c0ba1f7eb43f9a590e9d09482535",
+    "checkoutHead": "2d4cdff0854e60a4a3e7cc1940bb5c31729f02a9",
+    "browser": "Chromium 154.0.8037.92 built on Debian GNU/Linux 12 (bookworm)"
+  },
+  "comparisons": [
+    {
+      "case": "small",
+      "mode": "local",
+      "baseline": {
+        "inputViewportPaintMs": 11.550000004470348,
+        "coldSyntaxReadyMs": 1225.8999999910593,
+        "wasmCommittedBytes": 23527424.0,
+        "afterInputWasmCommittedBytes": 23789568.0,
+        "peakChromePssKiB": 627431.5
+      },
+      "candidate": {
+        "inputViewportPaintMs": 13.25,
+        "coldSyntaxReadyMs": 1217.7499999925494,
+        "wasmCommittedBytes": 23658496.0,
+        "afterInputWasmCommittedBytes": 24117248.0,
+        "peakChromePssKiB": 594978.5
+      }
+    },
+    {
+      "case": "small",
+      "mode": "remote",
+      "baseline": {
+        "inputViewportPaintMs": 12.650000005960464,
+        "coldSyntaxReadyMs": 1183.5499999970198,
+        "wasmCommittedBytes": 23527424.0,
+        "afterInputWasmCommittedBytes": 23887872.0,
+        "peakChromePssKiB": 615888.0
+      },
+      "candidate": {
+        "inputViewportPaintMs": 11.650000005960464,
+        "coldSyntaxReadyMs": 1203.6500000059605,
+        "wasmCommittedBytes": 23724032.0,
+        "afterInputWasmCommittedBytes": 24084480.0,
+        "peakChromePssKiB": 615119.5
+      }
+    },
+    {
+      "case": "dense-rows",
+      "mode": "local",
+      "baseline": {
+        "inputViewportPaintMs": 11.199999995529652,
+        "coldSyntaxReadyMs": 1231.1499999985099,
+        "wasmCommittedBytes": 31064064.0,
+        "afterInputWasmCommittedBytes": 33488896.0,
+        "peakChromePssKiB": 600593.5
+      },
+      "candidate": {
+        "inputViewportPaintMs": 10.550000004470348,
+        "coldSyntaxReadyMs": 1224.2000000029802,
+        "wasmCommittedBytes": 31064064.0,
+        "afterInputWasmCommittedBytes": 33816576.0,
+        "peakChromePssKiB": 618319.0
+      }
+    },
+    {
+      "case": "dense-rows",
+      "mode": "remote",
+      "baseline": {
+        "inputViewportPaintMs": 11.700000002980232,
+        "coldSyntaxReadyMs": 1297.3500000014901,
+        "wasmCommittedBytes": 31064064.0,
+        "afterInputWasmCommittedBytes": 33816576.0,
+        "peakChromePssKiB": 637468.0
+      },
+      "candidate": {
+        "inputViewportPaintMs": 12.200000002980232,
+        "coldSyntaxReadyMs": 1290.4999999925494,
+        "wasmCommittedBytes": 31195136.0,
+        "afterInputWasmCommittedBytes": 33947648.0,
+        "peakChromePssKiB": 640540.5
+      }
+    },
+    {
+      "case": "styled-long-line",
+      "mode": "local",
+      "baseline": {
+        "inputViewportPaintMs": 207.74999999254942,
+        "coldSyntaxReadyMs": 1906.3999999985099,
+        "wasmCommittedBytes": 31195136.0,
+        "afterInputWasmCommittedBytes": 39813120.0,
+        "peakChromePssKiB": 716518.0
+      },
+      "candidate": {
+        "inputViewportPaintMs": 145.35000000149012,
+        "coldSyntaxReadyMs": 1527.5500000044703,
+        "wasmCommittedBytes": 31195136.0,
+        "afterInputWasmCommittedBytes": 39845888.0,
+        "peakChromePssKiB": 689764.5
+      }
+    },
+    {
+      "case": "styled-long-line",
+      "mode": "remote",
+      "baseline": {
+        "inputViewportPaintMs": 154.29999999701977,
+        "coldSyntaxReadyMs": 1832.75,
+        "wasmCommittedBytes": 31457280.0,
+        "afterInputWasmCommittedBytes": 39845888.0,
+        "peakChromePssKiB": 706203.5
+      },
+      "candidate": {
+        "inputViewportPaintMs": 151.39999999850988,
+        "coldSyntaxReadyMs": 2058.75,
+        "wasmCommittedBytes": 31457280.0,
+        "afterInputWasmCommittedBytes": 40042496.0,
+        "peakChromePssKiB": 684058.5
+      }
+    }
+  ]
+}

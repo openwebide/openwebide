@@ -278,6 +278,19 @@ prepared only one token row per unit. Small rows now share the existing 64-recor
   and wrapped HTML paint 21–25 ms; these observations use differing artifacts and
   leave general latency, remaining traversal and allocation work open
   ([samples](editor-performance/row-key-proof-production.jsonl)).
+  Token text now has immutable shared ownership across retained pieces and mixed
+  paint rows; buffered worker reception moves its completed string into that
+  owner without recopying the token. Long Unicode LF/CRLF rows retain identical
+  text owners across warm preparation. The 718 core tests, nine selected browser
+  contracts and four worker startup/fallback tests pass with strict native/WASM
+  lint ([receipt](editor-performance/shared-token-browser.json)). Both production
+  startup paths preserve all 15 providers, six config providers, plain fallback,
+  six embedded workloads and MiB-sized literal reception. Twenty-four production
+  edits preserve complete source. Main-thread WASM memory rises by about 0–320 KiB
+  in these serial samples; timings/PSS do not establish an overall improvement
+  ([comparison](editor-performance/shared-token-production-summary.json),
+  [samples](editor-performance/shared-token-production.jsonl)). Remaining row
+  traversal, allocation overhead and complete publication still need bounded work.
 - [ ] **Source, worker transport and storage:** finish external parser snapshots,
   changed-revision comparisons, header/capacity allocation,
   JavaScript string conversion, complete message decoding/publication,

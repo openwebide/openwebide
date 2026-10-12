@@ -273,7 +273,7 @@ impl ReceiveRow {
                 if self.retained.is_none() {
                     self.output.push(crate::highlight::Token {
                         kind: token.kind,
-                        text: token.text,
+                        text: token.text.into(),
                     });
                 }
             } else {
@@ -445,7 +445,7 @@ mod tests {
             assert_eq!(rows[0].len(), usize::from(plain));
             let old: crate::highlight::TokenRow = Arc::from(vec![Token {
                 kind: TokenKind::Plain,
-                text: String::new(),
+                text: std::sync::Arc::new(String::new()),
             }]);
             let mut retained = TokenReconstruction::new(
                 vec![TokenRowData::Previous { reuse: 0, count: 1 }],
@@ -583,7 +583,7 @@ mod tests {
                 .map(|line| {
                     Arc::from(vec![Token {
                         kind: TokenKind::Plain,
-                        text: line.into(),
+                        text: std::sync::Arc::new(line.into()),
                     }])
                 })
                 .collect::<Vec<crate::highlight::TokenRow>>();
@@ -631,7 +631,7 @@ mod tests {
             corrupt_previous.highlights = Some(Arc::new(vec![
                 Arc::from(vec![Token {
                     kind: TokenKind::Plain,
-                    text: "mismatch".into()
+                    text: std::sync::Arc::new("mismatch".into())
                 }]);
                 source.split('\n').count()
             ]));
@@ -668,7 +668,7 @@ mod tests {
                         .map(|line| {
                             Arc::from(vec![Token {
                                 kind: TokenKind::Plain,
-                                text: line.into(),
+                                text: std::sync::Arc::new(line.into()),
                             }])
                         })
                         .collect(),

@@ -185,7 +185,7 @@ mod tests {
                 .collect::<Vec<_>>();
             let tokens = [Token {
                 kind: TokenKind::String,
-                text: text.clone(),
+                text: std::sync::Arc::new(text.clone()),
             }];
             for budget in [1, 8, 64] {
                 let mut prep = PaintRunPreparation::new(&tokens, text.len(), false, usize::MAX);
@@ -240,23 +240,23 @@ mod tests {
         let tokens = vec![
             Token {
                 kind: TokenKind::Keyword,
-                text: "let".into(),
+                text: std::sync::Arc::new("let".into()),
             },
             Token {
                 kind: TokenKind::Plain,
-                text: " ".into(),
+                text: std::sync::Arc::new(" ".into()),
             },
             Token {
                 kind: TokenKind::Plain,
-                text: "name = ".into(),
+                text: std::sync::Arc::new("name = ".into()),
             },
             Token {
                 kind: TokenKind::String,
-                text: "文😀e\u{301} ".repeat(3000),
+                text: std::sync::Arc::new("文😀e\u{301} ".repeat(3000)),
             },
             Token {
                 kind: TokenKind::Plain,
-                text: ";\r".into(),
+                text: std::sync::Arc::new(";\r".into()),
             },
         ];
         let len = tokens.iter().map(|token| token.text.len()).sum::<usize>() - 1;
@@ -281,7 +281,7 @@ mod tests {
     fn incomplete_wrong_extent_and_over_budget_tables_do_not_publish() {
         let tokens = vec![Token {
             kind: TokenKind::String,
-            text: "a".repeat(80000),
+            text: std::sync::Arc::new("a".repeat(80000)),
         }];
         assert!(
             PaintRunPreparation::new(&tokens, 80000, false, 1000)

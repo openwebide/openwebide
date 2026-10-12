@@ -2144,7 +2144,7 @@ pub(super) fn render_painted_diff(
                 DiffChange::Inserted => " diff-word-add",
             };
             let class = format!("{}{change}", token_class(part.token.kind));
-            view! { <span class=class>{part.token.text}</span> }
+            view! { <span class=class>{std::sync::Arc::unwrap_or_clone(part.token.text)}</span> }
         })
         .collect_view()
 }

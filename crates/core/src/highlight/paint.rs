@@ -222,19 +222,19 @@ mod tests {
         vec![
             Token {
                 kind: TokenKind::Keyword,
-                text: "const".into(),
+                text: std::sync::Arc::new("const".into()),
             },
             Token {
                 kind: TokenKind::Plain,
-                text: " value = ".into(),
+                text: std::sync::Arc::new(" value = ".into()),
             },
             Token {
                 kind: TokenKind::String,
-                text: "\"文😀\"".into(),
+                text: std::sync::Arc::new("\"文😀\"".into()),
             },
             Token {
                 kind: TokenKind::Punct,
-                text: ";\r".into(),
+                text: std::sync::Arc::new(";\r".into()),
             },
         ]
     }
@@ -318,11 +318,11 @@ mod tests {
         let tokens = [
             Token {
                 kind: TokenKind::Plain,
-                text: String::new(),
+                text: std::sync::Arc::new(String::new()),
             },
             Token {
                 kind: TokenKind::Comment,
-                text: "// hi\r".into(),
+                text: std::sync::Arc::new("// hi\r".into()),
             },
         ];
         let paint = RowPaintTokens::prepared(&tokens, true);

@@ -898,7 +898,7 @@ mod tests {
         let body = format!("\"{}\"", "文😀 words ".repeat(20_000));
         let tokens = [Token {
             kind: TokenKind::String,
-            text: body.clone(),
+            text: std::sync::Arc::new(body.clone()),
         }];
         let mut runs = super::super::PaintRunPreparation::new(&tokens, body.len(), false, 4096);
         assert!(runs.advance(usize::MAX));

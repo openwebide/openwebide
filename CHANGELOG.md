@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Share immutable token text across retained syntax pieces, assembled paint rows and cloned publications, avoiding repeated whole-token byte copies. Preserve diff trimming through copy-on-write and keep worker framing, source budgets and language behavior unchanged.
+
 - Plan editor rows directly from immutable core projection ranges, avoiding repeated complete-row body checks before reuse and grouping. Preserve bounded planning, stale-owner rejection and complete-layout fallbacks in both project modes.
 
 - Reuse the app's compiled WASM module when starting the syntax worker, with matching-bundle checks and URL fallback when module cloning is unavailable. Cache versioned worker bootstraps in the PWA shell and preserve full/warm language behavior through both startup paths.

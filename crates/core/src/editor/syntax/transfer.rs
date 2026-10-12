@@ -545,7 +545,7 @@ impl SyntaxAnalysisData {
                             }
                             row.push(Token {
                                 kind,
-                                text: line[start..end].to_string(),
+                                text: std::sync::Arc::new(line[start..end].to_string()),
                             });
                             start = end;
                         }
@@ -884,7 +884,7 @@ mod tests {
         let row: Arc<[Token]> = Arc::from(vec![
             Token {
                 kind: TokenKind::Plain,
-                text: String::new()
+                text: std::sync::Arc::new(String::new())
             };
             MAX_ANALYSIS_RECORDS / 2
         ]);

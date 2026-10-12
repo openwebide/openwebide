@@ -31,10 +31,13 @@ pub enum TokenKind {
 }
 
 /// One token: a run of source text plus its category.
+/// Text buffers are immutable and shared across retained pieces and paint rows.
+/// Keeping the owned string also lets bounded builders publish without another
+/// full-token byte copy.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Token {
     pub kind: TokenKind,
-    pub text: String,
+    pub text: std::sync::Arc<String>,
 }
 
 /// Immutable tokens for one source row.
@@ -64,7 +67,7 @@ fn plain_token_row(text: String) -> TokenRow {
     static BLANK: std::sync::LazyLock<TokenRow> = std::sync::LazyLock::new(|| {
         std::sync::Arc::from([Token {
             kind: TokenKind::Plain,
-            text: String::new(),
+            text: std::sync::Arc::new(String::new()),
         }])
     });
     if text.is_empty() {
@@ -72,7 +75,7 @@ fn plain_token_row(text: String) -> TokenRow {
     } else {
         std::sync::Arc::from([Token {
             kind: TokenKind::Plain,
-            text,
+            text: text.into(),
         }])
     }
 }
@@ -197,7 +200,7 @@ pub fn highlight_lines_while(
 fn highlight_line(line: &str, _language: Language) -> Vec<Token> {
     vec![Token {
         kind: TokenKind::Plain,
-        text: line.to_owned(),
+        text: line.to_owned().into(),
     }]
 }
 
@@ -590,7 +593,7 @@ mod tests {
         let plain = || {
             vec![Token {
                 kind: TokenKind::Plain,
-                text: String::new(),
+                text: std::sync::Arc::new(String::new()),
             }]
         };
         let rows = share_token_rows(vec![
@@ -600,7 +603,7 @@ mod tests {
             plain(),
             vec![Token {
                 kind: TokenKind::String,
-                text: String::new(),
+                text: std::sync::Arc::new(String::new()),
             }],
         ]);
         assert!(std::sync::Arc::ptr_eq(&rows[0], &rows[1]));
@@ -637,7 +640,7 @@ mod tests {
                 snapshot.tokens()[0].as_ref(),
                 &[Token {
                     kind: TokenKind::Plain,
-                    text: String::new()
+                    text: std::sync::Arc::new(String::new())
                 }]
             );
         }
@@ -1119,16 +1122,19 @@ mod tests {
         assert_eq!(toks.len(), 1);
         assert_eq!(toks[0].len(), 1);
         assert_eq!(toks[0][0].kind, TokenKind::Plain);
-        assert_eq!(toks[0][0].text, long_line);
+        assert_eq!(toks[0][0].text.as_str(), long_line);
 
         // Fallback remains plain across comment-like prose and oversized rows.
         let source = format!("/* start\n{long_line}\nstill comment */ let a = 1;");
         let toks = highlight_lines(&source, Language::Rust);
         assert_eq!(toks[1].len(), 1);
         assert_eq!(toks[1][0].kind, TokenKind::Plain);
-        assert_eq!(toks[1][0].text, long_line);
+        assert_eq!(toks[1][0].text.as_str(), long_line);
         assert_eq!(toks[2].first().unwrap().kind, TokenKind::Plain);
-        assert_eq!(toks[2].first().unwrap().text, "still comment */ let a = 1;");
+        assert_eq!(
+            toks[2].first().unwrap().text.as_str(),
+            "still comment */ let a = 1;"
+        );
         rejoins(&source, Language::Rust);
     }
 

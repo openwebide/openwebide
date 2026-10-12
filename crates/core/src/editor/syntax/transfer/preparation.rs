@@ -375,7 +375,7 @@ mod tests {
             folds: Vec::new(),
             structure: None,
             highlights: Some(Arc::new(vec![Arc::from([Token {
-                text: source.as_str().into(),
+                text: std::sync::Arc::new(source.as_str().into()),
                 kind: TokenKind::Plain,
             }])])),
         };

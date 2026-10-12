@@ -13020,7 +13020,7 @@ async fn worker_source_resync_is_bounded_and_rejects_superseded_ownership_in_bot
                 .1
                 .iter()
                 .flat_map(|row| row.iter())
-                .any(|token| token.text == "10")
+                .any(|token| token.text.as_str() == "10")
         })
         .await;
     }
@@ -17212,7 +17212,7 @@ async fn unavailable_styled_runs_skip_capped_rescans_but_prepare_paragraphs_in_b
         let mut tokens = vec![
             Token {
                 kind: TokenKind::Keyword,
-                text: "a".into()
+                text: std::sync::Arc::new("a".into())
             };
             16 * 1024 - 2
         ];
@@ -17220,7 +17220,7 @@ async fn unavailable_styled_runs_skip_capped_rescans_but_prepare_paragraphs_in_b
         let complete_segment_bytes = text.len();
         tokens.push(Token {
             kind: TokenKind::String,
-            text,
+            text: text.into(),
         });
         let source = tokens
             .iter()
@@ -18115,11 +18115,11 @@ fn cold_geometry_cannot_populate_a_new_paint_scope_in_either_mode() {
                     let split = Arc::new(vec![Arc::from(vec![
                         Token {
                             kind: TokenKind::Plain,
-                            text: source[..100].into(),
+                            text: std::sync::Arc::new(source[..100].into()),
                         },
                         Token {
                             kind: TokenKind::Plain,
-                            text: source[100..].into(),
+                            text: std::sync::Arc::new(source[100..].into()),
                         },
                     ])]);
                     let (_, plan) = actions

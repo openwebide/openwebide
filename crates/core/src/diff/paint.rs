@@ -99,7 +99,7 @@ fn paint_source(source: &str, path: &str) -> Vec<Vec<Token>> {
             && let Some(last) = line.last_mut()
             && last.text.ends_with('\r')
         {
-            last.text.pop();
+            std::sync::Arc::make_mut(&mut last.text).pop();
         }
     }
     lines
@@ -123,7 +123,7 @@ fn intersect(chunks: Vec<DiffChunk>, tokens: &[Token]) -> Vec<DiffPaintToken> {
             result.push(DiffPaintToken {
                 token: Token {
                     kind: TokenKind::Plain,
-                    text: remaining.into(),
+                    text: std::sync::Arc::new(remaining.into()),
                 },
                 change,
             });
@@ -144,7 +144,7 @@ fn intersect(chunks: Vec<DiffChunk>, tokens: &[Token]) -> Vec<DiffPaintToken> {
             result.push(DiffPaintToken {
                 token: Token {
                     kind: token.kind,
-                    text: remaining[..count].into(),
+                    text: std::sync::Arc::new(remaining[..count].into()),
                 },
                 change,
             });
@@ -163,7 +163,7 @@ mod tests {
     fn word_boundaries_preserve_unicode_and_syntax_categories() {
         let tokens = vec![Token {
             kind: TokenKind::String,
-            text: "café 😀".into(),
+            text: std::sync::Arc::new("café 😀".into()),
         }];
         let paint = intersect(
             vec![
@@ -186,7 +186,7 @@ mod tests {
         );
         assert_eq!(paint[1].change, DiffChange::Inserted);
         let fallback = intersect(vec![DiffChunk::Deleted("other".into())], &tokens);
-        assert_eq!(fallback[0].token.text, "other");
+        assert_eq!(fallback[0].token.text.as_str(), "other");
         assert_eq!(fallback[0].token.kind, TokenKind::Plain);
         assert_eq!(fallback[0].change, DiffChange::Deleted);
     }
@@ -420,7 +420,7 @@ pub fn paint_unified_diff(patch: &str, path: &str) -> Vec<DiffPaintLine> {
                 .unwrap_or_else(|| {
                     vec![Token {
                         kind: TokenKind::Plain,
-                        text: text.into(),
+                        text: std::sync::Arc::new(text.into()),
                     }]
                 });
             if old_number.is_some() {

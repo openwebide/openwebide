@@ -416,8 +416,8 @@ mod tests {
         let next = job.finish_snapshot().unwrap();
         assert_eq!(next.retokenized_rows(), 2);
         assert!(Arc::ptr_eq(&old.tokens()[1], &next.tokens()[1]));
-        assert_eq!(next.tokens()[0][0].text, "b");
-        assert_eq!(next.tokens()[2][0].text, "y");
+        assert_eq!(next.tokens()[0][0].text.as_str(), "b");
+        assert_eq!(next.tokens()[2][0].text.as_str(), "y");
     }
 
     #[test]

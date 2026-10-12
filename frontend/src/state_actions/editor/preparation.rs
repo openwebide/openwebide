@@ -1071,7 +1071,7 @@ mod tests {
                     );
                 } else {
                     assert_eq!(
-                        analysis.highlights().unwrap()[0][0].text,
+                        analysis.highlights().unwrap()[0][0].text.as_str(),
                         fresh.source.as_str()
                     );
                 }

@@ -352,7 +352,7 @@ impl SyntaxDocument {
                         .map(|text| {
                             vec![Token {
                                 kind,
-                                text: text.into(),
+                                text: Arc::new(text.into()),
                             }]
                         })
                         .collect()
@@ -474,7 +474,7 @@ mod tests {
                 kind: Some(TokenKind::Keyword),
                 rows: share_token_rows(vec![vec![Token {
                     kind: TokenKind::Keyword,
-                    text: text.into(),
+                    text: std::sync::Arc::new(text.into()),
                 }]]),
             })
         };
@@ -513,6 +513,9 @@ mod tests {
             let row = paint.finish(&crate::editor::lines::lines(&source)[0], &source);
             assert_eq!(row.end, source.len());
             assert_eq!(row.pieces.len(), indices.len());
+            for (token, index) in row.tokens.iter().zip(&indices) {
+                assert!(Arc::ptr_eq(&token.text, &pieces[*index].rows[0][0].text));
+            }
             assert_eq!(
                 row.tokens
                     .iter()
@@ -775,14 +778,14 @@ mod tests {
             assert!(
                 tokens
                     .iter()
-                    .any(|token| token.kind == TokenKind::Type && token.text == name),
+                    .any(|token| token.kind == TokenKind::Type && token.text.as_str() == name),
                 "{language:?}: {tokens:?}"
             );
             if source.contains("return 1") || source.contains("= 1") {
                 assert!(
                     tokens
                         .iter()
-                        .any(|token| token.kind == TokenKind::Number && token.text == "1"),
+                        .any(|token| token.kind == TokenKind::Number && token.text.as_str() == "1"),
                     "{language:?}: {tokens:?}"
                 );
             }
@@ -837,22 +840,22 @@ mod tests {
         assert!(
             tokens
                 .iter()
-                .any(|token| token.kind == TokenKind::Keyword && token.text == "const")
+                .any(|token| token.kind == TokenKind::Keyword && token.text.as_str() == "const")
         );
         assert!(
             tokens
                 .iter()
-                .any(|token| token.kind == TokenKind::Function && token.text == "call")
+                .any(|token| token.kind == TokenKind::Function && token.text.as_str() == "call")
         );
         assert!(
             tokens
                 .iter()
-                .any(|token| token.kind == TokenKind::Number && token.text == "42")
+                .any(|token| token.kind == TokenKind::Number && token.text.as_str() == "42")
         );
         assert!(
             tokens
                 .iter()
-                .any(|token| token.kind == TokenKind::Attribute && token.text == "color")
+                .any(|token| token.kind == TokenKind::Attribute && token.text.as_str() == "color")
         );
         assert!(
             tokens
@@ -905,6 +908,53 @@ mod tests {
         }
     }
     #[test]
+    fn mixed_long_rows_share_text_across_pieces_and_warm_publication() {
+        for ending in ["\n", "\r\n"] {
+            let mut document = SyntaxDocument::new(Language::Rust).unwrap();
+            let source = format!(
+                "fn first() {{ let value = \"{}\"; }}{ending}fn last() {{}}",
+                "文😀".repeat(16_384)
+            );
+            document.prepare(&source, 4, || true).1.unwrap();
+            let painted = document.highlight_lines().unwrap();
+            let original = painted[0]
+                .iter()
+                .find(|token| token.kind == TokenKind::String)
+                .unwrap()
+                .text
+                .clone();
+            {
+                let paint = document.paint.borrow();
+                let row = paint.rows.get(&0).unwrap();
+                assert!(row.pieces.len() > 1);
+                assert!(row.pieces.iter().any(|(piece, index)| {
+                    piece.rows[*index]
+                        .iter()
+                        .any(|token| Arc::ptr_eq(&token.text, &original))
+                }));
+            }
+            let changed = source.replace("fn last()", "fn changed()");
+            document.prepare(&changed, 4, || true).1.unwrap();
+            let next = document.highlight_lines().unwrap();
+            let retained = next[0]
+                .iter()
+                .find(|token| token.kind == TokenKind::String)
+                .unwrap();
+            assert!(Arc::ptr_eq(&retained.text, &original));
+            assert_eq!(
+                next.iter()
+                    .map(|row| row
+                        .iter()
+                        .map(|token| token.text.as_str())
+                        .collect::<String>())
+                    .collect::<Vec<_>>()
+                    .join("\n"),
+                changed
+            );
+        }
+    }
+
+    #[test]
     fn prepared_long_rows_keep_styles_and_failed_analysis_retains_fallback_limits() {
         let mut document = SyntaxDocument::new(Language::Rust).unwrap();
         let source = format!(
@@ -932,7 +982,7 @@ mod tests {
         assert!(
             painted[1]
                 .iter()
-                .any(|token| token.kind == TokenKind::Function && token.text == "next")
+                .any(|token| token.kind == TokenKind::Function && token.text.as_str() == "next")
         );
         document.update("changed", || false);
         assert!(document.highlight_lines().is_none());
@@ -984,7 +1034,7 @@ mod parser_color_contracts {
         let flat: Vec<(TokenKind, String)> = toks
             .into_iter()
             .flatten()
-            .map(|t| (t.kind, t.text))
+            .map(|t| (t.kind, t.text.as_str().to_owned()))
             .collect();
         assert!(flat.contains(&(TokenKind::String, r#""a \"b\" c""#.to_string())));
     }
@@ -994,7 +1044,7 @@ mod parser_color_contracts {
         let toks = highlight_lines("let a = 1; // note", Language::Rust);
         let line = &toks[0];
         assert_eq!(line.last().unwrap().kind, TokenKind::Comment);
-        assert_eq!(line.last().unwrap().text, "// note");
+        assert_eq!(line.last().unwrap().text.as_str(), "// note");
     }
 
     #[test]
@@ -1003,9 +1053,9 @@ mod parser_color_contracts {
         let toks = highlight_lines(source, Language::Rust);
         // Line 1 ends inside the block comment; line 2 finishes it.
         assert_eq!(toks[0].last().unwrap().kind, TokenKind::Comment);
-        assert_eq!(toks[0].last().unwrap().text, "/* start");
+        assert_eq!(toks[0].last().unwrap().text.as_str(), "/* start");
         assert_eq!(toks[1].first().unwrap().kind, TokenKind::Comment);
-        assert_eq!(toks[1].first().unwrap().text, "still comment */");
+        assert_eq!(toks[1].first().unwrap().text.as_str(), "still comment */");
         rejoins(source, Language::Rust);
     }
 
@@ -1015,7 +1065,7 @@ mod parser_color_contracts {
         let flat: Vec<(TokenKind, String)> = toks
             .into_iter()
             .flatten()
-            .map(|t| (t.kind, t.text))
+            .map(|t| (t.kind, t.text.as_str().to_owned()))
             .collect();
         assert!(flat.contains(&(TokenKind::Lifetime, "'a".to_string())));
         assert!(flat.contains(&(TokenKind::Char, "'x'".to_string())));
@@ -1027,7 +1077,7 @@ mod parser_color_contracts {
         let flat: Vec<(TokenKind, String)> = toks
             .into_iter()
             .flatten()
-            .map(|t| (t.kind, t.text))
+            .map(|t| (t.kind, t.text.as_str().to_owned()))
             .collect();
         assert!(flat.contains(&(TokenKind::Attribute, "#".to_string())));
         assert!(flat.contains(&(TokenKind::Macro, "println".to_string())));
@@ -1040,7 +1090,7 @@ mod parser_color_contracts {
             .into_iter()
             .flatten()
             .filter(|t| t.kind == TokenKind::Number)
-            .map(|t| t.text)
+            .map(|t| t.text.as_str().to_owned())
             .collect();
         assert_eq!(nums, vec!["0x1F", "3.14", "1e3"]);
     }
@@ -1051,7 +1101,7 @@ mod parser_color_contracts {
         let flat: Vec<(TokenKind, String)> = toks
             .into_iter()
             .flatten()
-            .map(|t| (t.kind, t.text))
+            .map(|t| (t.kind, t.text.as_str().to_owned()))
             .collect();
         assert!(flat.contains(&(TokenKind::Number, "1".to_string())));
         assert!(flat.contains(&(TokenKind::Number, "5".to_string())));
@@ -1172,17 +1222,17 @@ mod config_contracts {
         assert!(
             colors[5]
                 .iter()
-                .any(|token| token.text == "fn" && token.kind == TokenKind::Keyword)
+                .any(|token| token.text.as_str() == "fn" && token.kind == TokenKind::Keyword)
         );
         assert!(
             colors[5]
                 .iter()
-                .any(|token| token.text == "main" && token.kind == TokenKind::Function)
+                .any(|token| token.text.as_str() == "main" && token.kind == TokenKind::Function)
         );
         assert!(
             colors[5]
                 .iter()
-                .any(|token| token.text == "42" && token.kind == TokenKind::Number)
+                .any(|token| token.text.as_str() == "42" && token.kind == TokenKind::Number)
         );
     }
 }

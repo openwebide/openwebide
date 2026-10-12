@@ -1667,7 +1667,7 @@ mod tests {
                     let actions = EditorActions::new(workspace);
                     let tokens = vec![Token {
                         kind: TokenKind::String,
-                        text: body.clone(),
+                        text: std::sync::Arc::new(body.clone()),
                     }];
                     let expected: Arc<[usize]> =
                         openwebide_core::editor::visual_text_run_ranges(&body)
@@ -1749,7 +1749,7 @@ mod tests {
                     let tokens = vec![
                         Token {
                             kind: TokenKind::Keyword,
-                            text: "word".into()
+                            text: std::sync::Arc::new("word".into())
                         };
                         MAX_RETAINED_PAINT_RUNS + 1000
                     ];
@@ -1842,7 +1842,7 @@ mod tests {
                                 Arc::new(vec![
                                     vec![Token {
                                         kind: TokenKind::String,
-                                        text: body,
+                                        text: std::sync::Arc::new(body),
                                     }]
                                     .into(),
                                 ]),
@@ -1908,13 +1908,13 @@ mod tests {
             let mut tokens = vec![
                 Token {
                     kind: TokenKind::Keyword,
-                    text: "a".into()
+                    text: std::sync::Arc::new("a".into())
                 };
                 MAX_RETAINED_PAINT_RUNS - 2
             ];
             tokens.push(Token {
                 kind: TokenKind::String,
-                text: "word 文😀e\u{301} ".repeat(5000),
+                text: std::sync::Arc::new("word 文😀e\u{301} ".repeat(5000)),
             });
             let body = tokens
                 .iter()
@@ -1999,7 +1999,7 @@ mod tests {
     fn styled_run_budget_stops_before_segmenting_unused_token_suffix() {
         let tokens = [Token {
             kind: TokenKind::String,
-            text: "a".repeat(openwebide_core::editor::MAX_EDITOR_LINE_BYTES),
+            text: std::sync::Arc::new("a".repeat(openwebide_core::editor::MAX_EDITOR_LINE_BYTES)),
         }];
         let row = PaintRow {
             tokens: RowPaintTokens::prepared(&tokens, false),
@@ -2020,13 +2020,13 @@ mod tests {
         let mut nearly_full = vec![
             Token {
                 kind: TokenKind::Keyword,
-                text: "a".into()
+                text: std::sync::Arc::new("a".into())
             };
             MAX_RETAINED_PAINT_RUNS - 2
         ];
         nearly_full.push(Token {
             kind: TokenKind::String,
-            text: "a".repeat(70_000),
+            text: std::sync::Arc::new("a".repeat(70_000)),
         });
         let full = nearly_full
             .iter()
@@ -2045,7 +2045,7 @@ mod tests {
         );
         let prefix = Token {
             kind: TokenKind::Keyword,
-            text: "let".into(),
+            text: std::sync::Arc::new("let".into()),
         };
         let combined = [prefix, tokens[0].clone()];
         let full = combined
@@ -2076,7 +2076,7 @@ mod tests {
             for suffix in ["", "\r"] {
                 let tokens = [Token {
                     kind: TokenKind::String,
-                    text: body.clone() + suffix,
+                    text: std::sync::Arc::new(body.clone() + suffix),
                 }];
                 let row = PaintRow {
                     tokens: RowPaintTokens::prepared(&tokens, false),
@@ -2152,11 +2152,11 @@ mod tests {
     fn paragraph_prefix_stops_before_a_changed_token_style_or_span_topology() {
         let plain = Token {
             kind: TokenKind::Plain,
-            text: "let value = ".into(),
+            text: std::sync::Arc::new("let value = ".into()),
         };
         let comment = Token {
             kind: TokenKind::Comment,
-            text: "word ".repeat(1000),
+            text: std::sync::Arc::new("word ".repeat(1000)),
         };
         let old = [plain.clone(), comment.clone()];
         let mut changed = old.clone();
@@ -2175,7 +2175,7 @@ mod tests {
             plain.text.len()
         );
         changed[1] = Token {
-            text: format!("{}fresh", comment.text),
+            text: std::sync::Arc::new(format!("{}fresh", comment.text)),
             ..comment.clone()
         };
         assert_eq!(
@@ -2183,7 +2183,7 @@ mod tests {
             plain.text.len() + comment.text.len()
         );
         changed[1] = Token {
-            text: "word ".into(),
+            text: std::sync::Arc::new("word ".into()),
             ..comment
         };
         assert_eq!(
@@ -2218,7 +2218,7 @@ mod tests {
     fn paragraph_suffix_requires_unchanged_style_and_paint_topology() {
         let tokens = [Token {
             kind: TokenKind::Comment,
-            text: format!("a{}", "word 文😀 ".repeat(100)),
+            text: std::sync::Arc::new(format!("a{}", "word 文😀 ".repeat(100))),
         }];
         fn row(tokens: &[Token]) -> PaintRow<'_> {
             PaintRow {
@@ -2232,14 +2232,14 @@ mod tests {
         let old = row(&tokens);
         assert_eq!(paint_suffix_start(&old, &old), Some(0));
         let mut changed = tokens.clone();
-        changed[0].text.replace_range(0..1, "z");
+        std::sync::Arc::make_mut(&mut changed[0].text).replace_range(0..1, "z");
         assert_eq!(paint_suffix_start(&old, &row(&changed)), Some(1));
         changed[0].kind = TokenKind::String;
         assert_eq!(
             paint_suffix_start(&old, &row(&changed)),
             Some(tokens[0].text.len())
         );
-        changed[0].text.push('x');
+        std::sync::Arc::make_mut(&mut changed[0].text).push('x');
         assert_eq!(
             paint_suffix_start(&old, &row(&changed)),
             Some(changed[0].text.len())
