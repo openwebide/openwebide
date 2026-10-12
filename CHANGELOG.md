@@ -8,6 +8,10 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Allow current initial native windows to measure source geometry from their owned document index while fallback paint is pending. Keep source, selection, read, project, file, epoch and account validation before this readiness proof.
+
+- Check immediate editor-paint eligibility before reading native viewport dimensions, avoiding a synchronous layout read for large rows and other views that proceed through scheduled paint.
+
 - Restore editor scroll axes together through the shared DOM adapter, refreshing source extents once per restoration. Keep single-axis behavior and scoped native scroll echoes unchanged.
 
 - Build release images and standalone bridge artifacts alongside CI, retaining the full check gate before publishing release channels.

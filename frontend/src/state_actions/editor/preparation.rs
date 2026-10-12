@@ -167,7 +167,8 @@ impl EditorActions {
     /// index or cooperative fallback paint. Pending workers retain their bounded
     /// visible-source contract.
     pub fn full_row_paint_ready(self) -> bool {
-        !self.workspace.editor_fallback_active.get_untracked()
+        (self.native_geometry_pending() && self.source_line_count().is_some())
+            || !self.workspace.editor_fallback_active.get_untracked()
             || self.worker_syntax_pending()
             || !self.syntax_is_pending()
     }

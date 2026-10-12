@@ -2001,7 +2001,21 @@ fn HighlightOverlay(
                     .as_ref()
                     .is_none_or(|(prepared, _)| !prepared && !painted_complete_source.get_value())
             });
-        let native_current = mounted
+        // Only immediate paint needs native viewport dimensions here. Ineligible
+        // rows continue through scheduled paint without forcing layout in input.
+        let (neutral_ready, pending_ready) = if mounted {
+            prepared_paint.with_untracked(|paint| {
+                let rows = visible.get_untracked();
+                (
+                    actions.initial_viewport_paint_ready(&rows, (paint.0, &paint.1)),
+                    actions.pending_viewport_paint_ready(&rows, paint),
+                )
+            })
+        } else {
+            (false, false)
+        };
+        let native_current = (neutral_ready || pending_ready)
+            && mounted
             && textarea_ref.get_untracked().is_some_and(|input| {
                 current_editor_target(actions, &input)
                     && input
@@ -2011,10 +2025,7 @@ fn HighlightOverlay(
                     && crate::viewport::editor_scroll(&input).client_width() > 0
                     && crate::viewport::editor_scroll(&input).client_height() > 0
             });
-        let neutral = native_current
-            && prepared_paint.with_untracked(|(prepared, tokens)| {
-                actions.initial_viewport_paint_ready(&visible.get_untracked(), (*prepared, tokens))
-            });
+        let neutral = native_current && neutral_ready;
         if neutral {
             let input = textarea_ref.get_untracked().unwrap();
             let frame = NeutralFrame {
@@ -2048,11 +2059,7 @@ fn HighlightOverlay(
             }
         }
         neutral_frame.set_value(None);
-        if native_current
-            && prepared_paint.with_untracked(|paint| {
-                actions.pending_viewport_paint_ready(&visible.get_untracked(), paint)
-            })
-        {
+        if native_current && pending_ready {
             if let Some(id) = request.get_value() {
                 let _ = window().cancel_animation_frame(id);
             }

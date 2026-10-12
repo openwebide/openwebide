@@ -1,0 +1,523 @@
+{
+  "officialGroup": {
+    "tests": 62,
+    "passed": 62,
+    "elapsedSeconds": 42.12,
+    "cpus": 2,
+    "memoryGiB": 4,
+    "contractDeadlineMs": 3000,
+    "browserDeadlineSeconds": 300,
+    "platform": "Linux arm64 Chromium 154",
+    "selection": [
+      "automatic_editor_recovery_restores_and_saves_drafts_in_both_modes",
+      "bound_editor_composition_keeps_native_ownership_across_provider_metadata_in_both_modes",
+      "bounded_native_context_rejects_stale_source_selection_and_owner_scopes_in_both_modes",
+      "bounded_native_declarations_validate_fold_origins_and_full_input_retention_in_both_modes",
+      "cancellable_text_groups_unicode_multi_cursor_edits_and_keeps_native_fallback_in_both_modes",
+      "cold_font_loading_waits_boundedly_and_rejects_old_jobs_in_both_modes",
+      "cold_reindent_rejects_structure_limits_without_changing_source_in_both_modes",
+      "cold_structural_commands_reject_superseded_requests_in_both_modes",
+      "cold_unwrapped_native_windows_preserve_extents_pointer_and_edits_in_both_modes",
+      "composition_replicas_obey_editor_admission_before_preview_in_both_modes",
+      "config_worker_paint_is_cached_lossless_and_source_guarded_in_both_modes",
+      "cooperative_paragraph_ranges_preserve_geometry_and_reject_stale_probes_in_both_modes",
+      "cooperative_worker_admission_rejects_limits_without_transport_in_both_modes",
+      "cooperative_worker_parser_source_comparison_preserves_warm_paint_in_both_modes",
+      "cross_row_word_motion_preserves_source_and_queue_ownership_in_both_modes",
+      "diff_syntax_paint_keeps_word_changes_and_embedded_context_in_both_modes",
+      "editor_capacity_rejection_preserves_native_document_in_both_modes",
+      "editor_recovery_changed_root_blocks_saves_without_discarding_the_draft",
+      "editor_recovery_late_load_preserves_new_files_and_does_not_cross_accounts",
+      "editor_scroll_surface_preserves_wheel_native_navigation_and_scope_in_both_modes",
+      "editorconfig_indentation_conversion_and_save_use_both_real_workspace_adapters",
+      "embedded_html_reindent_menu_prepares_and_commits_once_in_both_modes",
+      "expired_input_budget_preserves_literal_input_history_and_stale_guards_in_both_modes",
+      "file_tab_context_actions_share_tree_actions_and_guard_bulk_closes_in_both_modes",
+      "grammar_highlights_paint_embedded_code_and_preserve_crlf_overlay_in_both_modes",
+      "highlighted_token_clicks_preserve_columns_and_line_ends_in_both_modes",
+      "in_flight_font_metrics_require_current_preparation_ownership_in_both_modes",
+      "indexed_plain_fallback_borrows_source_and_rejects_stale_documents_in_both_modes",
+      "initial_native_preparation_preserves_source_and_failure_ownership_in_both_modes",
+      "large_markdown_worker_publications_color_all_paragraphs_in_both_modes",
+      "literal_embedded_commands_skip_parser_preparation_in_both_modes",
+      "long_word_motion_retains_exact_source_after_edits_and_undo_in_both_modes",
+      "markdown_preview_gutters_share_git_and_pending_changes_in_both_modes",
+      "measured_neighborhoods_move_queued_cursors_through_the_shared_facade_in_both_modes",
+      "multi_cursor_pointer_and_column_gestures_share_both_modes",
+      "multi_selection_clipboard_uses_source_ranges_and_atomic_history_in_both_modes",
+      "native_text_reuse_preserves_dom_changes_and_releases_stale_scopes_in_both_modes",
+      "newline_dense_small_files_use_row_bounded_native_contexts_in_both_modes",
+      "overlay_preserves_empty_unicode_long_lines_and_scroll_mirror",
+      "paragraph_batches_match_individual_native_ranges_and_failures_in_both_modes",
+      "paragraph_overlap_failure_uses_complete_measurement_in_both_modes",
+      "parser_block_comments_share_modes_embedded_cursors_and_atomic_undo",
+      "parser_reindent_preserves_literals_and_embedded_boundaries_in_both_modes",
+      "pending_grammar_paints_current_text_and_retains_matching_colors_in_both_modes",
+      "pending_worker_paints_requested_source_rows_without_full_file_lexical_tokens_in_both_modes",
+      "primary_caret_and_selection_follow_source_motion_and_scroll_in_both_modes",
+      "rapid_bottom_and_reverse_scrolling_uses_one_scroll_source",
+      "recovered_file_review_reload_and_overwrite_share_both_real_adapters",
+      "recovery_document_format_restores_committed_browser_edits_in_both_modes",
+      "repeated_fragment_windows_reuse_validated_paint_and_font_changes_remeasure_in_both_modes",
+      "retained_source_carets_are_sparse_and_scope_owned_in_both_modes",
+      "selection_policy_and_multi_commands_share_both_modes_and_reject_stale_targets",
+      "source_gutter_digits_and_native_restoration_use_current_index_and_projection_in_both_modes",
+      "styled_horizontal_slices_resume_original_runs_without_scanning_token_prefixes",
+      "syntax_preparation_cannot_publish_after_scope_changes_in_both_modes",
+      "unmount_cancels_pending_highlighting",
+      "unwrapped_viewport_bounds_paint_and_maps_scrolled_unicode_carets_in_both_modes",
+      "worker_source_resync_is_bounded_and_rejects_superseded_ownership_in_both_modes",
+      "wrapped_fragment_scroll_and_find_preserve_source_coordinates_in_both_modes",
+      "wrapped_preparation_unmount_releases_frame_held_probes_in_both_modes",
+      "wrapping_whitespace_fold_geometry_and_navigation_share_both_modes",
+      "initial_native_geometry_uses_owned_index_before_fallback_and_rejects_stale_scopes"
+    ]
+  },
+  "strictWasmLint": "passed",
+  "productionBuild": "passed",
+  "fullComposition": [
+    {
+      "mode": "local",
+      "ending": "LF",
+      "windowed": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "CRLF",
+      "windowed": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "LF",
+      "windowed": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "CRLF",
+      "windowed": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    }
+  ],
+  "windowedComposition": [
+    {
+      "mode": "local",
+      "ending": "LF",
+      "windowed": true,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "CRLF",
+      "windowed": true,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "LF",
+      "windowed": true,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "CRLF",
+      "windowed": true,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    }
+  ],
+  "touch": [
+    {
+      "mode": "local",
+      "readOnly": false,
+      "touchAtStartup": false,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "local",
+      "readOnly": false,
+      "touchAtStartup": true,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "local",
+      "readOnly": true,
+      "touchAtStartup": false,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "local",
+      "readOnly": true,
+      "touchAtStartup": true,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "readOnly": false,
+      "touchAtStartup": false,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "readOnly": false,
+      "touchAtStartup": true,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "readOnly": true,
+      "touchAtStartup": false,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "readOnly": true,
+      "touchAtStartup": true,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    }
+  ],
+  "hostedPredecessor": {
+    "run": 38211443355,
+    "conclusion": "failure",
+    "failedContract": "cached horizontal paint readiness",
+    "font": "loaded",
+    "nativeScope": "current",
+    "paintRows": 0,
+    "measurementProbes": 0
+  },
+  "hostedFixStatus": "pending",
+  "sourceHashes": {
+    "frontend/src/components/editor.rs": "deee2ba52209703662e197951df06d8e6a9b8835373518a2be97b66fcd014608",
+    "frontend/src/state_actions/editor/preparation.rs": "b1b733db04f22903dcaa9e2173c2c154a6dd5e0e7331438fc251927ddce30679",
+    "frontend/tests/components/editor.rs": "6f6625dd58398a3bcd89b8f4fb5be1a0fda1b91b2596e7e3761981ae01ef3eb1"
+  }
+}

@@ -119,6 +119,20 @@ viewport `clientWidth` reads and range layout probes
 concurrent host builds prevent a controlled latency claim. Attribute/batch the
 viewport reads and prove pending-to-prepared geometry reuse next; retain exact
 style, overlap, font and stale-owner validation.
+Immediate-paint eligibility now precedes native viewport reads. Ineligible large
+rows, wrapped views and prepared paint continue through the same scheduled path;
+twelve targeted browser contracts and strict WASM lint pass. Duplicate geometry preparation
+and other forced layout reads remain unfinished.
+Hosted UI run `38211443355` repeated the horizontal-cache timeout with a loaded
+font, current native-window stamps and no paint rows/probes. Initial native
+geometry now accepts its current source-owned document index while fallback paint
+is pending, avoiding that circular wait. Seven local/remote contracts pass,
+including source/account/read/project/file/epoch rejection. The complete failing
+group plus the new regression passes all 62 contracts with the official runner
+on Linux arm64 (two CPUs/four GiB). Production build, eight full/windowed
+composition checks, eight touch checks and strict WASM lint pass
+([receipt](editor-performance/initial-native-readiness-browser.json)). Hosted
+Linux/x64 verification remains pending; this is not yet an established CI fix.
 Paired native-value/selection restorations now update both source scroll axes
 through one viewport refresh. Fourteen browser contracts, eight production touch
 checks, eight full/windowed composition checks and strict WASM lint pass

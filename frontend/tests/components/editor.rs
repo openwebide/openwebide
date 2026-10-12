@@ -23661,3 +23661,70 @@ async fn native_text_reuse_preserves_dom_changes_and_releases_stale_scopes_in_bo
         }
     }
 }
+
+#[wasm_bindgen_test]
+async fn initial_native_geometry_uses_owned_index_before_fallback_and_rejects_stale_scopes() {
+    use openwebide_core::{WorkspaceMode, editor::Selection};
+    use openwebide_frontend::state_actions::editor::EditorActions;
+    use std::{cell::Cell, rc::Rc};
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        for change in ["source", "account", "read", "project", "file", "epoch"] {
+            let slot = Rc::new(Cell::new(None));
+            let captured = slot.clone();
+            let mounted = mount_test(move |state| {
+                state.seed_project();
+                state
+                    .projects
+                    .projects
+                    .update(|projects| projects[0].mode = mode);
+                state
+                    .workspace
+                    .open_file
+                    .set(Some("initial-index.txt".into()));
+                state
+                    .workspace
+                    .content
+                    .set("文😀e\u{301} words ".repeat(10_000).into());
+                captured.set(Some(EditorActions::new(state.workspace)));
+                view! { <div/> }
+            });
+            let actions = slot.get().unwrap();
+            actions.prepare_edit(Selection::caret(0)).unwrap();
+            mounted.state.workspace.editor_fallback_active.set(true);
+            mounted.state.workspace.editor_fallback_paint.set(None);
+            assert!(actions.syntax_is_pending());
+            assert!(!actions.full_row_paint_ready());
+            assert!(actions.begin_initial_native_context());
+            assert!(actions.native_geometry_pending());
+            assert!(
+                actions.full_row_paint_ready(),
+                "owned index must unblock initial geometry: {mode:?}"
+            );
+            match change {
+                "source" => mounted.state.workspace.content.set("replacement".into()),
+                "account" => mounted.state.auth.generation.update(|value| *value += 1),
+                "read" => mounted
+                    .state
+                    .workspace
+                    .editor_read_revision
+                    .update(|value| *value += 1),
+                "project" => mounted.state.workspace.active_project.set(Some(2)),
+                "file" => mounted
+                    .state
+                    .workspace
+                    .open_file
+                    .set(Some("other.txt".into())),
+                _ => mounted
+                    .state
+                    .workspace
+                    .pending_epoch
+                    .update(|value| *value += 1),
+            }
+            assert!(!actions.native_geometry_pending(), "{mode:?}: {change}");
+            assert!(
+                !actions.full_row_paint_ready(),
+                "stale index/window must not unlock geometry: {mode:?}: {change}"
+            );
+        }
+    }
+}
