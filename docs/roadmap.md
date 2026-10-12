@@ -64,9 +64,9 @@ tracks the remaining work rather than every optimization already shipped.
 | Selection and browser input | Multiple/rectangular selections and clipboard transactions; scoped native windows with bounded desktop startup for unwrapped, wrapped and nonuniform views, including long tabbed/bidirectional rows; automated Chromium composition and pointer checks. The recorded line-end caret bug is fixed and user-verified in the localhost PWA. |
 | Preparation and ownership | Rust/WASM worker and cooperative fallback; retained source/token/structure allocations; bounded worker delta reconstruction/reply-source publication and final structure metadata, parsed/lexical region reconciliation and retained fallback collection; bounded eligible unwrapped and wrapped paragraph probes, retained paint-run clipping and cooperative sampled cold-row glyph measurements, exact overlap validation, exact carets from retained anchors/current painted coverage and conservative complete-layout fallback. Current-file progress is shown during preparation. Matching trusted font notifications retain current in-flight work and ordinary-row replay after edits. |
 
-**Current measured bottleneck:** the latest 16 interleaved production samples
+**Unresolved measured bottlenecks:** the recorded 16 interleaved production samples
 preserve complete edited source in both modes. Near-1-MiB styled long-line edits
-still take 191–545 ms, cold complete geometry takes 1.1–1.7 seconds across the
+take 191–545 ms, cold complete geometry takes 1.1–1.7 seconds across the
 row/long-line workloads, and peak Chrome PSS remains 657–730 MiB
 ([samples](editor-performance/row-planner-production-comparison.jsonl)).
 Cooperative row planning is shipped, but these results leave responsiveness and
@@ -520,6 +520,22 @@ remain required.
   fold normalization and publication. Bound recovered undo/redo prefix/suffix
   comparisons and fold rebasing; verify memory and source ownership. Retain shared
   saved/draft versions and reconcile late acknowledgements with actual written source.
+  Recovery document line counting and persisted-fold validation now advance in
+  8 KiB source / 64 fold-record-or-ancestor-pop units in the shared Rust engine.
+  Loading and document preparation yield between batches and reject lost owners;
+  a proof tied to the exact immutable snapshot avoids repeating its validation at
+  hydration publication. Existing synchronous callers drive the same policy.
+  All 740 core tests, three browser lifecycle/cancellation checks and fifteen
+  recovery/cache contracts pass, with no browser console panics. Strict native
+  core, WASM frontend and WASI backend lint and the production build pass
+  ([receipt](editor-performance/recovery-validation-browser.json)).
+  Snapshot capture/guard comparisons, serialization,
+  admission, final fold installation and recovered history costs remain open.
+  Recovery browser verification also exposed a queued native-text cache effect
+  reading disposed workspace signals. Scope reads and cache cleanup now reject
+  disposed owners; the lifecycle regression and both-mode recovery contracts
+  now pass without the reproduced panics. This does not establish a general
+  memory improvement.
 
 **Remaining completion gates**:
 

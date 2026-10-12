@@ -165,13 +165,28 @@ impl RecoveryContext {
                     return;
                 }
             };
-            if record.revision < 0 || record.state.validate().is_err() {
-                self.phase(
-                    id,
-                    RecoveryPhase::LoadFailed("Invalid editor recovery response".into()),
-                );
-                return;
-            }
+            let validated = if record.revision < 0 {
+                Err("Invalid editor recovery revision".into())
+            } else {
+                super::editor::EditorActions::validate_recovery(&record.state, || {
+                    self.current(account, &project, ticket)
+                })
+                .await
+            };
+            let validated = match validated {
+                Ok(Some(validated)) => validated,
+                Ok(None) => {
+                    self.reject_changed_root(account, id, ticket);
+                    return;
+                }
+                Err(_) => {
+                    self.phase(
+                        id,
+                        RecoveryPhase::LoadFailed("Invalid editor recovery response".into()),
+                    );
+                    return;
+                }
+            };
             let phase = if matches!(policy, LoadPolicy::KeepCurrent)
                 || (record.revision == 0 && record.state.files.is_empty())
             {
@@ -188,11 +203,11 @@ impl RecoveryContext {
                             == Some(handle.clone())
                         && self.settings.bridge_url.try_get_untracked().as_ref() == Some(&bridge)
                 };
-                let hydrated = super::editor::EditorActions::restore_recovery(
+                let hydrated = super::editor::EditorActions::restore_validated_recovery(
                     self.workspace,
                     &project,
                     &guard,
-                    &record.state,
+                    &validated,
                     self.read_only.get_untracked(),
                     current,
                 )

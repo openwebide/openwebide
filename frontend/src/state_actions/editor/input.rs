@@ -38,7 +38,7 @@ impl EditorActions {
     /// The DOM adapter still compares the actual value, including composition.
     pub fn native_text_value(self, projection: &FoldProjection) -> js_sys::JsString {
         let Some(scope) = self.presentation_scope() else {
-            self.native_text.set_value(None);
+            self.native_text.try_update_value(|cached| *cached = None);
             return js_sys::JsString::from(projection.textarea_text());
         };
         let source = self.workspace.editor_source_revision.get_untracked();

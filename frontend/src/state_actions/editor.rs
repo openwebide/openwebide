@@ -126,11 +126,13 @@ pub struct EditorActions {
 impl EditorActions {
     pub fn presentation_scope(self) -> Option<EditorPresentationScope> {
         Some(EditorPresentationScope {
-            project: self.workspace.active_project.get()?,
-            path: self.workspace.open_file.get()?,
-            epoch: self.workspace.pending_epoch.get(),
-            read: self.workspace.editor_read_revision.get(),
-            account: self.auth.map_or(0, |auth| auth.generation.get()),
+            project: self.workspace.active_project.try_get().flatten()?,
+            path: self.workspace.open_file.try_get().flatten()?,
+            epoch: self.workspace.pending_epoch.try_get()?,
+            read: self.workspace.editor_read_revision.try_get()?,
+            account: self
+                .auth
+                .map_or(Some(0), |auth| auth.generation.try_get())?,
         })
     }
 
@@ -186,9 +188,17 @@ impl EditorActions {
             native_text_encodings: StoredValue::new(0),
         };
         Effect::new(move |_| {
+            if actions.native_text.is_disposed() {
+                return;
+            }
             let scope = actions.presentation_scope();
-            let source = actions.workspace.editor_source_revision.get();
-            actions.native_text.update_value(|cached| {
+            let Some(source) = actions.workspace.editor_source_revision.try_get() else {
+                actions
+                    .native_text
+                    .try_update_value(|cached| *cached = None);
+                return;
+            };
+            actions.native_text.try_update_value(|cached| {
                 if cached.as_ref().is_some_and(|cached| {
                     Some(&cached.scope) != scope.as_ref() || cached.source != source
                 }) {
@@ -2246,6 +2256,41 @@ mod source_tests {
 
     thread_local! {
         pub(super) static RULE_DETECTIONS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    }
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    async fn released_workspace_cannot_run_queued_native_cache_effects() {
+        use wasm_bindgen::JsCast;
+        let root = web_sys::window()
+            .unwrap()
+            .document()
+            .unwrap()
+            .create_element("div")
+            .unwrap()
+            .unchecked_into();
+        let _mount = leptos::mount::mount_to(root, || view! { <span/> });
+        let workspace_owner = Owner::new();
+        let workspace = workspace_owner.with(|| {
+            let workspace = crate::state::workspace::WorkspaceState::new();
+            workspace.active_project.set(Some(1));
+            workspace.open_file.set(Some("released.txt".into()));
+            workspace.content.set("文😀\r\n".into());
+            workspace
+        });
+        let action_owner = Owner::new();
+        let actions = action_owner.with(|| EditorActions::new(workspace));
+        actions.prepare_edit(Selection::caret(0)).unwrap();
+        let projection = actions.input_projection().unwrap();
+        actions.native_text_value(&projection);
+        assert!(actions.native_text.with_value(Option::is_some));
+        workspace_owner.cleanup();
+        assert!(actions.presentation_scope().is_none());
+        crate::util::yield_task().await;
+        assert!(actions.native_text.with_value(Option::is_none));
+        action_owner.cleanup();
+        // The released cache is also safe when a retained native projection is
+        // queried by a late caller; it cannot reinstall an owned cached value.
+        actions.native_text_value(&projection);
     }
 
     #[wasm_bindgen_test::wasm_bindgen_test]

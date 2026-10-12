@@ -56,8 +56,10 @@ pub use selections::{
 };
 mod recovery;
 pub use recovery::{
-    DocumentRecovery, EditorRecovery, EditorRecoveryFile, EditorRecoveryRecord, EditorRecoveryRoot,
-    MAX_RECOVERY_BYTES, MAX_RECOVERY_FILES, RecoveryDiskState, RecoveryScroll, recovery_body_limit,
+    DocumentRecovery, DocumentRecoveryValidation, EditorRecovery, EditorRecoveryFile,
+    EditorRecoveryRecord, EditorRecoveryRoot, EditorRecoveryValidation, MAX_RECOVERY_BYTES,
+    MAX_RECOVERY_FILES, RecoveryDiskState, RecoveryScroll, ValidatedEditorRecovery,
+    recovery_body_limit,
 };
 mod folds;
 pub use folds::{FoldCommand, FoldRange, FoldState, normalize_folds};

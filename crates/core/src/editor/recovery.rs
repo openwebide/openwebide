@@ -57,6 +57,72 @@ impl Document {
     }
 }
 
+/// Private, complete-only validation of an immutable recovery document.
+/// Each advance unit scans at most 8 KiB or validates 64 fold records/ancestor
+/// pops. Fixed metadata is bounded by the existing 512-selection limit.
+pub struct DocumentRecoveryValidation<'a> {
+    document: &'a DocumentRecovery,
+    next: usize,
+    lines: usize,
+    counted: bool,
+    folds: super::folds::FoldValidation,
+    result: Option<Result<(), String>>,
+}
+
+impl<'a> DocumentRecoveryValidation<'a> {
+    pub fn new(document: &'a DocumentRecovery) -> Self {
+        Self::with_lines(document, None)
+    }
+
+    fn with_lines(document: &'a DocumentRecovery, lines: Option<usize>) -> Self {
+        let result = match document.validate_metadata() {
+            Err(error) => Some(Err(error)),
+            Ok(()) if document.collapsed.is_empty() => Some(Ok(())),
+            Ok(()) => None,
+        };
+        Self {
+            document,
+            next: 0,
+            lines: lines.unwrap_or(1),
+            counted: lines.is_some(),
+            folds: Default::default(),
+            result,
+        }
+    }
+
+    pub fn advance(&mut self, budget: usize) -> bool {
+        for _ in 0..budget {
+            if self.result.is_some() {
+                break;
+            }
+            if !self.counted {
+                let end = self.next.saturating_add(8192).min(self.document.text.len());
+                self.lines += self.document.text.as_bytes()[self.next..end]
+                    .iter()
+                    .filter(|byte| **byte == b'\n')
+                    .count();
+                self.next = end;
+                self.counted = end == self.document.text.len();
+                continue;
+            }
+            match self.folds.advance(&self.document.collapsed, self.lines, 64) {
+                Some(true) => self.result = Some(Ok(())),
+                Some(false) => {}
+                None => {
+                    self.result = Some(Err(
+                        "Recovered folds are outside the document or overlap".into()
+                    ));
+                }
+            }
+        }
+        self.result.is_some()
+    }
+
+    pub fn finish(self) -> Option<Result<(), String>> {
+        self.result
+    }
+}
+
 /// Disk reconciliation never rebases a draft onto changed host text silently.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RecoveryDiskState {
@@ -85,10 +151,12 @@ impl DocumentRecovery {
     }
 
     pub fn validate(&self) -> Result<(), String> {
-        self.validate_with_lines(|| self.text.bytes().filter(|byte| *byte == b'\n').count() + 1)
+        let mut validation = DocumentRecoveryValidation::new(self);
+        while !validation.advance(64) {}
+        validation.finish().unwrap()
     }
 
-    fn validate_with_lines(&self, lines: impl FnOnce() -> usize) -> Result<(), String> {
+    fn validate_metadata(&self) -> Result<(), String> {
         if self.text.len() > MAX_DOCUMENT_BYTES || self.saved.len() > MAX_DOCUMENT_BYTES {
             return Err("Recovered document exceeds the editor's size limit".into());
         }
@@ -100,10 +168,17 @@ impl DocumentRecovery {
         if self.collapsed.len() > MAX_RECOVERY_FOLDS {
             return Err("Too many recovered folds".into());
         }
-        if !self.collapsed.is_empty() && !super::folds::are_normalized(&self.collapsed, lines()) {
-            return Err("Recovered folds are outside the document or overlap".into());
-        }
         Ok(())
+    }
+
+    fn validate_with_lines(&self, lines: impl FnOnce() -> usize) -> Result<(), String> {
+        let mut validation = DocumentRecoveryValidation::new(self);
+        if validation.result.is_none() {
+            validation.lines = lines();
+            validation.counted = true;
+        }
+        while !validation.advance(64) {}
+        validation.finish().unwrap()
     }
 
     /// Compare the fresh disk read with the saved baseline before permitting a
@@ -589,7 +664,7 @@ impl Default for EditorRecovery {
     }
 }
 impl EditorRecovery {
-    pub fn validate(&self) -> Result<(), String> {
+    fn validate_header(&self) -> Result<(), String> {
         if self.format != 1 {
             return Err("Unsupported editor recovery format".into());
         }
@@ -606,43 +681,130 @@ impl EditorRecovery {
         if self.files.len() > MAX_RECOVERY_FILES {
             return Err("Too many open files for editor recovery".into());
         }
-        let mut paths = std::collections::HashSet::new();
-        let mut bytes = 0_usize;
-        for file in &self.files {
-            if file.path.len() > 4096
-                || crate::vfs::workspace_path(&file.path).map_err(|error| error.to_string())?
-                    != file.path
-                || file.path.is_empty()
-                || !paths.insert(&file.path)
-            {
-                return Err("Recovered file paths must be unique project-relative paths".into());
+        Ok(())
+    }
+
+    pub fn validate(&self) -> Result<(), String> {
+        let mut validation = EditorRecoveryValidation::new(self);
+        while !validation.advance(64) {}
+        validation.finish().unwrap()
+    }
+}
+
+/// Resumable validation shares the synchronous persistence policy, without
+/// cloning draft sources or exposing a result before every file is checked.
+pub struct EditorRecoveryValidation<'a> {
+    recovery: &'a EditorRecovery,
+    paths: std::collections::HashSet<&'a str>,
+    file: usize,
+    started: bool,
+    document: Option<DocumentRecoveryValidation<'a>>,
+    bytes: usize,
+    result: Option<Result<(), String>>,
+}
+
+/// Successful validation is tied to the exact borrowed immutable snapshot.
+/// Hosts may reuse it at publication without rescanning recovered documents.
+pub struct ValidatedEditorRecovery<'a> {
+    recovery: &'a EditorRecovery,
+}
+
+impl ValidatedEditorRecovery<'_> {
+    pub fn recovery(&self) -> &EditorRecovery {
+        self.recovery
+    }
+}
+
+impl<'a> EditorRecoveryValidation<'a> {
+    pub fn new(recovery: &'a EditorRecovery) -> Self {
+        Self {
+            recovery,
+            paths: Default::default(),
+            file: 0,
+            started: false,
+            document: None,
+            bytes: 0,
+            result: recovery.validate_header().err().map(Err),
+        }
+    }
+
+    fn start_file(&mut self, file: &'a EditorRecoveryFile) -> Result<(), String> {
+        if file.path.len() > 4096
+            || crate::vfs::workspace_path(&file.path).map_err(|error| error.to_string())?
+                != file.path
+            || file.path.is_empty()
+            || !self.paths.insert(&file.path)
+        {
+            return Err("Recovered file paths must be unique project-relative paths".into());
+        }
+        if !file.scroll.top.is_finite()
+            || !file.scroll.left.is_finite()
+            || file.scroll.top < 0.0
+            || file.scroll.left < 0.0
+        {
+            return Err("Recovered scroll position is invalid".into());
+        }
+        self.document = file.document.as_ref().map(DocumentRecoveryValidation::new);
+        self.started = true;
+        Ok(())
+    }
+
+    pub fn advance(&mut self, budget: usize) -> bool {
+        for _ in 0..budget {
+            if self.result.is_some() {
+                break;
             }
-            if !file.scroll.top.is_finite()
-                || !file.scroll.left.is_finite()
-                || file.scroll.top < 0.0
-                || file.scroll.left < 0.0
-            {
-                return Err("Recovered scroll position is invalid".into());
+            let Some(file) = self.recovery.files.get(self.file) else {
+                self.result = Some(
+                    if self.recovery.selected.as_ref().is_some_and(|selected| {
+                        selected.len() > 4096 || !self.paths.contains(selected.as_str())
+                    }) {
+                        Err("Selected recovered file is not an open tab".into())
+                    } else {
+                        Ok(())
+                    },
+                );
+                break;
+            };
+            if !self.started {
+                if let Err(error) = self.start_file(file) {
+                    self.result = Some(Err(error));
+                }
+                continue;
             }
-            if let Some(document) = &file.document {
-                document.validate()?;
+            if let Some(document) = &mut self.document {
+                if !document.advance(1) {
+                    continue;
+                }
+                if let Err(error) = self.document.take().unwrap().finish().unwrap() {
+                    self.result = Some(Err(error));
+                    break;
+                }
             }
-            bytes = bytes.saturating_add(file.recovery_bytes());
-            if bytes > MAX_RECOVERY_BYTES {
-                return Err(
+            self.bytes = self.bytes.saturating_add(file.recovery_bytes());
+            if self.bytes > MAX_RECOVERY_BYTES {
+                self.result = Some(Err(
                     "Editor recovery exceeds 128 MiB; keep these files open while saving them"
                         .into(),
-                );
+                ));
+                break;
             }
+            self.file += 1;
+            self.started = false;
         }
-        if self
-            .selected
-            .as_ref()
-            .is_some_and(|selected| !paths.contains(selected))
-        {
-            return Err("Selected recovered file is not an open tab".into());
-        }
-        Ok(())
+        self.result.is_some()
+    }
+
+    pub fn finish(self) -> Option<Result<(), String>> {
+        self.result
+    }
+
+    pub fn finish_with_source(self) -> Option<Result<ValidatedEditorRecovery<'a>, String>> {
+        self.result.map(|result| {
+            result.map(|()| ValidatedEditorRecovery {
+                recovery: self.recovery,
+            })
+        })
     }
 }
 
@@ -711,6 +873,78 @@ mod encoded_text {
 mod tests {
     use super::super::NativeInputKind;
     use super::*;
+
+    #[test]
+    fn recovery_validation_bounds_source_scans_and_keeps_results_private() {
+        let mut document = DocumentRecovery::clean(&"文😀\r\n".repeat(20_000));
+        document.collapsed = vec![FoldRange {
+            start_line: 0,
+            end_line: 19_999,
+        }];
+        let mut validation = DocumentRecoveryValidation::new(&document);
+        assert!(!validation.advance(0));
+        let mut steps = 0;
+        while !validation.advance(1) {
+            steps += 1;
+            assert!(validation.next <= steps * 8192);
+            assert!(steps < 1000);
+        }
+        assert!(steps >= document.text.len().div_ceil(8192));
+        assert_eq!(validation.finish(), Some(Ok(())));
+        let mut cancelled = DocumentRecoveryValidation::new(&document);
+        assert!(!cancelled.advance(1));
+        assert_eq!(cancelled.finish(), None);
+        document.collapsed[0].end_line = 30_000;
+        let mut invalid = DocumentRecoveryValidation::new(&document);
+        while !invalid.advance(1) {}
+        assert_eq!(
+            invalid.finish(),
+            Some(Err(
+                "Recovered folds are outside the document or overlap".into(),
+            ))
+        );
+    }
+
+    #[test]
+    fn recovery_validation_yields_through_nested_ancestor_cleanup_and_proves_exact_snapshot() {
+        let mut document = DocumentRecovery::clean(&"x\n".repeat(10_000));
+        document.collapsed = (0..3000)
+            .map(|start_line| FoldRange {
+                start_line,
+                end_line: 6000 - start_line,
+            })
+            .chain([FoldRange {
+                start_line: 7000,
+                end_line: 8000,
+            }])
+            .collect();
+        let recovery = EditorRecovery {
+            root: Some(EditorRecoveryRoot {
+                mode: crate::WorkspaceMode::Local,
+                path: None,
+            }),
+            selected: Some("folds.md".into()),
+            files: vec![EditorRecoveryFile {
+                path: "folds.md".into(),
+                document: Some(document),
+                scroll: RecoveryScroll::default(),
+                read_only: false,
+            }],
+            ..Default::default()
+        };
+        let mut validation = EditorRecoveryValidation::new(&recovery);
+        assert!(validation.finish_with_source().is_none());
+        validation = EditorRecoveryValidation::new(&recovery);
+        let mut steps = 0;
+        while !validation.advance(1) {
+            steps += 1;
+            assert!(steps < 1000);
+        }
+        assert!(steps > 3000 * 2 / 64);
+        let proof = validation.finish_with_source().unwrap().unwrap();
+        assert!(std::ptr::eq(proof.recovery(), &recovery));
+        recovery.validate().unwrap();
+    }
 
     #[test]
     fn borrowed_selection_validation_matches_normalization_without_reordering() {

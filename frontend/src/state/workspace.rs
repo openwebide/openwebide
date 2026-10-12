@@ -815,6 +815,26 @@ impl WorkspaceState {
         active_read_only: bool,
     ) -> Result<bool, String> {
         recovery.validate()?;
+        self.editor_recovery_target_current(project, guard, recovery, active_read_only)
+    }
+
+    pub(crate) fn can_restore_validated_editor_recovery(
+        &self,
+        project: &openwebide_core::Project,
+        guard: &EditorRecoveryGuard,
+        recovery: &openwebide_core::editor::ValidatedEditorRecovery<'_>,
+        active_read_only: bool,
+    ) -> Result<bool, String> {
+        self.editor_recovery_target_current(project, guard, recovery.recovery(), active_read_only)
+    }
+
+    fn editor_recovery_target_current(
+        &self,
+        project: &openwebide_core::Project,
+        guard: &EditorRecoveryGuard,
+        recovery: &openwebide_core::editor::EditorRecovery,
+        active_read_only: bool,
+    ) -> Result<bool, String> {
         if recovery.root.as_ref().is_some_and(|root| {
             *root != openwebide_core::editor::EditorRecoveryRoot::for_project(project)
         }) {

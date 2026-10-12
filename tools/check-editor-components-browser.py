@@ -55,6 +55,7 @@ def main():
         library_js = library_js.replace(start, initializer)
 
     script = """
+        Error.stackTraceLimit = 50;
         import init, * as bindings from '/tests.js';
         window.__wbg_test_invoke = callback => callback();
         try {

@@ -9,6 +9,7 @@ pub struct FoldRange {
 
 /// Validate already ordered persisted ranges without cloning and sorting them.
 /// The ancestor stack retains only end lines, bounded by nesting depth.
+#[cfg(any(test, feature = "editor-parser"))]
 pub(super) fn are_normalized(ranges: &[FoldRange], line_count: usize) -> bool {
     let mut validation = FoldValidation::default();
     loop {
