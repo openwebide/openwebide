@@ -1,0 +1,165 @@
+{
+  "method": "Production Chromium trace and sampled renderer CPU profile",
+  "limitations": [
+    "Diagnostic instrumentation and concurrent host builds; not a controlled latency comparison.",
+    "WASM function names are stripped; sampled function indices do not identify Rust methods.",
+    "Two observations; no performance gain established."
+  ],
+  "observations": [
+    {
+      "mode": "local",
+      "completeSourceAndCaretVerified": true,
+      "inputPaintMs": 149.69999998807907,
+      "nativeInputHandlerMs": 39.20000000298023,
+      "traceTruncated": false,
+      "sampledInputLeafMs": {
+        "(program)": 23.269,
+        "wasm-function[1239]": 17.035,
+        "__wbg_clientWidth_669677d957e958c7": 16.562,
+        "Range.getClientRects": 15.539,
+        "wasm-function[1076]": 9.618,
+        "wasm-function[4933]": 7.259,
+        "wasm-function[2014]": 7.061,
+        "get": 6.503,
+        "wasm-function[5726]": 4.655,
+        "wasm-function[521]": 2.578,
+        "wasm-function[1553]": 2.555,
+        "wasm-function[7882]": 2.545
+      },
+      "geometryBatches": [
+        {
+          "scope": {
+            "data-measure-account": "1",
+            "data-measure-font": "1",
+            "data-measure-layout": "2",
+            "data-measure-prepared": "false",
+            "data-measure-read": "3",
+            "data-measure-source": "0",
+            "data-measure-view": "4"
+          },
+          "layoutMs": 11.199999988079071,
+          "geometryMs": 7.4000000059604645
+        },
+        {
+          "scope": {
+            "data-measure-account": "1",
+            "data-measure-font": "1",
+            "data-measure-layout": "2",
+            "data-measure-prepared": "false",
+            "data-measure-read": "3",
+            "data-measure-source": "0",
+            "data-measure-view": "4"
+          },
+          "layoutMs": 4.5999999940395355,
+          "geometryMs": 15
+        },
+        {
+          "scope": {
+            "data-measure-account": "1",
+            "data-measure-font": "1",
+            "data-measure-layout": "3",
+            "data-measure-prepared": "true",
+            "data-measure-read": "3",
+            "data-measure-source": "0",
+            "data-measure-view": "5"
+          },
+          "layoutMs": 13.399999991059303,
+          "geometryMs": 7.100000008940697
+        },
+        {
+          "scope": {
+            "data-measure-account": "1",
+            "data-measure-font": "1",
+            "data-measure-layout": "3",
+            "data-measure-prepared": "true",
+            "data-measure-read": "3",
+            "data-measure-source": "0",
+            "data-measure-view": "5"
+          },
+          "layoutMs": 4.600000008940697,
+          "geometryMs": 10.799999997019768
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "completeSourceAndCaretVerified": true,
+      "inputPaintMs": 150.5,
+      "nativeInputHandlerMs": 38.70000000298023,
+      "traceTruncated": false,
+      "sampledInputLeafMs": {
+        "wasm-function[1239]": 25.707,
+        "(program)": 20.926,
+        "Range.getClientRects": 18.4,
+        "__wbg_clientWidth_669677d957e958c7": 16.525,
+        "wasm-function[2014]": 14.106,
+        "wasm-function[1076]": 13.632,
+        "wasm-function[5726]": 4.729,
+        "get": 4.329,
+        "wasm-function[7655]": 2.512,
+        "wasm-function[705]": 2.496,
+        "wasm-function[1476]": 2.475,
+        "wasm-function[6078]": 2.459
+      },
+      "geometryBatches": [
+        {
+          "scope": {
+            "data-measure-account": "1",
+            "data-measure-font": "1",
+            "data-measure-layout": "2",
+            "data-measure-prepared": "false",
+            "data-measure-read": "3",
+            "data-measure-source": "0",
+            "data-measure-view": "4"
+          },
+          "layoutMs": 11.5,
+          "geometryMs": 11.5
+        },
+        {
+          "scope": {
+            "data-measure-account": "1",
+            "data-measure-font": "1",
+            "data-measure-layout": "2",
+            "data-measure-prepared": "false",
+            "data-measure-read": "3",
+            "data-measure-source": "0",
+            "data-measure-view": "4"
+          },
+          "layoutMs": 5,
+          "geometryMs": 12.099999994039536
+        },
+        {
+          "scope": {
+            "data-measure-account": "1",
+            "data-measure-font": "1",
+            "data-measure-layout": "3",
+            "data-measure-prepared": "true",
+            "data-measure-read": "3",
+            "data-measure-source": "0",
+            "data-measure-view": "5"
+          },
+          "layoutMs": 10.700000002980232,
+          "geometryMs": 7.4000000059604645
+        },
+        {
+          "scope": {
+            "data-measure-account": "1",
+            "data-measure-font": "1",
+            "data-measure-layout": "3",
+            "data-measure-prepared": "true",
+            "data-measure-read": "3",
+            "data-measure-source": "0",
+            "data-measure-view": "5"
+          },
+          "layoutMs": 6.199999988079071,
+          "geometryMs": 22.200000002980232
+        }
+      ]
+    }
+  ],
+  "nextWork": [
+    "Attribute and batch repeated viewport reads in native input/paint synchronization.",
+    "Prove reuse across pending-to-prepared geometry transitions without weakening style or overlap validation.",
+    "Retain all existing source, font, fallback and stale-owner contracts."
+  ]
+}

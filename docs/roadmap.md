@@ -110,6 +110,32 @@ byte-limit edits at 59–69 ms and row-limit edits at 32–60 ms
 ([summary](editor-performance/background-priority-boundary-summary.json)); repeat
 the broader workloads on subsequent implementation checkpoints.
 
+A current production input trace in both modes preserves source and caret,
+but records about 39 ms inside the native input handler and repeated paragraph
+geometry batches before and after syntax readiness. Sampled input time includes
+viewport `clientWidth` reads and range layout probes
+([diagnostic](editor-performance/current-input-profile-summary.json),
+[raw trace](editor-performance/current-input-profile.jsonl)). Instrumentation and
+concurrent host builds prevent a controlled latency claim. Attribute/batch the
+viewport reads and prove pending-to-prepared geometry reuse next; retain exact
+style, overlap, font and stale-owner validation.
+Paired native-value/selection restorations now update both source scroll axes
+through one viewport refresh. Fourteen browser contracts, eight production touch
+checks, eight full/windowed composition checks and strict WASM lint pass
+([receipt](editor-performance/paired-scroll-browser.json)); other repeated reads
+and duplicate geometry preparation remain open.
+Fourteen focused local/remote browser contracts and strict WASM lint now pass.
+Full hosted UI run `38207691623` exposed a 3-second horizontal-cache readiness
+timeout. The failed contract and its complete 61-test group pass locally,
+including a two-CPU/four-GiB repeat, but the Linux/x64 failure is unresolved
+([investigation](editor-performance/horizontal-cache-ci-investigation.json)). Keep
+the existing deadlines, source/probe limits and full inventory while diagnosing it.
+The official wasm-bindgen runner also passes the exact 61-test selection with
+two CPUs and four GiB. The failed contract now emits one bounded readiness
+snapshot near its existing deadline, without forcing layout or changing its
+fixture. Use hosted font, viewport-style, scope and probe state to establish the
+cause before treating local passes as a CI fix.
+
 Current-source unwrapped replay now uses the shared facade and existing suffix
 proof: matching source/style topology and exact incoming measured geometry.
 Tabs remain ineligible and terminal extents stay fresh. Eight production samples

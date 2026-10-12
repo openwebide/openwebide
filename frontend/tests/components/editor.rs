@@ -5889,6 +5889,15 @@ async fn editor_scroll_surface_preserves_wheel_native_navigation_and_scope_in_bo
                 input.has_attribute("data-editor-native-bound")
             })
             .await;
+            let native_position = (input.scroll_top(), input.scroll_left());
+            openwebide_frontend::viewport::set_editor_scroll(&input, 90.0, 40.0);
+            assert!((scroll.scroll_top() - 90.0).abs() < 1.0);
+            assert!((scroll.scroll_left() - if word_wrap { 0.0 } else { 40.0 }).abs() < 1.0);
+            assert_eq!((input.scroll_top(), input.scroll_left()), native_position);
+            // Single-axis changes retain the other source axis after batching.
+            openwebide_frontend::viewport::set_editor_scroll_top(&input, 100.0);
+            assert!((scroll.scroll_top() - 100.0).abs() < 1.0);
+            assert!((scroll.scroll_left() - if word_wrap { 0.0 } else { 40.0 }).abs() < 1.0);
             let before_native = (scroll.scroll_top(), scroll.scroll_left());
             input.set_scroll_top(1111.0);
             input.set_scroll_left(222.0);
@@ -17823,12 +17832,29 @@ async fn repeated_fragment_windows_reuse_validated_paint_and_font_changes_remeas
             state.workspace.content.set(source.clone().into());
             view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:340px;height:380px">{editor_view(state)}</div> }
         });
+        let started = js_sys::Date::now();
+        let reported = std::cell::Cell::new(false);
         wait_until("cached horizontal paint", || {
-            mounted
+            let ready = mounted
                 .root
                 .query_selector(".editor-source-line[data-paint-left]")
                 .unwrap()
-                .is_some()
+                .is_some();
+            if !ready && js_sys::Date::now() - started > 2000.0 && !reported.replace(true) {
+                let snapshot = js_sys::Function::new_with_args("root", r#"
+                    const input=root.querySelector('.editor-textarea'), scroll=root.querySelector('.editor-scroll-surface'), extent=scroll?.firstElementChild;
+                    return JSON.stringify({bound:input?.dataset.editorNativeBound,
+                        inputScope:input?.dataset.editorScope, nativeScope:input?.dataset.editorNativeValueScope,
+                        viewportStyles:input?.parentElement?.getAttribute('style'),
+                        extentStyles:extent?.getAttribute('style'),
+                        paintRows:root.querySelectorAll('.editor-source-line').length,
+                        probes:document.querySelectorAll('.editor-row-measure').length,
+                        preparation:root.querySelector('.status-preparation')?.getAttribute('title'),
+                        fonts:Array.from(document.fonts).slice(0,16).map(face=>({family:face.family,status:face.status}))});
+                "#).call1(&wasm_bindgen::JsValue::NULL, &mounted.root).unwrap();
+                web_sys::console::log_2(&"HORIZONTAL_CACHE_READINESS".into(), &snapshot);
+            }
+            ready
         })
         .await;
         wait_until("initial source dimensions prepared", || {

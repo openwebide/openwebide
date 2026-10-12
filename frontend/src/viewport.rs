@@ -269,10 +269,18 @@ export function check_editor_extent(width, height) {
 export function set_editor_scroll_position(input, value, horizontal) {
     refresh_editor_scroll(input);
     const scroll = editor_scroll_element(input);
-    const property = horizontal ? 'scrollLeft' : 'scrollTop';
-    scroll[property] = value;
+    apply_editor_scroll(input, scroll, horizontal ? null : value, horizontal ? value : null);
+}
+export function set_editor_scroll(input, top, left) {
+    refresh_editor_scroll(input);
+    apply_editor_scroll(input, editor_scroll_element(input), top, left);
+}
+function apply_editor_scroll(input, scroll, top, left) {
+    if (top !== null) scroll.scrollTop = top;
+    if (left !== null) scroll.scrollLeft = left;
     if (input.dataset.editorNativeBound === 'true') return;
-    input[property] = scroll[property];
+    if (top !== null) input.scrollTop = scroll.scrollTop;
+    if (left !== null) input.scrollLeft = scroll.scrollLeft;
     if (scroll !== input) editor_native_echo.set(input, {top:input.scrollTop, left:input.scrollLeft, scope:input.dataset.editorScope, view:input.parentElement.dataset.editorView, account:input.parentElement.dataset.editorAccount});
 }
 const editor_native_echo = new WeakMap();
@@ -454,6 +462,7 @@ export function observe_editor_viewport(input, overlay, onLayout) {
 }
 "#)]
 extern "C" {
+    pub fn set_editor_scroll(input: &web_sys::HtmlTextAreaElement, top: f64, left: f64);
     fn set_editor_scroll_position(
         input: &web_sys::HtmlTextAreaElement,
         value: f64,

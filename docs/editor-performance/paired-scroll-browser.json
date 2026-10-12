@@ -1,0 +1,479 @@
+{
+  "components": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "console": "Invoking test: editor::trusted_native_commits_skip_full_value_reads_and_other_inputs_reconcile_in_both_modes\nInvoking test: editor::syntax_preparation_cannot_publish_after_scope_changes_in_both_modes\nInvoking test: editor::neutral_edits_paint_before_pending_worker_reply_in_both_modes\nInvoking test: editor::native_text_reuse_preserves_dom_changes_and_releases_stale_scopes_in_both_modes\nInvoking test: editor::localized_wrapped_edits_reuse_exact_row_heights_in_both_modes\nInvoking test: editor::incremental_syntax_and_fold_provider_share_both_modes_and_account_reset\nInvoking test: editor::held_syntax_keeps_embedded_typing_and_post_edit_context_in_both_modes\npanicked at /Users/BWestnes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/reactive_graph-0.2.14/src/traits.rs:394:39:\nTried to access a reactive value that has already been disposed.\n\nStack:\n\nError\n    at __wbg_new_af0ec6b7fe765f33 (http://127.0.0.1:46001/tests.js:1876:25)\n    at components-64e3500b4e32530b.wasm.<<wasm_bindgen_test[6a5aca1243843ed9]::__rt::Context>::new::panic_handling::Error>::new::__wbg_new_af0ec6b7fe765f33 externref shim (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[34318]:0x127ebc0)\n    at components-64e3500b4e32530b.wasm.<wasm_bindgen_test[6a5aca1243843ed9]::__rt::Context>::new::panic_handling (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[5665]:0xdab198)\n    at components-64e3500b4e32530b.wasm.<wasm_bindgen_test[6a5aca1243843ed9]::__rt::Context>::new::{closure#0}::{closure#0} (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[22890]:0x11df50a)\n    at components-64e3500b4e32530b.wasm.std[5a6270b673d0c64d]::panicking::panic_with_hook (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[11585]:0xff99b4)\n    at components-64e3500b4e32530b.wasm.std[5a6270b673d0c64d]::panicking::panic_handler::{closure#0} (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[19662]:0x11863e0)\n    at components-64e3500b4e32530b.wasm.std[5a6270b673d0c64d]::sys::backtrace::__rust_end_short_backtrace::<std[5a6270b673d0c64d]::panicking::panic_handler::{closure#0}, !> (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[35711]:0x1283bac)\n    at components-64e3500b4e32530b.wasm.__rustc[100742bb89c490cb]::rust_begin_unwind (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[29532]:0x1258529)\n    at components-64e3500b4e32530b.wasm.core[ed718c3d60ebd546]::panicking::panic_fmt (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[26780]:0x122ee76)\n    at components-64e3500b4e32530b.wasm.<reactive_graph[166d71c1bc815c69]::signal::rw::RwSignal<core[ed718c3d60ebd546]::option::Option<i64>> as reactive_graph[166d71c1bc815c69]::traits::Get>::get (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[17009]:0x1122264)\n\n\npanicked at /Users/BWestnes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/reactive_graph-0.2.14/src/traits.rs:394:39:\nTried to access a reactive value that has already been disposed.\n\nStack:\n\nError\n    at __wbg_new_af0ec6b7fe765f33 (http://127.0.0.1:46001/tests.js:1876:25)\n    at components-64e3500b4e32530b.wasm.<<wasm_bindgen_test[6a5aca1243843ed9]::__rt::Context>::new::panic_handling::Error>::new::__wbg_new_af0ec6b7fe765f33 externref shim (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[34318]:0x127ebc0)\n    at components-64e3500b4e32530b.wasm.<wasm_bindgen_test[6a5aca1243843ed9]::__rt::Context>::new::panic_handling (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[5665]:0xdab198)\n    at components-64e3500b4e32530b.wasm.<wasm_bindgen_test[6a5aca1243843ed9]::__rt::Context>::new::{closure#0}::{closure#0} (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[22890]:0x11df50a)\n    at components-64e3500b4e32530b.wasm.std[5a6270b673d0c64d]::panicking::panic_with_hook (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[11585]:0xff99b4)\n    at components-64e3500b4e32530b.wasm.std[5a6270b673d0c64d]::panicking::panic_handler::{closure#0} (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[19662]:0x11863e0)\n    at components-64e3500b4e32530b.wasm.std[5a6270b673d0c64d]::sys::backtrace::__rust_end_short_backtrace::<std[5a6270b673d0c64d]::panicking::panic_handler::{closure#0}, !> (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[35711]:0x1283bac)\n    at components-64e3500b4e32530b.wasm.__rustc[100742bb89c490cb]::rust_begin_unwind (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[29532]:0x1258529)\n    at components-64e3500b4e32530b.wasm.core[ed718c3d60ebd546]::panicking::panic_fmt (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[26780]:0x122ee76)\n    at components-64e3500b4e32530b.wasm.<reactive_graph[166d71c1bc815c69]::signal::rw::RwSignal<core[ed718c3d60ebd546]::option::Option<i64>> as reactive_graph[166d71c1bc815c69]::traits::Get>::get (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[17009]:0x1122264)\n\n\nInvoking test: editor::editor_scroll_surface_preserves_wheel_native_navigation_and_scope_in_both_modes\npanicked at /Users/BWestnes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/js-sys-0.3.105/src/futures/task/singlethread.rs:156:37:\nRefCell already borrowed\n\nStack:\n\nError\n    at __wbg_new_af0ec6b7fe765f33 (http://127.0.0.1:46001/tests.js:1876:25)\n    at components-64e3500b4e32530b.wasm.<<wasm_bindgen_test[6a5aca1243843ed9]::__rt::Context>::new::panic_handling::Error>::new::__wbg_new_af0ec6b7fe765f33 externref shim (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[34318]:0x127ebc0)\n    at components-64e3500b4e32530b.wasm.<wasm_bindgen_test[6a5aca1243843ed9]::__rt::Context>::new::panic_handling (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[5665]:0xdab198)\n    at components-64e3500b4e32530b.wasm.<wasm_bindgen_test[6a5aca1243843ed9]::__rt::Context>::new::{closure#0}::{closure#0} (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[22890]:0x11df50a)\n    at components-64e3500b4e32530b.wasm.std[5a6270b673d0c64d]::panicking::panic_with_hook (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[11585]:0xff99b4)\n    at components-64e3500b4e32530b.wasm.std[5a6270b673d0c64d]::panicking::panic_handler::{closure#0} (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[19662]:0x118640e)\n    at components-64e3500b4e32530b.wasm.std[5a6270b673d0c64d]::sys::backtrace::__rust_end_short_backtrace::<std[5a6270b673d0c64d]::panicking::panic_handler::{closure#0}, !> (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[35711]:0x1283bac)\n    at components-64e3500b4e32530b.wasm.__rustc[100742bb89c490cb]::rust_begin_unwind (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[29532]:0x1258529)\n    at components-64e3500b4e32530b.wasm.core[ed718c3d60ebd546]::panicking::panic_fmt (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[26780]:0x122ee76)\n    at components-64e3500b4e32530b.wasm.core[ed718c3d60ebd546]::cell::panic_already_borrowed (http://127.0.0.1:46001/tests_bg.wasm:wasm-function[29051]:0x125237e)\n\n\nInvoking test: editor::diff_syntax_paint_keeps_word_changes_and_embedded_context_in_both_modes\nInvoking test: editor::bounded_native_context_replaces_complete_selections_and_preserves_history_in_both_modes\nInvoking test: editor::bounded_native_context_rejects_stale_source_selection_and_owner_scopes_in_both_modes\nInvoking test: editor::bounded_native_context_multicursor_replay_and_failures_share_source_contract_in_both_modes\nInvoking test: editor::bounded_native_context_keeps_composition_values_through_clipped_replacements_in_both_modes\nInvoking test: editor::bound_editor_composition_keeps_native_ownership_across_provider_metadata_in_both_modes\n",
+    "output": "\nrunning 14 tests\ntest editor::trusted_native_commits_skip_full_value_reads_and_other_inputs_reconcile_in_both_modes ... ok\ntest editor::syntax_preparation_cannot_publish_after_scope_changes_in_both_modes ... ok\ntest editor::neutral_edits_paint_before_pending_worker_reply_in_both_modes ... ok\ntest editor::native_text_reuse_preserves_dom_changes_and_releases_stale_scopes_in_both_modes ... ok\ntest editor::localized_wrapped_edits_reuse_exact_row_heights_in_both_modes ... ok\ntest editor::incremental_syntax_and_fold_provider_share_both_modes_and_account_reset ... ok\ntest editor::held_syntax_keeps_embedded_typing_and_post_edit_context_in_both_modes ... ok\ntest editor::editor_scroll_surface_preserves_wheel_native_navigation_and_scope_in_both_modes ... ok\ntest editor::diff_syntax_paint_keeps_word_changes_and_embedded_context_in_both_modes ... ok\ntest editor::bounded_native_context_replaces_complete_selections_and_preserves_history_in_both_modes ... ok\ntest editor::bounded_native_context_rejects_stale_source_selection_and_owner_scopes_in_both_modes ... ok\ntest editor::bounded_native_context_multicursor_replay_and_failures_share_source_contract_in_both_modes ... ok\ntest editor::bounded_native_context_keeps_composition_values_through_clipped_replacements_in_both_modes ... ok\ntest editor::bound_editor_composition_keeps_native_ownership_across_provider_metadata_in_both_modes ... ok\n\ntest result: ok. 14 passed; 0 failed; 0 ignored; 0 filtered out; finished in 6.80s\n\n",
+    "passed": true,
+    "tests": [
+      "__wbgt__components::editor::bound_editor_composition_keeps_native_ownership_across_provider_metadata_in_both_modes",
+      "__wbgt__components::editor::bounded_native_context_keeps_composition_values_through_clipped_replacements_in_both_modes",
+      "__wbgt__components::editor::bounded_native_context_multicursor_replay_and_failures_share_source_contract_in_both_modes",
+      "__wbgt__components::editor::bounded_native_context_rejects_stale_source_selection_and_owner_scopes_in_both_modes",
+      "__wbgt__components::editor::bounded_native_context_replaces_complete_selections_and_preserves_history_in_both_modes",
+      "__wbgt__components::editor::diff_syntax_paint_keeps_word_changes_and_embedded_context_in_both_modes",
+      "__wbgt__components::editor::editor_scroll_surface_preserves_wheel_native_navigation_and_scope_in_both_modes",
+      "__wbgt__components::editor::held_syntax_keeps_embedded_typing_and_post_edit_context_in_both_modes",
+      "__wbgt__components::editor::incremental_syntax_and_fold_provider_share_both_modes_and_account_reset",
+      "__wbgt__components::editor::localized_wrapped_edits_reuse_exact_row_heights_in_both_modes",
+      "__wbgt__components::editor::native_text_reuse_preserves_dom_changes_and_releases_stale_scopes_in_both_modes",
+      "__wbgt__components::editor::neutral_edits_paint_before_pending_worker_reply_in_both_modes",
+      "__wbgt__components::editor::syntax_preparation_cannot_publish_after_scope_changes_in_both_modes",
+      "__wbgt__components::editor::trusted_native_commits_skip_full_value_reads_and_other_inputs_reconcile_in_both_modes"
+    ],
+    "servedFonts": {
+      "/fonts/MonaspaceNeon-v1.400.woff2": "6569968f448ae856ab5b57dff1f13b109b220ca8e3f664169e135fcb5c4f0721"
+    },
+    "libraryStartSuppressed": false,
+    "testModuleRoute": "/tests.js"
+  },
+  "officialGroup": {
+    "passed": 61,
+    "cpus": 2,
+    "memoryGiB": 4,
+    "contractDeadlineMs": 3000,
+    "browserDeadlineSeconds": 300,
+    "elapsedSeconds": 42.45,
+    "diagnosticsEnabled": true
+  },
+  "strictWasmLint": "passed",
+  "touch": [
+    {
+      "mode": "local",
+      "readOnly": false,
+      "touchAtStartup": false,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "local",
+      "readOnly": false,
+      "touchAtStartup": true,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "local",
+      "readOnly": true,
+      "touchAtStartup": false,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "local",
+      "readOnly": true,
+      "touchAtStartup": true,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "readOnly": false,
+      "touchAtStartup": false,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "readOnly": false,
+      "touchAtStartup": true,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "readOnly": true,
+      "touchAtStartup": false,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "readOnly": true,
+      "touchAtStartup": true,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    }
+  ],
+  "composition": [
+    {
+      "mode": "local",
+      "ending": "LF",
+      "windowed": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "CRLF",
+      "windowed": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "LF",
+      "windowed": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "CRLF",
+      "windowed": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "LF",
+      "windowed": true,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "CRLF",
+      "windowed": true,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "LF",
+      "windowed": true,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "CRLF",
+      "windowed": true,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    }
+  ],
+  "sourceSha256": {
+    "frontend/src/viewport.rs": "ed945dc20f68bf35be32dde8767e808c383efd66dcdc8b447b7a93d31e0e28f0",
+    "frontend/src/components/editor.rs": "139152896c84d19feae1b2b55fd6893cfa2ad27c3e4e95547191add1670c27ba",
+    "frontend/tests/components/editor.rs": "46c8b42974f9c5c8202b6b12a5ef19c4a98bbd3b6304f2c576a3fd82cef5fd64"
+  },
+  "verificationPending": [
+    "hosted integrated CI timeout investigation"
+  ],
+  "limitations": [
+    "Hosted Linux/x64 cache readiness timeout is unresolved.",
+    "No controlled latency improvement established; other viewport reads and duplicate geometry remain open."
+  ]
+}

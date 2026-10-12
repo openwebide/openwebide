@@ -390,8 +390,7 @@ pub(super) fn render_editor_selection(
             restore_editor_selection(textarea, &projection, visible);
         }
         stamp_editor_input(actions, textarea);
-        crate::viewport::set_editor_scroll_top(textarea, scroll.0);
-        crate::viewport::set_editor_scroll_left(textarea, scroll.1);
+        crate::viewport::set_editor_scroll(textarea, scroll.0, scroll.1);
     }
 }
 
@@ -3369,8 +3368,7 @@ pub fn Editor(
             // Scroll reconciliation must already know that this value is a window;
             // otherwise it replaces retained source extents with local dimensions.
             stamp_editor_input(editor_actions, &el);
-            crate::viewport::set_editor_scroll_top(&el, scroll.top);
-            crate::viewport::set_editor_scroll_left(&el, scroll.left);
+            crate::viewport::set_editor_scroll(&el, scroll.top, scroll.left);
             restored_textarea.set_value(Some((el.clone(), key)));
             // The installed native value establishes cold source dimensions.
             // Let initial viewport paint observe it without waiting for ResizeObserver/rAF.
