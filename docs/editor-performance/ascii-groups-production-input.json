@@ -1,0 +1,85 @@
+{
+  "description": "Fresh production build and trusted Chromium composition/keyboard verification after grouped visual ASCII coordinates. Both workspace modes and LF/CRLF, full/windowed native input.",
+  "productionBuild": "NO_COLOR=true spin build passed",
+  "artifacts": {
+    "backend.wasm": "6665d37d64961663c0dc689e78c551099beb7c987c0991a845f79517de232bbb",
+    "library.wasm": "5f469d9cc373e1f6f205633d59f962fbad107df75d5e64faf2671de08e4031b4",
+    "components.wasm": "dbc201687911e7f81e431174e5a20a1088fbf9e2cd372064012d0e5c5dafd20a",
+    "frontend.wasm": "3d108304b782a3a148511fd348f6da856d5e6f3458fe870aebdabad2953f15eb"
+  },
+  "input": [
+    {
+      "mode": "local",
+      "ending": "LF",
+      "windowed": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "CRLF",
+      "windowed": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "LF",
+      "windowed": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "CRLF",
+      "windowed": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "LF",
+      "windowed": true,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "CRLF",
+      "windowed": true,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "LF",
+      "windowed": true,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "CRLF",
+      "windowed": true,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    }
+  ],
+  "limits": "Physical IME/touch/PWA and folder permission checks remain separate; input correctness does not prove viewport/startup/memory performance."
+}

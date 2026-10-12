@@ -285,9 +285,16 @@ combined-source CI result.
   ([receipt](editor-performance/ascii-groups-browser.json)). Compiler-checked,
   interleaved native samples for 20 edit/undo pairs fall from 155 to 107 ms for
   ASCII and 469 to 447 ms for mixed Unicode
-  ([benchmark](editor-performance/ascii-groups-native-edits.json)). Production
-  input/viewport measurements and the full release checks still need repeating;
-  this does not close the synchronous traversal or performance gates.
+  ([benchmark](editor-performance/ascii-groups-native-edits.json)). The fresh
+  production build and eight full/windowed LF/CRLF composition/undo/redo/cancel
+  cases pass in both modes ([input receipt](editor-performance/ascii-groups-production-input.json)).
+  Four styled-line production cases preserve source with wrapping on/off;
+  viewport paint is 119–142 ms, native handlers 25–26 ms and cold complete
+  geometry 1.6–4.2 seconds. Peak Chrome PSS is about 650–733 MiB
+  ([summary](editor-performance/ascii-groups-production-summary.json)). These
+  single instrumented observations do not establish a matched UI/memory gain.
+  The full release checks still need repeating; synchronous traversal and the
+  broader performance gates remain open.
   Isolated native timings improve for ASCII and mixed text
   ([receipt](editor-performance/ascii-grapheme-scan.json)); whole-editor latency,
   full-row edit rebuilding and startup memory remain open.
@@ -719,7 +726,12 @@ Linux/x64 verification also passes in the complete `67b3a529` inventory.
   checks that heading while retaining account acknowledgement and dismissal;
   four fresh browser contracts pass, including About in both modes and focus
   restoration ([receipt](editor-performance/nightly-release-notes-browser.json)).
-  Verify the complete subsequent release before treating CI as resolved.
+  Hosted release `38304755880` at `17934e1c` subsequently passes all six check
+  jobs, both platform images and nightly publication. The full browser inventory
+  includes 219 editor checks, both font matrices and 397 other component checks
+  ([receipt](editor-performance/editor-ci-179-success.json)), verifying the
+  nightly-heading correction on integrated editor/plugin source. Repeat this
+  gate for the later ASCII coordinate updates and final editor implementation.
 
 - [ ] **Physical Chrome/Edge PWA input:** verify real input-method commit/cancel,
   Unicode and LF/CRLF undo/redo, multiple-cursor clipboard transactions and touch

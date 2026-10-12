@@ -1,0 +1,98 @@
+{
+  "description": "Fresh production observations after grouped visual coordinates: both modes, wrapping on/off, actual near-1-MiB String styling and verified beginning edits. All four cases preserve complete source and measure Linux Chrome PSS.",
+  "metadata": {
+    "unwrapped": {
+      "host": "Linux-7.0.14-linuxkit-aarch64-with-glibc2.36",
+      "measurement": "production editor; process-tree memory",
+      "cpuCount": 14,
+      "cgroupMemoryMax": "10737418240",
+      "cgroupCpuMax": "400000 100000",
+      "repetitions": 1,
+      "fileName": "measure.rs",
+      "measurementImage": "sha256:e1a372cac8e6c496251a7ea371631a8beb560d1c5c6cddd1b70a270da19bda8c",
+      "inputTimingStart": "beforeinput",
+      "inputPosition": "beginning",
+      "cpuProfiling": false,
+      "workerStartup": "default",
+      "frontendWasmSha256": {
+        "openwebide-frontend-cc354d18b05d95_bg.wasm": "e8aeda4273f9488e43a7578775c78c61c7040cdb2bd0ff4beda81ff2d9be9ada"
+      },
+      "backendWasmSha256": "6665d37d64961663c0dc689e78c551099beb7c987c0991a845f79517de232bbb",
+      "measurementScriptSha256": "c13223cc2030db735a6a97e3fb192123289dfcf542b24cc93a4efdc8cee55f83",
+      "checkoutHead": "6d9bacc9ac6f9bede6afeef6a273f56290bd5c4a",
+      "browser": "Chromium 154.0.8037.92 built on Debian GNU/Linux 12 (bookworm)"
+    },
+    "wrapped": {
+      "host": "Linux-7.0.14-linuxkit-aarch64-with-glibc2.36",
+      "measurement": "production editor; process-tree memory",
+      "cpuCount": 14,
+      "cgroupMemoryMax": "10737418240",
+      "cgroupCpuMax": "400000 100000",
+      "repetitions": 1,
+      "fileName": "measure.rs",
+      "measurementImage": "sha256:e1a372cac8e6c496251a7ea371631a8beb560d1c5c6cddd1b70a270da19bda8c",
+      "inputTimingStart": "beforeinput",
+      "inputPosition": "beginning",
+      "cpuProfiling": false,
+      "workerStartup": "default",
+      "frontendWasmSha256": {
+        "openwebide-frontend-cc354d18b05d95_bg.wasm": "e8aeda4273f9488e43a7578775c78c61c7040cdb2bd0ff4beda81ff2d9be9ada"
+      },
+      "backendWasmSha256": "6665d37d64961663c0dc689e78c551099beb7c987c0991a845f79517de232bbb",
+      "measurementScriptSha256": "c13223cc2030db735a6a97e3fb192123289dfcf542b24cc93a4efdc8cee55f83",
+      "checkoutHead": "6d9bacc9ac6f9bede6afeef6a273f56290bd5c4a",
+      "browser": "Chromium 154.0.8037.92 built on Debian GNU/Linux 12 (bookworm)"
+    }
+  },
+  "samples": [
+    {
+      "mode": "local",
+      "wrap": false,
+      "sourceBytes": 1048567,
+      "inputViewportPaintMs": 128.09999999403954,
+      "inputCompleteGeometryMs": 205.69999998807907,
+      "coldCompleteGeometryMs": 1596.0999999940395,
+      "peakChromePssKiB": 727007,
+      "completeSourceAfterInputVerified": true,
+      "verifiedSourceCaretBeforeInput": 0,
+      "nativeInputHandlerMs": 25.200000017881393
+    },
+    {
+      "mode": "remote",
+      "wrap": false,
+      "sourceBytes": 1048567,
+      "inputViewportPaintMs": 118.89999997615814,
+      "inputCompleteGeometryMs": 176.69999998807907,
+      "coldCompleteGeometryMs": 1593.9000000059605,
+      "peakChromePssKiB": 665417,
+      "completeSourceAfterInputVerified": true,
+      "verifiedSourceCaretBeforeInput": 0,
+      "nativeInputHandlerMs": 24.5
+    },
+    {
+      "mode": "local",
+      "wrap": true,
+      "sourceBytes": 1048567,
+      "inputViewportPaintMs": 142.40000000596046,
+      "inputCompleteGeometryMs": 493.90000000596046,
+      "coldCompleteGeometryMs": 1780.9000000059605,
+      "peakChromePssKiB": 750286,
+      "completeSourceAfterInputVerified": true,
+      "verifiedSourceCaretBeforeInput": 0,
+      "nativeInputHandlerMs": 25.900000005960464
+    },
+    {
+      "mode": "remote",
+      "wrap": true,
+      "sourceBytes": 1048567,
+      "inputViewportPaintMs": 132.09999999403954,
+      "inputCompleteGeometryMs": 555.5,
+      "coldCompleteGeometryMs": 4242,
+      "peakChromePssKiB": 688636,
+      "completeSourceAfterInputVerified": true,
+      "verifiedSourceCaretBeforeInput": 0,
+      "nativeInputHandlerMs": 24.69999998807907
+    }
+  ],
+  "limits": "One instrumented observation per mode/layout. Not a matched before/after improvement or a closed input, cold geometry, memory, physical input or recovery gate."
+}

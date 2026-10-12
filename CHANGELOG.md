@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Verify production composition/undo/redo and complete-source styled-line edits after grouped coordinates in both modes, with wrapping on/off; confirm the integrated nightly release passes its complete hosted checks.
+
 - Build visual ASCII coordinates by word, space and punctuation groups, preserving the complete scalar checkpoint table and removing unused character callbacks from visual-only preparation.
 
 - Batch printable ASCII coordinate construction to reduce long-line edit work while preserving native offsets, grapheme and paint boundaries, word summaries, and CR/LF admission totals.
