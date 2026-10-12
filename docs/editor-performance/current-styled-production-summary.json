@@ -1,0 +1,58 @@
+{
+  "scope": "Four serial current-production near-1-MiB styled-line beginning edits; two repeats in each project mode; observation, not a before/after comparison.",
+  "completeSourceChecks": 4,
+  "verifiedSourceCaret": 0,
+  "verifiedExecutingImage": "sha256:e1a372cac8e6c496251a7ea371631a8beb560d1c5c6cddd1b70a270da19bda8c",
+  "imageProvenanceNote": "The raw measurementImage annotation has a duplicated substring from a launch typo. docker inspect verified the executing container image digest recorded here; raw data is retained unchanged.",
+  "hostContention": "No compilers at launch; compiler processes present at post-run inspection. Exact overlap is not established; no controlled latency claim.",
+  "samples": [
+    {
+      "mode": "local",
+      "repetition": 1,
+      "sourceBytes": 1048567,
+      "coldViewportPaintMs": 3297.4000000059605,
+      "coldCompleteGeometryMs": 3297.4000000059605,
+      "coldSyntaxReadyMs": 3297.4000000059605,
+      "inputViewportPaintMs": 183.2000000178814,
+      "inputCompleteGeometryMs": 250,
+      "peakChromePssKiB": 658850,
+      "wasmCommittedBytes": 30998528
+    },
+    {
+      "mode": "local",
+      "repetition": 2,
+      "sourceBytes": 1048567,
+      "coldViewportPaintMs": 3820.5999999940395,
+      "coldCompleteGeometryMs": 3820.5999999940395,
+      "coldSyntaxReadyMs": 3820.5999999940395,
+      "inputViewportPaintMs": 176.7000000178814,
+      "inputCompleteGeometryMs": 260.5,
+      "peakChromePssKiB": 699562,
+      "wasmCommittedBytes": 31129600
+    },
+    {
+      "mode": "remote",
+      "repetition": 1,
+      "sourceBytes": 1048567,
+      "coldViewportPaintMs": 2516.800000011921,
+      "coldCompleteGeometryMs": 2516.800000011921,
+      "coldSyntaxReadyMs": 2516.800000011921,
+      "inputViewportPaintMs": 167,
+      "inputCompleteGeometryMs": 252.09999999403954,
+      "peakChromePssKiB": 660635,
+      "wasmCommittedBytes": 32178176
+    },
+    {
+      "mode": "remote",
+      "repetition": 2,
+      "sourceBytes": 1048567,
+      "coldViewportPaintMs": 2932.600000023842,
+      "coldCompleteGeometryMs": 2932.600000023842,
+      "coldSyntaxReadyMs": 2932.600000023842,
+      "inputViewportPaintMs": 269.19999998807907,
+      "inputCompleteGeometryMs": 269.19999998807907,
+      "peakChromePssKiB": 655018,
+      "wasmCommittedBytes": 32309248
+    }
+  ]
+}

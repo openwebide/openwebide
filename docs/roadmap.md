@@ -66,6 +66,14 @@ tracks the remaining work rather than every optimization already shipped.
 | Selection and browser input | Multiple/rectangular selections and clipboard transactions; scoped native windows with bounded desktop startup for unwrapped, wrapped and nonuniform views, including long tabbed/bidirectional rows; automated Chromium composition and pointer checks. The recorded line-end caret bug is fixed and user-verified in the localhost PWA. |
 | Preparation and ownership | Rust/WASM worker and cooperative fallback; retained source/token/structure allocations; bounded worker delta reconstruction/reply-source publication and final structure metadata, parsed/lexical region reconciliation and retained fallback collection; bounded eligible unwrapped and wrapped paragraph probes, retained paint-run clipping and cooperative sampled cold-row glyph measurements, exact overlap validation, exact carets from retained anchors/current painted coverage and conservative complete-layout fallback. Current-file progress is shown during preparation. Matching trusted font notifications retain current in-flight work and ordinary-row replay after edits. |
 
+Current-production styled-line observations preserve complete source and a verified
+beginning caret in all four Local/Remote samples. Input viewport paint is 167–269 ms
+and peak Chrome PSS about 640–683 MiB
+([summary](editor-performance/current-styled-production-summary.json),
+[samples](editor-performance/current-styled-production.jsonl)). Compiler activity
+was absent at launch but present at the post-run check; these are current
+observations, not a controlled improvement. The input/memory gates remain open.
+
 **Unresolved measured bottlenecks:** the recorded 16 interleaved production samples
 preserve complete edited source in both modes. Near-1-MiB styled long-line edits
 take 191–545 ms, cold complete geometry takes 1.1–1.7 seconds across the
