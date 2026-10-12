@@ -1,0 +1,181 @@
+{
+  "baselineCommit": "609545165445f117f7b0f1f31127c7bbb0154fdd",
+  "wasmSha256": "a28a2fe45707e7380b9a4dc8e2c8b807427f23107b64602e063ea48801041fde",
+  "servedArtifactMatches": true,
+  "method": "Chromium CDP touch emulation, trusted touch events, real prepared editor with disposable Spin/SQLite/account state",
+  "limitations": "No physical mobile/PWA or native folder permission validation. No backend service restart.",
+  "checks": [
+    {
+      "mode": "local",
+      "readOnly": false,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "local",
+      "readOnly": true,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "readOnly": false,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "readOnly": true,
+      "scrollTop": 120,
+      "events": [
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchstart"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": true,
+          "trusted": true,
+          "type": "touchmove"
+        },
+        {
+          "cancelable": true,
+          "prevented": false,
+          "trusted": true,
+          "type": "touchend"
+        }
+      ]
+    }
+  ]
+}

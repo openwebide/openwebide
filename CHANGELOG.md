@@ -21,6 +21,7 @@ The first alpha is published as `1.0.0-alpha.5`. See
 - Validate generated Quadlet services against the `stable` release image channel, matching the deployment configuration.
 
 - Forward one-finger drags in the editable editor to the shared document scroll surface, preserving taps and multi-touch gestures and rejecting stale file/account events in both project modes.
+  Verify prepared editable and read-only views with Chromium-generated touch gestures in both modes; physical mobile/PWA checks remain open.
 
 - Publish rolling `nightly` container images from successful main builds, with commit-specific image tags. Share CI checks with release builds, push the exact smoke-tested images, and reserve standalone bridge downloads for tagged releases. Use `preview` for RC tags and `stable` for stable versions, with no legacy channel aliases.
 
