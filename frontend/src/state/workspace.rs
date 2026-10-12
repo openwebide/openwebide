@@ -646,6 +646,16 @@ impl WorkspaceState {
         project: &openwebide_core::Project,
         active_read_only: bool,
     ) -> Result<openwebide_core::editor::EditorRecovery, String> {
+        let state = self.editor_recovery_candidate(project, active_read_only)?;
+        state.validate()?;
+        Ok(state)
+    }
+
+    fn editor_recovery_candidate(
+        &self,
+        project: &openwebide_core::Project,
+        active_read_only: bool,
+    ) -> Result<openwebide_core::editor::EditorRecovery, String> {
         use openwebide_core::editor::{
             Document, EditorRecovery, EditorRecoveryFile, EditorRecoveryRoot, RecoveryScroll,
         };
@@ -756,7 +766,6 @@ impl WorkspaceState {
             selected,
             files,
         };
-        state.validate()?;
         Ok(state)
     }
 
@@ -786,6 +795,23 @@ impl WorkspaceState {
         guard: &EditorRecoveryGuard,
         active_read_only: bool,
     ) -> bool {
+        if project.id != guard.project
+            || self.pending_epoch.try_get_untracked() != Some(guard.epoch)
+            || self.editor_read_revision.try_get_untracked() != Some(guard.read_revision)
+            || self.editor_documents.try_with_untracked(|documents| {
+                let current = documents.iter().filter(|((id, _), _)| *id == project.id);
+                let mut count = 0;
+                for ((_, path), document) in current {
+                    if guard.documents.get(path) != Some(&document.revision()) {
+                        return false;
+                    }
+                    count += 1;
+                }
+                count == guard.documents.len()
+            }) != Some(true)
+        {
+            return false;
+        }
         if self.editor_composition.with_untracked(|composition| {
             composition
                 .as_ref()
@@ -793,14 +819,11 @@ impl WorkspaceState {
         }) {
             return false;
         }
-        self.editor_recovery_guard(project, active_read_only)
-            .is_ok_and(|current| {
-                current.project == guard.project
-                    && current.epoch == guard.epoch
-                    && current.read_revision == guard.read_revision
-                    && current.documents == guard.documents
-                    && current.state == guard.state
-            })
+        // The guard's private state was validated when captured. Exact candidate
+        // equality therefore proves the same validity without rescanning source
+        // lines/fold ancestry or allocating another document-revision map.
+        self.editor_recovery_candidate(project, active_read_only)
+            .is_ok_and(|current| current == guard.state)
     }
 
     /// Install a validated project recovery atomically. The caller guards account
@@ -1194,6 +1217,120 @@ impl Default for WorkspaceState {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn recovery_guard_fast_path_preserves_full_capture_decisions_in_both_modes() {
+        use openwebide_core::{
+            Project, WorkspaceMode,
+            editor::{Document, FoldRange, Selection},
+        };
+        for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+            for change in [
+                "none",
+                "epoch",
+                "read",
+                "revision",
+                "saved",
+                "selection",
+                "fold",
+                "scroll",
+                "read-only",
+                "selected",
+                "remove",
+                "add",
+                "root",
+            ] {
+                let owner = Owner::new();
+                owner.with(|| {
+                    let workspace = WorkspaceState::with_active_project(RwSignal::new(Some(1)));
+                    let mut project = Project {
+                        id: 1,
+                        name: "project".into(),
+                        mode,
+                        path: Some("project".into()),
+                        user_id: None,
+                        created_at: 1,
+                    };
+                    let key = (1, "a.rs".to_string());
+                    let document = Document::new("ASCII 文😀\n".repeat(1000));
+                    workspace.content.set(document.shared_text().into());
+                    workspace.open_file.set(Some("a.rs".into()));
+                    workspace.editor_tabs.update(|tabs| {
+                        tabs.insert(1, vec!["a.rs".into()]);
+                    });
+                    workspace.editor_documents.update(|documents| {
+                        documents.insert(key.clone(), document);
+                    });
+                    let guard = workspace.editor_recovery_guard(&project, false).unwrap();
+                    match change {
+                        "epoch" => workspace.pending_epoch.update(|value| *value += 1),
+                        "read" => workspace.editor_read_revision.update(|value| *value += 1),
+                        "revision" => workspace.editor_documents.update(|documents| {
+                            documents
+                                .get_mut(&key)
+                                .unwrap()
+                                .replace_selections("edit", None)
+                                .unwrap();
+                        }),
+                        "saved" => workspace.editor_documents.update(|documents| {
+                            documents
+                                .get_mut(&key)
+                                .unwrap()
+                                .mark_saved_source(Arc::new("other".into()));
+                        }),
+                        "selection" => workspace.editor_documents.update(|documents| {
+                            documents
+                                .get_mut(&key)
+                                .unwrap()
+                                .set_selections(vec![Selection::caret(1)])
+                                .unwrap();
+                        }),
+                        "fold" => workspace.editor_documents.update(|documents| {
+                            let document = documents.get_mut(&key).unwrap();
+                            document.set_fold_ranges(vec![FoldRange {
+                                start_line: 0,
+                                end_line: 1,
+                            }]);
+                            document.fold_state_mut().toggle(0);
+                        }),
+                        "scroll" => workspace.editor_scroll.update(|positions| {
+                            positions.insert(
+                                key.clone(),
+                                EditorScroll {
+                                    top: 1.0,
+                                    left: 0.0,
+                                },
+                            );
+                        }),
+                        "selected" => workspace.open_file.set(Some("b.rs".into())),
+                        "remove" => workspace.editor_documents.update(|documents| {
+                            documents.remove(&key);
+                        }),
+                        "add" => workspace.editor_documents.update(|documents| {
+                            documents.insert((1, "b.rs".into()), Document::new("other"));
+                        }),
+                        "root" => project.path = Some("other".into()),
+                        _ => {}
+                    }
+                    let read_only = change == "read-only";
+                    let original = workspace
+                        .editor_recovery_guard(&project, read_only)
+                        .is_ok_and(|current| {
+                            current.project == guard.project
+                                && current.epoch == guard.epoch
+                                && current.read_revision == guard.read_revision
+                                && current.documents == guard.documents
+                                && current.state == guard.state
+                        });
+                    assert_eq!(
+                        workspace.editor_recovery_guard_matches(&project, &guard, read_only),
+                        original,
+                        "{mode:?}/{change}"
+                    );
+                });
+                owner.cleanup();
+            }
+        }
+    }
     use super::*;
 
     #[test]

@@ -708,6 +708,16 @@ combined-source CI result.
   guard capture/equality, snapshot decoding, serialization, allocation and final
   history/selection publication remain open; repeat fresh production and final
   CI verification before closing.
+  Recovery guard matching now shares candidate capture with persistence and
+  reuses the guard's privately validated state: exact equality proves validity
+  without repeating line/fold validation or allocating another revision map.
+  Changed project/epoch/read/document revisions reject before state capture.
+  All 133 native frontend tests pass, including both-mode equivalence with the
+  original full-capture decisions across thirteen state changes. All 51 WASM
+  library checks, 23 recovery-related browser contracts and strict WASM lint
+  pass ([receipt](editor-performance/recovery-guard-browser.json)). Candidate
+  capture, fold/selection copying, final field equality and serialization remain
+  synchronous; fresh production and final integrated CI are still required.
 
 **Remaining completion gates**:
 
@@ -771,6 +781,11 @@ Linux/x64 verification also passes in the complete `67b3a529` inventory.
   ([receipt](editor-performance/editor-ci-179-success.json)), verifying the
   nightly-heading correction on integrated editor/plugin source. Repeat this
   gate for the later ASCII coordinate updates and final editor implementation.
+  The subsequent integrated release `38312660109` at `91f8bfd5` also passes
+  all six check jobs, both platform images, 219 editor checks, both font matrices,
+  397 other component checks and nightly publication
+  ([receipt](editor-performance/editor-ci-91f-success.json)). Later recovery
+  decoding/comparison/guard changes still need the same final release gate.
 
 - [ ] **Physical Chrome/Edge PWA input:** verify real input-method commit/cancel,
   Unicode and LF/CRLF undo/redo, multiple-cursor clipboard transactions and touch

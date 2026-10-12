@@ -1,0 +1,1237 @@
+{
+  "description": "Terminal integrated release success at 91f8bfd5, including grouped coordinate implementation and complete production build. All six check jobs, both platform images and nightly publication pass.",
+  "run": {
+    "conclusion": "success",
+    "headSha": "91f8bfd52df3f5a9283bc46ce5d1e87028496487",
+    "jobs": [
+      {
+        "completedAt": "2026-10-12T21:57:56Z",
+        "conclusion": "success",
+        "databaseId": 115025708265,
+        "name": "validate",
+        "startedAt": "2026-10-12T21:57:50Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-12T21:57:51Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-12T21:57:51Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:57:53Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-10-12T21:57:51Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:57:53Z",
+            "conclusion": "success",
+            "name": "Read database compatibility metadata",
+            "number": 3,
+            "startedAt": "2026-10-12T21:57:53Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:57:53Z",
+            "conclusion": "success",
+            "name": "Validate versions and changelog",
+            "number": 4,
+            "startedAt": "2026-10-12T21:57:53Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:57:54Z",
+            "conclusion": "success",
+            "name": "Run actions/upload-artifact@v4",
+            "number": 5,
+            "startedAt": "2026-10-12T21:57:53Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:57:54Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 10,
+            "startedAt": "2026-10-12T21:57:54Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:57:54Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 11,
+            "startedAt": "2026-10-12T21:57:54Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/openwebide/openwebide/actions/runs/38312660109/job/115025708265"
+      },
+      {
+        "completedAt": "2026-10-12T22:21:36Z",
+        "conclusion": "success",
+        "databaseId": 115025748484,
+        "name": "images (ubuntu-24.04-arm, arm64, aarch64-unknown-linux-gnu)",
+        "startedAt": "2026-10-12T21:58:00Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-12T21:58:03Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-12T21:58:01Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:04Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-10-12T21:58:03Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:11Z",
+            "conclusion": "success",
+            "name": "Run docker/setup-buildx-action@v3",
+            "number": 3,
+            "startedAt": "2026-10-12T21:58:04Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:11Z",
+            "conclusion": "success",
+            "name": "Run docker/login-action@v3",
+            "number": 4,
+            "startedAt": "2026-10-12T21:58:11Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:19:48Z",
+            "conclusion": "success",
+            "name": "Build native image for smoke tests",
+            "number": 5,
+            "startedAt": "2026-10-12T21:58:11Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:20:53Z",
+            "conclusion": "success",
+            "name": "Smoke-test bundled bridge and mounted Git access",
+            "number": 6,
+            "startedAt": "2026-10-12T22:19:48Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:20:53Z",
+            "conclusion": "skipped",
+            "name": "Package Linux bridge from tested image",
+            "number": 7,
+            "startedAt": "2026-10-12T22:20:53Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:20:53Z",
+            "conclusion": "skipped",
+            "name": "Run actions/upload-artifact@v4",
+            "number": 8,
+            "startedAt": "2026-10-12T22:20:53Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:21:28Z",
+            "conclusion": "success",
+            "name": "Push tested platform image",
+            "number": 9,
+            "startedAt": "2026-10-12T22:20:53Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:21:28Z",
+            "conclusion": "success",
+            "name": "Export digest",
+            "number": 10,
+            "startedAt": "2026-10-12T22:21:28Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:21:28Z",
+            "conclusion": "success",
+            "name": "Run actions/upload-artifact@v4",
+            "number": 11,
+            "startedAt": "2026-10-12T22:21:28Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:21:30Z",
+            "conclusion": "success",
+            "name": "Post Build native image for smoke tests",
+            "number": 19,
+            "startedAt": "2026-10-12T22:21:28Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:21:30Z",
+            "conclusion": "success",
+            "name": "Post Run docker/login-action@v3",
+            "number": 20,
+            "startedAt": "2026-10-12T22:21:30Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:21:34Z",
+            "conclusion": "success",
+            "name": "Post Run docker/setup-buildx-action@v3",
+            "number": 21,
+            "startedAt": "2026-10-12T22:21:30Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:21:34Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 22,
+            "startedAt": "2026-10-12T22:21:34Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:21:34Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 23,
+            "startedAt": "2026-10-12T22:21:34Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/openwebide/openwebide/actions/runs/38312660109/job/115025748484"
+      },
+      {
+        "completedAt": "2026-10-12T22:23:43Z",
+        "conclusion": "success",
+        "databaseId": 115025748604,
+        "name": "images (ubuntu-24.04, amd64, x86_64-unknown-linux-gnu)",
+        "startedAt": "2026-10-12T21:57:58Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-12T21:58:01Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-12T21:57:59Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:03Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-10-12T21:58:01Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:08Z",
+            "conclusion": "success",
+            "name": "Run docker/setup-buildx-action@v3",
+            "number": 3,
+            "startedAt": "2026-10-12T21:58:03Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:09Z",
+            "conclusion": "success",
+            "name": "Run docker/login-action@v3",
+            "number": 4,
+            "startedAt": "2026-10-12T21:58:08Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:21:30Z",
+            "conclusion": "success",
+            "name": "Build native image for smoke tests",
+            "number": 5,
+            "startedAt": "2026-10-12T21:58:09Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:22:43Z",
+            "conclusion": "success",
+            "name": "Smoke-test bundled bridge and mounted Git access",
+            "number": 6,
+            "startedAt": "2026-10-12T22:21:30Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:22:43Z",
+            "conclusion": "skipped",
+            "name": "Package Linux bridge from tested image",
+            "number": 7,
+            "startedAt": "2026-10-12T22:22:43Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:22:43Z",
+            "conclusion": "skipped",
+            "name": "Run actions/upload-artifact@v4",
+            "number": 8,
+            "startedAt": "2026-10-12T22:22:43Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:23:34Z",
+            "conclusion": "success",
+            "name": "Push tested platform image",
+            "number": 9,
+            "startedAt": "2026-10-12T22:22:43Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:23:34Z",
+            "conclusion": "success",
+            "name": "Export digest",
+            "number": 10,
+            "startedAt": "2026-10-12T22:23:34Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:23:34Z",
+            "conclusion": "success",
+            "name": "Run actions/upload-artifact@v4",
+            "number": 11,
+            "startedAt": "2026-10-12T22:23:34Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:23:36Z",
+            "conclusion": "success",
+            "name": "Post Build native image for smoke tests",
+            "number": 19,
+            "startedAt": "2026-10-12T22:23:34Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:23:36Z",
+            "conclusion": "success",
+            "name": "Post Run docker/login-action@v3",
+            "number": 20,
+            "startedAt": "2026-10-12T22:23:36Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:23:42Z",
+            "conclusion": "success",
+            "name": "Post Run docker/setup-buildx-action@v3",
+            "number": 21,
+            "startedAt": "2026-10-12T22:23:36Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:23:42Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 22,
+            "startedAt": "2026-10-12T22:23:42Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:23:42Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 23,
+            "startedAt": "2026-10-12T22:23:42Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/openwebide/openwebide/actions/runs/38312660109/job/115025748604"
+      },
+      {
+        "completedAt": "2026-10-12T22:12:44Z",
+        "conclusion": "success",
+        "databaseId": 115025748750,
+        "name": "checks / frontend",
+        "startedAt": "2026-10-12T21:57:58Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-12T21:58:00Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-12T21:57:59Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:02Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-10-12T21:58:00Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:16Z",
+            "conclusion": "success",
+            "name": "Run dtolnay/rust-toolchain@master",
+            "number": 3,
+            "startedAt": "2026-10-12T21:58:02Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:16Z",
+            "conclusion": "success",
+            "name": "Prepare browser parser C compiler",
+            "number": 4,
+            "startedAt": "2026-10-12T21:58:16Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:27Z",
+            "conclusion": "success",
+            "name": "Run Swatinem/rust-cache@v2",
+            "number": 5,
+            "startedAt": "2026-10-12T21:58:16Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:27Z",
+            "conclusion": "success",
+            "name": "Install Trunk",
+            "number": 6,
+            "startedAt": "2026-10-12T21:58:27Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:35Z",
+            "conclusion": "success",
+            "name": "Test PWA caching and installation",
+            "number": 7,
+            "startedAt": "2026-10-12T21:58:27Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:03:54Z",
+            "conclusion": "success",
+            "name": "Build frontend",
+            "number": 8,
+            "startedAt": "2026-10-12T21:58:35Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:04:04Z",
+            "conclusion": "success",
+            "name": "Run ./.github/actions/setup-editor-browser",
+            "number": 9,
+            "startedAt": "2026-10-12T22:03:54Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:04:10Z",
+            "conclusion": "success",
+            "name": "Check production Rust/WASM editor worker",
+            "number": 10,
+            "startedAt": "2026-10-12T22:04:04Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:04:11Z",
+            "conclusion": "success",
+            "name": "Install Spin runtime for editor input verification",
+            "number": 11,
+            "startedAt": "2026-10-12T22:04:10Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:05:30Z",
+            "conclusion": "success",
+            "name": "Build backend for editor input verification",
+            "number": 12,
+            "startedAt": "2026-10-12T22:04:11Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:12:30Z",
+            "conclusion": "success",
+            "name": "Check production editor input, history and pointer selection",
+            "number": 13,
+            "startedAt": "2026-10-12T22:05:30Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:12:42Z",
+            "conclusion": "success",
+            "name": "Post Run Swatinem/rust-cache@v2",
+            "number": 25,
+            "startedAt": "2026-10-12T22:12:30Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:12:42Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 26,
+            "startedAt": "2026-10-12T22:12:42Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:12:42Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 27,
+            "startedAt": "2026-10-12T22:12:42Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/openwebide/openwebide/actions/runs/38312660109/job/115025748750"
+      },
+      {
+        "completedAt": "2026-10-12T22:19:49Z",
+        "conclusion": "success",
+        "databaseId": 115025748755,
+        "name": "checks / docker",
+        "startedAt": "2026-10-12T21:57:58Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-12T21:58:00Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-12T21:57:59Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:03Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-10-12T21:58:00Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:04Z",
+            "conclusion": "success",
+            "name": "Test container supervisor",
+            "number": 3,
+            "startedAt": "2026-10-12T21:58:03Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:16:44Z",
+            "conclusion": "success",
+            "name": "Build container image",
+            "number": 4,
+            "startedAt": "2026-10-12T21:58:04Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:16:45Z",
+            "conclusion": "success",
+            "name": "Check bundled bridge",
+            "number": 5,
+            "startedAt": "2026-10-12T22:16:44Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:16:57Z",
+            "conclusion": "success",
+            "name": "Check SSH Git agent forwarding and strict host keys",
+            "number": 6,
+            "startedAt": "2026-10-12T22:16:45Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:16:57Z",
+            "conclusion": "success",
+            "name": "Check host-owned workspace Git access",
+            "number": 7,
+            "startedAt": "2026-10-12T22:16:57Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:17:59Z",
+            "conclusion": "success",
+            "name": "Check HTTPS REST, SSE and WebSocket transport (Docker)",
+            "number": 8,
+            "startedAt": "2026-10-12T22:16:57Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:18:06Z",
+            "conclusion": "success",
+            "name": "Install rootless Podman",
+            "number": 9,
+            "startedAt": "2026-10-12T22:17:59Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:18:06Z",
+            "conclusion": "success",
+            "name": "Validate release Quadlet services without starting them",
+            "number": 10,
+            "startedAt": "2026-10-12T22:18:06Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:18:30Z",
+            "conclusion": "success",
+            "name": "Load the same image into rootless Podman",
+            "number": 11,
+            "startedAt": "2026-10-12T22:18:06Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:19:47Z",
+            "conclusion": "success",
+            "name": "Check HTTPS REST, SSE and WebSocket transport (rootless Podman)",
+            "number": 12,
+            "startedAt": "2026-10-12T22:18:30Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:19:47Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 24,
+            "startedAt": "2026-10-12T22:19:47Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:19:47Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 25,
+            "startedAt": "2026-10-12T22:19:47Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/openwebide/openwebide/actions/runs/38312660109/job/115025748755"
+      },
+      {
+        "completedAt": "2026-10-12T22:26:07Z",
+        "conclusion": "success",
+        "databaseId": 115025748757,
+        "name": "checks / backend-and-crates",
+        "startedAt": "2026-10-12T21:57:58Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-12T21:58:00Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-12T21:57:59Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:02Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-10-12T21:58:00Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:16Z",
+            "conclusion": "success",
+            "name": "Run dtolnay/rust-toolchain@master",
+            "number": 3,
+            "startedAt": "2026-10-12T21:58:02Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:18Z",
+            "conclusion": "success",
+            "name": "Prepare browser parser C compiler",
+            "number": 4,
+            "startedAt": "2026-10-12T21:58:16Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:46Z",
+            "conclusion": "success",
+            "name": "Run Swatinem/rust-cache@v2",
+            "number": 5,
+            "startedAt": "2026-10-12T21:58:18Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:51Z",
+            "conclusion": "success",
+            "name": "Format check",
+            "number": 6,
+            "startedAt": "2026-10-12T21:58:46Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:59:01Z",
+            "conclusion": "success",
+            "name": "Validate release tooling and install configuration",
+            "number": 7,
+            "startedAt": "2026-10-12T21:58:51Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:59:11Z",
+            "conclusion": "success",
+            "name": "Prepare isolated plugin builds",
+            "number": 8,
+            "startedAt": "2026-10-12T21:59:01Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:59:42Z",
+            "conclusion": "success",
+            "name": "Clippy (native crates)",
+            "number": 9,
+            "startedAt": "2026-10-12T21:59:11Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:59:56Z",
+            "conclusion": "success",
+            "name": "Clippy (backend, wasm32-wasip2)",
+            "number": 10,
+            "startedAt": "2026-10-12T21:59:42Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:01:00Z",
+            "conclusion": "success",
+            "name": "Clippy (frontend, wasm32-unknown-unknown)",
+            "number": 11,
+            "startedAt": "2026-10-12T21:59:56Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:01:17Z",
+            "conclusion": "success",
+            "name": "Clippy (editor measurements)",
+            "number": 12,
+            "startedAt": "2026-10-12T22:01:00Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:01:33Z",
+            "conclusion": "success",
+            "name": "Clippy (bridge)",
+            "number": 13,
+            "startedAt": "2026-10-12T22:01:17Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:08:14Z",
+            "conclusion": "success",
+            "name": "Compile and verify offline executable defaults",
+            "number": 14,
+            "startedAt": "2026-10-12T22:01:33Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:23:20Z",
+            "conclusion": "success",
+            "name": "Tests (native)",
+            "number": 15,
+            "startedAt": "2026-10-12T22:08:14Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:23:54Z",
+            "conclusion": "success",
+            "name": "Tests (editor storage workloads)",
+            "number": 16,
+            "startedAt": "2026-10-12T22:23:20Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:24:22Z",
+            "conclusion": "success",
+            "name": "Tests (frontend native)",
+            "number": 17,
+            "startedAt": "2026-10-12T22:23:54Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:25:41Z",
+            "conclusion": "success",
+            "name": "Build backend component",
+            "number": 18,
+            "startedAt": "2026-10-12T22:24:22Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:26:05Z",
+            "conclusion": "success",
+            "name": "Post Run Swatinem/rust-cache@v2",
+            "number": 35,
+            "startedAt": "2026-10-12T22:25:41Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:26:05Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 36,
+            "startedAt": "2026-10-12T22:26:05Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:26:06Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 37,
+            "startedAt": "2026-10-12T22:26:05Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/openwebide/openwebide/actions/runs/38312660109/job/115025748757"
+      },
+      {
+        "completedAt": "2026-10-12T22:00:23Z",
+        "conclusion": "success",
+        "databaseId": 115025748761,
+        "name": "checks / bridge-windows",
+        "startedAt": "2026-10-12T21:57:58Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-12T21:58:01Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-12T21:57:59Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:08Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-10-12T21:58:01Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:22Z",
+            "conclusion": "success",
+            "name": "Run dtolnay/rust-toolchain@master",
+            "number": 3,
+            "startedAt": "2026-10-12T21:58:08Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:59:06Z",
+            "conclusion": "success",
+            "name": "Run Swatinem/rust-cache@v2",
+            "number": 4,
+            "startedAt": "2026-10-12T21:58:22Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:59:48Z",
+            "conclusion": "success",
+            "name": "Check bridge Windows adapters with TLS",
+            "number": 5,
+            "startedAt": "2026-10-12T21:59:06Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:00:18Z",
+            "conclusion": "success",
+            "name": "Post Run Swatinem/rust-cache@v2",
+            "number": 9,
+            "startedAt": "2026-10-12T21:59:48Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:00:21Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 10,
+            "startedAt": "2026-10-12T22:00:18Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:00:21Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 11,
+            "startedAt": "2026-10-12T22:00:21Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/openwebide/openwebide/actions/runs/38312660109/job/115025748761"
+      },
+      {
+        "completedAt": "2026-10-12T22:01:46Z",
+        "conclusion": "success",
+        "databaseId": 115025748825,
+        "name": "checks / plugin-panels",
+        "startedAt": "2026-10-12T21:57:58Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-12T21:58:02Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-12T21:57:59Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:04Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-10-12T21:58:02Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:05Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 3,
+            "startedAt": "2026-10-12T21:58:04Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:13Z",
+            "conclusion": "success",
+            "name": "Run dtolnay/rust-toolchain@master",
+            "number": 4,
+            "startedAt": "2026-10-12T21:58:05Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:38Z",
+            "conclusion": "success",
+            "name": "Run Swatinem/rust-cache@v2",
+            "number": 5,
+            "startedAt": "2026-10-12T21:58:13Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:01:31Z",
+            "conclusion": "success",
+            "name": "Build and verify the first-party panel reference",
+            "number": 6,
+            "startedAt": "2026-10-12T21:58:38Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:01:43Z",
+            "conclusion": "success",
+            "name": "Post Run Swatinem/rust-cache@v2",
+            "number": 10,
+            "startedAt": "2026-10-12T22:01:31Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:01:43Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 11,
+            "startedAt": "2026-10-12T22:01:43Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:01:44Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 12,
+            "startedAt": "2026-10-12T22:01:43Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:01:44Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 13,
+            "startedAt": "2026-10-12T22:01:44Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/openwebide/openwebide/actions/runs/38312660109/job/115025748825"
+      },
+      {
+        "completedAt": "2026-10-12T22:48:46Z",
+        "conclusion": "success",
+        "databaseId": 115025748904,
+        "name": "checks / frontend-ui-tests",
+        "startedAt": "2026-10-12T21:57:58Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-12T21:58:00Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-12T21:57:59Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:01Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-10-12T21:58:00Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:14Z",
+            "conclusion": "success",
+            "name": "Run dtolnay/rust-toolchain@master",
+            "number": 3,
+            "startedAt": "2026-10-12T21:58:01Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:14Z",
+            "conclusion": "success",
+            "name": "Prepare browser parser C compiler",
+            "number": 4,
+            "startedAt": "2026-10-12T21:58:14Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:25Z",
+            "conclusion": "success",
+            "name": "Run Swatinem/rust-cache@v2",
+            "number": 5,
+            "startedAt": "2026-10-12T21:58:14Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:36Z",
+            "conclusion": "success",
+            "name": "Run ./.github/actions/setup-editor-browser",
+            "number": 6,
+            "startedAt": "2026-10-12T21:58:25Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:36Z",
+            "conclusion": "success",
+            "name": "Point ChromeDriver at the installed Chrome",
+            "number": 7,
+            "startedAt": "2026-10-12T21:58:36Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T21:58:36Z",
+            "conclusion": "success",
+            "name": "Install wasm-bindgen test runner",
+            "number": 8,
+            "startedAt": "2026-10-12T21:58:36Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:15:13Z",
+            "conclusion": "success",
+            "name": "Tests (frontend UI)",
+            "number": 9,
+            "startedAt": "2026-10-12T21:58:36Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:47:53Z",
+            "conclusion": "success",
+            "name": "Tests (editor UI)",
+            "number": 10,
+            "startedAt": "2026-10-12T22:15:13Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:48:31Z",
+            "conclusion": "success",
+            "name": "Measure shared editor storage in browser WASM",
+            "number": 11,
+            "startedAt": "2026-10-12T22:47:53Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:48:45Z",
+            "conclusion": "success",
+            "name": "Post Run Swatinem/rust-cache@v2",
+            "number": 21,
+            "startedAt": "2026-10-12T22:48:31Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:48:45Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 22,
+            "startedAt": "2026-10-12T22:48:45Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:48:45Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 23,
+            "startedAt": "2026-10-12T22:48:45Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/openwebide/openwebide/actions/runs/38312660109/job/115025748904"
+      },
+      {
+        "completedAt": "2026-10-12T21:57:56Z",
+        "conclusion": "skipped",
+        "databaseId": 115025750805,
+        "name": "macos-bridges",
+        "startedAt": "2026-10-12T21:57:57Z",
+        "status": "completed",
+        "steps": [],
+        "url": "https://github.com/openwebide/openwebide/actions/runs/38312660109/job/115025750805"
+      },
+      {
+        "completedAt": "2026-10-12T22:23:44Z",
+        "conclusion": "skipped",
+        "databaseId": 115033956150,
+        "name": "assets",
+        "startedAt": "2026-10-12T22:23:44Z",
+        "status": "completed",
+        "steps": [],
+        "url": "https://github.com/openwebide/openwebide/actions/runs/38312660109/job/115033956150"
+      },
+      {
+        "completedAt": "2026-10-12T22:49:07Z",
+        "conclusion": "success",
+        "databaseId": 115041596886,
+        "name": "publish-nightly",
+        "startedAt": "2026-10-12T22:48:48Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-12T22:48:51Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-12T22:48:49Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:48:52Z",
+            "conclusion": "success",
+            "name": "Run actions/download-artifact@v4",
+            "number": 2,
+            "startedAt": "2026-10-12T22:48:51Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:49:01Z",
+            "conclusion": "success",
+            "name": "Run docker/setup-buildx-action@v3",
+            "number": 3,
+            "startedAt": "2026-10-12T22:48:52Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:49:02Z",
+            "conclusion": "success",
+            "name": "Run docker/login-action@v3",
+            "number": 4,
+            "startedAt": "2026-10-12T22:49:01Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:49:05Z",
+            "conclusion": "success",
+            "name": "Publish rolling nightly image",
+            "number": 5,
+            "startedAt": "2026-10-12T22:49:02Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:49:05Z",
+            "conclusion": "success",
+            "name": "Post Run docker/login-action@v3",
+            "number": 9,
+            "startedAt": "2026-10-12T22:49:05Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:49:06Z",
+            "conclusion": "success",
+            "name": "Post Run docker/setup-buildx-action@v3",
+            "number": 10,
+            "startedAt": "2026-10-12T22:49:05Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-12T22:49:06Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 11,
+            "startedAt": "2026-10-12T22:49:06Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/openwebide/openwebide/actions/runs/38312660109/job/115041596886"
+      },
+      {
+        "completedAt": "2026-10-12T22:48:46Z",
+        "conclusion": "skipped",
+        "databaseId": 115041597765,
+        "name": "publish",
+        "startedAt": "2026-10-12T22:48:47Z",
+        "status": "completed",
+        "steps": [],
+        "url": "https://github.com/openwebide/openwebide/actions/runs/38312660109/job/115041597765"
+      }
+    ],
+    "status": "completed",
+    "url": "https://github.com/openwebide/openwebide/actions/runs/38312660109"
+  },
+  "editorBrowserGroups": [
+    {
+      "tests": 61,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "tests": 61,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "tests": 60,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "tests": 1,
+      "matrix": true,
+      "independent": true
+    },
+    {
+      "tests": 1,
+      "matrix": false,
+      "independent": true
+    },
+    {
+      "tests": 1,
+      "matrix": true,
+      "independent": true
+    },
+    {
+      "tests": 1,
+      "matrix": false,
+      "independent": true
+    },
+    {
+      "tests": 33,
+      "matrix": false,
+      "independent": false
+    }
+  ],
+  "editorChecks": 219,
+  "otherComponentUiChecks": 397,
+  "uiLogSha256": "6d3df8c11bd515e522c9ae66d80019745a6d016489824016570f1409b8947add",
+  "limits": "Later recovery decoding/comparison/guard changes still need final integrated CI. This does not close performance or physical-device/permission gates."
+}
