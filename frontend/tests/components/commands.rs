@@ -295,6 +295,19 @@ async fn palette_captures_editor_selection_and_focuses_chat_without_overwriting_
         settle().await;
         let editor: web_sys::HtmlTextAreaElement =
             mounted.element(".editor-textarea").unchecked_into();
+        super::support::wait_until("editor native source installed before capture", || {
+            editor.value() == "first\nselected\nlast"
+                && mounted
+                    .state
+                    .workspace
+                    .editor_documents
+                    .with_untracked(|documents| {
+                        documents
+                            .values()
+                            .any(|document| document.matches_text("first\nselected\nlast"))
+                    })
+        })
+        .await;
         editor.set_selection_range(6, 14).unwrap();
         mounted.click(".opener");
         settle().await;

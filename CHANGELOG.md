@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Update browser release checks to discover optional memory, skill and delegation tools before calling them, and wait for editor source readiness before testing command-palette capture.
+
 - Allow current initial native windows to measure source geometry from their owned document index while fallback paint is pending. Keep source, selection, read, project, file, epoch and account validation before this readiness proof.
 
 - Check immediate editor-paint eligibility before reading native viewport dimensions, avoiding a synchronous layout read for large rows and other views that proceed through scheduled paint.

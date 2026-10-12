@@ -318,6 +318,15 @@ async fn browser_memory_tools_persist_and_toggle_removes_context_and_tools_from_
         usage: None,
         stop_reason: StopReason::Complete,
     };
+    // Optional tools are discovered before use on small-context models.
+    let discover = |name: &str| ChatCompletion {
+        response: ChatResponse::ToolCalls(vec![ToolCall {
+            id: format!("discover-{name}"),
+            name: "tool_search".into(),
+            arguments: serde_json::json!({"query": format!("select: {name}")}).to_string(),
+        }]),
+        ..reply.clone()
+    };
     let create = ChatCompletion {
         response: ChatResponse::ToolCalls(vec![ToolCall {
             id: "remember".into(),
@@ -331,7 +340,7 @@ async fn browser_memory_tools_persist_and_toggle_removes_context_and_tools_from_
         .fake
         .scripted_completions
         .borrow_mut()
-        .extend([create, reply.clone()]);
+        .extend([discover("memory_create"), create, reply.clone()]);
     mounted.input("remember our build command");
     mounted.key("Enter", "Enter", false);
     wait_until("memory run finished", || {
@@ -357,7 +366,7 @@ async fn browser_memory_tools_persist_and_toggle_removes_context_and_tools_from_
         .fake
         .scripted_completions
         .borrow_mut()
-        .push_back(reply.clone());
+        .extend([discover("memory_read"), reply.clone()]);
     mounted.input("what is our build command");
     mounted.key("Enter", "Enter", false);
     wait_until("memory context run finished", || {

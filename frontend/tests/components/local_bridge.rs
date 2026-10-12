@@ -2083,6 +2083,7 @@ async fn browser_child_task_uses_inherited_files_manual_approval_and_durable_nes
         *state.fake.background_completion.borrow_mut() =
             Some(Ok(completion(ChatResponse::Text("Delegated edit".into()))));
         state.fake.scripted_completions.borrow_mut().extend([
+            completion(ChatResponse::ToolCalls(vec![ToolCall { id: "discover-task".into(), name: "tool_search".into(), arguments: serde_json::json!({"query":"select: task"}).to_string() }])),
             completion(ChatResponse::ToolCalls(vec![ToolCall { id: "parent-wire".into(), name: "task".into(), arguments: serde_json::json!({"tasks":[{"description":"Delegated edit","prompt":"Write child.txt with after"}]}).to_string() }])),
             completion(ChatResponse::ToolCalls(vec![ToolCall { id: "child-wire".into(), name: "write_file".into(), arguments: serde_json::json!({"path":"child.txt","content":"after"}).to_string() }])),
             completion(ChatResponse::Text("Child finished".into())),
@@ -2158,20 +2159,20 @@ async fn browser_child_task_uses_inherited_files_manual_approval_and_durable_nes
     assert!(saved.snapshot.pending_permission().is_none());
     {
         let requests = mounted.state.fake.completion_requests.borrow();
-        assert_eq!(requests.len(), 4);
-        assert_eq!(requests[1].messages.len(), 1);
+        assert_eq!(requests.len(), 5);
+        assert_eq!(requests[2].messages.len(), 1);
         assert_eq!(
-            requests[1].messages[0].content,
+            requests[2].messages[0].content,
             "Write child.txt with after"
         );
         assert!(
-            !requests[1]
+            !requests[2]
                 .tools
                 .iter()
                 .any(|tool| tool.name == "todo_write")
         );
         assert!(
-            requests[3]
+            requests[4]
                 .messages
                 .iter()
                 .all(|message| message.content != "Write child.txt with after")
