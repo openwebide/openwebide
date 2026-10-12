@@ -7,7 +7,9 @@ use std::{ops::Range, sync::Arc};
 pub const PAINT_RUN_BATCH_UNITS: usize = 64;
 
 pub struct PaintRunPreparation<'a> {
-    tokens: std::iter::Peekable<RowPaintIter<'a>>,
+    tokens: RowPaintIter<'a>,
+    next: Option<PaintToken<'a>>,
+    remaining: usize,
     current: Option<PaintToken<'a>>,
     body_len: usize,
     normalize_cr: bool,
@@ -36,11 +38,11 @@ impl<'a> PaintRunPreparation<'a> {
         normalize_cr: bool,
         max_runs: usize,
     ) -> Self {
-        let mut tokens = rows.iter().peekable();
-        let current = tokens.next();
         Self {
-            tokens,
-            current,
+            tokens: rows.iter(),
+            current: None,
+            next: None,
+            remaining: rows.len(),
             body_len,
             normalize_cr,
             max_runs,
@@ -49,24 +51,52 @@ impl<'a> PaintRunPreparation<'a> {
             runs: Vec::new(),
             segmented_bytes: 0,
             scan_progress_bytes: 0,
-            done: current.is_none(),
+            done: rows.is_empty(),
             failed: false,
         }
     }
-    fn text(&mut self) -> &'a str {
+    fn text(&self) -> &'a str {
         let text = self.current.unwrap().text;
-        if self.normalize_cr && self.tokens.peek().is_none() {
+        if self.normalize_cr && self.next.is_none() && self.remaining == 0 {
             text.strip_suffix('\r').unwrap_or(text)
         } else {
             text
         }
     }
-    /// Budget counts short tokens or bounded Unicode scan steps. Even one large
+    /// Budget counts underlying-token visits, short tokens or bounded Unicode
+    /// scan steps. Lookahead never scans an entire hidden window. Even one large
     /// indivisible grapheme yields while finding its complete paint boundary.
     pub fn advance(&mut self, budget: usize) -> bool {
         for _ in 0..budget {
             if self.done {
                 break;
+            }
+            if self.current.is_none() {
+                match self.tokens.next_step(false) {
+                    Some(Some(token)) => {
+                        self.current = Some(token);
+                        self.remaining -= 1;
+                    }
+                    Some(None) => {}
+                    None => {
+                        self.done = true;
+                    }
+                }
+                continue;
+            }
+            if self.next.is_none() && self.remaining > 0 {
+                match self.tokens.next_step(false) {
+                    Some(Some(token)) => {
+                        self.next = Some(token);
+                        self.remaining -= 1;
+                    }
+                    Some(None) => {}
+                    None => {
+                        self.failed = true;
+                        self.done = true;
+                    }
+                }
+                continue;
             }
             let text = self.text();
             if text.len() > 512 {
@@ -98,8 +128,8 @@ impl<'a> PaintRunPreparation<'a> {
                 self.active = None;
             } else if self.current.unwrap().kind != TokenKind::Plain
                 || self
-                    .tokens
-                    .peek()
+                    .next
+                    .as_ref()
                     .is_none_or(|next| next.kind != TokenKind::Plain || next.text.len() > 512)
             {
                 if self.runs.len() >= self.max_runs {
@@ -110,8 +140,8 @@ impl<'a> PaintRunPreparation<'a> {
                 self.runs.push(self.offset + text.len());
             }
             self.offset += text.len();
-            self.current = self.tokens.next();
-            self.done = self.current.is_none();
+            self.current = self.next.take();
+            self.done = self.current.is_none() && self.remaining == 0;
         }
         self.done
     }
@@ -168,6 +198,26 @@ impl<'a> RunScan<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn clipped_token_lookahead_stays_private_until_hidden_windows_are_visited() {
+        let tokens = vec![
+            Token {
+                kind: TokenKind::String,
+                text: Arc::new("a".into())
+            };
+            2000
+        ];
+        for source in ["xa", "aX"] {
+            let rows = RowPaintTokens::current(&tokens, source, false);
+            let mut preparation = PaintRunPreparation::from_rows(rows, source.len(), false, 2);
+            assert!(preparation.current.is_none());
+            assert!(!preparation.advance(8));
+            assert_eq!(preparation.offset, 0);
+            assert!(preparation.runs.is_empty());
+            while !preparation.advance(8) {}
+            assert_eq!(preparation.finish().unwrap().as_ref(), &[1, 2]);
+        }
+    }
     #[test]
     fn giant_graphemes_and_chunk_context_yield_without_changing_run_boundaries() {
         for text in [

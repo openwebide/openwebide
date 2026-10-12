@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Prepare styled paint-run lookahead with bounded token steps, avoiding hidden-window scans during construction and peeking. Preserve short plain-token merging, CR normalization, Unicode run boundaries, and complete-only publication.
+
 - Report commit-specific nightly versions throughout the app, API and bridge instead of alpha.6; bundle Unreleased notes for nightly builds and preserve numbered versions for tagged releases.
 
 - Bound paragraph-comparison traversal to one underlying token per step, including hidden and empty tokens. Preserve forward/reverse clipping and stop once all visible spans are consumed.

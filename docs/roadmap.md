@@ -420,6 +420,14 @@ combined-source CI result.
   full/windowed input cases pass with strict native/WASM lint and the production
   build ([receipt](editor-performance/token-window-steps-browser.json)). Other
   synchronous iterator consumers and first reconciliation still need bounded work.
+  Styled paint-run preparation now uses the same bounded token steps for initial
+  fetch and lookahead, keeping hidden-window traversal inside the cooperative
+  budget. Complete-only publication preserves plain-token merging, CR handling
+  and Unicode boundaries. All 757 core tests, 47 WASM library checks and six
+  local/remote geometry/fallback contracts pass with strict native/WASM lint
+  ([receipt](editor-performance/paint-run-lookahead-browser.json)). Other
+  synchronous consumers, initial token reconciliation and the full performance
+  gates remain open.
   Grammar paint now retains private piece/row assembly across cooperative yields,
   with an 8 KiB source-copy budget and independent 256-record construction,
   owner-copy, visitation and row-publication budgets. Synchronous consumers drive
