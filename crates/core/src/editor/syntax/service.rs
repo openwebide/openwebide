@@ -1183,7 +1183,15 @@ mod tests {
                     batches += 1;
                     assert!(
                         batches < 2000,
-                        "{ending:?}: revision {index}: {batches} batches"
+                        "{ending:?}: revision {index}: {batches} batches: {}",
+                        worker
+                            .active
+                            .as_ref()
+                            .and_then(|task| task.document.paint_progress.as_ref())
+                            .map_or_else(
+                                || "outside paint".to_owned(),
+                                super::super::highlighting::PaintPreparation::diagnostic
+                            )
                     );
                     let mut checks = 0;
                     if let Some(reply) = worker.advance(

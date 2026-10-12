@@ -104,6 +104,8 @@ impl SyntaxDocument {
         self.prepared = None;
         self.input_structure = None;
         self.structure_progress = None;
+        self.paint_progress = None;
+        self.painting = None;
         self.lexical_pending = None;
         self.outer_fallback = None;
         if self.parser.is_none() {
@@ -1124,7 +1126,14 @@ mod tests {
                     let mut turns = 0;
                     loop {
                         turns += 1;
-                        assert!(turns < 1000);
+                        assert!(
+                            turns < 1000,
+                            "{}",
+                            document.paint_progress.as_ref().map_or_else(
+                                || "outside paint".to_owned(),
+                                super::super::highlighting::PaintPreparation::diagnostic
+                            )
+                        );
                         let mut checks = 0;
                         if let Some(result) = document.prepare_cooperative(
                             source.clone(),
@@ -1847,9 +1856,10 @@ mod tests {
                     break result;
                 }
                 assert!(document.structure().is_none());
-                if document.structure_progress.is_some() {
+                if document.structure_progress.is_some() || document.painting.is_some() {
                     assert!(document.ready);
                     assert!(document.pending.is_none());
+                    assert!(document.prepared.is_none());
                     continue;
                 }
                 let work = document.pending.as_ref().unwrap();
@@ -2024,7 +2034,11 @@ mod tests {
                 if let Some(result) = result {
                     break result;
                 }
-                assert!(!document.ready || document.structure_progress.is_some());
+                assert!(
+                    !document.ready
+                        || document.structure_progress.is_some()
+                        || document.painting.is_some()
+                );
                 assert!(document.structure().is_none());
                 if let Some(remaining) = document
                     .pending
@@ -2138,8 +2152,11 @@ mod tests {
                 if let Some(result) = result {
                     break result;
                 }
-                if document.structure_progress.is_some() {
-                    assert!(document.ready, "trees completed before bracket publication");
+                if document.structure_progress.is_some() || document.painting.is_some() {
+                    assert!(
+                        document.ready,
+                        "trees completed before decoration publication"
+                    );
                     assert!(document.pending.is_none());
                 } else {
                     assert!(!document.ready);

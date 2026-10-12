@@ -113,6 +113,8 @@ pub struct SyntaxDocument {
     contexts: std::cell::RefCell<contexts::ParsedContexts>,
     highlights: std::cell::RefCell<highlights::ParsedHighlights>,
     paint: std::cell::RefCell<highlighting::SyntaxPaint>,
+    paint_progress: Option<highlighting::PaintPreparation>,
+    painting: Option<SyntaxStatus>,
 }
 
 impl SyntaxDocument {
@@ -152,6 +154,8 @@ impl SyntaxDocument {
             contexts: std::cell::RefCell::default(),
             highlights: std::cell::RefCell::default(),
             paint: std::cell::RefCell::default(),
+            paint_progress: None,
+            painting: None,
         })
     }
 
@@ -252,7 +256,16 @@ impl SyntaxDocument {
         if !matches!(status, SyntaxStatus::Ready { .. }) {
             return Some((status, None));
         }
-        Some(self.assemble_preparation(status, tab_width, structure))
+        let (status, highlights) = self.finish_highlights_cooperative(
+            status,
+            structure.as_ref(),
+            should_continue,
+            should_yield,
+        )?;
+        if !matches!(status, SyntaxStatus::Ready { .. }) {
+            return Some((status, None));
+        }
+        Some(self.assemble_preparation(status, tab_width, structure, highlights))
     }
 
     /// Prepare only editing context. Highlights and folds are background outputs,
@@ -348,26 +361,13 @@ impl SyntaxDocument {
         status: SyntaxStatus,
         tab_width: usize,
         structure: Option<Arc<Structure>>,
+        highlights: Option<Arc<crate::highlight::TokenRows>>,
     ) -> (SyntaxStatus, Option<Arc<SyntaxAnalysis>>) {
         // update() clears preparation on every source change. Tab width only
         // affects indentation-derived folds; contexts and tokens stay source-bound.
         let (structure, highlights) = if let Some((_, previous)) = &self.prepared {
             (previous.structure.clone(), previous.highlights.clone())
         } else {
-            let highlights = if self.provider.is_none() && self.language != Language::Plain {
-                Some(
-                    self.lexical
-                        .as_ref()
-                        .expect("prepared lexical source")
-                        .tokens()
-                        .clone(),
-                )
-            } else {
-                structure
-                    .as_ref()
-                    .and_then(|structure| self.highlight_with_structure(structure))
-                    .map(Arc::new)
-            };
             (structure, highlights)
         };
         let analysis = Arc::new(SyntaxAnalysis {
@@ -404,7 +404,7 @@ impl SyntaxDocument {
 
     /// Immutable editing contexts from the current tree; failed/stale parses publish nothing.
     pub fn structure(&self) -> Option<Structure> {
-        if self.structure_progress.is_some() {
+        if self.structure_progress.is_some() || self.painting.is_some() {
             return None;
         }
         let mut work = self.structure_preparation()?;
@@ -507,6 +507,8 @@ impl SyntaxDocument {
         self.contexts.borrow_mut().clear();
         self.highlights.borrow_mut().clear();
         *self.paint.borrow_mut() = highlighting::SyntaxPaint::default();
+        self.paint_progress = None;
+        self.painting = None;
     }
 
     pub fn folds(&self) -> Vec<FoldRange> {
@@ -514,6 +516,7 @@ impl SyntaxDocument {
     }
     pub fn folds_with_tab_width(&self, tab_width: usize) -> Vec<FoldRange> {
         if self.structure_progress.is_some()
+            || self.painting.is_some()
             || !self.ready
             || self.admission.is_some()
             || self.row_preparation.is_some()

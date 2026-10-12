@@ -80,5 +80,17 @@
       "yaml_bytes": 1043026,
       "yaml_yields": 48
     }
-  ]
+  ],
+  "hostedCi": {
+    "run": 38189035657,
+    "head": "455c5538154dd12fb8dfaf40c50ea460533609d5",
+    "checks": {
+      "backend-and-crates": "success",
+      "frontend": "success",
+      "frontend-ui-tests": "success",
+      "bridge-windows": "success",
+      "docker": "success"
+    },
+    "overallWorkflow": "image publication still in progress at observation"
+  }
 }

@@ -1,14 +1,16 @@
 //! Shared grammar-aware paint; source bytes and line boundaries are preserved.
+mod preparation;
 use super::SyntaxDocument;
 use crate::editor::structure::RegionKind;
-use crate::highlight::{
-    Language, Token, TokenKind, TokenRow, TokenRows, highlight_lines, share_token_row,
-    share_token_rows,
-};
+use crate::highlight::{Language, Token, TokenKind, TokenRow, TokenRows, share_token_row};
+#[cfg(test)]
+use crate::highlight::{highlight_lines, share_token_rows};
+pub(super) use preparation::PaintPreparation;
 use std::{collections::HashMap, ops::Range, sync::Arc};
 
 /// Merge validated ordered span endpoints into disjoint paint segments.
 /// Protected regions, embedded scopes and semantic spans each have disjoint ranges.
+#[cfg(test)]
 fn paint_segments(
     protected: impl Iterator<Item = usize>,
     scopes: impl Iterator<Item = usize>,
@@ -113,37 +115,80 @@ impl RowPaint {
         self.parts.push((piece.clone(), index));
     }
 
-    fn finish(mut self, row: &crate::editor::lines::Line, text: &str) -> PaintedRow {
+    #[cfg(test)]
+    fn finish(self, row: &crate::editor::lines::Line, text: &str) -> PaintedRow {
+        let mut work = RowAssembly::new(self, row, text);
+        while !work.advance(64) {}
+        work.finish()
+    }
+}
+
+/// Private row publication; retained text owners are cloned in bounded batches.
+struct RowAssembly {
+    end: usize,
+    parts: Vec<(Arc<PaintedPiece>, usize)>,
+    completed: Option<TokenRow>,
+    part: usize,
+    offset: usize,
+    tokens: Vec<Token>,
+}
+impl RowAssembly {
+    fn new(mut paint: RowPaint, row: &crate::editor::lines::Line, text: &str) -> Self {
         let raw = &text[row.start..row.end];
-        let source = raw.strip_suffix('\n').unwrap_or(raw);
-        let end = row.start + source.len();
-        if !self.changed
-            && let Some(mut row) = self.previous.take()
+        let end = row.end - usize::from(raw.ends_with('\n'));
+        let mut completed = None;
+        if !paint.changed
+            && let Some(mut row) = paint.previous.take()
         {
-            if self.matched == row.pieces.len() {
-                row.end = end;
-                return row;
+            if paint.matched == row.pieces.len() {
+                completed = Some(row.tokens);
+            } else {
+                row.pieces.truncate(paint.matched);
             }
-            row.pieces.truncate(self.matched);
-            self.parts = row.pieces;
+            paint.parts = row.pieces;
         }
-        // Grammar analysis already owns source/work admission. Long prepared
-        // rows retain their styles; the renderer bounds their paint probes.
-        // Unavailable grammar still uses the independently limited lexical path.
-        let tokens = if let [(piece, row)] = self.parts.as_slice() {
-            piece.rows[*row].clone()
-        } else {
-            share_token_row(
-                self.parts
-                    .iter()
-                    .flat_map(|(piece, row)| piece.rows[*row].iter().cloned())
-                    .collect::<Vec<_>>(),
-            )
-        };
-        PaintedRow {
+        if completed.is_none()
+            && let [(piece, row)] = paint.parts.as_slice()
+        {
+            completed = Some(piece.rows[*row].clone());
+        }
+        Self {
             end,
+            parts: paint.parts,
+            completed,
+            part: 0,
+            offset: 0,
+            tokens: Vec::new(),
+        }
+    }
+    fn advance(&mut self, mut records: usize) -> bool {
+        if self.completed.is_some() {
+            return true;
+        }
+        while let Some((piece, row)) = self.parts.get(self.part) {
+            let tokens = &piece.rows[*row];
+            let count = (tokens.len() - self.offset).min(records);
+            self.tokens
+                .extend_from_slice(&tokens[self.offset..self.offset + count]);
+            self.offset += count;
+            records -= count;
+            if self.offset == tokens.len() {
+                self.part += 1;
+                self.offset = 0;
+            }
+            if records == 0 {
+                return self.part == self.parts.len();
+            }
+        }
+        true
+    }
+    fn finish(self) -> PaintedRow {
+        PaintedRow {
+            end: self.end,
             pieces: self.parts,
-            tokens,
+            tokens: self
+                .completed
+                .unwrap_or_else(|| share_token_row(self.tokens)),
         }
     }
 }
@@ -183,14 +228,83 @@ impl SyntaxDocument {
     /// None requests the ordinary bounded lexical fallback after failed analysis.
     pub fn highlight_lines(&self) -> Option<Vec<Vec<Token>>> {
         let context = self.structure()?;
-        self.highlight_with_structure(&context)
+        self.highlight_with_structure(Arc::new(context))
             .map(|rows| rows.iter().map(|row| row.to_vec()).collect())
     }
 
     pub(super) fn highlight_with_structure(
         &self,
-        context: &crate::editor::Structure,
+        context: Arc<crate::editor::Structure>,
     ) -> Option<TokenRows> {
+        let mut work = PaintPreparation::new(self, context)?;
+        while !work.advance(self)? {}
+        let (paint, tokens) = work.finish()?;
+        *self.paint.borrow_mut() = paint;
+        Some(tokens)
+    }
+
+    pub(super) fn finish_highlights_cooperative(
+        &mut self,
+        status: super::SyntaxStatus,
+        context: Option<&Arc<crate::editor::Structure>>,
+        should_continue: &mut impl FnMut() -> bool,
+        should_yield: &mut impl FnMut() -> bool,
+    ) -> Option<(super::SyntaxStatus, Option<Arc<TokenRows>>)> {
+        if let Some((_, previous)) = &self.prepared {
+            return Some((status, previous.highlights.clone()));
+        }
+        if self.provider.is_none() && self.language != Language::Plain {
+            return Some((
+                status,
+                Some(
+                    self.lexical
+                        .as_ref()
+                        .expect("prepared lexical source")
+                        .tokens()
+                        .clone(),
+                ),
+            ));
+        }
+        let Some(context) = context else {
+            return Some((status, None));
+        };
+        let status = *self.painting.get_or_insert(status);
+        loop {
+            if !should_continue() {
+                self.clear();
+                return Some((super::SyntaxStatus::Cancelled, None));
+            }
+            if should_yield() {
+                return None;
+            }
+            if self.paint_progress.is_none() {
+                self.paint_progress = PaintPreparation::new(self, context.clone());
+                if self.paint_progress.is_none() {
+                    self.painting = None;
+                    return Some((status, None));
+                }
+            }
+            let mut work = self.paint_progress.take().unwrap();
+            match work.advance(self) {
+                Some(false) => self.paint_progress = Some(work),
+                Some(true) => {
+                    let (paint, tokens) = work.finish()?;
+                    *self.paint.borrow_mut() = paint;
+                    self.painting = None;
+                    return Some((status, Some(Arc::new(tokens))));
+                }
+                None => {
+                    self.painting = None;
+                    return Some((status, None));
+                }
+            }
+        }
+    }
+
+    fn paint_semantics(
+        &self,
+        context: &crate::editor::Structure,
+    ) -> Option<Vec<(Range<usize>, TokenKind)>> {
         let mut semantic = Vec::new();
         let mut visited = 0;
         for (index, (tree, provider, cache)) in self
@@ -240,173 +354,7 @@ impl SyntaxDocument {
         {
             return None;
         }
-        let segments = paint_segments(
-            context
-                .protected
-                .iter()
-                .flat_map(|(range, _, _)| [range.start, range.end]),
-            context
-                .scopes
-                .iter()
-                .flat_map(|(range, _)| [range.start, range.end]),
-            semantic
-                .iter()
-                .flat_map(|(range, _)| [range.start, range.end]),
-            self.text.len(),
-        );
-        let mut previous = self.paint.borrow_mut();
-        // Only a source-identity match permits the parser's exact change span
-        // to validate retained paint. Updates without paint can leave an older
-        // base; compute that wider envelope instead of trusting the last edit.
-        let source_change = previous.source_change;
-        #[cfg(test)]
-        let reused_source_change = source_change.is_some();
-        let edit = if Arc::ptr_eq(&previous.source, &self.text) {
-            super::input_edit("", "", None).ok()?
-        } else if let Some(edit) = source_change {
-            edit
-        } else {
-            super::input_edit(&previous.source, &self.text, None).ok()?
-        };
-        let mut pieces = HashMap::new();
-        #[cfg(test)]
-        let mut repainted_pieces = 0;
-        let mut rows = HashMap::new();
-        let mut tokens = Vec::with_capacity(self.source_lines.len());
-        let mut current_row = 0;
-        let mut current = Some(RowPaint::new(
-            self.source_lines.first()?,
-            &self.text,
-            &mut previous.rows,
-            &edit,
-        ));
-        let mut finish_row = |paint: RowPaint, row: &crate::editor::lines::Line| {
-            let painted = paint.finish(row, &self.text);
-            tokens.push(painted.tokens.clone());
-            rows.insert(row.start, painted);
-        };
-        let mut protected = 0;
-        let mut selected = 0;
-        for range in segments {
-            let (start, end) = (range.start, range.end);
-            while context
-                .protected
-                .get(protected)
-                .is_some_and(|(range, _, _)| range.end <= start)
-            {
-                protected += 1;
-            }
-            while semantic
-                .get(selected)
-                .is_some_and(|(range, _)| range.end <= start)
-            {
-                selected += 1;
-            }
-            let language = context.language_at(self.text.floor_char_boundary(end - 1));
-            let literal = context
-                .protected
-                .get(protected)
-                .filter(|(range, _, _)| range.contains(&start));
-            let kind = literal
-                .map(|(_, _, kind)| match kind {
-                    RegionKind::LineComment | RegionKind::BlockComment => TokenKind::Comment,
-                    RegionKind::Text => TokenKind::Plain,
-                    RegionKind::String
-                        if matches!(
-                            language,
-                            Language::Rust
-                                | Language::Java
-                                | Language::CSharp
-                                | Language::C
-                                | Language::Cpp
-                                | Language::Go
-                        ) && (self.text[start..end].starts_with('\'')
-                            || self.text[start..end].starts_with("b'")) =>
-                    {
-                        TokenKind::Char
-                    }
-                    _ => TokenKind::String,
-                })
-                .or_else(|| {
-                    semantic
-                        .get(selected)
-                        .filter(|(range, _)| range.contains(&start))
-                        .map(|(_, kind)| *kind)
-                });
-            let piece = &self.text[start..end];
-            let retained = previous_range(start..end, &edit).and_then(|range| {
-                let part = previous.pieces.get(&range.start)?;
-                (part.end == range.end
-                    && part.paint.language == language
-                    && part.paint.kind == kind)
-                    .then(|| part.paint.clone())
-            });
-            let paint = retained.unwrap_or_else(|| {
-                #[cfg(test)]
-                {
-                    repainted_pieces += 1;
-                }
-                let painted = if let Some(kind) = kind {
-                    piece
-                        .split('\n')
-                        .map(|text| {
-                            vec![Token {
-                                kind,
-                                text: Arc::new(text.into()),
-                            }]
-                        })
-                        .collect()
-                } else {
-                    highlight_lines(piece, language)
-                };
-                Arc::new(PaintedPiece {
-                    language,
-                    kind,
-                    rows: share_token_rows(
-                        painted
-                            .into_iter()
-                            .map(|tokens| {
-                                tokens
-                                    .into_iter()
-                                    .filter(|token| !token.text.is_empty())
-                                    .collect()
-                            })
-                            .collect(),
-                    ),
-                })
-            });
-            for index in 0..paint.rows.len() {
-                if index > 0 {
-                    finish_row(current.take()?, self.source_lines.get(current_row)?);
-                    current_row += 1;
-                    current = Some(RowPaint::new(
-                        self.source_lines.get(current_row)?,
-                        &self.text,
-                        &mut previous.rows,
-                        &edit,
-                    ));
-                }
-                if !paint.rows[index].is_empty() {
-                    current.as_mut()?.append(&paint, index);
-                }
-            }
-            pieces.insert(start, Piece { end, paint });
-        }
-        if current_row + 1 != self.source_lines.len() {
-            return None;
-        }
-        finish_row(current.take()?, self.source_lines.get(current_row)?);
-        *previous = SyntaxPaint {
-            source: self.text.clone(),
-            source_change: None,
-            pieces,
-            rows,
-            #[cfg(test)]
-            repainted_pieces,
-            #[cfg(test)]
-            reused_source_change,
-        };
-        Some(tokens)
+        Some(semantic)
     }
 }
 

@@ -291,6 +291,22 @@ prepared only one token row per unit. Small rows now share the existing 64-recor
   ([comparison](editor-performance/shared-token-production-summary.json),
   [samples](editor-performance/shared-token-production.jsonl)). Remaining row
   traversal, allocation overhead and complete publication still need bounded work.
+  Grammar paint now retains private piece/row assembly across cooperative yields,
+  with an 8 KiB source-copy budget and independent 256-record construction,
+  owner-copy, visitation and row-publication budgets. Synchronous consumers drive
+  the same engine. Original parse status survives resumes; partial paint/context
+  stays unavailable through cancellation or source takeover. All 722 core tests
+  preserve the existing tiny-slice/dense-row progress bounds; eight local/remote
+  browser contracts, four worker startup tests and strict native/WASM lint pass
+  ([receipt](editor-performance/paint-assembly-browser.json)). Both production
+  startup paths preserve the full provider/config/embedded inventory and MiB
+  literal reception. Thirty production edits preserve complete source. Dense-row
+  input remains near 12 ms; initially slower MiB samples return to 137–166 ms on
+  repeat. Serial samples establish no stable latency/PSS improvement
+  ([comparison](editor-performance/paint-assembly-production-summary.json),
+  [samples](editor-performance/paint-assembly-production.jsonl)). Initial semantic
+  collection/sorting, capacity growth, retained-cache retirement and complete
+  final table publication remain unfinished.
 - [ ] **Source, worker transport and storage:** finish external parser snapshots,
   changed-revision comparisons, header/capacity allocation,
   JavaScript string conversion, complete message decoding/publication,
