@@ -668,9 +668,23 @@ fn editor_caret_at_point(
 
 #[wasm_bindgen(inline_js = r#"
 export function observe_element_width(element, update) {
-    const observer = new ResizeObserver(() => update(element.clientWidth));
+    let measuredWidth;
+    let contentWidth;
+    const publish = () => {
+        const width = element.clientWidth;
+        if (width !== measuredWidth) { measuredWidth = width; update(width); }
+    };
+    const observer = new ResizeObserver(entries => {
+        const width = entries.find(entry => entry.target === element)?.contentRect.width;
+        // ResizeObserver also reports height changes. Its already-computed box
+        // proves whether another native width read is necessary; do not force
+        // layout or invalidate panel bounds for an unchanged width.
+        if (width === undefined || width === contentWidth) return;
+        contentWidth = width;
+        publish();
+    });
     observer.observe(element);
-    update(element.clientWidth);
+    publish();
     return () => observer.disconnect();
 }
 "#)]
@@ -695,4 +709,105 @@ pub fn track_width(element: web_sys::Element, width: RwSignal<f64>) {
         });
         update.with_value(|_| ());
     });
+}
+
+#[cfg(all(test, target_arch = "wasm32"))]
+mod width_tests {
+    use super::*;
+    use std::{cell::Cell, rc::Rc};
+    use wasm_bindgen_test::wasm_bindgen_test;
+
+    #[wasm_bindgen(inline_js = r#"
+export function instrument_width(element) {
+    const state = {reads:0, notifications:0};
+    const getter = Object.getOwnPropertyDescriptor(Element.prototype, 'clientWidth').get;
+    Object.defineProperty(element, 'clientWidth', {configurable:true, get() {
+        state.reads++; return getter.call(this);
+    }});
+    const observer = new ResizeObserver(() => state.notifications++);
+    observer.observe(element);
+    state.stop = () => { observer.disconnect(); delete element.clientWidth; };
+    return state;
+}
+"#)]
+    extern "C" {
+        fn instrument_width(element: &web_sys::Element) -> JsValue;
+    }
+
+    fn count(state: &JsValue, key: &str) -> f64 {
+        js_sys::Reflect::get(state, &key.into())
+            .unwrap()
+            .as_f64()
+            .unwrap()
+    }
+    async fn wait(ready: impl Fn() -> bool) {
+        let deadline = js_sys::Date::now() + 3000.0;
+        while !ready() {
+            assert!(js_sys::Date::now() < deadline, "width observer timed out");
+            crate::util::sleep_ms(10).await;
+        }
+    }
+
+    #[wasm_bindgen_test]
+    #[allow(
+        clippy::float_cmp,
+        reason = "DOM clientWidth and fixture counters are integral JS numbers; exact equality proves skipped reads"
+    )]
+    async fn width_tracking_skips_height_only_layout_reads_and_preserves_resize_cleanup() {
+        let element = document().create_element("div").unwrap();
+        element
+            .set_attribute("style", "width:100px;height:10px;padding:5px;border:2px solid;box-sizing:content-box;overflow:auto")
+            .unwrap();
+        document().body().unwrap().append_child(&element).unwrap();
+        let state = instrument_width(&element);
+        let value = Rc::new(Cell::new(-1.0));
+        let calls = Rc::new(Cell::new(0));
+        let update = Closure::<dyn Fn(f64)>::new({
+            let value = value.clone();
+            let calls = calls.clone();
+            move |width| {
+                value.set(width);
+                calls.set(calls.get() + 1);
+            }
+        });
+        let stop = observe_element_width(&element, update.as_ref().unchecked_ref());
+        wait(|| count(&state, "notifications") > 0.0).await;
+        assert_eq!(value.get(), 110.0);
+        assert_eq!(calls.get(), 1);
+        let reads = count(&state, "reads");
+        for height in [20, 30] {
+            let notifications = count(&state, "notifications");
+            element
+                .unchecked_ref::<web_sys::HtmlElement>()
+                .style()
+                .set_property("height", &format!("{height}px"))
+                .unwrap();
+            wait(|| count(&state, "notifications") > notifications).await;
+            assert_eq!(count(&state, "reads"), reads);
+            assert_eq!(calls.get(), 1);
+        }
+        let style = element.unchecked_ref::<web_sys::HtmlElement>().style();
+        style.set_property("width", "200px").unwrap();
+        wait(|| value.get() == 210.0).await;
+        style.set_property("display", "none").unwrap();
+        wait(|| value.get() == 0.0).await;
+        style.remove_property("display").unwrap();
+        wait(|| value.get() == 210.0).await;
+        stop.unchecked_ref::<js_sys::Function>()
+            .call0(&JsValue::NULL)
+            .unwrap();
+        let reads = count(&state, "reads");
+        let calls_before = calls.get();
+        let notifications = count(&state, "notifications");
+        style.set_property("width", "300px").unwrap();
+        wait(|| count(&state, "notifications") > notifications).await;
+        assert_eq!(count(&state, "reads"), reads);
+        assert_eq!(calls.get(), calls_before);
+        js_sys::Reflect::get(&state, &"stop".into())
+            .unwrap()
+            .unchecked_ref::<js_sys::Function>()
+            .call0(&JsValue::NULL)
+            .unwrap();
+        element.remove();
+    }
 }

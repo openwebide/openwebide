@@ -243,6 +243,13 @@ combined-source CI result.
   and strict core lint pass, including arbitrary Unicode, long clusters and chunk
   seams. The full production build, WASI core lint and eight full/windowed
   LF/CRLF composition/undo/redo/cancel checks pass in both modes.
+  Production profiles also identify forced panel-width layout reads. The shared
+  browser observer now uses delivered content-box widths to skip height-only
+  reads, and publishes only changed native widths. The browser regression verifies
+  padded widths, resize, hide/show and cleanup; all 48 WASM library checks and
+  four local/remote panel contracts pass
+  ([receipt](editor-performance/width-observer-browser.json)). Repeat matched
+  production measurements before claiming a latency improvement.
   Isolated native timings improve for ASCII and mixed text
   ([receipt](editor-performance/ascii-grapheme-scan.json)); whole-editor latency,
   full-row edit rebuilding and startup memory remain open.

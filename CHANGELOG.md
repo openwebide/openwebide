@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Avoid repeated panel-width layout reads and reactive updates when only height changes. Keep native padded widths, actual resize/hide/show notifications and observer cleanup.
+
 - Validate nightly release notes against their Unreleased heading in the browser contract, preserving account acknowledgement and dialog dismissal checks.
 
 - Prepare styled paint-run lookahead with bounded token steps, avoiding hidden-window scans during construction and peeking. Preserve short plain-token merging, CR normalization, Unicode run boundaries, and complete-only publication.
