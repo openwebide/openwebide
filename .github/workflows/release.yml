@@ -12,7 +12,9 @@ permissions:
 
 concurrency:
   group: release-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+  # Finish the running release; newer pushes replace only the pending run.
+  # Serial publication keeps the rolling channel on fully checked images.
+  cancel-in-progress: false
 
 jobs:
   validate:

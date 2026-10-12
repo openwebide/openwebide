@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Let running releases finish instead of cancelling them on every main push. Keep one pending build for newer commits, with publication still gated on the complete test suite and both platform images.
+
 - Initialize the Leptos runtime explicitly in isolated editor library fixtures, so independently selected browser tests can create effects without depending on an earlier UI mount.
 
 - Encrypt private host terminal replies from browser to bridge using prompt-scoped HPKE keys, authenticated scope binding and replay rejection, with no plaintext API fallback. Retain terminal secret redaction and reject stale account, session, project and prompt results.

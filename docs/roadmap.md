@@ -566,6 +566,11 @@ Keep the full inventory and existing contract/browser deadlines.
   pending edits, previews, agent context, themes and both adapter contracts.
 - [ ] **Reliable CI and integrated release checks:** complete native/WASI/WASM,
   platform and release checks on combined editor/plugin source. Investigate the
+  cached-horizontal-paint timeout and disposed-reactive-state failures from release
+  run `38255429450`, and verify the subsequent runtime/owner fixes on hosted Linux.
+  Running releases now finish while newer pushes replace only the pending build;
+  the complete test and platform-image gates still apply before publication.
+  Investigate the
   unresolved historical readiness/order failures and repeat near-limit Linux/x64
   readiness with parser/paint/geometry diagnostics, unchanged timeouts and probe
   limits. Preserve complete compiled inventories, independently checked disjoint

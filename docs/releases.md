@@ -8,6 +8,13 @@ The package owner can enable anonymous pulls by making the container package
 public in [organization package settings](https://github.com/orgs/openwebide/packages).
 The remaining stable-release and installation checks are tracked on the roadmap.
 
+Releases run one at a time per branch or tag. A new `main` push leaves the running
+release intact and replaces any pending build with the newer commit. This lets
+passing builds reach publication during active development without building a
+backlog of intermediate commits. The rolling channel advances only after the
+complete test suite and both platform image checks pass; a failed run leaves the
+previous published image in place.
+
 ## Install a published release
 
 Download `docker-compose.yml` from
