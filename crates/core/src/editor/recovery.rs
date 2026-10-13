@@ -647,7 +647,7 @@ impl RecoveryOverwritePreparation<'_> {
     }
 }
 
-fn equal_text(left: &str, right: &str, next: &mut usize) -> Option<bool> {
+pub(super) fn equal_text(left: &str, right: &str, next: &mut usize) -> Option<bool> {
     if left.len() != right.len() {
         return Some(false);
     }

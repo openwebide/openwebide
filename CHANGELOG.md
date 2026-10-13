@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Compare autosave recovery snapshots cooperatively in 8 KiB source and 64-record metadata steps. Preserve full equality, including absent documents and scroll values, and retry capture when a newer scheduled edit supersedes the comparison.
+
 - Retain acknowledged editor recovery records immutably so autosave and reactive state clones share source, fold and selection metadata without copying their vectors. Replacing an acknowledgement preserves older retained revisions.
 
 - Verify combined production recovery after cooperative autosave, initial-load, review and confirmation guard preparation, including restart and reload/new-window restoration in both modes.

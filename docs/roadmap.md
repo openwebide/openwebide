@@ -801,6 +801,16 @@ combined-source CI result.
   ([receipt](editor-performance/shared-acknowledged-record-browser.json)).
   Fresh production verification of this representation, final equality scans
   and serialization remain open.
+  Autosave snapshot equality now uses shared core comparison preparation,
+  checking source bytes in 8 KiB units and fold/selection records in 64-record
+  units. It preserves derived equality and publishes only a complete result;
+  superseded timer/account/project scopes discard the result and recapture.
+  All 778 core and 134 native frontend tests pass, including fifteen comparison
+  cases across both modes and three budgets. All 55 WASM library checks and
+  45 recovery/fold browser contracts pass with strict core/WASM/WASI lint
+  ([receipt](editor-performance/cooperative-snapshot-comparison-browser.json)).
+  Fresh production and final CI are pending. Other guard equality and
+  serialization remain open.
 
 **Remaining completion gates**:
 

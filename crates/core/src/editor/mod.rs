@@ -57,6 +57,8 @@ pub use selections::{
     normalize_selections,
 };
 mod recovery;
+mod recovery_comparison;
+pub use recovery_comparison::EditorRecoveryComparison;
 mod recovery_decode;
 pub use recovery::{
     DocumentRecovery, DocumentRecoveryCapture, DocumentRecoveryValidation, EditorRecovery,

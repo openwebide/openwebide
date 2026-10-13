@@ -347,7 +347,25 @@ impl RecoveryContext {
                 return;
             }
         };
-        if state == previous.state
+        let timer = self.timers.with_value(|timers| timers.get(&id).copied());
+        let same = compare_recovery_snapshots(&state, &previous.state, || {
+            self.current(account, &project, ticket)
+                && self
+                    .timers
+                    .try_with_value(|timers| timers.get(&id).copied())
+                    == Some(timer)
+        })
+        .await;
+        if !self.current(account, &project, ticket) {
+            self.reject_changed_root(account, id, ticket);
+            return;
+        }
+        let Some(same) = same else {
+            drop(capture_guard);
+            self.schedule(id);
+            return;
+        };
+        if same
             || (state.files.is_empty()
                 && previous.state.files.is_empty()
                 && state.selected.is_none()
@@ -1348,6 +1366,24 @@ impl RecoveryContext {
     }
 }
 
+async fn compare_recovery_snapshots(
+    left: &openwebide_core::editor::EditorRecovery,
+    right: &openwebide_core::editor::EditorRecovery,
+    current: impl Fn() -> bool,
+) -> Option<bool> {
+    let mut comparison = openwebide_core::editor::EditorRecoveryComparison::new(left, right);
+    loop {
+        if !current() {
+            return None;
+        }
+        if comparison.advance(1) {
+            break;
+        }
+        crate::util::yield_task().await;
+    }
+    current().then(|| comparison.finish().unwrap())
+}
+
 async fn compare_review_disk(
     left: Option<&str>,
     right: Option<&str>,
@@ -1416,6 +1452,47 @@ async fn read_review_disk(
 
 #[cfg(test)]
 mod disk_tests {
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    async fn snapshot_comparison_yields_and_discards_superseded_results_in_both_modes() {
+        crate::testing::initialize_runtime();
+        use openwebide_core::editor::{
+            Document, EditorRecovery, EditorRecoveryFile, EditorRecoveryRoot, RecoveryScroll,
+        };
+        for mode in [
+            openwebide_core::WorkspaceMode::Local,
+            openwebide_core::WorkspaceMode::Remote,
+        ] {
+            let left = EditorRecovery {
+                root: Some(EditorRecoveryRoot { mode, path: None }),
+                files: vec![EditorRecoveryFile {
+                    path: "a.rs".into(),
+                    document: Some(Document::new("文😀\r\n".repeat(10_000)).recovery()),
+                    scroll: RecoveryScroll::default(),
+                    read_only: false,
+                }],
+                ..EditorRecovery::default()
+            };
+            let mut right = left.clone();
+            let document = right.files[0].document.as_mut().unwrap();
+            document.text = std::sync::Arc::new(document.text.as_str().to_owned());
+            document.saved = std::sync::Arc::new(document.saved.as_str().to_owned());
+            let current = std::cell::Cell::new(true);
+            let mut pending = Box::pin(compare_recovery_snapshots(&left, &right, || current.get()));
+            assert!(futures::poll!(&mut pending).is_pending());
+            current.set(false);
+            assert_eq!(pending.await, None);
+            assert_eq!(
+                compare_recovery_snapshots(&left, &right, || true).await,
+                Some(true)
+            );
+            right.files[0].read_only = true;
+            assert_eq!(
+                compare_recovery_snapshots(&left, &right, || true).await,
+                Some(false)
+            );
+        }
+    }
+
     use super::*;
     use std::{
         cell::Cell,
