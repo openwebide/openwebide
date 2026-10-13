@@ -463,31 +463,135 @@ impl VisualLineIndex {
                     kind: run.kind,
                 }),
         );
+        Some((Self::ascii_coordinates(body.len(), word_runs), inspected))
+    }
+    fn ascii_coordinates(length: usize, word_runs: Vec<WordRun>) -> Self {
         let end_position = Position {
-            byte: body.len(),
-            native: body.len(),
-            glyph: body.len(),
+            byte: length,
+            native: length,
+            glyph: length,
         };
         // Include EOF up front so its append cannot double the sparse table.
-        let mut points = Vec::with_capacity(body.len().div_ceil(STEP_BYTES) + 1);
-        points.extend((0..body.len()).step_by(STEP_BYTES).map(|byte| Position {
+        let mut points = Vec::with_capacity(length.div_ceil(STEP_BYTES) + 1);
+        points.extend((0..length).step_by(STEP_BYTES).map(|byte| Position {
             byte,
             native: byte,
             glyph: byte,
         }));
         points.push(end_position);
-        Some((
-            Self(Arc::new(Coordinates {
-                points,
-                long_clusters: Vec::new(),
-                end: end_position,
-                horizontal: body.len() > super::MAX_MEASURE_BYTES,
-                tabs: false,
-                word_runs,
-            })),
-            inspected,
-        ))
+        Self(Arc::new(Coordinates {
+            points,
+            long_clusters: Vec::new(),
+            end: end_position,
+            horizontal: length > super::MAX_MEASURE_BYTES,
+            tabs: false,
+            word_runs,
+        }))
     }
+    /// The document proves each retained slice and the inserted body are ASCII.
+    /// Cached category runs skip retained bytes; uncached runs keep exact rules.
+    pub(super) fn joined_ascii(
+        body: &str,
+        prefix: Option<&Self>,
+        prefix_end: usize,
+        suffix: Option<&Self>,
+        suffix_start: usize,
+        inserted_end: usize,
+    ) -> Option<Self> {
+        if body.len() > super::MAX_STRUCTURE_BYTES {
+            return None;
+        }
+        let bytes = body.as_bytes();
+        let mut start = prefix_end;
+        if start > 0 {
+            start -= 1;
+            let kind = ascii_word_kind(bytes[start]);
+            while start > 0 && ascii_word_kind(bytes[start - 1]) == kind {
+                if let Some(run) = prefix.and_then(|index| index.cached_word_run(start - 1)) {
+                    start = run.start;
+                    break;
+                }
+                start -= 1;
+            }
+        }
+        let mut end = inserted_end;
+        if end < body.len() {
+            end += 1;
+            let kind = ascii_word_kind(bytes[end - 1]);
+            while end < body.len() && ascii_word_kind(bytes[end]) == kind {
+                if let Some(run) = suffix
+                    .and_then(|index| index.cached_word_run(suffix_start + end - inserted_end))
+                {
+                    end = inserted_end + run.end - suffix_start;
+                    break;
+                }
+                end += 1;
+            }
+        }
+        let mut runs: Vec<_> = prefix
+            .into_iter()
+            .flat_map(|index| index.0.word_runs.iter())
+            .take_while(|run| run.end <= start)
+            .copied()
+            .collect();
+        let mut active: Option<WordRun> = None;
+        let mut cursor = start;
+        while cursor < end {
+            let (index, old, boundary) = if cursor < prefix_end {
+                (prefix, cursor, prefix_end)
+            } else if cursor >= inserted_end {
+                (suffix, suffix_start + cursor - inserted_end, end)
+            } else {
+                (None, 0, inserted_end)
+            };
+            let retained = index.and_then(|index| index.cached_word_run(old));
+            let kind =
+                retained.map_or_else(|| ascii_word_kind(body.as_bytes()[cursor]), |run| run.kind);
+            let next = if let Some(run) = retained {
+                (cursor + run.end - old).min(boundary)
+            } else {
+                let limit = boundary.min(cursor + STEP_BYTES);
+                cursor
+                    + body.as_bytes()[cursor..limit]
+                        .iter()
+                        .position(|byte| ascii_word_kind(*byte) != kind)
+                        .unwrap_or(limit - cursor)
+            };
+            if active.as_ref().is_some_and(|run| run.kind == kind) {
+                active.as_mut().unwrap().end = next;
+            } else {
+                if let Some(run) = active
+                    .take()
+                    .filter(|run| run.end - run.start >= STEP_BYTES)
+                {
+                    runs.push(run);
+                }
+                active = Some(WordRun {
+                    start: cursor,
+                    end: next,
+                    kind,
+                });
+            }
+            cursor = next;
+        }
+        if let Some(run) = active.filter(|run| run.end - run.start >= STEP_BYTES) {
+            runs.push(run);
+        }
+        let old_suffix_end = suffix_start + end - inserted_end;
+        runs.extend(
+            suffix
+                .into_iter()
+                .flat_map(|index| index.0.word_runs.iter())
+                .filter(|run| run.start >= old_suffix_end)
+                .map(|run| WordRun {
+                    start: inserted_end + run.start - suffix_start,
+                    end: inserted_end + run.end - suffix_start,
+                    kind: run.kind,
+                }),
+        );
+        Some(Self::ascii_coordinates(body.len(), runs))
+    }
+
     /// Exact cluster checkpoints for a styled geometry adapter; omit EOF.
     pub fn anchor_glyphs(&self) -> impl Iterator<Item = usize> + '_ {
         self.0
@@ -716,6 +820,41 @@ impl VisualLineIndex {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn joined_ascii_category_seams_match_complete_coordinates() {
+        for left in ["a".repeat(70000), "word 123; ".repeat(7000)] {
+            for right in ["a".repeat(70000), "tail _; ".repeat(9000)] {
+                let prefix = VisualLineIndex::new(&left).unwrap();
+                let suffix = VisualLineIndex::new(&right).unwrap();
+                for prefix_end in [0, 511, 512, left.len() - 1, left.len()] {
+                    for suffix_start in [0, 511, 512, right.len() - 1, right.len()] {
+                        for inserted in ["", "a", " ; "] {
+                            let body = format!(
+                                "{}{inserted}{}",
+                                &left[..prefix_end],
+                                &right[suffix_start..]
+                            );
+                            let joined = VisualLineIndex::joined_ascii(
+                                &body,
+                                Some(&prefix),
+                                prefix_end,
+                                Some(&suffix),
+                                suffix_start,
+                                prefix_end + inserted.len(),
+                            )
+                            .unwrap();
+                            assert_eq!(
+                                joined,
+                                VisualLineIndex::new(&body).unwrap(),
+                                "prefix={prefix_end}, suffix={suffix_start}, inserted={inserted:?}"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     #[test]
     fn incremental_ascii_tables_match_full_rebuilds_without_scanning_long_retained_runs() {
         for old in [

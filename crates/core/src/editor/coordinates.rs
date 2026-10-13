@@ -228,12 +228,6 @@ impl LineCoordinates {
             .strip_suffix("\r\n")
             .or_else(|| text.strip_suffix('\n'))
             .unwrap_or(text);
-        let mut collector = NativeCoordinates::new(text.len() > STEP_BYTES);
-        collector.ascii_body_end = body.len();
-        collector.visit_ascii(0..body.len());
-        for (offset, ch) in text[body.len()..].char_indices() {
-            collector.visit(text, body.len() + offset, ch);
-        }
         let visual = if body.len() > super::MAX_MEASURE_BYTES {
             match &self.visual {
                 Some(previous) => previous.updated_ascii(body, changed, new_end),
@@ -242,14 +236,63 @@ impl LineCoordinates {
         } else {
             None
         };
-        Some((
+        Some(Self::ascii_result(text, body, visual))
+    }
+    fn ascii_result(
+        text: &str,
+        body: &str,
+        visual: Option<super::VisualLineIndex>,
+    ) -> (Self, RowSummary) {
+        let mut collector = NativeCoordinates::new(text.len() > STEP_BYTES);
+        collector.ascii_body_end = body.len();
+        collector.visit_ascii(0..body.len());
+        for (offset, ch) in text[body.len()..].char_indices() {
+            collector.visit(text, body.len() + offset, ch);
+        }
+        (
             Self {
                 native: collector.sparse.then(|| collector.checkpoints.into()),
                 visual,
                 ascii_body: true,
             },
             collector.summary,
-        ))
+        )
+    }
+
+    pub fn joined_ascii(
+        &self,
+        suffix: &Self,
+        text: &str,
+        prefix_end: usize,
+        suffix_start: usize,
+        inserted_end: usize,
+    ) -> Option<(Self, RowSummary)> {
+        if !self.ascii_body
+            || !suffix.ascii_body
+            || !text
+                .get(prefix_end..inserted_end)?
+                .bytes()
+                .all(|byte| matches!(byte, b' '..=b'~'))
+        {
+            return None;
+        }
+        let body = text
+            .strip_suffix("\r\n")
+            .or_else(|| text.strip_suffix('\n'))
+            .unwrap_or(text);
+        let visual = (body.len() > super::MAX_MEASURE_BYTES)
+            .then(|| {
+                super::VisualLineIndex::joined_ascii(
+                    body,
+                    self.visual.as_ref(),
+                    prefix_end,
+                    suffix.visual.as_ref(),
+                    suffix_start,
+                    inserted_end,
+                )
+            })
+            .flatten();
+        Some(Self::ascii_result(text, body, visual))
     }
 
     /// Admission and native totals share the exact coordinate traversal. Long

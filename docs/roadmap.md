@@ -314,6 +314,16 @@ combined-source CI result.
   ([receipt](editor-performance/ascii-proof-latch-browser.json)). A guarded timing
   run was discarded because another compiler became active. The Unicode timing
   regression, fresh production verification and final integrated CI remain open.
+  ASCII row joins now combine retained endpoint category data, scanning inserted
+  bytes and local category seams while preserving canonical sparse checkpoints.
+  Deleted interior rows may contain Unicode; retained non-ASCII endpoints keep
+  complete preparation. Native/visual coordinate publication and row-summary
+  policy are shared with single-row edits and splits. All 789 current-worktree core
+  tests, 134 frontend tests, 58 WASM library checks and six local/remote geometry
+  contracts pass with strict core/WASM/WASI lint
+  ([receipt](editor-performance/ascii-row-join-browser.json)). Timing and fresh
+  production input verification remain pending. Unicode endpoint reuse, sparse
+  publication costs and full responsiveness/memory remain open.
   Visual ASCII coordinates now update by word/space/punctuation groups and
   visual-only preparation avoids an unused character traversal. A complete-table
   regression compares every field with full Unicode grapheme traversal at

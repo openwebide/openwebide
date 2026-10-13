@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Reuse retained ASCII endpoint coordinates when deleting line breaks or replacing multiple rows. Recompute category seams with shared native/visual coordinate and row-summary publication.
+
 - Stop repeated printable-ASCII eligibility checks after a row has already encountered Unicode/control text. Preserve coordinate/admission behavior; measured impact on the Unicode regression remains pending.
 
 - Verify line-splitting production input in both modes with explicit long-ASCII insertion, split, undo/redo and LF/CRLF checks. Add repeatable native edit/undo measurements; ASCII insertion improves while mixed/dense workloads still need follow-up.

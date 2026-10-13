@@ -192,6 +192,14 @@ impl LineIndex {
                 changed_start.saturating_sub(start)..changed_end.saturating_sub(start),
                 new_end.saturating_sub(start),
             )
+            .or_else(|| {
+                self.ascii_join(
+                    start_row..end_row,
+                    &new[start..end],
+                    changed_start - start..changed_end - start,
+                    new_end - start,
+                )
+            })
             .unwrap_or_else(|| Self::new(&new[start..end]));
         if edit.trim_suffix_row(replacement.rows.last()) {
             replacement.rows.pop();
@@ -324,6 +332,72 @@ impl LineIndex {
                     start,
                     body_end: start,
                     end: start,
+                },
+                summary,
+                false,
+            );
+            coordinates.push(coordinate);
+        }
+        result.coordinates = Arc::new(coordinates);
+        Some(result)
+    }
+
+    fn ascii_join(
+        &self,
+        rows: Range<usize>,
+        text: &str,
+        changed: Range<usize>,
+        new_end: usize,
+    ) -> Option<Self> {
+        if rows.len() < 2 {
+            return None;
+        }
+        let first = &self.rows[rows.start];
+        let mut last_index = rows.end - 1;
+        if self.rows[last_index].start == self.rows[last_index].end {
+            last_index = last_index.checked_sub(1)?;
+        }
+        if last_index <= rows.start {
+            return None;
+        }
+        let last = &self.rows[last_index];
+        let last_start = last.start - first.start;
+        if changed.start > first.body_end - first.start
+            || changed.end < last_start
+            || changed.end > last.body_end - first.start
+        {
+            return None;
+        }
+        let ending = last.end - last.body_end;
+        let body_end = text.len().checked_sub(ending)?;
+        if text.get(changed.start..new_end)?.contains('\n') {
+            return None;
+        }
+        let (coordinate, summary) = self.coordinates[rows.start].joined_ascii(
+            &self.coordinates[last_index],
+            text,
+            changed.start,
+            changed.end - last_start,
+            new_end,
+        )?;
+        let mut result = Self::empty();
+        result.append_row(
+            Line {
+                start: 0,
+                body_end,
+                end: text.len(),
+            },
+            summary,
+            ending == 2,
+        );
+        let mut coordinates = vec![coordinate];
+        if text.ends_with('\n') {
+            let (coordinate, summary) = LineCoordinates::with_summary("");
+            result.append_row(
+                Line {
+                    start: text.len(),
+                    body_end: text.len(),
+                    end: text.len(),
                 },
                 summary,
                 false,
@@ -579,6 +653,44 @@ impl LineIndex {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn ascii_multi_row_joins_match_complete_indexes_and_retain_immutable_sources() {
+        let prefix = "word 123; ".repeat(9000);
+        let suffix = "tail _; ".repeat(12000);
+        for ending in ["\n", "\r\n"] {
+            for tail in ["", ending] {
+                for middle in [String::new(), format!("文\tmiddle{ending}")] {
+                    let source = format!("{prefix}{ending}{middle}{suffix}{tail}");
+                    let index = LineIndex::new(&source);
+                    let suffix_start = prefix.len() + ending.len() + middle.len();
+                    for (left, right) in [
+                        (prefix.len(), suffix_start),
+                        (prefix.len() - 513, suffix_start + 513),
+                        (0, suffix_start + suffix.len()),
+                    ] {
+                        for inserted in ["", "a", " ; "] {
+                            let mut next = source.clone();
+                            next.replace_range(left..right, inserted);
+                            let new_end = left + inserted.len();
+                            let prepared = index
+                                .ascii_join(0..index.rows.len(), &next, left..right, new_end)
+                                .expect("ASCII retained endpoints must use join preparation");
+                            assert_eq!(
+                                prepared,
+                                LineIndex::new(&next),
+                                "ending={ending:?}, tail={tail:?}, left={left}, right={right}, inserted={inserted:?}"
+                            );
+                            let mut updated = index.clone();
+                            updated.update(source.len(), &next, left..right, new_end);
+                            assert_eq!(updated, LineIndex::new(&next));
+                            assert_eq!(index, LineIndex::new(&source));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     #[test]
     fn ascii_line_splits_reuse_retained_bodies_and_match_complete_indexes() {
         let body = "word 123; ".repeat(20000);
