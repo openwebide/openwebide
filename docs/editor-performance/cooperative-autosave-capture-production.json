@@ -1,0 +1,19 @@
+{
+  "implementationCommit": "6deb2283",
+  "build": "Full Spin build passed. Autosave source was frozen before the build and committed as 6deb2283 during it. Subsequent initial-load guard changes are outside this receipt.",
+  "artifactsSha256": {
+    "backend": "5c82537a15104c08f635b8328480ada19b25130ce1adea77e48f20e7db9e5253",
+    "frontend": "dacb5355836b5c36a99c6145d68f6c4faa06b37fd0e9c9c3dac1bbd1bcc48417"
+  },
+  "distWasmSha256": {
+    "openwebide-frontend-15880c0f82bdcf8b_bg.wasm": "f75c2e2e2f3c461f14981039ac7212f999e9eedb59f66f9daddd2aec1952740c"
+  },
+  "productionChecks": [
+    "PASS: both modes, UTF-8/CRLF, selected/hidden tabs, validation and stale saves",
+    "PASS: authenticated recovery after actual Spin restart with the same SQLite state",
+    "PASS: close-all tombstones survive restart and reject stale-window resurrection",
+    "PASS: local actual edits, WASM worker preparation, autosave, server restart, reload/new-window tabs and draft",
+    "PASS: remote actual edits, WASM worker preparation, autosave, server restart, reload/new-window tabs and draft"
+  ],
+  "limits": "The fixture verifies cooperative autosave, not the subsequent initial-load guard conversion. Local browser recovery has no native directory handle. Physical FSA/PWA/IME and final integrated CI remain open."
+}

@@ -146,5 +146,5 @@
     "libraryStartSuppressed": false,
     "testModuleRoute": "/tests.js"
   },
-  "limits": "Initial load, review and confirmation guards still capture synchronously. Initial allocation, admission, previous-record copies, final equality, serialization and network buffers remain open. Production verification, final integrated CI and physical-device gates are pending."
+  "limits": "Initial load, review and confirmation guards still capture synchronously. Initial allocation, admission, previous-record copies, final equality, serialization and network buffers remain open. Production autosave recovery passes separately in cooperative-autosave-capture-production.json. Final integrated CI and physical-device gates are pending."
 }

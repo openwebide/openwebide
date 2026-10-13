@@ -123,20 +123,6 @@ impl RecoveryContext {
             return;
         };
         let account = self.auth.generation.get_untracked();
-        let guard = match self
-            .workspace
-            .editor_recovery_guard(&project, self.read_only.get_untracked())
-        {
-            Ok(guard) => guard,
-            Err(error) => {
-                self.ui.notify(error);
-                return;
-            }
-        };
-        let occupied = self
-            .workspace
-            .editor_recovery(&project, self.read_only.get_untracked())
-            .is_ok_and(|state| !state.files.is_empty());
         let handle = self
             .projects
             .local_handles
@@ -154,6 +140,31 @@ impl RecoveryContext {
             entry.ticket = ticket;
         });
         spawn_local(async move {
+            let guard = loop {
+                if !self.current(account, &project, ticket) {
+                    self.reject_changed_root(account, id, ticket);
+                    return;
+                }
+                match self
+                    .workspace
+                    .editor_recovery_guard_cooperative(
+                        &project,
+                        || self.read_only.get_untracked(),
+                        || self.current(account, &project, ticket),
+                    )
+                    .await
+                {
+                    Ok(Some(guard)) => break guard,
+                    Ok(None) => crate::util::yield_task().await,
+                    Err(error) => {
+                        if self.current(account, &project, ticket) {
+                            self.phase(id, RecoveryPhase::LoadFailed(error));
+                        }
+                        return;
+                    }
+                }
+            };
+            let occupied = WorkspaceState::recovery_guard_has_files(&guard);
             let result = self.api.with_value(Clone::clone).editor_recovery(id).await;
             if !self.current(account, &project, ticket) {
                 self.reject_changed_root(account, id, ticket);

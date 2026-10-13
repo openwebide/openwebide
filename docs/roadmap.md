@@ -769,8 +769,17 @@ combined-source CI result.
   contracts pass, including eight capture/cancellation cases per mode and
   existing slow-write coalescing, with strict core/WASM/WASI lint
   ([receipt](editor-performance/cooperative-autosave-capture-browser.json)).
-  Fresh production and final integrated CI are pending.
-  Initial load, review and confirmation guard capture still need conversion.
+  The full Spin build and five production autosave recovery checks also pass
+  ([receipt](editor-performance/cooperative-autosave-capture-production.json)).
+  Final integrated CI and physical verification remain pending.
+  Initial loading now prepares its guard through the same cooperative facade,
+  checks document membership/revisions across preparation and reuses captured
+  occupancy instead of taking another snapshot. All 133 native frontend tests,
+  54 WASM library checks and 45 recovery/fold browser contracts pass with
+  strict WASM lint
+  ([receipt](editor-performance/cooperative-load-guard-browser.json)).
+  Review and confirmation guard capture remain synchronous; fresh production
+  and final integrated CI still need verification.
 
 **Remaining completion gates**:
 

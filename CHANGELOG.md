@@ -8,6 +8,10 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Verify production restart, edits, autosave and reload/new-window recovery after cooperative autosave capture in both workspace modes.
+
+- Prepare initial recovery-load guards cooperatively and reuse their captured file occupancy. Retain document membership/revision checks across preparation; review and confirmation guard capture remain synchronous.
+
 - Autosave editor recovery through bounded fold capture and validation, rejecting changed owners between batches. Coalesce overlapping captures with private account-safe locks; unchanged snapshots do not trigger repeated saves. Initial load, review and confirmation guards still need cooperative capture.
 
 - Verify the collapsed-capture checkpoint through full hosted checks, browser partitions, both platform images and nightly publication.

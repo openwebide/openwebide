@@ -1026,19 +1026,85 @@ impl WorkspaceState {
         project: &openwebide_core::Project,
         active_read_only: bool,
     ) -> Result<EditorRecoveryGuard, String> {
-        Ok(EditorRecoveryGuard {
-            project: project.id,
-            state: self.editor_recovery(project, active_read_only)?,
+        let state = self.editor_recovery(project, active_read_only)?;
+        Ok(self.recovery_guard_from_state(project.id, state))
+    }
+
+    fn recovery_guard_from_state(
+        &self,
+        project: i64,
+        state: openwebide_core::editor::EditorRecovery,
+    ) -> EditorRecoveryGuard {
+        EditorRecoveryGuard {
+            project,
+            state,
             read_revision: self.editor_read_revision.get_untracked(),
             epoch: self.pending_epoch.get_untracked(),
-            documents: self.editor_documents.with_untracked(|documents| {
-                documents
-                    .iter()
-                    .filter(|((id, _), _)| *id == project.id)
-                    .map(|((_, path), document)| (path.clone(), document.revision()))
-                    .collect()
-            }),
+            documents: self.recovery_document_revisions(project),
+        }
+    }
+
+    fn recovery_document_revisions(&self, project: i64) -> HashMap<String, u64> {
+        self.editor_documents.with_untracked(|documents| {
+            documents
+                .iter()
+                .filter(|((id, _), _)| *id == project)
+                .map(|((_, path), document)| (path.clone(), document.revision()))
+                .collect()
         })
+    }
+
+    fn recovery_document_revisions_match(
+        &self,
+        project: i64,
+        expected: &HashMap<String, u64>,
+    ) -> bool {
+        self.editor_documents.try_with_untracked(|documents| {
+            let mut count = 0;
+            for ((_, path), document) in documents.iter().filter(|((id, _), _)| *id == project) {
+                if expected.get(path) != Some(&document.revision()) {
+                    return false;
+                }
+                count += 1;
+            }
+            count == expected.len()
+        }) == Some(true)
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub async fn editor_recovery_guard_cooperative(
+        &self,
+        project: &openwebide_core::Project,
+        read_only: impl Fn() -> bool,
+        current: impl Fn() -> bool,
+    ) -> Result<Option<EditorRecoveryGuard>, String> {
+        if !current() {
+            return Ok(None);
+        }
+        let epoch = self.pending_epoch.get_untracked();
+        let read = self.editor_read_revision.get_untracked();
+        let documents = self.recovery_document_revisions(project.id);
+        let scope = || {
+            current()
+                && self.pending_epoch.try_get_untracked() == Some(epoch)
+                && self.editor_read_revision.try_get_untracked() == Some(read)
+                && self.recovery_document_revisions_match(project.id, &documents)
+        };
+        let Some(state) = self
+            .editor_recovery_cooperative(project, read_only, &scope)
+            .await?
+        else {
+            return Ok(None);
+        };
+        if !scope() {
+            return Ok(None);
+        }
+        Ok(Some(self.recovery_guard_from_state(project.id, state)))
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn recovery_guard_has_files(guard: &EditorRecoveryGuard) -> bool {
+        !guard.state.files.is_empty()
     }
 
     pub fn editor_recovery_guard_matches(
@@ -1050,17 +1116,7 @@ impl WorkspaceState {
         if project.id != guard.project
             || self.pending_epoch.try_get_untracked() != Some(guard.epoch)
             || self.editor_read_revision.try_get_untracked() != Some(guard.read_revision)
-            || self.editor_documents.try_with_untracked(|documents| {
-                let current = documents.iter().filter(|((id, _), _)| *id == project.id);
-                let mut count = 0;
-                for ((_, path), document) in current {
-                    if guard.documents.get(path) != Some(&document.revision()) {
-                        return false;
-                    }
-                    count += 1;
-                }
-                count == guard.documents.len()
-            }) != Some(true)
+            || !self.recovery_document_revisions_match(project.id, &guard.documents)
         {
             return false;
         }
@@ -1479,6 +1535,73 @@ impl Default for WorkspaceState {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    async fn cooperative_recovery_guards_match_sync_and_reject_new_documents_in_both_modes() {
+        use openwebide_core::{
+            Project, WorkspaceMode,
+            editor::{Document, FoldRange},
+        };
+        for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+            for change in [false, true] {
+                let owner = Owner::new();
+                let workspace =
+                    owner.with(|| WorkspaceState::with_active_project(RwSignal::new(Some(1))));
+                let project = Project {
+                    id: 1,
+                    name: "project".into(),
+                    mode,
+                    path: Some("project".into()),
+                    user_id: None,
+                    created_at: 1,
+                };
+                let mut document = Document::new("x\n".repeat(2001));
+                document.set_fold_ranges(
+                    (0..1000)
+                        .map(|index| FoldRange {
+                            start_line: index * 2,
+                            end_line: index * 2 + 1,
+                        })
+                        .collect(),
+                );
+                document.fold_state_mut().collapse_all();
+                workspace.open_file.set(Some("a.rs".into()));
+                workspace.content.set(document.shared_text().into());
+                workspace.editor_tabs.update(|tabs| {
+                    tabs.insert(1, vec!["a.rs".into()]);
+                });
+                workspace.editor_documents.update(|documents| {
+                    documents.insert((1, "a.rs".into()), document);
+                });
+                let expected = workspace.editor_recovery_guard(&project, false).unwrap();
+                let mut pending = Box::pin(workspace.editor_recovery_guard_cooperative(
+                    &project,
+                    || false,
+                    || true,
+                ));
+                assert!(futures::poll!(&mut pending).is_pending());
+                if change {
+                    workspace.editor_documents.update(|documents| {
+                        documents.insert((1, "extra.rs".into()), Document::new("new"));
+                    });
+                }
+                let result = pending.await.unwrap();
+                if change {
+                    assert!(result.is_none());
+                } else {
+                    let guard = result.unwrap();
+                    assert_eq!(guard.state, expected.state);
+                    assert_eq!(guard.documents, expected.documents);
+                    assert_eq!(guard.epoch, expected.epoch);
+                    assert_eq!(guard.read_revision, expected.read_revision);
+                    assert!(WorkspaceState::recovery_guard_has_files(&guard));
+                    assert!(workspace.editor_recovery_guard_matches(&project, &guard, false));
+                }
+                owner.cleanup();
+            }
+        }
+    }
+
     #[cfg(target_arch = "wasm32")]
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn cooperative_recovery_capture_yields_matches_sync_and_rejects_changed_owners_in_both_modes()
