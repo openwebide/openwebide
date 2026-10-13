@@ -324,6 +324,12 @@ combined-source CI result.
   ([receipt](editor-performance/ascii-row-join-browser.json)). Timing and fresh
   production input verification remain pending. Unicode endpoint reuse, sparse
   publication costs and full responsiveness/memory remain open.
+  The full Spin build and twelve production input cases also pass for row
+  joins, including long-ASCII split/undo/redo in both modes with LF/CRLF
+  ([receipt](editor-performance/ascii-row-join-production-input.json)). The timing
+  guard rejected an active compiler before measurement began; timing remains
+  pending, and these source/selection/history checks do not establish a speed or
+  memory improvement. Final combined-source CI and physical gates remain open.
   Visual ASCII coordinates now update by word/space/punctuation groups and
   visual-only preparation avoids an unused character traversal. A complete-table
   regression compares every field with full Unicode grapheme traversal at

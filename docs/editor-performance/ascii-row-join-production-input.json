@@ -1,0 +1,146 @@
+{
+  "editorImplementationCommit": "5afc28b3",
+  "build": "NO_COLOR=true spin build passed; all 12 production input cases completed successfully.",
+  "artifactsSha256": {
+    "backend": "cdbff4060e84f58f6e274e5a11c8aebfaf4cf1d509f828a314be0af08ac68e39",
+    "frontend": "15a87d0ec80fb13c3649597b31263f6340b2360dcf7cf37f531d8ac9fbebbdb2"
+  },
+  "distWasmSha256": {
+    "openwebide-frontend-645b83e9acfeac51_bg.wasm": "ddf2acd9fa3193c8c7cbd94b8698617657610e1e612637477e94012d066e157c"
+  },
+  "checks": [
+    {
+      "mode": "local",
+      "ending": "LF",
+      "windowed": false,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "CRLF",
+      "windowed": false,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "LF",
+      "windowed": false,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "CRLF",
+      "windowed": false,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "LF",
+      "windowed": true,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "CRLF",
+      "windowed": true,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "LF",
+      "windowed": true,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "CRLF",
+      "windowed": true,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "LF",
+      "windowed": true,
+      "ascii_row": true,
+      "ascii_insert_split_undo_redo": true,
+      "pending_syntax": false,
+      "trusted_events": 47,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "CRLF",
+      "windowed": true,
+      "ascii_row": true,
+      "ascii_insert_split_undo_redo": true,
+      "pending_syntax": false,
+      "trusted_events": 47,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "LF",
+      "windowed": true,
+      "ascii_row": true,
+      "ascii_insert_split_undo_redo": true,
+      "pending_syntax": false,
+      "trusted_events": 47,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "CRLF",
+      "windowed": true,
+      "ascii_row": true,
+      "ascii_insert_split_undo_redo": true,
+      "pending_syntax": false,
+      "trusted_events": 47,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    }
+  ],
+  "limits": "Built source includes another session\u2019s uncommitted host changes. Local fixtures have no granted native directory handle; CDP events do not prove physical IME/PWA behavior. Guarded timing did not run because another compiler was active. Full browser performance/memory, final combined CI and physical gates remain open."
+}
