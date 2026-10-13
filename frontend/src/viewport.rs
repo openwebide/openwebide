@@ -403,6 +403,13 @@ export async function settle_editor_font(input, budgetMs) {
     } finally { clearTimeout(timer); }
     return true;
 }
+function editor_preference_style(value) {
+    const style = document.createElement('span').style;
+    style.cssText = value || '';
+    const geometry = new Set(['--editor-input-width', '--editor-input-height', '--editor-scroll-x', '--editor-scroll-y']);
+    return Array.from(style).filter(name => !geometry.has(name)).sort()
+        .map(name => [name, style.getPropertyValue(name), style.getPropertyPriority(name)]);
+}
 export function observe_editor_viewport(input, overlay, onLayout) {
     const pane = input.parentElement;
     const scroll = editor_scroll_element(input);
@@ -445,10 +452,16 @@ export function observe_editor_viewport(input, overlay, onLayout) {
     }
     const fontIdentity = () => JSON.stringify(editor_font_style_identity(getComputedStyle(input)));
     let preferenceFont = fontIdentity();
-    const preferences = new MutationObserver(() => {
+    const preferences = new MutationObserver(records => {
+        // Viewport/scroll writes already have resize and scroll observers. Their
+        // variables cannot change fonts; resolving computed style here would
+        // flush the newly written paint and schedule a redundant layout frame.
+        const meaningful = records.some(record => record.target !== pane || record.attributeName !== 'style'
+            || JSON.stringify(editor_preference_style(record.oldValue)) !== JSON.stringify(editor_preference_style(pane.getAttribute('style'))));
+        if (!meaningful) return;
         const next = fontIdentity(); schedule(next !== preferenceFont); preferenceFont = next;
     });
-    preferences.observe(pane, {attributes: true, attributeFilter: ['class', 'style']});
+    preferences.observe(pane, {attributes: true, attributeOldValue: true, attributeFilter: ['class', 'style']});
     preferences.observe(document.documentElement, {attributes: true});
     const editor = input.closest('.editor');
     if (editor) preferences.observe(editor, {attributes: true, attributeFilter: ['style']});
@@ -718,6 +731,38 @@ mod width_tests {
     use wasm_bindgen_test::wasm_bindgen_test;
 
     #[wasm_bindgen(inline_js = r#"
+export function viewport_preferences_fixture() {
+    const pane = document.createElement('div');
+    pane.style.cssText = 'position:relative;width:300px;height:200px;';
+    const scroll = document.createElement('div');
+    scroll.className = 'editor-scroll-surface';
+    scroll.style.cssText = 'position:absolute;inset:0;overflow:auto;';
+    const extent = document.createElement('div');
+    extent.dataset.sourceWidth = '1000'; extent.dataset.sourceHeight = '1000';
+    scroll.append(extent);
+    const input = document.createElement('textarea');
+    input.style.cssText = 'font:inherit;position:absolute;width:200px;height:100px;';
+    input.dataset.editorNativeBound = 'true';
+    const overlay = document.createElement('div');
+    pane.append(scroll, input, overlay); document.body.append(pane);
+    const original = window.getComputedStyle;
+    const state = {reads:0, pane, input, overlay};
+    window.getComputedStyle = function(element, ...args) {
+        if (element === input) state.reads++;
+        return original.call(this, element, ...args);
+    };
+    state.dispose = () => {window.getComputedStyle = original; pane.remove();};
+    return state;
+}
+export function viewport_preferences_change(state, kind) {
+    if (kind === 'geometry') {
+        for (const name of ['--editor-input-width','--editor-input-height','--editor-scroll-x','--editor-scroll-y'])
+            state.pane.style.setProperty(name, '123px');
+    } else if (kind === 'font') state.pane.style.fontSize = '17px';
+    else if (kind === 'class') state.pane.classList.add('viewport-fixture-changed');
+    else state.pane.style.setProperty('--future-editor-setting', 'changed');
+}
+export function viewport_preferences_dispose(state) {state.dispose();}
 export function instrument_width(element) {
     const state = {reads:0, notifications:0};
     const getter = Object.getOwnPropertyDescriptor(Element.prototype, 'clientWidth').get;
@@ -731,6 +776,9 @@ export function instrument_width(element) {
 }
 "#)]
     extern "C" {
+        fn viewport_preferences_fixture() -> JsValue;
+        fn viewport_preferences_change(state: &JsValue, kind: &str);
+        fn viewport_preferences_dispose(state: &JsValue);
         fn instrument_width(element: &web_sys::Element) -> JsValue;
     }
 
@@ -746,6 +794,59 @@ export function instrument_width(element) {
             assert!(js_sys::Date::now() < deadline, "width observer timed out");
             crate::util::sleep_ms(10).await;
         }
+    }
+
+    #[wasm_bindgen_test]
+    #[allow(
+        clippy::float_cmp,
+        reason = "Integral fixture read counts prove no computed-style calls occurred"
+    )]
+    async fn viewport_geometry_style_changes_skip_font_reads_and_preserve_preferences_cleanup() {
+        let state = viewport_preferences_fixture();
+        let input = js_sys::Reflect::get(&state, &"input".into())
+            .unwrap()
+            .unchecked_into::<web_sys::HtmlTextAreaElement>();
+        let overlay = js_sys::Reflect::get(&state, &"overlay".into())
+            .unwrap()
+            .unchecked_into::<web_sys::HtmlElement>();
+        let calls = Rc::new(Cell::new(0));
+        let fonts = Rc::new(Cell::new(0));
+        let callback = Closure::<dyn Fn(bool, bool)>::new({
+            let calls = calls.clone();
+            let fonts = fonts.clone();
+            move |changed, _loaded| {
+                calls.set(calls.get() + 1);
+                if changed {
+                    fonts.set(fonts.get() + 1);
+                }
+            }
+        });
+        let stop = observe_editor_viewport(&input, &overlay, callback.as_ref().unchecked_ref());
+        crate::util::sleep_ms(100).await;
+        let reads = count(&state, "reads");
+        let layouts = calls.get();
+        viewport_preferences_change(&state, "geometry");
+        crate::util::sleep_ms(70).await;
+        assert_eq!(count(&state, "reads"), reads);
+        assert_eq!(calls.get(), layouts);
+        viewport_preferences_change(&state, "font");
+        wait(|| fonts.get() > 0).await;
+        for kind in ["class", "future"] {
+            let before = calls.get();
+            viewport_preferences_change(&state, kind);
+            wait(|| calls.get() > before).await;
+        }
+        stop.unchecked_ref::<js_sys::Function>()
+            .call0(&JsValue::NULL)
+            .unwrap();
+        let reads = count(&state, "reads");
+        let layouts = calls.get();
+        viewport_preferences_change(&state, "geometry");
+        viewport_preferences_change(&state, "font");
+        crate::util::sleep_ms(70).await;
+        assert_eq!(count(&state, "reads"), reads);
+        assert_eq!(calls.get(), layouts);
+        viewport_preferences_dispose(&state);
     }
 
     #[wasm_bindgen_test]

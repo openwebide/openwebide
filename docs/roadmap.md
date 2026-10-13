@@ -337,6 +337,18 @@ combined-source CI result.
   ([measurement](editor-performance/ascii-row-join-native-edits.json)). The
   comparison combines the proof latch and join work; it excludes browser input,
   geometry, paint and memory and does not close the broader performance gate.
+  Current traced/profiled production samples still preserve complete source but
+  take 116–123 ms to paint input in the viewport, about 1.9–2.2 seconds for cold
+  complete geometry, and roughly 689–725 MiB final Chrome PSS. Main-thread samples
+  include repeated DOM width/range/rectangle reads across startup, scroll and input
+  ([diagnostic](editor-performance/row-join-browser-layout-diagnostics.json)); these
+  single instrumented samples do not prove a matched improvement. The viewport
+  preference observer now ignores its own geometry-only style mutations, avoiding
+  computed font resolution and a redundant frame while preserving all other
+  preference invalidation. All 134 native frontend tests, 59 WASM library checks,
+  six local/remote geometry contracts and strict WASM lint pass
+  ([receipt](editor-performance/viewport-preference-observer-browser.json)). Fresh
+  production profiling and broader responsiveness/memory remain pending.
   Visual ASCII coordinates now update by word/space/punctuation groups and
   visual-only preparation avoids an unused character traversal. A complete-table
   regression compares every field with full Unicode grapheme traversal at

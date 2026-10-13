@@ -1,0 +1,304 @@
+{
+  "description": "Current production row-join build diagnostics: near-MiB styled Rust string, both modes and wrapping on/off, verified beginning input and complete source. Profiling/tracing overhead is included.",
+  "cases": [
+    {
+      "mode": "local",
+      "wrap": false,
+      "sourceBytes": 1048567,
+      "completeSourceAfterInputVerified": true,
+      "styledString": true,
+      "inputViewportPaintMs": 120.2000000178814,
+      "inputCompleteGeometryMs": 186.10000002384186,
+      "coldViewportPaintMs": 2199.399999976158,
+      "coldCompleteGeometryMs": 2199.399999976158,
+      "peakChromePssKiB": 705838,
+      "longTasks": 2,
+      "maxLongTaskMs": 129,
+      "topSampledFrames": [
+        {
+          "function": "(idle)",
+          "samples": 993
+        },
+        {
+          "function": "(program)",
+          "samples": 151
+        },
+        {
+          "function": "Range.getClientRects",
+          "samples": 74
+        },
+        {
+          "function": "__wbg_clientWidth_669677d957e958c7",
+          "samples": 29
+        },
+        {
+          "function": "__wbg_clientWidth_669677d957e958c7",
+          "samples": 25
+        },
+        {
+          "function": "publish",
+          "samples": 18
+        },
+        {
+          "function": "",
+          "samples": 14
+        },
+        {
+          "function": "(garbage collector)",
+          "samples": 11
+        },
+        {
+          "function": "wasm-function[26702]",
+          "samples": 9
+        },
+        {
+          "function": "__wbg_clientWidth_669677d957e958c7",
+          "samples": 9
+        },
+        {
+          "function": "wasm-function[14436]",
+          "samples": 8
+        },
+        {
+          "function": "",
+          "samples": 8
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "wrap": false,
+      "sourceBytes": 1048567,
+      "completeSourceAfterInputVerified": true,
+      "styledString": true,
+      "inputViewportPaintMs": 115.5,
+      "inputCompleteGeometryMs": 174.7000000178814,
+      "coldViewportPaintMs": 1887.7000000178814,
+      "coldCompleteGeometryMs": 1887.7000000178814,
+      "peakChromePssKiB": 712414,
+      "longTasks": 2,
+      "maxLongTaskMs": 85,
+      "topSampledFrames": [
+        {
+          "function": "(idle)",
+          "samples": 753
+        },
+        {
+          "function": "(program)",
+          "samples": 153
+        },
+        {
+          "function": "Range.getClientRects",
+          "samples": 64
+        },
+        {
+          "function": "",
+          "samples": 53
+        },
+        {
+          "function": "__wbg_clientWidth_669677d957e958c7",
+          "samples": 27
+        },
+        {
+          "function": "__wbg_clientWidth_669677d957e958c7",
+          "samples": 26
+        },
+        {
+          "function": "(garbage collector)",
+          "samples": 15
+        },
+        {
+          "function": "publish",
+          "samples": 12
+        },
+        {
+          "function": "passStringToWasm0",
+          "samples": 8
+        },
+        {
+          "function": "",
+          "samples": 8
+        },
+        {
+          "function": "",
+          "samples": 8
+        },
+        {
+          "function": "wasm-function[14436]",
+          "samples": 7
+        }
+      ]
+    },
+    {
+      "mode": "local",
+      "wrap": true,
+      "sourceBytes": 1048567,
+      "completeSourceAfterInputVerified": true,
+      "styledString": true,
+      "inputViewportPaintMs": 120.2000000178814,
+      "inputCompleteGeometryMs": 477.80000001192093,
+      "coldViewportPaintMs": 1848.4000000059605,
+      "coldCompleteGeometryMs": 2155.5,
+      "peakChromePssKiB": 713589,
+      "longTasks": 4,
+      "maxLongTaskMs": 82,
+      "topSampledFrames": [
+        {
+          "function": "(idle)",
+          "samples": 1010
+        },
+        {
+          "function": "Element.getBoundingClientRect",
+          "samples": 157
+        },
+        {
+          "function": "(program)",
+          "samples": 127
+        },
+        {
+          "function": "Range.getClientRects",
+          "samples": 47
+        },
+        {
+          "function": "get",
+          "samples": 16
+        },
+        {
+          "function": "refresh_editor_scroll",
+          "samples": 15
+        },
+        {
+          "function": "",
+          "samples": 15
+        },
+        {
+          "function": "Range.getClientRects",
+          "samples": 12
+        },
+        {
+          "function": "Element.getBoundingClientRect",
+          "samples": 11
+        },
+        {
+          "function": "publish",
+          "samples": 10
+        },
+        {
+          "function": "",
+          "samples": 10
+        },
+        {
+          "function": "wasm-function[1267]",
+          "samples": 9
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "wrap": true,
+      "sourceBytes": 1048567,
+      "completeSourceAfterInputVerified": true,
+      "styledString": true,
+      "inputViewportPaintMs": 123.19999998807907,
+      "inputCompleteGeometryMs": 482.40000000596046,
+      "coldViewportPaintMs": 1700.699999988079,
+      "coldCompleteGeometryMs": 2012.4000000059605,
+      "peakChromePssKiB": 723363,
+      "longTasks": 4,
+      "maxLongTaskMs": 98,
+      "topSampledFrames": [
+        {
+          "function": "(idle)",
+          "samples": 938
+        },
+        {
+          "function": "Element.getBoundingClientRect",
+          "samples": 163
+        },
+        {
+          "function": "(program)",
+          "samples": 117
+        },
+        {
+          "function": "Range.getClientRects",
+          "samples": 42
+        },
+        {
+          "function": "",
+          "samples": 21
+        },
+        {
+          "function": "refresh_editor_scroll",
+          "samples": 17
+        },
+        {
+          "function": "publish",
+          "samples": 15
+        },
+        {
+          "function": "get",
+          "samples": 14
+        },
+        {
+          "function": "Element.getBoundingClientRect",
+          "samples": 13
+        },
+        {
+          "function": "Range.getClientRects",
+          "samples": 13
+        },
+        {
+          "function": "Range.getClientRects",
+          "samples": 10
+        },
+        {
+          "function": "paragraphRangeRectangles",
+          "samples": 9
+        }
+      ]
+    }
+  ],
+  "limits": "Single observations, not a matched before/after improvement. CPU samples span startup, scrolling and input; DOM read counts do not alone attribute input latency. Native edit gains do not close browser responsiveness or memory gates.",
+  "unwrappedMetadata": {
+    "host": "Linux-7.0.14-linuxkit-aarch64-with-glibc2.36",
+    "measurement": "production editor; process-tree memory",
+    "cpuCount": 14,
+    "cgroupMemoryMax": "10737418240",
+    "cgroupCpuMax": "400000 100000",
+    "repetitions": 1,
+    "fileName": "measure.rs",
+    "measurementImage": "sha256:e1a372cac8e6c496251a7ea371631a8beb560d1c5c6cddd1b70a270da19bda8c",
+    "inputTimingStart": "beforeinput",
+    "inputPosition": "beginning",
+    "cpuProfiling": true,
+    "workerStartup": "default",
+    "frontendWasmSha256": {
+      "openwebide-frontend-645b83e9acfeac51_bg.wasm": "ddf2acd9fa3193c8c7cbd94b8698617657610e1e612637477e94012d066e157c"
+    },
+    "backendWasmSha256": "cdbff4060e84f58f6e274e5a11c8aebfaf4cf1d509f828a314be0af08ac68e39",
+    "measurementScriptSha256": "c13223cc2030db735a6a97e3fb192123289dfcf542b24cc93a4efdc8cee55f83",
+    "checkoutHead": "27efb9d1216b4853d382d89dcb624366dd3f7731",
+    "browser": "Chromium 154.0.8037.92 built on Debian GNU/Linux 12 (bookworm)"
+  },
+  "wrappedMetadata": {
+    "host": "Linux-7.0.14-linuxkit-aarch64-with-glibc2.36",
+    "measurement": "production editor; process-tree memory",
+    "cpuCount": 14,
+    "cgroupMemoryMax": "10737418240",
+    "cgroupCpuMax": "400000 100000",
+    "repetitions": 1,
+    "fileName": "measure.rs",
+    "measurementImage": "sha256:e1a372cac8e6c496251a7ea371631a8beb560d1c5c6cddd1b70a270da19bda8c",
+    "inputTimingStart": "beforeinput",
+    "inputPosition": "beginning",
+    "cpuProfiling": true,
+    "workerStartup": "default",
+    "frontendWasmSha256": {
+      "openwebide-frontend-645b83e9acfeac51_bg.wasm": "ddf2acd9fa3193c8c7cbd94b8698617657610e1e612637477e94012d066e157c"
+    },
+    "backendWasmSha256": "cdbff4060e84f58f6e274e5a11c8aebfaf4cf1d509f828a314be0af08ac68e39",
+    "measurementScriptSha256": "c13223cc2030db735a6a97e3fb192123289dfcf542b24cc93a4efdc8cee55f83",
+    "checkoutHead": "27efb9d1216b4853d382d89dcb624366dd3f7731",
+    "browser": "Chromium 154.0.8037.92 built on Debian GNU/Linux 12 (bookworm)"
+  }
+}

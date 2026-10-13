@@ -1,0 +1,104 @@
+{
+  "implementation": "The shared browser viewport primitive distinguishes its four owned geometry CSS variables from preferences. Geometry-only pane style mutations skip computed font-style resolution and an additional layout frame; class, font, theme, unknown style properties and priority changes keep existing invalidation. Resize, extent, scroll and font-loading observers remain active. No workspace-mode branches or adapters changed.",
+  "sourceSha256": {
+    "frontend/src/viewport.rs": "cac9560bc0dd13632736ca1b5d7c901542e32a424b331ea9751d7d414f70a075"
+  },
+  "artifactsSha256": {
+    "library": "9aa321f42d7bee8721a3aba1872bcd4ce54425fc6abbcfe47fd2ae137db15120",
+    "components": "d339cc23483a9959e8f3c1abeeb5c143b953d5fbe0ee77c34e9666870457d8da"
+  },
+  "checks": {
+    "nativeFrontend": "134 passed",
+    "strictWasmFrontendLint": "passed"
+  },
+  "regressions": [
+    "Geometry-only inline style mutation produces no computed font-style reads or extra layout callbacks",
+    "Font and class changes still update; unknown future style properties remain conservative",
+    "Observer disposal stops subsequent reads/callbacks",
+    "Existing width tracking, font/whitespace, wrapped geometry, source reuse, failed-proof fallback and stale-owner contracts pass"
+  ],
+  "limits": "Production build/profile is running. The read/callback regression proves skipped work, not a matched whole-editor latency/memory gain. Broader layout/range measurements, Unicode reuse, final CI and physical gates remain open.",
+  "library": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "passed": true,
+    "tests": [
+      "__wbgt__openwebide_frontend::state::workspace::tests::cooperative_recovery_capture_yields_matches_sync_and_rejects_changed_owners_in_both_modes",
+      "__wbgt__openwebide_frontend::state::workspace::tests::cooperative_recovery_guards_match_sync_and_reject_new_documents_in_both_modes",
+      "__wbgt__openwebide_frontend::state_actions::editor::rows::tests::bounded_styled_runs_preserve_complete_grapheme_and_crlf_boundaries",
+      "__wbgt__openwebide_frontend::state_actions::editor::rows::tests::paint_run_ownership_survives_reconciliation_but_rejects_stale_inputs",
+      "__wbgt__openwebide_frontend::state_actions::editor::rows::tests::paragraph_anchor_setup_yields_without_rescanning_and_rejects_stale_owners",
+      "__wbgt__openwebide_frontend::state_actions::editor::rows::tests::paragraph_prefix_rejects_changed_guides_and_line_ending_paint",
+      "__wbgt__openwebide_frontend::state_actions::editor::rows::tests::paragraph_prefix_stops_before_a_changed_token_style_or_span_topology",
+      "__wbgt__openwebide_frontend::state_actions::editor::rows::tests::paragraph_style_comparison_yields_and_rejects_cancelled_or_stale_owners",
+      "__wbgt__openwebide_frontend::state_actions::editor::rows::tests::paragraph_suffix_requires_unchanged_style_and_paint_topology",
+      "__wbgt__openwebide_frontend::state_actions::editor::rows::tests::pending_row_matches_require_exact_owners_and_keep_a_bounded_cache",
+      "__wbgt__openwebide_frontend::state_actions::editor::rows::tests::styled_run_budget_stops_before_segmenting_unused_token_suffix",
+      "__wbgt__openwebide_frontend::state_actions::editor::rows::tests::styled_run_preparation_yields_preserves_boundaries_and_rejects_stale_owners",
+      "__wbgt__openwebide_frontend::state_actions::editor::rows::tests::unavailable_styled_run_tables_are_scoped_bounded_and_not_rescanned",
+      "__wbgt__openwebide_frontend::state_actions::editor::rows::tests::uncapped_paragraph_runs_yield_without_expanding_the_retained_cache",
+      "__wbgt__openwebide_frontend::state_actions::editor::source_tests::publication_shares_document_buffer_and_project_source_and_preserves_retained_views",
+      "__wbgt__openwebide_frontend::state_actions::editor::source_tests::released_workspace_cannot_run_queued_native_cache_effects",
+      "__wbgt__openwebide_frontend::state_actions::editor::source_tests::rule_queries_share_detection_and_refresh_source_defaults_overrides_and_file_ownership",
+      "__wbgt__openwebide_frontend::api::recovery_transport_tests::login_bypasses_cached_auth_and_clears_expiration",
+      "__wbgt__openwebide_frontend::api::recovery_transport_tests::recovery_body_preparation_yields_preserves_utf8_and_rejects_changed_scope",
+      "__wbgt__openwebide_frontend::api::recovery_transport_tests::recovery_encoding_yields_preserves_wire_format_and_rejects_changed_scope",
+      "__wbgt__openwebide_frontend::api::recovery_transport_tests::recovery_source_decoding_yields_and_rejects_account_changes_in_both_modes",
+      "__wbgt__openwebide_frontend::api::recovery_transport_tests::recovery_upload_blob_keeps_json_body_headers_and_acknowledgement",
+      "__wbgt__openwebide_frontend::api::recovery_transport_tests::recovery_uses_http_status_authentication_and_shared_request_policy",
+      "__wbgt__openwebide_frontend::api::recovery_transport_tests::stale_file_unauthorized_response_cannot_expire_new_login",
+      "__wbgt__openwebide_frontend::api::recovery_transport_tests::startup_account_check_cannot_replace_later_login",
+      "__wbgt__openwebide_frontend::api::streaming_tests::fallback_reader_matches_websocket_events",
+      "__wbgt__openwebide_frontend::browser_preferences::tests::snapshot_has_browser_formatting_defaults_and_current_offset",
+      "__wbgt__openwebide_frontend::editor_worker::tests::bounded_worker_routing_preserves_complete_reply_validation",
+      "__wbgt__openwebide_frontend::editor_worker::tests::dedicated_framed_worker_and_cooperative_adapter_preserve_language_contracts",
+      "__wbgt__openwebide_frontend::editor_worker::tests::dropped_framed_requests_release_partial_transactions",
+      "__wbgt__openwebide_frontend::editor_worker::tests::module_clone_failures_and_bundle_mismatches_use_url_initialization",
+      "__wbgt__openwebide_frontend::viewport::width_tests::viewport_geometry_style_changes_skip_font_reads_and_preserve_preferences_cleanup",
+      "__wbgt__openwebide_frontend::viewport::width_tests::width_tracking_skips_height_only_layout_reads_and_preserves_resize_cleanup",
+      "__wbgt__openwebide_frontend::state_actions::editor::loading::tests::incoming_documents_yield_and_preserve_drafts_and_ownership",
+      "__wbgt__openwebide_frontend::state_actions::editor::loading::tests::oversized_reads_keep_the_read_only_source_without_document_indexes",
+      "__wbgt__openwebide_frontend::state_actions::editor::loading::tests::recovery_fold_installation_yields_and_cancels_in_both_modes",
+      "__wbgt__openwebide_frontend::state_actions::editor::loading::tests::recovery_hydration_yields_and_publishes_complete_documents_only",
+      "__wbgt__openwebide_frontend::state_actions::editor::loading::tests::recovery_validation_yields_and_cancels_before_publishing_a_snapshot_proof",
+      "__wbgt__openwebide_frontend::state_actions::editor::loading::tests::unchanged_reads_retain_selection_and_undo_history",
+      "__wbgt__openwebide_frontend::state_actions::editor::preparation::tests::request_publication_yields_and_rejects_replaced_owners_in_both_modes",
+      "__wbgt__openwebide_frontend::state_actions::editor::preparation::tests::structure_reception_yields_and_rejects_replaced_owners_in_both_modes",
+      "__wbgt__openwebide_frontend::state_actions::editor::preparation::tests::syntax_requests_share_source_across_pending_queries_and_tab_settings",
+      "__wbgt__openwebide_frontend::state_actions::editor::preparation::tests::syntax_source_cache_rejects_content_and_ownership_changes_and_reset",
+      "__wbgt__openwebide_frontend::state_actions::editor::preparation::tests::token_reception_yields_and_rejects_replaced_owners_in_both_modes",
+      "__wbgt__openwebide_frontend::state_actions::editor_recovery::disk_tests::disk_reconciliation_yields_retries_current_sources_and_discards_lost_owners",
+      "__wbgt__openwebide_frontend::state_actions::editor_recovery::disk_tests::overwrite_comparison_yields_retries_committed_sources_and_rejects_lost_owners",
+      "__wbgt__openwebide_frontend::state_actions::editor_recovery::disk_tests::review_disk_comparison_yields_without_partial_equality_or_stale_results",
+      "__wbgt__openwebide_frontend::state_actions::editor_recovery::disk_tests::snapshot_comparison_yields_and_discards_superseded_results_in_both_modes",
+      "__wbgt__openwebide_frontend::state_actions::editor_recovery::disk_tests::strict_disk_decoding_yields_and_rejects_lost_scope_before_publication",
+      "__wbgt__openwebide_frontend::components::editor::tests::cooperative_syntax_transport_stops_in_flight_and_rejects_new_requests",
+      "__wbgt__openwebide_frontend::components::editor::tests::cropped_text_keeps_the_complete_paints_shaping_boundaries",
+      "__wbgt__openwebide_frontend::components::editor::tests::deferred_caret_reveal_retries_once_and_rejects_new_intent",
+      "__wbgt__openwebide_frontend::components::editor::tests::find_uses_utf16_offsets_and_logical_lines",
+      "__wbgt__openwebide_frontend::components::editor::tests::in_process_syntax_keeps_shared_source_and_yield_cancellation",
+      "__wbgt__openwebide_frontend::components::editor::tests::main_thread_embedded_parsing_completes_across_input_budget_yields",
+      "__wbgt__openwebide_frontend::components::editor::tests::main_thread_embedded_parsing_yields_at_input_budget_before_cancellation",
+      "__wbgt__openwebide_frontend::api::cancellation_tests::dropping_web_tool_requests_aborts_fetch",
+      "__wbgt__openwebide_frontend::components::editor_paint::tests::complete_legacy_rows_keep_token_boundaries_and_eof",
+      "__wbgt__openwebide_frontend::components::editor_paint::tests::painted_fragments_preserve_utf16_coordinates_and_selection_gaps"
+    ],
+    "result": [
+      "test result: ok. 59 passed; 0 failed; 0 ignored; 0 filtered out; finished in 2.85s"
+    ]
+  },
+  "geometry": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "passed": true,
+    "tests": [
+      "__wbgt__components::editor::bounded_paragraph_geometry_preserves_fonts_features_and_whitespace_in_both_modes",
+      "__wbgt__components::editor::paragraph_batches_match_individual_native_ranges_and_failures_in_both_modes",
+      "__wbgt__components::editor::paragraph_changed_prefix_reuse_matches_complete_geometry_and_rejects_stale_scopes",
+      "__wbgt__components::editor::paragraph_overlap_failure_uses_complete_measurement_in_both_modes",
+      "__wbgt__components::editor::paragraph_unchanged_suffix_reuses_exact_browser_geometry_in_both_modes",
+      "__wbgt__components::editor::wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes"
+    ],
+    "result": [
+      "test result: ok. 6 passed; 0 failed; 0 ignored; 0 filtered out; finished in 135.39s"
+    ]
+  }
+}
