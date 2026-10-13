@@ -58,15 +58,29 @@ impl Document {
 
     /// IME previews are transient; persistence captures the last committed state.
     pub fn recovery(&self) -> DocumentRecovery {
+        let mut capture = self.prepare_recovery();
+        capture.advance(self, usize::MAX).unwrap();
+        capture.finish().unwrap()
+    }
+
+    /// Retain source/scalar metadata; collapsed ranges assemble in bounded steps.
+    pub fn prepare_recovery(&self) -> DocumentRecoveryCapture {
         let document = self
             .composition
             .as_ref()
             .map_or(self, |composition| composition.committed_document());
-        DocumentRecovery {
-            text: document.shared_text(),
-            saved: document.saved.clone(),
-            selections: document.selections.clone(),
-            collapsed: document.folds.collapsed_ranges().collect(),
+        DocumentRecoveryCapture {
+            identity: document.identity.clone(),
+            folds: document.folds.recovery_identity(),
+            recovery: DocumentRecovery {
+                text: document.shared_text(),
+                saved: document.saved.clone(),
+                selections: document.selections.clone(),
+                collapsed: Vec::with_capacity(document.folds.recovery_capacity()),
+            },
+            after: None,
+            done: false,
+            rejected: false,
         }
     }
 
@@ -83,6 +97,60 @@ impl Document {
                 .folds
                 .collapsed_ranges()
                 .eq(recovery.collapsed.iter().copied())
+    }
+}
+
+/// Complete-only capture. Hosts reborrow the current document for each batch;
+/// no mutable document or fold-table clone is retained across suspension.
+pub struct DocumentRecoveryCapture {
+    identity: std::sync::Arc<()>,
+    folds: std::sync::Arc<()>,
+    recovery: DocumentRecovery,
+    after: Option<usize>,
+    done: bool,
+    rejected: bool,
+}
+impl DocumentRecoveryCapture {
+    pub fn matches_document(&self, document: &Document) -> bool {
+        let document = document
+            .composition
+            .as_ref()
+            .map_or(document, |composition| composition.committed_document());
+        !self.rejected
+            && std::sync::Arc::ptr_eq(&self.identity, &document.identity)
+            && std::sync::Arc::ptr_eq(&self.recovery.text, &document.text)
+            && std::sync::Arc::ptr_eq(&self.recovery.saved, &document.saved)
+            && self.recovery.selections == document.selections
+            && document.folds.matches_recovery_identity(&self.folds)
+    }
+    /// One unit visits at most 64 collapsed headers, including invalid candidates.
+    pub fn advance(
+        &mut self,
+        document: &Document,
+        budget: usize,
+    ) -> Result<bool, super::EditError> {
+        if self.rejected || !self.matches_document(document) {
+            self.rejected = true;
+            self.done = false;
+            return Err(super::EditError::StaleContext);
+        }
+        let document = document
+            .composition
+            .as_ref()
+            .map_or(document, |composition| composition.committed_document());
+        for _ in 0..budget {
+            if self.done {
+                break;
+            }
+            self.done =
+                document
+                    .folds
+                    .capture_collapsed(&mut self.after, &mut self.recovery.collapsed, 64);
+        }
+        Ok(self.done)
+    }
+    pub fn finish(self) -> Option<DocumentRecovery> {
+        (self.done && !self.rejected).then_some(self.recovery)
     }
 }
 
@@ -1819,6 +1887,111 @@ mod tests {
         assert!(clean.matches_clean_source(&std::sync::Arc::new("text".into())));
         assert!(!clean.matches_clean_source(&std::sync::Arc::new("other".into())));
         assert!(!recovery.matches_clean_source(&recovery.text));
+    }
+
+    #[test]
+    fn recovery_capture_batches_match_the_original_record_without_partial_publication() {
+        let mut document = Document::new("x\n".repeat(20_001));
+        document.set_fold_ranges(
+            (0..10_000)
+                .map(|index| FoldRange {
+                    start_line: index * 2,
+                    end_line: index * 2 + 1,
+                })
+                .collect(),
+        );
+        document.fold_state_mut().collapse_all();
+        let expected = DocumentRecovery {
+            text: document.shared_text(),
+            saved: document.saved.clone(),
+            selections: document.selections.clone(),
+            collapsed: document.folds.collapsed_ranges().collect(),
+        };
+        let mut incomplete = document.prepare_recovery();
+        assert_eq!(incomplete.advance(&document, 1), Ok(false));
+        assert_eq!(incomplete.recovery.collapsed.len(), 64);
+        assert!(incomplete.finish().is_none());
+        for budget in [1, 8, usize::MAX] {
+            let mut capture = document.prepare_recovery();
+            while !capture.advance(&document, budget).unwrap() {}
+            assert_eq!(capture.finish(), Some(expected.clone()));
+        }
+        assert_eq!(document.recovery(), expected);
+    }
+
+    #[test]
+    fn recovery_capture_rejects_changed_sources_metadata_and_fold_owners() {
+        for change in [
+            "text",
+            "saved",
+            "selection",
+            "toggle",
+            "refresh",
+            "collapse",
+            "expand",
+            "collapse-at",
+            "expand-at",
+            "reveal",
+            "reveal-lines",
+        ] {
+            let mut document = Document::new("x\n".repeat(401));
+            let ranges = (0..200)
+                .map(|index| FoldRange {
+                    start_line: index * 2,
+                    end_line: index * 2 + 1,
+                })
+                .collect::<Vec<_>>();
+            document.set_fold_ranges(ranges.clone());
+            document.fold_state_mut().collapse_all();
+            let original = document.clone();
+            let mut capture = document.prepare_recovery();
+            assert_eq!(capture.advance(&document, 1), Ok(false));
+            match change {
+                "text" => {
+                    document.replace_selections("z", None).unwrap();
+                }
+                "saved" => document.mark_saved_version("other"),
+                "selection" => document.set_selections(vec![Selection::caret(1)]).unwrap(),
+                "toggle" => {
+                    document.fold_state_mut().toggle(0);
+                }
+                "refresh" => {
+                    document.set_fold_ranges(ranges);
+                }
+                "collapse" => document.fold_state_mut().collapse_all(),
+                "expand" => document.fold_state_mut().expand_all(),
+                "collapse-at" => {
+                    document.fold_state_mut().collapse_at(0, true);
+                }
+                "expand-at" => {
+                    document.fold_state_mut().expand_at(0, true);
+                }
+                "reveal" => {
+                    document.fold_state_mut().reveal(1);
+                }
+                "reveal-lines" => {
+                    document.fold_state_mut().reveal_lines(1, 3);
+                }
+                _ => unreachable!(),
+            }
+            assert_eq!(
+                capture.advance(&document, 1),
+                Err(super::super::EditError::StaleContext),
+                "{change}"
+            );
+            assert_eq!(
+                capture.advance(&original, 1),
+                Err(super::super::EditError::StaleContext),
+                "{change}"
+            );
+            assert!(capture.finish().is_none());
+        }
+        let mut document = Document::new("base");
+        let mut capture = document.prepare_recovery();
+        assert_eq!(capture.advance(&document, 1), Ok(true));
+        document.set_selections(vec![Selection::caret(1)]).unwrap();
+        assert!(capture.advance(&document, 1).is_err());
+        assert!(capture.finish().is_none());
     }
 
     #[test]

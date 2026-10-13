@@ -113,6 +113,9 @@ pub enum FoldCommand {
 /// Collapse state is independent of presentation and retained per source document.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct FoldState {
+    // Copy-on-write ownership changes only when a retained capture/clone exists.
+    // Arc<()> equality keeps this bookkeeping outside logical fold equality.
+    recovery_identity: std::sync::Arc<()>,
     ranges: Vec<FoldRange>,
     collapsed: std::collections::BTreeSet<usize>,
     // Source anchors survive multiple edits while a provider refresh is pending.
@@ -130,8 +133,44 @@ pub(super) struct FoldRebase {
 impl FoldState {
     /// Only recovery's private builder calls this after normalized-range proof.
     pub(super) fn append_normalized_collapsed(&mut self, range: FoldRange) {
+        std::sync::Arc::make_mut(&mut self.recovery_identity);
         self.ranges.push(range);
         self.collapsed.insert(range.start_line);
+    }
+
+    pub(super) fn recovery_identity(&self) -> std::sync::Arc<()> {
+        self.recovery_identity.clone()
+    }
+    pub(super) fn matches_recovery_identity(&self, identity: &std::sync::Arc<()>) -> bool {
+        std::sync::Arc::ptr_eq(&self.recovery_identity, identity)
+    }
+    pub(super) fn recovery_capacity(&self) -> usize {
+        self.ranges.len().min(self.collapsed.len())
+    }
+    /// Every candidate header consumes a unit, including pending-only headers.
+    pub(super) fn capture_collapsed(
+        &self,
+        after: &mut Option<usize>,
+        output: &mut Vec<FoldRange>,
+        budget: usize,
+    ) -> bool {
+        use std::ops::Bound::{Excluded, Unbounded};
+        if self.ranges.is_empty() {
+            return true;
+        }
+        let mut headers = self
+            .collapsed
+            .range((after.map_or(Unbounded, Excluded), Unbounded));
+        for _ in 0..budget {
+            let Some(header) = headers.next().copied() else {
+                return true;
+            };
+            *after = Some(header);
+            if let Some(range) = self.collapsed_at(header) {
+                output.push(range);
+            }
+        }
+        false
     }
 
     pub fn ranges(&self) -> &[FoldRange] {
@@ -147,6 +186,7 @@ impl FoldState {
         self.collapsed.contains(&header)
     }
     pub fn set_ranges(&mut self, ranges: Vec<FoldRange>, line_count: usize) {
+        std::sync::Arc::make_mut(&mut self.recovery_identity);
         self.ranges = normalize_folds(ranges, line_count);
         self.collapsed.retain(|line| {
             let Ok(index) = self
@@ -187,6 +227,7 @@ impl FoldState {
         })
     }
     pub fn toggle(&mut self, header: usize) -> bool {
+        std::sync::Arc::make_mut(&mut self.recovery_identity);
         if self
             .ranges
             .binary_search_by_key(&header, |range| range.start_line)
@@ -200,14 +241,17 @@ impl FoldState {
         true
     }
     pub fn collapse_all(&mut self) {
+        std::sync::Arc::make_mut(&mut self.recovery_identity);
         self.collapsed
             .extend(self.ranges.iter().map(|range| range.start_line));
     }
     pub fn expand_all(&mut self) {
+        std::sync::Arc::make_mut(&mut self.recovery_identity);
         self.collapsed.clear();
         self.pending.clear();
     }
     pub fn collapse_at(&mut self, line: usize, recursive: bool) -> bool {
+        std::sync::Arc::make_mut(&mut self.recovery_identity);
         let Some(range) = self
             .ranges
             .iter()
@@ -231,6 +275,7 @@ impl FoldState {
         true
     }
     pub fn expand_at(&mut self, line: usize, recursive: bool) -> bool {
+        std::sync::Arc::make_mut(&mut self.recovery_identity);
         let candidates = if self.ranges.is_empty() {
             &self.pending
         } else {
@@ -262,6 +307,7 @@ impl FoldState {
     }
     /// Search and navigation reveal every ancestor hiding the requested line.
     pub fn reveal(&mut self, line: usize) -> bool {
+        std::sync::Arc::make_mut(&mut self.recovery_identity);
         let before = self.collapsed.len();
         let candidates = if self.ranges.is_empty() {
             &self.pending
@@ -278,6 +324,7 @@ impl FoldState {
     /// Native input reveals selected source lines before the browser edits them,
     /// including a collapsed header. Disjoint folds remain collapsed.
     pub fn reveal_lines(&mut self, first: usize, last: usize) -> bool {
+        std::sync::Arc::make_mut(&mut self.recovery_identity);
         let before = self.collapsed.len();
         let candidates = if self.ranges.is_empty() {
             &self.pending
@@ -360,6 +407,7 @@ impl FoldState {
     }
 
     pub(super) fn finish_rebase(&mut self, boundaries: FoldRebase, lines: &[super::lines::Line]) {
+        std::sync::Arc::make_mut(&mut self.recovery_identity);
         let row = |offset| {
             lines
                 .partition_point(|line| line.start <= offset)

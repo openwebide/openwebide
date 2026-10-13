@@ -141,5 +141,5 @@
     "libraryStartSuppressed": false,
     "testModuleRoute": "/tests.js"
   },
-  "limits": "Initial snapshot capture, path/record metadata copies, source/fold equality scans and serialization remain synchronous. Fresh production and final integrated CI still need verification; no overall memory or latency claim."
+  "limits": "Initial snapshot capture, path/record metadata copies, source/fold equality scans and serialization remain synchronous. Production recovery passes separately in borrowed-recovery-guard-production.json; final integrated CI still needs verification; no overall memory or latency claim."
 }

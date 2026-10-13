@@ -746,7 +746,20 @@ combined-source CI result.
   library checks and 45 recovery/fold browser contracts pass with strict
   core/WASM/WASI lint
   ([receipt](editor-performance/borrowed-recovery-guard-browser.json)).
-  Fresh production and final integrated release verification remain pending.
+  The full Spin build and five production recovery checks also pass for the
+  borrowed guard checkpoint
+  ([receipt](editor-performance/borrowed-recovery-guard-production.json)).
+  Final integrated release verification remains pending.
+  A shared core capture builder now retains source/scalar metadata and copies
+  at most 64 collapsed candidates per step. Copy-on-write fold ownership lets
+  it reject changed sources, baselines, selections and fold tables without
+  retaining a cloned fold tree. Synchronous capture drives the same builder.
+  All 777 core and 133 native frontend tests, 52 WASM library checks and
+  45 recovery/fold browser contracts pass with strict core/WASM/WASI lint
+  ([receipt](editor-performance/recovery-capture-core-browser.json)).
+  Frontend snapshot and guard callers
+  still need to yield between capture steps. Initial allocation, admission,
+  final comparisons and serialization also remain open.
 
 **Remaining completion gates**:
 

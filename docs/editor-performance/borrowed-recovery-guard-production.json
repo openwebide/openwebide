@@ -1,0 +1,19 @@
+{
+  "implementationCommit": "e70d115f",
+  "build": "NO_COLOR=true spin build passed before core capture-builder work began.",
+  "artifactsSha256": {
+    "backend": "5711cbd6670d2bd1d2592c6e831f0993e400c3dcb68010defb7dd629162d00c3",
+    "frontend": "a6565562f11f1deca371738c891b5f6aea8fe779f91723cbc23332cb8ac400f0"
+  },
+  "distWasmSha256": {
+    "openwebide-frontend-f2a0a9060d844676_bg.wasm": "c0c3d6f0c16631977f3740587488a8993b6c3c11d99867b3728d4f217bd3fcd0"
+  },
+  "productionChecks": [
+    "PASS: both modes, UTF-8/CRLF, selected/hidden tabs, validation and stale saves",
+    "PASS: authenticated recovery after actual Spin restart with the same SQLite state",
+    "PASS: close-all tombstones survive restart and reject stale-window resurrection",
+    "PASS: local actual edits, WASM worker preparation, autosave, server restart, reload/new-window tabs and draft",
+    "PASS: remote actual edits, WASM worker preparation, autosave, server restart, reload/new-window tabs and draft"
+  ],
+  "limits": "This fixture verifies e70d115f, not the subsequent core capture builder. Local browser recovery has no granted native directory handle. Physical FSA/PWA/IME and final integrated CI remain open."
+}
