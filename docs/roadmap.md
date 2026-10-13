@@ -6,7 +6,7 @@ phases 1 through 14, telemetry, hardening, streaming, `/test`, database-backed
 theme and prompt history, frontend performance & polish, app branding and the chat
 welcome, database-backed agent skills and skill import/export — moved to [CHANGELOG.md](../CHANGELOG.md).
 [Host administration](host-administration.md), with automatic deployment-host SSH
-addresses/OS discovery and optional advanced connection overrides, structured agent questions and
+addresses and optional advanced connection overrides, structured agent questions and
 [Monitors](monitors.md) are implemented, with an active-only status-line flyout;
 their shipped behavior is in the changelog. Private host terminal replies use
 browser-to-bridge encryption; the Host flyout offers setup navigation and retains
@@ -1414,7 +1414,7 @@ walkthroughs against the final app before public launch.
   workspace modes on release hosts. CI verifies both native image architectures,
   bridge archives, HTTPS transport and generated Quadlet services; actual systemd
   service and update-timer checks remain hands-on.
-  Rehearse Settings → Updates on real Compose and user Quadlet installs,
+  Rehearse Settings → Host → Updates on real Compose and user Quadlet installs,
   including host prerequisites, digest pins, failed deployments and reconnects.
   The settings/actions, durable claims and detached SSH worker have shared local/
   remote browser contracts and controlled deployment-fixture coverage.
