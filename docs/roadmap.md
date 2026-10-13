@@ -348,7 +348,14 @@ combined-source CI result.
   preference invalidation. All 134 native frontend tests, 59 WASM library checks,
   six local/remote geometry contracts and strict WASM lint pass
   ([receipt](editor-performance/viewport-preference-observer-browser.json)). Fresh
-  production profiling and broader responsiveness/memory remain pending.
+  production profiling preserves source in all four styled-line cases, with input
+  viewport paint about 118–186 ms and no established overall improvement
+  ([diagnostic](editor-performance/viewport-preference-production-diagnostics.json)).
+  Bounded phase/element getter tracing identifies four paint-probe width reads
+  taking about 31–33 ms during unwrapped input. Similar paragraph probes repeat
+  before/after prepared-layout transitions. Investigate retained source/style
+  ownership and reconnection before reusing those measurements; broader
+  responsiveness/memory, final CI and physical gates remain open.
   Visual ASCII coordinates now update by word/space/punctuation groups and
   visual-only preparation avoids an unused character traversal. A complete-table
   regression compares every field with full Unicode grapheme traversal at

@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Add bounded phase/element timing for viewport width/height reads. Production diagnostics preserve source in both modes and identify repeated offscreen paragraph-probe layout costs; overall editor latency/memory improvements remain unproven.
+
 - Skip computed font-style reads and redundant layout scheduling for the editor viewport’s own geometry-only CSS writes. Preserve font/theme/class/future style updates and observer cleanup.
 
 - Verify lower native ASCII split/undo cost after retained row joins: guarded paired measurements fall from about 70 ms to 12 ms per twenty pairs. Unicode remains unchanged; browser latency/memory are still unproven.

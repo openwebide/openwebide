@@ -275,6 +275,41 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
                         window.addEventListener('error', event => recordError(event.message));
                         const originalError = console.error.bind(console);
                         console.error = (...args) => { recordError(args.map(String).join(' ')); originalError(...args); };
+                        // Aggregate forced viewport reads without retaining source,
+                        // URLs or unbounded stacks. Timings include tracing overhead.
+                        editorViewMeasurement.viewportReads = [];
+                        const viewportReads = new Map();
+                        for (const property of ['clientWidth', 'clientHeight']) {
+                            const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, property);
+                            if (!descriptor?.get) continue;
+                            Object.defineProperty(Element.prototype, property, {
+                                ...descriptor,
+                                get() {
+                                    if (!this.closest('.editor, .editor-row-measure')) return descriptor.get.call(this);
+                                    const element = this.classList.contains('editor-scroll-surface') ? 'scroll'
+                                        : this.classList.contains('editor-row-measure') ? 'probe'
+                                        : this.matches('textarea') ? 'input'
+                                        : this.classList.contains('editor-highlight') ? 'paint'
+                                        : this.classList.contains('editor-highlight-content') ? 'paint-content'
+                                        : this.classList.contains('editor-source-line') ? 'row'
+                                        : `other:${String(this.className).slice(0, 80)}`;
+                                    const key = `${editorViewMeasurement.phase}:${element}:${property}`;
+                                    let record = viewportReads.get(key);
+                                    if (!record && viewportReads.size < 128) {
+                                        record = {phase:editorViewMeasurement.phase, element, property, calls:0, elapsedMs:0, maxMs:0};
+                                        viewportReads.set(key, record); editorViewMeasurement.viewportReads.push(record);
+                                    }
+                                    const started = performance.now();
+                                    try { return descriptor.get.call(this); }
+                                    finally {
+                                        if (record) {
+                                            const elapsed = performance.now() - started;
+                                            record.calls++; record.elapsedMs += elapsed; record.maxMs = Math.max(record.maxMs, elapsed);
+                                        } else editorViewMeasurement.traceTruncated = true;
+                                    }
+                                }
+                            });
+                        }
                         const batches = new WeakMap();
                         window.__openwebideEditorProbeTiming = (paint, phase, elapsedMs, units) => {
                             let record = batches.get(paint);
@@ -629,7 +664,7 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
                     "afterInputWasmCommittedBytes": tasks["wasmBytes"],
                     "longTasks": tasks["longTasks"], "longTaskMs": tasks["longTaskMs"],
                     "maxLongTaskMs": tasks["maxLongTaskMs"], "maxFrameIncludingInputMs": tasks["maxFrameMs"],
-                    **({"layoutProbes": tasks["probes"], "preparationBatches": tasks["batches"], "workerEvents": tasks["workers"], "fontEvents": tasks["fonts"], "nativeEvents": tasks["nativeEvents"], "longTaskEvents": tasks["longTaskEvents"], "traceTruncated": tasks["traceTruncated"]} if trace else {})}
+                    **({"layoutProbes": tasks["probes"], "viewportReads": tasks.get("viewportReads", []), "preparationBatches": tasks["batches"], "workerEvents": tasks["workers"], "fontEvents": tasks["fonts"], "nativeEvents": tasks["nativeEvents"], "longTaskEvents": tasks["longTaskEvents"], "traceTruncated": tasks["traceTruncated"]} if trace else {})}
         except (AssertionError, TimeoutError, RuntimeError) as error:
             observed = samples.finish() if samples else {}
             samples = None

@@ -1,0 +1,475 @@
+{
+  "implementationCommit": "8e88d6d7",
+  "description": "Production diagnostic after viewport preference invalidation filtering; source-preserving near-MiB styled Rust string in both modes and wrapping configurations. CPU profiling and viewport getter tracing are instrumented.",
+  "cases": [
+    {
+      "mode": "local",
+      "wrap": false,
+      "sourceBytes": 1048567,
+      "completeSourceAfterInputVerified": true,
+      "styledString": true,
+      "inputViewportPaintMs": 130,
+      "inputCompleteGeometryMs": 200.30000001192093,
+      "coldViewportPaintMs": 1710.9000000059605,
+      "coldCompleteGeometryMs": 1710.9000000059605,
+      "peakChromePssKiB": 705855,
+      "viewportReads": [
+        {
+          "calls": 89,
+          "elapsedMs": 8.09999993443489,
+          "element": "scroll",
+          "maxMs": 6.5999999940395355,
+          "phase": "cold",
+          "property": "clientWidth"
+        },
+        {
+          "calls": 79,
+          "elapsedMs": 0.4000000059604645,
+          "element": "scroll",
+          "maxMs": 0.10000002384185791,
+          "phase": "cold",
+          "property": "clientHeight"
+        },
+        {
+          "calls": 10,
+          "elapsedMs": 104.89999997615814,
+          "element": "other",
+          "maxMs": 13.599999994039536,
+          "phase": "cold",
+          "property": "clientWidth"
+        },
+        {
+          "calls": 30,
+          "elapsedMs": 0.4000000059604645,
+          "element": "scroll",
+          "maxMs": 0.30000001192092896,
+          "phase": "scroll",
+          "property": "clientWidth"
+        },
+        {
+          "calls": 23,
+          "elapsedMs": 0,
+          "element": "scroll",
+          "maxMs": 0,
+          "phase": "scroll",
+          "property": "clientHeight"
+        },
+        {
+          "calls": 30,
+          "elapsedMs": 0.19999998807907104,
+          "element": "scroll",
+          "maxMs": 0.09999999403953552,
+          "phase": "navigate",
+          "property": "clientWidth"
+        },
+        {
+          "calls": 24,
+          "elapsedMs": 0,
+          "element": "scroll",
+          "maxMs": 0,
+          "phase": "navigate",
+          "property": "clientHeight"
+        },
+        {
+          "calls": 68,
+          "elapsedMs": 0.9999999701976776,
+          "element": "scroll",
+          "maxMs": 0.29999998211860657,
+          "phase": "input",
+          "property": "clientWidth"
+        },
+        {
+          "calls": 54,
+          "elapsedMs": 0.19999998807907104,
+          "element": "scroll",
+          "maxMs": 0.09999999403953552,
+          "phase": "input",
+          "property": "clientHeight"
+        },
+        {
+          "calls": 4,
+          "elapsedMs": 32.60000002384186,
+          "element": "other",
+          "maxMs": 11.800000011920929,
+          "phase": "input",
+          "property": "clientWidth"
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "wrap": false,
+      "sourceBytes": 1048567,
+      "completeSourceAfterInputVerified": true,
+      "styledString": true,
+      "inputViewportPaintMs": 119.30000001192093,
+      "inputCompleteGeometryMs": 174.5,
+      "coldViewportPaintMs": 1688.9000000059605,
+      "coldCompleteGeometryMs": 1688.9000000059605,
+      "peakChromePssKiB": 695445,
+      "viewportReads": [
+        {
+          "calls": 103,
+          "elapsedMs": 10.600000083446503,
+          "element": "scroll",
+          "maxMs": 8.400000005960464,
+          "phase": "cold",
+          "property": "clientWidth"
+        },
+        {
+          "calls": 91,
+          "elapsedMs": 0.5999999940395355,
+          "element": "scroll",
+          "maxMs": 0.5,
+          "phase": "cold",
+          "property": "clientHeight"
+        },
+        {
+          "calls": 10,
+          "elapsedMs": 102.59999996423721,
+          "element": "other",
+          "maxMs": 12.900000005960464,
+          "phase": "cold",
+          "property": "clientWidth"
+        },
+        {
+          "calls": 30,
+          "elapsedMs": 0.7000000178813934,
+          "element": "scroll",
+          "maxMs": 0.4000000059604645,
+          "phase": "scroll",
+          "property": "clientWidth"
+        },
+        {
+          "calls": 23,
+          "elapsedMs": 0,
+          "element": "scroll",
+          "maxMs": 0,
+          "phase": "scroll",
+          "property": "clientHeight"
+        },
+        {
+          "calls": 23,
+          "elapsedMs": 0.20000001788139343,
+          "element": "scroll",
+          "maxMs": 0.10000002384185791,
+          "phase": "navigate",
+          "property": "clientWidth"
+        },
+        {
+          "calls": 18,
+          "elapsedMs": 0,
+          "element": "scroll",
+          "maxMs": 0,
+          "phase": "navigate",
+          "property": "clientHeight"
+        },
+        {
+          "calls": 68,
+          "elapsedMs": 1.1999999582767487,
+          "element": "scroll",
+          "maxMs": 0.29999998211860657,
+          "phase": "input",
+          "property": "clientWidth"
+        },
+        {
+          "calls": 54,
+          "elapsedMs": 0.30000004172325134,
+          "element": "scroll",
+          "maxMs": 0.20000001788139343,
+          "phase": "input",
+          "property": "clientHeight"
+        },
+        {
+          "calls": 4,
+          "elapsedMs": 30.900000005960464,
+          "element": "other",
+          "maxMs": 11.200000017881393,
+          "phase": "input",
+          "property": "clientWidth"
+        }
+      ]
+    },
+    {
+      "mode": "local",
+      "wrap": true,
+      "sourceBytes": 1048567,
+      "completeSourceAfterInputVerified": true,
+      "styledString": true,
+      "inputViewportPaintMs": 185.60000002384186,
+      "inputCompleteGeometryMs": 554.8000000119209,
+      "coldViewportPaintMs": 1669.4000000059605,
+      "coldCompleteGeometryMs": 2069,
+      "peakChromePssKiB": 722302,
+      "viewportReads": [
+        {
+          "calls": 136,
+          "elapsedMs": 48.79999998211861,
+          "element": "scroll",
+          "maxMs": 38.60000002384186,
+          "phase": "cold",
+          "property": "clientWidth"
+        },
+        {
+          "calls": 95,
+          "elapsedMs": 0,
+          "element": "scroll",
+          "maxMs": 0,
+          "phase": "cold",
+          "property": "clientHeight"
+        },
+        {
+          "calls": 36,
+          "elapsedMs": 0.5999999940395355,
+          "element": "scroll",
+          "maxMs": 0.20000001788139343,
+          "phase": "scroll",
+          "property": "clientWidth"
+        },
+        {
+          "calls": 31,
+          "elapsedMs": 0.09999999403953552,
+          "element": "scroll",
+          "maxMs": 0.09999999403953552,
+          "phase": "scroll",
+          "property": "clientHeight"
+        },
+        {
+          "calls": 43,
+          "elapsedMs": 0.4000000059604645,
+          "element": "scroll",
+          "maxMs": 0.19999998807907104,
+          "phase": "navigate",
+          "property": "clientWidth"
+        },
+        {
+          "calls": 34,
+          "elapsedMs": 0.10000002384185791,
+          "element": "scroll",
+          "maxMs": 0.10000002384185791,
+          "phase": "navigate",
+          "property": "clientHeight"
+        },
+        {
+          "calls": 111,
+          "elapsedMs": 5.499999910593033,
+          "element": "scroll",
+          "maxMs": 1.5,
+          "phase": "input",
+          "property": "clientWidth"
+        },
+        {
+          "calls": 77,
+          "elapsedMs": 0,
+          "element": "scroll",
+          "maxMs": 0,
+          "phase": "input",
+          "property": "clientHeight"
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "wrap": true,
+      "sourceBytes": 1048567,
+      "completeSourceAfterInputVerified": true,
+      "styledString": true,
+      "inputViewportPaintMs": 117.59999999403954,
+      "inputCompleteGeometryMs": 473.40000000596046,
+      "coldViewportPaintMs": 1727.199999988079,
+      "coldCompleteGeometryMs": 2033.300000011921,
+      "peakChromePssKiB": 725460,
+      "viewportReads": [
+        {
+          "calls": 137,
+          "elapsedMs": 43.69999998807907,
+          "element": "scroll",
+          "maxMs": 35.80000001192093,
+          "phase": "cold",
+          "property": "clientWidth"
+        },
+        {
+          "calls": 96,
+          "elapsedMs": 0.30000001192092896,
+          "element": "scroll",
+          "maxMs": 0.20000001788139343,
+          "phase": "cold",
+          "property": "clientHeight"
+        },
+        {
+          "calls": 36,
+          "elapsedMs": 0.30000001192092896,
+          "element": "scroll",
+          "maxMs": 0.10000002384185791,
+          "phase": "scroll",
+          "property": "clientWidth"
+        },
+        {
+          "calls": 31,
+          "elapsedMs": 0,
+          "element": "scroll",
+          "maxMs": 0,
+          "phase": "scroll",
+          "property": "clientHeight"
+        },
+        {
+          "calls": 43,
+          "elapsedMs": 0.29999998211860657,
+          "element": "scroll",
+          "maxMs": 0.09999999403953552,
+          "phase": "navigate",
+          "property": "clientWidth"
+        },
+        {
+          "calls": 34,
+          "elapsedMs": 0,
+          "element": "scroll",
+          "maxMs": 0,
+          "phase": "navigate",
+          "property": "clientHeight"
+        },
+        {
+          "calls": 111,
+          "elapsedMs": 5.500000029802322,
+          "element": "scroll",
+          "maxMs": 1.699999988079071,
+          "phase": "input",
+          "property": "clientWidth"
+        },
+        {
+          "calls": 77,
+          "elapsedMs": 0.09999999403953552,
+          "element": "scroll",
+          "maxMs": 0.09999999403953552,
+          "phase": "input",
+          "property": "clientHeight"
+        }
+      ]
+    }
+  ],
+  "limits": "Single diagnostic samples, not a matched latency/memory comparison. No overall improvement established. Getter timings include tracing and any observer-script reads. Remaining work includes duplicated paragraph probes across prepared layout transitions, glyph range queries, Unicode reuse, final CI and physical gates.",
+  "unwrappedMetadata": {
+    "host": "Linux-7.0.14-linuxkit-aarch64-with-glibc2.36",
+    "measurement": "production editor; process-tree memory",
+    "cpuCount": 14,
+    "cgroupMemoryMax": "10737418240",
+    "cgroupCpuMax": "400000 100000",
+    "repetitions": 1,
+    "fileName": "measure.rs",
+    "measurementImage": "sha256:e1a372cac8e6c496251a7ea371631a8beb560d1c5c6cddd1b70a270da19bda8c",
+    "inputTimingStart": "beforeinput",
+    "inputPosition": "beginning",
+    "cpuProfiling": true,
+    "workerStartup": "default",
+    "frontendWasmSha256": {
+      "openwebide-frontend-5dc74c41d6397f06_bg.wasm": "30cea93b3a7bed3c0603132231c1a6781008ece0f5403f7ee9c5ae40277abfcd"
+    },
+    "backendWasmSha256": "cdbff4060e84f58f6e274e5a11c8aebfaf4cf1d509f828a314be0af08ac68e39",
+    "measurementScriptSha256": "012dc5c49fdb443b1161b1b696b36575b1ab777d8ca0de34661278e3f8e0ea82",
+    "checkoutHead": "8e88d6d72ad5582027ffa0388348678cc1e5f488",
+    "browser": "Chromium 154.0.8037.92 built on Debian GNU/Linux 12 (bookworm)"
+  },
+  "wrappedMetadata": {
+    "host": "Linux-7.0.14-linuxkit-aarch64-with-glibc2.36",
+    "measurement": "production editor; process-tree memory",
+    "cpuCount": 14,
+    "cgroupMemoryMax": "10737418240",
+    "cgroupCpuMax": "400000 100000",
+    "repetitions": 1,
+    "fileName": "measure.rs",
+    "measurementImage": "sha256:e1a372cac8e6c496251a7ea371631a8beb560d1c5c6cddd1b70a270da19bda8c",
+    "inputTimingStart": "beforeinput",
+    "inputPosition": "beginning",
+    "cpuProfiling": true,
+    "workerStartup": "default",
+    "frontendWasmSha256": {
+      "openwebide-frontend-5dc74c41d6397f06_bg.wasm": "30cea93b3a7bed3c0603132231c1a6781008ece0f5403f7ee9c5ae40277abfcd"
+    },
+    "backendWasmSha256": "cdbff4060e84f58f6e274e5a11c8aebfaf4cf1d509f828a314be0af08ac68e39",
+    "measurementScriptSha256": "012dc5c49fdb443b1161b1b696b36575b1ab777d8ca0de34661278e3f8e0ea82",
+    "checkoutHead": "8e88d6d72ad5582027ffa0388348678cc1e5f488",
+    "browser": "Chromium 154.0.8037.92 built on Debian GNU/Linux 12 (bookworm)"
+  },
+  "classifiedReadProbe": [
+    {
+      "calls": 89,
+      "elapsedMs": 7.600000083446503,
+      "element": "scroll",
+      "maxMs": 6.5,
+      "phase": "cold",
+      "property": "clientWidth"
+    },
+    {
+      "calls": 79,
+      "elapsedMs": 0.09999999403953552,
+      "element": "scroll",
+      "maxMs": 0.09999999403953552,
+      "phase": "cold",
+      "property": "clientHeight"
+    },
+    {
+      "calls": 10,
+      "elapsedMs": 104.59999993443489,
+      "element": "paint-content",
+      "maxMs": 12.800000011920929,
+      "phase": "cold",
+      "property": "clientWidth"
+    },
+    {
+      "calls": 30,
+      "elapsedMs": 0.3999999761581421,
+      "element": "scroll",
+      "maxMs": 0.29999998211860657,
+      "phase": "scroll",
+      "property": "clientWidth"
+    },
+    {
+      "calls": 23,
+      "elapsedMs": 0,
+      "element": "scroll",
+      "maxMs": 0,
+      "phase": "scroll",
+      "property": "clientHeight"
+    },
+    {
+      "calls": 23,
+      "elapsedMs": 0.09999999403953552,
+      "element": "scroll",
+      "maxMs": 0.09999999403953552,
+      "phase": "navigate",
+      "property": "clientWidth"
+    },
+    {
+      "calls": 18,
+      "elapsedMs": 0,
+      "element": "scroll",
+      "maxMs": 0,
+      "phase": "navigate",
+      "property": "clientHeight"
+    },
+    {
+      "calls": 68,
+      "elapsedMs": 0.6000000238418579,
+      "element": "scroll",
+      "maxMs": 0.20000001788139343,
+      "phase": "input",
+      "property": "clientWidth"
+    },
+    {
+      "calls": 54,
+      "elapsedMs": 0.09999999403953552,
+      "element": "scroll",
+      "maxMs": 0.09999999403953552,
+      "phase": "input",
+      "property": "clientHeight"
+    },
+    {
+      "calls": 4,
+      "elapsedMs": 32.5,
+      "element": "paint-content",
+      "maxMs": 12,
+      "phase": "input",
+      "property": "clientWidth"
+    }
+  ]
+}
