@@ -146,5 +146,5 @@
     "libraryStartSuppressed": false,
     "testModuleRoute": "/tests.js"
   },
-  "limits": "Other guard equality, initial allocation/admission, serialization/network buffers, fresh production, final integrated CI and physical-device gates remain open. No overall latency or memory claim."
+  "limits": "Other guard equality, initial allocation/admission, serialization/network buffers, production is verified separately in snapshot-comparison-production.json; final integrated CI and physical-device gates remain open. No overall latency or memory claim."
 }

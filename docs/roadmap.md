@@ -809,8 +809,10 @@ combined-source CI result.
   cases across both modes and three budgets. All 55 WASM library checks and
   45 recovery/fold browser contracts pass with strict core/WASM/WASI lint
   ([receipt](editor-performance/cooperative-snapshot-comparison-browser.json)).
-  Fresh production and final CI are pending. Other guard equality and
-  serialization remain open.
+  The full Spin build and five production recovery checks pass for combined
+  acknowledged-record retention and cooperative snapshot comparison
+  ([receipt](editor-performance/snapshot-comparison-production.json)).
+  Final integrated CI, other guard equality and serialization remain open.
 
 **Remaining completion gates**:
 
