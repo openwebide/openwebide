@@ -8,6 +8,10 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Make the exact folding-history fixture use a deterministic parser clock so host load cannot cancel its setup; preserve separate parser deadline and cancellation coverage.
+
+- Prepare recovered-file reviews and recovery confirmation guards cooperatively. Preserve account/project/handle/bridge scope checks and reject superseded confirmation requests before showing or applying them.
+
 - Verify production restart, edits, autosave and reload/new-window recovery after cooperative autosave capture in both workspace modes.
 
 - Prepare initial recovery-load guards cooperatively and reuse their captured file occupancy. Retain document membership/revision checks across preparation; review and confirmation guard capture remain synchronous.

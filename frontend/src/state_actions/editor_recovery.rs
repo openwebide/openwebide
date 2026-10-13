@@ -32,6 +32,7 @@ struct RecoveryContext {
     timers: StoredValue<std::collections::HashMap<i64, u64>>,
     checking: StoredValue<std::collections::HashMap<i64, u64>>,
     capturing: StoredValue<std::collections::HashMap<i64, u64>>,
+    choice_ticket: StoredValue<u64>,
     file_guard: StoredValue<send_wrapper::SendWrapper<Option<FileReviewGuard>>>,
     save_file: Callback<()>,
 }
@@ -420,6 +421,7 @@ impl RecoveryActions {
             timers: StoredValue::new(Default::default()),
             checking: StoredValue::new(Default::default()),
             capturing: StoredValue::new(Default::default()),
+            choice_ticket: StoredValue::new(0),
             file_guard: StoredValue::new(send_wrapper::SendWrapper::new(None)),
             save_file: expect_context::<super::workspace::WorkspaceActions>().on_save,
         };
@@ -525,16 +527,42 @@ impl RecoveryActions {
             let Some(project) = projects.project(id) else {
                 return;
             };
-            let Ok(guard) = workspace.editor_recovery_guard(&project, read_only.get_untracked())
-            else {
-                return;
-            };
-            ctx.ui.confirm.set(Some(ConfirmRequest {
+            let ticket = ctx.next_ticket();
+            ctx.choice_ticket.set_value(ticket);
+            spawn_local(async move {
+                let current = || {
+                    auth.generation.try_get_untracked() == Some(generation)
+                        && ctx.choice_ticket.try_get_value() == Some(ticket)
+                        && projects.project(id).is_some_and(|current| {
+                            Workspace::root_identity(&current) == Workspace::root_identity(&project)
+                        })
+                };
+                let guard = match workspace
+                    .editor_recovery_guard_cooperative(
+                        &project,
+                        || read_only.get_untracked(),
+                        &current,
+                    )
+                    .await
+                {
+                    Ok(Some(guard)) if current() => guard,
+                    Ok(_) => return,
+                    Err(error) => {
+                        if current() {
+                            ctx.ui.notify(error);
+                        }
+                        return;
+                    }
+                };
+                if ctx.ui.confirm.try_with_untracked(Option::is_some) != Some(false) {
+                    return;
+                }
+                ctx.ui.confirm.set(Some(ConfirmRequest {
                 title: "Resolve editor recovery".into(),
                 message: match policy { LoadPolicy::Restore => "Replace this project's open files and drafts with the saved recovery?", _ => "Keep this window's files and replace the saved recovery? Other windows may have newer drafts." }.into(),
                 confirm_label: match policy { LoadPolicy::Restore => "Restore saved files", _ => "Keep this window" }.into(),
                 action: Callback::new(move |()| {
-                    if auth.generation.try_get_untracked() != Some(generation) || projects.project(id).is_none() { return; }
+                    if auth.generation.try_get_untracked() != Some(generation) || ctx.choice_ticket.try_get_value() != Some(ticket) || projects.project(id).is_none() { return; }
                     // Test the captured guard without mutating state by collecting
                     // the same snapshot; load captures a new guard before its I/O.
                     if !workspace.editor_recovery_guard_matches(&project, &guard, read_only.get_untracked()) {
@@ -543,6 +571,7 @@ impl RecoveryActions {
                     ctx.load(id, policy);
                 }),
             }));
+            });
         };
         Self {
             review_file: Callback::new(move |()| ctx.review_file()),
@@ -1059,21 +1088,34 @@ pub async fn verify_recovered_save(
 
 impl RecoveryContext {
     fn review_root_current(self, scope: &FileReviewGuard) -> bool {
-        self.state.file_review_ticket.try_get_untracked() == Some(scope.ticket)
-            && self.auth.generation.try_get_untracked() == Some(scope.account)
-            && self.projects.active_project.try_get_untracked() == Some(Some(scope.project.id))
-            && self
-                .projects
-                .project(scope.project.id)
-                .is_some_and(|project| {
-                    Workspace::root_identity(&project) == Workspace::root_identity(&scope.project)
-                })
+        self.review_scope_current(
+            scope.ticket,
+            scope.account,
+            &scope.project,
+            &scope.handle,
+            &scope.bridge,
+        )
+    }
+    fn review_scope_current(
+        self,
+        ticket: u64,
+        account: u64,
+        project: &Project,
+        handle: &Option<web_sys::FileSystemDirectoryHandle>,
+        bridge: &str,
+    ) -> bool {
+        self.state.file_review_ticket.try_get_untracked() == Some(ticket)
+            && self.auth.generation.try_get_untracked() == Some(account)
+            && self.projects.active_project.try_get_untracked() == Some(Some(project.id))
+            && self.projects.project(project.id).is_some_and(|current| {
+                Workspace::root_identity(&current) == Workspace::root_identity(project)
+            })
             && self
                 .projects
                 .local_handles
-                .try_with_untracked(|handles| handles.get(&scope.project.id).cloned())
-                == Some(scope.handle.clone())
-            && self.settings.bridge_url.try_get_untracked().as_ref() == Some(&scope.bridge)
+                .try_with_untracked(|handles| handles.get(&project.id).cloned())
+                == Some(handle.clone())
+            && self.settings.bridge_url.try_get_untracked().as_deref() == Some(bridge)
     }
     fn review_current(self, scope: &FileReviewGuard) -> bool {
         self.review_root_current(scope)
@@ -1097,28 +1139,44 @@ impl RecoveryContext {
         let Some(ws) = Workspace::for_project(self.api, self.projects, id) else {
             return;
         };
-        let Ok(guard) = self
-            .workspace
-            .editor_recovery_guard(&project, self.read_only.get_untracked())
-        else {
-            return;
-        };
         let ticket = self.next_ticket();
         self.state.file_review_ticket.set(ticket);
-        let mut scope = FileReviewGuard {
-            ticket,
-            project,
-            account: self.auth.generation.get_untracked(),
-            handle: self
-                .projects
-                .local_handles
-                .with_untracked(|handles| handles.get(&id).cloned()),
-            bridge: self.settings.bridge_url.get_untracked(),
-            guard,
-            path: path.clone(),
-            disk: None,
-        };
+        let account = self.auth.generation.get_untracked();
+        let handle = self
+            .projects
+            .local_handles
+            .with_untracked(|handles| handles.get(&id).cloned());
+        let bridge = self.settings.bridge_url.get_untracked();
         spawn_local(async move {
+            let current = || self.review_scope_current(ticket, account, &project, &handle, &bridge);
+            let guard = match self
+                .workspace
+                .editor_recovery_guard_cooperative(
+                    &project,
+                    || self.read_only.get_untracked(),
+                    &current,
+                )
+                .await
+            {
+                Ok(Some(guard)) if current() => guard,
+                Ok(_) => return,
+                Err(error) => {
+                    if current() {
+                        self.ui.notify(error);
+                    }
+                    return;
+                }
+            };
+            let mut scope = FileReviewGuard {
+                ticket,
+                project,
+                account,
+                handle,
+                bridge,
+                guard,
+                path: path.clone(),
+                disk: None,
+            };
             let result = read_review_disk(&ws, &path, || self.review_root_current(&scope)).await;
             if !self.review_current(&scope) {
                 return;

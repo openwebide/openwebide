@@ -3573,7 +3573,10 @@ async fn folded_document_commands_projection_and_history_share_both_modes() {
             state.workspace.content.set(source.into());
             editor_view(state)
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        // This contract checks exact history/projection state. Deadline behavior
+        // is covered separately; host load must not cancel its provider setup.
+        let actions =
+            EditorActions::with_input_clock(mounted.state.workspace, std::rc::Rc::new(|| 0.0));
         actions
             .record_selection(Selection::caret(source.find('文').unwrap()))
             .unwrap();
@@ -8825,6 +8828,23 @@ async fn editor_recovery_coalesces_slow_writes_and_preserves_errors_and_revision
         "offline draft"
     );
     mounted.click_text("Keep this window");
+    wait_until("recovery confirmation prepared", || {
+        mounted.state.ui.confirm.get_untracked().is_some()
+    })
+    .await;
+    let old_choice = mounted.state.ui.confirm.get_untracked().unwrap().action;
+    mounted.state.ui.confirm.set(None);
+    mounted.click_text("Keep this window");
+    old_choice.run(());
+    assert!(
+        recovery
+            .projects
+            .with_untracked(|projects| matches!(projects[&1].phase, RecoveryPhase::Conflict(_)))
+    );
+    wait_until("latest recovery confirmation prepared", || {
+        mounted.state.ui.confirm.get_untracked().is_some()
+    })
+    .await;
     mounted
         .state
         .ui
@@ -8938,6 +8958,10 @@ async fn editor_recovery_late_load_preserves_new_files_and_does_not_cross_accoun
         .borrow_mut()
         .push_back(receive);
     mounted.click_text("Restore saved files");
+    wait_until("restore confirmation prepared", || {
+        mounted.state.ui.confirm.get_untracked().is_some()
+    })
+    .await;
     mounted
         .state
         .ui

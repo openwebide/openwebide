@@ -778,8 +778,18 @@ combined-source CI result.
   54 WASM library checks and 45 recovery/fold browser contracts pass with
   strict WASM lint
   ([receipt](editor-performance/cooperative-load-guard-browser.json)).
-  Review and confirmation guard capture remain synchronous; fresh production
-  and final integrated CI still need verification.
+  Review and confirmation now call the same cooperative guard facade. Review
+  preparation shares the existing account/project/handle/bridge predicate with
+  disk I/O. Confirmation requests carry their own tickets and cannot supersede
+  another open dialog or apply an older request after a newer intent. All 54
+  WASM library checks and 45 recovery/fold browser contracts pass, including
+  superseded confirmations and review cancellation, with strict WASM lint
+  ([receipt](editor-performance/cooperative-review-guard-browser.json)).
+  The exact folding-history fixture now uses a fixed parser clock after one
+  provider-setup failure under host load; deadline contracts stay separate.
+  All recovery action capture callers are cooperative. Initial allocation,
+  admission, previous-record copies, final comparisons and serialization
+  remain open; fresh production and final integrated CI are pending.
 
 **Remaining completion gates**:
 
