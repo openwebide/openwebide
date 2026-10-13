@@ -310,6 +310,12 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
                                 }
                             });
                         }
+                        editorViewMeasurement.paragraphCandidates = [];
+                        window.__openwebideEditorParagraphCandidate = value => {
+                            if (editorViewMeasurement.paragraphCandidates.length < 128)
+                                editorViewMeasurement.paragraphCandidates.push({at:performance.now(), phase:editorViewMeasurement.phase, ...JSON.parse(value)});
+                            else editorViewMeasurement.traceTruncated = true;
+                        };
                         const batches = new WeakMap();
                         window.__openwebideEditorProbeTiming = (paint, phase, elapsedMs, units) => {
                             let record = batches.get(paint);
@@ -664,7 +670,7 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
                     "afterInputWasmCommittedBytes": tasks["wasmBytes"],
                     "longTasks": tasks["longTasks"], "longTaskMs": tasks["longTaskMs"],
                     "maxLongTaskMs": tasks["maxLongTaskMs"], "maxFrameIncludingInputMs": tasks["maxFrameMs"],
-                    **({"layoutProbes": tasks["probes"], "viewportReads": tasks.get("viewportReads", []), "preparationBatches": tasks["batches"], "workerEvents": tasks["workers"], "fontEvents": tasks["fonts"], "nativeEvents": tasks["nativeEvents"], "longTaskEvents": tasks["longTaskEvents"], "traceTruncated": tasks["traceTruncated"]} if trace else {})}
+                    **({"layoutProbes": tasks["probes"], "viewportReads": tasks.get("viewportReads", []), "paragraphCandidates": tasks.get("paragraphCandidates", []), "preparationBatches": tasks["batches"], "workerEvents": tasks["workers"], "fontEvents": tasks["fonts"], "nativeEvents": tasks["nativeEvents"], "longTaskEvents": tasks["longTaskEvents"], "traceTruncated": tasks["traceTruncated"]} if trace else {})}
         except (AssertionError, TimeoutError, RuntimeError) as error:
             observed = samples.finish() if samples else {}
             samples = None

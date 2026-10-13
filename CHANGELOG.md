@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Add bounded, opt-in paragraph-cache eligibility diagnostics without changing reuse policy or exposing source/account data.
+
 - Add bounded phase/element timing for viewport width/height reads. Production diagnostics preserve source in both modes and identify repeated offscreen paragraph-probe layout costs; overall editor latency/memory improvements remain unproven.
 
 - Skip computed font-style reads and redundant layout scheduling for the editor viewport’s own geometry-only CSS writes. Preserve font/theme/class/future style updates and observer cleanup.

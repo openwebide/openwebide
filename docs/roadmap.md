@@ -356,6 +356,14 @@ combined-source CI result.
   before/after prepared-layout transitions. Investigate retained source/style
   ownership and reconnection before reusing those measurements; broader
   responsiveness/memory, final CI and physical gates remain open.
+  Opt-in paragraph-candidate diagnostics now distinguish missing cache/rows,
+  exact text ownership, prepared-state transitions and environment mismatches
+  without changing the reuse predicate or logging source/account data. All 141
+  native frontend tests, 59 WASM library checks, six local/remote geometry contracts
+  and strict WASM lint pass
+  ([receipt](editor-performance/paragraph-candidate-tracing-browser.json)). The
+  production build/capture is pending; use this evidence to locate the repeated
+  preparation cause before changing retention or fallback decisions.
   Visual ASCII coordinates now update by word/space/punctuation groups and
   visual-only preparation avoids an unused character traversal. A complete-table
   regression compares every field with full Unicode grapheme traversal at

@@ -284,6 +284,20 @@ fn styled_paint_runs(body: &str, row: &PaintRow<'_>, max_runs: usize) -> Option<
     PAINT_RUN_SEGMENT_BYTES.set(PAINT_RUN_SEGMENT_BYTES.get() + preparation.segmented_bytes());
     preparation.finish()
 }
+#[cfg(target_arch = "wasm32")]
+fn measurement_environment_matches(old: &EditorRowPaint, paint: &EditorRowPaint) -> [bool; 9] {
+    [
+        old.font_epoch == paint.font_epoch,
+        old.key == paint.key,
+        old.epoch == paint.epoch,
+        old.read_revision == paint.read_revision,
+        old.account_generation == paint.account_generation,
+        old.metrics == paint.metrics,
+        old.indentation == paint.indentation,
+        old.whitespace == paint.whitespace,
+        old.word_wrap == paint.word_wrap,
+    ]
+}
 fn same_measurement_environment(old: &EditorRowPaint, paint: &EditorRowPaint) -> bool {
     old.font_epoch == paint.font_epoch
         && old.key == paint.key
@@ -294,6 +308,33 @@ fn same_measurement_environment(old: &EditorRowPaint, paint: &EditorRowPaint) ->
         && old.indentation == paint.indentation
         && old.whitespace == paint.whitespace
         && old.word_wrap == paint.word_wrap
+}
+fn trace_paragraph_candidate(
+    old: Option<&EditorRowPaint>,
+    paint: &EditorRowPaint,
+    row_retained: bool,
+) {
+    #[cfg(not(target_arch = "wasm32"))]
+    let _ = (old, paint, row_retained);
+    #[cfg(target_arch = "wasm32")]
+    {
+        use wasm_bindgen::JsCast;
+        let Some(callback) = web_sys::window().and_then(|window| {
+            js_sys::Reflect::get(&window, &"__openwebideEditorParagraphCandidate".into())
+                .ok()
+                .and_then(|value| value.dyn_into::<js_sys::Function>().ok())
+        }) else {
+            return;
+        };
+        let record = serde_json::json!({
+            "cachePresent": old.is_some(),
+            "environment": old.map(|old| measurement_environment_matches(old, paint)),
+            "rowRetained": row_retained,
+            "sameTextOwner": old.map(|old| old.projection.shares_text_version(&paint.projection)),
+            "oldPrepared": old.map(|old| old.prepared_source), "newPrepared": paint.prepared_source,
+        });
+        let _ = callback.call1(&wasm_bindgen::JsValue::NULL, &record.to_string().into());
+    }
 }
 fn same_paint_scope(old: &EditorRowPaint, paint: &EditorRowPaint) -> bool {
     old.view_revision == paint.view_revision
@@ -479,10 +520,16 @@ impl EditorActions {
         self.workspace
             .editor_paragraph_cache
             .with_untracked(|cache| {
-                let cache = cache
-                    .as_ref()
-                    .filter(|cache| same_measurement_environment(&cache.paint, paint))?;
-                let (_, measurements) = cache.rows.iter().find(|(index, _)| *index == row)?;
+                let Some(cache) = cache.as_ref() else {
+                    trace_paragraph_candidate(None, paint, false);
+                    return None;
+                };
+                let measured = cache.rows.iter().find(|(index, _)| *index == row);
+                trace_paragraph_candidate(Some(&cache.paint), paint, measured.is_some());
+                if !same_measurement_environment(&cache.paint, paint) {
+                    return None;
+                }
+                let (_, measurements) = measured?;
                 Some((cache.paint.clone(), measurements.clone()))
             })
     }
