@@ -1269,11 +1269,6 @@ capability.
   phones. Clients consume plugin metadata, instructions and service results
   through the shared facade/bridge; they do not maintain plugin clones, execute
   plugin WASM modules or install plugin runtimes.
-- Extend the docs [panel playground](panel-playground.md) with a visual block
-  builder once the schema and renderer are stable. Keep visual editing on the
-  existing JSON document, production validation, simulation and export path
-  rather than introducing another UI format. The component gallery, editable
-  JSON, live preview, theme/width previews and JSON/Rust exports are available.
 - Add editor hooks later as typed contributions in the same package format,
   after the shared editor transaction/save APIs are stable. Start with bounded
   host notifications such as document opened/changed/saved/closed; debounce

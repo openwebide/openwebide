@@ -44,6 +44,160 @@ fn click(root: &web_sys::Element, selector: &str) {
         .unwrap()
         .click();
 }
+fn click_text(root: &web_sys::Element, text: &str) {
+    let buttons = root.query_selector_all("button").unwrap();
+    (0..buttons.length())
+        .filter_map(|index| buttons.item(index))
+        .find(|button| button.text_content().as_deref() == Some(text))
+        .unwrap()
+        .dyn_into::<web_sys::HtmlElement>()
+        .unwrap()
+        .click();
+}
+
+fn source(root: &web_sys::Element) -> Playground {
+    Playground::parse(
+        &root
+            .query_selector("textarea[aria-label='Panel JSON']")
+            .unwrap()
+            .unwrap()
+            .dyn_into::<web_sys::HtmlTextAreaElement>()
+            .unwrap()
+            .value(),
+    )
+    .unwrap()
+}
+
+#[wasm_bindgen_test]
+async fn visual_table_columns_keep_their_cells_aligned() {
+    use openwebide_core::plugins::panels::Block;
+    let document = web_sys::window().unwrap().document().unwrap();
+    let root = document.create_element("div").unwrap();
+    document.body().unwrap().append_child(&root).unwrap();
+    let handle = leptos::mount::mount_to(root.clone().dyn_into().unwrap(), PanelPlayground);
+    settle().await;
+    edit(&root, "select[aria-label='Component example']", "8");
+    settle().await;
+    click(&root, "button[aria-label='Select or drag block 1']");
+    settle().await;
+    click_text(&root, "Add columns item");
+    settle().await;
+    edit(&root, "input[aria-label='columns · 4']", "New column");
+    edit(&root, "input[aria-label='rows · 1 · 4']", "Aligned cell");
+    let item = root
+        .query_selector("input[aria-label='columns · 4']")
+        .unwrap()
+        .unwrap()
+        .closest(".panel-property-item")
+        .unwrap()
+        .unwrap();
+    click(&item, "button[aria-label='Move property item up']");
+    settle().await;
+    click_text(&root, "Apply properties");
+    settle().await;
+    let panel = source(&root);
+    let Block::Table { columns, rows } = &panel.document.blocks[0] else {
+        panic!("table")
+    };
+    assert_eq!(columns[2], "New column");
+    assert_eq!(rows[0][2], "Aligned cell");
+    assert!(rows.iter().all(|row| row.len() == columns.len()));
+    assert!(
+        root.query_selector(".plugin-panel-document table")
+            .unwrap()
+            .unwrap()
+            .text_content()
+            .unwrap()
+            .contains("Aligned cell")
+    );
+    drop(handle);
+    root.remove();
+}
+
+#[wasm_bindgen_test]
+async fn visual_properties_keyboard_placement_and_history_use_the_same_document_as_json() {
+    use openwebide_core::plugins::panels::{Block, FieldKind};
+    let document = web_sys::window().unwrap().document().unwrap();
+    let root = document.create_element("div").unwrap();
+    document.body().unwrap().append_child(&root).unwrap();
+    let handle = leptos::mount::mount_to(root.clone().dyn_into().unwrap(), PanelPlayground);
+    settle().await;
+    let initial = Playground::blank();
+    click_text(&root, "New panel");
+    settle().await;
+    assert_eq!(source(&root), initial);
+    click(&root, "button[aria-label='Add or drag Group']");
+    settle().await;
+    click(&root, "button[aria-label='Add or drag Text']");
+    settle().await;
+    edit(
+        &root,
+        ".panel-builder-properties textarea[aria-label='text']",
+        "Visual text",
+    );
+    click_text(&root, "Apply properties");
+    settle().await;
+    assert!(
+        matches!(&source(&root).document.blocks[0],Block::Group{blocks,..} if matches!(&blocks[0],Block::Text{text} if text=="Visual text"))
+    );
+    edit(&root, "select[aria-label='Destination group']", "[]");
+    settle().await;
+    edit(&root, "select[aria-label='Block position']", "0");
+    click_text(&root, "Move block");
+    settle().await;
+    assert!(matches!(&source(&root).document.blocks[0],Block::Text{text} if text=="Visual text"));
+    click(&root, "button[aria-label='Undo']");
+    settle().await;
+    assert_eq!(source(&root).document.blocks.len(), 1);
+    click(&root, "button[aria-label='Redo']");
+    settle().await;
+    assert_eq!(source(&root).document.blocks.len(), 2);
+    click(&root, "button[aria-label='Panel properties']");
+    settle().await;
+    edit(
+        &root,
+        ".panel-builder-properties input[aria-label='title']",
+        "Visual panel",
+    );
+    click_text(&root, "Apply properties");
+    settle().await;
+    assert_eq!(source(&root).panel.title, "Visual panel");
+    click(&root, "button[aria-label='Add or drag Form']");
+    settle().await;
+    click_text(&root, "Add fields item");
+    settle().await;
+    edit(&root, "select[aria-label='fields · 2 · kind']", "checkbox");
+    settle().await;
+    click_text(&root, "Apply properties");
+    settle().await;
+    let current = source(&root);
+    let Block::Form { fields, .. } = current.document.blocks.last().unwrap() else {
+        panic!("form")
+    };
+    assert_eq!(fields.len(), 2);
+    assert_eq!(fields[1].kind, FieldKind::Checkbox);
+    let duplicate_id = fields[0].id.clone();
+    edit(&root, "input[aria-label='fields · 2 · id']", &duplicate_id);
+    settle().await;
+    assert!(root.text_content().unwrap().contains("unique IDs"));
+    click_text(&root, "Apply properties");
+    settle().await;
+    assert_eq!(
+        source(&root),
+        current,
+        "invalid property drafts must not change the canonical document"
+    );
+    edit(&root, "textarea[aria-label='Panel JSON']", &initial.json());
+    settle().await;
+    assert!(
+        root.query_selector(".panel-builder-properties")
+            .unwrap()
+            .is_none()
+    );
+    assert!(source(&root).document.blocks.is_empty());
+    drop(handle);
+    root.remove();
+}
 #[wasm_bindgen_test]
 async fn playground_uses_real_widgets_validates_live_and_simulates_approval_without_exposing_secrets()
  {

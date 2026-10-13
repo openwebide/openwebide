@@ -1,12 +1,14 @@
 //! Docs-only UI. No API client, bridge, plugin runtime or persisted browser state.
 use super::{
+    panel_builder::VisualPanelEditor,
     plugin_panel_view::{PanelSubmission, PluginPanelDocument},
     ui::{
         Button, FormField, FormNotice, Icon, IconButton, IconName, InlineActions, NoticeTone,
         TextArea,
     },
 };
-use crate::panel_playground::{Playground, gallery};
+use crate::panel_builder::History;
+use crate::panel_playground::{MAX_SOURCE_BYTES, Playground, gallery};
 use leptos::prelude::*;
 use openwebide_core::plugins::panels::{MAX_DOCUMENT_BYTES, PanelInput, approval_values};
 
@@ -21,9 +23,20 @@ struct Pending {
 pub fn PanelPlayground() -> impl IntoView {
     let examples = StoredValue::new(gallery());
     let draft = RwSignal::new(examples.with_value(|examples| examples[0].1.json()));
+    let history = RwSignal::new(History::new(draft.get_untracked()));
     let generation = RwSignal::new(0u64);
-    let selected = RwSignal::new(0usize);
     let parsed = Memo::new(move |_| Playground::parse(&draft.get()));
+    let selected = Signal::derive(move || {
+        parsed
+            .get()
+            .ok()
+            .and_then(|panel| {
+                examples.with_value(|examples| {
+                    examples.iter().position(|(_, example)| *example == panel)
+                })
+            })
+            .map_or_else(|| "custom".into(), |index| index.to_string())
+    });
     let custom_response = RwSignal::new(None::<String>);
     let response = Signal::derive(move || {
         custom_response.get().unwrap_or_else(|| {
@@ -45,12 +58,19 @@ pub fn PanelPlayground() -> impl IntoView {
             let _ = root.set_attribute("data-theme", &value);
         }
     });
-    let edit = Callback::new(move |source: String| {
+    let publish = Callback::new(move |source: String| {
+        if source == draft.get_untracked() {
+            return;
+        }
         draft.set(source);
         generation.update(|value| *value += 1);
         pending.set(None);
         error.set(None);
         custom_response.set(None);
+    });
+    let edit = Callback::new(move |source: String| {
+        history.update(|history| history.record(source.clone()));
+        publish.run(source);
     });
     let apply = Callback::new(move |request: Pending| {
         if generation.get_untracked() != request.generation {
@@ -62,11 +82,7 @@ pub fn PanelPlayground() -> impl IntoView {
             .simulate(&request.input, &response.get_untracked(), true)
         {
             Ok(example) => {
-                draft.set(example.json());
-                generation.update(|value| *value += 1);
-                custom_response.set(None);
-                pending.set(None);
-                error.set(None);
+                edit.run(example.json());
             }
             Err(message) => error.set(Some(message)),
         }
@@ -123,20 +139,30 @@ pub fn PanelPlayground() -> impl IntoView {
                 </InlineActions>
             </header>
             <div class="playground-toolbar">
-                <FormField label="Component example"><select class="form-input" aria-label="Component example" prop:value=move ||selected.get().to_string() on:change=move |event| {
+                <Button on_click=Callback::new(move |_|edit.run(Playground::blank().json()))><Icon name=IconName::Plus/>"New panel"</Button>
+                <FormField label="Component example"><select class="form-input" aria-label="Component example" prop:value=move ||selected.get() on:change=move |event| {
                     if let Ok(index)=event_target_value(&event).parse::<usize>()
                         && let Some(source)=examples.with_value(|examples|examples.get(index).map(|(_,example)|example.json())) {
-                        selected.set(index);edit.run(source);trace.set(String::new());
+                        edit.run(source);trace.set(String::new());
                     }
-                }>{examples.with_value(|examples|examples.iter().enumerate().map(|(index,(name,_))|view! {<option value=index.to_string()>{*name}</option>}).collect::<Vec<_>>())}</select></FormField>
+                }><option value="custom" disabled>"Custom panel"</option>{examples.with_value(|examples|examples.iter().enumerate().map(|(index,(name,_))|view! {<option value=index.to_string()>{*name}</option>}).collect::<Vec<_>>())}</select></FormField>
                 <FormField label="Theme"><select class="form-input" aria-label="Theme" prop:value=move ||theme.get() on:change=move |event|theme.set(event_target_value(&event))><option value="dark">"Dark"</option><option value="light">"Light"</option></select></FormField>
                 <FormField label="Preview width"><select class="form-input" aria-label="Preview width" on:change=move |event|phone.set(event_target_value(&event)=="phone")><option value="desktop">"Desktop · 800 px"</option><option value="phone">"Phone · 375 px"</option></select></FormField>
                 <IconButton label="Format JSON" disabled=Signal::derive(move ||!valid.get()) on_click=Callback::new(move |_| {if let Ok(example)=parsed.get_untracked() {edit.run(example.json());}})><Icon name=IconName::Braces/></IconButton>
+                <IconButton label="Undo" disabled=Signal::derive(move ||!history.with(History::can_undo)) on_click=Callback::new(move |_| {
+                    let mut source=None;history.update(|history|source=history.undo());if let Some(source)=source {publish.run(source);}
+                })><Icon name=IconName::Undo2/></IconButton>
+                <IconButton label="Redo" disabled=Signal::derive(move ||!history.with(History::can_redo)) on_click=Callback::new(move |_| {
+                    let mut source=None;history.update(|history|source=history.redo());if let Some(source)=source {publish.run(source);}
+                })><Icon name=IconName::Redo2/></IconButton>
             </div>
             <div class="playground-columns">
-                <section class="playground-editor" aria-label="Panel source"><h2>"Definition and document"</h2>
-                    <TextArea label="Panel JSON" value=draft on_change=edit rows=26 maxlength=u32::try_from(MAX_DOCUMENT_BYTES+32768).unwrap_or(u32::MAX)/>
+                <section class="playground-editor" aria-label="Panel source">
+                    <VisualPanelEditor source=draft.into() generation=generation.into() on_change=edit/>
                     <div class="playground-validation" role="status" aria-live="polite">{move ||match parsed.get() {Ok(example)=>format!("Valid · UI schema {} · {} top-level blocks",example.document.schema_version,example.document.blocks.len()),Err(message)=>format!("Invalid: {message}")}}</div>
+                    <details><summary>"Source JSON"</summary>
+                        <TextArea label="Panel JSON" value=draft on_change=edit rows=26 maxlength=u32::try_from(MAX_SOURCE_BYTES).unwrap_or(u32::MAX)/>
+                    </details>
                     <details><summary>"Simulated response"</summary><p>"Actions use this replacement document. It must return the next revision."</p>
                         <TextArea label="Simulated response JSON" value=response on_change=Callback::new(move |value|custom_response.set(Some(value))) rows=12 maxlength=u32::try_from(MAX_DOCUMENT_BYTES).unwrap_or(u32::MAX)/>
                     </details>

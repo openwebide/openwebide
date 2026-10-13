@@ -36,6 +36,7 @@ pub mod model_setup;
 #[cfg(target_arch = "wasm32")]
 pub mod monitors;
 pub mod notifications;
+pub mod panel_builder;
 pub mod panel_playground;
 pub mod pending;
 #[cfg(target_arch = "wasm32")]

@@ -3,6 +3,10 @@ use openwebide_core::plugins::panels::*;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
+// Pretty-printed authoring JSON includes indentation and a panel definition;
+// the production document itself retains its compact 256 KiB limit.
+pub const MAX_SOURCE_BYTES: usize = 2 * MAX_DOCUMENT_BYTES;
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Playground {
@@ -10,8 +14,26 @@ pub struct Playground {
     pub document: PanelDocument,
 }
 impl Playground {
+    pub fn blank() -> Self {
+        Self {
+            panel: PanelDefinition {
+                id: "panel".into(),
+                title: "New panel".into(),
+                icon: PanelIcon::Puzzle,
+                view: "render".into(),
+                actions: vec![],
+                refresh_seconds: None,
+            },
+            document: PanelDocument {
+                schema_version: UI_VERSION,
+                revision: 1,
+                blocks: vec![],
+                state: Value::Null,
+            },
+        }
+    }
     pub fn parse(source: &str) -> Result<Self, String> {
-        if source.len() > MAX_DOCUMENT_BYTES + 32 * 1024 {
+        if source.len() > MAX_SOURCE_BYTES {
             return Err("The panel definition and document exceed the editor limit".into());
         }
         let value: Self = serde_json::from_str(source).map_err(|error| error.to_string())?;
@@ -74,7 +96,12 @@ impl Playground {
     pub fn response(&self) -> String {
         let mut document = self.document.clone();
         document.revision = document.revision.saturating_add(1);
-        serde_json::to_string_pretty(&document).expect("serializable response")
+        let pretty = serde_json::to_string_pretty(&document).expect("serializable response");
+        if pretty.len() <= MAX_DOCUMENT_BYTES {
+            pretty
+        } else {
+            serde_json::to_string(&document).expect("serializable response")
+        }
     }
     pub fn rust(&self) -> Result<String, String> {
         self.validate()?;

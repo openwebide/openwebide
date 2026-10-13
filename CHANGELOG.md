@@ -21,6 +21,7 @@ The first alpha is published as `1.0.0-alpha.5`. See
 - Simplify Host setup to an SSH username with automatic OS detection, advanced connection overrides, immediate persisted disablement and one Save and test action independent of inventory polling. Move release channels to Settings → Updates and discover bundled-container Compose/Quadlet installation metadata, retaining explicit overrides when discovery is unavailable.
 
 - Verify line-splitting production input in both modes with explicit long-ASCII insertion, split, undo/redo and LF/CRLF checks. Add repeatable native edit/undo measurements; ASCII insertion improves while mixed/dense workloads still need follow-up.
+- Add visual panel authoring to the docs playground: a block palette, mouse/touch/pen dragging, nested groups, property forms, keyboard placement, compact block menus and bounded undo/redo. Preserve one production-validated JSON document across visual edits, simulations and JSON/Rust exports; keep table cells aligned and assign unique IDs to duplicated form fields.
 
 - Reuse retained ASCII prefix/suffix coordinates when an edit splits a logical line. Share row-summary publication with initial preparation and preserve CRLF and trailing EOF rows.
 

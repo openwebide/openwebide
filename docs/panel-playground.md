@@ -13,7 +13,30 @@ text, headings, all status tones, groups, actions, forms, lists, tables, code,
 diffs, links and dividers. Form examples include text, multiline text, secret,
 checkbox and select fields.
 
-Edit the definition and document together in **Panel JSON**. Validation uses the
+Start with **New panel** or a gallery example. Click a palette item to add it;
+when a group is selected, new blocks go into that group. Drag palette handles
+or existing block handles onto the insertion lines to add, reorder or nest blocks.
+Mouse, touch and pen use the same editing operations. Dragging near the page edges
+scrolls the layout. Invalid cycles, excessive nesting and schema limits leave the
+document unchanged.
+
+Select a block to edit its properties. Controls cover text, notices, links, code,
+diffs, form field kinds, action buttons, list items and table columns/cells.
+**Apply properties** validates the complete document before updating the preview;
+invalid property drafts leave the last valid document intact. Table column moves
+keep their cells aligned. The top-level settings icon edits the panel definition
+and declared actions. Renaming an existing action also updates its button bindings;
+referenced actions cannot be removed until their buttons are changed or removed.
+
+The block's **…** menu provides move-up/down, duplicate and delete actions.
+Duplicated forms receive unique field IDs. For keyboard placement, select a block,
+choose **Destination group** and **Position**, then use **Move block**. Undo/redo
+includes visual changes, source edits and simulated results, with bounded history
+kept only in the current page's memory.
+
+Open **Source JSON** to edit the definition and document together in **Panel JSON**.
+Visual editing, source editing, simulations and exports share one JSON document.
+Changing the source cancels stale gestures and property drafts. Validation uses the
 same API 4 panel definitions and version-1 UI schema as installed plugins. Invalid
 documents stop rendering and disable exports. Switch between light/dark themes
 and desktop/phone preview widths to inspect the shared component layouts.
@@ -31,5 +54,5 @@ then add that definition to your plugin manifest. See [panel authoring](plugin-p
 and the [plugin authoring guide](plugin-authoring.md) for the host contract,
 permissions, build setup and marketplace publishing.
 
-A visual drag-and-drop block builder is a later addition; editable JSON remains
-the canonical document format and validation/export path.
+The visual editor uses the production schema; it introduces no separate UI format
+or executable plugin code in the browser.

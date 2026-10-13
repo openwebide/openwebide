@@ -28,6 +28,108 @@ def ready(browser):
     """, 'args': []}), 'Compiled panel renderer did not load'
 
 
+def visual_gestures(browser):
+    """Use native mouse/touch input against the compiled Rust pointer handlers."""
+    initial = json.loads(browser.script("return document.querySelector('textarea[aria-label=\"Panel JSON\"]').value"))
+    initial['document']['blocks'] = [
+        {'type': 'group', 'title': 'Destination', 'blocks': []},
+        {'type': 'text', 'text': 'Move me'},
+    ]
+    browser.script(f"""
+        const source = document.querySelector('textarea[aria-label="Panel JSON"]');
+        source.value = {json.dumps(json.dumps(initial))};
+        source.dispatchEvent(new Event('input', {{bubbles:true}}));
+    """)
+
+    def wait(expression):
+        deadline = time.monotonic() + 10
+        while not browser.script('return ' + expression):
+            assert time.monotonic() < deadline, expression
+            time.sleep(0.05)
+
+    def document():
+        return json.loads(browser.script("return document.querySelector('textarea[aria-label=\"Panel JSON\"]').value"))['document']
+
+    def drag(label, parent, index, pointer):
+        selector = f'button[aria-label="{label}"]'
+        points = browser.script(f"""
+            const source = document.querySelector({json.dumps(selector)});
+            const target = [...document.querySelectorAll('[data-panel-drop]')]
+                .find(element => element.dataset.panelDrop === {json.dumps(json.dumps([parent, index], separators=(',', ':')))});
+            const a = source.getBoundingClientRect(), b = target.getBoundingClientRect();
+            return {{a:{{x:a.x+a.width/2,y:a.y+a.height/2}},b:{{x:b.x+b.width/2,y:b.y+b.height/2}}}};
+        """)
+        browser.call('POST', '/actions', {'actions': [{
+            'type': 'pointer', 'id': 'panel-' + pointer, 'parameters': {'pointerType': pointer},
+            'actions': [
+                {'type': 'pointerMove', 'duration': 0, 'x': round(points['a']['x']), 'y': round(points['a']['y'])},
+                {'type': 'pointerDown', 'button': 0},
+                {'type': 'pointerMove', 'duration': 250, 'x': round(points['b']['x']), 'y': round(points['b']['y'])},
+                {'type': 'pointerUp', 'button': 0},
+            ],
+        }]})
+
+    wait("document.querySelectorAll('.panel-builder-block').length === 2")
+    drag('Select or drag block 2', [0], 0, 'mouse')
+    wait("JSON.parse(document.querySelector('textarea[aria-label=\"Panel JSON\"]').value).document.blocks[0].blocks.length === 1")
+    assert len(document()['blocks']) == 1
+    drag('Select or drag block 1.1', [], 1, 'touch')
+    wait("JSON.parse(document.querySelector('textarea[aria-label=\"Panel JSON\"]').value).document.blocks.length === 2")
+    assert document()['blocks'][0]['blocks'] == []
+    drag('Add or drag Heading', [], 0, 'mouse')
+    wait("JSON.parse(document.querySelector('textarea[aria-label=\"Panel JSON\"]').value).document.blocks[0].type === 'heading'")
+    assert len(document()['blocks']) == 3, 'Palette drops must not also activate the add button'
+    before = document()
+    drag('Select or drag block 2', [1], 0, 'mouse')
+    wait("document.querySelector('.visual-panel-editor').textContent.includes('cannot be moved into itself')")
+    assert document() == before, 'Invalid cycles must leave the canonical document unchanged'
+    drag('Add or drag Divider', [], 0, 'pen')
+    wait("JSON.parse(document.querySelector('textarea[aria-label=\"Panel JSON\"]').value).document.blocks[0].type === 'divider'")
+    assert len(document()['blocks']) == 4
+    # Changing the source while a palette pointer is held must suppress its later click.
+    point = browser.script("""
+        const rect = document.querySelector('button[aria-label="Add or drag Text"]').getBoundingClientRect();
+        return {x:rect.x+rect.width/2,y:rect.y+rect.height/2};
+    """)
+    browser.call('POST', '/actions', {'actions': [{
+        'type': 'pointer', 'id': 'stale-panel', 'parameters': {'pointerType': 'mouse'},
+        'actions': [
+            {'type': 'pointerMove', 'duration': 0, 'x': round(point['x']), 'y': round(point['y'])},
+            {'type': 'pointerDown', 'button': 0},
+            {'type': 'pointerMove', 'duration': 100, 'x': round(point['x']) + 10, 'y': round(point['y'])},
+        ],
+    }]})
+    changed = json.loads(json.dumps(initial))
+    changed['document']['blocks'] = []
+    browser.script(f"""
+        const source = document.querySelector('textarea[aria-label="Panel JSON"]');
+        source.value = {json.dumps(json.dumps(changed))};
+        source.dispatchEvent(new Event('input', {{bubbles:true}}));
+    """)
+    wait("document.querySelectorAll('.panel-builder-block').length === 0")
+    browser.call('POST', '/actions', {'actions': [{
+        'type': 'pointer', 'id': 'stale-panel', 'parameters': {'pointerType': 'mouse'},
+        'actions': [{'type': 'pointerUp', 'button': 0}],
+    }]})
+    assert document()['blocks'] == [], 'A stale palette gesture must not add to the replacement document'
+    # The grip remains a useful button when it is clicked without dragging.
+    browser.call('POST', '/actions', {'actions': [{
+        'type': 'pointer', 'id': 'stale-panel', 'parameters': {'pointerType': 'mouse'},
+        'actions': [
+            {'type': 'pointerMove', 'duration': 0, 'x': round(point['x']), 'y': round(point['y'])},
+            {'type': 'pointerDown', 'button': 0},
+            {'type': 'pointerUp', 'button': 0},
+        ],
+    }]})
+    wait("JSON.parse(document.querySelector('textarea[aria-label=\"Panel JSON\"]').value).document.blocks.length === 1")
+    # Restore the gallery so exports and layout checks use the complete schema example.
+    browser.script("""
+        const gallery = document.querySelector('select[aria-label="Component example"]');
+        gallery.value = '0'; gallery.dispatchEvent(new Event('change', {bubbles:true}));
+    """)
+    wait("JSON.parse(document.querySelector('textarea[aria-label=\"Panel JSON\"]').value).document.blocks.length === 12")
+
+
 def check(site, screenshots=None):
     assert os.environ.get('CHROMEDRIVER'), 'Set CHROMEDRIVER to a compatible driver'
     assert (site / 'tools/panel-playground/index.html').is_file(), 'Build the site first'
@@ -56,7 +158,8 @@ def check(site, screenshots=None):
                 origin = f'http://127.0.0.1:{server.server_port}'
                 browser.call('POST', '/url', {'url': origin + '/tools/panel-playground/index.html'})
                 ready(browser)
-                assert browser.script("return document.querySelectorAll('select[aria-label=\"Component example\"] option').length") == 13
+                assert browser.script("return document.querySelectorAll('select[aria-label=\"Component example\"] option:not([disabled])').length") == 13
+                visual_gestures(browser)
                 for width, theme in [(1280, 'dark'), (390, 'light')]:
                     browser.call('POST', '/window/rect', {'width': width, 'height': 900})
                     browser.call('POST', '/goog/cdp/execute', {
@@ -97,7 +200,7 @@ def check(site, screenshots=None):
                 ready(browser)
                 assert not any('/api/' in path or '/bridge/' in path for path, _ in requests), requests
                 assert not any(code == 404 and not path.endswith('/favicon.ico') for path, code in requests), requests
-                print('Production playground: desktop/phone, dark/light, downloads and embedded renderer passed')
+                print('Production playground: mouse/touch/pen drag, nesting, cycle/stale-gesture rejection, desktop/phone, dark/light, downloads and embedded renderer passed')
             finally:
                 browser.stop()
     finally:
