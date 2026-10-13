@@ -307,6 +307,13 @@ combined-source CI result.
   exclude browser input/layout and establish no whole-editor or memory gain.
   Unicode boundaries, multi-row joins, sparse table allocation/publication and
   broader responsiveness/memory remain open.
+  Printable-ASCII proof now latches rejection during coordinate preparation,
+  avoiding repeated eligibility comparisons after Unicode/control text. All 787
+  current-worktree core tests, 134 frontend tests, 58 WASM library checks and six
+  local/remote geometry contracts pass with strict core/WASM/WASI lint
+  ([receipt](editor-performance/ascii-proof-latch-browser.json)). A guarded timing
+  run was discarded because another compiler became active. The Unicode timing
+  regression, fresh production verification and final integrated CI remain open.
   Visual ASCII coordinates now update by word/space/punctuation groups and
   visual-only preparation avoids an unused character traversal. A complete-table
   regression compares every field with full Unicode grapheme traversal at

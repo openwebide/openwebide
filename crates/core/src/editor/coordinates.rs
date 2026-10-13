@@ -145,7 +145,7 @@ impl NativeCoordinates {
         }
     }
     fn visit(&mut self, text: &str, byte: usize, ch: char) {
-        if byte < self.ascii_body_end && !matches!(ch, ' '..='~') {
+        if self.ascii_body && byte < self.ascii_body_end && !matches!(ch, ' '..='~') {
             self.ascii_body = false;
         }
         // Never start a query between CR and LF: their native offset is equal,
@@ -308,6 +308,36 @@ impl LineCoordinates {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn printable_body_proof_is_latched_and_ignores_only_the_original_ending() {
+        for (text, expected) in [
+            ("ascii\r\n", true),
+            ("文ascii\r\n", false),
+            ("ascii\tascii\n", false),
+            ("ascii\rascii\n", false),
+        ] {
+            let body = text
+                .strip_suffix("\r\n")
+                .or_else(|| text.strip_suffix('\n'))
+                .unwrap_or(text);
+            let mut collector = NativeCoordinates::new(true);
+            collector.ascii_body_end = body.len();
+            let mut rejected = false;
+            for (byte, ch) in text.char_indices() {
+                collector.visit(text, byte, ch);
+                if rejected {
+                    assert!(!collector.ascii_body);
+                }
+                rejected |= !collector.ascii_body;
+            }
+            assert_eq!(collector.ascii_body, expected);
+            assert_eq!(
+                collector.ascii_body,
+                LineCoordinates::with_summary(text).0.ascii_body
+            );
+        }
+    }
+
     #[test]
     fn ascii_spans_preserve_every_native_checkpoint_and_admission_total() {
         for text in [
