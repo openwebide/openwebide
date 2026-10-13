@@ -13,9 +13,12 @@ Volume=%h/.local/state/openwebide/data:/app/.spin:Z
 Volume=%h/source:/workspace:Z
 # Host administration is included; configure Settings → Host after SSH authentication.
 # Optional SSH for Git and host administration: use a stable host agent socket path.
-# Volume=/run/user/1000/ssh-agent.sock:/run/openwebide-ssh-agent.sock
+# On SELinux hosts (Fedora, RHEL, Bazzite), add SecurityLabelDisable=true to allow
+# the rootless container to access the host user's SSH agent socket.
+# Volume=%t/ssh-agent.socket:/run/openwebide-ssh-agent.sock
 # Volume=%h/.config/openwebide/ssh:/run/openwebide-ssh:ro,Z
 # Environment=SSH_AUTH_SOCK=/run/openwebide-ssh-agent.sock
+# SecurityLabelDisable=true
 # Environment=OPENWEBIDE_BRIDGE=0
 # When accessing over Tailscale or custom domains, configure bridge allowlists:
 # Environment=OPENWEBIDE_BRIDGE_ALLOWED_HOSTS=webide.example.ts.net

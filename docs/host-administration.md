@@ -7,13 +7,16 @@ Until you configure a connection, host tools are unavailable.
 
 ## Connect the machine
 
-1. Enable SSH on the target machine and authorize the key for the account you
-   want to use. The target can be Linux, macOS or Windows with an SSH server.
+1. Enable SSH on the target machine and authorize an SSH key for the account you
+   want to use (`~/.ssh/authorized_keys`). Host administration connects with
+   `-oBatchMode=yes` and requires key authentication; password login is not supported.
+   The target can be Linux, macOS or Windows with an SSH server.
 2. Make that key available to the server bridge. Native bridges inherit the
    current SSH agent and configuration. Containers use the
-   [SSH agent forwarding overlay](git-ssh.md#docker-opt-in-agent-forwarding) or the commented agent mounts
-   in the [Quadlet template](podman-quadlet.md). Keys remain in the agent;
-   the app does not upload or store private keys. SSH login uses key authentication.
+   [SSH agent forwarding overlay](git-ssh.md#docker-opt-in-agent-forwarding) or the agent mounts
+   in the [Quadlet template](podman-quadlet.md#host-administration-and-ssh-setup). Keys remain in the agent;
+   the app does not upload or store private keys. On SELinux hosts running Podman Quadlet,
+   add `SecurityLabelDisable=true` so the rootless container can access the host user's agent socket.
 3. In **Settings → Host**, enter the SSH username for your host account and its
    OS. The host address is automatic: the supplied Compose files use Docker's
    host gateway, Quadlet uses `host.containers.internal`, and a native bridge uses
@@ -21,9 +24,10 @@ Until you configure a connection, host tools are unavailable.
    an address and port override for another machine, SSH aliases or unusual
    networking. Existing saved destinations remain unchanged. An alias must exist
    in the bridge's public SSH configuration.
-4. Paste public `known_hosts` entries verified through another trusted channel,
-   or use the bridge's existing verified host-key file. Strict host-key checking
-   stays enabled. Save the connection, then select **Test connection**.
+4. Paste public `known_hosts` entries verified through another trusted channel
+   (e.g. `ssh-keyscan -p 22 host.containers.internal`), or use the bridge's mounted
+   `known_hosts` file. Strict host-key checking stays enabled. Save the connection,
+   then select **Test connection**.
 
 For a custom Linux `docker run` deployment, add
 `--add-host=host.docker.internal:host-gateway` so the image can reach its host.
