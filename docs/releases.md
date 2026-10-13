@@ -3,9 +3,8 @@
 [Alpha `1.0.0-alpha.6`](https://github.com/openwebide/openwebide/releases/tag/v1.0.0-alpha.6)
 is published with Linux amd64/arm64 images, Linux/macOS bridge archives and
 versioned installation assets. Successful `main` builds update the rolling `nightly`
-image automatically; `preview` and `stable` are published from version tags. GHCR currently requires registry authentication.
-The package owner can enable anonymous pulls by making the container package
-public in [organization package settings](https://github.com/orgs/openwebide/packages).
+image automatically; `preview` and `stable` are published from version tags. The GHCR
+package is public, so pulling needs no registry authentication.
 The remaining stable-release and installation checks are tracked on the roadmap.
 
 Releases run one at a time per branch or tag. A new `main` push leaves the running

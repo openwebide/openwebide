@@ -1458,8 +1458,8 @@ Release automation, download-only Compose/Quadlet files, support issue forms,
 configuration/upgrade/backup guidance, architecture diagrams and font credits are
 prepared. See [releases and upgrades](releases.md). Version/changelog gates,
 archive/checksum contracts, workflow lint and Compose configuration checks cover
-this preparation. Alpha images and release assets are published; anonymous pull
-and release-host verification remain outstanding.
+this preparation. Alpha images and release assets are published and the GHCR package
+is public; release-host verification remains outstanding.
 Documentation now has [section overviews](index.md), first-session/workspace guides
 and curated site navigation. Complete the remaining task guides and installation
 walkthroughs against the final app before public launch.
@@ -1484,15 +1484,16 @@ walkthroughs against the final app before public launch.
   including installation discovery, host prerequisites, digest pins, failed deployments and reconnects.
   The settings/actions, durable claims and detached SSH worker have shared local/
   remote browser contracts and controlled deployment-fixture coverage.
-- **Prerelease installation verification:** make the GHCR package public and verify
-  anonymous pulls on both architectures, then validate a clean prerelease install
-  before using alpha/preview distribution for feedback; this does not complete 1.0.
+- **Prerelease installation verification:** the GHCR package is public, and anonymous
+  manifest pulls list both architectures for `nightly` and `v1.0.0-alpha.6`. Validate a
+  clean prerelease install before using alpha/preview distribution for feedback; this
+  does not complete 1.0.
 - **First stable publication:** move shipped changelog entries to `[1.0.0]`, bump workspace,
   Spin and lockfile versions together, and publish `v1.0.0` after rehearsal passes.
   The prepared workflow runs CI, merges native platform images into
   `ghcr.io/openwebide/openwebide:v1.0.0` and `stable`, and publishes changelog-derived
-  notes, archives, install files and checksums using `GITHUB_TOKEN`. Make the GHCR
-  package public and verify anonymous pulls and clean installs on both architectures.
+  notes, archives, install files and checksums using `GITHUB_TOKEN`. Verify anonymous
+  pulls and clean installs on both architectures for the stable image.
   Shared CI checks generated Quadlet services against the `stable` image channel.
   The pinned alpha is `1.0.0-alpha.6`; main builds publish rolling `nightly` images. Alpha publication does not complete
   the stable-release gates.

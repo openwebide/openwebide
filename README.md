@@ -52,8 +52,8 @@ Main builds automatically update `ghcr.io/openwebide/openwebide:nightly`. The pi
 release is `ghcr.io/openwebide/openwebide:v1.0.0-alpha.6`
 for Linux amd64 and arm64. Download the versioned Compose or Podman Quadlet files
 from [the alpha release](https://github.com/openwebide/openwebide/releases/tag/v1.0.0-alpha.6)
-and run without cloning or building. Registry authentication is currently required;
-the package owner can enable anonymous pulls by making the GHCR package public. See
+and run without cloning or building. The GHCR package is public, so no registry
+authentication is needed. See
 [releases, configuration and upgrades](docs/releases.md) for installation and backup
 instructions. The source-build path below remains available now.
 

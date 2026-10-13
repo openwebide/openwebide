@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Document that the GHCR package is public and needs no registry authentication. Anonymous manifest pulls list both architectures for `nightly` and `v1.0.0-alpha.6`; clean-install verification remains on the roadmap.
+
 - Record and reject a uniform smaller paragraph-probe experiment: geometry remains correct, but production input and cold paint regress in both modes. Preserve the existing planner and track focused prefix/cache work on the roadmap.
 
 - Record bounded source/style comparison boundaries in paragraph-cache diagnostics. Production captures confirm retained cache/environment matches in both modes while prepared syntax changes the input prefix styling.
