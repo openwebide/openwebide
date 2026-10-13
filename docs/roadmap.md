@@ -849,9 +849,11 @@ combined-source CI result.
   encoder and chunk encoder share the same wire-format implementation.
   All 781 core tests, 134 native frontend tests, 58 WASM library checks and
   45 recovery/fold browser contracts pass with strict core/WASM/WASI lint
-  ([receipt](editor-performance/streamed-recovery-upload-browser.json)). Fresh
-  production verification and final CI remain pending; native Blob assembly/
-  network memory and backend/storage serialization remain open.
+  ([receipt](editor-performance/streamed-recovery-upload-browser.json)). The full
+  Spin build and five production recovery checks pass at `4fd30bad`
+  ([receipt](editor-performance/streamed-recovery-upload-production.json)). Final
+  integrated CI, native Blob assembly/network memory and backend/storage
+  serialization remain open.
 
 **Remaining completion gates**:
 

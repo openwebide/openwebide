@@ -1,0 +1,19 @@
+{
+  "implementationCommit": "4fd30badcaef5019a7c85c16fdb9b3f4bf5b4ea6",
+  "build": "NO_COLOR=true spin build passed; production recovery fixture completed successfully.",
+  "artifactsSha256": {
+    "backend": "80fc54a5292832850ac7f261779245a842c88ac6107d2aed8b59943982def47d",
+    "frontend": "854e4f043cfcf49a31b281a001bf95645c49d41d7349e88965e80edfa267c739"
+  },
+  "distWasmSha256": {
+    "openwebide-frontend-e46484f48e9c6152_bg.wasm": "8ef0b43f8f862d0975dbf18e16d97c260dd328ec7f5083b8b708c7999553522e"
+  },
+  "productionChecks": [
+    "PASS: both modes, UTF-8/CRLF, selected/hidden tabs, validation and stale saves",
+    "PASS: authenticated recovery after actual Spin restart with the same SQLite state",
+    "PASS: close-all tombstones survive restart and reject stale-window resurrection",
+    "PASS: local actual edits, WASM worker preparation, autosave, server restart, reload/new-window tabs and draft",
+    "PASS: remote actual edits, WASM worker preparation, autosave, server restart, reload/new-window tabs and draft"
+  ],
+  "limits": "Local browser recovery has no granted native directory handle. This validates streamed upload wire format and real production restart/reload behavior, not native Blob memory bounds. Final integrated CI, physical-device and broader performance gates remain open."
+}

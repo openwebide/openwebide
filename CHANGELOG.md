@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Verify production edits, autosave, restart and reload/new-window restoration after streaming recovery uploads directly from the shared Rust encoder in both workspace modes.
+
 - Stream recovery JSON/base64 from the shared Rust encoder directly into byte-backed upload parts, avoiding an additional full encoded Rust body. Preserve wire format, cumulative size limits and account cancellation before any request is sent.
 
 - Verify production restart/reload recovery after bounded Blob upload preparation, and complete hosted release checks after cooperative recovery comparison. Final CI for the newer encoder/upload changes remains pending.

@@ -23,7 +23,7 @@
     "Browser upload yields and rejects both immediate and later account changes",
     "Actual PUT request preserves JSON, MIME type, auth/cache headers and revision acknowledgement"
   ],
-  "limits": "Production verification is running. Final integrated CI, native Blob assembly/network memory, backend/storage serialization, physical-device and broader editor performance gates remain open.",
+  "limits": "Production build and five restart/reload recovery checks also pass; see streamed-recovery-upload-production.json. Final integrated CI, native Blob assembly/network memory, backend/storage serialization, physical-device and broader editor performance gates remain open.",
   "library": {
     "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
     "passed": true,
