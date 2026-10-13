@@ -27,7 +27,7 @@ impl SshUpdates {
                 cwd: "/".into(),
                 elevated: false,
                 interactive: false,
-                timeout_seconds: 150,
+                timeout_seconds: if action == "deployment" { 30 } else { 150 },
             })
             .await?;
         if !result.is_success() {
@@ -35,6 +35,25 @@ impl SshUpdates {
             return Err("Host updater unavailable. Check SSH, Python 3, skopeo and the user systemd manager.".into());
         }
         serde_json::from_str(&result.stdout).map_err(|_| "Invalid host updater response.".into())
+    }
+    pub async fn discover(&self) -> Result<updates::Deployment, String> {
+        if self.0.platform != super::ssh::Platform::Linux {
+            return Err("Release installation currently requires a Linux deployment host.".into());
+        }
+        if std::env::var("OPENWEBIDE_APP_CONTAINER").as_deref() != Ok("1")
+            || (!std::path::Path::new("/.dockerenv").exists()
+                && !std::path::Path::new("/run/.containerenv").exists())
+        {
+            return Err("A native or external bridge cannot identify the app container. Use the advanced deployment settings.".into());
+        }
+        let value = self.primitive("deployment", serde_json::json!({})).await?;
+        let evidence: Vec<updates::discovery::DeploymentEvidence> =
+            serde_json::from_value(value).map_err(|_| "Invalid installation metadata.")?;
+        let identity = std::env::var("HOSTNAME")
+            .ok()
+            .or_else(|| std::fs::read_to_string("/etc/hostname").ok())
+            .unwrap_or_default();
+        updates::discovery::discover(identity.trim(), &evidence)
     }
     pub async fn status(&self, id: &str) -> Result<UpdateReceipt, String> {
         let value = self

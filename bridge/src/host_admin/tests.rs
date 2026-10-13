@@ -60,6 +60,8 @@ impl Journal {
 }
 #[derive(Default)]
 struct Execution {
+    uname_output: Option<String>,
+    fail_uname: bool,
     expected_destination: Option<String>,
     probes: AtomicUsize,
     changes: AtomicUsize,
@@ -77,7 +79,14 @@ impl ToolExecution for Execution {
         }
         assert!(spec.args.contains(&"-oStrictHostKeyChecking=yes".into()));
         let script = spec.args.last().unwrap();
-        let (output, hold) = if script.starts_with("sh -c ") {
+        let (output, hold) = if script == "uname -s" {
+            (
+                self.uname_output
+                    .clone()
+                    .unwrap_or_else(|| "Linux\n".into()),
+                false,
+            )
+        } else if script.starts_with("sh -c ") {
             self.probes.fetch_add(1, Ordering::SeqCst);
             (
                 format!(
@@ -90,6 +99,8 @@ impl ToolExecution for Execution {
                 ),
                 false,
             )
+        } else if script.starts_with("powershell.exe ") {
+            ("Win32NT\n".into(), false)
         } else if script.contains("'change'") {
             self.changes.fetch_add(1, Ordering::SeqCst);
             ("changed".into(), self.hold_change.load(Ordering::SeqCst))
@@ -98,13 +109,18 @@ impl ToolExecution for Execution {
             self.checks.fetch_add(1, Ordering::SeqCst);
             ("verified".into(), false)
         };
+        let exit_code = if script == "uname -s" && self.fail_uname {
+            1
+        } else {
+            0
+        };
         let released = self.released.clone();
         Box::pin(async move {
             if hold {
                 released.notified().await;
             }
             Ok(CommandOutcome {
-                exit_code: Some(0),
+                exit_code: Some(exit_code),
                 stdout: output,
                 stderr: String::new(),
             })
@@ -414,6 +430,7 @@ async fn default_host_addresses_use_the_same_ssh_adapter_and_pinned_key_policy()
         let host = SshHost::with_default_host(
             HostConnection {
                 username: "admin".into(),
+                platform: openwebide_core::host_admin::HostPlatform::Linux,
                 ..Default::default()
             },
             execution.clone(),
@@ -423,4 +440,45 @@ async fn default_host_addresses_use_the_same_ssh_adapter_and_pinned_key_policy()
         assert!(host.overview().await.is_ok());
         assert_eq!(execution.probes.load(Ordering::SeqCst), 1);
     }
+}
+
+#[tokio::test]
+async fn host_os_is_discovered_through_ssh_for_all_supported_platforms() {
+    use openwebide_core::host_admin::HostPlatform;
+    for (output, fail, expected) in [
+        ("Linux", false, HostPlatform::Linux),
+        ("Darwin", false, HostPlatform::Macos),
+        ("", true, HostPlatform::Windows),
+    ] {
+        let execution = Arc::new(Execution {
+            uname_output: Some(output.into()),
+            fail_uname: fail,
+            ..Default::default()
+        });
+        let host = SshHost::connect(
+            HostConnection {
+                destination: "admin@host".into(),
+                ..Default::default()
+            },
+            execution,
+        )
+        .await
+        .unwrap();
+        assert_eq!(host.platform, expected);
+    }
+    let execution = Arc::new(Execution {
+        uname_output: Some("unsupported".into()),
+        ..Default::default()
+    });
+    assert!(
+        SshHost::connect(
+            HostConnection {
+                destination: "admin@host".into(),
+                ..Default::default()
+            },
+            execution
+        )
+        .await
+        .is_err()
+    );
 }

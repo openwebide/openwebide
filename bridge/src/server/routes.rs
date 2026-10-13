@@ -382,26 +382,30 @@ pub(super) async fn route(
                 if path == "/host/updates" {
                     use openwebide_core::host_admin::updates::{self, UpdateHostRequest};
                     let request: UpdateHostRequest = read_json(req.into_body(), 16384).await?;
-                    let host =
-                        match crate::host_admin::connection(&backend)
-                            .await
-                            .and_then(|connection| {
-                                crate::host_admin::ssh::SshHost::new(
-                                    connection,
-                                    config.execution.clone(),
-                                )
-                            }) {
-                            Ok(host) => host,
-                            Err(detail) if matches!(&request, UpdateHostRequest::Start { .. }) => {
-                                return serde_json::to_string(&updates::UpdateLaunch::Rejected {
-                                    detail,
-                                })
-                                .map_err(|error| BridgeError::Execution(error.to_string()));
-                            }
-                            Err(error) => return Err(BridgeError::Execution(error)),
-                        };
+                    let host = match async {
+                        let connection = crate::host_admin::connection(&backend).await?;
+                        crate::host_admin::ssh::SshHost::connect(
+                            connection,
+                            config.execution.clone(),
+                        )
+                        .await
+                    }
+                    .await
+                    {
+                        Ok(host) => host,
+                        Err(detail) if matches!(&request, UpdateHostRequest::Start { .. }) => {
+                            return serde_json::to_string(&updates::UpdateLaunch::Rejected {
+                                detail,
+                            })
+                            .map_err(|error| BridgeError::Execution(error.to_string()));
+                        }
+                        Err(error) => return Err(BridgeError::Execution(error)),
+                    };
                     let adapter = crate::host_admin::updates::SshUpdates(host);
                     let result = match request {
+                        UpdateHostRequest::Discover => serde_json::to_value(
+                            adapter.discover().await.map_err(BridgeError::Execution)?,
+                        ),
                         UpdateHostRequest::Check { settings, running } => serde_json::to_value(
                             updates::check(&adapter, settings, running)
                                 .await
@@ -436,9 +440,12 @@ pub(super) async fn route(
                     let connection = crate::host_admin::connection(&backend)
                         .await
                         .map_err(BridgeError::Execution)?;
-                    let host =
-                        crate::host_admin::ssh::SshHost::new(connection, config.execution.clone())
-                            .map_err(BridgeError::Execution)?;
+                    let host = crate::host_admin::ssh::SshHost::connect(
+                        connection,
+                        config.execution.clone(),
+                    )
+                    .await
+                    .map_err(BridgeError::Execution)?;
                     serde_json::to_string(&host.overview().await.map_err(BridgeError::Execution)?)
                         .map_err(|error| BridgeError::Execution(error.to_string()))
                 } else if path == "/host/input-key" {

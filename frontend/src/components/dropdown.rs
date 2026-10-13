@@ -7,7 +7,7 @@ use super::ui::{Icon, IconName};
 fn items(menu: &web_sys::HtmlElement) -> Vec<web_sys::HtmlElement> {
     let nodes = menu
         .query_selector_all(if menu.get_attribute("role").as_deref() == Some("dialog") {
-            "button, input, select, textarea"
+            "button, input, select, textarea, summary"
         } else {
             "[role=menuitem], [role=menuitemradio], [role=menuitemcheckbox]"
         })
@@ -35,6 +35,8 @@ pub fn Dropdown(
     #[prop(default = Callback::new(|()| ()))] on_open: Callback<()>,
     #[prop(default = false)] above: bool,
     #[prop(default = false)] hide_caret: bool,
+    #[prop(default = 260.0)] preferred_width: f64,
+    #[prop(default = 320.0)] max_height: f64,
     children: ChildrenFn,
 ) -> impl IntoView {
     let open = open.unwrap_or_else(|| RwSignal::new(false));
@@ -101,8 +103,8 @@ pub fn Dropdown(
         let (anchor_left, anchor_top, anchor_bottom) =
             pointer.map_or((rect.left(), rect.top(), rect.bottom()), |(x, y)| (x, y, y));
         let width = pointer
-            .map_or(rect.width(), |_| 260.0)
-            .max(260.0)
+            .map_or(rect.width(), |_| preferred_width)
+            .max(preferred_width)
             .min((viewport_width - 16.0).max(0.0));
         let below = (offset + viewport_height - anchor_bottom - 8.0).max(0.0);
         let above_space = (anchor_top - offset - 8.0).max(0.0);
@@ -114,10 +116,10 @@ pub fn Dropdown(
         let available = if up { above_space } else { below };
         let style = menu.unchecked_ref::<web_sys::HtmlElement>().style();
         let _ = style.set_property("width", &format!("{width}px"));
-        let _ = style.set_property("max-height", &format!("{}px", available.min(320.0)));
+        let _ = style.set_property("max-height", &format!("{}px", available.min(max_height)));
         let _ = style.set_property(
             "--dropdown-available-height",
-            &format!("{}px", available.min(320.0)),
+            &format!("{}px", available.min(max_height)),
         );
         let _ = style.set_property(
             "left",
@@ -195,7 +197,7 @@ pub fn Dropdown(
                 <div class="ui-dropdown-backdrop recent-backdrop" on:click=move |event| { event.stop_propagation(); event.prevent_default(); close.run(()); } />
             </Show>
             <Show when=move || open.get() && (displayed.get() || ready.is_none_or(|ready| ready.get()))>
-                <div class=format!("ui-dropdown-menu recent-menu {menu_class}") role=menu_role aria-label=aria_label id=content_id.clone() node_ref=menu style="visibility:hidden" on:click=move |event| { event.prevent_default(); event.stop_propagation(); }>{children()}</div>
+                <div class=format!("ui-dropdown-menu recent-menu {menu_class}") role=menu_role aria-label=aria_label id=content_id.clone() node_ref=menu style="visibility:hidden" on:click=move |event| { if menu_role != "dialog" { event.prevent_default(); } event.stop_propagation(); }>{children()}</div>
             </Show>
         </span>
     }

@@ -2,11 +2,12 @@
 use crate::{backend::Api, state::auth::AuthState};
 use leptos::prelude::*;
 use openwebide_core::host_admin::updates::{
-    Build, UpdateCheck, UpdateJob, UpdateRequest, UpdateResponse, UpdateSettings,
+    Build, Deployment, UpdateCheck, UpdateJob, UpdateRequest, UpdateResponse, UpdateSettings,
 };
 
 #[derive(Clone, Copy)]
 pub struct UpdateState {
+    pub discovered: RwSignal<Option<Deployment>>,
     pub settings: RwSignal<UpdateSettings>,
     pub running: RwSignal<Option<Build>>,
     pub check: RwSignal<Option<UpdateCheck>>,
@@ -21,6 +22,7 @@ pub struct UpdateState {
 impl UpdateState {
     pub fn new(api: Api, auth: AuthState) -> Self {
         let state = Self {
+            discovered: RwSignal::new(None),
             settings: RwSignal::new(UpdateSettings::default()),
             running: RwSignal::new(None),
             check: RwSignal::new(None),
@@ -36,6 +38,7 @@ impl UpdateState {
             let epoch = auth.generation.get();
             if previous.is_some_and(|previous| previous != epoch) {
                 state.generation.update(|value| *value += 1);
+                state.discovered.set(None);
                 state.settings.set(UpdateSettings::default());
                 state.running.set(None);
                 state.check.set(None);
@@ -72,6 +75,9 @@ impl UpdateState {
             }
             self.busy.set(false);
             match result {
+                Ok(UpdateResponse::Discovered { deployment }) => {
+                    self.discovered.set(Some(deployment));
+                }
                 Ok(UpdateResponse::Settings {
                     settings,
                     running,

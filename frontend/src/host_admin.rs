@@ -21,6 +21,9 @@ pub struct HostState {
     pub operations: RwSignal<Vec<HostOperation>>,
     pub error: RwSignal<Option<String>>,
     pub busy: RwSignal<bool>,
+    pub connection_busy: RwSignal<bool>,
+    pub connection_error: RwSignal<Option<String>>,
+    pub connection_status: RwSignal<Option<String>>,
     pub open: RwSignal<bool>,
     generation: RwSignal<u64>,
     connection_generation: RwSignal<u64>,
@@ -38,6 +41,9 @@ impl HostState {
             operations: RwSignal::new(Vec::new()),
             error: RwSignal::new(None),
             busy: RwSignal::new(false),
+            connection_busy: RwSignal::new(false),
+            connection_error: RwSignal::new(None),
+            connection_status: RwSignal::new(None),
             open: RwSignal::new(false),
             generation: RwSignal::new(0),
             connection_generation: RwSignal::new(0),
@@ -65,6 +71,9 @@ impl HostState {
         Effect::new(move || {
             auth.generation.track();
             state.connection.set(None);
+            state.connection_busy.set(false);
+            state.connection_error.set(None);
+            state.connection_status.set(None);
         });
         state
     }
@@ -80,13 +89,10 @@ impl HostState {
             && self.scope() == scope
             && self.generation.get_untracked() == generation
     }
-    fn begin(self) -> (Scope, u64) {
-        self.generation.update(|generation| *generation += 1);
-        self.busy.set(true);
-        self.error.set(None);
-        (self.scope(), self.generation.get_untracked())
-    }
     pub fn load_connection(self) {
+        if self.connection_busy.get_untracked() {
+            return;
+        }
         let epoch = self.auth.generation.get_untracked();
         self.connection_generation
             .update(|generation| *generation += 1);
@@ -101,7 +107,7 @@ impl HostState {
             }
             match result {
                 Ok(connection) => self.connection.set(Some(connection)),
-                Err(error) => self.error.set(Some(error)),
+                Err(error) => self.connection_error.set(Some(error)),
             }
         });
     }
@@ -113,38 +119,89 @@ impl HostState {
         })
     }
     pub fn save_connection(self, connection: HostConnection) {
-        self.connection_generation
-            .update(|generation| *generation += 1);
-        let (scope, generation) = self.begin();
+        self.save(connection, false);
+    }
+    pub fn save_and_test_connection(self, connection: HostConnection) {
+        self.save(connection, true);
+    }
+    fn connection_current(self, epoch: u64, generation: u64) -> bool {
+        self.auth.generation.try_get_untracked() == Some(epoch)
+            && self.connection_generation.try_get_untracked() == Some(generation)
+    }
+    fn save(self, connection: HostConnection, test: bool) {
+        self.connection_generation.update(|value| *value += 1);
+        let generation = self.connection_generation.get_untracked();
+        let epoch = self.auth.generation.get_untracked();
+        self.connection_busy.set(true);
+        self.connection_error.set(None);
+        self.connection_status.set(None);
+        let scope = self.scope();
         let api = self.api.get_value();
         wasm_bindgen_futures::spawn_local(async move {
             let result = api.save_host_connection(&connection).await;
-            if !self.current(scope, generation) {
+            if !self.connection_current(epoch, generation) {
                 return;
             }
             match result {
                 Ok(connection) => {
+                    let enabled = connection.enabled;
+                    self.generation.update(|value| *value += 1);
+                    self.busy.set(false);
                     self.connection.set(Some(connection));
                     self.environment.set(None);
+                    self.operations.set(Vec::new());
+                    self.connection_status.set(Some(
+                        if enabled {
+                            "Host connection saved."
+                        } else {
+                            "Host administration disabled."
+                        }
+                        .into(),
+                    ));
+                    if test && enabled {
+                        let result = api.probe_host_connection().await;
+                        if !self.connection_current(epoch, generation) {
+                            return;
+                        }
+                        self.finish_connection_test(scope, result);
+                    }
                 }
-                Err(error) => self.error.set(Some(error)),
+                Err(error) => self.connection_error.set(Some(error)),
             }
-            self.busy.set(false);
+            self.connection_busy.set(false);
         });
     }
+    fn finish_connection_test(self, scope: Scope, result: Result<HostEnvironment, String>) {
+        match result {
+            Ok(environment) => {
+                self.connection_status.set(Some(format!(
+                    "Connected to {} ({})",
+                    environment.target,
+                    environment.info.os.as_deref().unwrap_or("OS unavailable")
+                )));
+                if self.scope() == scope {
+                    self.environment.set(Some(environment));
+                }
+            }
+            Err(error) => self.connection_error.set(Some(error)),
+        }
+    }
     pub fn test_connection(self) {
-        let (scope, generation) = self.begin();
+        self.connection_generation.update(|value| *value += 1);
+        let generation = self.connection_generation.get_untracked();
+        let epoch = self.auth.generation.get_untracked();
+        self.connection_busy.set(true);
+        self.connection_error.set(None);
+        self.connection_status.set(None);
+        let scope = self.scope();
         let api = self.api.get_value();
         wasm_bindgen_futures::spawn_local(async move {
             let result = api.probe_host_connection().await;
-            if !self.current(scope, generation) {
+            if !self.connection_current(epoch, generation) {
                 return;
             }
-            match result {
-                Ok(environment) => self.environment.set(Some(environment)),
-                Err(error) => self.error.set(Some(error)),
-            }
-            self.busy.set(false);
+            self.finish_connection_test(scope, result);
+            self.connection_busy.set(false);
         });
     }
     pub fn refresh(self, inspect: bool) {
@@ -152,7 +209,7 @@ impl HostState {
         let Some(session) = scope.session.filter(|_| scope.project.is_none()) else {
             return;
         };
-        if self.busy.get_untracked() || !self.configured() {
+        if self.busy.get_untracked() || self.connection_busy.get_untracked() || !self.configured() {
             return;
         }
         self.generation.update(|generation| *generation += 1);
@@ -269,5 +326,6 @@ impl HostState {
                 serde_json::to_string(resource).unwrap_or_default()
             ));
         });
+        self.open.set(false);
     }
 }

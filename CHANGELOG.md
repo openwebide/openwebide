@@ -8,9 +8,13 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Enlarge the Host flyout with one main scroll area, expandable connection/collection notes and readable resource relationships. Restore native detail-row and form interactions in dialog flyouts; asking about a resource closes the flyout to reveal the chat draft.
+
 - Reuse retained ASCII endpoint coordinates when deleting line breaks or replacing multiple rows. Recompute category seams with shared native/visual coordinate and row-summary publication.
 
 - Stop repeated printable-ASCII eligibility checks after a row has already encountered Unicode/control text. Preserve coordinate/admission behavior; measured impact on the Unicode regression remains pending.
+
+- Simplify Host setup to an SSH username with automatic OS detection, advanced connection overrides, immediate persisted disablement and one Save and test action independent of inventory polling. Move release channels to Settings → Updates and discover bundled-container Compose/Quadlet installation metadata, retaining explicit overrides when discovery is unavailable.
 
 - Verify line-splitting production input in both modes with explicit long-ASCII insertion, split, undo/redo and LF/CRLF checks. Add repeatable native edit/undo measurements; ASCII insertion improves while mixed/dense workloads still need follow-up.
 

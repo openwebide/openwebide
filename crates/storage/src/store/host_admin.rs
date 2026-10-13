@@ -362,6 +362,18 @@ mod tests {
     }
 
     #[test]
+    fn disabling_host_administration_survives_reload() {
+        futures::executor::block_on(async {
+            let (store, _, _) = setup().await;
+            let mut connection = store.host_connection().await.unwrap();
+            connection.enabled = false;
+            let saved = store.save_host_connection(&connection).await.unwrap();
+            assert!(!store.host_connection().await.unwrap().enabled);
+            assert_eq!(saved, store.host_connection().await.unwrap());
+        });
+    }
+
+    #[test]
     fn connection_changes_are_versioned_blocked_by_maintenance_and_admin_only() {
         futures::executor::block_on(async {
             let (store, user, session) = setup().await;

@@ -3542,10 +3542,10 @@ button.browser-item {
 
 /* Host administration uses the shared form/button system and theme tokens. */
 .host-panel { border-bottom: 1px solid var(--border); padding: 8px 12px; background: var(--bg-panel); max-height: 45vh; overflow: auto; flex-shrink: 0; }
-.host-resources { max-height: 24vh; overflow: auto; }
+.host-resources { min-width: 0; }
 .host-resource, .host-operation { border-top: 1px solid var(--border); padding: 6px 0; }
 .host-resource summary, .host-operation summary { cursor: pointer; color: var(--text); }
-.host-panel pre { font-family: var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-muted); max-height: 24vh; overflow: auto; }
+.host-panel pre { font-family: var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-muted); }
 .host-output { background: var(--bg); padding: 8px; }
 
 .agent-questions { border: 1px solid var(--border); background: var(--bg-panel); padding: .75rem; max-height: 55vh; overflow: auto; }
@@ -3733,9 +3733,13 @@ button.browser-item {
 .tui-statusline .tui-host-status { flex: none; }
 .tui-host-actions { margin-left: auto; display: flex; align-items: center; gap: var(--space-2); flex: none; }
 .tui-host-actions .tui-goal-status, .tui-host-actions .tui-monitor-status { margin-left: 0; }
-.host-panel-configured { height: max(0px, min(300px, calc(var(--dropdown-available-height, 320px) - 10px))); box-sizing: border-box; }
+.host-panel-configured { height: max(0px, min(620px, calc(var(--dropdown-available-height, 640px) - 10px))); box-sizing: border-box; }
 .host-summary { min-height: 5em; }
-.tui-host-menu { white-space: normal; overflow-y: auto; }
+.host-summary p { margin: var(--space-2) 0; }
+.host-resource-details { padding: var(--space-3); background: var(--bg); border-radius: var(--radius-md); }
+.host-resource-details strong { font-size: var(--font-caption); color: var(--text-muted); }
+.host-resource > summary { padding: var(--space-2) 0; overflow-wrap: anywhere; }
+.tui-host-menu { white-space: normal; overflow: hidden; }
 .tui-host-menu .host-panel { border: 0; max-height: none; padding: var(--space-3); }
 .phone-layout .app-drawer-status { border-top: 1px solid var(--border); margin-top: var(--space-3); padding-top: var(--space-3); }
 .phone-layout .app-drawer-status .statusbar { border: 0; padding: 0; background: transparent; }

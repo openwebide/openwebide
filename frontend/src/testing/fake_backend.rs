@@ -104,6 +104,8 @@ pub struct FakeBackend {
     pub question_commands: RefCell<Vec<(i64, openwebide_core::questions::QuestionCommand)>>,
     pub question_loads: RefCell<VecDeque<Deferred<openwebide_core::questions::QuestionResult>>>,
     pub host_connection: RefCell<openwebide_core::host_admin::HostConnection>,
+    pub host_probe_results:
+        RefCell<VecDeque<Deferred<openwebide_core::host_admin::HostEnvironment>>>,
     pub host_update_requests: RefCell<Vec<openwebide_core::host_admin::updates::UpdateRequest>>,
     pub host_update_results:
         RefCell<VecDeque<Deferred<openwebide_core::host_admin::updates::UpdateResponse>>>,
@@ -1029,6 +1031,19 @@ impl Backend for FakeBackend {
         &self,
     ) -> LocalBoxFuture<'_, Result<openwebide_core::host_admin::HostConnection, String>> {
         Box::pin(async { Ok(self.host_connection.borrow().clone()) })
+    }
+    fn probe_host_connection(
+        &self,
+    ) -> LocalBoxFuture<'_, Result<openwebide_core::host_admin::HostEnvironment, String>> {
+        let response = self.host_probe_results.borrow_mut().pop_front();
+        Box::pin(async move {
+            match response {
+                Some(response) => response
+                    .await
+                    .map_err(|_| "Host probe fixture cancelled".to_owned())?,
+                None => Err("No host probe fixture".into()),
+            }
+        })
     }
     fn save_host_connection<'a>(
         &'a self,

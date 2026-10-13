@@ -12,6 +12,20 @@ pub fn HostUpdates() -> impl IntoView {
     let draft = RwSignal::new(UpdateSettings::default());
     updates.request(UpdateRequest::Settings);
     Effect::new(move || draft.set(updates.settings.get()));
+    let attempted_discovery = RwSignal::new(false);
+    Effect::new(move || {
+        if updates.running.get().is_some() && !updates.busy.get() && !attempted_discovery.get() {
+            attempted_discovery.set(true);
+            if matches!(updates.settings.get().deployment, Deployment::Unconfigured) {
+                updates.request(UpdateRequest::Discover);
+            }
+        }
+    });
+    Effect::new(move || {
+        if let Some(deployment) = updates.discovered.get() {
+            draft.update(|value| value.deployment = deployment);
+        }
+    });
     let active = Memo::new(move |_| updates.tracking.get());
     let timer = set_interval_with_handle(
         move || {
@@ -36,8 +50,14 @@ pub fn HostUpdates() -> impl IntoView {
             <FormField label="Release channel" group=true>
                 <super::ui::SegmentedControl options=vec![super::ui::SegmentOption::new("Alpha",ReleaseChannel::Alpha),super::ui::SegmentOption::new("Preview",ReleaseChannel::Preview),super::ui::SegmentOption::new("Stable",ReleaseChannel::Stable)] value=Signal::derive(move||draft.with(|value|value.channel)) on_change=Callback::new(move|channel|draft.update(|value|value.channel=channel))/>
             </FormField>
-            <super::ui::DisclosurePanel summary=move||view!{"Deployment updater"}>
-                <p class="form-hint">"Uses the saved host SSH connection. The Linux host needs Python 3, skopeo and a user systemd manager. Save before checking for updates."</p>
+            <p class="form-hint">{move||draft.with(|value|match &value.deployment {
+                Deployment::Unconfigured => "Installation has not been identified. Connect SSH in Host settings, then detect the installation or use the advanced override.".into(),
+                Deployment::Compose { directory, .. } => format!("Docker Compose installation: {directory}"),
+                Deployment::Quadlet { image_file, .. } => format!("Podman Quadlet installation: {image_file}"),
+            })}</p>
+            <InlineActions><button class="btn ghost" disabled=move||updates.busy.get() || active.get() on:click=move|_|updates.request(UpdateRequest::Discover)>"Detect installation"</button></InlineActions>
+            <super::ui::DisclosurePanel summary=move||view!{"Advanced deployment settings"}>
+                <p class="form-hint">"Uses the saved host SSH connection. Release installation requires Linux, Python 3, skopeo and a user systemd manager. Discovery uses the running container’s metadata. Review and save the detected settings before checking for updates."</p>
                 <FormField label="Deployment"><select class="form-input" aria-label="Update deployment" prop:value=move||draft.with(|value|match value.deployment{Deployment::Unconfigured=>"none",Deployment::Compose{..}=>"compose",Deployment::Quadlet{..}=>"quadlet"}) on:change=move|event|draft.update(|value|value.deployment=match event_target_value(&event).as_str(){"compose"=>Deployment::Compose{directory:String::new(),files:Vec::new(),service:"openwebide".into()},"quadlet"=>Deployment::Quadlet{image_file:String::new(),service:"openwebide.service".into()},_=>Deployment::Unconfigured})><option value="none">"Not configured"</option><option value="compose">"Docker Compose"</option><option value="quadlet">"Podman / systemd"</option></select></FormField>
                 <Show when=move||draft.with(|value|matches!(value.deployment,Deployment::Compose{..}))>
                     <FormField label="Installation directory"><input class="form-input" aria-label="Update installation directory" placeholder="/home/user/openwebide" prop:value=move||draft.with(|value|match &value.deployment{Deployment::Compose{directory,..}=>directory.clone(),_=>String::new()}) on:input=move|event|draft.update(|value|if let Deployment::Compose{directory,..}=&mut value.deployment{*directory=event_target_value(&event)})/></FormField>

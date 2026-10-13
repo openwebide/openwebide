@@ -217,9 +217,129 @@ async fn host_settings_load_on_first_mount_and_fit_a_phone_width() {
         .unchecked_into::<web_sys::HtmlInputElement>();
     assert_eq!(host.value(), "admin@homelab");
     assert!(host.get_bounding_client_rect().width() <= 336.0);
-    mounted.click_text("Save host connection");
+    mounted.click_text("Save and test connection");
     settle().await;
     assert_eq!(mounted.state.fake.host_connection.borrow().revision, 5);
+}
+
+#[wasm_bindgen_test]
+async fn host_save_and_test_reports_success_and_rejects_stale_environment() {
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        for transition in 0..3 {
+            let slot = Rc::new(Cell::new(None));
+            let capture = slot.clone();
+            let mounted = mount_test(move |state| {
+                state.seed_project();
+                state
+                    .projects
+                    .projects
+                    .update(|projects| projects[0].mode = mode);
+                state.chat.active_session.set(Some(1));
+                let host = HostState::new(state.api, state.auth, state.chat, state.projects);
+                capture.set(Some(host));
+                provide_context(host);
+                view! { <HostSettings/> }
+            });
+            settle().await;
+            let host = slot.get().unwrap();
+            let (sender, receiver) = futures::channel::oneshot::channel();
+            mounted
+                .state
+                .fake
+                .host_probe_results
+                .borrow_mut()
+                .push_back(receiver);
+            let connection = HostConnection {
+                username: "admin".into(),
+                ..host.connection.get_untracked().unwrap()
+            };
+            host.save_and_test_connection(connection);
+            settle().await;
+            assert_eq!(
+                mounted.state.fake.host_connection.borrow().username,
+                "admin"
+            );
+            assert!(host.connection_busy.get_untracked());
+            if transition == 1 {
+                mounted.state.chat.active_session.set(Some(2));
+            }
+            if transition == 2 {
+                mounted.state.auth.generation.update(|value| *value += 1);
+            }
+            settle().await;
+            sender
+                .send(Ok(HostEnvironment {
+                    target: "host".into(),
+                    boot_id: "boot".into(),
+                    info: openwebide_core::HostInfo {
+                        os: Some("Linux".into()),
+                        ..Default::default()
+                    },
+                    resources: Vec::new(),
+                    relationships: Vec::new(),
+                    notes: Vec::new(),
+                }))
+                .unwrap();
+            settle().await;
+            assert!(!host.connection_busy.get_untracked());
+            if transition == 0 {
+                assert!(host.environment.get_untracked().is_some());
+                assert!(
+                    mounted
+                        .root
+                        .text_content()
+                        .unwrap()
+                        .contains("Connected to host (Linux)")
+                );
+            } else {
+                assert!(host.environment.get_untracked().is_none());
+            }
+        }
+    }
+}
+
+#[wasm_bindgen_test]
+async fn host_disable_is_saved_immediately_and_background_polling_does_not_disable_setup() {
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let slot = Rc::new(Cell::new(None));
+        let capture = slot.clone();
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            state.fake.host_connection.borrow_mut().username = "admin".into();
+            let host = HostState::new(state.api, state.auth, state.chat, state.projects);
+            capture.set(Some(host));
+            provide_context(host);
+            view! { <HostSettings/> }
+        });
+        settle().await;
+        let host = slot.get().unwrap();
+        host.busy.set(true);
+        settle().await;
+        let save = mounted
+            .root
+            .query_selector(".btn")
+            .unwrap()
+            .unwrap()
+            .unchecked_into::<web_sys::HtmlButtonElement>();
+        assert!(!save.disabled());
+        let toggle = mounted
+            .element("input[type=checkbox]")
+            .unchecked_into::<web_sys::HtmlInputElement>();
+        toggle.set_checked(false);
+        toggle
+            .dispatch_event(&web_sys::Event::new("change").unwrap())
+            .unwrap();
+        settle().await;
+        assert!(!mounted.state.fake.host_connection.borrow().enabled);
+        assert!(!host.connection.get_untracked().unwrap().enabled);
+        host.load_connection();
+        settle().await;
+        assert!(!toggle.checked());
+    }
 }
 
 #[wasm_bindgen_test]
@@ -345,7 +465,8 @@ async fn host_settings_default_address_and_advanced_overrides_in_both_modes() {
         username
             .dispatch_event(&web_sys::Event::new("input").unwrap())
             .unwrap();
-        mounted.click_text("Save host connection");
+        settle().await;
+        mounted.click_text("Save and test connection");
         settle().await;
         {
             let saved = mounted.state.fake.host_connection.borrow();
@@ -367,7 +488,8 @@ async fn host_settings_default_address_and_advanced_overrides_in_both_modes() {
         address
             .dispatch_event(&web_sys::Event::new("input").unwrap())
             .unwrap();
-        mounted.click_text("Save host connection");
+        settle().await;
+        mounted.click_text("Save and test connection");
         settle().await;
         assert_eq!(
             mounted.state.fake.host_connection.borrow().destination,
@@ -477,6 +599,119 @@ async fn private_reply_key_failures_and_scope_changes_never_send_plaintext() {
 #[wasm_bindgen_test]
 fn private_reply_crypto_contract_in_browser() {
     private_input::testing::assert_private_reply_contract();
+}
+
+#[wasm_bindgen_test]
+async fn host_resource_clicks_expand_details_and_ask_reveals_the_draft_in_both_modes() {
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let slot = Rc::new(Cell::new(None));
+        let capture = slot.clone();
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            state.projects.active_project.set(None);
+            state.chat.active_session.set(Some(1));
+            state.fake.host_connection.borrow_mut().username = "admin".into();
+            let host = HostState::new(state.api, state.auth, state.chat, state.projects);
+            provide_context(host);
+            capture.set(Some(host));
+            view! { <style>{include_str!("../../styles.css")}</style><HostPanel/> }
+        });
+        settle().await;
+        let host = slot.get().unwrap();
+        host.environment.set(Some(HostEnvironment {
+            target: "host".into(),
+            boot_id: "boot".into(),
+            info: openwebide_core::HostInfo::default(),
+            resources: vec![
+                HostResource {
+                    id: "process:123".into(),
+                    kind: ResourceKind::Process,
+                    name: "webide".into(),
+                    status: "running".into(),
+                    detail: "PID 123; memory 1024 bytes".into(),
+                },
+                HostResource {
+                    id: "port:3000".into(),
+                    kind: ResourceKind::Port,
+                    name: "TCP 3000".into(),
+                    status: "listening".into(),
+                    detail: "port".into(),
+                },
+            ],
+            relationships: vec![HostRelationship {
+                from: "port:3000".into(),
+                to: "process:123".into(),
+                description: "owned by".into(),
+            }],
+            notes: Vec::new(),
+        }));
+        host.open.set(true);
+        settle().await;
+        let menu = mounted.element(".tui-host-menu");
+        let viewport = f64::from(
+            web_sys::window()
+                .unwrap()
+                .document()
+                .unwrap()
+                .document_element()
+                .unwrap()
+                .client_width(),
+        );
+        assert!(
+            (menu.get_bounding_client_rect().width() - 640_f64.min(viewport - 16.0)).abs() < 1.0
+        );
+        assert!(menu.get_bounding_client_rect().height() > 300.0);
+        assert_eq!(
+            web_sys::window()
+                .unwrap()
+                .get_computed_style(&mounted.element(".host-resources"))
+                .unwrap()
+                .unwrap()
+                .get_property_value("overflow-y")
+                .unwrap(),
+            "visible"
+        );
+        let resource = mounted.element(".host-resource");
+        assert!(!resource.has_attribute("open"));
+        mounted.click(".host-resource > summary");
+        settle().await;
+        assert!(resource.has_attribute("open"));
+        let text = resource.text_content().unwrap();
+        assert!(text.contains("PID 123"));
+        assert!(text.contains("TCP 3000 (port:3000) → webide (process:123)"));
+        mounted.click(".host-resource > summary");
+        settle().await;
+        assert!(!resource.has_attribute("open"));
+        mounted.click(".host-resource > summary");
+        settle().await;
+        mounted.click_text("Ask about this");
+        settle().await;
+        assert!(!host.open.get_untracked());
+        assert!(
+            mounted
+                .state
+                .chat
+                .draft
+                .get_untracked()
+                .contains("process:123")
+        );
+        assert!(
+            mounted
+                .state
+                .fake
+                .host_requests
+                .borrow()
+                .iter()
+                .all(|(_, request)| matches!(
+                    request,
+                    HostRequest::Inspect | HostRequest::Operations
+                ))
+        );
+    }
 }
 
 #[wasm_bindgen_test]
@@ -594,7 +829,7 @@ async fn host_updates_use_the_same_settings_and_actions_in_both_project_modes() 
             let host = HostState::new(state.api, state.auth, state.chat, state.projects);
             capture.set(Some(host));
             provide_context(host);
-            view! { <HostSettings/> }
+            view! { <openwebide_frontend::components::host_updates::HostUpdates/> }
         });
         settle().await;
         let host = slot.get().unwrap();
@@ -639,6 +874,92 @@ async fn host_updates_use_the_same_settings_and_actions_in_both_project_modes() 
         mounted.state.chat.active_session.set(Some(99));
         settle().await;
         assert_eq!(host.updates.settings.get_untracked(), settings);
+    }
+}
+
+#[wasm_bindgen_test]
+async fn host_installation_discovery_populates_the_same_draft_in_both_modes_and_retains_manual_fallback()
+ {
+    use openwebide_core::host_admin::updates::*;
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let deployment = Deployment::Compose {
+            directory: "/srv/ide".into(),
+            files: vec!["/srv/ide/app.yml".into(), "/srv/ide/ssh.yml".into()],
+            service: "app".into(),
+        };
+        let detected = deployment.clone();
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            for result in [
+                Ok(UpdateResponse::Settings {
+                    settings: UpdateSettings::default(),
+                    running: Build {
+                        version: "test".into(),
+                        commit: "test".into(),
+                        schema: 1,
+                    },
+                    job: None,
+                }),
+                Ok(UpdateResponse::Discovered {
+                    deployment: detected.clone(),
+                }),
+            ] {
+                let (sender, receiver) = futures::channel::oneshot::channel();
+                sender.send(result).unwrap();
+                state
+                    .fake
+                    .host_update_results
+                    .borrow_mut()
+                    .push_back(receiver);
+            }
+            provide_context(HostState::new(
+                state.api,
+                state.auth,
+                state.chat,
+                state.projects,
+            ));
+            view! { <openwebide_frontend::components::host_updates::HostUpdates/> }
+        });
+        settle().await;
+        assert!(
+            mounted
+                .root
+                .text_content()
+                .unwrap()
+                .contains("Docker Compose installation: /srv/ide")
+        );
+        assert!(
+            mounted
+                .state
+                .fake
+                .host_update_requests
+                .borrow()
+                .iter()
+                .any(|request| matches!(request, UpdateRequest::Discover))
+        );
+        mounted.click_text("Save update settings");
+        settle().await;
+        assert!(mounted.state.fake.host_update_requests.borrow().iter().any(|request| matches!(request, UpdateRequest::Save { settings } if settings.deployment == deployment)));
+        mounted.click_text("Detect installation");
+        settle().await;
+        // A failed retry retains the discovered draft and manual override.
+        assert!(
+            mounted
+                .root
+                .text_content()
+                .unwrap()
+                .contains("Docker Compose installation: /srv/ide")
+        );
+        mounted.click_text("Advanced deployment settings");
+        settle().await;
+        let directory = mounted
+            .element("[aria-label='Update installation directory']")
+            .unchecked_into::<web_sys::HtmlInputElement>();
+        assert_eq!(directory.value(), "/srv/ide");
     }
 }
 

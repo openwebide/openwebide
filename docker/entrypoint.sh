@@ -21,7 +21,7 @@ trap 'shutdown TERM 143' TERM
 trap 'shutdown INT 130' INT
 
 if [[ ${OPENWEBIDE_BRIDGE:-1} != 0 ]]; then
-    openwebide-bridge --host "${OPENWEBIDE_BRIDGE_HOST:-0.0.0.0}" --port 3001 --workspace /workspace \
+    OPENWEBIDE_APP_CONTAINER=1 openwebide-bridge --host "${OPENWEBIDE_BRIDGE_HOST:-0.0.0.0}" --port 3001 --workspace /workspace \
         --backend-url http://127.0.0.1:3000/api --secret-file /app/.spin/bridge-secret &
     children+=("$!")
 fi

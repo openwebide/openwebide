@@ -138,9 +138,9 @@ Host administration and Git over SSH use the host user's SSH agent forwarded int
 7. **Configure in Settings → Host**:
    - Check **Enable host administration**.
    - Set **SSH username** to your host user account.
-   - Select your **Host operating system** (`Linux`).
-   - Under **Pinned public host keys**, paste the host public key for `host.containers.internal` (or leave blank if included in the mounted `known_hosts`).
-   - Save and select **Test connection**.
+   - The host operating system is detected automatically.
+   - Under **Advanced connection settings → Pinned public host keys**, paste the verified host public key for `host.containers.internal` (or leave blank if included in the mounted `known_hosts`).
+   - Select **Save and test connection**.
 
 ```sh
 systemctl --user status openwebide.service

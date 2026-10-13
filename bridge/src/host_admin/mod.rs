@@ -54,7 +54,7 @@ pub async fn request<B: RunBackend + 'static>(
     request: HostRequest,
 ) -> Result<HostResponse, String> {
     let _guard = operation_gate().lock().await;
-    let host = SshHost::new(connection(&*backend).await?, execution);
+    let host = SshHost::connect(connection(&*backend).await?, execution).await;
     openwebide_core::host_admin::host_request(
         &HostRuntime { backend, host },
         user,
@@ -176,7 +176,7 @@ pub async fn recover<B: RunBackend + 'static>(
     if pending.is_empty() {
         return Ok(());
     }
-    let host = SshHost::new(config, execution)?;
+    let host = SshHost::connect(config, execution).await?;
     let adapter = HostRuntime {
         backend,
         host: Ok(host),

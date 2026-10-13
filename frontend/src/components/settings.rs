@@ -48,9 +48,11 @@ pub fn Settings(
                 super::ui::DialogTab::new("Bridge", "settings-tab-bridge", "settings-panel-bridge"),
                 super::ui::DialogTab::new("Host", "settings-tab-host", "settings-panel-host"),
                 super::ui::DialogTab::new("Plugins", "settings-tab-plugins", "settings-panel-plugins"),
+                super::ui::DialogTab::new("Updates", "settings-tab-updates", "settings-panel-updates"),
             ] selected=tab.read_only().into() on_change=Callback::new(move |index| tab.set(index)) />
             <DialogBody class="settings-body ui-tabbed-body">
                 <div id="settings-panel-plugins" class="ui-tab-panel" role="tabpanel" aria-labelledby="settings-tab-plugins" tabindex="0" hidden=move||tab.get()!=5><Show when=move||tab.get()==5><super::plugins::PluginMarketplaceSources/></Show></div>
+                <div id="settings-panel-updates" class="ui-tab-panel" role="tabpanel" aria-labelledby="settings-tab-updates" tabindex="0" hidden=move||tab.get()!=6><Show when=move||host_available && tab.get()==6><super::host_updates::HostUpdates/></Show></div>
                 <div id="settings-panel-host" class="ui-tab-panel" role="tabpanel" aria-labelledby="settings-tab-host" tabindex="0" hidden=move||tab.get()!=4><Show when=move||host_available && tab.get()==4><super::host_admin::HostSettings/></Show></div>
                 <div id="settings-panel-general" class="ui-tab-panel" role="tabpanel" aria-labelledby="settings-tab-general" tabindex="0" hidden=move || tab.get() != 0>
                 <FormSection title="Appearance" description="Changes apply immediately." class="ui-form-grid">

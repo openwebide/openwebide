@@ -231,6 +231,12 @@ pub(crate) async fn updates(
         Ok(body.to_vec())
     };
     let mut response = match request {
+        UpdateRequest::Discover => {
+            let body = relay(UpdateHostRequest::Discover).await?;
+            let deployment = serde_json::from_slice(&body)
+                .map_err(|error| ApiError::internal(error.to_string()))?;
+            UpdateResponse::Discovered { deployment }
+        }
         UpdateRequest::Settings => UpdateResponse::Settings {
             settings: state.store.host_update_settings().await?,
             running,

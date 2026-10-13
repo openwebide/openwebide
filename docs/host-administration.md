@@ -10,24 +10,30 @@ Until you configure a connection, host tools are unavailable.
 1. Enable SSH on the target machine and authorize an SSH key for the account you
    want to use (`~/.ssh/authorized_keys`). Host administration connects with
    `-oBatchMode=yes` and requires key authentication; password login is not supported.
-   The target can be Linux, macOS or Windows with an SSH server.
+   Allow the bridge to reach its SSH port (normally 22); internet exposure is
+   unnecessary. The target can be Linux, macOS or Windows with an SSH server.
 2. Make that key available to the server bridge. Native bridges inherit the
    current SSH agent and configuration. Containers use the
    [SSH agent forwarding overlay](git-ssh.md#docker-opt-in-agent-forwarding) or the agent mounts
    in the [Quadlet template](podman-quadlet.md#host-administration-and-ssh-setup). Keys remain in the agent;
    the app does not upload or store private keys. On SELinux hosts running Podman Quadlet,
    add `SecurityLabelDisable=true` so the rootless container can access the host user's agent socket.
-3. In **Settings → Host**, enter the SSH username for your host account and its
-   OS. The host address is automatic: the supplied Compose files use Docker's
-   host gateway, Quadlet uses `host.containers.internal`, and a native bridge uses
-   `127.0.0.1`. SSH defaults to port 22. **Advanced connection settings** provides
-   an address and port override for another machine, SSH aliases or unusual
-   networking. Existing saved destinations remain unchanged. An alias must exist
-   in the bridge's public SSH configuration.
-4. Paste public `known_hosts` entries verified through another trusted channel
-   (e.g. `ssh-keyscan -p 22 host.containers.internal`), or use the bridge's mounted
-   `known_hosts` file. Strict host-key checking stays enabled. Save the connection,
-   then select **Test connection**.
+3. In **Settings → Host**, enter the SSH username for your host account. The OS
+   is detected over SSH. The host address is automatic: the supplied Compose files
+   use Docker's host gateway, Quadlet uses `host.containers.internal`, and a native
+   bridge uses `127.0.0.1`. SSH defaults to port 22. **Advanced connection settings**
+   provides an address and port override for another machine, SSH aliases or unusual
+   networking, an OS override and optional pinned public host keys. Existing saved
+   destinations remain unchanged. An alias must exist in the bridge's public SSH
+   configuration.
+4. Select **Save and test connection**. SSH uses the bridge's existing verified
+   or mounted `known_hosts` file. For a new host, collect public entries (e.g.
+   `ssh-keyscan -p 22 host.containers.internal`), verify them through another trusted
+   channel, then add them under advanced settings. Strict host-key checking stays
+   enabled; discovery does not automatically trust a new host key.
+
+Disabling host administration saves immediately. Other connection changes use
+**Save and test connection** and show their saved or connection error status.
 
 For a custom Linux `docker run` deployment, add
 `--add-host=host.docker.internal:host-gateway` so the image can reach its host.
@@ -43,14 +49,17 @@ default, but need the SSH credentials and connection above before use.
 ## Inspect and manage
 
 Open a project-less session and select **Host** in the chat statusline to open
-a compact flyout, aligned with Goal and Monitor on the right of the chat statusline.
+a viewport-bounded flyout, aligned with Goal and Monitor on the right of the chat statusline.
 The entry uses a text label. Before configuration, the flyout links directly to
 Settings → Host. Configured inventory and operations refresh while the flyout is
 open, retaining the last results and a stable scrollable size. The inline refresh
 icon allows manual retries; closing the flyout stops polling. Use it to view the machine identity,
 OS/version, CPU and RAM, services, processes, containers, ports, storage and
 configuration. Filter resources and select **Ask about this** to add the observed
-resource to your next message. Missing utilities appear as inventory notes;
+resource to your chat draft and close the flyout. Clicking a resource expands
+its observed details and named relationships; it does not execute host commands.
+Connection details and collector notes expand separately, while inventory uses
+one main scroll area. Missing utilities appear as inventory notes;
 inspection still returns the collectors that succeeded. Container inspection uses
 Podman when installed, otherwise Docker, and includes published ports and mount
 sources. On macOS and Windows, the runtime can use a separate VM; runtime-reported
@@ -126,7 +135,7 @@ administration tools. Only the authenticated server bridge uses this connection.
 
 ## Updates
 
-**Settings → Host → Updates** manages the Open WebIDE deployment on the server's
+**Settings → Updates** manages the Open WebIDE deployment on the server's
 physical host. It uses the same saved SSH connection regardless of which local or
 remote project is open; it does not update paired companion bridges.
 
@@ -138,7 +147,13 @@ to its container runtime. Registry authentication stays on the host; use
 for a service that must continue after SSH disconnects, as described in the
 [Quadlet guide](podman-quadlet.md).
 
-For **Docker Compose**, enter the absolute installation directory, all Compose
+The bundled bridge detects its running container and proposes the Compose or
+Quadlet settings automatically. Review and save them before installing a release.
+**Detect installation** retries; **Advanced deployment settings** provides manual
+overrides when metadata is unavailable or ambiguous, or the bridge runs outside
+the app container. Discovery reads public metadata without editing host files.
+
+For **Docker Compose** overrides, enter the absolute installation directory, all Compose
 files in their normal order (including SSH/HTTPS overlays), and the app service
 name, normally `openwebide`. The updater retains existing `.env` entries and pins
 `OPENWEBIDE_IMAGE` to the approved digest. Compose files must use that image

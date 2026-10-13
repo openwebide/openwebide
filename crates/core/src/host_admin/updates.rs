@@ -1,6 +1,8 @@
 //! Deployment update policy. Hosts provide image inspection and durable process primitives.
 use serde::{Deserialize, Serialize};
 
+pub mod discovery;
+
 pub const IMAGE_REPOSITORY: &str = "ghcr.io/openwebide/openwebide";
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -192,6 +194,7 @@ impl UpdatePhase {
 #[serde(tag = "action", rename_all = "snake_case", deny_unknown_fields)]
 pub enum UpdateRequest {
     Settings,
+    Discover,
     Save {
         settings: UpdateSettings,
     },
@@ -207,6 +210,9 @@ pub enum UpdateRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum UpdateResponse {
+    Discovered {
+        deployment: Deployment,
+    },
     Settings {
         settings: UpdateSettings,
         running: Build,
@@ -224,6 +230,7 @@ pub enum UpdateResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "action", rename_all = "snake_case", deny_unknown_fields)]
 pub enum UpdateHostRequest {
+    Discover,
     Check {
         settings: UpdateSettings,
         running: Build,

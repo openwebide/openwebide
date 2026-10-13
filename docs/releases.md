@@ -94,7 +94,18 @@ installation has been verified; do not delete volumes as part of renaming.
 
 ### Routine upgrades
 
-For supported Linux hosts, **Settings → Host → Updates** can check the selected
+Updates has its own Settings tab, separate from host administration. After SSH
+is connected in **Settings → Host**, the bundled bridge automatically detects the
+running app container's Compose files (including overlays), directory and service,
+or its Quadlet image file and service. Review and save the detected settings along
+with the release channel. **Detect installation** retries discovery; **Advanced
+deployment settings** retains manual overrides. Discovery never changes deployment
+files. Missing or ambiguous metadata, native/external bridges and unsupported
+installations require explicit configuration. A host SSH account with access to
+the container runtime is required for discovery; installing releases also needs
+Python 3, skopeo and a user systemd manager on Linux.
+
+For supported Linux hosts, **Settings → Updates** can check the selected
 channel and install an approved image through the existing SSH connection.
 Configure the deployment updater first; see [host updates](host-administration.md#updates)
 for prerequisites, digest pins and restart recovery. Images need the compatibility

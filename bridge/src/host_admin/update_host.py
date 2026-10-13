@@ -74,7 +74,60 @@ def execute(directory, plan):
         save(directory, "succeeded", "Host deployment restarted. Waiting for the app to reconnect.")
 
 
+def deployment_evidence():
+    """Read public runtime labels and Quadlet source; never return container env."""
+    evidence = []
+    for runtime in ["docker", "podman"]:
+        try:
+            ids = run([runtime, "ps", "-q"], timeout=5).split()[:64]
+            if not ids:
+                continue
+            template = '{{json .Id}} {{json .Config.Hostname}} {{json .Name}} {{json .Config.Labels}}'
+            output = run([runtime, "inspect", "--format", template, *ids], timeout=10)
+            decoder = json.JSONDecoder()
+            for line in output.splitlines():
+                values = []
+                remaining = line
+                for _ in range(4):
+                    value, end = decoder.raw_decode(remaining.lstrip())
+                    values.append(value)
+                    remaining = remaining.lstrip()[end:]
+                identity, hostname, name, labels = values
+                labels = {key: value for key, value in (labels or {}).items() if key in [
+                    "com.docker.compose.project.working_dir", "com.docker.compose.project.config_files",
+                    "com.docker.compose.service", "PODMAN_SYSTEMD_UNIT"]}
+                item = dict(runtime=runtime, id=identity, hostname=hostname, name=name, labels=labels,
+                            source_path=None, source_text=None)
+                unit = labels.get("PODMAN_SYSTEMD_UNIT", "")
+                if unit and not unit.startswith("-") and len(unit) <= 128:
+                    try:
+                        source = run(["systemctl", "--user", "show", unit,
+                                      "--property=SourcePath", "--value"], timeout=5).strip()
+                        if source.startswith("/") and source.endswith(".container"):
+                            with Path(source).open() as stream:
+                                text = stream.read(65537)
+                            if len(text) <= 65536:
+                                section = ""
+                                public = []
+                                for line in text.splitlines():
+                                    stripped = line.strip()
+                                    if stripped.startswith("["):
+                                        section = stripped
+                                    if section == "[Container]" and stripped.startswith("Image="):
+                                        public.append(stripped)
+                                item.update(source_path=source, source_text="[Container]\n" + "\n".join(public))
+                    except (OSError, RuntimeError, subprocess.TimeoutExpired):
+                        pass
+                evidence.append(item)
+        except (OSError, RuntimeError, ValueError, subprocess.TimeoutExpired):
+            continue
+    return evidence
+
+
 def main(action, request):
+    if action == "deployment":
+        print(json.dumps(deployment_evidence()))
+        return
     if action == "inspect":
         value = json.loads(run(["skopeo", "inspect", "--no-tags", "docker://" + request["image"]]))
         # Return only public image metadata, never environment variables or credentials.

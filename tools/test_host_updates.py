@@ -103,6 +103,26 @@ class HostUpdates(unittest.TestCase):
         self.assertEqual(phase, 'succeeded')
         self.assertEqual(output.read_text(), 'done')
 
+    def test_discovery_reads_both_runtimes_without_returning_private_configuration(self):
+        source = self.root / 'app.container'
+        source.write_text('[Container]\nImage=app.image\nEnvironment=SECRET=private\n')
+        labels = {'PODMAN_SYSTEMD_UNIT': 'app.service', 'secret-label': 'private'}
+        def run(argv, **kwargs):
+            if argv[0] == 'docker':
+                raise OSError('not installed')
+            if argv[1] == 'ps':
+                return 'abcdef1234567890'
+            if argv[1] == 'inspect':
+                return ' '.join(json.dumps(value) for value in ['abcdef1234567890', 'app', '/app', labels])
+            return str(source)
+        with patch.object(helper, 'run', side_effect=run) as primitive:
+            evidence = helper.deployment_evidence()
+        self.assertEqual(len(evidence), 1)
+        self.assertEqual(evidence[0]['labels'], {'PODMAN_SYSTEMD_UNIT': 'app.service'})
+        self.assertEqual(evidence[0]['source_text'], '[Container]\nImage=app.image')
+        self.assertNotIn('private', json.dumps(evidence))
+        self.assertEqual(primitive.call_args_list[0].args[0][0], 'docker')
+
     def test_invalid_job_identity_cannot_escape_host_state_directory(self):
         for identity in ['../escaped', 'g' * 32, 'a' * 31]:
             with self.assertRaises(ValueError):

@@ -56,6 +56,40 @@ impl SshHost {
             execution,
         })
     }
+    /// Discover the SSH target rather than assuming the bridge container's OS.
+    pub async fn connect(
+        connection: openwebide_core::host_admin::HostConnection,
+        execution: Arc<dyn ToolExecution>,
+    ) -> Result<Self, String> {
+        let mut host = Self::new(connection, execution)?;
+        if host.platform == Platform::Auto {
+            let unix = host.remote("uname -s".into(), 10).await?;
+            host.platform = if unix.is_success() {
+                match unix.stdout.trim() {
+                    "Linux" => Platform::Linux,
+                    "Darwin" => Platform::Macos,
+                    _ => {
+                        return Err(
+                            "Unsupported host OS. Select an OS override in advanced settings."
+                                .into(),
+                        );
+                    }
+                }
+            } else {
+                let windows = host
+                    .remote(
+                        powershell("[System.Environment]::OSVersion.Platform.ToString()", false),
+                        10,
+                    )
+                    .await?;
+                if !windows.is_success() || windows.stdout.trim() != "Win32NT" {
+                    return Err("Could not discover the host OS. Check SSH access or select an OS override in advanced settings.".into());
+                }
+                Platform::Windows
+            };
+        }
+        Ok(host)
+    }
     fn spec(
         &self,
         command: String,
@@ -159,6 +193,9 @@ fn ps_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "''"))
 }
 pub fn command_script(platform: Platform, command: &HostCommand) -> Result<String, String> {
+    if platform == Platform::Auto {
+        return Err("Discover the host OS before executing commands.".into());
+    }
     if platform == Platform::Windows {
         if command.elevated {
             return Err("Windows SSH commands use the configured account's privileges. Noninteractive sudo is available only on Unix hosts; Windows UAC elevation is not supported.".into());
@@ -308,6 +345,7 @@ fn parse_overview(raw: &str, platform: Platform) -> Result<Overview, String> {
 impl HostInventoryAdapter for SshHost {
     async fn overview(&self) -> Result<HostEnvironment, String> {
         let script = match self.platform {
+            Platform::Auto => return Err("Discover the host OS before inspecting it.".into()),
             Platform::Linux => LINUX_OVERVIEW,
             Platform::Macos => MAC_OVERVIEW,
             Platform::Windows => WINDOWS_OVERVIEW,

@@ -679,6 +679,7 @@ pub async fn inspect_host<A: HostInventoryAdapter>(adapter: &A) -> Result<HostEn
 #[serde(rename_all = "snake_case")]
 pub enum HostPlatform {
     #[default]
+    Auto,
     Linux,
     Macos,
     Windows,
@@ -705,7 +706,7 @@ impl Default for HostConnection {
             username: String::new(),
             destination: String::new(),
             port: 22,
-            platform: HostPlatform::Linux,
+            platform: HostPlatform::Auto,
             known_hosts: String::new(),
             revision: 0,
         }

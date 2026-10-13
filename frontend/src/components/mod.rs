@@ -18,7 +18,7 @@ mod editor_tabs;
 mod file_browser;
 mod file_tree;
 pub mod host_admin;
-mod host_updates;
+pub mod host_updates;
 pub(crate) mod modal;
 mod panel_resizer;
 mod plugins;
