@@ -8,6 +8,10 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Verify complete hosted release checks after bounded recovery decoding/capture, cooperative autosave and initial-load guards, including both platform images, browser/font partitions and nightly publication.
+
+- Encode recovery save JSON cooperatively in bounded base64/source and metadata batches, reserving the body once and rejecting changed account scopes before sending. Preserve the exact serde wire format and shared HTTP authentication/error handling. Whole-body browser conversion and network buffers remain synchronous.
+
 - Verify production edits, autosave, restart and reload/new-window recovery after immutable acknowledged-record retention and cooperative snapshot comparison in both workspace modes.
 
 - Compare autosave recovery snapshots cooperatively in 8 KiB source and 64-record metadata steps. Preserve full equality, including absent documents and scroll values, and retry capture when a newer scheduled edit supersedes the comparison.

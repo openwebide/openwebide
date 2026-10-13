@@ -48,6 +48,11 @@ pub enum HealthState {
     Offline,
 }
 
+enum RequestPayload<'a, T> {
+    Json(&'a T),
+    EncodedJson(&'a str),
+}
+
 struct RequestError {
     status: Option<u16>,
     message: String,
@@ -408,15 +413,23 @@ impl BackendApi {
                     "Invalid editor recovery revision".into(),
                 )
             })?;
-        let response: Saved = self
-            .request_typed(
+        let encoded = encode_recovery_record(record, || {
+            self.session_revision.try_get_untracked() == Some(account)
+        })
+        .await?;
+        let (response, _guard) = self
+            .request_payload_response::<()>(
                 Method::PUT,
                 &format!("/projects/{project}/editor-recovery"),
-                Some(record),
+                Some(RequestPayload::EncodedJson(&encoded)),
                 false,
             )
             .await
             .map_err(RequestError::into_recovery)?;
+        let response: Saved = response
+            .json()
+            .await
+            .map_err(|error| crate::backend::RecoveryError::Unavailable(error.to_string()))?;
         if response.revision != expected {
             return Err(crate::backend::RecoveryError::Unavailable(
                 "Invalid editor recovery revision returned by server".into(),
@@ -1864,6 +1877,17 @@ impl BackendApi {
         body: Option<&T>,
         abort_on_drop: bool,
     ) -> Result<(gloo_net::http::Response, Option<CommandFetchGuard>), RequestError> {
+        self.request_payload_response(method, path, body.map(RequestPayload::Json), abort_on_drop)
+            .await
+    }
+
+    async fn request_payload_response<T: Serialize>(
+        &self,
+        method: Method,
+        path: &str,
+        body: Option<RequestPayload<'_, T>>,
+        abort_on_drop: bool,
+    ) -> Result<(gloo_net::http::Response, Option<CommandFetchGuard>), RequestError> {
         let url = format!("{}{path}", self.base());
         let guard = if abort_on_drop {
             Some(CommandFetchGuard(web_sys::AbortController::new().map_err(
@@ -1875,7 +1899,10 @@ impl BackendApi {
         let signal = guard.as_ref().map(|guard| guard.0.signal());
         let builder = self.builder(&url, method).abort_signal(signal.as_ref());
         let req = match body {
-            Some(body) => builder.json(body),
+            Some(RequestPayload::Json(body)) => builder.json(body),
+            Some(RequestPayload::EncodedJson(body)) => builder
+                .header("content-type", "application/json")
+                .body(body),
             None => builder.build(),
         }
         .map_err(|e| RequestError::transport(e.to_string()))?;
@@ -1924,6 +1951,33 @@ fn query_param(query: &str, key: &str) -> Option<String> {
 }
 
 pub use crate::text::urlenc;
+
+async fn encode_recovery_record(
+    record: &openwebide_core::editor::EditorRecoveryRecord,
+    current: impl Fn() -> bool,
+) -> Result<String, crate::backend::RecoveryError> {
+    let mut encoding = openwebide_core::editor::RecoveryRecordEncoding::new(record);
+    loop {
+        if !current() {
+            return Err(crate::backend::RecoveryError::Unavailable(
+                "The account changed while encoding editor recovery".into(),
+            ));
+        }
+        if encoding.advance(1) {
+            break;
+        }
+        crate::util::yield_task().await;
+    }
+    if !current() {
+        return Err(crate::backend::RecoveryError::Unavailable(
+            "The account changed while encoding editor recovery".into(),
+        ));
+    }
+    encoding
+        .finish()
+        .unwrap()
+        .map_err(crate::backend::RecoveryError::Unavailable)
+}
 
 async fn decode_editor_recovery(
     encoded: openwebide_core::editor::RecoveryRecord<
@@ -2150,6 +2204,30 @@ mod recovery_transport_tests {
         fn header(state: &JsValue) -> String;
         #[wasm_bindgen(js_name = recoveryRequestCache)]
         fn cache(state: &JsValue) -> String;
+    }
+
+    #[wasm_bindgen_test]
+    async fn recovery_encoding_yields_preserves_wire_format_and_rejects_changed_scope() {
+        crate::testing::initialize_runtime();
+        use openwebide_core::editor::{
+            Document, EditorRecoveryFile, EditorRecoveryRecord, RecoveryScroll,
+        };
+        let mut record = EditorRecoveryRecord::default();
+        record.state.files.push(EditorRecoveryFile {
+            path: "a.rs".into(),
+            document: Some(Document::new("文😀\r\n".repeat(10_000)).recovery()),
+            scroll: RecoveryScroll::default(),
+            read_only: false,
+        });
+        let current = std::cell::Cell::new(true);
+        let mut pending = Box::pin(encode_recovery_record(&record, || current.get()));
+        assert!(futures::poll!(&mut pending).is_pending());
+        current.set(false);
+        assert!(pending.await.is_err());
+        assert_eq!(
+            encode_recovery_record(&record, || true).await.unwrap(),
+            serde_json::to_string(&record).unwrap()
+        );
     }
 
     #[wasm_bindgen_test]

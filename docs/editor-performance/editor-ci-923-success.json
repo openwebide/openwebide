@@ -1,0 +1,143 @@
+{
+  "description": "Integrated hosted release at 923e5112 passes after bounded capture, cooperative autosave and initial-load guard preparation. Review/confirmation conversion, immutable acknowledged records, comparison and encoding work came later.",
+  "run": {
+    "status": "completed",
+    "conclusion": "success",
+    "headSha": "923e5112249ce8b11027e5ae4300f7346a0a74b2",
+    "url": "https://github.com/openwebide/openwebide/actions/runs/38328519265"
+  },
+  "jobs": [
+    {
+      "name": "validate",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115073183233
+    },
+    {
+      "name": "checks / docker",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115073213787
+    },
+    {
+      "name": "images (ubuntu-24.04, amd64, x86_64-unknown-linux-gnu)",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115073213791
+    },
+    {
+      "name": "checks / frontend-ui-tests",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115073213809
+    },
+    {
+      "name": "images (ubuntu-24.04-arm, arm64, aarch64-unknown-linux-gnu)",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115073213834
+    },
+    {
+      "name": "checks / bridge-windows",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115073213847
+    },
+    {
+      "name": "checks / backend-and-crates",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115073213871
+    },
+    {
+      "name": "checks / plugin-panels",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115073213895
+    },
+    {
+      "name": "checks / frontend",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115073213899
+    },
+    {
+      "name": "macos-bridges",
+      "status": "completed",
+      "conclusion": "skipped",
+      "databaseId": 115073214839
+    },
+    {
+      "name": "assets",
+      "status": "completed",
+      "conclusion": "skipped",
+      "databaseId": 115079367789
+    },
+    {
+      "name": "publish-nightly",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115085990436
+    },
+    {
+      "name": "publish",
+      "status": "completed",
+      "conclusion": "skipped",
+      "databaseId": 115085991649
+    }
+  ],
+  "uiLogSha256": "dd953e4c792b7050552b9bd0e2a0f460aaea6ac466551e0975158807b576370e",
+  "editorPartitions": [
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 61,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 61,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 61,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 1,
+      "matrix": true,
+      "independent": true
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 1,
+      "matrix": false,
+      "independent": true
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 1,
+      "matrix": true,
+      "independent": true
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 1,
+      "matrix": false,
+      "independent": true
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/openwebide_frontend-5bd7bd212937d9e7.wasm",
+      "tests": 33,
+      "matrix": false,
+      "independent": false
+    }
+  ],
+  "editorChecks": 220,
+  "fontMatrices": 2,
+  "limits": "This run predates subsequent review/confirmation, immutable acknowledged-record, comparison and encoding changes. Final integrated CI and physical/performance gates remain open."
+}

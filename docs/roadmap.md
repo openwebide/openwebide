@@ -813,6 +813,18 @@ combined-source CI result.
   acknowledged-record retention and cooperative snapshot comparison
   ([receipt](editor-performance/snapshot-comparison-production.json)).
   Final integrated CI, other guard equality and serialization remain open.
+  Recovery saves now use a shared Rust encoding preparation: 6 KiB source
+  blocks preserve canonical base64 seams, 64-record metadata batches preserve
+  serde arrays, and one reserved body avoids repeated full-buffer growth.
+  Account checks run between batches; encoded JSON uses the same HTTP
+  authentication/error primitive as ordinary JSON requests. All 780 core and
+  134 native frontend tests pass with strict core lint, including byte-for-byte
+  wire oracles, Unicode/escaping/seams and metadata capacity. All 56 WASM
+  library checks and 45 recovery/fold browser contracts pass with strict
+  core/WASM/WASI lint
+  ([receipt](editor-performance/cooperative-recovery-encoding-browser.json)).
+  Fresh production and final CI are pending. Initial allocation, browser string conversion,
+  network buffers, backend/storage serialization and guard equality remain open.
 
 **Remaining completion gates**:
 
@@ -886,8 +898,14 @@ Linux/x64 verification also passes in the complete `67b3a529` inventory.
   ([receipt](editor-performance/editor-ci-5ba-success.json)). Later guard,
   collapsed capture passes the same complete release gate at `cbbb2209` in
   hosted run `38320950198`
-  ([receipt](editor-performance/editor-ci-cbbb-success.json)). Later wire
-  decoding, borrowed guard and capture/autosave changes still need this gate.
+  ([receipt](editor-performance/editor-ci-cbbb-success.json)). The integrated
+  `923e5112` release also passes all six checks, both platform images, nightly
+  publication, 220 editor checks, both font matrices and 397 other component
+  checks after bounded wire decoding/capture, cooperative autosave and initial
+  guard preparation
+  ([receipt](editor-performance/editor-ci-923-success.json)). Subsequent review/
+  confirmation, immutable record, comparison and encoding changes still need
+  this final release gate.
 
 - [ ] **Physical Chrome/Edge PWA input:** verify real input-method commit/cancel,
   Unicode and LF/CRLF undo/redo, multiple-cursor clipboard transactions and touch
