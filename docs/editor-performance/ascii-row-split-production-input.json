@@ -1,0 +1,147 @@
+{
+  "implementationCommit": "73fa5d0c40d9254f25e29cdf2edae8edae1b471f",
+  "build": "NO_COLOR=true spin build passed; input fixture completed 12 cases, including explicit long-ASCII insertion/split/undo/redo.",
+  "artifactsSha256": {
+    "backend": "57fd69de8ebe35233812992f13ddb2ffda246cc076b6bf26b68a7e51a6c24eda",
+    "frontend": "6cca3de7fdd1f4c5372cc1a926501c7d66c6f73b095f1ae2e7b29d8b3ea9479f"
+  },
+  "distWasmSha256": {
+    "openwebide-frontend-11c6f5345002f1d2_bg.wasm": "c2b4e23af07a0834226c77085f4f0b5744df63850dd5672deab0b7c0b2c8818f"
+  },
+  "checks": [
+    {
+      "mode": "local",
+      "ending": "LF",
+      "windowed": false,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "CRLF",
+      "windowed": false,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "LF",
+      "windowed": false,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "CRLF",
+      "windowed": false,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "LF",
+      "windowed": true,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "CRLF",
+      "windowed": true,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "LF",
+      "windowed": true,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "CRLF",
+      "windowed": true,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "LF",
+      "windowed": true,
+      "ascii_row": true,
+      "ascii_insert_split_undo_redo": true,
+      "pending_syntax": false,
+      "trusted_events": 47,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "CRLF",
+      "windowed": true,
+      "ascii_row": true,
+      "ascii_insert_split_undo_redo": true,
+      "pending_syntax": false,
+      "trusted_events": 47,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "LF",
+      "windowed": true,
+      "ascii_row": true,
+      "ascii_insert_split_undo_redo": true,
+      "pending_syntax": false,
+      "trusted_events": 47,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "CRLF",
+      "windowed": true,
+      "ascii_row": true,
+      "ascii_insert_split_undo_redo": true,
+      "pending_syntax": false,
+      "trusted_events": 47,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    }
+  ],
+  "limits": "CDP browser-engine events do not prove physical IME/PWA behavior. Local fixtures have no granted native directory handle. These are correctness checks; browser latency/memory and final integrated CI remain open.",
+  "harnessVerification": "Modified harness passes its original eight cases and four long-ASCII cases; Python compilation and benchmark strict release lint pass."
+}

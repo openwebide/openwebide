@@ -8,6 +8,70 @@ pub struct Measurement {
     pub bytes: usize,
     pub milliseconds: f64,
 }
+/// Measure edit/undo pairs with construction and exact-source verification outside
+/// timing. This includes core allocation, admission, history and index publication,
+/// but excludes browser input, syntax preparation, shaping and layout.
+pub fn measure_edits(clock: impl Fn() -> f64) -> Vec<Measurement> {
+    let mut records = Vec::new();
+    for (pattern, rows, insert_begin, insert_middle, split_middle) in [
+        (
+            "word_123; ",
+            104856,
+            "ascii_insert_begin_20",
+            "ascii_insert_middle_20",
+            "ascii_split_middle_20",
+        ),
+        (
+            "文😀e\u{301}; ",
+            1048576 / 13,
+            "mixed_insert_begin_20",
+            "mixed_insert_middle_20",
+            "mixed_split_middle_20",
+        ),
+        (
+            "line()\n",
+            99998,
+            "dense_insert_begin_20",
+            "dense_insert_middle_20",
+            "dense_split_middle_20",
+        ),
+    ] {
+        let source = pattern.repeat(rows);
+        let middle = source.floor_char_boundary(source.len() / 2);
+        for (label, at, inserted) in [
+            (insert_begin, 0, "a"),
+            (insert_middle, middle, "a"),
+            (split_middle, middle, "\n"),
+        ] {
+            for _ in 0..3 {
+                let mut document = Document::for_editor(source.clone()).unwrap();
+                document.set_selections(vec![Selection::caret(at)]).unwrap();
+                time(&mut records, &clock, label, source.len(), || {
+                    for _ in 0..20 {
+                        assert!(
+                            document
+                                .apply(
+                                    vec![Edit::replace(at..at, inserted)],
+                                    vec![Selection::caret(at + inserted.len())],
+                                    None
+                                )
+                                .unwrap()
+                        );
+                        assert!(document.undo());
+                    }
+                });
+                assert_eq!(document.text(), source);
+                assert_eq!(
+                    document.byte_to_textarea(middle),
+                    openwebide_core::editor::byte_to_textarea(&source, middle)
+                );
+                black_box(&document);
+            }
+        }
+    }
+    records
+}
+
 fn time(
     records: &mut Vec<Measurement>,
     clock: &impl Fn() -> f64,

@@ -1,0 +1,1029 @@
+{
+  "baseline": "2193289397b2412a115f7cf7a36a5280d01de26a",
+  "candidateCore": "73fa5d0c",
+  "description": "Same measurement source, compiler/dependencies and release profile; before/after/after/before process runs, each with three 20-pair samples per operation. Construction and exact source/UTF-16 checks are outside timing. Compiler and measurement-container absence checked before and after every process.",
+  "hardware": "arm64",
+  "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "binarySha256": {
+    "before": "6c864247289752db9a0b9ea266e6330267b6402ec2392711e7872cee675dc754",
+    "after": "a33353f3df492301fa1a8c13ae34b2b36ec013bb6762937f4625d1a85b870af2"
+  },
+  "measurementSourceSha256": "d7e2f349944c509dff593c0f66ebb2a5a7601cafde6a2fc3fd06c6e68e52b9e9",
+  "discardedAttempts": [
+    "Initial current build reused the baseline executable (identical SHA); samples discarded. Explicit current-source compilation produced a distinct SHA.",
+    "An external compiler overlapped the next attempt; samples discarded."
+  ],
+  "medianMilliseconds": {
+    "ascii_insert_begin_20": {
+      "before": 129.5145,
+      "after": 12.0045
+    },
+    "ascii_insert_middle_20": {
+      "before": 125.5645,
+      "after": 11.5825
+    },
+    "ascii_split_middle_20": {
+      "before": 129.738,
+      "after": 96.5305
+    },
+    "dense_insert_begin_20": {
+      "before": 4.0225,
+      "after": 3.973
+    },
+    "dense_insert_middle_20": {
+      "before": 2.0250000000000004,
+      "after": 1.992
+    },
+    "dense_split_middle_20": {
+      "before": 4.3420000000000005,
+      "after": 4.6690000000000005
+    },
+    "mixed_insert_begin_20": {
+      "before": 903.091,
+      "after": 791.557
+    },
+    "mixed_insert_middle_20": {
+      "before": 818.098,
+      "after": 811.5395000000001
+    },
+    "mixed_split_middle_20": {
+      "before": 792.1705,
+      "after": 943.7745
+    }
+  },
+  "samples": [
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 0,
+      "operation": "ascii_insert_begin_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 132.797
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 1,
+      "operation": "ascii_insert_begin_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 247.935
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 2,
+      "operation": "ascii_insert_begin_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 266.488
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 0,
+      "operation": "ascii_insert_middle_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 134.429
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 1,
+      "operation": "ascii_insert_middle_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 124.228
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 2,
+      "operation": "ascii_insert_middle_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 125.609
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 0,
+      "operation": "ascii_split_middle_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 124.16
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 1,
+      "operation": "ascii_split_middle_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 124.246
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 2,
+      "operation": "ascii_split_middle_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 158.282
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 0,
+      "operation": "mixed_insert_begin_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 855.668
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 1,
+      "operation": "mixed_insert_begin_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 952.344
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 2,
+      "operation": "mixed_insert_begin_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 789.775
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 0,
+      "operation": "mixed_insert_middle_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 794.059
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 1,
+      "operation": "mixed_insert_middle_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 799.624
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 2,
+      "operation": "mixed_insert_middle_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 785.52
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 0,
+      "operation": "mixed_split_middle_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 783.194
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 1,
+      "operation": "mixed_split_middle_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 1025.019
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 2,
+      "operation": "mixed_split_middle_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 790.337
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 0,
+      "operation": "dense_insert_begin_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 4.09
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 1,
+      "operation": "dense_insert_begin_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 3.884
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 2,
+      "operation": "dense_insert_begin_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 4.04
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 0,
+      "operation": "dense_insert_middle_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 2.08
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 1,
+      "operation": "dense_insert_middle_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 2.008
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 2,
+      "operation": "dense_insert_middle_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 1.98
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 0,
+      "operation": "dense_split_middle_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 4.339
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 1,
+      "operation": "dense_split_middle_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 4.345
+    },
+    {
+      "phase": "before",
+      "run": 0,
+      "sample": 2,
+      "operation": "dense_split_middle_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 4.334
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 0,
+      "operation": "ascii_insert_begin_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 12.247
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 1,
+      "operation": "ascii_insert_begin_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 12.085
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 2,
+      "operation": "ascii_insert_begin_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 11.942
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 0,
+      "operation": "ascii_insert_middle_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 11.624
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 1,
+      "operation": "ascii_insert_middle_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 16.695
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 2,
+      "operation": "ascii_insert_middle_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 11.463
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 0,
+      "operation": "ascii_split_middle_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 121.653
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 1,
+      "operation": "ascii_split_middle_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 127.376
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 2,
+      "operation": "ascii_split_middle_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 175.63
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 0,
+      "operation": "mixed_insert_begin_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 914.589
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 1,
+      "operation": "mixed_insert_begin_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 798.645
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 2,
+      "operation": "mixed_insert_begin_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 1110.771
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 0,
+      "operation": "mixed_insert_middle_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 822.585
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 1,
+      "operation": "mixed_insert_middle_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 800.494
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 2,
+      "operation": "mixed_insert_middle_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 1114.031
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 0,
+      "operation": "mixed_split_middle_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 790.975
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 1,
+      "operation": "mixed_split_middle_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 952.437
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 2,
+      "operation": "mixed_split_middle_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 975.374
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 0,
+      "operation": "dense_insert_begin_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 3.976
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 1,
+      "operation": "dense_insert_begin_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 3.866
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 2,
+      "operation": "dense_insert_begin_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 3.97
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 0,
+      "operation": "dense_insert_middle_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 2.016
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 1,
+      "operation": "dense_insert_middle_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 2.023
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 2,
+      "operation": "dense_insert_middle_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 1.968
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 0,
+      "operation": "dense_split_middle_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 4.495
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 1,
+      "operation": "dense_split_middle_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 4.451
+    },
+    {
+      "phase": "after",
+      "run": 1,
+      "sample": 2,
+      "operation": "dense_split_middle_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 4.832
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 0,
+      "operation": "ascii_insert_begin_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 12.06
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 1,
+      "operation": "ascii_insert_begin_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 11.887
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 2,
+      "operation": "ascii_insert_begin_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 11.949
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 0,
+      "operation": "ascii_insert_middle_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 11.639
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 1,
+      "operation": "ascii_insert_middle_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 11.541
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 2,
+      "operation": "ascii_insert_middle_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 11.463
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 0,
+      "operation": "ascii_split_middle_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 71.408
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 1,
+      "operation": "ascii_split_middle_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 71.233
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 2,
+      "operation": "ascii_split_middle_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 69.827
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 0,
+      "operation": "mixed_insert_begin_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 782.237
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 1,
+      "operation": "mixed_insert_begin_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 783.617
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 2,
+      "operation": "mixed_insert_begin_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 784.469
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 0,
+      "operation": "mixed_insert_middle_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 862.197
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 1,
+      "operation": "mixed_insert_middle_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 778.309
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 2,
+      "operation": "mixed_insert_middle_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 792.562
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 0,
+      "operation": "mixed_split_middle_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 935.112
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 1,
+      "operation": "mixed_split_middle_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 818.531
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 2,
+      "operation": "mixed_split_middle_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 1108.614
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 0,
+      "operation": "dense_insert_begin_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 8.291
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 1,
+      "operation": "dense_insert_begin_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 10.236
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 2,
+      "operation": "dense_insert_begin_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 3.958
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 0,
+      "operation": "dense_insert_middle_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 2.026
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 1,
+      "operation": "dense_insert_middle_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 1.959
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 2,
+      "operation": "dense_insert_middle_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 1.958
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 0,
+      "operation": "dense_split_middle_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 42.1
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 1,
+      "operation": "dense_split_middle_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 7.307
+    },
+    {
+      "phase": "after",
+      "run": 2,
+      "sample": 2,
+      "operation": "dense_split_middle_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 4.506
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 0,
+      "operation": "ascii_insert_begin_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 126.232
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 1,
+      "operation": "ascii_insert_begin_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 123.93
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 2,
+      "operation": "ascii_insert_begin_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 124.673
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 0,
+      "operation": "ascii_insert_middle_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 125.52
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 1,
+      "operation": "ascii_insert_middle_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 128.109
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 2,
+      "operation": "ascii_insert_middle_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 125.041
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 0,
+      "operation": "ascii_split_middle_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 129.636
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 1,
+      "operation": "ascii_split_middle_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 129.84
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 2,
+      "operation": "ascii_split_middle_20",
+      "bytes": 1048560,
+      "editUndoPairs": 20,
+      "milliseconds": 151.962
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 0,
+      "operation": "mixed_insert_begin_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 1182.958
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 1,
+      "operation": "mixed_insert_begin_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 950.514
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 2,
+      "operation": "mixed_insert_begin_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 835.34
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 0,
+      "operation": "mixed_insert_middle_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 1651.604
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 1,
+      "operation": "mixed_insert_middle_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 836.572
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 2,
+      "operation": "mixed_insert_middle_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 859.839
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 0,
+      "operation": "mixed_split_middle_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 1111.013
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 1,
+      "operation": "mixed_split_middle_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 790.196
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 2,
+      "operation": "mixed_split_middle_20",
+      "bytes": 967908,
+      "editUndoPairs": 20,
+      "milliseconds": 794.004
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 0,
+      "operation": "dense_insert_begin_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 4.053
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 1,
+      "operation": "dense_insert_begin_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 4.005
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 2,
+      "operation": "dense_insert_begin_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 3.92
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 0,
+      "operation": "dense_insert_middle_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 2.031
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 1,
+      "operation": "dense_insert_middle_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 2.114
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 2,
+      "operation": "dense_insert_middle_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 2.019
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 0,
+      "operation": "dense_split_middle_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 4.304
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 1,
+      "operation": "dense_split_middle_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 4.347
+    },
+    {
+      "phase": "before",
+      "run": 3,
+      "sample": 2,
+      "operation": "dense_split_middle_20",
+      "bytes": 699986,
+      "editUndoPairs": 20,
+      "milliseconds": 4.479
+    }
+  ],
+  "limits": "Core edits include allocation, admission, history and row-index publication; browser events, syntax, geometry, shaping, layout, paint and memory are excluded. Background host activity was not exhaustively controlled; process checks are not continuous monitoring. No whole-editor or cold-start improvement is claimed."
+}

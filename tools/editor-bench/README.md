@@ -33,3 +33,19 @@ primitive costs, excluding frontend state publication, browser layout and paint.
 Fresh parser caches do not reset process-wide grammar/JIT warmup. Keep workload
 order, profile, clock adapter, hardware, versions and background load with any
 results; repeat in fresh processes before making cold-latency claims.
+
+For core edit/undo measurements, build once, then run without concurrent builds:
+
+```sh
+cargo build -p openwebide-editor-bench --release
+./target/release/openwebide-editor-bench --edits
+```
+
+Each of three samples measures 20 insertion/undo or line-split/undo pairs on
+near-MiB ASCII/Unicode rows and a near-limit dense-row document. Construction,
+selection setup and exact source/native-coordinate checks are outside timing.
+The measured phases include core allocation, admission, history and row-index
+publication; they exclude browser input, syntax, shaping, layout and paint.
+Compare baseline/candidate binaries built with the same compiler, dependencies
+and profile, interleaving runs on the same otherwise idle host. Single samples
+are not evidence of a whole-editor latency or memory improvement.

@@ -85,9 +85,9 @@ def snapshot(browser):
     """)
 
 
-def check(mode, ending, windowed):
-    row = '// 文😀 tail' + ending
-    source = row * (1500 if windowed else 3)
+def check(mode, ending, windowed, ascii_row=False):
+    row = ('// ' + 'a' * 80000 if ascii_row else '// 文😀 tail') + ending
+    source = row if ascii_row else row * (1500 if windowed else 3)
     with tempfile.TemporaryDirectory(prefix='openwebide-input-') as state, \
             tempfile.TemporaryDirectory(prefix='editor-input-probe-', dir=ROOT) as folder:
         runtime, browser = Runtime(state, frontend=True), None
@@ -159,6 +159,23 @@ def check(mode, ending, windowed):
             browser.script("document.querySelector('textarea[data-editor-path]').focus();")
             assert snapshot(browser)['start'] == snapshot(browser)['end'] == 0
             check_tab_accessibility(browser)
+            def saved_is(text):
+                saved = runtime.request('GET', endpoint)['state']['files'][0]['document']
+                return base64.b64decode(saved['text']).decode() == text
+
+            if ascii_row:
+                cdp(browser, 'Input.insertText', {'text': 'x'})
+                wait('ASCII insertion preserves the complete source', lambda: saved_is('x' + source))
+                history_key(browser)
+                wait('ASCII insertion undo restores the complete source', lambda: saved_is(source))
+                cdp(browser, 'Input.insertText', {'text': '\n'})
+                wait('ASCII line split preserves original line endings', lambda: saved_is(ending + source))
+                history_key(browser)
+                wait('ASCII split undo restores the complete source', lambda: saved_is(source))
+                history_key(browser, redo=True)
+                wait('ASCII split redo preserves the complete source', lambda: saved_is(ending + source))
+                history_key(browser)
+                wait('ASCII split final undo restores the original caret', lambda: saved_is(source) and snapshot(browser)['start'] == snapshot(browser)['end'] == 0)
             compose(browser, 'に')
             wait('first native candidate', lambda: snapshot(browser)['value'].startswith('に//'))
             compose(browser, '日本語😀')
@@ -166,10 +183,6 @@ def check(mode, ending, windowed):
             cdp(browser, 'Input.insertText', {'text': '日本語😀'})
             browser.script('releaseEditorInputWorker();')
             expected = '日本語😀' + source
-
-            def saved_is(text):
-                saved = runtime.request('GET', endpoint)['state']['files'][0]['document']
-                return base64.b64decode(saved['text']).decode() == text
 
             wait('committed source with original line endings', lambda: saved_is(expected))
             history_key(browser)
@@ -195,7 +208,7 @@ def check(mode, ending, windowed):
             assert sum(event['type'] == 'compositionend' for event in events) >= 2
             assert any(event['type'] == 'input' and event['composing'] for event in events)
             print(json.dumps({'mode': mode, 'ending': 'CRLF' if ending == '\r\n' else 'LF',
-                'windowed': windowed, 'pending_syntax': not windowed, 'trusted_events': sum(event['trusted'] for event in events), 'commit_undo_redo_cancel': True, 'tab_focus_escape_and_accessible_name': True}), flush=True)
+                'windowed': windowed, 'ascii_row': ascii_row, 'ascii_insert_split_undo_redo': ascii_row, 'pending_syntax': not windowed, 'trusted_events': sum(event['trusted'] for event in events), 'commit_undo_redo_cancel': True, 'tab_focus_escape_and_accessible_name': True}), flush=True)
         finally:
             if browser:
                 browser.stop()
@@ -206,7 +219,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--modes', nargs='+', choices=['local', 'remote'], default=['local', 'remote'])
     parser.add_argument('--windowed', action='store_true', help='Require bounded surrounding text')
+    parser.add_argument('--ascii-row', action='store_true', help='Exercise a long printable-ASCII row before composition')
     args = parser.parse_args()
+    if args.ascii_row and not args.windowed:
+        parser.error('--ascii-row requires --windowed')
     for mode in args.modes:
         for ending in ['\n', '\r\n']:
-            check(mode, ending, args.windowed)
+            check(mode, ending, args.windowed, args.ascii_row)

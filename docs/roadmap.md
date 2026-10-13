@@ -6,7 +6,7 @@ phases 1 through 14, telemetry, hardening, streaming, `/test`, database-backed
 theme and prompt history, frontend performance & polish, app branding and the chat
 welcome, database-backed agent skills and skill import/export — moved to [CHANGELOG.md](../CHANGELOG.md).
 [Host administration](host-administration.md), with automatic deployment-host SSH
-addresses and optional advanced connection overrides, structured agent questions and
+addresses/OS discovery and optional advanced connection overrides, structured agent questions and
 [Monitors](monitors.md) are implemented, with an active-only status-line flyout;
 their shipped behavior is in the changelog. Private host terminal replies use
 browser-to-bridge encryption; the Host flyout offers setup navigation and retains
@@ -295,9 +295,18 @@ combined-source CI result.
   beginning/middle/EOF splits, replacements, LF/CRLF and Unicode inserted interior
   rows. All 784 core tests, 134 native frontend tests, 58 WASM library checks and
   six local/remote geometry/fallback contracts pass with strict core/WASM/WASI
-  lint ([receipt](editor-performance/ascii-row-split-browser.json)). Fresh
-  production input verification is pending. Unicode boundaries, multi-row joins,
-  sparse table allocation/publication and broader responsiveness/memory remain open.
+  lint ([receipt](editor-performance/ascii-row-split-browser.json)). The full Spin
+  build and twelve production input cases pass at `73fa5d0c`: both workspace modes,
+  LF/CRLF, full/windowed composition, and explicit long-ASCII insertion/split/
+  undo/redo before composition
+  ([receipt](editor-performance/ascii-row-split-production-input.json)). Matched
+  native release measurements for twenty edit/undo pairs fall from 126–130 ms to
+  about 12 ms for ASCII insertion, and from 130 to 97 ms for ASCII split/undo.
+  Unicode/dense results vary; mixed split/undo is slower and needs investigation
+  ([measurement](editor-performance/retained-ascii-row-native-edits.json)). These
+  exclude browser input/layout and establish no whole-editor or memory gain.
+  Unicode boundaries, multi-row joins, sparse table allocation/publication and
+  broader responsiveness/memory remain open.
   Visual ASCII coordinates now update by word/space/punctuation groups and
   visual-only preparation avoids an unused character traversal. A complete-table
   regression compares every field with full Unicode grapheme traversal at
@@ -1405,7 +1414,7 @@ walkthroughs against the final app before public launch.
   workspace modes on release hosts. CI verifies both native image architectures,
   bridge archives, HTTPS transport and generated Quadlet services; actual systemd
   service and update-timer checks remain hands-on.
-  Rehearse Settings → Host → Updates on real Compose and user Quadlet installs,
+  Rehearse Settings → Updates on real Compose and user Quadlet installs,
   including host prerequisites, digest pins, failed deployments and reconnects.
   The settings/actions, durable claims and detached SSH worker have shared local/
   remote browser contracts and controlled deployment-fixture coverage.
