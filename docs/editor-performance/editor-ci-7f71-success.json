@@ -1,0 +1,145 @@
+{
+  "description": "Complete hosted release after cooperative recovery review/confirmation, shared acknowledged records and snapshot comparison. Encoding and Blob-body preparation came later.",
+  "run": {
+    "status": "completed",
+    "conclusion": "success",
+    "headSha": "7f71bbbfd79c4fc7116a0c2d45ac26e8c68920f1",
+    "url": "https://github.com/openwebide/openwebide/actions/runs/38332700686"
+  },
+  "jobs": [
+    {
+      "name": "validate",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115086085251
+    },
+    {
+      "name": "images (ubuntu-24.04-arm, arm64, aarch64-unknown-linux-gnu)",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115086118971
+    },
+    {
+      "name": "images (ubuntu-24.04, amd64, x86_64-unknown-linux-gnu)",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115086119072
+    },
+    {
+      "name": "checks / docker",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115086119096
+    },
+    {
+      "name": "checks / frontend-ui-tests",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115086119119
+    },
+    {
+      "name": "checks / bridge-windows",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115086119128
+    },
+    {
+      "name": "checks / plugin-panels",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115086119156
+    },
+    {
+      "name": "checks / frontend",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115086119165
+    },
+    {
+      "name": "checks / backend-and-crates",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115086119211
+    },
+    {
+      "name": "macos-bridges",
+      "status": "completed",
+      "conclusion": "skipped",
+      "databaseId": 115086120113
+    },
+    {
+      "name": "assets",
+      "status": "completed",
+      "conclusion": "skipped",
+      "databaseId": 115092700850
+    },
+    {
+      "name": "publish-nightly",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115095407618
+    },
+    {
+      "name": "publish",
+      "status": "completed",
+      "conclusion": "skipped",
+      "databaseId": 115095408750
+    }
+  ],
+  "uiLogSha256": "7294bdaaeb13450d63f1c56746067f091eefee4446cd9088f86055dbbffeeabe",
+  "editorPartitions": [
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 61,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 61,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 61,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 1,
+      "matrix": true,
+      "independent": true
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 1,
+      "matrix": false,
+      "independent": true
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 1,
+      "matrix": true,
+      "independent": true
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 1,
+      "matrix": false,
+      "independent": true
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/openwebide_frontend-5bd7bd212937d9e7.wasm",
+      "tests": 33,
+      "matrix": false,
+      "independent": false
+    }
+  ],
+  "editorChecks": 220,
+  "fontMatrices": 2,
+  "otherComponentChecks": 397,
+  "otherLibraryChecks": 22,
+  "limits": "This run predates cooperative encoding and Blob upload preparation. Final integrated CI and physical/performance gates remain open."
+}

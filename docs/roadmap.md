@@ -823,8 +823,8 @@ combined-source CI result.
   library checks and 45 recovery/fold browser contracts pass with strict
   core/WASM/WASI lint
   ([receipt](editor-performance/cooperative-recovery-encoding-browser.json)).
-  Fresh production and final CI are pending. Initial allocation, browser string conversion,
-  network buffers, backend/storage serialization and guard equality remain open.
+  Initial allocation, network buffers, backend/storage serialization and guard
+  equality remain open; browser body conversion is addressed below.
   The full Spin build and five production recovery checks pass for the
   bounded encoder at `28abc3a8`
   ([receipt](editor-performance/recovery-encoding-production.json)).
@@ -835,8 +835,11 @@ combined-source CI result.
   and acknowledgements. All 134 native frontend tests, 58 WASM library checks
   and 45 recovery/fold browser contracts pass with strict WASM lint
   ([receipt](editor-performance/cooperative-recovery-body-browser.json)).
-  Fresh production and final CI are pending. Initial allocation, native Blob assembly, browser/
-  network memory, backend/storage serialization and guard equality remain open.
+  The full Spin build and five production recovery checks pass at `98bb84bd`
+  ([receipt](editor-performance/recovery-body-production.json)). Final integrated
+  CI remains pending for encoding and Blob upload preparation. Initial allocation,
+  native Blob assembly, browser/network memory, backend/storage serialization and
+  guard equality remain open.
 
 **Remaining completion gates**:
 
@@ -915,9 +918,12 @@ Linux/x64 verification also passes in the complete `67b3a529` inventory.
   publication, 220 editor checks, both font matrices and 397 other component
   checks after bounded wire decoding/capture, cooperative autosave and initial
   guard preparation
-  ([receipt](editor-performance/editor-ci-923-success.json)). Subsequent review/
-  confirmation, immutable record, comparison and encoding changes still need
-  this final release gate.
+  ([receipt](editor-performance/editor-ci-923-success.json)). Hosted run
+  `38332700686` at `7f71bbbf` also passes the complete release gate after
+  review/confirmation, immutable records and cooperative comparison: 220 editor
+  checks, both font matrices, 397 other component checks and nightly publication
+  ([receipt](editor-performance/editor-ci-7f71-success.json)). Subsequent encoding
+  and Blob upload preparation still need this final release gate.
 
 - [ ] **Physical Chrome/Edge PWA input:** verify real input-method commit/cancel,
   Unicode and LF/CRLF undo/redo, multiple-cursor clipboard transactions and touch
