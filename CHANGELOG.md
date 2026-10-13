@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Stream recovery JSON/base64 from the shared Rust encoder directly into byte-backed upload parts, avoiding an additional full encoded Rust body. Preserve wire format, cumulative size limits and account cancellation before any request is sent.
+
 - Verify production restart/reload recovery after bounded Blob upload preparation, and complete hosted release checks after cooperative recovery comparison. Final CI for the newer encoder/upload changes remains pending.
 
 - Prepare recovery upload bodies from bounded byte-backed Blob pieces, preserving UTF-8 and application/json without converting the entire encoded body to a JavaScript string. Reject stale account scopes during preparation; native Blob assembly and network allocations remain to be measured.

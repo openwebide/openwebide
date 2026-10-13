@@ -58,7 +58,7 @@ pub use selections::{
 };
 mod recovery;
 mod recovery_encoding;
-pub use recovery_encoding::RecoveryRecordEncoding;
+pub use recovery_encoding::{RecoveryRecordChunks, RecoveryRecordEncoding};
 mod recovery_comparison;
 pub use recovery_comparison::EditorRecoveryComparison;
 mod recovery_decode;

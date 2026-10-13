@@ -841,6 +841,18 @@ combined-source CI result.
   native Blob assembly, browser/network memory, backend/storage serialization and
   guard equality remain open.
 
+  Recovery upload encoding now streams directly from the shared Rust phase
+  machine into immutable byte-backed Blob parts. No complete encoded Rust
+  body is reserved or retained on this upload path. Cumulative size admission
+  spans drained chunks, and successful exhaustion plus current account ownership
+  is required before constructing/sending the final body. The complete-string
+  encoder and chunk encoder share the same wire-format implementation.
+  All 781 core tests, 134 native frontend tests, 58 WASM library checks and
+  45 recovery/fold browser contracts pass with strict core/WASM/WASI lint
+  ([receipt](editor-performance/streamed-recovery-upload-browser.json)). Fresh
+  production verification and final CI remain pending; native Blob assembly/
+  network memory and backend/storage serialization remain open.
+
 **Remaining completion gates**:
 
 Hosted run `38255429450` attempts every compiled editor partition and reports three

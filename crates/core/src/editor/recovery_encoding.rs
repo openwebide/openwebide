@@ -19,12 +19,24 @@ enum Phase {
 pub struct RecoveryRecordEncoding<'a> {
     record: &'a EditorRecoveryRecord,
     body: String,
+    encoded_bytes: usize,
     phase: Phase,
     file: usize,
     next: usize,
     result: Option<Result<(), String>>,
 }
 impl<'a> RecoveryRecordEncoding<'a> {
+    fn empty(record: &'a EditorRecoveryRecord) -> Self {
+        Self {
+            record,
+            body: String::new(),
+            encoded_bytes: 0,
+            phase: Phase::Header,
+            file: 0,
+            next: 0,
+            result: None,
+        }
+    }
     pub fn new(record: &'a EditorRecoveryRecord) -> Self {
         // Validated records have at most 64 files and bounded paths/metadata.
         // Reserve once so later bounded appends never copy a growing full body.
@@ -61,12 +73,9 @@ impl<'a> RecoveryRecordEncoding<'a> {
             .err()
             .map(|error| Err(error.to_string()));
         Self {
-            record,
             body,
-            phase: Phase::Header,
-            file: 0,
-            next: 0,
             result,
+            ..Self::empty(record)
         }
     }
     /// A unit encodes at most 6 KiB of source or 64 selection/fold records.
@@ -75,10 +84,14 @@ impl<'a> RecoveryRecordEncoding<'a> {
             if self.result.is_some() {
                 break;
             }
+            let previous = self.body.len();
             if let Err(error) = self.step() {
                 self.result = Some(Err(error));
             }
-            if self.body.len() > recovery_body_limit() {
+            self.encoded_bytes = self
+                .encoded_bytes
+                .saturating_add(self.body.len() - previous);
+            if self.encoded_bytes > recovery_body_limit() {
                 self.result = Some(Err("Editor recovery body exceeds its size limit".into()));
             }
         }
@@ -207,10 +220,82 @@ impl<'a> RecoveryRecordEncoding<'a> {
     }
 }
 
+/// Incremental wire-format output for adapters that retain immutable byte parts.
+/// Callers validate the immutable record before encoding, as with the complete
+/// encoder. Chunks are JSON prefixes, not independently valid records. A caller must see
+/// successful exhaustion before publishing/sending any of them. Errors are
+/// terminal, and the total body limit applies across all drained chunks.
+pub struct RecoveryRecordChunks<'a> {
+    encoding: RecoveryRecordEncoding<'a>,
+    done: bool,
+}
+impl<'a> RecoveryRecordChunks<'a> {
+    pub fn new(record: &'a EditorRecoveryRecord) -> Self {
+        Self {
+            encoding: RecoveryRecordEncoding::empty(record),
+            done: false,
+        }
+    }
+}
+impl Iterator for RecoveryRecordChunks<'_> {
+    type Item = Result<String, String>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.done {
+            return None;
+        }
+        let complete = self.encoding.advance(1);
+        if complete {
+            self.done = true;
+            if let Some(Err(error)) = &self.encoding.result {
+                return Some(Err(error.clone()));
+            }
+        }
+        Some(Ok(std::mem::take(&mut self.encoding.body)))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::editor::{Document, EditorRecoveryFile, EditorRecoveryRoot, RecoveryScroll};
+    #[test]
+    fn drained_chunks_match_complete_encoding_and_count_the_entire_body() {
+        for mode in [crate::WorkspaceMode::Local, crate::WorkspaceMode::Remote] {
+            let mut record = EditorRecoveryRecord::default();
+            record.state.root = Some(EditorRecoveryRoot {
+                mode,
+                path: Some("root文".into()),
+            });
+            record.state.files.push(EditorRecoveryFile {
+                path: "a\"文.rs".into(),
+                document: Some(
+                    Document::new(format!("{}😀\r\n{}", "a".repeat(6143), "文".repeat(20000)))
+                        .recovery(),
+                ),
+                scroll: RecoveryScroll::default(),
+                read_only: false,
+            });
+            let mut chunks = RecoveryRecordChunks::new(&record);
+            assert_eq!(chunks.encoding.body.capacity(), 0);
+            let mut body = String::new();
+            while let Some(chunk) = chunks.next() {
+                let chunk = chunk.unwrap();
+                assert!(chunk.len() <= 8192 + 32);
+                body.push_str(&chunk);
+                assert!(chunks.encoding.body.is_empty());
+                assert_eq!(chunks.encoding.encoded_bytes, body.len());
+            }
+            assert_eq!(body, serde_json::to_string(&record).unwrap());
+            assert!(chunks.next().is_none());
+        }
+        // A drained prefix cannot reset the cumulative wire-size admission.
+        let record = EditorRecoveryRecord::default();
+        let mut chunks = RecoveryRecordChunks::new(&record);
+        chunks.encoding.encoded_bytes = recovery_body_limit();
+        assert!(chunks.next().unwrap().is_err());
+        assert!(chunks.next().is_none());
+    }
+
     #[test]
     fn metadata_batches_preserve_serde_arrays_without_body_growth() {
         use crate::editor::{FoldRange, Selection};
@@ -234,6 +319,10 @@ mod tests {
             scroll: RecoveryScroll::default(),
             read_only: false,
         });
+        let drained: String = RecoveryRecordChunks::new(&record)
+            .map(Result::unwrap)
+            .collect();
+        assert_eq!(drained, serde_json::to_string(&record).unwrap());
         let mut encoding = RecoveryRecordEncoding::new(&record);
         let capacity = encoding.body.capacity();
         while !encoding.advance(1) {
@@ -283,6 +372,10 @@ mod tests {
                     },
                 ];
                 let expected = serde_json::to_string(&record).unwrap();
+                let drained: String = RecoveryRecordChunks::new(&record)
+                    .map(Result::unwrap)
+                    .collect();
+                assert_eq!(drained, expected);
                 for budget in [1, 8, usize::MAX] {
                     let mut encoding = RecoveryRecordEncoding::new(&record);
                     assert!(!encoding.advance(1));

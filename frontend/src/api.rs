@@ -413,11 +413,7 @@ impl BackendApi {
                     "Invalid editor recovery revision".into(),
                 )
             })?;
-        let encoded = encode_recovery_record(record, || {
-            self.session_revision.try_get_untracked() == Some(account)
-        })
-        .await?;
-        let body = prepare_recovery_body(&encoded, || {
+        let body = prepare_recovery_record_body(record, || {
             self.session_revision.try_get_untracked() == Some(account)
         })
         .await?;
@@ -1956,65 +1952,77 @@ fn query_param(query: &str, key: &str) -> Option<String> {
 
 pub use crate::text::urlenc;
 
-async fn prepare_recovery_body(
+fn recovery_upload_stale() -> crate::backend::RecoveryError {
+    crate::backend::RecoveryError::Unavailable(
+        "The account changed while preparing editor recovery upload".into(),
+    )
+}
+fn recovery_upload_failed(error: wasm_bindgen::JsValue) -> crate::backend::RecoveryError {
+    crate::backend::RecoveryError::Unavailable(format!(
+        "Could not prepare editor recovery upload: {error:?}"
+    ))
+}
+async fn append_recovery_parts(
+    parts: &js_sys::Array,
     encoded: &str,
-    current: impl Fn() -> bool,
-) -> Result<web_sys::Blob, crate::backend::RecoveryError> {
-    let stale = || {
-        crate::backend::RecoveryError::Unavailable(
-            "The account changed while preparing editor recovery upload".into(),
-        )
-    };
-    let failed = |error| {
-        crate::backend::RecoveryError::Unavailable(format!(
-            "Could not prepare editor recovery upload: {error:?}"
-        ))
-    };
-    let parts = js_sys::Array::new();
+    current: &impl Fn() -> bool,
+) -> Result<(), crate::backend::RecoveryError> {
     for chunk in encoded.as_bytes().chunks(8192) {
         if !current() {
-            return Err(stale());
+            return Err(recovery_upload_stale());
         }
         let bytes = js_sys::Uint8Array::from(chunk);
         let piece = js_sys::Array::new();
         piece.push(&bytes);
-        let blob = web_sys::Blob::new_with_u8_array_sequence(&piece).map_err(&failed)?;
+        let blob =
+            web_sys::Blob::new_with_u8_array_sequence(&piece).map_err(recovery_upload_failed)?;
         parts.push(&blob);
         crate::util::yield_task().await;
     }
+    Ok(())
+}
+fn finish_recovery_body(
+    parts: &js_sys::Array,
+    current: &impl Fn() -> bool,
+) -> Result<web_sys::Blob, crate::backend::RecoveryError> {
     if !current() {
-        return Err(stale());
+        return Err(recovery_upload_stale());
     }
     let options = web_sys::BlobPropertyBag::new();
     options.set_type("application/json");
-    web_sys::Blob::new_with_blob_sequence_and_options(&parts, &options).map_err(failed)
+    web_sys::Blob::new_with_blob_sequence_and_options(parts, &options)
+        .map_err(recovery_upload_failed)
 }
-
-async fn encode_recovery_record(
+async fn prepare_recovery_record_body(
     record: &openwebide_core::editor::EditorRecoveryRecord,
     current: impl Fn() -> bool,
-) -> Result<String, crate::backend::RecoveryError> {
-    let mut encoding = openwebide_core::editor::RecoveryRecordEncoding::new(record);
+) -> Result<web_sys::Blob, crate::backend::RecoveryError> {
+    let mut encoding = openwebide_core::editor::RecoveryRecordChunks::new(record);
+    let parts = js_sys::Array::new();
     loop {
         if !current() {
-            return Err(crate::backend::RecoveryError::Unavailable(
-                "The account changed while encoding editor recovery".into(),
-            ));
+            return Err(recovery_upload_stale());
         }
-        if encoding.advance(1) {
+        let Some(encoded) = encoding.next() else {
             break;
+        };
+        let encoded = encoded.map_err(crate::backend::RecoveryError::Unavailable)?;
+        // Each part owns its bytes before the bounded Rust chunk is released.
+        append_recovery_parts(&parts, &encoded, &current).await?;
+        if encoded.is_empty() {
+            crate::util::yield_task().await;
         }
-        crate::util::yield_task().await;
     }
-    if !current() {
-        return Err(crate::backend::RecoveryError::Unavailable(
-            "The account changed while encoding editor recovery".into(),
-        ));
-    }
-    encoding
-        .finish()
-        .unwrap()
-        .map_err(crate::backend::RecoveryError::Unavailable)
+    finish_recovery_body(&parts, &current)
+}
+#[cfg(test)]
+async fn prepare_recovery_body(
+    encoded: &str,
+    current: impl Fn() -> bool,
+) -> Result<web_sys::Blob, crate::backend::RecoveryError> {
+    let parts = js_sys::Array::new();
+    append_recovery_parts(&parts, encoded, &current).await?;
+    finish_recovery_body(&parts, &current)
 }
 
 async fn decode_editor_recovery(
@@ -2310,15 +2318,40 @@ mod recovery_transport_tests {
             scroll: RecoveryScroll::default(),
             read_only: false,
         });
-        let current = std::cell::Cell::new(true);
-        let mut pending = Box::pin(encode_recovery_record(&record, || current.get()));
-        assert!(futures::poll!(&mut pending).is_pending());
-        current.set(false);
-        assert!(pending.await.is_err());
-        assert_eq!(
-            encode_recovery_record(&record, || true).await.unwrap(),
-            serde_json::to_string(&record).unwrap()
-        );
+        for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+            record.state.root = Some(openwebide_core::editor::EditorRecoveryRoot {
+                mode,
+                path: Some("project文".into()),
+            });
+            let current = std::cell::Cell::new(true);
+            let mut pending = Box::pin(prepare_recovery_record_body(&record, || current.get()));
+            assert!(futures::poll!(&mut pending).is_pending());
+            current.set(false);
+            assert!(pending.await.is_err());
+            let checks = std::cell::Cell::new(0);
+            assert!(
+                prepare_recovery_record_body(&record, || {
+                    checks.set(checks.get() + 1);
+                    checks.get() < 20
+                })
+                .await
+                .is_err()
+            );
+            assert_eq!(checks.get(), 20);
+            assert_eq!(
+                wasm_bindgen_futures::JsFuture::from(
+                    prepare_recovery_record_body(&record, || true)
+                        .await
+                        .unwrap()
+                        .text()
+                )
+                .await
+                .unwrap()
+                .as_string()
+                .unwrap(),
+                serde_json::to_string(&record).unwrap()
+            );
+        }
     }
 
     #[wasm_bindgen_test]
