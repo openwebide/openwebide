@@ -25,6 +25,58 @@ impl RecoveryDocument<'_> {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
+enum PendingRecoveryDocument {
+    Live(openwebide_core::editor::DocumentRecoveryCapture),
+    Clean(openwebide_core::editor::DocumentRecovery),
+}
+#[cfg(target_arch = "wasm32")]
+impl PendingRecoveryDocument {
+    fn matches(&self, source: &RecoveryDocument<'_>) -> bool {
+        match (self, source) {
+            (Self::Live(capture), RecoveryDocument::Live(document)) => {
+                capture.matches_document(document)
+            }
+            (Self::Clean(recovery), RecoveryDocument::Clean(source)) => {
+                recovery.matches_clean_source(source)
+            }
+            _ => false,
+        }
+    }
+    fn bytes(&self) -> usize {
+        match self {
+            Self::Live(capture) => capture.minimum_recovery_bytes(),
+            Self::Clean(recovery) => recovery.recovery_bytes(),
+        }
+    }
+}
+
+fn recovery_metadata_matches<A, B>(
+    current: &openwebide_core::editor::RecoveryState<A>,
+    expected: &openwebide_core::editor::RecoveryState<B>,
+) -> bool {
+    current.format == expected.format
+        && current.root == expected.root
+        && current.selected == expected.selected
+        && current.files.len() == expected.files.len()
+        && current
+            .files
+            .iter()
+            .zip(&expected.files)
+            .all(|(current, expected)| {
+                current.path == expected.path
+                    && current.scroll == expected.scroll
+                    && current.read_only == expected.read_only
+                    && current.document.is_some() == expected.document.is_some()
+            })
+}
+
+#[cfg(target_arch = "wasm32")]
+enum RecoveryOwner {
+    Live(openwebide_core::editor::RecoveryCaptureOwner),
+    Clean,
+}
+
 /// Immutable editor source shared by documents, buffers and project snapshots.
 #[derive(Clone, Debug, Default)]
 pub struct EditorText(
@@ -682,6 +734,166 @@ impl WorkspaceState {
         })
     }
 
+    /// Capture through the same source policy as synchronous recovery, yielding
+    /// after each fold batch and validation unit. None means newer activity won.
+    #[cfg(target_arch = "wasm32")]
+    pub async fn editor_recovery_cooperative(
+        &self,
+        project: &openwebide_core::Project,
+        active_read_only: impl Fn() -> bool,
+        current: impl Fn() -> bool,
+    ) -> Result<Option<openwebide_core::editor::EditorRecovery>, String> {
+        use openwebide_core::editor::{EditorRecoveryValidation, RecoveryFile, RecoveryState};
+        let epoch = self.pending_epoch.get_untracked();
+        let read = self.editor_read_revision.get_untracked();
+        let scope = || {
+            current()
+                && self.pending_epoch.try_get_untracked() == Some(epoch)
+                && self.editor_read_revision.try_get_untracked() == Some(read)
+        };
+        if !scope() {
+            return Ok(None);
+        }
+        let mut pending =
+            self.editor_recovery_candidate_with(project, active_read_only(), |_, source| {
+                let capture = match source {
+                    RecoveryDocument::Live(document) => {
+                        PendingRecoveryDocument::Live(document.prepare_recovery())
+                    }
+                    RecoveryDocument::Clean(source) => PendingRecoveryDocument::Clean(
+                        openwebide_core::editor::DocumentRecovery::clean_source(source),
+                    ),
+                };
+                let bytes = capture.bytes();
+                Ok((capture, bytes))
+            })?;
+        for index in 0..pending.files.len() {
+            let key = (project.id, pending.files[index].path.clone());
+            loop {
+                if !scope() || !self.recovery_pending_current(project, active_read_only(), &pending)
+                {
+                    return Ok(None);
+                }
+                let Some(PendingRecoveryDocument::Live(capture)) =
+                    pending.files[index].document.as_mut()
+                else {
+                    break;
+                };
+                let result = self
+                    .editor_documents
+                    .try_with_untracked(|documents| {
+                        documents
+                            .get(&key)
+                            .map(|document| capture.advance(document, 1))
+                    })
+                    .flatten();
+                match result {
+                    Some(Ok(true)) => break,
+                    Some(Ok(false)) => crate::util::yield_task().await,
+                    _ => return Ok(None),
+                }
+            }
+        }
+        let mut owners = HashMap::new();
+        let files = pending
+            .files
+            .into_iter()
+            .map(|file| {
+                let document = file.document.map(|document| match document {
+                    PendingRecoveryDocument::Live(capture) => {
+                        owners.insert(file.path.clone(), RecoveryOwner::Live(capture.owner()));
+                        capture.finish().unwrap()
+                    }
+                    PendingRecoveryDocument::Clean(recovery) => {
+                        owners.insert(file.path.clone(), RecoveryOwner::Clean);
+                        recovery
+                    }
+                });
+                RecoveryFile {
+                    path: file.path,
+                    document,
+                    scroll: file.scroll,
+                    read_only: file.read_only,
+                }
+            })
+            .collect();
+        let state = RecoveryState {
+            format: pending.format,
+            root: pending.root,
+            selected: pending.selected,
+            files,
+        };
+        let mut validation = EditorRecoveryValidation::new(&state);
+        loop {
+            if !scope()
+                || !self.recovery_owned_current(project, active_read_only(), &state, &owners)
+            {
+                return Ok(None);
+            }
+            if validation.advance(1) {
+                break;
+            }
+            crate::util::yield_task().await;
+        }
+        validation.finish().unwrap()?;
+        if !scope() || !self.recovery_owned_current(project, active_read_only(), &state, &owners) {
+            return Ok(None);
+        }
+        Ok(Some(state))
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn recovery_pending_current(
+        &self,
+        project: &openwebide_core::Project,
+        read_only: bool,
+        pending: &openwebide_core::editor::RecoveryState<PendingRecoveryDocument>,
+    ) -> bool {
+        self.editor_recovery_candidate_with(project, read_only, |path, source| {
+            let _capture = pending
+                .files
+                .iter()
+                .find(|file| file.path == path)
+                .and_then(|file| file.document.as_ref())
+                .filter(|capture| capture.matches(&source))
+                .ok_or_else(|| "Editor recovery source changed".to_string())?;
+            Ok(((), 0))
+        })
+        .is_ok_and(|current| recovery_metadata_matches(&current, pending))
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn recovery_owned_current(
+        &self,
+        project: &openwebide_core::Project,
+        read_only: bool,
+        state: &openwebide_core::editor::EditorRecovery,
+        owners: &HashMap<String, RecoveryOwner>,
+    ) -> bool {
+        self.editor_recovery_candidate_with(project, read_only, |path, source| {
+            let expected = state
+                .files
+                .iter()
+                .find(|file| file.path == path)
+                .and_then(|file| file.document.as_ref())
+                .ok_or_else(|| "Editor recovery source changed".to_string())?;
+            let matches = match (owners.get(path), source) {
+                (Some(RecoveryOwner::Live(owner)), RecoveryDocument::Live(document)) => {
+                    owner.matches_document(document)
+                }
+                (Some(RecoveryOwner::Clean), RecoveryDocument::Clean(source)) => {
+                    expected.matches_clean_source(&source)
+                }
+                _ => false,
+            };
+            if !matches {
+                return Err("Editor recovery source changed".into());
+            }
+            Ok(((), 0))
+        })
+        .is_ok_and(|current| recovery_metadata_matches(&current, state))
+    }
+
     fn editor_recovery_candidate_with<D>(
         &self,
         project: &openwebide_core::Project,
@@ -873,22 +1085,7 @@ impl WorkspaceState {
                 .ok_or_else(|| "Editor recovery document changed".to_string())?;
             Ok(((), expected.recovery_bytes()))
         })
-        .is_ok_and(|current| {
-            current.format == guard.state.format
-                && current.root == guard.state.root
-                && current.selected == guard.state.selected
-                && current.files.len() == guard.state.files.len()
-                && current
-                    .files
-                    .iter()
-                    .zip(&guard.state.files)
-                    .all(|(current, expected)| {
-                        current.path == expected.path
-                            && current.scroll == expected.scroll
-                            && current.read_only == expected.read_only
-                            && current.document.is_some() == expected.document.is_some()
-                    })
-        })
+        .is_ok_and(|current| recovery_metadata_matches(&current, &guard.state))
     }
 
     /// Install a validated project recovery atomically. The caller guards account
@@ -1282,6 +1479,116 @@ impl Default for WorkspaceState {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    async fn cooperative_recovery_capture_yields_matches_sync_and_rejects_changed_owners_in_both_modes()
+     {
+        use openwebide_core::{
+            Project, WorkspaceMode,
+            editor::{Document, FoldRange, Selection},
+        };
+        for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+            for change in [
+                "none",
+                "scope",
+                "fold",
+                "selection",
+                "read-only",
+                "epoch",
+                "selected",
+                "saved",
+            ] {
+                let owner = Owner::new();
+                let workspace =
+                    owner.with(|| WorkspaceState::with_active_project(RwSignal::new(Some(1))));
+                let project = Project {
+                    id: 1,
+                    name: "project".into(),
+                    mode,
+                    path: Some("project".into()),
+                    user_id: None,
+                    created_at: 1,
+                };
+                let key = (1, "a.rs".to_string());
+                let mut document = Document::new("x\n".repeat(4001));
+                document.set_fold_ranges(
+                    (0..2000)
+                        .map(|index| FoldRange {
+                            start_line: index * 2,
+                            end_line: index * 2 + 1,
+                        })
+                        .collect(),
+                );
+                document.fold_state_mut().collapse_all();
+                workspace.content.set(document.shared_text().into());
+                workspace.open_file.set(Some("a.rs".into()));
+                workspace.editor_tabs.update(|tabs| {
+                    tabs.insert(1, vec!["a.rs".into()]);
+                });
+                workspace.editor_documents.update(|documents| {
+                    documents.insert(key.clone(), document);
+                });
+                let expected = workspace.editor_recovery(&project, false).unwrap();
+                let current = std::cell::Cell::new(true);
+                let read_only = std::cell::Cell::new(false);
+                let mut pending = Box::pin(workspace.editor_recovery_cooperative(
+                    &project,
+                    || read_only.get(),
+                    || current.get(),
+                ));
+                assert!(futures::poll!(&mut pending).is_pending());
+                match change {
+                    "scope" => current.set(false),
+                    "fold" => workspace.editor_documents.update(|documents| {
+                        documents.get_mut(&key).unwrap().fold_state_mut().toggle(0);
+                    }),
+                    "selection" => workspace.editor_documents.update(|documents| {
+                        documents
+                            .get_mut(&key)
+                            .unwrap()
+                            .set_selections(vec![Selection::caret(1)])
+                            .unwrap();
+                    }),
+                    "read-only" => read_only.set(true),
+                    "epoch" => workspace.pending_epoch.update(|epoch| *epoch += 1),
+                    "selected" => workspace.open_file.set(None),
+                    "saved" => workspace.editor_documents.update(|documents| {
+                        documents.get_mut(&key).unwrap().mark_saved_version("other");
+                    }),
+                    _ => {}
+                }
+                let result = pending.await.unwrap();
+                if change == "none" {
+                    assert_eq!(result, Some(expected));
+                } else {
+                    assert!(result.is_none(), "{mode:?}/{change}");
+                }
+                owner.cleanup();
+            }
+            let owner = Owner::new();
+            let workspace =
+                owner.with(|| WorkspaceState::with_active_project(RwSignal::new(Some(1))));
+            let project = Project {
+                id: 1,
+                name: "project".into(),
+                mode,
+                path: Some("project".into()),
+                user_id: None,
+                created_at: 1,
+            };
+            workspace.open_file.set(Some("LICENSE".into()));
+            workspace.content.set("plain text".into());
+            assert_eq!(
+                workspace
+                    .editor_recovery_cooperative(&project, || false, || true)
+                    .await
+                    .unwrap(),
+                Some(workspace.editor_recovery(&project, false).unwrap())
+            );
+            owner.cleanup();
+        }
+    }
+
     #[test]
     fn recovery_guard_fast_path_preserves_full_capture_decisions_in_both_modes() {
         use openwebide_core::{

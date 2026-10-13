@@ -61,9 +61,9 @@ mod recovery_decode;
 pub use recovery::{
     DocumentRecovery, DocumentRecoveryCapture, DocumentRecoveryValidation, EditorRecovery,
     EditorRecoveryFile, EditorRecoveryRecord, EditorRecoveryRoot, EditorRecoveryValidation,
-    MAX_RECOVERY_BYTES, MAX_RECOVERY_FILES, RecoveryDiskPreparation, RecoveryDiskState,
-    RecoveryFile, RecoveryOverwritePreparation, RecoveryRecord, RecoveryRestoration,
-    RecoveryScroll, RecoverySources, RecoveryState, RecoveryTextComparison,
+    MAX_RECOVERY_BYTES, MAX_RECOVERY_FILES, RecoveryCaptureOwner, RecoveryDiskPreparation,
+    RecoveryDiskState, RecoveryFile, RecoveryOverwritePreparation, RecoveryRecord,
+    RecoveryRestoration, RecoveryScroll, RecoverySources, RecoveryState, RecoveryTextComparison,
     ValidatedDocumentRecovery, ValidatedEditorRecovery, recovery_body_limit,
 };
 pub use recovery_decode::{EncodedDocumentRecovery, RecoveryRecordDecoding};

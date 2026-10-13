@@ -110,18 +110,51 @@ pub struct DocumentRecoveryCapture {
     done: bool,
     rejected: bool,
 }
-impl DocumentRecoveryCapture {
+
+/// Retained scalar ownership for checking a finished capture during validation.
+pub struct RecoveryCaptureOwner {
+    identity: std::sync::Arc<()>,
+    folds: std::sync::Arc<()>,
+    text: std::sync::Arc<String>,
+    saved: std::sync::Arc<String>,
+    selections: Vec<Selection>,
+}
+impl RecoveryCaptureOwner {
     pub fn matches_document(&self, document: &Document) -> bool {
-        let document = document
-            .composition
-            .as_ref()
-            .map_or(document, |composition| composition.committed_document());
+        recovery_owner_matches(
+            document,
+            &self.identity,
+            &self.folds,
+            &self.text,
+            &self.saved,
+            &self.selections,
+        )
+    }
+}
+impl DocumentRecoveryCapture {
+    pub fn minimum_recovery_bytes(&self) -> usize {
+        self.recovery.recovery_bytes()
+    }
+    /// Selection metadata is bounded by MAX_SELECTIONS; fold tables stay private.
+    pub fn owner(&self) -> RecoveryCaptureOwner {
+        RecoveryCaptureOwner {
+            identity: self.identity.clone(),
+            folds: self.folds.clone(),
+            text: self.recovery.text.clone(),
+            saved: self.recovery.saved.clone(),
+            selections: self.recovery.selections.clone(),
+        }
+    }
+    pub fn matches_document(&self, document: &Document) -> bool {
         !self.rejected
-            && std::sync::Arc::ptr_eq(&self.identity, &document.identity)
-            && std::sync::Arc::ptr_eq(&self.recovery.text, &document.text)
-            && std::sync::Arc::ptr_eq(&self.recovery.saved, &document.saved)
-            && self.recovery.selections == document.selections
-            && document.folds.matches_recovery_identity(&self.folds)
+            && recovery_owner_matches(
+                document,
+                &self.identity,
+                &self.folds,
+                &self.recovery.text,
+                &self.recovery.saved,
+                &self.recovery.selections,
+            )
     }
     /// One unit visits at most 64 collapsed headers, including invalid candidates.
     pub fn advance(
@@ -152,6 +185,25 @@ impl DocumentRecoveryCapture {
     pub fn finish(self) -> Option<DocumentRecovery> {
         (self.done && !self.rejected).then_some(self.recovery)
     }
+}
+
+fn recovery_owner_matches(
+    document: &Document,
+    identity: &std::sync::Arc<()>,
+    folds: &std::sync::Arc<()>,
+    text: &std::sync::Arc<String>,
+    saved: &std::sync::Arc<String>,
+    selections: &[Selection],
+) -> bool {
+    let document = document
+        .composition
+        .as_ref()
+        .map_or(document, |composition| composition.committed_document());
+    std::sync::Arc::ptr_eq(identity, &document.identity)
+        && std::sync::Arc::ptr_eq(text, &document.text)
+        && std::sync::Arc::ptr_eq(saved, &document.saved)
+        && selections == document.selections
+        && document.folds.matches_recovery_identity(folds)
 }
 
 /// Private, complete-only validation of an immutable recovery document.

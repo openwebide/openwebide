@@ -382,9 +382,22 @@ impl BackendApi {
         struct Saved {
             revision: i64,
         }
-        record
-            .state
-            .validate()
+        let account = self.session_revision.get_untracked();
+        let mut validation = openwebide_core::editor::EditorRecoveryValidation::new(&record.state);
+        loop {
+            if self.session_revision.try_get_untracked() != Some(account) {
+                return Err(crate::backend::RecoveryError::Unavailable(
+                    "The account changed while saving editor recovery".into(),
+                ));
+            }
+            if validation.advance(1) {
+                break;
+            }
+            crate::util::yield_task().await;
+        }
+        validation
+            .finish()
+            .unwrap()
             .map_err(crate::backend::RecoveryError::Unavailable)?;
         let expected = record
             .revision

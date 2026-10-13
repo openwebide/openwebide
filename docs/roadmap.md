@@ -760,6 +760,17 @@ combined-source CI result.
   Frontend snapshot and guard callers
   still need to yield between capture steps. Initial allocation, admission,
   final comparisons and serialization also remain open.
+  Autosave now uses the shared cooperative facade for fold capture and record
+  validation. Ownership checks reuse source selection and metadata matching;
+  completed captures retain scalar ownership through validation. A private
+  account-safe capture lock prevents overlapping work without rescheduling
+  unchanged snapshots. Save API validation also yields. Native core/frontend
+  verification passes. All 53 WASM library checks and 45 recovery/fold browser
+  contracts pass, including eight capture/cancellation cases per mode and
+  existing slow-write coalescing, with strict core/WASM/WASI lint
+  ([receipt](editor-performance/cooperative-autosave-capture-browser.json)).
+  Fresh production and final integrated CI are pending.
+  Initial load, review and confirmation guard capture still need conversion.
 
 **Remaining completion gates**:
 
@@ -831,7 +842,10 @@ Linux/x64 verification also passes in the complete `67b3a529` inventory.
   `38318137783`: all six check jobs, both images, 220 editor checks, both font
   matrices, 397 other component checks and nightly publication pass
   ([receipt](editor-performance/editor-ci-5ba-success.json)). Later guard,
-  collapsed capture and cooperative wire decoding still need this release gate.
+  collapsed capture passes the same complete release gate at `cbbb2209` in
+  hosted run `38320950198`
+  ([receipt](editor-performance/editor-ci-cbbb-success.json)). Later wire
+  decoding, borrowed guard and capture/autosave changes still need this gate.
 
 - [ ] **Physical Chrome/Edge PWA input:** verify real input-method commit/cancel,
   Unicode and LF/CRLF undo/redo, multiple-cursor clipboard transactions and touch

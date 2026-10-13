@@ -31,6 +31,7 @@ struct RecoveryContext {
     counter: StoredValue<u64>,
     timers: StoredValue<std::collections::HashMap<i64, u64>>,
     checking: StoredValue<std::collections::HashMap<i64, u64>>,
+    capturing: StoredValue<std::collections::HashMap<i64, u64>>,
     file_guard: StoredValue<send_wrapper::SendWrapper<Option<FileReviewGuard>>>,
     save_file: Callback<()>,
 }
@@ -295,11 +296,40 @@ impl RecoveryContext {
             self.phase(id, RecoveryPhase::Conflict("The project folder changed. Choose which editor files to keep before recovery saves resume.".into()));
             return;
         }
-        let state = match self
-            .workspace
-            .editor_recovery(&project, self.read_only.get_untracked())
+        if self
+            .capturing
+            .with_value(|captures| captures.contains_key(&id))
         {
-            Ok(state) => state,
+            return;
+        }
+        let capture_ticket = self.next_ticket();
+        self.capturing.update_value(|captures| {
+            captures.insert(id, capture_ticket);
+        });
+        let capture_guard = CaptureGuard {
+            ctx: self,
+            id,
+            ticket: capture_ticket,
+        };
+        let result = self
+            .workspace
+            .editor_recovery_cooperative(
+                &project,
+                || self.read_only.get_untracked(),
+                || self.current(account, &project, ticket),
+            )
+            .await;
+        if !self.current(account, &project, ticket) {
+            self.reject_changed_root(account, id, ticket);
+            return;
+        }
+        let state = match result {
+            Ok(Some(state)) => state,
+            Ok(None) => {
+                drop(capture_guard);
+                self.schedule(id);
+                return;
+            }
             Err(error) => {
                 self.phase(id, RecoveryPhase::SaveFailed(error));
                 return;
@@ -378,6 +408,7 @@ impl RecoveryActions {
             counter: StoredValue::new(0),
             timers: StoredValue::new(Default::default()),
             checking: StoredValue::new(Default::default()),
+            capturing: StoredValue::new(Default::default()),
             file_guard: StoredValue::new(send_wrapper::SendWrapper::new(None)),
             save_file: expect_context::<super::workspace::WorkspaceActions>().on_save,
         };
@@ -388,6 +419,7 @@ impl RecoveryActions {
                 account.set_value(generation);
                 ctx.timers.set_value(Default::default());
                 ctx.checking.set_value(Default::default());
+                ctx.capturing.set_value(Default::default());
                 state.projects.set(Default::default());
                 state.file_review.set(None);
                 ctx.file_guard
@@ -515,6 +547,26 @@ impl RecoveryActions {
             check_files: recheck_files,
             restore: Callback::new(move |id| choice(id, LoadPolicy::Restore)),
             keep_current: Callback::new(move |id| choice(id, LoadPolicy::KeepCurrent)),
+        }
+    }
+}
+
+struct CaptureGuard {
+    ctx: RecoveryContext,
+    id: i64,
+    ticket: u64,
+}
+impl Drop for CaptureGuard {
+    fn drop(&mut self) {
+        if self
+            .ctx
+            .capturing
+            .try_with_value(|captures| captures.get(&self.id).copied())
+            == Some(Some(self.ticket))
+        {
+            self.ctx.capturing.try_update_value(|captures| {
+                captures.remove(&self.id);
+            });
         }
     }
 }

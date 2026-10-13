@@ -8,6 +8,10 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Autosave editor recovery through bounded fold capture and validation, rejecting changed owners between batches. Coalesce overlapping captures with private account-safe locks; unchanged snapshots do not trigger repeated saves. Initial load, review and confirmation guards still need cooperative capture.
+
+- Verify the collapsed-capture checkpoint through full hosted checks, browser partitions, both platform images and nightly publication.
+
 - Verify production restart, edits, autosave and reload/new-window recovery with borrowed document guard comparisons in both workspace modes.
 
 - Prepare collapsed recovery folds in 64-candidate steps with complete-only output and immutable ownership checks. Synchronous capture uses the same builder; frontend yielding between capture steps remains to be integrated.
