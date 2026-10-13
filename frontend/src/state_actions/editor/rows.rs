@@ -336,6 +336,23 @@ fn trace_paragraph_candidate(
         let _ = callback.call1(&wasm_bindgen::JsValue::NULL, &record.to_string().into());
     }
 }
+fn trace_paragraph_comparison(suffix: bool, boundary: Option<usize>) {
+    #[cfg(not(target_arch = "wasm32"))]
+    let _ = (suffix, boundary);
+    #[cfg(target_arch = "wasm32")]
+    {
+        use wasm_bindgen::JsCast;
+        let Some(callback) = web_sys::window().and_then(|window| {
+            js_sys::Reflect::get(&window, &"__openwebideEditorParagraphCandidate".into())
+                .ok()
+                .and_then(|value| value.dyn_into::<js_sys::Function>().ok())
+        }) else {
+            return;
+        };
+        let record = serde_json::json!({"kind":"comparison", "suffix":suffix, "boundary":boundary});
+        let _ = callback.call1(&wasm_bindgen::JsValue::NULL, &record.to_string().into());
+    }
+}
 fn same_paint_scope(old: &EditorRowPaint, paint: &EditorRowPaint) -> bool {
     old.view_revision == paint.view_revision
         && old.layout_epoch == paint.layout_epoch
@@ -551,7 +568,9 @@ impl EditorActions {
                 return None;
             }
             if comparison.advance(8) {
-                return comparison.finish();
+                let boundary = comparison.finish();
+                trace_paragraph_comparison(suffix, boundary);
+                return boundary;
             }
             crate::util::yield_task().await;
         }

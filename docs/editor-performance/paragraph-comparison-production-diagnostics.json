@@ -1,0 +1,431 @@
+{
+  "description": "Production paragraph-cache eligibility and source/style comparison trace. Both modes retain the candidate row and pass all environment checks; input preparation changes style boundaries near the file prefix.",
+  "environmentFields": [
+    "fontEpoch",
+    "projectAndFileKey",
+    "pendingEpoch",
+    "readRevision",
+    "accountGeneration",
+    "metrics",
+    "indentation",
+    "whitespace",
+    "wordWrap"
+  ],
+  "sourceSha256": {
+    "frontend/src/state_actions/editor/rows.rs": "40dce0a2d5878dd8bf3fd777cac4a5c0ea9eb620306882267cfc4359ef97d5c6"
+  },
+  "checks": {
+    "productionBuild": "passed",
+    "nativeFrontend": "141 passed",
+    "strictWasmFrontendLint": "passed",
+    "measurementUnitTests": "7 passed"
+  },
+  "cases": [
+    {
+      "mode": "local",
+      "wrap": false,
+      "sourceBytes": 1048567,
+      "completeSourceAfterInputVerified": true,
+      "inputViewportPaintMs": 109.5,
+      "inputCompleteGeometryMs": 165.2000000178814,
+      "paragraphCandidates": [
+        {
+          "at": 1391.300000011921,
+          "cachePresent": false,
+          "environment": null,
+          "newPrepared": false,
+          "oldPrepared": null,
+          "phase": "cold",
+          "rowRetained": false,
+          "sameTextOwner": null
+        },
+        {
+          "at": 1391.4000000059605,
+          "cachePresent": false,
+          "environment": null,
+          "newPrepared": false,
+          "oldPrepared": null,
+          "phase": "cold",
+          "rowRetained": false,
+          "sameTextOwner": null
+        },
+        {
+          "at": 1591.4000000059605,
+          "cachePresent": true,
+          "environment": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "newPrepared": true,
+          "oldPrepared": false,
+          "phase": "cold",
+          "rowRetained": true,
+          "sameTextOwner": true
+        },
+        {
+          "at": 1591.7000000178814,
+          "boundary": 0,
+          "kind": "comparison",
+          "phase": "cold",
+          "suffix": false
+        },
+        {
+          "at": 1591.7000000178814,
+          "cachePresent": true,
+          "environment": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "newPrepared": true,
+          "oldPrepared": false,
+          "phase": "cold",
+          "rowRetained": true,
+          "sameTextOwner": true
+        },
+        {
+          "at": 1591.7000000178814,
+          "boundary": null,
+          "kind": "comparison",
+          "phase": "cold",
+          "suffix": true
+        },
+        {
+          "at": 1882.300000011921,
+          "cachePresent": true,
+          "environment": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "newPrepared": false,
+          "oldPrepared": true,
+          "phase": "input",
+          "rowRetained": true,
+          "sameTextOwner": false
+        },
+        {
+          "at": 1882.300000011921,
+          "boundary": 0,
+          "kind": "comparison",
+          "phase": "input",
+          "suffix": false
+        },
+        {
+          "at": 1882.4000000059605,
+          "cachePresent": true,
+          "environment": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "newPrepared": false,
+          "oldPrepared": true,
+          "phase": "input",
+          "rowRetained": true,
+          "sameTextOwner": false
+        },
+        {
+          "at": 1882.4000000059605,
+          "boundary": 1,
+          "kind": "comparison",
+          "phase": "input",
+          "suffix": true
+        },
+        {
+          "at": 1952.5999999940395,
+          "cachePresent": true,
+          "environment": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "newPrepared": true,
+          "oldPrepared": false,
+          "phase": "input",
+          "rowRetained": true,
+          "sameTextOwner": true
+        },
+        {
+          "at": 1952.5999999940395,
+          "boundary": 1,
+          "kind": "comparison",
+          "phase": "input",
+          "suffix": false
+        },
+        {
+          "at": 1952.5999999940395,
+          "cachePresent": true,
+          "environment": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "newPrepared": true,
+          "oldPrepared": false,
+          "phase": "input",
+          "rowRetained": true,
+          "sameTextOwner": true
+        },
+        {
+          "at": 1954.5,
+          "boundary": 18,
+          "kind": "comparison",
+          "phase": "input",
+          "suffix": true
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "wrap": false,
+      "sourceBytes": 1048567,
+      "completeSourceAfterInputVerified": true,
+      "inputViewportPaintMs": 108.89999997615814,
+      "inputCompleteGeometryMs": 164.2999999821186,
+      "paragraphCandidates": [
+        {
+          "at": 1325.7999999821186,
+          "cachePresent": false,
+          "environment": null,
+          "newPrepared": false,
+          "oldPrepared": null,
+          "phase": "cold",
+          "rowRetained": false,
+          "sameTextOwner": null
+        },
+        {
+          "at": 1325.9000000059605,
+          "cachePresent": false,
+          "environment": null,
+          "newPrepared": false,
+          "oldPrepared": null,
+          "phase": "cold",
+          "rowRetained": false,
+          "sameTextOwner": null
+        },
+        {
+          "at": 1518.2999999821186,
+          "cachePresent": true,
+          "environment": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "newPrepared": true,
+          "oldPrepared": false,
+          "phase": "cold",
+          "rowRetained": true,
+          "sameTextOwner": true
+        },
+        {
+          "at": 1518.5,
+          "boundary": 0,
+          "kind": "comparison",
+          "phase": "cold",
+          "suffix": false
+        },
+        {
+          "at": 1518.5,
+          "cachePresent": true,
+          "environment": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "newPrepared": true,
+          "oldPrepared": false,
+          "phase": "cold",
+          "rowRetained": true,
+          "sameTextOwner": true
+        },
+        {
+          "at": 1518.5,
+          "boundary": null,
+          "kind": "comparison",
+          "phase": "cold",
+          "suffix": true
+        },
+        {
+          "at": 1832.5,
+          "cachePresent": true,
+          "environment": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "newPrepared": false,
+          "oldPrepared": true,
+          "phase": "input",
+          "rowRetained": true,
+          "sameTextOwner": false
+        },
+        {
+          "at": 1832.5,
+          "boundary": 0,
+          "kind": "comparison",
+          "phase": "input",
+          "suffix": false
+        },
+        {
+          "at": 1832.5999999940395,
+          "cachePresent": true,
+          "environment": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "newPrepared": false,
+          "oldPrepared": true,
+          "phase": "input",
+          "rowRetained": true,
+          "sameTextOwner": false
+        },
+        {
+          "at": 1832.5999999940395,
+          "boundary": 1,
+          "kind": "comparison",
+          "phase": "input",
+          "suffix": true
+        },
+        {
+          "at": 1902,
+          "cachePresent": true,
+          "environment": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "newPrepared": true,
+          "oldPrepared": false,
+          "phase": "input",
+          "rowRetained": true,
+          "sameTextOwner": true
+        },
+        {
+          "at": 1902,
+          "boundary": 1,
+          "kind": "comparison",
+          "phase": "input",
+          "suffix": false
+        },
+        {
+          "at": 1902,
+          "cachePresent": true,
+          "environment": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "newPrepared": true,
+          "oldPrepared": false,
+          "phase": "input",
+          "rowRetained": true,
+          "sameTextOwner": true
+        },
+        {
+          "at": 1903.5,
+          "boundary": 18,
+          "kind": "comparison",
+          "phase": "input",
+          "suffix": true
+        }
+      ]
+    }
+  ],
+  "limits": "Two unwrapped diagnostic observations, not a timing improvement. Existing source/style and measured reconnection predicates remain unchanged. Wrapped capture, partial-probe reuse, Unicode/native input, cold memory, final CI and physical gates remain open.",
+  "artifactMetadata": {
+    "host": "Linux-7.0.14-linuxkit-aarch64-with-glibc2.36",
+    "measurement": "production editor; process-tree memory",
+    "cpuCount": 14,
+    "cgroupMemoryMax": "10737418240",
+    "cgroupCpuMax": "400000 100000",
+    "repetitions": 1,
+    "fileName": "measure.rs",
+    "measurementImage": "sha256:e1a372cac8e6c496251a7ea371631a8beb560d1c5c6cddd1b70a270da19bda8c",
+    "inputTimingStart": "beforeinput",
+    "inputPosition": "beginning",
+    "cpuProfiling": false,
+    "workerStartup": "default",
+    "frontendWasmSha256": {
+      "openwebide-frontend-c4d9d7005ca64955_bg.wasm": "ac9e08b1093d34a378e84a4c2380212a99d9ab63ed7ea9945efa89906e8795df"
+    },
+    "backendWasmSha256": "cdbff4060e84f58f6e274e5a11c8aebfaf4cf1d509f828a314be0af08ac68e39",
+    "measurementScriptSha256": "8fb6a329a8dec34ef34ba538a369d9f65d66c81e5b6b8a717651a1fd20c24e01",
+    "checkoutHead": "51aecb89779e7b1928686b040f81ed0c16513aa8",
+    "browser": "Chromium 154.0.8037.92 built on Debian GNU/Linux 12 (bookworm)"
+  }
+}

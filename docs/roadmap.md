@@ -364,6 +364,14 @@ combined-source CI result.
   ([receipt](editor-performance/paragraph-candidate-tracing-browser.json)). The
   production build/capture is pending; use this evidence to locate the repeated
   preparation cause before changing retention or fallback decisions.
+  The production capture now confirms retained candidate rows and all nine
+  environment matches in both modes. Input prepared transitions share the exact
+  text owner but compare equal only through byte 1, with unchanged styled suffix
+  beginning at byte 18
+  ([diagnostic](editor-performance/paragraph-comparison-production-diagnostics.json)).
+  This rules out the suspected cache/ownership loss; first-probe style changes
+  still require measured geometry. Investigate bounded changed-prefix probes and
+  validated suffix reconnection rather than weakening style/ownership checks.
   Visual ASCII coordinates now update by word/space/punctuation groups and
   visual-only preparation avoids an unused character traversal. A complete-table
   regression compares every field with full Unicode grapheme traversal at

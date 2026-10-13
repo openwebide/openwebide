@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Record bounded source/style comparison boundaries in paragraph-cache diagnostics. Production captures confirm retained cache/environment matches in both modes while prepared syntax changes the input prefix styling.
+
 - Add bounded, opt-in paragraph-cache eligibility diagnostics without changing reuse policy or exposing source/account data.
 
 - Add bounded phase/element timing for viewport width/height reads. Production diagnostics preserve source in both modes and identify repeated offscreen paragraph-probe layout costs; overall editor latency/memory improvements remain unproven.
