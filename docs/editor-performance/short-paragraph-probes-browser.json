@@ -1,0 +1,1516 @@
+{
+  "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+  "console": "Invoking test: editor::wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes\nInvoking test: editor::paragraph_unchanged_suffix_reuses_exact_browser_geometry_in_both_modes\nInvoking test: editor::paragraph_overlap_failure_uses_complete_measurement_in_both_modes\nInvoking test: editor::paragraph_changed_prefix_reuse_matches_complete_geometry_and_rejects_stale_scopes\nInvoking test: editor::paragraph_batches_match_individual_native_ranges_and_failures_in_both_modes\nInvoking test: editor::bounded_paragraph_geometry_preserves_fonts_features_and_whitespace_in_both_modes\n",
+  "output": "\nrunning 6 tests\ntest editor::wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes ... ok\ntest editor::paragraph_unchanged_suffix_reuses_exact_browser_geometry_in_both_modes ... ok\ntest editor::paragraph_overlap_failure_uses_complete_measurement_in_both_modes ... ok\ntest editor::paragraph_changed_prefix_reuse_matches_complete_geometry_and_rejects_stale_scopes ... ok\ntest editor::paragraph_batches_match_individual_native_ranges_and_failures_in_both_modes ... ok\ntest editor::bounded_paragraph_geometry_preserves_fonts_features_and_whitespace_in_both_modes ... ok\n\ntest result: ok. 6 passed; 0 failed; 0 ignored; 0 filtered out; finished in 150.77s\n\n",
+  "passed": true,
+  "tests": [
+    "__wbgt__components::editor::bounded_paragraph_geometry_preserves_fonts_features_and_whitespace_in_both_modes",
+    "__wbgt__components::editor::paragraph_batches_match_individual_native_ranges_and_failures_in_both_modes",
+    "__wbgt__components::editor::paragraph_changed_prefix_reuse_matches_complete_geometry_and_rejects_stale_scopes",
+    "__wbgt__components::editor::paragraph_overlap_failure_uses_complete_measurement_in_both_modes",
+    "__wbgt__components::editor::paragraph_unchanged_suffix_reuses_exact_browser_geometry_in_both_modes",
+    "__wbgt__components::editor::wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes"
+  ],
+  "servedFonts": {
+    "/fonts/MonaspaceNeon-v1.400.woff2": "6569968f448ae856ab5b57dff1f13b109b220ca8e3f664169e135fcb5c4f0721",
+    "/fonts/MonaspaceArgon-v1.400.woff2": "ad0ad84cb65ab56ea82b3098800403aeec1bbc445ba24da0dc87f439b3883db6",
+    "/fonts/MonaspaceXenon-v1.400.woff2": "eea00c02f4c00f09fd50e80efdb8341975f9eb8c82720ce50f44c19a962996c5",
+    "/fonts/MonaspaceRadon-v1.400.woff2": "6411b3c2b3e02e3913248184800d6c5a83bb1ccd1472daeb7bfee605c176cb33",
+    "/fonts/MonaspaceKrypton-v1.400.woff2": "f1357532c080c3f976e35ec1d18a92b423d4261103acb7d2cdccffa03a989fad"
+  },
+  "libraryStartSuppressed": false,
+  "testModuleRoute": "/tests.js",
+  "checks": {
+    "core": "790 passed, 1 ignored",
+    "strictCoreLint": "passed",
+    "productionPerformance": "regression in both modes; candidate discarded",
+    "strictWasmFrontendLint": "passed",
+    "productionBuild": "passed",
+    "browserLibrary": "59 passed"
+  },
+  "implementation": "Shared unwrapped paragraph planner prefers 4 KiB shaping probes and retains 16 KiB fallback when continuation seams are unavailable. Wrapped planner and geometry validation are unchanged.",
+  "sourceSha256": {
+    "crates/core/src/editor/paragraph.rs": "9288bb6a46a5bc57bffe33d742e6872853c65facf126ed59ed3b8983ec20afb6"
+  },
+  "decision": "Rejected. Restore the existing 16 KiB planner: uniformly smaller probes preserve geometry but regress production latency and memory.",
+  "baseline": [
+    {
+      "host": "Linux-7.0.14-linuxkit-aarch64-with-glibc2.36",
+      "measurement": "production editor; process-tree memory",
+      "cpuCount": 14,
+      "cgroupMemoryMax": "10737418240",
+      "cgroupCpuMax": "400000 100000",
+      "repetitions": 2,
+      "fileName": "measure.rs",
+      "measurementImage": "sha256:e1a372cac8e6c496251a7ea371631a8beb560d1c5c6cddd1b70a270da19bda8c",
+      "inputTimingStart": "beforeinput",
+      "inputPosition": "beginning",
+      "cpuProfiling": false,
+      "workerStartup": "default",
+      "frontendWasmSha256": {
+        "openwebide-frontend-3bf89c3d35a9c294_bg.wasm": "efecce0df07d05df8261e4c6fe04a23ca51bca67fa07416732977e7d5b1fa40c",
+        "openwebide-frontend-c4d9d7005ca64955_bg.wasm": "ac9e08b1093d34a378e84a4c2380212a99d9ab63ed7ea9945efa89906e8795df"
+      },
+      "backendWasmSha256": "cdbff4060e84f58f6e274e5a11c8aebfaf4cf1d509f828a314be0af08ac68e39",
+      "measurementScriptSha256": "8fb6a329a8dec34ef34ba538a369d9f65d66c81e5b6b8a717651a1fd20c24e01",
+      "checkoutHead": "6d8235a165252f08c63a696f0c326d972548cb4c",
+      "browser": "Chromium 154.0.8037.92 built on Debian GNU/Linux 12 (bookworm)"
+    },
+    {
+      "workerStartup": "default",
+      "workerStartupEvidence": {
+        "accepted": 1,
+        "attempted": 1,
+        "dropped": 0
+      },
+      "cpuProfiling": false,
+      "waitedForSyntax": false,
+      "case": "styled-long-line",
+      "fileName": "measure.rs",
+      "mode": "local",
+      "wrap": false,
+      "repetition": 1,
+      "sourceBytes": 1048567,
+      "inputPosition": "beginning",
+      "verifiedSourceCaretBeforeInput": 0,
+      "completeSourceAfterInputVerified": true,
+      "loadToPaintMs": 1679.9637920048553,
+      "appModule": "/openwebide-frontend-c4d9d7005ca64955.js",
+      "clientWidth": 264,
+      "domNodes": 717,
+      "maxFrameMs": 100,
+      "nativeBound": true,
+      "nativeInputLength": 8782,
+      "paintRows": 1,
+      "scrollHeight": 461,
+      "scrollWidth": 6414331,
+      "styledString": true,
+      "wasmCommittedBytes": 31260672,
+      "wrapped": false,
+      "scrollAxis": "horizontal",
+      "scrollOffset": 4489847,
+      "scrollToPaintMs": 25.099999994039536,
+      "inputToPaintMs": 198,
+      "chrome_processes": 9,
+      "chrome_summed_rss_kib": 1294668,
+      "chrome_pss_kib": 678696,
+      "chrome_memory_by_role": {
+        "other": {
+          "processes": 1,
+          "rssKiB": 224356,
+          "pssKiB": 131060
+        },
+        "zygote": {
+          "processes": 2,
+          "rssKiB": 146616,
+          "pssKiB": 33399
+        },
+        "gpu": {
+          "processes": 1,
+          "rssKiB": 106780,
+          "pssKiB": 52315
+        },
+        "utility": {
+          "processes": 2,
+          "rssKiB": 159456,
+          "pssKiB": 49858
+        },
+        "renderer": {
+          "processes": 3,
+          "rssKiB": 657460,
+          "pssKiB": 412064
+        }
+      },
+      "memorySnapshotAttempts": 1,
+      "afterInputMemory": {
+        "chrome_processes": 9,
+        "chrome_summed_rss_kib": 1315728,
+        "chrome_pss_kib": 698468,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 1,
+            "rssKiB": 229160,
+            "pssKiB": 135543
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 146616,
+            "pssKiB": 33399
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 107056,
+            "pssKiB": 52370
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 159644,
+            "pssKiB": 49897
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 673252,
+            "pssKiB": 427259
+          }
+        },
+        "memorySnapshotAttempts": 1
+      },
+      "beforeLoadMemory": {
+        "chrome_processes": 9,
+        "chrome_summed_rss_kib": 986296,
+        "chrome_pss_kib": 399240,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 1,
+            "rssKiB": 220004,
+            "pssKiB": 130375
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 146616,
+            "pssKiB": 33474
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 97616,
+            "pssKiB": 47851
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 156468,
+            "pssKiB": 48147
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 365592,
+            "pssKiB": 139393
+          }
+        },
+        "memorySnapshotAttempts": 1
+      },
+      "peakChromeSummedRssKiB": 1319820,
+      "peakChromePssKiB": 703002,
+      "memorySamples": 16,
+      "peakChromeMemoryByRole": {
+        "other": {
+          "processes": 1,
+          "rssKiB": 230512,
+          "pssKiB": 136896
+        },
+        "zygote": {
+          "processes": 2,
+          "rssKiB": 146616,
+          "pssKiB": 33399
+        },
+        "gpu": {
+          "processes": 1,
+          "rssKiB": 107056,
+          "pssKiB": 52374
+        },
+        "utility": {
+          "processes": 2,
+          "rssKiB": 159644,
+          "pssKiB": 49898
+        },
+        "renderer": {
+          "processes": 3,
+          "rssKiB": 675992,
+          "pssKiB": 430435
+        }
+      },
+      "memorySampleIntervalMs": 200,
+      "coldViewportPaintMs": 1674.199999988079,
+      "coldCompleteGeometryMs": 1674.199999988079,
+      "coldViewportHadCompleteExtent": true,
+      "coldSyntaxReadyMs": 1674.199999988079,
+      "inputViewportPaintMs": 107,
+      "inputCompleteGeometryMs": 171.90000000596046,
+      "inputSyntaxReadyMs": 107,
+      "inputViewportHadCompleteExtent": false,
+      "inputScrollTop": 0,
+      "inputScrollLeft": 0,
+      "afterInputWasmCommittedBytes": 35651584,
+      "longTasks": 3,
+      "longTaskMs": 190,
+      "maxLongTaskMs": 75,
+      "maxFrameIncludingInputMs": 100
+    },
+    {
+      "workerStartup": "default",
+      "workerStartupEvidence": {
+        "accepted": 1,
+        "attempted": 1,
+        "dropped": 0
+      },
+      "cpuProfiling": false,
+      "waitedForSyntax": false,
+      "case": "styled-long-line",
+      "fileName": "measure.rs",
+      "mode": "local",
+      "wrap": false,
+      "repetition": 2,
+      "sourceBytes": 1048567,
+      "inputPosition": "beginning",
+      "verifiedSourceCaretBeforeInput": 0,
+      "completeSourceAfterInputVerified": true,
+      "loadToPaintMs": 2119.057875999715,
+      "appModule": "/openwebide-frontend-c4d9d7005ca64955.js",
+      "clientWidth": 264,
+      "domNodes": 717,
+      "maxFrameMs": 99.90000000000009,
+      "nativeBound": true,
+      "nativeInputLength": 8782,
+      "paintRows": 1,
+      "scrollHeight": 461,
+      "scrollWidth": 6414331,
+      "styledString": true,
+      "wasmCommittedBytes": 31326208,
+      "wrapped": false,
+      "scrollAxis": "horizontal",
+      "scrollOffset": 4489847,
+      "scrollToPaintMs": 28.099999994039536,
+      "inputToPaintMs": 196.2000000178814,
+      "chrome_processes": 9,
+      "chrome_summed_rss_kib": 1288488,
+      "chrome_pss_kib": 676991,
+      "chrome_memory_by_role": {
+        "other": {
+          "processes": 1,
+          "rssKiB": 221180,
+          "pssKiB": 128716
+        },
+        "zygote": {
+          "processes": 2,
+          "rssKiB": 145324,
+          "pssKiB": 33337
+        },
+        "gpu": {
+          "processes": 1,
+          "rssKiB": 105084,
+          "pssKiB": 51958
+        },
+        "utility": {
+          "processes": 2,
+          "rssKiB": 158788,
+          "pssKiB": 49854
+        },
+        "renderer": {
+          "processes": 3,
+          "rssKiB": 658112,
+          "pssKiB": 413126
+        }
+      },
+      "memorySnapshotAttempts": 1,
+      "afterInputMemory": {
+        "chrome_processes": 9,
+        "chrome_summed_rss_kib": 1301652,
+        "chrome_pss_kib": 688875,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 1,
+            "rssKiB": 225992,
+            "pssKiB": 133209
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 145324,
+            "pssKiB": 33337
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 105360,
+            "pssKiB": 52017
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 158976,
+            "pssKiB": 49895
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 666000,
+            "pssKiB": 420417
+          }
+        },
+        "memorySnapshotAttempts": 1
+      },
+      "beforeLoadMemory": {
+        "chrome_processes": 9,
+        "chrome_summed_rss_kib": 971836,
+        "chrome_pss_kib": 390978,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 1,
+            "rssKiB": 216476,
+            "pssKiB": 127854
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 145324,
+            "pssKiB": 33431
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 95988,
+            "pssKiB": 47534
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 155816,
+            "pssKiB": 48149
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 358232,
+            "pssKiB": 134010
+          }
+        },
+        "memorySnapshotAttempts": 1
+      },
+      "peakChromeSummedRssKiB": 1306504,
+      "peakChromePssKiB": 693727,
+      "memorySamples": 18,
+      "peakChromeMemoryByRole": {
+        "other": {
+          "processes": 1,
+          "rssKiB": 227536,
+          "pssKiB": 134753
+        },
+        "zygote": {
+          "processes": 2,
+          "rssKiB": 145324,
+          "pssKiB": 33337
+        },
+        "gpu": {
+          "processes": 1,
+          "rssKiB": 105360,
+          "pssKiB": 52017
+        },
+        "utility": {
+          "processes": 2,
+          "rssKiB": 158976,
+          "pssKiB": 49895
+        },
+        "renderer": {
+          "processes": 3,
+          "rssKiB": 669308,
+          "pssKiB": 423725
+        }
+      },
+      "memorySampleIntervalMs": 200,
+      "coldViewportPaintMs": 2112.699999988079,
+      "coldCompleteGeometryMs": 2112.699999988079,
+      "coldViewportHadCompleteExtent": true,
+      "coldSyntaxReadyMs": 2112.699999988079,
+      "inputViewportPaintMs": 109.80000001192093,
+      "inputCompleteGeometryMs": 173.30000001192093,
+      "inputSyntaxReadyMs": 109.80000001192093,
+      "inputViewportHadCompleteExtent": false,
+      "inputScrollTop": 0,
+      "inputScrollLeft": 0,
+      "afterInputWasmCommittedBytes": 35717120,
+      "longTasks": 2,
+      "longTaskMs": 139,
+      "maxLongTaskMs": 80,
+      "maxFrameIncludingInputMs": 99.90000000000009
+    },
+    {
+      "workerStartup": "default",
+      "workerStartupEvidence": {
+        "accepted": 1,
+        "attempted": 1,
+        "dropped": 0
+      },
+      "cpuProfiling": false,
+      "waitedForSyntax": false,
+      "case": "styled-long-line",
+      "fileName": "measure.rs",
+      "mode": "remote",
+      "wrap": false,
+      "repetition": 1,
+      "sourceBytes": 1048567,
+      "inputPosition": "beginning",
+      "verifiedSourceCaretBeforeInput": 0,
+      "completeSourceAfterInputVerified": true,
+      "loadToPaintMs": 1882.6050839852542,
+      "appModule": "/openwebide-frontend-c4d9d7005ca64955.js",
+      "clientWidth": 264,
+      "domNodes": 719,
+      "maxFrameMs": 116.70000000000005,
+      "nativeBound": true,
+      "nativeInputLength": 8782,
+      "paintRows": 1,
+      "scrollHeight": 524,
+      "scrollWidth": 6414331,
+      "styledString": true,
+      "wasmCommittedBytes": 31457280,
+      "wrapped": false,
+      "scrollAxis": "horizontal",
+      "scrollOffset": 4489847,
+      "scrollToPaintMs": 32.400000005960464,
+      "inputToPaintMs": 172.5,
+      "chrome_processes": 9,
+      "chrome_summed_rss_kib": 1289256,
+      "chrome_pss_kib": 679437,
+      "chrome_memory_by_role": {
+        "other": {
+          "processes": 1,
+          "rssKiB": 225132,
+          "pssKiB": 131833
+        },
+        "zygote": {
+          "processes": 2,
+          "rssKiB": 145440,
+          "pssKiB": 33509
+        },
+        "gpu": {
+          "processes": 1,
+          "rssKiB": 106484,
+          "pssKiB": 52261
+        },
+        "utility": {
+          "processes": 2,
+          "rssKiB": 158016,
+          "pssKiB": 49820
+        },
+        "renderer": {
+          "processes": 3,
+          "rssKiB": 654184,
+          "pssKiB": 412014
+        }
+      },
+      "memorySnapshotAttempts": 1,
+      "afterInputMemory": {
+        "chrome_processes": 9,
+        "chrome_summed_rss_kib": 1301868,
+        "chrome_pss_kib": 690769,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 1,
+            "rssKiB": 230184,
+            "pssKiB": 136565
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 145440,
+            "pssKiB": 33509
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 106764,
+            "pssKiB": 52324
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 158204,
+            "pssKiB": 49860
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 661276,
+            "pssKiB": 418511
+          }
+        },
+        "memorySnapshotAttempts": 1
+      },
+      "beforeLoadMemory": {
+        "chrome_processes": 9,
+        "chrome_summed_rss_kib": 976500,
+        "chrome_pss_kib": 397469,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 1,
+            "rssKiB": 221084,
+            "pssKiB": 131470
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 145440,
+            "pssKiB": 33596
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 97284,
+            "pssKiB": 47804
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 154864,
+            "pssKiB": 47956
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 357828,
+            "pssKiB": 136643
+          }
+        },
+        "memorySnapshotAttempts": 1
+      },
+      "peakChromeSummedRssKiB": 1306864,
+      "peakChromePssKiB": 690921,
+      "memorySamples": 17,
+      "peakChromeMemoryByRole": {
+        "other": {
+          "processes": 1,
+          "rssKiB": 230116,
+          "pssKiB": 136497
+        },
+        "zygote": {
+          "processes": 2,
+          "rssKiB": 145440,
+          "pssKiB": 33509
+        },
+        "gpu": {
+          "processes": 1,
+          "rssKiB": 106764,
+          "pssKiB": 52324
+        },
+        "utility": {
+          "processes": 2,
+          "rssKiB": 158204,
+          "pssKiB": 49860
+        },
+        "renderer": {
+          "processes": 3,
+          "rssKiB": 661496,
+          "pssKiB": 418731
+        }
+      },
+      "memorySampleIntervalMs": 200,
+      "coldViewportPaintMs": 1877.0999999940395,
+      "coldCompleteGeometryMs": 1877.0999999940395,
+      "coldViewportHadCompleteExtent": true,
+      "coldSyntaxReadyMs": 1877.0999999940395,
+      "inputViewportPaintMs": 111.90000000596046,
+      "inputCompleteGeometryMs": 164.59999999403954,
+      "inputSyntaxReadyMs": 111.90000000596046,
+      "inputViewportHadCompleteExtent": false,
+      "inputScrollTop": 0,
+      "inputScrollLeft": 0,
+      "afterInputWasmCommittedBytes": 35848192,
+      "longTasks": 2,
+      "longTaskMs": 129,
+      "maxLongTaskMs": 73,
+      "maxFrameIncludingInputMs": 116.70000000000005
+    },
+    {
+      "workerStartup": "default",
+      "workerStartupEvidence": {
+        "accepted": 1,
+        "attempted": 1,
+        "dropped": 0
+      },
+      "cpuProfiling": false,
+      "waitedForSyntax": false,
+      "case": "styled-long-line",
+      "fileName": "measure.rs",
+      "mode": "remote",
+      "wrap": false,
+      "repetition": 2,
+      "sourceBytes": 1048567,
+      "inputPosition": "beginning",
+      "verifiedSourceCaretBeforeInput": 0,
+      "completeSourceAfterInputVerified": true,
+      "loadToPaintMs": 1531.7142929998226,
+      "appModule": "/openwebide-frontend-c4d9d7005ca64955.js",
+      "clientWidth": 264,
+      "domNodes": 719,
+      "maxFrameMs": 100,
+      "nativeBound": true,
+      "nativeInputLength": 8782,
+      "paintRows": 1,
+      "scrollHeight": 524,
+      "scrollWidth": 6414331,
+      "styledString": true,
+      "wasmCommittedBytes": 29163520,
+      "wrapped": false,
+      "scrollAxis": "horizontal",
+      "scrollOffset": 4489847,
+      "scrollToPaintMs": 16.5,
+      "inputToPaintMs": 194.30000001192093,
+      "chrome_processes": 9,
+      "chrome_summed_rss_kib": 1253104,
+      "chrome_pss_kib": 640960,
+      "chrome_memory_by_role": {
+        "other": {
+          "processes": 1,
+          "rssKiB": 221864,
+          "pssKiB": 129100
+        },
+        "zygote": {
+          "processes": 2,
+          "rssKiB": 145232,
+          "pssKiB": 33336
+        },
+        "gpu": {
+          "processes": 1,
+          "rssKiB": 105036,
+          "pssKiB": 52053
+        },
+        "utility": {
+          "processes": 2,
+          "rssKiB": 159124,
+          "pssKiB": 50080
+        },
+        "renderer": {
+          "processes": 3,
+          "rssKiB": 621848,
+          "pssKiB": 376391
+        }
+      },
+      "memorySnapshotAttempts": 1,
+      "afterInputMemory": {
+        "chrome_processes": 9,
+        "chrome_summed_rss_kib": 1267376,
+        "chrome_pss_kib": 653969,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 1,
+            "rssKiB": 226700,
+            "pssKiB": 133617
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 145232,
+            "pssKiB": 33337
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 105320,
+            "pssKiB": 52121
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 159296,
+            "pssKiB": 50120
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 630828,
+            "pssKiB": 384774
+          }
+        },
+        "memorySnapshotAttempts": 1
+      },
+      "beforeLoadMemory": {
+        "chrome_processes": 9,
+        "chrome_summed_rss_kib": 980512,
+        "chrome_pss_kib": 397374,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 1,
+            "rssKiB": 217648,
+            "pssKiB": 128536
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 145232,
+            "pssKiB": 33417
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 95932,
+            "pssKiB": 47637
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 156020,
+            "pssKiB": 48289
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 365680,
+            "pssKiB": 139495
+          }
+        },
+        "memorySnapshotAttempts": 1
+      },
+      "peakChromeSummedRssKiB": 1289448,
+      "peakChromePssKiB": 683721,
+      "memorySamples": 16,
+      "peakChromeMemoryByRole": {
+        "other": {
+          "processes": 1,
+          "rssKiB": 221840,
+          "pssKiB": 129130
+        },
+        "zygote": {
+          "processes": 2,
+          "rssKiB": 145232,
+          "pssKiB": 33336
+        },
+        "gpu": {
+          "processes": 1,
+          "rssKiB": 104628,
+          "pssKiB": 51850
+        },
+        "utility": {
+          "processes": 2,
+          "rssKiB": 159088,
+          "pssKiB": 50105
+        },
+        "renderer": {
+          "processes": 3,
+          "rssKiB": 658660,
+          "pssKiB": 419300
+        }
+      },
+      "memorySampleIntervalMs": 200,
+      "coldViewportPaintMs": 1526.4000000059605,
+      "coldCompleteGeometryMs": 1526.4000000059605,
+      "coldViewportHadCompleteExtent": true,
+      "coldSyntaxReadyMs": 1526.4000000059605,
+      "inputViewportPaintMs": 106.5,
+      "inputCompleteGeometryMs": 168.40000000596046,
+      "inputSyntaxReadyMs": 106.5,
+      "inputViewportHadCompleteExtent": false,
+      "inputScrollTop": 0,
+      "inputScrollLeft": 0,
+      "afterInputWasmCommittedBytes": 35782656,
+      "longTasks": 2,
+      "longTaskMs": 128,
+      "maxLongTaskMs": 73,
+      "maxFrameIncludingInputMs": 100
+    }
+  ],
+  "candidate": [
+    {
+      "host": "Linux-7.0.14-linuxkit-aarch64-with-glibc2.36",
+      "measurement": "production editor; process-tree memory",
+      "cpuCount": 14,
+      "cgroupMemoryMax": "10737418240",
+      "cgroupCpuMax": "400000 100000",
+      "repetitions": 2,
+      "fileName": "measure.rs",
+      "measurementImage": "sha256:e1a372cac8e6c496251a7ea371631a8beb560d1c5c6cddd1b70a270da19bda8c",
+      "inputTimingStart": "beforeinput",
+      "inputPosition": "beginning",
+      "cpuProfiling": false,
+      "workerStartup": "default",
+      "frontendWasmSha256": {
+        "openwebide-frontend-76fbee143fee702b_bg.wasm": "a8477d488ce13590e101fa355ffb63cab109ca344fefe93641f3e0657b9c2155"
+      },
+      "backendWasmSha256": "cdbff4060e84f58f6e274e5a11c8aebfaf4cf1d509f828a314be0af08ac68e39",
+      "measurementScriptSha256": "8fb6a329a8dec34ef34ba538a369d9f65d66c81e5b6b8a717651a1fd20c24e01",
+      "checkoutHead": "6d8235a165252f08c63a696f0c326d972548cb4c",
+      "browser": "Chromium 154.0.8037.92 built on Debian GNU/Linux 12 (bookworm)"
+    },
+    {
+      "workerStartup": "default",
+      "workerStartupEvidence": {
+        "accepted": 1,
+        "attempted": 1,
+        "dropped": 0
+      },
+      "cpuProfiling": false,
+      "waitedForSyntax": false,
+      "case": "styled-long-line",
+      "fileName": "measure.rs",
+      "mode": "local",
+      "wrap": false,
+      "repetition": 1,
+      "sourceBytes": 1048567,
+      "inputPosition": "beginning",
+      "verifiedSourceCaretBeforeInput": 0,
+      "completeSourceAfterInputVerified": true,
+      "loadToPaintMs": 5350.214794976637,
+      "appModule": "/openwebide-frontend-76fbee143fee702b.js",
+      "clientWidth": 264,
+      "domNodes": 717,
+      "maxFrameMs": 183.19999999999993,
+      "nativeBound": true,
+      "nativeInputLength": 8782,
+      "paintRows": 1,
+      "scrollHeight": 461,
+      "scrollWidth": 6414331,
+      "styledString": true,
+      "wasmCommittedBytes": 32243712,
+      "wrapped": false,
+      "scrollAxis": "horizontal",
+      "scrollOffset": 4489847,
+      "scrollToPaintMs": 19.5,
+      "inputToPaintMs": 4029.699999988079,
+      "chrome_processes": 9,
+      "chrome_summed_rss_kib": 1422072,
+      "chrome_pss_kib": 818362,
+      "chrome_memory_by_role": {
+        "other": {
+          "processes": 1,
+          "rssKiB": 220400,
+          "pssKiB": 128254
+        },
+        "zygote": {
+          "processes": 2,
+          "rssKiB": 144024,
+          "pssKiB": 33333
+        },
+        "gpu": {
+          "processes": 1,
+          "rssKiB": 105088,
+          "pssKiB": 52535
+        },
+        "utility": {
+          "processes": 2,
+          "rssKiB": 157076,
+          "pssKiB": 49848
+        },
+        "renderer": {
+          "processes": 3,
+          "rssKiB": 795484,
+          "pssKiB": 554392
+        }
+      },
+      "memorySnapshotAttempts": 1,
+      "afterInputMemory": {
+        "chrome_processes": 9,
+        "chrome_summed_rss_kib": 1414112,
+        "chrome_pss_kib": 814683,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 1,
+            "rssKiB": 224408,
+            "pssKiB": 132292
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 144024,
+            "pssKiB": 33333
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 100484,
+            "pssKiB": 50563
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 157352,
+            "pssKiB": 49924
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 787844,
+            "pssKiB": 548571
+          }
+        },
+        "memorySnapshotAttempts": 1
+      },
+      "beforeLoadMemory": {
+        "chrome_processes": 9,
+        "chrome_summed_rss_kib": 966212,
+        "chrome_pss_kib": 392696,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 1,
+            "rssKiB": 216548,
+            "pssKiB": 127860
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 144024,
+            "pssKiB": 33426
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 95400,
+            "pssKiB": 47363
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 154000,
+            "pssKiB": 48098
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 356240,
+            "pssKiB": 135949
+          }
+        },
+        "memorySnapshotAttempts": 1
+      },
+      "peakChromeSummedRssKiB": 1428572,
+      "peakChromePssKiB": 827297,
+      "memorySamples": 52,
+      "peakChromeMemoryByRole": {
+        "other": {
+          "processes": 1,
+          "rssKiB": 224884,
+          "pssKiB": 132370
+        },
+        "zygote": {
+          "processes": 2,
+          "rssKiB": 144024,
+          "pssKiB": 33333
+        },
+        "gpu": {
+          "processes": 1,
+          "rssKiB": 103984,
+          "pssKiB": 53208
+        },
+        "utility": {
+          "processes": 2,
+          "rssKiB": 157268,
+          "pssKiB": 49900
+        },
+        "renderer": {
+          "processes": 3,
+          "rssKiB": 798412,
+          "pssKiB": 558486
+        }
+      },
+      "memorySampleIntervalMs": 200,
+      "coldViewportPaintMs": 5345.199999988079,
+      "coldCompleteGeometryMs": 5345.199999988079,
+      "coldViewportHadCompleteExtent": true,
+      "coldSyntaxReadyMs": 5345.199999988079,
+      "inputViewportPaintMs": 4029.5999999940395,
+      "inputCompleteGeometryMs": 4029.5999999940395,
+      "inputSyntaxReadyMs": 4029.5999999940395,
+      "inputViewportHadCompleteExtent": true,
+      "inputScrollTop": 0,
+      "inputScrollLeft": 0,
+      "afterInputWasmCommittedBytes": 35520512,
+      "longTasks": 2,
+      "longTaskMs": 270,
+      "maxLongTaskMs": 183,
+      "maxFrameIncludingInputMs": 183.19999999999993
+    },
+    {
+      "workerStartup": "default",
+      "workerStartupEvidence": {
+        "accepted": 1,
+        "attempted": 1,
+        "dropped": 0
+      },
+      "cpuProfiling": false,
+      "waitedForSyntax": false,
+      "case": "styled-long-line",
+      "fileName": "measure.rs",
+      "mode": "local",
+      "wrap": false,
+      "repetition": 2,
+      "sourceBytes": 1048567,
+      "inputPosition": "beginning",
+      "verifiedSourceCaretBeforeInput": 0,
+      "completeSourceAfterInputVerified": true,
+      "loadToPaintMs": 4933.1618350115605,
+      "appModule": "/openwebide-frontend-76fbee143fee702b.js",
+      "clientWidth": 264,
+      "domNodes": 717,
+      "maxFrameMs": 116.79999999999973,
+      "nativeBound": true,
+      "nativeInputLength": 8782,
+      "paintRows": 1,
+      "scrollHeight": 461,
+      "scrollWidth": 6414331,
+      "styledString": true,
+      "wasmCommittedBytes": 32243712,
+      "wrapped": false,
+      "scrollAxis": "horizontal",
+      "scrollOffset": 4489847,
+      "scrollToPaintMs": 23.799999982118607,
+      "inputToPaintMs": 3683.899999976158,
+      "chrome_processes": 9,
+      "chrome_summed_rss_kib": 1308268,
+      "chrome_pss_kib": 683778,
+      "chrome_memory_by_role": {
+        "other": {
+          "processes": 1,
+          "rssKiB": 220620,
+          "pssKiB": 127371
+        },
+        "zygote": {
+          "processes": 2,
+          "rssKiB": 153356,
+          "pssKiB": 35742
+        },
+        "gpu": {
+          "processes": 1,
+          "rssKiB": 112192,
+          "pssKiB": 54342
+        },
+        "utility": {
+          "processes": 2,
+          "rssKiB": 159648,
+          "pssKiB": 49751
+        },
+        "renderer": {
+          "processes": 3,
+          "rssKiB": 662452,
+          "pssKiB": 416572
+        }
+      },
+      "memorySnapshotAttempts": 1,
+      "afterInputMemory": {
+        "chrome_processes": 9,
+        "chrome_summed_rss_kib": 1370240,
+        "chrome_pss_kib": 748720,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 1,
+            "rssKiB": 223964,
+            "pssKiB": 130954
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 153356,
+            "pssKiB": 35742
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 107812,
+            "pssKiB": 51903
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 159900,
+            "pssKiB": 49803
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 725208,
+            "pssKiB": 480318
+          }
+        },
+        "memorySnapshotAttempts": 1
+      },
+      "beforeLoadMemory": {
+        "chrome_processes": 9,
+        "chrome_summed_rss_kib": 993412,
+        "chrome_pss_kib": 398571,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 1,
+            "rssKiB": 216936,
+            "pssKiB": 127127
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 153356,
+            "pssKiB": 35857
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 105260,
+            "pssKiB": 51942
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 156468,
+            "pssKiB": 47847
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 361392,
+            "pssKiB": 135798
+          }
+        },
+        "memorySnapshotAttempts": 1
+      },
+      "peakChromeSummedRssKiB": 1377376,
+      "peakChromePssKiB": 755996,
+      "memorySamples": 48,
+      "peakChromeMemoryByRole": {
+        "other": {
+          "processes": 1,
+          "rssKiB": 224052,
+          "pssKiB": 131102
+        },
+        "zygote": {
+          "processes": 2,
+          "rssKiB": 153356,
+          "pssKiB": 35742
+        },
+        "gpu": {
+          "processes": 1,
+          "rssKiB": 107812,
+          "pssKiB": 51911
+        },
+        "utility": {
+          "processes": 2,
+          "rssKiB": 159840,
+          "pssKiB": 49802
+        },
+        "renderer": {
+          "processes": 3,
+          "rssKiB": 732316,
+          "pssKiB": 487439
+        }
+      },
+      "memorySampleIntervalMs": 200,
+      "coldViewportPaintMs": 4926,
+      "coldCompleteGeometryMs": 4926,
+      "coldViewportHadCompleteExtent": true,
+      "coldSyntaxReadyMs": 4926,
+      "inputViewportPaintMs": 3683.899999976158,
+      "inputCompleteGeometryMs": 3683.899999976158,
+      "inputSyntaxReadyMs": 3683.899999976158,
+      "inputViewportHadCompleteExtent": true,
+      "inputScrollTop": 0,
+      "inputScrollLeft": 0,
+      "afterInputWasmCommittedBytes": 35520512,
+      "longTasks": 2,
+      "longTaskMs": 133,
+      "maxLongTaskMs": 75,
+      "maxFrameIncludingInputMs": 116.79999999999973
+    },
+    {
+      "workerStartup": "default",
+      "workerStartupEvidence": {
+        "accepted": 1,
+        "attempted": 1,
+        "dropped": 0
+      },
+      "cpuProfiling": false,
+      "waitedForSyntax": false,
+      "case": "styled-long-line",
+      "fileName": "measure.rs",
+      "mode": "remote",
+      "wrap": false,
+      "repetition": 1,
+      "sourceBytes": 1048567,
+      "inputPosition": "beginning",
+      "verifiedSourceCaretBeforeInput": 0,
+      "completeSourceAfterInputVerified": true,
+      "loadToPaintMs": 4905.390419007745,
+      "appModule": "/openwebide-frontend-76fbee143fee702b.js",
+      "clientWidth": 264,
+      "domNodes": 736,
+      "maxFrameMs": 116.80000000000018,
+      "nativeBound": true,
+      "nativeInputLength": 8782,
+      "paintRows": 1,
+      "scrollHeight": 524,
+      "scrollWidth": 6414331,
+      "styledString": true,
+      "wasmCommittedBytes": 32309248,
+      "wrapped": false,
+      "scrollAxis": "horizontal",
+      "scrollOffset": 4489847,
+      "scrollToPaintMs": 23.899999976158142,
+      "inputToPaintMs": 3796.300000011921,
+      "chrome_processes": 9,
+      "chrome_summed_rss_kib": 1342580,
+      "chrome_pss_kib": 734380,
+      "chrome_memory_by_role": {
+        "other": {
+          "processes": 1,
+          "rssKiB": 221316,
+          "pssKiB": 128631
+        },
+        "zygote": {
+          "processes": 2,
+          "rssKiB": 145492,
+          "pssKiB": 33523
+        },
+        "gpu": {
+          "processes": 1,
+          "rssKiB": 106200,
+          "pssKiB": 52213
+        },
+        "utility": {
+          "processes": 2,
+          "rssKiB": 158140,
+          "pssKiB": 50094
+        },
+        "renderer": {
+          "processes": 3,
+          "rssKiB": 711432,
+          "pssKiB": 469919
+        }
+      },
+      "memorySnapshotAttempts": 1,
+      "afterInputMemory": {
+        "chrome_processes": 9,
+        "chrome_summed_rss_kib": 1357124,
+        "chrome_pss_kib": 753562,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 1,
+            "rssKiB": 224148,
+            "pssKiB": 131825
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 145492,
+            "pssKiB": 33524
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 101556,
+            "pssKiB": 50418
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 158400,
+            "pssKiB": 50144
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 727528,
+            "pssKiB": 487651
+          }
+        },
+        "memorySnapshotAttempts": 1
+      },
+      "beforeLoadMemory": {
+        "chrome_processes": 9,
+        "chrome_summed_rss_kib": 973592,
+        "chrome_pss_kib": 397351,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 1,
+            "rssKiB": 216700,
+            "pssKiB": 128203
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 145492,
+            "pssKiB": 33618
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 96944,
+            "pssKiB": 48761
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 154868,
+            "pssKiB": 48128
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 359588,
+            "pssKiB": 138641
+          }
+        },
+        "memorySnapshotAttempts": 1
+      },
+      "peakChromeSummedRssKiB": 1367204,
+      "peakChromePssKiB": 762574,
+      "memorySamples": 48,
+      "peakChromeMemoryByRole": {
+        "other": {
+          "processes": 1,
+          "rssKiB": 224276,
+          "pssKiB": 132016
+        },
+        "zygote": {
+          "processes": 2,
+          "rssKiB": 145492,
+          "pssKiB": 33524
+        },
+        "gpu": {
+          "processes": 1,
+          "rssKiB": 101556,
+          "pssKiB": 49786
+        },
+        "utility": {
+          "processes": 2,
+          "rssKiB": 158332,
+          "pssKiB": 50137
+        },
+        "renderer": {
+          "processes": 3,
+          "rssKiB": 737548,
+          "pssKiB": 497111
+        }
+      },
+      "memorySampleIntervalMs": 200,
+      "coldViewportPaintMs": 4901.5,
+      "coldCompleteGeometryMs": 4901.5,
+      "coldViewportHadCompleteExtent": true,
+      "coldSyntaxReadyMs": 4901.5,
+      "inputViewportPaintMs": 3796.300000011921,
+      "inputCompleteGeometryMs": 3796.300000011921,
+      "inputSyntaxReadyMs": 3796.300000011921,
+      "inputViewportHadCompleteExtent": true,
+      "inputScrollTop": 0,
+      "inputScrollLeft": 0,
+      "afterInputWasmCommittedBytes": 35651584,
+      "longTasks": 2,
+      "longTaskMs": 131,
+      "maxLongTaskMs": 74,
+      "maxFrameIncludingInputMs": 116.80000000000018
+    },
+    {
+      "workerStartup": "default",
+      "workerStartupEvidence": {
+        "accepted": 1,
+        "attempted": 1,
+        "dropped": 0
+      },
+      "cpuProfiling": false,
+      "waitedForSyntax": false,
+      "case": "styled-long-line",
+      "fileName": "measure.rs",
+      "mode": "remote",
+      "wrap": false,
+      "repetition": 2,
+      "sourceBytes": 1048567,
+      "inputPosition": "beginning",
+      "verifiedSourceCaretBeforeInput": 0,
+      "completeSourceAfterInputVerified": true,
+      "loadToPaintMs": 5538.279086002149,
+      "appModule": "/openwebide-frontend-76fbee143fee702b.js",
+      "clientWidth": 264,
+      "domNodes": 736,
+      "maxFrameMs": 150,
+      "nativeBound": true,
+      "nativeInputLength": 8782,
+      "paintRows": 1,
+      "scrollHeight": 524,
+      "scrollWidth": 6414331,
+      "styledString": true,
+      "wasmCommittedBytes": 32309248,
+      "wrapped": false,
+      "scrollAxis": "horizontal",
+      "scrollOffset": 4489847,
+      "scrollToPaintMs": 22,
+      "inputToPaintMs": 3733,
+      "chrome_processes": 9,
+      "chrome_summed_rss_kib": 1310388,
+      "chrome_pss_kib": 703206,
+      "chrome_memory_by_role": {
+        "other": {
+          "processes": 1,
+          "rssKiB": 222980,
+          "pssKiB": 130544
+        },
+        "zygote": {
+          "processes": 2,
+          "rssKiB": 145400,
+          "pssKiB": 33550
+        },
+        "gpu": {
+          "processes": 1,
+          "rssKiB": 106500,
+          "pssKiB": 52768
+        },
+        "utility": {
+          "processes": 2,
+          "rssKiB": 157568,
+          "pssKiB": 49941
+        },
+        "renderer": {
+          "processes": 3,
+          "rssKiB": 677940,
+          "pssKiB": 436403
+        }
+      },
+      "memorySnapshotAttempts": 1,
+      "afterInputMemory": {
+        "chrome_processes": 9,
+        "chrome_summed_rss_kib": 1369516,
+        "chrome_pss_kib": 765557,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 1,
+            "rssKiB": 226480,
+            "pssKiB": 134057
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 145400,
+            "pssKiB": 33550
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 101868,
+            "pssKiB": 50239
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 157836,
+            "pssKiB": 50009
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 737932,
+            "pssKiB": 497702
+          }
+        },
+        "memorySnapshotAttempts": 1
+      },
+      "beforeLoadMemory": {
+        "chrome_processes": 9,
+        "chrome_summed_rss_kib": 981236,
+        "chrome_pss_kib": 402382,
+        "chrome_memory_by_role": {
+          "other": {
+            "processes": 1,
+            "rssKiB": 219968,
+            "pssKiB": 130716
+          },
+          "zygote": {
+            "processes": 2,
+            "rssKiB": 145400,
+            "pssKiB": 33639
+          },
+          "gpu": {
+            "processes": 1,
+            "rssKiB": 99516,
+            "pssKiB": 50086
+          },
+          "utility": {
+            "processes": 2,
+            "rssKiB": 154440,
+            "pssKiB": 48107
+          },
+          "renderer": {
+            "processes": 3,
+            "rssKiB": 361912,
+            "pssKiB": 139834
+          }
+        },
+        "memorySnapshotAttempts": 1
+      },
+      "peakChromeSummedRssKiB": 1379408,
+      "peakChromePssKiB": 775147,
+      "memorySamples": 51,
+      "peakChromeMemoryByRole": {
+        "other": {
+          "processes": 1,
+          "rssKiB": 226528,
+          "pssKiB": 134166
+        },
+        "zygote": {
+          "processes": 2,
+          "rssKiB": 145400,
+          "pssKiB": 33550
+        },
+        "gpu": {
+          "processes": 1,
+          "rssKiB": 101868,
+          "pssKiB": 49989
+        },
+        "utility": {
+          "processes": 2,
+          "rssKiB": 157760,
+          "pssKiB": 49992
+        },
+        "renderer": {
+          "processes": 3,
+          "rssKiB": 747852,
+          "pssKiB": 507450
+        }
+      },
+      "memorySampleIntervalMs": 200,
+      "coldViewportPaintMs": 5534.899999976158,
+      "coldCompleteGeometryMs": 5534.899999976158,
+      "coldViewportHadCompleteExtent": true,
+      "coldSyntaxReadyMs": 5534.899999976158,
+      "inputViewportPaintMs": 3732.800000011921,
+      "inputCompleteGeometryMs": 3732.800000011921,
+      "inputSyntaxReadyMs": 3732.800000011921,
+      "inputViewportHadCompleteExtent": true,
+      "inputScrollTop": 0,
+      "inputScrollLeft": 0,
+      "afterInputWasmCommittedBytes": 35586048,
+      "longTasks": 3,
+      "longTaskMs": 300,
+      "maxLongTaskMs": 164,
+      "maxFrameIncludingInputMs": 150
+    }
+  ],
+  "limits": "Two repetitions per mode, candidate then baseline; same current backend and measurement script. Browser geometry ran while production compiled and is correctness evidence only. These are single-host observations, not a generalized benchmark. The candidate implementation is not shipped."
+}

@@ -8,6 +8,8 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Record and reject a uniform smaller paragraph-probe experiment: geometry remains correct, but production input and cold paint regress in both modes. Preserve the existing planner and track focused prefix/cache work on the roadmap.
+
 - Record bounded source/style comparison boundaries in paragraph-cache diagnostics. Production captures confirm retained cache/environment matches in both modes while prepared syntax changes the input prefix styling.
 
 - Add bounded, opt-in paragraph-cache eligibility diagnostics without changing reuse policy or exposing source/account data.

@@ -370,8 +370,14 @@ combined-source CI result.
   beginning at byte 18
   ([diagnostic](editor-performance/paragraph-comparison-production-diagnostics.json)).
   This rules out the suspected cache/ownership loss; first-probe style changes
-  still require measured geometry. Investigate bounded changed-prefix probes and
-  validated suffix reconnection rather than weakening style/ownership checks.
+  still require measured geometry. A uniform 4 KiB probe experiment passes all
+  core and browser geometry contracts, but regresses production input from
+  107–112 ms to 3.7–4.0 seconds and cold paint from 1.5–2.1 to 4.9–5.5 seconds
+  in both modes. The experiment was discarded; the 16 KiB planner remains
+  ([receipt](editor-performance/short-paragraph-probes-browser.json)). Smaller
+  changed-prefix probes need to preserve cache coverage and avoid multiplying
+  overlap work before they can ship. Continue validated suffix reconnection
+  without weakening style/ownership checks.
   Visual ASCII coordinates now update by word/space/punctuation groups and
   visual-only preparation avoids an unused character traversal. A complete-table
   regression compares every field with full Unicode grapheme traversal at
