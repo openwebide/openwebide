@@ -1458,7 +1458,7 @@ Release automation, download-only Compose/Quadlet files, support issue forms,
 configuration/upgrade/backup guidance, architecture diagrams and font credits are
 prepared. See [releases and upgrades](releases.md). Version/changelog gates,
 archive/checksum contracts, workflow lint and Compose configuration checks cover
-this preparation. Alpha images and release assets are published and the GHCR package
+this preparation. Nightly images and release assets are published from main and the GHCR package
 is public; release-host verification remains outstanding.
 Documentation now has [section overviews](index.md), first-session/workspace guides
 and curated site navigation. Complete the remaining task guides and installation
@@ -1486,7 +1486,7 @@ walkthroughs against the final app before public launch.
   remote browser contracts and controlled deployment-fixture coverage.
 - **Prerelease installation verification:** the GHCR package is public, and anonymous
   manifest pulls list both architectures for `nightly` and `v1.0.0-alpha.6`. Validate a
-  clean prerelease install before using alpha/preview distribution for feedback; this
+  clean prerelease install before using nightly distribution for feedback; this
   does not complete 1.0.
 - **First stable publication:** move shipped changelog entries to `[1.0.0]`, bump workspace,
   Spin and lockfile versions together, and publish `v1.0.0` after rehearsal passes.
@@ -1495,7 +1495,7 @@ walkthroughs against the final app before public launch.
   notes, archives, install files and checksums using `GITHUB_TOKEN`. Verify anonymous
   pulls and clean installs on both architectures for the stable image.
   Shared CI checks generated Quadlet services against the `stable` image channel.
-  The pinned alpha is `1.0.0-alpha.6`; main builds publish rolling `nightly` images. Alpha publication does not complete
+  Main builds publish the rolling `nightly` image and release assets; nightly publication does not complete
   the stable-release gates.
 - **Public launch:** update the [site landing page](project-site.md) and pre-release
   documentation wording for the actual release, then prepare community announcements

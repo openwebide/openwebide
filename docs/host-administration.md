@@ -139,7 +139,7 @@ administration tools. Only the authenticated server bridge uses this connection.
 physical host. It uses the same saved SSH connection regardless of which local or
 remote project is open; it does not update paired companion bridges.
 
-Choose **Alpha** (the rolling `nightly` image), **Preview**, or **Stable**, then save
+Choose **Nightly** (the rolling `nightly` image), **Preview**, or **Stable**, then save
 the update settings. Checking reads registry metadata without downloading image
 layers. The host needs Python 3, `skopeo`, a running user systemd manager and access
 to its container runtime. Registry authentication stays on the host; use

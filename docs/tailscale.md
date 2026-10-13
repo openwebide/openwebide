@@ -30,9 +30,10 @@ Use `docker-compose.https.yml` on its own. It publishes no host ports: the app a
 bridge bind to loopback inside Tailscale's network namespace. The app database,
 workspace and Tailscale identity remain in separate persistent volumes/mounts.
 
-The file uses the published GHCR image (override it with `OPENWEBIDE_IMAGE`); it
-becomes installable after the first public release. Release assets also include
-`serve-config.sh` so this setup does not require a checkout. For a source checkout,
+The file uses the published GHCR image (override it with `OPENWEBIDE_IMAGE`). The
+[nightly release](https://github.com/openwebide/openwebide/releases/tag/nightly)
+includes `docker-compose.https.yml` and `serve-config.sh`, so this setup does not
+require a checkout. For a source checkout,
 build with the override instead:
 
 ```sh

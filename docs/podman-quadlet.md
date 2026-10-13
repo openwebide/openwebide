@@ -16,10 +16,10 @@ For Git over SSH, see [agent forwarding and public SSH configuration](git-ssh.md
 ## Install a published release
 
 Download `openwebide.image` and
-`openwebide.container` from [GitHub Releases](https://github.com/openwebide/openwebide/releases).
-The image unit tracks its release channel (`stable` for stable releases, or
-`nightly`/`preview` for prereleases); no checkout or build is needed.
-Repository templates in `deploy/` default to `stable`.
+`openwebide.container` from [the nightly release](https://github.com/openwebide/openwebide/releases/tag/nightly).
+The image unit tracks its release channel (`nightly` for the nightly release,
+`stable` or `preview` for tagged releases); no checkout or build is needed.
+Repository templates in `deploy/` default to `stable`; they work once 1.0 is published.
 
 ```sh
 mkdir -p ~/.config/containers/systemd
@@ -173,7 +173,8 @@ Check upcoming runs with `systemctl --user list-timers podman-auto-update.timer`
 or preview available updates with `podman auto-update --dry-run`.
 See [Podman's automatic-update documentation](https://docs.podman.io/en/latest/markdown/podman-auto-update.1.html).
 
-Keep `stable` to receive new releases automatically. A `v1.0.0` tag or digest stays
+The nightly release's image unit follows `nightly`. Use `stable` to receive new
+stable releases automatically once published. A `v1.0.0` tag or digest stays
 on that version; for manual upgrades, pin the image and remove `AutoUpdate=registry`.
 Choose `nightly` or `preview` to follow [prerelease updates](releases.md#nightly-preview-and-stable-channels).
 Automatic updates restart the app and may interrupt active runs. Keep regular data

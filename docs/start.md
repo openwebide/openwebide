@@ -12,6 +12,6 @@ browser that supports the File System Access API and a secure context.
 To install Open WebIDE as a standalone desktop or mobile application, see
 [PWA installation](using.md#installing-as-a-progressive-web-app-pwa).
 
-Versioned alpha container images and deployment files are available.
+Nightly container images and deployment files are published from every successful main build.
 [Release installation](releases.md) covers Compose, Podman, upgrades and backups;
 building from source remains available for development.

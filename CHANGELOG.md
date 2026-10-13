@@ -3,10 +3,15 @@
 All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-The first alpha is published as `1.0.0-alpha.5`. See
+Main builds publish a rolling nightly release; the last numbered prerelease is
+`1.0.0-alpha.6`. See
 [docs/roadmap.md](docs/roadmap.md) for what is still ahead.
 
 ## [Unreleased]
+
+- Publish a rolling `nightly` GitHub prerelease from every successful main build with Compose, HTTPS Compose, SSH overlay, Quadlet, `serve-config.sh`, Linux/macOS bridge archives and `SHA256SUMS`. Downloaded Compose and Quadlet files follow `ghcr.io/openwebide/openwebide:nightly` without an `.env` override. Numbered alpha versions are no longer accepted; existing alpha tags, releases and images remain.
+
+- Rename the Alpha update channel to Nightly in Settings → Updates; saved Alpha selections load as Nightly.
 
 - Document that the GHCR package is public and needs no registry authentication. Anonymous manifest pulls list both architectures for `nightly` and `v1.0.0-alpha.6`; clean-install verification remains on the roadmap.
 

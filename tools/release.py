@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RELEASE_VERSION = re.compile(
     r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"
-    r"(?:-(?:(?P<channel>alpha|rc)\.(?:0|[1-9][0-9]*)|(?P<nightly>nightly)(?:\+sha\.[0-9a-f]{12})?))?"
+    r"(?:-(?:(?P<channel>rc)\.(?:0|[1-9][0-9]*)|(?P<nightly>nightly)(?:\+sha\.[0-9a-f]{12})?))?"
 )
 TARGETS = {
     "x86_64-unknown-linux-gnu",
@@ -25,10 +25,10 @@ TARGETS = {
 def release_channel(current):
     match = RELEASE_VERSION.fullmatch(current)
     if match is None:
-        raise ValueError("Expected major.minor.patch, optionally followed by -nightly[+sha.COMMIT], -alpha.N or -rc.N")
+        raise ValueError("Expected major.minor.patch, optionally followed by -nightly[+sha.COMMIT] or -rc.N")
     if match['nightly']:
         return 'nightly'
-    return {'alpha': 'nightly', 'rc': 'preview', None: 'stable'}.get(match['channel'], match['channel'])
+    return 'preview' if match['channel'] else 'stable'
 
 
 def version(root=ROOT):
@@ -113,7 +113,8 @@ def package_bridge(root, target, binary, output):
     if not binary.is_file() or binary.is_symlink():
         raise ValueError("Bridge binary must be a regular file")
     output.mkdir(parents=True, exist_ok=True)
-    name = f"openwebide-bridge-v{current}-{target}"
+    label = 'nightly' if release_channel(current) == 'nightly' else f'v{current}'
+    name = f"openwebide-bridge-{label}-{target}"
     archive = output / f"{name}.tar.gz"
     if archive.exists():
         raise ValueError(f"Refusing to replace {archive}")
@@ -149,6 +150,7 @@ def prepare_install_files(root, output):
     channel = release_channel(current)
     output.mkdir(parents=True, exist_ok=True)
     image = "ghcr.io/openwebide/openwebide:"
+    pinned = channel if channel == 'nightly' else 'v' + current
     for source, destination in [
         ("docker-compose.release.yml", "docker-compose.yml"),
         ("docker-compose.https.yml", "docker-compose.https.yml"),
@@ -160,11 +162,13 @@ def prepare_install_files(root, output):
         path = output / destination
         if path.exists():
             raise ValueError(f"Refusing to replace {path}")
+        pinned_image = destination in ("docker-compose.yml", "docker-compose.https.yml", "openwebide.image")
+        if pinned_image and image + "stable" not in (root / source).read_text():
+            raise ValueError(f"{source} does not reference {image}stable")
         shutil.copy2(root / source, path)
-        if destination.endswith(".yml"):
-            path.write_text(path.read_text().replace(image + "stable", image + "v" + current))
-        elif destination == "openwebide.image":
-            path.write_text(path.read_text().replace(image + "stable", image + channel))
+        if pinned_image:
+            tag = channel if destination == "openwebide.image" else pinned
+            path.write_text(path.read_text().replace(image + "stable", image + tag))
 
 
 def github_outputs(current):

@@ -9,7 +9,8 @@ pub const IMAGE_REPOSITORY: &str = "ghcr.io/openwebide/openwebide";
 #[serde(rename_all = "snake_case")]
 pub enum ReleaseChannel {
     #[default]
-    Alpha,
+    #[serde(alias = "alpha")]
+    Nightly,
     Preview,
     Stable,
 }
@@ -18,7 +19,7 @@ impl ReleaseChannel {
         format!(
             "{IMAGE_REPOSITORY}:{}",
             match self {
-                Self::Alpha => "nightly",
+                Self::Nightly => "nightly",
                 Self::Preview => "preview",
                 Self::Stable => "stable",
             }
@@ -543,8 +544,19 @@ mod tests {
         };
         assert!(settings.validate().is_err());
         assert_eq!(
-            ReleaseChannel::Alpha.image(),
+            ReleaseChannel::Nightly.image(),
             format!("{IMAGE_REPOSITORY}:nightly")
+        );
+    }
+    #[test]
+    fn saved_alpha_channel_loads_as_nightly_and_saves_as_nightly() {
+        let settings: UpdateSettings =
+            serde_json::from_str(r#"{"channel":"alpha","deployment":{"kind":"unconfigured"}}"#)
+                .unwrap();
+        assert_eq!(settings.channel, ReleaseChannel::Nightly);
+        assert_eq!(
+            serde_json::to_value(ReleaseChannel::Nightly).unwrap(),
+            "nightly"
         );
     }
     #[test]

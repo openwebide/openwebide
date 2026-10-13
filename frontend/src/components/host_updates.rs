@@ -48,7 +48,7 @@ pub fn HostUpdates() -> impl IntoView {
                 <IconButton label="Check for updates" disabled=Signal::derive(move||updates.busy.get() || active.get()) on_click=Callback::new(move|_|updates.request(UpdateRequest::Check))><Icon name=IconName::RefreshCw/></IconButton>
             </InlineActions>
             <FormField label="Release channel" group=true>
-                <super::ui::SegmentedControl options=vec![super::ui::SegmentOption::new("Alpha",ReleaseChannel::Alpha),super::ui::SegmentOption::new("Preview",ReleaseChannel::Preview),super::ui::SegmentOption::new("Stable",ReleaseChannel::Stable)] value=Signal::derive(move||draft.with(|value|value.channel)) on_change=Callback::new(move|channel|draft.update(|value|value.channel=channel))/>
+                <super::ui::SegmentedControl options=vec![super::ui::SegmentOption::new("Nightly",ReleaseChannel::Nightly),super::ui::SegmentOption::new("Preview",ReleaseChannel::Preview),super::ui::SegmentOption::new("Stable",ReleaseChannel::Stable)] value=Signal::derive(move||draft.with(|value|value.channel)) on_change=Callback::new(move|channel|draft.update(|value|value.channel=channel))/>
             </FormField>
             <p class="form-hint">{move||draft.with(|value|match &value.deployment {
                 Deployment::Unconfigured => "Installation has not been identified. Connect SSH in Host settings, then detect the installation or use the advanced override.".into(),

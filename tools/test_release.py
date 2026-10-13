@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+import re
 import subprocess
 import tarfile
 import tempfile
@@ -59,14 +60,11 @@ class ReleaseTests(unittest.TestCase):
             path.write_text(path.read_text().replace(previous, value))
 
     def test_prerelease_versions_keep_tag_notes_and_channels_consistent(self):
-        for channel in ['alpha', 'rc']:
-            value = f'1.0.0-{channel}.1'
-            self.set_version(value)
-            with self.subTest(channel=channel):
-                self.assertEqual(release.validate(self.root, f'v{value}'), (value, '- Shipped.\n'))
-                self.assertEqual(release.release_channel(value), 'preview' if channel == 'rc' else 'nightly')
-                self.assertEqual(release.github_outputs(value), f'version={value}\nchannel={release.release_channel(value)}\nprerelease=true\n')
-            self.set_version('1.0.0', previous=value)
+        value = '1.0.0-rc.1'
+        self.set_version(value)
+        self.assertEqual(release.validate(self.root, f'v{value}'), (value, '- Shipped.\n'))
+        self.assertEqual(release.release_channel(value), 'preview')
+        self.assertEqual(release.github_outputs(value), f'version={value}\nchannel=preview\nprerelease=true\n')
 
     def test_nightly_stamps_workspace_and_preserves_sdk_and_history(self):
         sdk = self.root / 'sdk'
@@ -98,7 +96,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(release.github_outputs('1.0.0'), 'version=1.0.0\nchannel=stable\nprerelease=false\n')
 
     def test_rejects_unsupported_or_malformed_versions(self):
-        for value in ['01.0.0', '1.0', '1.0.0-alpha', '1.0.0-alpha.01', '1.0.0-dev.1', '1.0.0-beta.1', '1.0.0-beta.1+build', '1.0.0-rc.1;echo bad']:
+        for value in ['01.0.0', '1.0', '1.0.0-alpha.1', '1.0.0-alpha', '1.0.0-alpha.01', '1.0.0-dev.1', '1.0.0-beta.1', '1.0.0-beta.1+build', '1.0.0-rc.1;echo bad']:
             with self.subTest(value=value), self.assertRaises(ValueError):
                 release.release_channel(value)
 
@@ -115,18 +113,121 @@ class ReleaseTests(unittest.TestCase):
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content)
-        for value, channel in [('1.0.0', 'stable'), ('1.0.0-rc.2', 'preview')]:
+        for value, channel in [('1.0.0', 'stable'), ('1.0.0-rc.2', 'preview'), ('1.0.0-nightly', 'nightly')]:
             self.set_version(value)
             output = self.root / value
             release.prepare_install_files(self.root, output)
             with self.subTest(version=value):
+                pinned = 'nightly' if channel == 'nightly' else f'v{value}'
                 for name in ['docker-compose.yml', 'docker-compose.https.yml']:
-                    self.assertIn(f'openwebide:v{value}', (output / name).read_text())
+                    self.assertIn(f'openwebide:{pinned}', (output / name).read_text())
+                    self.assertNotIn('openwebide:stable', (output / name).read_text())
+                    if channel == 'nightly':
+                        self.assertNotIn('openwebide:v', (output / name).read_text())
                 self.assertIn(f'openwebide:{channel}', (output / 'openwebide.image').read_text())
                 self.assertEqual((output / 'docker-compose.ssh.yml').read_text(), sources['docker-compose.ssh.yml'])
                 self.assertIn('AutoUpdate=registry', (output / 'openwebide.container').read_text())
                 with self.assertRaises(ValueError):
                     release.prepare_install_files(self.root, output)
+            self.set_version('1.0.0', previous=value)
+        template = self.root / 'docker-compose.release.yml'
+        template.write_text('image: ghcr.io/openwebide/openwebide:latest\n')
+        with self.assertRaisesRegex(ValueError, 'does not reference'):
+            release.prepare_install_files(self.root, self.root / 'drifted')
+
+    def test_nightly_bridge_archives_use_stable_names(self):
+        self.set_version('1.0.0-nightly+sha.' + 'a' * 12)
+        binary = self.root / 'bridge-binary'
+        binary.write_bytes(b'test binary')
+        (self.root / 'LICENSE').write_text('MIT')
+        (self.root / 'docs/execution-bridge.md').write_text('Bridge instructions')
+        output = self.root / 'assets'
+        archive = release.package_bridge(self.root, 'aarch64-apple-darwin', binary, output)
+        self.assertEqual(archive.name, 'openwebide-bridge-nightly-aarch64-apple-darwin.tar.gz')
+        with tarfile.open(archive) as bundle:
+            self.assertTrue(all(name.startswith('openwebide-bridge-nightly-aarch64-apple-darwin/') for name in bundle.getnames()))
+        release.checksums(output)
+        expected = hashlib.sha256(archive.read_bytes()).hexdigest()
+        self.assertEqual((output / 'SHA256SUMS').read_text(), f'{expected}  {archive.name}\n')
+
+    def test_nightly_release_assets_replace_in_place(self):
+        script = workflow_script('Publish rolling nightly release assets')
+        bin_dir = self.root / 'bin'
+        bin_dir.mkdir()
+        log = self.root / 'commands.jsonl'
+        for command in ['gh', 'docker']:
+            path = bin_dir / command
+            path.write_text('''#!/usr/bin/env python3
+import json, os, sys
+args = sys.argv[1:]
+with open(os.environ['COMMAND_LOG'], 'a') as stream:
+    stream.write(json.dumps([os.path.basename(sys.argv[0]), *args]) + '\\n')
+if os.environ.get('GH_MISSING') == 'true' and (args[:2] == ['api', 'repos/openwebide/openwebide/git/ref/tags/nightly'] or args[:3] == ['release', 'view', 'nightly']):
+    sys.exit(1)
+''')
+            path.chmod(0o755)
+        assets = self.root / 'assets'
+        assets.mkdir()
+        for name in ['docker-compose.yml', 'openwebide.image', 'SHA256SUMS']:
+            (assets / name).touch()
+        commit = 'c' * 40
+        for missing in ['true', 'false']:
+            log.write_text('')
+            env = os.environ | {'PATH': str(bin_dir) + os.pathsep + os.environ['PATH'],
+                                'COMMAND_LOG': str(log), 'GH_MISSING': missing, 'RUNNER_TEMP': str(self.root),
+                                'GH_REPO': 'openwebide/openwebide', 'BUILD_COMMIT': commit}
+            subprocess.run(['bash', '-e', '-c', script], cwd=self.root, env=env, check=True)
+            calls = [json.loads(line) for line in log.read_text().splitlines()]
+            with self.subTest(missing=missing):
+                self.assertFalse([call for call in calls if call[0] == 'docker'])
+                creates = [call for call in calls if call[:3] == ['gh', 'release', 'create']]
+                if missing == 'true':
+                    post = next(call for call in calls if call[:4] == ['gh', 'api', '--method', 'POST'])
+                    self.assertIn('repos/openwebide/openwebide/git/refs', post)
+                    self.assertIn('ref=refs/tags/nightly', post)
+                    self.assertIn(f'sha={commit}', post)
+                    self.assertEqual(len(creates), 1)
+                    for flag in ['nightly', '--verify-tag', '--prerelease', '--latest=false']:
+                        self.assertIn(flag, creates[0])
+                else:
+                    patch = next(call for call in calls if call[:4] == ['gh', 'api', '--method', 'PATCH'])
+                    self.assertIn('repos/openwebide/openwebide/git/refs/tags/nightly', patch)
+                    self.assertIn('force=true', patch)
+                    self.assertEqual(creates, [])
+                uploads = [call for call in calls if call[:3] == ['gh', 'release', 'upload']]
+                self.assertEqual(len(uploads), 2)
+                for call in uploads:
+                    self.assertIn('--clobber', call)
+                self.assertEqual([arg for arg in uploads[-1] if arg.startswith('assets/')], ['assets/SHA256SUMS'])
+                self.assertNotIn('assets/SHA256SUMS', uploads[0])
+                self.assertEqual(calls[-1][:3], ['gh', 'release', 'edit'])
+                self.assertIn('--prerelease', calls[-1])
+                self.assertIn('--latest=false', calls[-1])
+                self.assertNotIn('--latest', calls[-1])
+                body = (self.root / 'nightly-notes.md').read_text()
+                for text in [commit, f'sha-{commit}', f'blob/{commit}/CHANGELOG.md']:
+                    self.assertIn(text, body)
+
+    def test_rolling_builds_package_and_publish_assets(self):
+        workflow = (release.ROOT / '.github/workflows/release.yml').read_text()
+        self.assertNotIn("rolling != 'true'", workflow.replace("publish == 'true' && needs.validate.outputs.rolling != 'true'", ''))
+        job = workflow.split('\n  publish-nightly:', 1)[1]
+        self.assertIn('needs: [validate, checks, images, assets]', job)
+        self.assertIn('contents: write', job)
+
+    def test_rolling_builds_stamp_macos_bridges_and_are_not_gated_off(self):
+        workflow = (release.ROOT / '.github/workflows/release.yml').read_text()
+
+        def job(name):
+            return re.split(r'\n  [a-z-]+:\n', workflow.split(f'\n  {name}:\n', 1)[1], 1)[0]
+
+        bridges = job('macos-bridges')
+        self.assertIn('ROLLING: ${{ needs.validate.outputs.rolling }}', bridges)
+        self.assertIn('if [ "$ROLLING" = true ]; then python3 tools/release.py stamp-nightly', bridges)
+        for name in ['macos-bridges', 'assets']:
+            self.assertNotRegex(job(name), r'(?m)^    if:', name)
+        self.assertIn('if: needs.validate.outputs.rolling == \'true\'', job('publish-nightly'))
+        self.assertIn('macos-bridges', job('assets').split('needs:', 1)[1].splitlines()[0])
 
     def test_publish_commands_do_not_promote_prereleases_to_latest(self):
         workflow = (release.ROOT / '.github/workflows/release.yml').read_text()

@@ -206,7 +206,7 @@ Publisher CI should validate source builds, but installing a plugin does not
 require a publisher-hosted WASM artifact. Bundled plugins receive the same
 interfaces and privileges.
 
-The SDK, source preparation and shared execution workflow ship in the alpha. HTTP and clock primitives run on the bridge. Plugin HTTP carries a host-added
+The SDK, source preparation and shared execution workflow ship in nightly builds. HTTP and clock primitives run on the bridge. Plugin HTTP carries a host-added
 transport marker that plugin headers cannot remove. Open WebIDE rejects marked
 requests to its authenticated backend and bridge control endpoints, including
 credential bootstrap and WebSocket upgrades. Ordinary HTTP access to public and

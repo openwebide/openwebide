@@ -834,6 +834,8 @@ async fn host_updates_use_the_same_settings_and_actions_in_both_project_modes() 
         settle().await;
         let host = slot.get().unwrap();
         assert_eq!(host.updates.settings.get_untracked(), settings);
+        let text = mounted.root.text_content().unwrap();
+        assert!(text.contains("Nightly") && !text.contains("Alpha"));
         let check = UpdateCheck {
             connection_revision: 0,
             running,
