@@ -788,7 +788,7 @@ combined-source CI result.
   The exact folding-history fixture now uses a fixed parser clock after one
   provider-setup failure under host load; deadline contracts stay separate.
   All recovery action capture callers are cooperative. Initial allocation,
-  admission, previous-record copies, final comparisons and serialization
+  admission, final comparisons and serialization
   remain open. The combined full Spin build and five production recovery
   checks pass at `bbb63749`
   ([receipt](editor-performance/recovery-combined-production.json)).
