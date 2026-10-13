@@ -192,7 +192,7 @@ the partition fix passes all five jobs
 ([receipts](editor-performance/editor-ci-d26-success.json),
 [receipt](editor-performance/editor-ci-f251-success.json)).
 
-Latest verified integrated checkpoint `764873b8` passes all five hosted jobs, including the full
+Integrated checkpoint `764873b8` passes all five hosted jobs, including the full
 browser partition on combined editor/plugin source
 ([receipt](editor-performance/editor-ci-764-success.json)). Post-frame owner
 cancellation now releases wrapped probes before accessing disposed state; two
@@ -275,8 +275,16 @@ combined-source CI result.
   production cases preserve source; native input handlers fall from about 35 to
   28–29 ms, but viewport results are mixed and do not establish an overall UI
   improvement ([summary](editor-performance/ascii-spans-production-summary.json)).
-  Complete changed-row traversal remains synchronous; incremental row reuse and
-  the broader responsiveness/memory gates remain open.
+  Printable-ASCII single-row edits now retain unaffected category runs and derive
+  native/glyph checkpoints arithmetically. Source inspection is limited to inserted
+  bytes and nearby uncached category boundaries; cached long runs skip unchanged
+  spans. Complete-table regressions compare against fresh indexes across insertion,
+  replacement, deletion, thresholds and LF/CRLF/Unicode/tab fallbacks. All 783
+  core tests, 134 native frontend tests, 58 WASM library checks and six local/remote
+  geometry/fallback contracts pass with strict core/WASM/WASI lint
+  ([receipt](editor-performance/incremental-ascii-row-browser.json)). Production
+  input verification remains pending. Sparse-table allocation/publication, Unicode
+  and row-splitting reuse, and broader responsiveness/memory gates remain open.
   Visual ASCII coordinates now update by word/space/punctuation groups and
   visual-only preparation avoids an unused character traversal. A complete-table
   regression compares every field with full Unicode grapheme traversal at
@@ -937,7 +945,11 @@ Linux/x64 verification also passes in the complete `67b3a529` inventory.
   review/confirmation, immutable records and cooperative comparison: 220 editor
   checks, both font matrices, 397 other component checks and nightly publication
   ([receipt](editor-performance/editor-ci-7f71-success.json)). Subsequent encoding
-  and Blob upload preparation still need this final release gate.
+  and Blob upload preparation pass the complete release gate at `98bb84bd`,
+  hosted run `38335437540`: 220 editor checks, both font matrices, 397 other
+  component checks, both images and nightly publication
+  ([receipt](editor-performance/editor-ci-98bb-success.json)). Direct encoder-to-
+  Blob streaming and incremental ASCII row indexes still need the final gate.
 
 - [ ] **Physical Chrome/Edge PWA input:** verify real input-method commit/cancel,
   Unicode and LF/CRLF undo/redo, multiple-cursor clipboard transactions and touch

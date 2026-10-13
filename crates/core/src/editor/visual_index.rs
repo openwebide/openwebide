@@ -333,6 +333,161 @@ impl VisualLineIndex {
         preparation.advance(usize::MAX);
         preparation.finish()
     }
+    fn cached_word_run(&self, byte: usize) -> Option<&WordRun> {
+        self.0
+            .word_runs
+            .partition_point(|run| run.start <= byte)
+            .checked_sub(1)
+            .and_then(|index| self.0.word_runs.get(index))
+            .filter(|run| byte < run.end)
+    }
+    /// The document index proves both retained and inserted bodies are printable
+    /// ASCII. Native/glyph coordinates then shift arithmetically; only category
+    /// runs intersecting the edit need source inspection.
+    pub(super) fn updated_ascii(
+        &self,
+        body: &str,
+        changed: std::ops::Range<usize>,
+        new_end: usize,
+    ) -> Option<Self> {
+        self.updated_ascii_with_cost(body, changed, new_end)
+            .map(|(index, _)| index)
+    }
+    fn updated_ascii_with_cost(
+        &self,
+        body: &str,
+        changed: std::ops::Range<usize>,
+        new_end: usize,
+    ) -> Option<(Self, usize)> {
+        if body.len() > super::MAX_STRUCTURE_BYTES {
+            return None;
+        }
+        let bytes = body.as_bytes();
+        let mut inspected = 0;
+        let mut start = changed.start.saturating_sub(1).min(body.len());
+        if start < body.len() {
+            let kind = ascii_word_kind(bytes[start]);
+            while start > 0 && ascii_word_kind(bytes[start - 1]) == kind {
+                if let Some(run) = self.cached_word_run(start - 1) {
+                    start = run.start;
+                    break;
+                }
+                start -= 1;
+                inspected += 1;
+            }
+        }
+        let mut end = new_end.saturating_add(1).min(body.len());
+        if end > new_end && end < body.len() {
+            let kind = ascii_word_kind(bytes[end - 1]);
+            while end < body.len() && ascii_word_kind(bytes[end]) == kind {
+                if let Some(run) = self.cached_word_run(changed.end + (end - new_end)) {
+                    end = new_end + (run.end - changed.end);
+                    break;
+                }
+                end += 1;
+                inspected += 1;
+            }
+        }
+        let old_end = changed.end + (end - new_end);
+        // Retained runs plus inserted long runs and at most two boundary splits.
+        let capacity =
+            (self.0.word_runs.len() + (new_end - changed.start).div_ceil(STEP_BYTES) + 2)
+                .min(body.len() / STEP_BYTES);
+        let mut word_runs = Vec::with_capacity(capacity);
+        word_runs.extend(
+            self.0
+                .word_runs
+                .iter()
+                .take_while(|run| run.end <= start)
+                .copied(),
+        );
+        let mut word_run = None;
+        let mut cursor = start;
+        while cursor < end {
+            let (old, boundary) = if cursor < changed.start {
+                (Some(cursor), changed.start)
+            } else if cursor >= new_end {
+                (Some(changed.end + (cursor - new_end)), end)
+            } else {
+                (None, new_end)
+            };
+            let retained = old.and_then(|byte| self.cached_word_run(byte));
+            let (next, kind) = if let Some(run) = retained {
+                let next = if cursor < changed.start {
+                    run.end
+                } else {
+                    new_end + (run.end - changed.end)
+                };
+                (next.min(boundary).min(end), run.kind)
+            } else {
+                let limit = boundary.min(end).min(cursor + STEP_BYTES);
+                let kind = ascii_word_kind(bytes[cursor]);
+                let count = bytes[cursor..limit]
+                    .iter()
+                    .position(|byte| ascii_word_kind(*byte) != kind)
+                    .unwrap_or(limit - cursor);
+                inspected += count;
+                (cursor + count, kind)
+            };
+            if word_run
+                .as_ref()
+                .is_some_and(|run: &WordRun| run.kind == kind)
+            {
+                word_run.as_mut().unwrap().end = next;
+            } else {
+                if let Some(run) = word_run
+                    .take()
+                    .filter(|run: &WordRun| run.end - run.start >= STEP_BYTES)
+                {
+                    word_runs.push(run);
+                }
+                word_run = Some(WordRun {
+                    start: cursor,
+                    end: next,
+                    kind,
+                });
+            }
+            cursor = next;
+        }
+        if let Some(run) = word_run.filter(|run| run.end - run.start >= STEP_BYTES) {
+            word_runs.push(run);
+        }
+        word_runs.extend(
+            self.0
+                .word_runs
+                .iter()
+                .filter(|run| run.start >= old_end)
+                .map(|run| WordRun {
+                    start: new_end + (run.start - changed.end),
+                    end: new_end + (run.end - changed.end),
+                    kind: run.kind,
+                }),
+        );
+        let end_position = Position {
+            byte: body.len(),
+            native: body.len(),
+            glyph: body.len(),
+        };
+        // Include EOF up front so its append cannot double the sparse table.
+        let mut points = Vec::with_capacity(body.len().div_ceil(STEP_BYTES) + 1);
+        points.extend((0..body.len()).step_by(STEP_BYTES).map(|byte| Position {
+            byte,
+            native: byte,
+            glyph: byte,
+        }));
+        points.push(end_position);
+        Some((
+            Self(Arc::new(Coordinates {
+                points,
+                long_clusters: Vec::new(),
+                end: end_position,
+                horizontal: body.len() > super::MAX_MEASURE_BYTES,
+                tabs: false,
+                word_runs,
+            })),
+            inspected,
+        ))
+    }
     /// Exact cluster checkpoints for a styled geometry adapter; omit EOF.
     pub fn anchor_glyphs(&self) -> impl Iterator<Item = usize> + '_ {
         self.0
@@ -561,6 +716,47 @@ impl VisualLineIndex {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn incremental_ascii_tables_match_full_rebuilds_without_scanning_long_retained_runs() {
+        for old in [
+            "a".repeat(511),
+            "a".repeat(512),
+            "a".repeat(513),
+            "word 123; ".repeat(7000),
+            format!(
+                "{} {}!{}",
+                "a".repeat(20000),
+                "b".repeat(30000),
+                ";".repeat(20000)
+            ),
+            "x".repeat(1_000_000),
+        ] {
+            let previous = VisualLineIndex::new(&old).unwrap();
+            for at in [0, 1, old.len() / 2, old.len() - 1, old.len()] {
+                for deleted in [0, 1, 510, 513, old.len() - at] {
+                    let end = at.saturating_add(deleted).min(old.len());
+                    for inserted in ["", "a", ".", " x; "] {
+                        let mut body = old.clone();
+                        body.replace_range(at..end, inserted);
+                        let (actual, inspected) = previous
+                            .updated_ascii_with_cost(&body, at..end, at + inserted.len())
+                            .unwrap();
+                        assert_eq!(
+                            actual,
+                            VisualLineIndex::new(&body).unwrap(),
+                            "at={at}, end={end}, inserted={inserted:?}, old length={}",
+                            old.len()
+                        );
+                        if old.len() == 1_000_000 {
+                            assert!(inspected < 1024, "inspected {inspected}");
+                        }
+                    }
+                }
+            }
+            assert_eq!(previous, VisualLineIndex::new(&old).unwrap());
+        }
+    }
+
     use super::*;
     #[test]
     fn ascii_groups_keep_the_complete_scalar_coordinate_table() {

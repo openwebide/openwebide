@@ -17,6 +17,7 @@ struct Coordinate {
 pub(super) struct LineCoordinates {
     native: Option<Arc<[Coordinate]>>,
     visual: Option<super::VisualLineIndex>,
+    ascii_body: bool,
 }
 
 #[derive(Default)]
@@ -46,12 +47,14 @@ impl<'a> LineCoordinatePreparation<'a> {
         let visual = (body.len() > super::MAX_MEASURE_BYTES)
             .then(|| super::VisualLinePreparation::new(body))
             .flatten();
+        let mut collector = NativeCoordinates::new(text.len() > STEP_BYTES);
+        collector.ascii_body_end = body.len();
         Self {
             text,
             next: 0,
             visual_complete: visual.is_none(),
             visual,
-            collector: NativeCoordinates::new(text.len() > STEP_BYTES),
+            collector,
             done: false,
         }
     }
@@ -109,6 +112,7 @@ impl<'a> LineCoordinatePreparation<'a> {
                     .sparse
                     .then(|| self.collector.checkpoints.into()),
                 visual,
+                ascii_body: self.collector.ascii_body,
             },
             self.collector.summary,
         ))
@@ -123,6 +127,8 @@ struct NativeCoordinates {
     width: usize,
     last: usize,
     previous_cr: bool,
+    ascii_body_end: usize,
+    ascii_body: bool,
 }
 impl NativeCoordinates {
     fn new(sparse: bool) -> Self {
@@ -134,9 +140,14 @@ impl NativeCoordinates {
             width: 0,
             last: 0,
             previous_cr: false,
+            ascii_body_end: usize::MAX,
+            ascii_body: true,
         }
     }
     fn visit(&mut self, text: &str, byte: usize, ch: char) {
+        if byte < self.ascii_body_end && !matches!(ch, ' '..='~') {
+            self.ascii_body = false;
+        }
         // Never start a query between CR and LF: their native offset is equal,
         // and the inverse must select the original CR.
         if self.sparse && byte - self.last >= STEP_BYTES && !(self.previous_cr && ch == '\n') {
@@ -185,9 +196,60 @@ impl NativeCoordinates {
 impl LineCoordinates {
     pub fn new(text: &str) -> Self {
         if text.len() <= STEP_BYTES {
-            return Self::default();
+            let body = text
+                .strip_suffix("\r\n")
+                .or_else(|| text.strip_suffix('\n'))
+                .unwrap_or(text);
+            return Self {
+                ascii_body: body.bytes().all(|byte| matches!(byte, b' '..=b'~')),
+                ..Self::default()
+            };
         }
         Self::with_summary(text).0
+    }
+
+    /// Reuse the admitted printable-ASCII body and scan only inserted bytes.
+    /// The caller proves this is one row edit preserving its original ending.
+    pub fn updated_ascii(
+        &self,
+        text: &str,
+        changed: std::ops::Range<usize>,
+        new_end: usize,
+    ) -> Option<(Self, RowSummary)> {
+        if !self.ascii_body
+            || !text
+                .get(changed.start..new_end)?
+                .bytes()
+                .all(|byte| matches!(byte, b' '..=b'~'))
+        {
+            return None;
+        }
+        let body = text
+            .strip_suffix("\r\n")
+            .or_else(|| text.strip_suffix('\n'))
+            .unwrap_or(text);
+        let mut collector = NativeCoordinates::new(text.len() > STEP_BYTES);
+        collector.ascii_body_end = body.len();
+        collector.visit_ascii(0..body.len());
+        for (offset, ch) in text[body.len()..].char_indices() {
+            collector.visit(text, body.len() + offset, ch);
+        }
+        let visual = if body.len() > super::MAX_MEASURE_BYTES {
+            match &self.visual {
+                Some(previous) => previous.updated_ascii(body, changed, new_end),
+                None => super::VisualLineIndex::new(body),
+            }
+        } else {
+            None
+        };
+        Some((
+            Self {
+                native: collector.sparse.then(|| collector.checkpoints.into()),
+                visual,
+                ascii_body: true,
+            },
+            collector.summary,
+        ))
     }
 
     /// Admission and native totals share the exact coordinate traversal. Long
@@ -365,6 +427,10 @@ mod tests {
                 .strip_suffix("\r\n")
                 .or_else(|| text.strip_suffix('\n'))
                 .unwrap_or(&text);
+            assert_eq!(
+                coordinates.ascii_body,
+                body.bytes().all(|byte| matches!(byte, b' '..=b'~'))
+            );
             assert_eq!(
                 coordinates.visual(),
                 (body.len() > super::super::MAX_MEASURE_BYTES)

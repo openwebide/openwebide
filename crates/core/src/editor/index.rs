@@ -181,7 +181,14 @@ impl LineIndex {
         edit.retain_suffix(&self.rows, changed_end, new_end, new);
         let (start_row, end_row) = (edit.rows.start, edit.rows.end);
         let (start, end) = (edit.bytes.start, edit.bytes.end);
-        let mut replacement = Self::new(&new[start..end]);
+        let mut replacement = self
+            .ascii_replacement(
+                start_row..end_row,
+                &new[start..end],
+                changed_start.saturating_sub(start)..changed_end.saturating_sub(start),
+                new_end.saturating_sub(start),
+            )
+            .unwrap_or_else(|| Self::new(&new[start..end]));
         if edit.trim_suffix_row(replacement.rows.last()) {
             replacement.rows.pop();
             replacement.offsets.pop();
@@ -231,6 +238,43 @@ impl LineIndex {
             old_len != new.len() || next_native != native_end,
         );
         self.update_guides(old_len, new, start_row..end_row, replacement_rows, old_rows);
+    }
+
+    fn ascii_replacement(
+        &self,
+        rows: Range<usize>,
+        text: &str,
+        changed: Range<usize>,
+        new_end: usize,
+    ) -> Option<Self> {
+        if rows.len() != 1 {
+            return None;
+        }
+        let previous = &self.rows[rows.start];
+        let body_len = previous.body_end - previous.start;
+        if changed.end > body_len || changed.start > changed.end {
+            return None;
+        }
+        let (coordinates, summary) =
+            self.coordinates[rows.start].updated_ascii(text, changed, new_end)?;
+        let ending = previous.end - previous.body_end;
+        let body_end = text.len().checked_sub(ending)?;
+        Some(Self {
+            rows: vec![Line {
+                start: 0,
+                body_end,
+                end: text.len(),
+            }],
+            offsets: vec![(0, 0, 0)],
+            oversized_rows: vec![summary.oversized],
+            oversized_count: usize::from(summary.oversized),
+            breaks: summary.breaks,
+            coordinates: Arc::new(vec![coordinates]),
+            utf16_len: summary.utf16_len,
+            textarea_len: summary.utf16_len - usize::from(ending == 2),
+            guides: RowCache::default(),
+            visible_rows: RowCache::default(),
+        })
     }
 
     fn visible_line(&self, row: usize) -> super::VisibleLine {
@@ -478,6 +522,37 @@ impl LineIndex {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn ascii_edits_match_full_index_at_source_and_line_ending_boundaries() {
+        for body in [
+            "word 123; ".repeat(7000),
+            "x".repeat(70000),
+            "文\tword".repeat(12000),
+        ] {
+            for ending in ["", "\n", "\r\n"] {
+                let old = format!("head\r\n{body}{ending}tail");
+                for at in [6, 7, 6 + body.len() / 2, 6 + body.len()] {
+                    if !old.is_char_boundary(at) {
+                        continue;
+                    }
+                    for inserted in ["a", ".", " a; ", "😀", "\t", "\r", "\n"] {
+                        let mut index = LineIndex::new(&old);
+                        let retained = index.clone();
+                        let mut next = old.clone();
+                        next.insert_str(at, inserted);
+                        index.update(old.len(), &next, at..at, at + inserted.len());
+                        assert_eq!(
+                            index,
+                            LineIndex::new(&next),
+                            "at={at}, inserted={inserted:?}, ending={ending:?}"
+                        );
+                        assert_eq!(retained, LineIndex::new(&old));
+                    }
+                }
+            }
+        }
+    }
+
     use super::*;
     #[test]
     fn cooperative_line_tables_preserve_eof_rows_and_exact_native_coordinates() {

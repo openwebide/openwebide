@@ -1,0 +1,145 @@
+{
+  "description": "Complete hosted release after cooperative recovery encoding and byte-backed Blob preparation. Direct encoder-to-Blob streaming and incremental ASCII row indexes came later.",
+  "run": {
+    "status": "completed",
+    "conclusion": "success",
+    "headSha": "98bb84bda8f321ff8ab6451749d4e7d6b6abe3d4",
+    "url": "https://github.com/openwebide/openwebide/actions/runs/38335437540"
+  },
+  "jobs": [
+    {
+      "name": "validate",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115095495381
+    },
+    {
+      "name": "images (ubuntu-24.04-arm, arm64, aarch64-unknown-linux-gnu)",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115095530418
+    },
+    {
+      "name": "images (ubuntu-24.04, amd64, x86_64-unknown-linux-gnu)",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115095530483
+    },
+    {
+      "name": "checks / docker",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115095530488
+    },
+    {
+      "name": "checks / frontend-ui-tests",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115095530536
+    },
+    {
+      "name": "checks / frontend",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115095530559
+    },
+    {
+      "name": "checks / backend-and-crates",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115095530563
+    },
+    {
+      "name": "checks / plugin-panels",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115095530584
+    },
+    {
+      "name": "checks / bridge-windows",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115095530640
+    },
+    {
+      "name": "macos-bridges",
+      "status": "completed",
+      "conclusion": "skipped",
+      "databaseId": 115095531387
+    },
+    {
+      "name": "assets",
+      "status": "completed",
+      "conclusion": "skipped",
+      "databaseId": 115100997591
+    },
+    {
+      "name": "publish-nightly",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 115105200352
+    },
+    {
+      "name": "publish",
+      "status": "completed",
+      "conclusion": "skipped",
+      "databaseId": 115105202163
+    }
+  ],
+  "uiLogSha256": "2fe895b8721901ec9f34428926295140a906a285cf8b01041253cdbfc88950f8",
+  "editorPartitions": [
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 61,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 61,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 61,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 1,
+      "matrix": true,
+      "independent": true
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 1,
+      "matrix": false,
+      "independent": true
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 1,
+      "matrix": true,
+      "independent": true
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-89441c4fed70ceb6.wasm",
+      "tests": 1,
+      "matrix": false,
+      "independent": true
+    },
+    {
+      "artifact": "/home/runner/work/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/openwebide_frontend-5bd7bd212937d9e7.wasm",
+      "tests": 33,
+      "matrix": false,
+      "independent": false
+    }
+  ],
+  "editorChecks": 220,
+  "fontMatrices": 2,
+  "otherComponentChecks": 397,
+  "otherLibraryChecks": 25,
+  "limits": "This checkpoint predates direct encoder-to-Blob streaming and incremental ASCII row indexes. Final combined-source CI and broader physical/performance gates remain open."
+}

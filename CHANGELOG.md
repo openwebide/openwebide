@@ -8,6 +8,10 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Verify complete hosted release checks after cooperative recovery encoding and byte-backed Blob preparation, including all editor partitions, both platform images and nightly publication.
+
+- Update printable-ASCII row coordinates from retained category runs and inserted bytes instead of rescanning unchanged line text. Preserve exact native/glyph checkpoints and word selection, with full rebuilds for Unicode, tabs and row-boundary changes.
+
 - Verify production edits, autosave, restart and reload/new-window restoration after streaming recovery uploads directly from the shared Rust encoder in both workspace modes.
 
 - Stream recovery JSON/base64 from the shared Rust encoder directly into byte-backed upload parts, avoiding an additional full encoded Rust body. Preserve wire format, cumulative size limits and account cancellation before any request is sent.
