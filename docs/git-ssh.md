@@ -78,20 +78,28 @@ Public-key selection is described in the [OpenSSH configuration reference](https
 ## Podman / Quadlet
 
 Use the commented SSH `Volume=` and `Environment=` lines in
-`deploy/openwebide.container`, substituting a stable absolute host agent socket:
+`deploy/openwebide.container`, pointing to your user SSH agent socket. Modern systemd
+provides `ssh-agent.socket` for the user session (`systemctl --user enable --now ssh-agent.socket`),
+which can be referenced using the Quadlet `%t` runtime specifier (`%t/ssh-agent.socket`):
 
 ```ini
-Volume=/run/user/1000/ssh-agent.sock:/run/openwebide-ssh-agent.sock
+Volume=%t/ssh-agent.socket:/run/openwebide-ssh-agent.sock
 Volume=%h/.config/openwebide/ssh:/run/openwebide-ssh:ro,Z
 Environment=SSH_AUTH_SOCK=/run/openwebide-ssh-agent.sock
 ```
 
-Prepare the same public directory as above. Rootless Podman runs as the host user;
+Prepare the same public directory as above (`~/.config/openwebide/ssh`). Rootless Podman runs as the host user;
 ensure that user can access the socket. Do not relabel a shared agent socket with
-`:Z`. On SELinux hosts, socket access may need host policy configuration. Drop the
-public-directory `:Z` on systems without SELinux. The agent must outlive the service;
-if its socket changes, update the unit and restart it. Reload with
-`systemctl --user daemon-reload` and restart `openwebide.service`.
+`:Z`.
+
+On SELinux hosts (such as Fedora, CentOS Stream, RHEL, or Bazzite), rootless container processes
+(`container_t`) are blocked by default from connecting to host user runtime domain sockets (`user_tmp_t`),
+resulting in `Error connecting to agent: Permission denied`. Add `SecurityLabelDisable=true` under `[Container]`
+in `openwebide.container` to disable container label separation and allow access to the agent socket.
+Drop the public-directory `:Z` on systems without SELinux.
+
+The agent must outlive the service; if its socket changes, update the unit and restart it.
+Reload with `systemctl --user daemon-reload` and restart `openwebide.service`.
 
 ## HTTPS alternative
 
@@ -107,6 +115,9 @@ HTTPS remote work.
 - **Permission denied (publickey):** load the matching key with `ssh-add`, check
   the forwarded agent with `ssh-add -l`, and check your alias/`IdentityFile` setup.
   An unloaded, missing or inaccessible agent cannot authenticate.
+- **Error connecting to agent: Permission denied:** on SELinux systems, rootless Podman
+  is blocked from accessing host user runtime sockets. Add `SecurityLabelDisable=true`
+  under `[Container]` in `openwebide.container` and reload systemd.
 - **Host key verification failed:** verify the host fingerprint, update host
   `known_hosts`, copy it into the public directory, and recreate the container.
   A changed fingerprint requires verification too; do not disable checking.

@@ -89,6 +89,59 @@ Open <http://localhost:8080/> and register the first account.
   For private HTTPS via Tailscale Serve running on the host, see the [Tailscale guide](tailscale.md#host-tailscale-serve-with-container-deployments-podman-quadlet-or-docker).
 - **Health check**: `/api/health` requires authentication; an unsigned 401 is expected.
 
+### Host administration and SSH setup
+
+Host administration and Git over SSH use the host user's SSH agent forwarded into the container. Because automated commands run non-interactively with `-oBatchMode=yes`, key authentication is required:
+
+1. **Enable host SSH server**:
+   Ensure `sshd` is active on the host (`systemctl enable --now sshd`).
+2. **Authorize an SSH key on the host**:
+   Ensure your host user account has an SSH key pair authorized in `~/.ssh/authorized_keys`:
+   ```sh
+   mkdir -p ~/.ssh && chmod 700 ~/.ssh
+   ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519
+   cat ~/.ssh/id_ed25519.pub >> ~/.ssh/authorized_keys
+   chmod 600 ~/.ssh/authorized_keys
+   ```
+3. **Enable user SSH agent and load key**:
+   Start the user systemd agent socket and add your key:
+   ```sh
+   systemctl --user enable --now ssh-agent.socket
+   export SSH_AUTH_SOCK="/run/user/$UID/ssh-agent.socket"
+   ssh-add ~/.ssh/id_ed25519
+   ```
+4. **Prepare public SSH configuration**:
+   Prepare `~/.config/openwebide/ssh` with public keys and host fingerprints:
+   ```sh
+   mkdir -p ~/.config/openwebide/ssh && chmod 700 ~/.config/openwebide/ssh
+   cp ~/.ssh/id_ed25519.pub ~/.config/openwebide/ssh/
+   ssh-keyscan -p 22 host.containers.internal >> ~/.config/openwebide/ssh/known_hosts
+   chmod 600 ~/.config/openwebide/ssh/known_hosts
+   ```
+5. **Configure `openwebide.container`**:
+   Add the agent socket, public config volume, and automatic SSH host under `[Container]`:
+   ```ini
+   Environment=OPENWEBIDE_HOST_SSH_HOST=host.containers.internal
+   Volume=%t/ssh-agent.socket:/run/openwebide-ssh-agent.sock
+   Volume=%h/.config/openwebide/ssh:/run/openwebide-ssh:ro,Z
+   Environment=SSH_AUTH_SOCK=/run/openwebide-ssh-agent.sock
+   ```
+   **SELinux hosts (Fedora, Bazzite, RHEL)**: Rootless container processes (`container_t`) are blocked by default from connecting to host user runtime domain sockets (`user_tmp_t`), resulting in `Permission denied` errors. Add `SecurityLabelDisable=true` under `[Container]` to permit socket access:
+   ```ini
+   SecurityLabelDisable=true
+   ```
+6. **Reload and restart**:
+   ```sh
+   systemctl --user daemon-reload
+   systemctl --user restart openwebide.service
+   ```
+7. **Configure in Settings → Host**:
+   - Check **Enable host administration**.
+   - Set **SSH username** to your host user account.
+   - Select your **Host operating system** (`Linux`).
+   - Under **Pinned public host keys**, paste the host public key for `host.containers.internal` (or leave blank if included in the mounted `known_hosts`).
+   - Save and select **Test connection**.
+
 ```sh
 systemctl --user status openwebide.service
 journalctl --user -u openwebide.service -f
