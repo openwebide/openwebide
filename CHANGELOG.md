@@ -8,6 +8,10 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Retain acknowledged editor recovery records immutably so autosave and reactive state clones share source, fold and selection metadata without copying their vectors. Replacing an acknowledgement preserves older retained revisions.
+
+- Verify combined production recovery after cooperative autosave, initial-load, review and confirmation guard preparation, including restart and reload/new-window restoration in both modes.
+
 - Make the exact folding-history fixture use a deterministic parser clock so host load cannot cancel its setup; preserve separate parser deadline and cancellation coverage.
 
 - Prepare recovered-file reviews and recovery confirmation guards cooperatively. Preserve account/project/handle/bridge scope checks and reject superseded confirmation requests before showing or applying them.

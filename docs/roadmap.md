@@ -789,7 +789,18 @@ combined-source CI result.
   provider-setup failure under host load; deadline contracts stay separate.
   All recovery action capture callers are cooperative. Initial allocation,
   admission, previous-record copies, final comparisons and serialization
-  remain open; fresh production and final integrated CI are pending.
+  remain open. The combined full Spin build and five production recovery
+  checks pass at `bbb63749`
+  ([receipt](editor-performance/recovery-combined-production.json)).
+  Final integrated CI and physical-device gates remain pending.
+  Acknowledged recovery records now use immutable shared ownership, avoiding
+  fold/selection vector copies when autosave or reactive state retains the
+  previous revision. All 134 native frontend tests pass, including a
+  10,000-fold retention/replacement regression. All 54 WASM library checks
+  and 45 recovery/fold browser contracts pass with strict WASM lint
+  ([receipt](editor-performance/shared-acknowledged-record-browser.json)).
+  Fresh production verification of this representation, final equality scans
+  and serialization remain open.
 
 **Remaining completion gates**:
 

@@ -254,7 +254,7 @@ impl RecoveryContext {
             };
             self.state.projects.update(|projects| {
                 if let Some(entry) = projects.get_mut(&id) {
-                    entry.record = Some(record);
+                    entry.record = Some(std::sync::Arc::new(record));
                     entry.phase = phase;
                 }
             });
@@ -377,10 +377,10 @@ impl RecoveryContext {
             Ok(revision) if record.revision.checked_add(1) == Some(revision) => {
                 self.state.projects.update(|projects| {
                     if let Some(entry) = projects.get_mut(&id) {
-                        entry.record = Some(EditorRecoveryRecord {
+                        entry.record = Some(std::sync::Arc::new(EditorRecoveryRecord {
                             revision,
                             state: record.state,
-                        });
+                        }));
                         entry.writing = false;
                     }
                 });

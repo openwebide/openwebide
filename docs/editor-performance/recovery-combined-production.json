@@ -1,0 +1,19 @@
+{
+  "implementationCommit": "bbb6374986764e9311bea45b8373337816931d6c",
+  "build": "NO_COLOR=true spin build passed with frozen bbb63749 source before shared acknowledged-record work began.",
+  "artifactsSha256": {
+    "backend": "5c82537a15104c08f635b8328480ada19b25130ce1adea77e48f20e7db9e5253",
+    "frontend": "f7bda119c3ce16ab2e9f1db55a76b73d1a3397ccb4a8d90c4e33bad593f2a284"
+  },
+  "distWasmSha256": {
+    "openwebide-frontend-7704a5d181b3aebb_bg.wasm": "0be9610913a90a22fa4bf80f8da9f71e71aaad9f4688c5137ffa5ec58ee6fbf8"
+  },
+  "productionChecks": [
+    "PASS: both modes, UTF-8/CRLF, selected/hidden tabs, validation and stale saves",
+    "PASS: authenticated recovery after actual Spin restart with the same SQLite state",
+    "PASS: close-all tombstones survive restart and reject stale-window resurrection",
+    "PASS: local actual edits, WASM worker preparation, autosave, server restart, reload/new-window tabs and draft",
+    "PASS: remote actual edits, WASM worker preparation, autosave, server restart, reload/new-window tabs and draft"
+  ],
+  "limits": "This receipt covers the combined cooperative capture/load/review/confirmation callers, not the subsequent immutable acknowledged-record change. Local browser recovery has no granted native directory handle. Physical FSA/PWA/IME, final integrated CI and remaining editor performance gates stay open."
+}

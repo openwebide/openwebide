@@ -140,5 +140,5 @@
     "libraryStartSuppressed": false,
     "testModuleRoute": "/tests.js"
   },
-  "limits": "Initial allocation/admission, previous-record copies, final source/fold equality, serialization and network buffers remain open. Fresh production, final integrated CI and physical-device gates are pending; no overall latency or memory claim."
+  "limits": "Initial allocation/admission, previous-record copies, final source/fold equality, serialization and network buffers remain open. Combined production recovery passes separately in recovery-combined-production.json. Final integrated CI and physical-device gates are pending; no overall latency or memory claim."
 }
