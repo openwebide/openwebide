@@ -147,5 +147,5 @@
     "libraryStartSuppressed": false,
     "testModuleRoute": "/tests.js"
   },
-  "limits": "Initial allocation, whole-body JS string conversion, browser/network buffers, backend/storage serialization, guard equality, fresh production, final integrated CI and physical-device gates remain open. No overall memory or latency claim."
+  "limits": "Initial allocation, whole-body JS string conversion, browser/network buffers, backend/storage serialization, guard equality, production is verified separately in recovery-encoding-production.json; final integrated CI and physical-device gates remain open. No overall memory or latency claim."
 }

@@ -8,6 +8,10 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Prepare recovery upload bodies from bounded byte-backed Blob pieces, preserving UTF-8 and application/json without converting the entire encoded body to a JavaScript string. Reject stale account scopes during preparation; native Blob assembly and network allocations remain to be measured.
+
+- Verify production edits, autosave, restart and reload/new-window recovery after bounded JSON/base64 encoding in both workspace modes.
+
 - Verify complete hosted release checks after bounded recovery decoding/capture, cooperative autosave and initial-load guards, including both platform images, browser/font partitions and nightly publication.
 
 - Encode recovery save JSON cooperatively in bounded base64/source and metadata batches, reserving the body once and rejecting changed account scopes before sending. Preserve the exact serde wire format and shared HTTP authentication/error handling. Whole-body browser conversion and network buffers remain synchronous.

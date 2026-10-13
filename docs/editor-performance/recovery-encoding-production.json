@@ -1,0 +1,19 @@
+{
+  "implementationCommit": "28abc3a8b609546e3cd9d11654d5ecd35cc4632e",
+  "build": "NO_COLOR=true spin build passed before Blob-body conversion changes began.",
+  "artifactsSha256": {
+    "backend": "96c09d5c124dafb6386ece40d0e56451ca13b05dc09827b494ebab15bd54d5bb",
+    "frontend": "c2671100e01b80235958bba56a34d3793c47f3604cd9ab89f33db7c5e188500e"
+  },
+  "distWasmSha256": {
+    "openwebide-frontend-44df12cb63892697_bg.wasm": "940fcd06648e045c1221d31d47619f7646bf4129304c221cbd6574607063ba09"
+  },
+  "productionChecks": [
+    "PASS: both modes, UTF-8/CRLF, selected/hidden tabs, validation and stale saves",
+    "PASS: authenticated recovery after actual Spin restart with the same SQLite state",
+    "PASS: close-all tombstones survive restart and reject stale-window resurrection",
+    "PASS: local actual edits, WASM worker preparation, autosave, server restart, reload/new-window tabs and draft",
+    "PASS: remote actual edits, WASM worker preparation, autosave, server restart, reload/new-window tabs and draft"
+  ],
+  "limits": "This receipt verifies the bounded encoder and shared HTTP path, not subsequent Blob-body conversion. Local browser recovery has no granted native directory handle. Final integrated CI, physical-device and broader performance gates remain open."
+}

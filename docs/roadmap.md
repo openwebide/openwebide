@@ -825,6 +825,18 @@ combined-source CI result.
   ([receipt](editor-performance/cooperative-recovery-encoding-browser.json)).
   Fresh production and final CI are pending. Initial allocation, browser string conversion,
   network buffers, backend/storage serialization and guard equality remain open.
+  The full Spin build and five production recovery checks pass for the
+  bounded encoder at `28abc3a8`
+  ([receipt](editor-performance/recovery-encoding-production.json)).
+  Recovery upload preparation now copies 8 KiB byte pieces into immutable
+  Blob parts, yielding and checking account ownership between pieces. The
+  final application/json Blob uses the same HTTP primitive. Browser tests
+  cover UTF-8 seams, cancellation, MIME type, request body/header preservation
+  and acknowledgements. All 134 native frontend tests, 58 WASM library checks
+  and 45 recovery/fold browser contracts pass with strict WASM lint
+  ([receipt](editor-performance/cooperative-recovery-body-browser.json)).
+  Fresh production and final CI are pending. Initial allocation, native Blob assembly, browser/
+  network memory, backend/storage serialization and guard equality remain open.
 
 **Remaining completion gates**:
 

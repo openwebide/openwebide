@@ -50,7 +50,7 @@ pub enum HealthState {
 
 enum RequestPayload<'a, T> {
     Json(&'a T),
-    EncodedJson(&'a str),
+    EncodedJson(&'a web_sys::Blob),
 }
 
 struct RequestError {
@@ -417,11 +417,15 @@ impl BackendApi {
             self.session_revision.try_get_untracked() == Some(account)
         })
         .await?;
+        let body = prepare_recovery_body(&encoded, || {
+            self.session_revision.try_get_untracked() == Some(account)
+        })
+        .await?;
         let (response, _guard) = self
             .request_payload_response::<()>(
                 Method::PUT,
                 &format!("/projects/{project}/editor-recovery"),
-                Some(RequestPayload::EncodedJson(&encoded)),
+                Some(RequestPayload::EncodedJson(&body)),
                 false,
             )
             .await
@@ -1952,6 +1956,40 @@ fn query_param(query: &str, key: &str) -> Option<String> {
 
 pub use crate::text::urlenc;
 
+async fn prepare_recovery_body(
+    encoded: &str,
+    current: impl Fn() -> bool,
+) -> Result<web_sys::Blob, crate::backend::RecoveryError> {
+    let stale = || {
+        crate::backend::RecoveryError::Unavailable(
+            "The account changed while preparing editor recovery upload".into(),
+        )
+    };
+    let failed = |error| {
+        crate::backend::RecoveryError::Unavailable(format!(
+            "Could not prepare editor recovery upload: {error:?}"
+        ))
+    };
+    let parts = js_sys::Array::new();
+    for chunk in encoded.as_bytes().chunks(8192) {
+        if !current() {
+            return Err(stale());
+        }
+        let bytes = js_sys::Uint8Array::from(chunk);
+        let piece = js_sys::Array::new();
+        piece.push(&bytes);
+        let blob = web_sys::Blob::new_with_u8_array_sequence(&piece).map_err(&failed)?;
+        parts.push(&blob);
+        crate::util::yield_task().await;
+    }
+    if !current() {
+        return Err(stale());
+    }
+    let options = web_sys::BlobPropertyBag::new();
+    options.set_type("application/json");
+    web_sys::Blob::new_with_blob_sequence_and_options(&parts, &options).map_err(failed)
+}
+
 async fn encode_recovery_record(
     record: &openwebide_core::editor::EditorRecoveryRecord,
     current: impl Fn() -> bool,
@@ -2172,7 +2210,7 @@ mod recovery_transport_tests {
             const original = window.fetch;
             const requests = [];
             window.fetch = async request => {
-                requests.push({method: request.method, url: request.url, header: request.headers.get('x-openwebide'), cache: request.cache});
+                requests.push({method: request.method, url: request.url, header: request.headers.get('x-openwebide'), cache: request.cache, contentType: request.headers.get('content-type'), body: await request.clone().text()});
                 return new Response(body, {status, headers: {'Content-Type': 'application/json'}});
             };
             return {requests, restore: () => {window.fetch = original;}};
@@ -2188,6 +2226,8 @@ mod recovery_transport_tests {
         export function recoveryFetchRestore(state) {state.restore();}
         export function recoveryRequestHeader(state) {return state.requests[0].header;}
         export function recoveryRequestCache(state) {return state.requests[0].cache;}
+        export function recoveryRequestBody(state) {return state.requests[0].body;}
+        export function recoveryRequestContentType(state) {return state.requests[0].contentType;}
     "#)]
     extern "C" {
         #[wasm_bindgen(js_name = recoveryFetch)]
@@ -2204,6 +2244,57 @@ mod recovery_transport_tests {
         fn header(state: &JsValue) -> String;
         #[wasm_bindgen(js_name = recoveryRequestCache)]
         fn cache(state: &JsValue) -> String;
+        #[wasm_bindgen(js_name = recoveryRequestBody)]
+        fn request_body(state: &JsValue) -> String;
+        #[wasm_bindgen(js_name = recoveryRequestContentType)]
+        fn request_content_type(state: &JsValue) -> String;
+    }
+
+    #[wasm_bindgen_test]
+    async fn recovery_upload_blob_keeps_json_body_headers_and_acknowledgement() {
+        crate::testing::initialize_runtime();
+        let owner = leptos::prelude::Owner::new();
+        let api = owner.with(BackendApi::from_location);
+        let record = openwebide_core::editor::EditorRecoveryRecord::default();
+        let state = recovery_fetch(200, r#"{"revision":1}"#);
+        assert_eq!(api.save_editor_recovery(1, &record).await.unwrap(), 1);
+        assert_eq!(request_content_type(&state), "application/json");
+        assert_eq!(
+            request_body(&state),
+            serde_json::to_string(&record).unwrap()
+        );
+        assert_eq!(header(&state), "1");
+        assert_eq!(cache(&state), "no-store");
+        restore(&state);
+        owner.cleanup();
+    }
+
+    #[wasm_bindgen_test]
+    async fn recovery_body_preparation_yields_preserves_utf8_and_rejects_changed_scope() {
+        crate::testing::initialize_runtime();
+        let encoded = format!("{}文😀\r\n{}", "a".repeat(8191), "文".repeat(10_000));
+        let current = std::cell::Cell::new(true);
+        let mut pending = Box::pin(prepare_recovery_body(&encoded, || current.get()));
+        assert!(futures::poll!(&mut pending).is_pending());
+        current.set(false);
+        assert!(pending.await.is_err());
+        let blob = prepare_recovery_body(&encoded, || true).await.unwrap();
+        assert_eq!(blob.type_(), "application/json");
+        assert_eq!(
+            blob.size().to_bits(),
+            f64::from(u32::try_from(encoded.len()).unwrap()).to_bits()
+        );
+        assert_eq!(
+            JsFuture::from(blob.text())
+                .await
+                .unwrap()
+                .as_string()
+                .as_deref(),
+            Some(encoded.as_str())
+        );
+        let empty = prepare_recovery_body("", || true).await.unwrap();
+        assert_eq!(empty.size().to_bits(), 0.0_f64.to_bits());
+        assert!(prepare_recovery_body("", || false).await.is_err());
     }
 
     #[wasm_bindgen_test]
