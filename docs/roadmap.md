@@ -330,6 +330,13 @@ combined-source CI result.
   guard rejected an active compiler before measurement began; timing remains
   pending, and these source/selection/history checks do not establish a speed or
   memory improvement. Final combined-source CI and physical gates remain open.
+  A later guarded native comparison completed with no compiler or measurement
+  container observed before/after any process. Twenty ASCII split/undo pairs fall
+  from about 70 to 12 ms; ASCII insertion remains about 12 ms and mixed-Unicode
+  cases remain about 770–775 ms. Dense cases show small mixed changes
+  ([measurement](editor-performance/ascii-row-join-native-edits.json)). The
+  comparison combines the proof latch and join work; it excludes browser input,
+  geometry, paint and memory and does not close the broader performance gate.
   Visual ASCII coordinates now update by word/space/punctuation groups and
   visual-only preparation avoids an unused character traversal. A complete-table
   regression compares every field with full Unicode grapheme traversal at
