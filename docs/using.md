@@ -41,6 +41,29 @@ configuration source. Layout and tree preferences sync through your account.
 - [Reload and reconnect](reload-recovery.md): what survives a page reload and how
   to recover an interrupted connection.
 
+## Installing as a Progressive Web App (PWA)
+
+Open WebIDE is a Progressive Web App (PWA). You can install it from Chrome, Edge, Brave or mobile browsers to run it in a dedicated window with standalone shortcuts and offline UI capabilities.
+
+### Requirements and browser configuration
+
+- **HTTPS or localhost**: Browsers require a secure context (`https://` or `http://localhost:<port>`) with a trusted certificate to offer PWA installation. See [HTTPS with Tailscale](tailscale.md) for private HTTPS setup across devices without public exposure.
+- **Flatpak browsers on Linux (Fedora Silverblue, Bazzite, SteamOS)**:
+  When installing a PWA from a sandboxed browser (such as Google Chrome, Chromium, Brave, or Edge installed via Flatpak), the browser attempts to create a desktop launcher entry in `~/.local/share/applications` and icon assets in `~/.local/share/icons`. By default, Flatpak restricts access to these directories, resulting in an error:
+  ```text
+  This Flatpak does not have write access to ~/.local/share/applications and ~/.local/share/icons, so it cannot install or uninstall PWAs.
+  ```
+  To grant the necessary permissions, run:
+  ```sh
+  flatpak override --user --filesystem=~/.local/share/applications:create --filesystem=~/.local/share/icons:create <application-id>
+  ```
+  For example, for Google Chrome:
+  ```sh
+  flatpak override --user --filesystem=~/.local/share/applications:create --filesystem=~/.local/share/icons:create com.google.Chrome
+  ```
+  Alternatively, toggle **Filesystem → Other files** in **Flatseal** to add `~/.local/share/applications` and `~/.local/share/icons`.
+  Restart the browser afterward to apply the filesystem override before installing or recreating shortcuts from `chrome://apps`.
+
 The [roadmap](roadmap.md) tracks planned UI changes and capabilities. These guides
 describe the current app; controls may move as the layout evolves.
 

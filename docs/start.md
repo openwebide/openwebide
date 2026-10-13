@@ -9,6 +9,8 @@
 For access from a phone or another computer, set up
 [private HTTPS with Tailscale](tailscale.md). Local folder access requires a
 browser that supports the File System Access API and a secure context.
+To install Open WebIDE as a standalone desktop or mobile application, see
+[PWA installation](using.md#installing-as-a-progressive-web-app-pwa).
 
 Versioned alpha container images and deployment files are available.
 [Release installation](releases.md) covers Compose, Podman, upgrades and backups;
