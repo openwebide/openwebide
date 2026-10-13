@@ -1,0 +1,86 @@
+{
+  "implementationCommit": "d5dba7834b341f88f888e0330cae21e61bec08d6",
+  "build": "NO_COLOR=true spin build passed before the line-splitting extension began.",
+  "artifactsSha256": {
+    "backend": "070620cdf772ea537260fcdf8191f6005541c65f11a2ebd92b541563174a0e87",
+    "frontend": "6677fbff8a6b8c4a0697a27f87eba824255ac5fc9a402a44f03ac4dd68e89b10"
+  },
+  "distWasmSha256": {
+    "openwebide-frontend-4f5c5c5a3ad7d2e4_bg.wasm": "a236089fb3a6fcc615c53bd98b7e30723f2dfcc58013682a0ff0a363212664ef"
+  },
+  "checks": [
+    {
+      "mode": "local",
+      "ending": "LF",
+      "windowed": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "CRLF",
+      "windowed": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "LF",
+      "windowed": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "CRLF",
+      "windowed": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "LF",
+      "windowed": true,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "CRLF",
+      "windowed": true,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "LF",
+      "windowed": true,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "CRLF",
+      "windowed": true,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    }
+  ],
+  "limits": "These production checks cover d5dba783 single-row coordinate reuse, not the subsequent line-splitting extension. CDP browser-engine composition events do not replace physical IME/PWA verification. Local fixtures have no granted native directory handle. Matched latency/memory measurements and final integrated CI remain open."
+}

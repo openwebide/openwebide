@@ -282,9 +282,22 @@ combined-source CI result.
   replacement, deletion, thresholds and LF/CRLF/Unicode/tab fallbacks. All 783
   core tests, 134 native frontend tests, 58 WASM library checks and six local/remote
   geometry/fallback contracts pass with strict core/WASM/WASI lint
-  ([receipt](editor-performance/incremental-ascii-row-browser.json)). Production
-  input verification remains pending. Sparse-table allocation/publication, Unicode
-  and row-splitting reuse, and broader responsiveness/memory gates remain open.
+  ([receipt](editor-performance/incremental-ascii-row-browser.json)). The full
+  Spin build and eight full/windowed LF/CRLF composition/undo/redo/cancel checks
+  pass in both modes at `d5dba783`
+  ([receipt](editor-performance/incremental-ascii-row-production-input.json)).
+  Sparse-table allocation/publication, Unicode and row-splitting reuse, and
+  broader responsiveness/memory gates remain open.
+  ASCII line splitting now prepares retained prefix/suffix coordinates from the
+  same row proof and inspects only inserted rows for new line breaks. Initial
+  preparation and edit preparation share row-summary append policy, including
+  CRLF normalization and the trailing EOF row. Complete-index regressions cover
+  beginning/middle/EOF splits, replacements, LF/CRLF and Unicode inserted interior
+  rows. All 784 core tests, 134 native frontend tests, 58 WASM library checks and
+  six local/remote geometry/fallback contracts pass with strict core/WASM/WASI
+  lint ([receipt](editor-performance/ascii-row-split-browser.json)). Fresh
+  production input verification is pending. Unicode boundaries, multi-row joins,
+  sparse table allocation/publication and broader responsiveness/memory remain open.
   Visual ASCII coordinates now update by word/space/punctuation groups and
   visual-only preparation avoids an unused character traversal. A complete-table
   regression compares every field with full Unicode grapheme traversal at

@@ -1,7 +1,7 @@
 //! Incremental logical-line and UTF-16 coordinates owned by the source document.
 use super::{
     EditError, Selection,
-    coordinates::{LineCoordinatePreparation, LineCoordinates},
+    coordinates::{LineCoordinatePreparation, LineCoordinates, RowSummary},
     lines::{Line, LineEdit, row_at},
 };
 use std::{ops::Range, sync::Arc};
@@ -72,18 +72,7 @@ impl<'a> LineIndexPreparation<'a> {
     pub fn new(source: &'a str) -> Self {
         Self {
             source,
-            index: LineIndex {
-                rows: Vec::new(),
-                offsets: Vec::new(),
-                oversized_rows: Vec::new(),
-                oversized_count: 0,
-                breaks: 0,
-                coordinates: Arc::new(Vec::new()),
-                utf16_len: 0,
-                textarea_len: 0,
-                guides: RowCache::default(),
-                visible_rows: RowCache::default(),
-            },
+            index: LineIndex::empty(),
             coordinates: Vec::new(),
             row_start: 0,
             scan: 0,
@@ -106,22 +95,12 @@ impl<'a> LineIndexPreparation<'a> {
                 let (row, coordinates) = self.active.take().unwrap();
                 let (coordinates, summary) = coordinates.finish().unwrap();
                 let text = &self.source[row.start..row.end];
-                self.index.offsets.push((
-                    self.index.utf16_len,
-                    self.index.textarea_len,
-                    self.index.breaks,
-                ));
-                self.index.breaks += summary.breaks;
-                self.index.oversized_count += usize::from(summary.oversized);
-                self.index.oversized_rows.push(summary.oversized);
                 self.coordinates.push(coordinates);
-                self.index.utf16_len += summary.utf16_len;
-                self.index.textarea_len += summary.utf16_len - usize::from(text.ends_with("\r\n"));
                 self.done = row.end == self.source.len()
                     && (row.start == row.end || !self.source.ends_with('\n'));
                 self.row_start = row.end;
                 self.scan = row.end;
-                self.index.rows.push(row);
+                self.index.append_row(row, summary, text.ends_with("\r\n"));
                 continue;
             }
             let scan_end = self.scan.saturating_add(8192).min(self.source.len());
@@ -156,6 +135,31 @@ impl<'a> LineIndexPreparation<'a> {
 }
 
 impl LineIndex {
+    fn empty() -> Self {
+        LineIndex {
+            rows: Vec::new(),
+            offsets: Vec::new(),
+            oversized_rows: Vec::new(),
+            oversized_count: 0,
+            breaks: 0,
+            coordinates: Arc::new(Vec::new()),
+            utf16_len: 0,
+            textarea_len: 0,
+            guides: RowCache::default(),
+            visible_rows: RowCache::default(),
+        }
+    }
+    fn append_row(&mut self, row: Line, summary: RowSummary, crlf: bool) {
+        self.offsets
+            .push((self.utf16_len, self.textarea_len, self.breaks));
+        self.breaks += summary.breaks;
+        self.oversized_count += usize::from(summary.oversized);
+        self.oversized_rows.push(summary.oversized);
+        self.utf16_len += summary.utf16_len;
+        self.textarea_len += summary.utf16_len - usize::from(crlf);
+        self.rows.push(row);
+    }
+
     pub fn new(source: &str) -> Self {
         let mut preparation = LineIndexPreparation::new(source);
         preparation.advance(usize::MAX);
@@ -247,34 +251,87 @@ impl LineIndex {
         changed: Range<usize>,
         new_end: usize,
     ) -> Option<Self> {
-        if rows.len() != 1 {
+        let previous = &self.rows[rows.start];
+        // A trailing EOF row is part of the same edited body, not another source
+        // row. All other multi-row edits retain complete preparation.
+        if rows.len() != 1
+            && !(rows.len() == 2
+                && self.rows[rows.start + 1].start == previous.end
+                && self.rows[rows.start + 1].start == self.rows[rows.start + 1].end)
+        {
             return None;
         }
-        let previous = &self.rows[rows.start];
         let body_len = previous.body_end - previous.start;
         if changed.end > body_len || changed.start > changed.end {
             return None;
         }
-        let (coordinates, summary) =
-            self.coordinates[rows.start].updated_ascii(text, changed, new_end)?;
-        let ending = previous.end - previous.body_end;
-        let body_end = text.len().checked_sub(ending)?;
-        Some(Self {
-            rows: vec![Line {
-                start: 0,
-                body_end,
-                end: text.len(),
-            }],
-            offsets: vec![(0, 0, 0)],
-            oversized_rows: vec![summary.oversized],
-            oversized_count: usize::from(summary.oversized),
-            breaks: summary.breaks,
-            coordinates: Arc::new(vec![coordinates]),
-            utf16_len: summary.utf16_len,
-            textarea_len: summary.utf16_len - usize::from(ending == 2),
-            guides: RowCache::default(),
-            visible_rows: RowCache::default(),
-        })
+        let inserted = text.get(changed.start..new_end)?;
+        let mut ends: Vec<_> = inserted
+            .bytes()
+            .enumerate()
+            .filter_map(|(offset, byte)| (byte == b'\n').then_some(changed.start + offset + 1))
+            .collect();
+        let split = !ends.is_empty();
+        if ends.last().copied() != Some(text.len()) {
+            ends.push(text.len());
+        }
+        let mut result = Self::empty();
+        let mut coordinates = Vec::new();
+        let mut start = 0;
+        for (position, end) in ends.iter().copied().enumerate() {
+            let source = &text[start..end];
+            let ending = if source.ends_with("\r\n") {
+                2
+            } else {
+                usize::from(source.ends_with('\n'))
+            };
+            let body_end = end - ending;
+            let (coordinate, summary) = if !split {
+                self.coordinates[rows.start].updated_ascii(source, changed.clone(), new_end)?
+            } else if position == 0 {
+                self.coordinates[rows.start].updated_ascii(
+                    source,
+                    changed.start..body_len,
+                    body_end,
+                )?
+            } else if position + 1 == ends.len() && start <= new_end && end > new_end {
+                self.coordinates[rows.start].updated_ascii(
+                    source,
+                    0..changed.end,
+                    new_end - start,
+                )?
+            } else {
+                // Interior rows contain only inserted bytes; they do not scan
+                // the retained source prefix/suffix.
+                LineCoordinates::with_summary(source)
+            };
+            result.append_row(
+                Line {
+                    start,
+                    body_end,
+                    end,
+                },
+                summary,
+                ending == 2,
+            );
+            coordinates.push(coordinate);
+            start = end;
+        }
+        if text.ends_with('\n') {
+            let (coordinate, summary) = LineCoordinates::with_summary("");
+            result.append_row(
+                Line {
+                    start,
+                    body_end: start,
+                    end: start,
+                },
+                summary,
+                false,
+            );
+            coordinates.push(coordinate);
+        }
+        result.coordinates = Arc::new(coordinates);
+        Some(result)
     }
 
     fn visible_line(&self, row: usize) -> super::VisibleLine {
@@ -522,6 +579,42 @@ impl LineIndex {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn ascii_line_splits_reuse_retained_bodies_and_match_complete_indexes() {
+        let body = "word 123; ".repeat(20000);
+        for ending in ["", "\n", "\r\n"] {
+            let source = format!("{body}{ending}");
+            let original = LineIndex::new(&source);
+            for changed in [
+                0..0,
+                17..18,
+                body.len() / 2..body.len() / 2,
+                body.len()..body.len(),
+                0..body.len(),
+            ] {
+                for inserted in ["\n", "\r\n", "a\nb\nc", "first\n文\tmiddle\nlast"] {
+                    let mut next = source.clone();
+                    next.replace_range(changed.clone(), inserted);
+                    let new_end = changed.start + inserted.len();
+                    let prepared = original
+                        .ascii_replacement(0..original.rows.len(), &next, changed.clone(), new_end)
+                        .expect(
+                            "ASCII retained prefix/suffix must use incremental split preparation",
+                        );
+                    assert_eq!(
+                        prepared,
+                        LineIndex::new(&next),
+                        "ending={ending:?}, changed={changed:?}, inserted={inserted:?}"
+                    );
+                    let mut updated = original.clone();
+                    updated.update(source.len(), &next, changed.clone(), new_end);
+                    assert_eq!(updated, LineIndex::new(&next));
+                    assert_eq!(original, LineIndex::new(&source));
+                }
+            }
+        }
+    }
+
     #[test]
     fn ascii_edits_match_full_index_at_source_and_line_ending_boundaries() {
         for body in [

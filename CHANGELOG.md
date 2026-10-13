@@ -8,6 +8,10 @@ The first alpha is published as `1.0.0-alpha.5`. See
 
 ## [Unreleased]
 
+- Reuse retained ASCII prefix/suffix coordinates when an edit splits a logical line. Share row-summary publication with initial preparation and preserve CRLF and trailing EOF rows.
+
+- Verify production composition, undo/redo, cancellation and focus checks for single-row coordinate reuse across LF/CRLF and full/windowed input in both workspace modes.
+
 - Verify complete hosted release checks after cooperative recovery encoding and byte-backed Blob preparation, including all editor partitions, both platform images and nightly publication.
 
 - Update printable-ASCII row coordinates from retained category runs and inserted bytes instead of rescanning unchanged line text. Preserve exact native/glyph checkpoints and word selection, with full rebuilds for Unicode, tabs and row-boundary changes.
