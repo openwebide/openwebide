@@ -47,6 +47,13 @@ impl Drop for Mock {
 
 #[wasm_bindgen_test]
 async fn browser_mcp_adapter_pins_catalog_authenticates_and_closes_last_lease() {
+    let old_token = openwebide_frontend::idb::get_bridge_pairing_token()
+        .await
+        .ok()
+        .flatten();
+    openwebide_frontend::idb::delete_bridge_pairing_token()
+        .await
+        .ok();
     let mock = Mock(install_mcp_http());
     let mounted = mount_test(|state| {
         *state.fake.bridge_credential.borrow_mut() = Some(("mcp-token".into(), i64::MAX));
@@ -100,4 +107,13 @@ async fn browser_mcp_adapter_pins_catalog_authenticates_and_closes_last_lease() 
     let (transport, catalog) = McpBridge::open(None, None).await;
     assert!(catalog.tools.is_empty());
     assert!(transport.invoke(&catalog, &call).await.is_err());
+    if let Some(token) = old_token {
+        openwebide_frontend::idb::set_bridge_pairing_token(&token)
+            .await
+            .ok();
+    } else {
+        openwebide_frontend::idb::delete_bridge_pairing_token()
+            .await
+            .ok();
+    }
 }

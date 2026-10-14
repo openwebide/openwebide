@@ -38,17 +38,23 @@ impl ProjectGit {
             .is_some_and(|p| p.mode == openwebide_core::WorkspaceMode::Local);
 
         if is_local {
-            if let Ok(ProjectExecution::Local(client)) = self.host.resolve(project_id).await {
-                return Ok(GitRepository::Local(client));
-            }
-            if let Some(handle) = project_id.and_then(|id| {
-                self.projects
-                    .local_handles
-                    .with_untracked(|handles| handles.get(&id).cloned())
-            }) {
-                let vfs = crate::local_fs::BrowserFsaVfs::new(handle);
-                let local_git = openwebide_core::git::LocalGit::new(vfs);
-                return Ok(GitRepository::Browser(local_git));
+            match self.host.resolve(project_id).await {
+                Ok(ProjectExecution::Local(client)) => return Ok(GitRepository::Local(client)),
+                Ok(ProjectExecution::Remote { .. }) => {}
+                Err(err) => {
+                    if let Some(handle) = project_id.and_then(|id| {
+                        self.projects
+                            .local_handles
+                            .with_untracked(|handles| handles.get(&id).cloned())
+                    }) {
+                        let vfs = crate::local_fs::BrowserFsaVfs::new(handle);
+                        let local_git = openwebide_core::git::LocalGit::new(vfs);
+                        if local_git.is_repo().await {
+                            return Ok(GitRepository::Browser(local_git));
+                        }
+                    }
+                    return Err(err);
+                }
             }
         }
 

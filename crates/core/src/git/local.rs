@@ -8,12 +8,12 @@
 use std::collections::{BTreeSet, HashMap};
 use std::io::Read;
 
+use flate2::Compression;
 use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
-use flate2::Compression;
 use sha1::{Digest, Sha1};
 
-use crate::diff::{line_lcs, LineOp};
+use crate::diff::{LineOp, line_lcs};
 use crate::git::{
     GitBranchInfo, GitCheckoutRequest, GitCheckoutResult, GitCommitDiff, GitCommitDiffRequest,
     GitCommitFile, GitCommitRequest, GitCommitResult, GitFileStatus, GitHistoryCommit,
@@ -200,20 +200,20 @@ impl<V: Vfs> LocalGit<V> {
         if let Ok(bytes) = self.vfs.read_bytes(&loose_path).await {
             let mut decoder = ZlibDecoder::new(&bytes[..]);
             let mut decompressed = Vec::new();
-            if decoder.read_to_end(&mut decompressed).is_ok() {
-                if let Some(null_pos) = decompressed.iter().position(|&b| b == 0) {
-                    let header = String::from_utf8_lossy(&decompressed[..null_pos]);
-                    if let Some((kind_str, _)) = header.split_once(' ') {
-                        let kind = match kind_str {
-                            "commit" => GitObjectType::Commit,
-                            "tree" => GitObjectType::Tree,
-                            "blob" => GitObjectType::Blob,
-                            "tag" => GitObjectType::Tag,
-                            other => return Err(format!("unknown git object type: {other}")),
-                        };
-                        let data = decompressed[null_pos + 1..].to_vec();
-                        return Ok((kind, data));
-                    }
+            if decoder.read_to_end(&mut decompressed).is_ok()
+                && let Some(null_pos) = decompressed.iter().position(|&b| b == 0)
+            {
+                let header = String::from_utf8_lossy(&decompressed[..null_pos]);
+                if let Some((kind_str, _)) = header.split_once(' ') {
+                    let kind = match kind_str {
+                        "commit" => GitObjectType::Commit,
+                        "tree" => GitObjectType::Tree,
+                        "blob" => GitObjectType::Blob,
+                        "tag" => GitObjectType::Tag,
+                        other => return Err(format!("unknown git object type: {other}")),
+                    };
+                    let data = decompressed[null_pos + 1..].to_vec();
+                    return Ok((kind, data));
                 }
             }
         }
@@ -221,10 +221,15 @@ impl<V: Vfs> LocalGit<V> {
         // 2. Try packfiles in .git/objects/pack/
         if let Ok(pack_entries) = self.vfs.list(".git/objects/pack").await {
             for entry in pack_entries {
-                if entry.name.ends_with(".idx") {
+                if std::path::Path::new(&entry.name)
+                    .extension()
+                    .is_some_and(|ext| ext.eq_ignore_ascii_case("idx"))
+                {
                     let idx_path = entry.path.clone();
                     let pack_path = idx_path.trim_end_matches(".idx").to_string() + ".pack";
-                    if let Ok(Some(obj)) = self.read_from_packfile(&idx_path, &pack_path, &hash).await {
+                    if let Ok(Some(obj)) =
+                        self.read_from_packfile(&idx_path, &pack_path, &hash).await
+                    {
                         return Ok(obj);
                     }
                 }
@@ -241,28 +246,27 @@ impl<V: Vfs> LocalGit<V> {
         pack_path: &str,
         hash: &str,
     ) -> Result<Option<(GitObjectType, Vec<u8>)>, String> {
-        let idx_bytes = match self.vfs.read_bytes(idx_path).await {
-            Ok(b) => b,
-            Err(_) => return Ok(None),
+        let Ok(idx_bytes) = self.vfs.read_bytes(idx_path).await else {
+            return Ok(None);
         };
         if idx_bytes.len() < 1032 {
             return Ok(None);
         }
 
         // Validate index v2 magic: \xFFtOc
-        if &idx_bytes[0..4] != b"\xfftOc" || &idx_bytes[4..8] != &[0, 0, 0, 2] {
+        if &idx_bytes[0..4] != b"\xfftOc" || idx_bytes[4..8] != [0, 0, 0, 2] {
             return Ok(None);
         }
 
-        let target_bytes = match hex_to_bytes(hash) {
-            Some(b) => b,
-            None => return Ok(None),
+        let Some(target_bytes) = hex_to_bytes(hash) else {
+            return Ok(None);
         };
 
         let first_byte = target_bytes[0] as usize;
         let fanout_offset = 8;
         let read_u32 = |offset: usize| -> usize {
-            u32::from_be_bytes(idx_bytes[offset..offset + 4].try_into().unwrap_or_default()) as usize
+            u32::from_be_bytes(idx_bytes[offset..offset + 4].try_into().unwrap_or_default())
+                as usize
         };
 
         let start = if first_byte == 0 {
@@ -299,9 +303,8 @@ impl<V: Vfs> LocalGit<V> {
             }
         }
 
-        let index = match found_index {
-            Some(i) => i,
-            None => return Ok(None),
+        let Some(index) = found_index else {
+            return Ok(None);
         };
 
         // Offset table follows SHA table (total_objects * 20) and CRC table (total_objects * 4)
@@ -318,18 +321,18 @@ impl<V: Vfs> LocalGit<V> {
             if large_table_offset + 8 > idx_bytes.len() {
                 return Ok(None);
             }
-            u64::from_be_bytes(
+            usize::try_from(u64::from_be_bytes(
                 idx_bytes[large_table_offset..large_table_offset + 8]
                     .try_into()
                     .unwrap_or_default(),
-            ) as usize
+            ))
+            .unwrap_or_default()
         } else {
             pack_offset_raw
         };
 
-        let pack_bytes = match self.vfs.read_bytes(pack_path).await {
-            Ok(b) => b,
-            Err(_) => return Ok(None),
+        let Ok(pack_bytes) = self.vfs.read_bytes(pack_path).await else {
+            return Ok(None);
         };
 
         self.decode_pack_object(&pack_bytes, pack_offset).map(Some)
@@ -418,28 +421,28 @@ impl<V: Vfs> LocalGit<V> {
                 tree_hash = tree.trim().to_string();
             } else if let Some(parent) = line.strip_prefix("parent ") {
                 parents.push(parent.trim().to_string());
-            } else if let Some(auth_line) = line.strip_prefix("author ") {
-                if let Some((name, rest)) = auth_line.split_once('<') {
-                    author = name.trim().to_string();
-                    if let Some((email, time_part)) = rest.split_once('>') {
-                        author_email = email.trim().to_string();
-                        if let Some((secs_str, _)) = time_part.trim().split_once(' ') {
-                            if let Ok(secs) = secs_str.parse::<i64>() {
-                                authored_at = crate::vfs::format_utc_timestamp(secs);
-                            }
-                        }
+            } else if let Some(auth_line) = line.strip_prefix("author ")
+                && let Some((name, rest)) = auth_line.split_once('<')
+            {
+                author = name.trim().to_string();
+                if let Some((email, time_part)) = rest.split_once('>') {
+                    author_email = email.trim().to_string();
+                    if let Some((secs_str, _)) = time_part.trim().split_once(' ')
+                        && let Ok(secs) = secs_str.parse::<i64>()
+                    {
+                        authored_at = crate::vfs::format_utc_timestamp(secs);
                     }
                 }
-            } else if let Some(com_line) = line.strip_prefix("committer ") {
-                if let Some((name, rest)) = com_line.split_once('<') {
-                    committer = name.trim().to_string();
-                    if let Some((email, time_part)) = rest.split_once('>') {
-                        committer_email = email.trim().to_string();
-                        if let Some((secs_str, _)) = time_part.trim().split_once(' ') {
-                            if let Ok(secs) = secs_str.parse::<i64>() {
-                                committed_at = crate::vfs::format_utc_timestamp(secs);
-                            }
-                        }
+            } else if let Some(com_line) = line.strip_prefix("committer ")
+                && let Some((name, rest)) = com_line.split_once('<')
+            {
+                committer = name.trim().to_string();
+                if let Some((email, time_part)) = rest.split_once('>') {
+                    committer_email = email.trim().to_string();
+                    if let Some((secs_str, _)) = time_part.trim().split_once(' ')
+                        && let Ok(secs) = secs_str.parse::<i64>()
+                    {
+                        committed_at = crate::vfs::format_utc_timestamp(secs);
                     }
                 }
             }
@@ -551,14 +554,16 @@ impl<V: Vfs> LocalGit<V> {
 
         if let Ok(branch_entries) = self.vfs.list(".git/refs/heads").await {
             for entry in branch_entries {
-                if !entry.is_dir {
-                    if let Ok(hash) = self.resolve_ref(&format!("refs/heads/{}", entry.name)).await {
-                        refs_list.push(GitHistoryRef {
-                            name: entry.name,
-                            hash,
-                            kind: "branch".into(),
-                        });
-                    }
+                if !entry.is_dir
+                    && let Ok(hash) = self
+                        .resolve_ref(&format!("refs/heads/{}", entry.name))
+                        .await
+                {
+                    refs_list.push(GitHistoryRef {
+                        name: entry.name,
+                        hash,
+                        kind: "branch".into(),
+                    });
                 }
             }
         }
@@ -589,14 +594,17 @@ impl<V: Vfs> LocalGit<V> {
         // Map hash -> ref names
         let mut hash_to_refs = HashMap::<String, Vec<String>>::new();
         for r in &refs_list {
-            hash_to_refs.entry(r.hash.clone()).or_default().push(r.name.clone());
+            hash_to_refs
+                .entry(r.hash.clone())
+                .or_default()
+                .push(r.name.clone());
         }
-        if let Some(branch) = current_branch {
-            if let Ok(head_hash) = self.resolve_ref("HEAD").await {
-                let entry = hash_to_refs.entry(head_hash).or_default();
-                if !entry.contains(&branch) {
-                    entry.insert(0, branch);
-                }
+        if let Some(branch) = current_branch
+            && let Ok(head_hash) = self.resolve_ref("HEAD").await
+        {
+            let entry = hash_to_refs.entry(head_hash).or_default();
+            if !entry.contains(&branch) {
+                entry.insert(0, branch);
             }
         }
 
@@ -615,16 +623,14 @@ impl<V: Vfs> LocalGit<V> {
             if all_commits.len() >= limit {
                 break;
             }
-            let (kind, data) = match self.read_object(&hash).await {
-                Ok(res) => res,
-                Err(_) => continue,
+            let Ok((kind, data)) = self.read_object(&hash).await else {
+                continue;
             };
             if kind != GitObjectType::Commit {
                 continue;
             }
-            let parsed = match self.parse_commit(&hash, &data) {
-                Ok(c) => c,
-                Err(_) => continue,
+            let Ok(parsed) = self.parse_commit(&hash, &data) else {
+                continue;
             };
 
             for parent in &parsed.parents {
@@ -645,11 +651,16 @@ impl<V: Vfs> LocalGit<V> {
 
             // Filter by path if present
             if let Some(target_path) = &request.path {
-                let current_tree = self.flatten_tree(&parsed.tree_hash).await.unwrap_or_default();
+                let current_tree = self
+                    .flatten_tree(&parsed.tree_hash)
+                    .await
+                    .unwrap_or_default();
                 let parent_tree = if let Some(parent) = parsed.parents.first() {
                     if let Ok((GitObjectType::Commit, p_data)) = self.read_object(parent).await {
                         if let Ok(p_commit) = self.parse_commit(parent, &p_data) {
-                            self.flatten_tree(&p_commit.tree_hash).await.unwrap_or_default()
+                            self.flatten_tree(&p_commit.tree_hash)
+                                .await
+                                .unwrap_or_default()
                         } else {
                             HashMap::new()
                         }
@@ -697,7 +708,10 @@ impl<V: Vfs> LocalGit<V> {
     }
 
     /// Produce commit inspection details and file diffs for a given commit.
-    pub async fn commit_diff(&self, request: &GitCommitDiffRequest) -> Result<GitCommitDiff, String> {
+    pub async fn commit_diff(
+        &self,
+        request: &GitCommitDiffRequest,
+    ) -> Result<GitCommitDiff, String> {
         let (kind, data) = self.read_object(&request.hash).await?;
         if kind != GitObjectType::Commit {
             return Err(format!("expected commit object for {}", request.hash));
@@ -728,10 +742,10 @@ impl<V: Vfs> LocalGit<V> {
         let mut diff_builder = String::new();
 
         for path in all_paths {
-            if let Some(target_path) = &request.path {
-                if &path != target_path {
-                    continue;
-                }
+            if let Some(target_path) = &request.path
+                && &path != target_path
+            {
+                continue;
             }
             let in_current = current_tree.get(&path);
             let in_parent = parent_tree.get(&path);
@@ -820,15 +834,15 @@ impl<V: Vfs> LocalGit<V> {
         }
 
         for ref_name in self.read_packed_refs().await.keys() {
-            if let Some(branch) = ref_name.strip_prefix("refs/heads/") {
-                if seen.insert(branch.to_string()) {
-                    branches.push(GitBranchInfo {
-                        is_current: branch == current_name,
-                        is_remote: false,
-                        name: branch.to_string(),
-                        upstream: None,
-                    });
-                }
+            if let Some(branch) = ref_name.strip_prefix("refs/heads/")
+                && seen.insert(branch.to_string())
+            {
+                branches.push(GitBranchInfo {
+                    is_current: branch == current_name,
+                    is_remote: false,
+                    name: branch.to_string(),
+                    upstream: None,
+                });
             }
         }
 
@@ -846,13 +860,15 @@ impl<V: Vfs> LocalGit<V> {
         let mut commit_message = None;
         let mut head_tree = HashMap::new();
 
-        if !commit_hash.is_empty() {
-            if let Ok((GitObjectType::Commit, data)) = self.read_object(&commit_hash).await {
-                if let Ok(commit) = self.parse_commit(&commit_hash, &data) {
-                    commit_message = Some(commit.subject);
-                    head_tree = self.flatten_tree(&commit.tree_hash).await.unwrap_or_default();
-                }
-            }
+        if !commit_hash.is_empty()
+            && let Ok((GitObjectType::Commit, data)) = self.read_object(&commit_hash).await
+            && let Ok(commit) = self.parse_commit(&commit_hash, &data)
+        {
+            commit_message = Some(commit.subject);
+            head_tree = self
+                .flatten_tree(&commit.tree_hash)
+                .await
+                .unwrap_or_default();
         }
 
         // Enumerate workspace files (skipping ignored system and build folders)
@@ -970,13 +986,19 @@ impl<V: Vfs> LocalGit<V> {
     }
 
     /// Switch branches or create a new branch.
-    pub async fn checkout(&self, request: &GitCheckoutRequest) -> Result<GitCheckoutResult, String> {
+    pub async fn checkout(
+        &self,
+        request: &GitCheckoutRequest,
+    ) -> Result<GitCheckoutResult, String> {
         let (head_target, current_branch) = self.read_head().await?;
         let previous_branch = current_branch;
 
         let target_ref = format!(".git/refs/heads/{}", request.branch);
         let exists = self.vfs.read(&target_ref).await.is_ok()
-            || self.read_packed_refs().await.contains_key(&format!("refs/heads/{}", request.branch));
+            || self
+                .read_packed_refs()
+                .await
+                .contains_key(&format!("refs/heads/{}", request.branch));
 
         if !exists {
             if request.create_if_missing {
@@ -992,7 +1014,10 @@ impl<V: Vfs> LocalGit<V> {
 
         // Update HEAD
         self.vfs
-            .write(".git/HEAD", &format!("ref: refs/heads/{}\n", request.branch))
+            .write(
+                ".git/HEAD",
+                &format!("ref: refs/heads/{}\n", request.branch),
+            )
             .await
             .map_err(|e| format!("cannot update HEAD: {e}"))?;
 
@@ -1006,7 +1031,11 @@ impl<V: Vfs> LocalGit<V> {
     }
 
     /// Write a raw loose object into `.git/objects/`.
-    pub async fn write_loose_object(&self, kind: GitObjectType, data: &[u8]) -> Result<String, String> {
+    pub async fn write_loose_object(
+        &self,
+        kind: GitObjectType,
+        data: &[u8],
+    ) -> Result<String, String> {
         let header = format!("{} {}\0", kind.as_str(), data.len());
         let mut hasher = Sha1::new();
         hasher.update(header.as_bytes());
@@ -1022,7 +1051,9 @@ impl<V: Vfs> LocalGit<V> {
         let mut full_payload = header.into_bytes();
         full_payload.extend_from_slice(data);
         use std::io::Write;
-        encoder.write_all(&full_payload).map_err(|e| e.to_string())?;
+        encoder
+            .write_all(&full_payload)
+            .map_err(|e| e.to_string())?;
         let compressed = encoder.finish().map_err(|e| e.to_string())?;
 
         self.vfs
@@ -1044,12 +1075,14 @@ impl<V: Vfs> LocalGit<V> {
         // 2. Write blobs for files
         let mut tree_entries = Vec::new();
         for (path, content) in &worktree_files {
-            if let Some(paths) = &request.paths {
-                if !paths.contains(path) {
-                    continue;
-                }
+            if let Some(paths) = &request.paths
+                && !paths.contains(path)
+            {
+                continue;
             }
-            let blob_hash = self.write_loose_object(GitObjectType::Blob, content.as_bytes()).await?;
+            let blob_hash = self
+                .write_loose_object(GitObjectType::Blob, content.as_bytes())
+                .await?;
             tree_entries.push(TreeEntry {
                 mode: "100644".into(),
                 name: path.clone(),
@@ -1068,7 +1101,9 @@ impl<V: Vfs> LocalGit<V> {
             tree_payload.push(0);
             tree_payload.extend_from_slice(&sha_bytes);
         }
-        let tree_hash = self.write_loose_object(GitObjectType::Tree, &tree_payload).await?;
+        let tree_hash = self
+            .write_loose_object(GitObjectType::Tree, &tree_payload)
+            .await?;
 
         // 4. Write commit object
         let now_secs = 1700000000i64; // Fallback or current time
@@ -1089,7 +1124,10 @@ impl<V: Vfs> LocalGit<V> {
         let (head_target, branch_name) = self.read_head().await?;
         if let Some(branch) = branch_name {
             self.vfs
-                .write(&format!(".git/refs/heads/{branch}"), &format!("{commit_hash}\n"))
+                .write(
+                    &format!(".git/refs/heads/{branch}"),
+                    &format!("{commit_hash}\n"),
+                )
                 .await
                 .map_err(|e| format!("cannot update branch ref: {e}"))?;
         } else {
@@ -1178,13 +1216,13 @@ fn format_unified_diff(old_text: &str, new_text: &str) -> String {
         match op {
             LineOp::Delete(_) => del_count += 1,
             LineOp::Insert(_) => ins_count += 1,
-            _ => {}
+            LineOp::Equal(_) => {}
         }
     }
     if del_count == 0 && ins_count == 0 {
         return out;
     }
-    out.push_str(&format!("@@ -1,{} +1,{} @@\n", del_count, ins_count));
+    out.push_str(&format!("@@ -1,{del_count} +1,{ins_count} @@\n"));
     for op in ops {
         match op {
             LineOp::Equal(l) => {
@@ -1214,7 +1252,7 @@ fn compute_line_stats(old_text: &str, new_text: &str) -> GitLineStats {
         match op {
             LineOp::Insert(_) => insertions += 1,
             LineOp::Delete(_) => deletions += 1,
-            _ => {}
+            LineOp::Equal(_) => {}
         }
     }
     GitLineStats {
@@ -1238,7 +1276,7 @@ fn bytes_to_hex(bytes: &[u8]) -> String {
     let mut s = String::with_capacity(bytes.len() * 2);
     for b in bytes {
         use std::fmt::Write;
-        let _ = write!(s, "{:02x}", b);
+        let _ = write!(s, "{b:02x}");
     }
     s
 }
@@ -1370,7 +1408,9 @@ mod tests {
 
             assert!(!git.is_repo().await);
 
-            vfs.write(".git/HEAD", "ref: refs/heads/main\n").await.unwrap();
+            vfs.write(".git/HEAD", "ref: refs/heads/main\n")
+                .await
+                .unwrap();
             assert!(git.is_repo().await);
 
             let (head_ref, branch) = git.read_head().await.unwrap();
@@ -1445,10 +1485,15 @@ mod tests {
             assert_eq!(new_branch.as_deref(), Some("feat-a"));
 
             // Modify file and test diff & status
-            vfs.write("hello.txt", "hello world\nmore lines\n").await.unwrap();
+            vfs.write("hello.txt", "hello world\nmore lines\n")
+                .await
+                .unwrap();
             let status2 = git.status().await.unwrap();
             assert!(!status2.is_clean);
-            assert_eq!(status2.files.get("hello.txt"), Some(&GitFileStatus::Modified));
+            assert_eq!(
+                status2.files.get("hello.txt"),
+                Some(&GitFileStatus::Modified)
+            );
             let diff_text = git.diff(Some("hello.txt")).await.unwrap();
             assert!(diff_text.contains("+more lines"));
         });

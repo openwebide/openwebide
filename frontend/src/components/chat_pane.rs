@@ -161,20 +161,16 @@ fn render_assistant_message(content: Memo<String>) -> AnyView {
 fn render_pending_thinking() -> AnyView {
     let started = Date::now();
     let now = RwSignal::new(started);
-    let timer = set_interval_with_handle(
-        move || now.set(Date::now()),
-        Duration::from_millis(100),
-    )
-    .ok();
+    let timer =
+        set_interval_with_handle(move || now.set(Date::now()), Duration::from_millis(100)).ok();
     let timer: StoredValue<Option<IntervalHandle>> = StoredValue::new(timer);
     on_cleanup(move || {
         if let Some(handle) = timer.get_value() {
             handle.clear();
         }
     });
-    let summary = move || {
-        openwebide_core::tui::reasoning_summary(true, Some(now.get() - started), 0)
-    };
+    let summary =
+        move || openwebide_core::tui::reasoning_summary(true, Some(now.get() - started), 0);
 
     view! {
         <div class="tui-stream-line tui-assistant">
@@ -190,7 +186,8 @@ fn render_pending_thinking() -> AnyView {
                 </div>
             </super::ui::DisclosurePanel>
         </div>
-    }.into_any()
+    }
+    .into_any()
 }
 
 /// Render a single user message with extracted editor context pill if present.

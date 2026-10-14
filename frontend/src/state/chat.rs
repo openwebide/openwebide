@@ -280,10 +280,11 @@ impl ConversationStore {
     /// Roll back a trailing optimistic prompt when the send failed before the
     /// server saved it.
     pub fn drop_optimistic_user(self) {
-        if self
-            .last()
-            .is_some_and(|handle| handle.item.with_untracked(crate::conversation::is_local_user_message))
-        {
+        if self.last().is_some_and(|handle| {
+            handle
+                .item
+                .with_untracked(crate::conversation::is_local_user_message)
+        }) {
             self.pop();
         }
     }
