@@ -351,6 +351,16 @@ impl LayoutState {
     pub fn flexible_panel(&self) -> Option<Panel> {
         let visible = self.visible_panels.get();
         let rightmost = self.preferences.with(|prefs| {
+            let has_plugin_after_history = prefs.plugin_panels.iter().any(|(id, panel)| {
+                panel.visible
+                    && self
+                        .plugin_panels
+                        .with(|registered| registered.contains(id))
+                    && prefs.order(id) > prefs.order(Panel::History.id())
+            });
+            if has_plugin_after_history {
+                return None;
+            }
             [
                 Panel::Sessions,
                 Panel::Files,
@@ -654,6 +664,34 @@ mod tests {
             );
             layout.panels.update(|panels| panels.files = false);
             assert!(!layout.panels.get_untracked().files);
+        });
+    }
+
+    #[test]
+    fn flexible_panel_expands_history_when_no_subsequent_panel_visible() {
+        Owner::new().with(|| {
+            let layout = LayoutState::new();
+            layout.active_project.set(Some(1));
+
+            // Default: editor is visible -> editor is flexible
+            assert_eq!(layout.flexible_panel(), Some(Panel::Editor));
+
+            // History open, editor closed, chat open -> chat is flexible
+            layout.panels.set(PanelVisibility {
+                sessions: true,
+                files: true,
+                history: true,
+                editor: false,
+                chat: true,
+                ..Default::default()
+            });
+            assert_eq!(layout.flexible_panel(), Some(Panel::Chat));
+
+            // History open, editor closed, chat closed -> history expands to fill remaining width
+            layout.panels.update(|panels| {
+                panels.chat = false;
+            });
+            assert_eq!(layout.flexible_panel(), Some(Panel::History));
         });
     }
 
