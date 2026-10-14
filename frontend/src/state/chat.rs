@@ -280,12 +280,19 @@ impl ConversationStore {
     /// Roll back a trailing optimistic prompt when the send failed before the
     /// server saved it.
     pub fn drop_optimistic_user(self) {
-        if self.last().is_some_and(|handle| {
-            handle
-                .item
-                .with_untracked(crate::conversation::is_local_user_message)
+        if let Some(handle) = self.handles.with_untracked(|handles| {
+            handles
+                .iter()
+                .rev()
+                .find(|handle| {
+                    handle
+                        .item
+                        .with_untracked(crate::conversation::is_local_user_message)
+                })
+                .copied()
         }) {
-            self.pop();
+            self.remove(&[handle]);
+            self.changed.update(|version| *version += 1);
         }
     }
 
@@ -843,10 +850,16 @@ impl ChatState {
                     self.messages
                         .update_item(handle, |item| *item = ConversationItem::Message(msg));
                 } else if msg.role == openwebide_core::Role::User
-                    && let Some(handle) = self.messages.last().filter(|handle| {
-                        handle
-                            .item
-                            .with_untracked(crate::conversation::is_local_user_message)
+                    && let Some(handle) = self.messages.handles.with_untracked(|handles| {
+                        handles
+                            .iter()
+                            .rev()
+                            .find(|handle| {
+                                handle
+                                    .item
+                                    .with_untracked(crate::conversation::is_local_user_message)
+                            })
+                            .copied()
                     })
                 {
                     self.messages

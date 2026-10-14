@@ -1323,3 +1323,154 @@ async fn reload_during_unfinished_local_tool_offers_resume_without_reexecuting_i
         assert_eq!(mounted.state.fake.messages.borrow()[&1].iter().filter(|entry| matches!(entry, ConversationEntry::Message(message) if message.role == Role::User)).count(), 1);
     }
 }
+
+#[wasm_bindgen_test]
+async fn pending_thinking_indicator_survives_system_context_until_model_tokens_arrive() {
+    use leptos::prelude::*;
+    use openwebide_core::{ChatMessage, Role, RunEvent, WorkspaceMode};
+
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            state.seed_connection();
+            state.seed_session();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            chat_view(state)
+        });
+        settle().await;
+        let chat = mounted.state.chat;
+
+        // Start a prompt send
+        chat.streaming.set(true);
+        chat.messages
+            .push_optimistic_user(1, "Investigate this issue".into());
+        settle().await;
+
+        // The optimistic thinking box should be visible
+        assert!(
+            mounted.has_element(".tui-thinking-box"),
+            "Pending thinking box should be visible immediately on send"
+        );
+        let text = mounted.root.text_content().unwrap();
+        assert!(
+            text.contains("Waiting for the model"),
+            "Should show waiting for model prompt: {text}"
+        );
+
+        // System context arrives (e.g. startup context, run context, compaction)
+        chat.apply_event(RunEvent::Message {
+            message: message(
+                2,
+                Role::System,
+                &format!("{}Context rules", openwebide_core::RUN_CONTEXT_PREFIX),
+            ),
+        });
+        settle().await;
+
+        // CRITICAL CHECK: The thinking box must NOT disappear when system context arrives!
+        assert!(
+            mounted.has_element(".tui-thinking-box"),
+            "Pending thinking box must survive system context message"
+        );
+        let text = mounted.root.text_content().unwrap();
+        assert!(
+            text.contains("Waiting for the model"),
+            "Should still show waiting for model: {text}"
+        );
+
+        // Server saves user message in place
+        chat.apply_event(RunEvent::Message {
+            message: message(1, Role::User, "Investigate this issue"),
+        });
+        settle().await;
+
+        // The thinking box must STILL be visible while awaiting tokens
+        assert!(
+            mounted.has_element(".tui-thinking-box"),
+            "Pending thinking box must survive server user message confirmation"
+        );
+
+        // First token arrives from the model
+        chat.apply_event(RunEvent::Delta {
+            content: "Here is what I found".into(),
+        });
+        settle().await;
+
+        // Pending thinking box is replaced by the actual assistant message
+        let text = mounted.root.text_content().unwrap();
+        assert!(
+            !text.contains("Waiting for the model"),
+            "Waiting message should be replaced by real assistant message: {text}"
+        );
+        assert!(
+            text.contains("Here is what I found"),
+            "Assistant text should be rendered: {text}"
+        );
+
+        // Done finishes turn 1
+        chat.apply_event(RunEvent::Done {
+            message: message(3, Role::Assistant, "Here is what I found"),
+        });
+        chat.streaming.set(false);
+        settle().await;
+
+        // Turn 2 with a tool call
+        chat.streaming.set(true);
+        chat.apply_event(RunEvent::ToolCall {
+            id: "t1".into(),
+            name: "read_file".into(),
+            summary: "read file.rs".into(),
+        });
+        settle().await;
+
+        // While tool is running, pending thinking box should NOT show
+        assert!(
+            !mounted
+                .root
+                .text_content()
+                .unwrap()
+                .contains("Waiting for the model"),
+            "Should not show pending thinking while tool is actively executing"
+        );
+
+        // Tool completes
+        chat.apply_event(RunEvent::ToolResult {
+            id: "t1".into(),
+            name: "read_file".into(),
+            ok: true,
+            summary: "file contents".into(),
+            diff: None,
+        });
+        settle().await;
+
+        // Waiting for turn 2 model response: pending thinking box shows again
+        assert!(
+            mounted
+                .root
+                .text_content()
+                .unwrap()
+                .contains("Waiting for the model"),
+            "Pending thinking box should show while awaiting turn 2 model response"
+        );
+
+        // Turn 2 tokens arrive
+        chat.apply_event(RunEvent::Delta {
+            content: "Got the file".into(),
+        });
+        settle().await;
+        assert!(
+            !mounted
+                .root
+                .text_content()
+                .unwrap()
+                .contains("Waiting for the model"),
+            "Waiting message should disappear once turn 2 tokens arrive"
+        );
+
+        chat.streaming.set(false);
+        settle().await;
+    }
+}

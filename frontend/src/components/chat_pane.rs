@@ -894,21 +894,58 @@ pub fn ChatPane(
     // is pinned near the bottom; scrolling up releases the pin until they return.
     let stick_to_bottom = RwSignal::new(true);
     let awaiting_first_response = Memo::new(move |_| {
-        streaming.get()
-            && chat
-                .streaming_session
-                .get()
-                .is_none_or(|session| Some(session) == chat.active_session.get())
-            && messages.handles.with(|handles| {
-                handles.last().is_some_and(|handle| {
-                    handle.item.with(|item| {
-                        matches!(item, ConversationItem::Message(message) if message.role == Role::User)
+        if !streaming.get() {
+            return false;
+        }
+        if !chat
+            .streaming_session
+            .get()
+            .is_none_or(|session| Some(session) == chat.active_session.get())
+        {
+            return false;
+        }
+        messages.handles.with(|handles| {
+            let has_active_step = handles.iter().any(|handle| {
+                handle.item.with(|item| match item {
+                    ConversationItem::ToolStep { result: None, .. } => true,
+                    ConversationItem::Task(task) => !task.task.status.finished(),
+                    _ => false,
+                })
+            });
+            if has_active_step {
+                return false;
+            }
+            handles
+                .iter()
+                .rev()
+                .find_map(|handle| {
+                    handle.item.with(|item| match item {
+                        ConversationItem::Message(message) if message.role == Role::System => None,
+                        ConversationItem::Notice { .. } => None,
+                        ConversationItem::Message(message) if message.role == Role::Assistant => {
+                            let parsed = openwebide_core::tui::parse_thinking(&message.content);
+                            if parsed.thinking.is_none() && parsed.answer.trim().is_empty() {
+                                None
+                            } else {
+                                Some(false)
+                            }
+                        }
+                        ConversationItem::Message(message) if message.role == Role::User => {
+                            Some(true)
+                        }
+                        ConversationItem::ToolStep {
+                            result: Some(_), ..
+                        } => Some(true),
+                        ConversationItem::Task(task) if task.task.status.finished() => Some(true),
+                        _ => Some(false),
                     })
                 })
-            })
+                .unwrap_or(false)
+        })
     });
     Effect::new(move || {
         messages.changed.get();
+        awaiting_first_response.track();
         assistance.next_actions.track();
         context_assistance.suggestions.track();
         leptos::leptos_dom::helpers::request_animation_frame(move || {

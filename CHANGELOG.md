@@ -9,6 +9,8 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Keep the optimistic Thinking indicator active across system context, startup context, and compaction messages until the model begins streaming tokens or running tool calls. Match confirmed user prompts and rollbacks across recent conversation handles rather than strictly the trailing item.
+
 - Fix release and CI checks: resolve Clippy warnings in local Git engine, guard in-browser Git fallback by repository verification, isolate browser MCP test pairing tokens, and restore code formatting across chat and core crates.
 
 - Publish a rolling `nightly` GitHub prerelease from every successful main build with Compose, HTTPS Compose, SSH overlay, Quadlet, `serve-config.sh`, Linux/macOS bridge archives and `SHA256SUMS`. Downloaded Compose and Quadlet files follow `ghcr.io/openwebide/openwebide:nightly` without an `.env` override. Numbered alpha versions are no longer accepted; existing alpha tags, releases and images remain.
