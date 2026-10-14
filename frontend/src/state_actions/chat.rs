@@ -349,6 +349,18 @@ impl ChatActions {
                     },
                     |queued| openwebide_core::PromptContent::decode(&queued.content),
                 );
+                // Show a fresh prompt immediately; the server's saved copy replaces
+                // it in place, and failures before that roll it back.
+                if resume.is_none()
+                    && queued.is_none()
+                    && shortcut.is_none()
+                    && goal_objective.is_none()
+                    && editing.is_none()
+                {
+                    let shown = prompt.encode().unwrap_or_else(|_| prompt.text.clone());
+                    chat.messages
+                        .push_optimistic_user(active_session.unwrap_or_default(), shown);
+                }
                 let queued_key = queued.as_ref().map(openwebide_core::QueuedPrompt::key);
                 spawn_local(async move {
                     let mut content = if let Some(queued) = &queued {

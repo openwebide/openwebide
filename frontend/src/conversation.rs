@@ -96,6 +96,26 @@ pub fn local_message(session_id: i64, text: impl Into<String>) -> ConversationIt
     })
 }
 
+/// An optimistic user prompt shown before the server acknowledges it. It has a
+/// local negative id and is replaced in place by the server's saved message.
+pub fn local_user_message(session_id: i64, content: impl Into<String>) -> ConversationItem {
+    ConversationItem::Message(ChatMessage {
+        id: next_local_id(),
+        session_id,
+        role: Role::User,
+        content: content.into(),
+        created_at: 0,
+        tool_calls: None,
+        tool_call_id: None,
+        usage: None,
+    })
+}
+
+/// Whether the item is an optimistic user prompt awaiting the server's copy.
+pub fn is_local_user_message(item: &ConversationItem) -> bool {
+    matches!(item, ConversationItem::Message(message) if message.id <= 0 && message.role == Role::User)
+}
+
 /// The outcome of a finished tool step.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolStepResult {

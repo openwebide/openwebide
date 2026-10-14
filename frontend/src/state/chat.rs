@@ -272,6 +272,22 @@ impl ConversationStore {
         self.changed.update(|version| *version += 1);
     }
 
+    /// Show the user's prompt immediately, before the server has saved it.
+    pub fn push_optimistic_user(self, session_id: i64, content: String) {
+        self.push(crate::conversation::local_user_message(session_id, content));
+    }
+
+    /// Roll back a trailing optimistic prompt when the send failed before the
+    /// server saved it.
+    pub fn drop_optimistic_user(self) {
+        if self
+            .last()
+            .is_some_and(|handle| handle.item.with_untracked(crate::conversation::is_local_user_message))
+        {
+            self.pop();
+        }
+    }
+
     pub fn clear_prompt(self, id: &str, first_only: bool) {
         let handles = self.handles.get_untracked();
         for handle in handles {
@@ -823,6 +839,15 @@ impl ChatState {
                     self.current_run_anchor.set(Some(msg.id));
                 }
                 if let Some(handle) = self.messages.message(msg.id) {
+                    self.messages
+                        .update_item(handle, |item| *item = ConversationItem::Message(msg));
+                } else if msg.role == openwebide_core::Role::User
+                    && let Some(handle) = self.messages.last().filter(|handle| {
+                        handle
+                            .item
+                            .with_untracked(crate::conversation::is_local_user_message)
+                    })
+                {
                     self.messages
                         .update_item(handle, |item| *item = ConversationItem::Message(msg));
                 } else {

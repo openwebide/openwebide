@@ -29,7 +29,6 @@ pub struct ChatAssistance {
     pub recap: RwSignal<Option<String>>,
     pub next_actions: RwSignal<Vec<String>>,
     pub completion: RwSignal<Option<String>>,
-    pub activity: RwSignal<Option<String>>,
 }
 impl ChatAssistance {
     pub fn new(api: Api, auth: AuthState, chat: ChatState, projects: ProjectsState) -> Self {
@@ -39,7 +38,6 @@ impl ChatAssistance {
             recap: RwSignal::new(None),
             next_actions: RwSignal::new(Vec::new()),
             completion: RwSignal::new(None),
-            activity: RwSignal::new(None),
         };
         let revision = StoredValue::new(0u64);
         Effect::new(move |_| {
@@ -54,29 +52,6 @@ impl ChatAssistance {
             result.recap.set(None);
             result.next_actions.set(Vec::new());
             result.completion.set(None);
-            let items = chat.messages.get_untracked();
-            result.activity.set(if streaming {
-                items.iter().rev().find_map(|item| match item {
-                    ConversationItem::ToolStep {
-                        name,
-                        summary,
-                        result: None,
-                        awaiting_permission,
-                        ..
-                    } => Some(format!(
-                        "{}: {}",
-                        if *awaiting_permission {
-                            "Awaiting approval".to_owned()
-                        } else {
-                            format!("Working ({})", name.replace('_', " "))
-                        },
-                        summary.chars().take(120).collect::<String>()
-                    )),
-                    _ => None,
-                })
-            } else {
-                None
-            });
             if streaming || session_id.is_none() {
                 return;
             }

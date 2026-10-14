@@ -156,6 +156,43 @@ fn render_assistant_message(content: Memo<String>) -> AnyView {
     }.into_any()
 }
 
+/// Placeholder "Thinking" pane shown from the moment a prompt is sent until the
+/// model streams its first content, at which point the real pane takes over.
+fn render_pending_thinking() -> AnyView {
+    let started = Date::now();
+    let now = RwSignal::new(started);
+    let timer = set_interval_with_handle(
+        move || now.set(Date::now()),
+        Duration::from_millis(100),
+    )
+    .ok();
+    let timer: StoredValue<Option<IntervalHandle>> = StoredValue::new(timer);
+    on_cleanup(move || {
+        if let Some(handle) = timer.get_value() {
+            handle.clear();
+        }
+    });
+    let summary = move || {
+        openwebide_core::tui::reasoning_summary(true, Some(now.get() - started), 0)
+    };
+
+    view! {
+        <div class="tui-stream-line tui-assistant">
+            <super::ui::DisclosurePanel class="tui-thinking-box" toggle_class="tui-thinking-summary"
+                title="Waiting for the model to respond"
+                active=Signal::derive(|| true)
+                summary=move || view! {
+                    <span class="tui-think-meta">{summary}</span>
+                    <span class="tui-spinner" aria-hidden="true"/>
+                }>
+                <div class="tui-thinking-trace">
+                    <pre class="tui-thinking-pre">"Waiting for the model…"</pre>
+                </div>
+            </super::ui::DisclosurePanel>
+        </div>
+    }.into_any()
+}
+
 /// Render a single user message with extracted editor context pill if present.
 fn render_user_message(content: Memo<String>, actions: AnyView) -> AnyView {
     let prompt = Memo::new(move |_| openwebide_core::PromptContent::decode(&content.get()));
@@ -856,12 +893,31 @@ pub fn ChatPane(
     });
     let has_awaiting = Signal::derive(move || awaiting_step.get().is_some());
 
-    // Keep the newest message in view as tokens arrive.
+    // Keep the newest message in view as tokens arrive, but only while the user
+    // is pinned near the bottom; scrolling up releases the pin until they return.
+    let stick_to_bottom = RwSignal::new(true);
+    let awaiting_first_response = Memo::new(move |_| {
+        streaming.get()
+            && chat
+                .streaming_session
+                .get()
+                .is_none_or(|session| Some(session) == chat.active_session.get())
+            && messages.handles.with(|handles| {
+                handles.last().is_some_and(|handle| {
+                    handle.item.with(|item| {
+                        matches!(item, ConversationItem::Message(message) if message.role == Role::User)
+                    })
+                })
+            })
+    });
     Effect::new(move || {
         messages.changed.get();
         assistance.next_actions.track();
         context_assistance.suggestions.track();
         leptos::leptos_dom::helpers::request_animation_frame(move || {
+            if !stick_to_bottom.try_get_untracked().unwrap_or(false) {
+                return;
+            }
             if let Some(Some(el)) = scroll_ref.try_get_untracked() {
                 el.set_scroll_top(f64::from(el.scroll_height()));
             }
@@ -932,7 +988,12 @@ pub fn ChatPane(
             style=move || format!("width: {}px; flex: none;", layout.chat_width.get())
         >
             <Show when=move||questions_available><super::questions::QuestionsPanel/></Show>
-            <div class="messages tui-stream" node_ref=scroll_ref>
+            <div class="messages tui-stream" node_ref=scroll_ref on:scroll=move |_| {
+                if let Some(el) = scroll_ref.get_untracked() {
+                    let distance = f64::from(el.scroll_height()) - el.scroll_top() - f64::from(el.client_height());
+                    stick_to_bottom.set(distance <= 24.0);
+                }
+            }>
             <Show
                 when=move || !messages.handles.with(Vec::is_empty)
                 fallback=move || {
@@ -1019,11 +1080,11 @@ pub fn ChatPane(
                             }
                         }
                     />
+                    <Show when=move || awaiting_first_response.get()>
+                        {render_pending_thinking()}
+                    </Show>
                     <Show when=move || assistance.completion.get().is_some() && !streaming.get()>
                         <p class="form-hint chat-completion" role="status"><span role="img" aria-label="Conversation recap" title="Conversation recap">"↪"</span>" "{move || assistance.completion.get().unwrap_or_default()}</p>
-                    </Show>
-                    <Show when=move || assistance.activity.get().is_some() && streaming.get()>
-                        <p class="form-hint chat-activity" role="status">{move || assistance.activity.get().unwrap_or_default()}</p>
                     </Show>
                     <Show when=move || chat.interrupted_run.get().is_some() && !streaming.get()>
                         <div class="tui-stopped-marker">

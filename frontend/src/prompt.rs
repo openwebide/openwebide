@@ -71,6 +71,7 @@ pub async fn prepare(
 }
 
 pub fn restore_draft(chat: ChatState, prompt: &PromptContent) {
+    chat.messages.drop_optimistic_user();
     if chat.draft.with_untracked(String::is_empty)
         && chat.prompt_images.with_untracked(Vec::is_empty)
     {
