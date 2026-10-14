@@ -437,6 +437,10 @@ impl Mounted {
             .unchecked_into()
     }
 
+    pub fn has_element(&self, selector: &str) -> bool {
+        self.root.query_selector(selector).unwrap().is_some()
+    }
+
     pub fn click(&self, selector: &str) {
         self.element(selector).click();
     }

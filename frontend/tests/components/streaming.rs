@@ -1327,7 +1327,7 @@ async fn reload_during_unfinished_local_tool_offers_resume_without_reexecuting_i
 #[wasm_bindgen_test]
 async fn pending_thinking_indicator_survives_system_context_until_model_tokens_arrive() {
     use leptos::prelude::*;
-    use openwebide_core::{ChatMessage, Role, RunEvent, WorkspaceMode};
+    use openwebide_core::{Role, RunEvent, WorkspaceMode};
 
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let mounted = mount_test(move |state| {

@@ -9,6 +9,8 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Fix frontend UI test compilation: define `has_element` on `Mounted` test helper and remove unused `ChatMessage` import in streaming component tests.
+
 - Keep the optimistic Thinking indicator active across system context, startup context, and compaction messages until the model begins streaming tokens or running tool calls. Match confirmed user prompts and rollbacks across recent conversation handles rather than strictly the trailing item.
 
 - Fix release and CI checks: resolve Clippy warnings in local Git engine, guard in-browser Git fallback by repository verification, isolate browser MCP test pairing tokens, and restore code formatting across chat and core crates.
