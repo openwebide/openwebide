@@ -1,5 +1,8 @@
 //! Git domain models, repository status, commit payloads, and porcelain parsing.
 
+pub mod local;
+pub use local::LocalGit;
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

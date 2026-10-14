@@ -372,7 +372,7 @@ impl<V: Vfs + ?Sized> Vfs for Arc<V> {
 /// An in-memory Vfs implementation for unit tests and local staging.
 #[derive(Debug, Clone, Default)]
 pub struct MemoryVfs {
-    files: Arc<RwLock<BTreeMap<String, String>>>,
+    files: Arc<RwLock<BTreeMap<String, Vec<u8>>>>,
     dirs: Arc<RwLock<BTreeSet<String>>>,
     symlinks: Arc<RwLock<BTreeMap<String, String>>>,
 }
@@ -455,6 +455,13 @@ impl Vfs for MemoryVfs {
 
     fn read<'a>(&'a self, path: &'a str) -> VfsFuture<'a, String> {
         Box::pin(async move {
+            let bytes = self.read_bytes(path).await?;
+            String::from_utf8(bytes).map_err(|e| VfsError::Io(e.to_string()))
+        })
+    }
+
+    fn read_bytes<'a>(&'a self, path: &'a str) -> VfsFuture<'a, Vec<u8>> {
+        Box::pin(async move {
             let norm = self.canonicalize(path).await?;
             let files = self.files.read().map_err(|e| VfsError::Io(e.to_string()))?;
             files.get(&norm).cloned().ok_or(VfsError::NotFound(norm))
@@ -462,6 +469,10 @@ impl Vfs for MemoryVfs {
     }
 
     fn write<'a>(&'a self, path: &'a str, content: &'a str) -> VfsFuture<'a, ()> {
+        self.write_bytes(path, content.as_bytes())
+    }
+
+    fn write_bytes<'a>(&'a self, path: &'a str, contents: &'a [u8]) -> VfsFuture<'a, ()> {
         Box::pin(async move {
             let norm = self.canonicalize(path).await?;
             if norm.is_empty() {
@@ -485,7 +496,7 @@ impl Vfs for MemoryVfs {
                 .files
                 .write()
                 .map_err(|e| VfsError::Io(e.to_string()))?;
-            files.insert(norm, content.to_string());
+            files.insert(norm, contents.to_vec());
             Ok(())
         })
     }
@@ -624,7 +635,7 @@ impl Vfs for MemoryVfs {
                 if files.contains_key(&norm) {
                     return Err(VfsError::AlreadyExists(norm));
                 }
-                files.insert(norm, String::new());
+                files.insert(norm, Vec::new());
             }
             Ok(())
         })

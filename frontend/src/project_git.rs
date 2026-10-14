@@ -15,6 +15,7 @@ use openwebide_core::{
 #[derive(Clone, Copy)]
 pub struct ProjectGit {
     host: ProjectHost,
+    projects: ProjectsState,
 }
 impl ProjectGit {
     pub fn new(
@@ -25,12 +26,32 @@ impl ProjectGit {
     ) -> Self {
         let host = ProjectHost::new(api, projects, settings, auth);
         provide_context(host);
-        Self { host }
+        Self { host, projects }
     }
     pub fn revision(self) -> Option<u64> {
         self.host.revision()
     }
     pub async fn repository(self, project: Option<i64>) -> Result<GitRepository, String> {
+        let project_id = project.or_else(|| self.projects.active_project.get_untracked());
+        let is_local = project_id
+            .and_then(|id| self.projects.project(id))
+            .is_some_and(|p| p.mode == openwebide_core::WorkspaceMode::Local);
+
+        if is_local {
+            if let Ok(ProjectExecution::Local(client)) = self.host.resolve(project_id).await {
+                return Ok(GitRepository::Local(client));
+            }
+            if let Some(handle) = project_id.and_then(|id| {
+                self.projects
+                    .local_handles
+                    .with_untracked(|handles| handles.get(&id).cloned())
+            }) {
+                let vfs = crate::local_fs::BrowserFsaVfs::new(handle);
+                let local_git = openwebide_core::git::LocalGit::new(vfs);
+                return Ok(GitRepository::Browser(local_git));
+            }
+        }
+
         match self.host.resolve(project).await? {
             ProjectExecution::Remote {
                 api, project_id, ..
@@ -43,6 +64,7 @@ impl ProjectGit {
 pub enum GitRepository {
     Remote { api: Api, project_id: Option<i64> },
     Local(BrowserBridgeClient),
+    Browser(openwebide_core::git::LocalGit<crate::local_fs::BrowserFsaVfs>),
 }
 
 impl GitRepository {
@@ -64,6 +86,7 @@ impl GitRepository {
                     )
                     .await
             }
+            Self::Browser(local) => local.stash(request).await,
         }
     }
     pub async fn index_diff(&self) -> Result<String, String> {
@@ -79,6 +102,7 @@ impl GitRepository {
                     .await?;
                 Ok(diff.diff)
             }
+            Self::Browser(local) => local.index_diff().await,
         }
     }
 
@@ -100,6 +124,7 @@ impl GitRepository {
                     )
                     .await
             }
+            Self::Browser(local) => local.history(request).await,
         }
     }
     pub async fn commit_diff(
@@ -120,6 +145,7 @@ impl GitRepository {
                     )
                     .await
             }
+            Self::Browser(local) => local.commit_diff(request).await,
         }
     }
 
@@ -129,6 +155,7 @@ impl GitRepository {
                 api.with_value(Clone::clone).git_status(*project_id).await
             }
             Self::Local(client) => client.git_status().await,
+            Self::Browser(local) => local.status().await,
         }
     }
 
@@ -140,6 +167,7 @@ impl GitRepository {
                     .await
             }
             Self::Local(client) => client.git_diff(path).await,
+            Self::Browser(local) => local.diff(path).await,
         }
     }
 
@@ -156,6 +184,7 @@ impl GitRepository {
                     .await?;
                 value.into_text()
             }
+            Self::Browser(local) => local.file_head(path).await,
         }
     }
 
@@ -165,6 +194,7 @@ impl GitRepository {
                 api.with_value(Clone::clone).git_branches(*project_id).await
             }
             Self::Local(client) => client.git_request("branches", serde_json::json!({})).await,
+            Self::Browser(local) => local.branches().await,
         }
     }
 
@@ -180,6 +210,7 @@ impl GitRepository {
                     .git_request("path-status", serde_json::json!({}))
                     .await
             }
+            Self::Browser(local) => local.path_changes().await,
         }
     }
     pub async fn path_action(
@@ -200,6 +231,7 @@ impl GitRepository {
                     )
                     .await
             }
+            Self::Browser(local) => local.path_action(request).await,
         }
     }
 
@@ -211,6 +243,7 @@ impl GitRepository {
                     .await
             }
             Self::Local(client) => client.git_commit(request).await,
+            Self::Browser(local) => local.commit(request).await,
         }
     }
 
@@ -225,6 +258,7 @@ impl GitRepository {
                     .await
             }
             Self::Local(client) => client.git_checkout(request).await,
+            Self::Browser(local) => local.checkout(request).await,
         }
     }
 
@@ -243,6 +277,7 @@ impl GitRepository {
                     )
                     .await
             }
+            Self::Browser(local) => local.sync(request).await,
         }
     }
 }

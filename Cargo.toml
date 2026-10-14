@@ -42,6 +42,7 @@ openwebide-llm = { path = "crates/llm" }
 openwebide-storage = { path = "crates/storage" }
 pulldown-cmark = "0.13"
 rand = "0.10"
+sha1 = "0.11"
 sha2 = "0.11"
 rusqlite = { version = "0.40", features = ["bundled"] }
 send_wrapper = { version = "0.6", features = ["futures"] }
