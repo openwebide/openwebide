@@ -9,6 +9,8 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Re-attach orphaned plugin scheduling rows to the current host at bridge startup in server mode: scheduled jobs, background subscriptions, and project bindings still bound to a previous host id (for example after container recreation) are rebound in one transaction, so plugin-owned scheduled and background work resumes instead of staying pending. Paired mode keeps stable hostnames and is unchanged.
+
 - Fix frontend UI test compilation: define `has_element` on `Mounted` test helper and remove unused `ChatMessage` import in streaming component tests.
 
 - Keep the optimistic Thinking indicator active across system context, startup context, and compaction messages until the model begins streaming tokens or running tool calls. Match confirmed user prompts and rollbacks across recent conversation handles rather than strictly the trailing item.

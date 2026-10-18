@@ -1484,3 +1484,75 @@ fn project_scope_migration_preserves_old_origin_jobs_and_replays_without_changes
         }
     });
 }
+
+#[test]
+fn rebind_plugin_host_reattaches_orphaned_scheduling_rows_to_the_new_host() {
+    block_on(async {
+        for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+            let mut f = Fixture::new(mode).await;
+            // A background subscription and a user-scheduled job, both bound to the old host.
+            f.prepared.source.commit = "2".repeat(40);
+            f.prepared.manifest.version = "0.2.0".into();
+            f.prepared.manifest.contributions.background =
+                Some(openwebide_core::plugins::PluginBackground {
+                    event: "due".into(),
+                    interval_seconds: 60,
+                });
+            f.install(Some(1)).await;
+            let scheduled = f
+                .request(&Fixture::scheduled("rebind"), 2)
+                .await
+                .unwrap()
+                .jobs
+                .remove(0);
+            let old = f.prepared.host_id.clone();
+            let new = "rebound-host";
+            // Orphaned: nothing is claimable under the new host before the rebind.
+            assert!(
+                f.store
+                    .claim_plugin_jobs(new, 0, &"b".repeat(32), 20)
+                    .await
+                    .unwrap()
+                    .jobs
+                    .is_empty()
+            );
+            // Every orphaned scheduling row moves: the scheduled job, the two
+            // background subscriptions (workspace-scoped and project-scoped), and
+            // the project binding.
+            assert_eq!(f.store.rebind_plugin_host(new).await.unwrap(), 4);
+            // The orphaned job is now claimable under the new host.
+            let claimed = f
+                .store
+                .claim_plugin_jobs(new, 0, &"b".repeat(32), 20)
+                .await
+                .unwrap()
+                .jobs;
+            assert!(claimed.iter().any(|job| job.job.id == scheduled.id));
+            assert!(claimed
+                .iter()
+                .all(|job| job.prepared.host_id == new));
+            // Idempotent: a second rebind moves nothing.
+            assert_eq!(f.store.rebind_plugin_host(new).await.unwrap(), 0);
+            // Invalid hosts are rejected without touching any rows.
+            assert!(matches!(
+                f.store.rebind_plugin_host("").await,
+                Err(StorageError::InvalidRequest(_))
+            ));
+            assert!(matches!(
+                f.store
+                    .rebind_plugin_host(&"x".repeat(1025))
+                    .await,
+                Err(StorageError::InvalidRequest(_))
+            ));
+            // The old host is fully drained.
+            assert!(
+                f.store
+                    .claim_plugin_jobs(&old, 0, &"c".repeat(32), 20)
+                    .await
+                    .unwrap()
+                    .jobs
+                    .is_empty()
+            );
+        }
+    });
+}

@@ -50,6 +50,30 @@ pub async fn serve(config: ServerConfig) {
     if config.pairing_token.is_none() && hosts[0] != "server" {
         hosts.push("server".into());
     }
+    if config.pairing_token.is_none() {
+        let rebind_host = hosts[0].clone();
+        let rebind_client = BackendClient::new(
+            config.backend_url.clone(),
+            config.secret.clone(),
+            crate::runs::http_client::ReqwestHttpClient::default(),
+        );
+        tokio::spawn(async move {
+            loop {
+                match rebind_client.plugin_job_rebind(&rebind_host).await {
+                    Ok(changed) => {
+                        if changed > 0 {
+                            tracing::info!(%changed, %rebind_host, "rebound plugin scheduling data");
+                        }
+                        return;
+                    }
+                    Err(error) => {
+                        tracing::debug!(%error, "plugin job rebind retrying");
+                    }
+                }
+                tokio::time::sleep(Duration::from_secs(5)).await;
+            }
+        });
+    }
     let host = Host {
         backend: Arc::new(BackendClient::new(
             config.backend_url,

@@ -1411,7 +1411,9 @@ capability.
   callbacks and continuing skill jobs. Define trigger contracts, persist progress,
   results and pending approvals, and pin each job to its plugin version. Verify
   restart recovery, deduplicated delivery and plugin disable/remove/update while
-  jobs are pending through the shared facade in both project modes.
+  jobs are pending through the shared facade in both project modes; host-recreation
+  orphaning of plugin scheduling rows is already re-bound at bridge startup in
+  server mode.
 - Extend the existing shared plugin facade and thin local/remote adapters to
   dependency resolution, new runtimes and context contributions. Add matching
   contracts for private repositories and new contribution types, including failed

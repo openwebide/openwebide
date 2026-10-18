@@ -69,3 +69,10 @@ pub(crate) async fn service(req: Request, state: &AppState) -> Result<JsonResp, 
     };
     Ok(json_response(200, &result))
 }
+
+pub(crate) async fn rebind(req: Request, state: &AppState) -> Result<JsonResp, ApiError> {
+    let body: serde_json::Value = parse_json(read_body(req, 4096).await?)?;
+    let host_id = body["host_id"].as_str().unwrap_or_default().to_string();
+    let changed = state.store.rebind_plugin_host(&host_id).await?;
+    Ok(json_response(200, &serde_json::json!({"changed": changed})))
+}

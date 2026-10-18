@@ -313,6 +313,12 @@ impl BackendClient {
             .await?;
         Ok(())
     }
+    pub async fn plugin_job_rebind(&self, host: &str) -> Result<u64, String> {
+        let value: Value = self
+            .service_call("/plugins/jobs/rebind", json!({"host_id": host}))
+            .await?;
+        value["changed"].as_u64().ok_or_else(|| "Invalid rebind response".to_string())
+    }
     async fn service_call<T: DeserializeOwned>(
         &self,
         path: &str,

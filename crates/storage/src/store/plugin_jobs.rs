@@ -378,6 +378,91 @@ impl<D: Db> Store<D> {
             Ok((prepared,context))
         }).await
     }
+    /// Re-attach all plugin scheduling rows to the current host after a host-id change.
+    /// Server mode only: exactly one bridge owns every row, so rebinding is safe.
+    pub async fn rebind_plugin_host(&self, host: &str) -> Result<u64, StorageError> {
+        if host.is_empty() || host.len() > 1024 {
+            return Err(StorageError::InvalidRequest("Invalid job host".into()));
+        }
+        self.db.transaction(|tx| async move {
+            let store = Store::new(tx);
+            let mut total = 0u64;
+            let rows = store
+                .db
+                .execute(
+                    "SELECT id, prepared FROM plugin_jobs WHERE host_id != ?",
+                    &[DbValue::Text(host.into())],
+                )
+                .await?;
+            for row in &rows.rows {
+                let id = row.get_int(0)?;
+                let mut prepared: PreparedPlugin = decode(row.get_text(1)?)?;
+                if prepared.host_id != host {
+                    prepared.host_id = host.into();
+                }
+                store
+                    .db
+                    .execute(
+                        "UPDATE plugin_jobs SET host_id=?, prepared=? WHERE id=?",
+                        &[
+                            DbValue::Text(host.into()),
+                            DbValue::Text(encode(&prepared)?),
+                            DbValue::Int(id),
+                        ],
+                    )
+                    .await?;
+                total += 1;
+            }
+            let rows = store
+                .db
+                .execute(
+                    "SELECT id, prepared FROM plugin_background WHERE host_id != ?",
+                    &[DbValue::Text(host.into())],
+                )
+                .await?;
+            for row in &rows.rows {
+                let id = row.get_int(0)?;
+                let mut prepared: PreparedPlugin = decode(row.get_text(1)?)?;
+                if prepared.host_id != host {
+                    prepared.host_id = host.into();
+                }
+                store
+                    .db
+                    .execute(
+                        "UPDATE plugin_background SET host_id=?, prepared=? WHERE id=?",
+                        &[
+                            DbValue::Text(host.into()),
+                            DbValue::Text(encode(&prepared)?),
+                            DbValue::Int(id),
+                        ],
+                    )
+                    .await?;
+                total += 1;
+            }
+            let rows = store
+                .db
+                .execute(
+                    "SELECT id, prepared FROM project_plugins WHERE json_extract(prepared,'$.host_id') != ?",
+                    &[DbValue::Text(host.into())],
+                )
+                .await?;
+            for row in &rows.rows {
+                let id = row.get_int(0)?;
+                let mut prepared: PreparedPlugin = decode(row.get_text(1)?)?;
+                prepared.host_id = host.into();
+                store
+                    .db
+                    .execute(
+                        "UPDATE project_plugins SET prepared=? WHERE id=?",
+                        &[DbValue::Text(encode(&prepared)?), DbValue::Int(id)],
+                    )
+                    .await?;
+                total += 1;
+            }
+            Ok(total)
+        })
+        .await
+    }
 }
 
 #[cfg(test)]
