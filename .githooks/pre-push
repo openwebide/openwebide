@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+
+required_tools=(
+  cargo
+  rustfmt
+  cargo-clippy
+  clang
+  trunk
+  spin
+  wasm-bindgen-test-runner
+  google-chrome
+  chromedriver
+)
+
+for tool in "${required_tools[@]}"; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    echo "ERROR: pre-push gate: required tool '$tool' is not installed on PATH." >&2
+    echo "See AGENTS.md 'Required Pre-Commit / Pre-Push Verification & Tooling Gate'." >&2
+    exit 1
+  fi
+done
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+# Determine changed files relative to upstream (or HEAD~1 if no upstream)
+base_ref="$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null || echo HEAD~1)"
+changed_files="$(git diff --name-only "$base_ref"...HEAD 2>/dev/null || echo "")"
+
+# If only markdown/docs or git hooks changed, still enforce formatting check on any Rust files
+if [[ -n "$changed_files" ]] && ! echo "$changed_files" | grep -qvE '(\.(md|txt)$|^\.githooks/)'; then
+  echo "[pre-push] Docs/hooks-only push detected; checking cargo fmt..."
+  cargo fmt --all --check
+  exit 0
+fi
+
+echo "[pre-push] 1/4 Checking formatting (cargo fmt --all --check)..."
+cargo fmt --all --check
+
+echo "[pre-push] 2/4 Running Clippy across native, WASI, WASM, and bridge targets..."
+cargo clippy -p openwebide-storage -p openwebide-core -p openwebide-auth -p openwebide-agent -p openwebide-llm --all-targets -- -D warnings
+cargo clippy -p openwebide-backend --target wasm32-wasip2 -- -D warnings
+cargo clippy -p openwebide-frontend --target wasm32-unknown-unknown -- -D warnings
+cargo clippy -p openwebide-bridge --all-targets -- -D warnings
+
+echo "[pre-push] 3/4 Running native unit & integration tests..."
+cargo test -p openwebide-storage -p openwebide-core -p openwebide-auth -p openwebide-agent -p openwebide-llm -p openwebide-bridge -p openwebide-backend
+cargo test -p openwebide-frontend --lib
+
+if [[ -z "$changed_files" ]] || echo "$changed_files" | grep -qE '^(frontend/|crates/core/|crates/agent/|Cargo\.)'; then
+  echo "[pre-push] 4/4 Running headless Chrome WASM UI tests..."
+  CHROMEDRIVER="$(command -v chromedriver)" cargo test -p openwebide-frontend --release --target wasm32-unknown-unknown --lib
+  CHROMEDRIVER="$(command -v chromedriver)" cargo test -p openwebide-frontend --release --target wasm32-unknown-unknown --test components
+fi
+
+echo "[pre-push] All verification gates passed."

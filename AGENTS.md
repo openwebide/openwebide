@@ -149,6 +149,12 @@ Actions runs.
    When iterating on a specific frontend area, run the targeted browser test module first (for
    example `--test components -- streaming::`) and the full affected suite before pushing.
 
+3. **Tracked Pre-Push Git Hook (`.githooks/pre-push`)**:
+   Ensure the repository's tracked Git hooks directory is active (never bypass with `--no-verify`):
+   ```bash
+   git config core.hooksPath .githooks
+   ```
+
 ### Launching local development
 
 Run from the repository root. Build the current changes before starting either service:
