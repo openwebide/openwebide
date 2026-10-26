@@ -82,6 +82,10 @@ fn render_approval_diff(diff: Memo<Option<FileDiff>>) -> impl IntoView {
 
 /// Render a single assistant message with collapsible thinking stream.
 fn render_assistant_message(content: Memo<String>) -> AnyView {
+    render_assistant_message_with_footer(content, ().into_any())
+}
+
+fn render_assistant_message_with_footer(content: Memo<String>, footer: AnyView) -> AnyView {
     let parsed = Memo::new(move |_| content.with(|content| parse_thinking(content)));
     let thinking_sig =
         Memo::new(move |_| parsed.with(|parsed| parsed.thinking.clone().unwrap_or_default()));
@@ -152,6 +156,7 @@ fn render_assistant_message(content: Memo<String>) -> AnyView {
                     inner_html=move || render_markdown(&answer_sig.get())
                 />
             </Show>
+            {footer}
         </div>
     }.into_any()
 }
@@ -1097,7 +1102,24 @@ pub fn ChatPane(
                                                 {move || item.with(|item| match item { ConversationItem::Message(message) if message.id > 0 => view! { <crate::components::RunChangesPanel message=message.id /> }.into_any(), _ => ().into_any() })}
                                                 {move || item.with(|item| match item { ConversationItem::Message(message) if message.id > 0 && message.role == Role::User => view! { <super::turn_summary::TurnSummary message=message.id /> }.into_any(), _ => ().into_any() })}
                                             }>
-                                                {render_assistant_message(content)}
+                                                {render_assistant_message_with_footer(
+                                                    content,
+                                                    view! {
+                                                        <Show when=move || !streaming.get() && content.with(|text| text.ends_with(openwebide_core::REPLY_CUT_OFF_MARKER)) && messages.handles.with(|handles| handles.last().is_some_and(|last| last.key == handle.key))>
+                                                            <div class="tui-stopped-marker">
+                                                                "Reply reached the output token limit. "
+                                                                <button class="btn send" type="button" disabled=move || submission_blocked.get() on:click=move |_| {
+                                                                    if !submission_blocked.get_untracked() && !streaming.get_untracked() {
+                                                                        history_index.set(None);
+                                                                        chat.draft.set("Continue from where you left off without repeating earlier text.".into());
+                                                                        on_send.run(());
+                                                                    }
+                                                                }>"Continue"</button>
+                                                            </div>
+                                                        </Show>
+                                                    }
+                                                    .into_any(),
+                                                )}
                                             </Show>
                                         }>
                                             <super::ui::DisclosurePanel class="tui-thinking-box" toggle_class="tui-thinking-summary" summary=move || view! { <span>{move || if content.get().starts_with(openwebide_core::COMPACTION_PREFIX) { "Conversation summary" } else { "Run context" }}</span> }>
@@ -1125,18 +1147,6 @@ pub fn ChatPane(
                             "This run was interrupted. Resume continues from saved history without replaying unfinished tools. "
                             <button class="btn send" disabled=move||questions.is_some_and(|state|!state.questions.with(Vec::is_empty)) on:click=move |_| on_resume_run.run(())>"Resume"</button>
                             <button class="btn" on:click=move |_| chat.dismiss_interrupted_run()>"Dismiss"</button>
-                        </div>
-                    </Show>
-                    <Show when=move || !streaming.get() && messages.handles.with(|handles| handles.last().is_some_and(|handle| handle.item.with(|item| matches!(item, ConversationItem::Message(msg) if msg.role == Role::Assistant && msg.content.ends_with(openwebide_core::REPLY_CUT_OFF_MARKER)))))>
-                        <div class="tui-stopped-marker">
-                            "Reply reached the output token limit. "
-                            <button class="btn send" disabled=move || submission_blocked.get() on:click=move |_| {
-                                if !submission_blocked.get_untracked() && !streaming.get_untracked() {
-                                    history_index.set(None);
-                                    chat.draft.set("Continue from where you left off without repeating earlier text.".into());
-                                    on_send.run(());
-                                }
-                            }>"Continue"</button>
                         </div>
                     </Show>
             </Show>
