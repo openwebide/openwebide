@@ -88,20 +88,36 @@ def plan(runner, files, maximum):
     return runs, total
 
 
+def parse_shard(spec):
+    if spec is None:
+        return 1, 1
+    parts = spec.split("/")
+    assert len(parts) == 2 and all(part.isdigit() for part in parts), f"Invalid shard '{spec}'; expected INDEX/TOTAL"
+    index, total = int(parts[0]), int(parts[1])
+    assert 1 <= index <= total, f"Shard index {index} out of range 1..={total}"
+    return index, total
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--artifact", type=Path, action="append")
     parser.add_argument("--max-tests", type=int, default=64)
+    parser.add_argument("--shard", type=str, default=None)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     assert args.max_tests > 0, "Group size must be positive"
+    shard_index, shard_total = parse_shard(args.shard)
     runner = shutil.which("wasm-bindgen-test-runner")
     assert runner, "wasm-bindgen-test-runner is required"
     files = [path.resolve() for path in args.artifact] if args.artifact else artifacts()
     runs, total = plan(runner, files, args.max_tests)
-    print(json.dumps({"editorTests": total, "browserRuns": len(runs), "planOnly": args.check}), flush=True)
+    selected = runs[(shard_index - 1)::shard_total]
+    assert selected, f"Shard {shard_index}/{shard_total} selected no editor browser runs"
+    print(json.dumps({"editorTests": total, "browserRuns": len(runs),
+                      "shardRuns": len(selected), "shard": f"{shard_index}/{shard_total}",
+                      "planOnly": args.check}), flush=True)
     failures = 0
-    for artifact, arguments, count in runs:
+    for artifact, arguments, count in selected:
         print(json.dumps({"artifact": str(artifact), "tests": count, "matrix": arguments[0].rsplit("::", 1)[-1] in MATRICES,
                           "independent": "--exact" in arguments}), flush=True)
         if not args.check:

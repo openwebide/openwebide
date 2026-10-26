@@ -31,6 +31,28 @@ class EditorBrowserRunnerTests(unittest.TestCase):
         self.assertEqual(run.call_args_list[1].args[0],
                          ["runner", "tests.wasm", "second", "--exact"])
 
+    def test_sharding_partitions_runs_completely_and_disjointly(self):
+        groups = [
+            (Path("tests.wasm"), ["editor::", "--skip", "a"], 10),
+            (Path("tests.wasm"), ["editor::", "--skip", "b"], 10),
+            (Path("tests.wasm"), ["first_matrix", "--exact"], 1),
+            (Path("tests.wasm"), ["second_matrix", "--exact"], 1),
+        ]
+        executed = []
+        for shard in ("1/2", "2/2"):
+            with patch("sys.argv", ["runner", "--artifact", "tests.wasm", "--shard", shard]), \
+                    patch.object(RUNNER.shutil, "which", return_value="runner"), \
+                    patch.object(RUNNER, "plan", return_value=(groups, 22)), \
+                    patch.object(RUNNER.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run, \
+                    patch("builtins.print"):
+                RUNNER.main()
+            executed.extend(call.args[0] for call in run.call_args_list)
+        self.assertEqual(len(executed), 4)
+        self.assertCountEqual(
+            executed,
+            [["runner", "tests.wasm", *arguments] for _, arguments, _ in groups],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

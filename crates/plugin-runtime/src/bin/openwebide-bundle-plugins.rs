@@ -44,7 +44,7 @@ fn main() -> Result<()> {
         bail!("Select between one and 32 bundled plugins");
     }
     let runtime = Runtime::new()?;
-    let mut bundle = CompiledBundle::default();
+    let mut prepared = Vec::with_capacity(snapshot.plugins.len());
     for package in snapshot.plugins {
         let source = PluginSource {
             repository: snapshot.repository.clone(),
@@ -52,7 +52,7 @@ fn main() -> Result<()> {
             path: package.path,
         };
         source.validate()?;
-        if bundle.artifacts.iter().any(|entry| entry.source == source) {
+        if prepared.iter().any(|(existing, _)| existing == &source) {
             bail!("Duplicate source in bundle");
         }
         let files: Vec<_> = package
@@ -68,33 +68,51 @@ fn main() -> Result<()> {
                 },
             })
             .collect();
-        let manifest = validate_files(&files)?;
-        let executable = manifest
-            .executable
-            .as_ref()
-            .context("Bundled defaults must provide executable behavior")?;
-        let workspace = tempfile::tempdir()?;
-        let directory = workspace.path().join("source");
-        std::fs::create_dir(&directory)?;
-        for file in &files {
-            let target = directory.join(&file.path);
-            std::fs::create_dir_all(target.parent().context("Source file parent")?)?;
-            std::fs::write(target, &file.content)?;
-        }
-        let staging = workspace.path().join("build");
-        std::fs::create_dir(&staging)?;
-        let bytes = build::compile(&directory, &executable.library, &staging)?;
-        runtime.validate_exports(&bytes, &manifest)?;
-        bundle
-            .artifacts
-            .push(BundledArtifact::new(source, package_digest(&files), &bytes));
-        eprintln!(
-            "Compiled {} {} ({} bytes)",
-            manifest.display_name,
-            manifest.version,
-            bytes.len()
-        );
+        prepared.push((source, files));
     }
+    let artifacts = std::thread::scope(|scope| -> Result<Vec<BundledArtifact>> {
+        let handles: Vec<_> = prepared
+            .into_iter()
+            .map(|(source, files)| {
+                let runtime = &runtime;
+                scope.spawn(move || -> Result<BundledArtifact> {
+                    let manifest = validate_files(&files)?;
+                    let executable = manifest
+                        .executable
+                        .as_ref()
+                        .context("Bundled defaults must provide executable behavior")?;
+                    let workspace = tempfile::tempdir()?;
+                    let directory = workspace.path().join("source");
+                    std::fs::create_dir(&directory)?;
+                    for file in &files {
+                        let target = directory.join(&file.path);
+                        std::fs::create_dir_all(target.parent().context("Source file parent")?)?;
+                        std::fs::write(target, &file.content)?;
+                    }
+                    let staging = workspace.path().join("build");
+                    std::fs::create_dir(&staging)?;
+                    let bytes = build::compile(&directory, &executable.library, &staging)?;
+                    runtime.validate_exports(&bytes, &manifest)?;
+                    eprintln!(
+                        "Compiled {} {} ({} bytes)",
+                        manifest.display_name,
+                        manifest.version,
+                        bytes.len()
+                    );
+                    Ok(BundledArtifact::new(source, package_digest(&files), &bytes))
+                })
+            })
+            .collect();
+        handles
+            .into_iter()
+            .map(|handle| {
+                handle
+                    .join()
+                    .map_err(|_| anyhow::anyhow!("Plugin bundle worker panicked"))?
+            })
+            .collect()
+    })?;
+    let bundle = CompiledBundle { artifacts };
     publish(&bundle, Path::new(&args[1]))?;
     Ok(())
 }

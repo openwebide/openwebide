@@ -43,12 +43,11 @@ RUN python3 tools/bundle_plugins.py
 # BuildKit can inject an OTLP Unix socket that Spin does not support.
 # Disable only build-command telemetry; runtime configuration remains available.
 RUN OTEL_SDK_DISABLED=1 spin build
-RUN cargo build -p openwebide-plugin-build --release --locked
 # Compile the selected defaults once in the same isolation used for user installs.
 # The final host embeds validated components; first launch requires no Git/network/compiler.
-RUN cargo run -p openwebide-plugin-runtime --bin openwebide-bundle-plugins --release --locked -- \
-    bridge/bundled/plugins.json /src/target/bundled-plugins.json
-RUN OPENWEBIDE_BUNDLED_ARTIFACTS=/src/target/bundled-plugins.json \
+RUN cargo build -p openwebide-plugin-build -p openwebide-plugin-runtime --bin openwebide-plugin-build --bin openwebide-bundle-plugins --release --locked && \
+    /src/target/release/openwebide-bundle-plugins bridge/bundled/plugins.json /src/target/bundled-plugins.json && \
+    OPENWEBIDE_BUNDLED_ARTIFACTS=/src/target/bundled-plugins.json \
     cargo build -p openwebide-bridge --features bundled-defaults --release --locked
 
 # --- runtime: Spin + prebuilt components ---

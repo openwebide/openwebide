@@ -73,6 +73,8 @@ pub fn run() -> Result<()> {
         "/etc/ld.so.cache",
         "/etc/ssl/certs",
         "/etc/ssl/openssl.cnf",
+        "/etc/pki/tls",
+        "/etc/pki/ca-trust",
         "/etc/resolv.conf",
         "/etc/hosts",
         "/etc/nsswitch.conf",

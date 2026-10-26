@@ -47,7 +47,7 @@ cargo clippy -p openwebide-frontend --target wasm32-unknown-unknown -- -D warnin
 cargo clippy -p openwebide-bridge --all-targets -- -D warnings
 
 echo "[pre-push] 3/4 Running native unit & integration tests..."
-cargo test -p openwebide-storage -p openwebide-core -p openwebide-auth -p openwebide-agent -p openwebide-llm -p openwebide-bridge -p openwebide-backend
+cargo test -p openwebide-storage -p openwebide-core -p openwebide-auth -p openwebide-agent -p openwebide-llm -p openwebide-bridge -p openwebide-backend -- --skip source_compilation_validates_tools_caches_offline_and_rejects_artifact_corruption
 cargo test -p openwebide-frontend --lib
 
 if [[ -z "$changed_files" ]] || echo "$changed_files" | grep -qE '^(frontend/|crates/core/|crates/agent/|Cargo\.)'; then

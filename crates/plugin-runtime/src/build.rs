@@ -279,6 +279,8 @@ fn sandbox(
     if network {
         for path in [
             "/etc/ssl/certs",
+            "/etc/pki/tls",
+            "/etc/pki/ca-trust",
             "/etc/resolv.conf",
             "/etc/hosts",
             "/etc/nsswitch.conf",

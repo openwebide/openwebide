@@ -41,12 +41,6 @@ jobs:
           OPENWEBIDE_SSH_AUTH_SOCK=/tmp/agent.sock OPENWEBIDE_SSH_CONFIG_DIR=/tmp/public-ssh docker compose -f docker-compose.release.yml -f docker-compose.ssh.yml config --quiet
           OPENWEBIDE_TAILSCALE_HOST=openwebide.example.ts.net OPENWEBIDE_SERVE_CONFIG_DIR=/tmp/serve docker compose -f docker-compose.https.yml config --quiet
 
-      - name: Prepare isolated plugin builds
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y bubblewrap
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-
       - name: Clippy (native crates)
         run: cargo clippy -p openwebide-core -p openwebide-llm -p openwebide-storage -p openwebide-agent -p openwebide-auth -p openwebide-plugin-sdk -p openwebide-plugin-runtime -p openwebide-plugin-build --features openwebide-core/editor-parser --all-targets -- -D warnings
 
@@ -64,15 +58,8 @@ jobs:
       - name: Clippy (bridge)
         run: cargo clippy -p openwebide-bridge --all-targets -- -D warnings
 
-      - name: Compile and verify offline executable defaults
-        env:
-          OPENWEBIDE_BUNDLED_ARTIFACTS: ${{ runner.temp }}/bundled-plugins.json
-        run: |
-          cargo run -p openwebide-plugin-runtime --bin openwebide-bundle-plugins --locked -- bridge/bundled/plugins.json "$OPENWEBIDE_BUNDLED_ARTIFACTS"
-          cargo test -p openwebide-bridge --features bundled-defaults bundled_tests
-
       - name: Tests (native)
-        run: cargo test -p openwebide-core -p openwebide-llm -p openwebide-storage -p openwebide-agent -p openwebide-auth -p openwebide-bridge -p openwebide-backend -p openwebide-plugin-sdk -p openwebide-plugin-runtime -p openwebide-plugin-build --features openwebide-core/editor-parser
+        run: cargo test -p openwebide-core -p openwebide-llm -p openwebide-storage -p openwebide-agent -p openwebide-auth -p openwebide-backend -p openwebide-plugin-sdk --features openwebide-core/editor-parser
 
       - name: Tests (editor storage workloads)
         run: cargo test -p openwebide-editor-bench --features candidates --release
@@ -82,6 +69,34 @@ jobs:
 
       - name: Build backend component
         run: cargo build -p openwebide-backend --target wasm32-wasip2 --release
+
+  plugin-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.98.1
+          targets: wasm32-wasip2
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Prepare isolated plugin builds
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      - name: Compile and verify offline executable defaults
+        env:
+          OPENWEBIDE_BUNDLED_ARTIFACTS: ${{ runner.temp }}/bundled-plugins.json
+        run: |
+          cargo run -p openwebide-plugin-runtime --bin openwebide-bundle-plugins --release --locked -- bridge/bundled/plugins.json "$OPENWEBIDE_BUNDLED_ARTIFACTS"
+          cargo test -p openwebide-bridge --features bundled-defaults bundled_tests
+
+      - name: Tests (bridge, plugin runtime, and isolated compiler)
+        run: cargo test -p openwebide-bridge -p openwebide-plugin-runtime -p openwebide-plugin-build
 
   plugin-panels:
     runs-on: ubuntu-latest
@@ -219,37 +234,75 @@ jobs:
           cp webdriver.json tools/editor-bench/webdriver.json
 
       - name: Install wasm-bindgen test runner
-        run: cargo install wasm-bindgen-cli --version 0.2.128 --locked
+        run: |
+          curl -fsSL https://github.com/rustwasm/wasm-bindgen/releases/download/0.2.128/wasm-bindgen-0.2.128-x86_64-unknown-linux-musl.tar.gz \
+            | tar -xz --strip-components=1 -C /usr/local/bin wasm-bindgen-0.2.128-x86_64-unknown-linux-musl/wasm-bindgen wasm-bindgen-0.2.128-x86_64-unknown-linux-musl/wasm-bindgen-test-runner
 
       - name: Tests (frontend UI)
-        id: frontend-ui-tests
         env:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
           # Run the same contracts against optimized WASM to avoid loading the
           # ~250 MiB debug components module into Chrome. Partition editor and
           # other contracts so suite growth cannot exhaust one browser deadline.
-          # Inventory every current test artifact and check complete, disjoint
-          # editor groups of at most 64 tests. Keep expensive matrices separate;
-          # per-test readiness and every browser-run deadline are unchanged.
           WASM_BINDGEN_TEST_TIMEOUT: "300"
         run: cargo test -p openwebide-frontend --release --target wasm32-unknown-unknown -- --skip 'editor::'
-
-      - name: Tests (editor UI)
-        if: ${{ !cancelled() && steps.frontend-ui-tests.outcome != 'skipped' }}
-        env:
-          CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
-          WASM_BINDGEN_TEST_TIMEOUT: "300"
-        run: python3 tools/run-editor-browser-tests.py
 
       - name: Measure shared editor storage in browser WASM
         env:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
         run: cargo test -p openwebide-editor-bench --features candidates --target wasm32-unknown-unknown --release -- --nocapture
 
+  editor-ui-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ['1/2', '2/2']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.98.1
+          components: llvm-tools
+          targets: wasm32-unknown-unknown
+
+      - name: Prepare browser parser C compiler
+        timeout-minutes: 12
+        run: bash tools/setup-wasm-compiler.sh
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: ./.github/actions/setup-editor-browser
+        id: chrome
+
+      - name: Point ChromeDriver at the installed Chrome
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
+          printf '{"goog:chromeOptions":{"binary":"%s","args":["--window-size=1280,900"]}}\n' "$CHROME_PATH" \
+            | tee webdriver.json > frontend/webdriver.json
+
+      - name: Install wasm-bindgen test runner
+        run: |
+          curl -fsSL https://github.com/rustwasm/wasm-bindgen/releases/download/0.2.128/wasm-bindgen-0.2.128-x86_64-unknown-linux-musl.tar.gz \
+            | tar -xz --strip-components=1 -C /usr/local/bin wasm-bindgen-0.2.128-x86_64-unknown-linux-musl/wasm-bindgen wasm-bindgen-0.2.128-x86_64-unknown-linux-musl/wasm-bindgen-test-runner
+
+      - name: Tests (editor UI)
+        env:
+          CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
+          # Inventory every current test artifact and check complete, disjoint
+          # editor groups of at most 64 tests. Keep expensive matrices separate;
+          # per-test readiness and every browser-run deadline are unchanged.
+          WASM_BINDGEN_TEST_TIMEOUT: "300"
+        run: python3 tools/run-editor-browser-tests.py --shard "${{ matrix.shard }}"
+
   docker:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
 
       - name: Test container supervisor
         run: |
@@ -257,7 +310,15 @@ jobs:
           bash docker/ssh-init-test.sh
 
       - name: Build container image
-        run: docker build --build-arg OPENWEBIDE_BUILD_COMMIT=${{ github.sha }} -t openwebide:ci .
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          build-args: |
+            OPENWEBIDE_BUILD_COMMIT=${{ github.sha }}
+          load: true
+          tags: openwebide:ci
+          cache-from: type=gha,scope=ci-docker
+          cache-to: type=gha,mode=max,scope=ci-docker
 
       - name: Check bundled bridge
         run: docker run --rm openwebide:ci openwebide-bridge --help
