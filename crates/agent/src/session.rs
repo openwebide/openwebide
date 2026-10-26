@@ -366,6 +366,7 @@ pub struct RunRecorder<P> {
     reasoning: String,
     usage: Option<TurnTelemetry>,
     timings: std::collections::BTreeMap<String, openwebide_core::ToolTiming>,
+    step_meta: std::collections::BTreeMap<String, (String, String)>,
     checkpoint_warnings: std::collections::BTreeMap<String, String>,
     tasks: std::collections::BTreeMap<String, openwebide_core::TaskSnapshot>,
 }
@@ -377,6 +378,7 @@ impl<P: RunPersistence> RunRecorder<P> {
             reasoning: String::new(),
             usage: None,
             checkpoint_warnings: Default::default(),
+            step_meta: Default::default(),
             timings: Default::default(),
             tasks: Default::default(),
         }
@@ -422,6 +424,8 @@ impl<P: RunPersistence> RunRecorder<P> {
         match &mut leaf.event {
             TaskEvent::Run { event } => match &mut **event {
                 RunEvent::ToolCall { id, name, summary } => {
+                    self.step_meta
+                        .insert(id.clone(), (name.clone(), summary.clone()));
                     self.persistence
                         .step(self.anchor, id, name, summary, None)
                         .await?;
@@ -433,6 +437,8 @@ impl<P: RunPersistence> RunRecorder<P> {
                     diff,
                     ..
                 } => {
+                    self.step_meta
+                        .insert(id.clone(), (name.clone(), summary.clone()));
                     self.persistence.prepare_permission(id);
                     self.persistence
                         .step(self.anchor, id, name, summary, diff.as_ref())
@@ -498,14 +504,13 @@ impl<P: RunPersistence> RunRecorder<P> {
                 _ => (),
             },
             TaskEvent::FileCheckpoint { id, diff } => {
+                let (name, summary) = self
+                    .step_meta
+                    .get(id)
+                    .cloned()
+                    .unwrap_or_else(|| ("write_file".into(), format!("write {}", diff.path)));
                 self.persistence
-                    .step(
-                        self.anchor,
-                        id,
-                        "write_file",
-                        &format!("write {}", diff.path),
-                        Some(diff),
-                    )
+                    .step(self.anchor, id, &name, &summary, Some(diff))
                     .await?;
                 visible = false;
             }
@@ -686,6 +691,8 @@ impl<P: RunPersistence> RunRecorder<P> {
             }
             AgentEvent::ToolCall { id, name, summary } => {
                 self.usage = None;
+                self.step_meta
+                    .insert(id.clone(), (name.clone(), summary.clone()));
                 if let Err(error) = self
                     .persistence
                     .step(self.anchor, &id, &name, &summary, None)
@@ -717,6 +724,8 @@ impl<P: RunPersistence> RunRecorder<P> {
                 note,
             } => {
                 self.usage = None;
+                self.step_meta
+                    .insert(id.clone(), (name.clone(), summary.clone()));
                 self.persistence.prepare_permission(&id);
                 if let Err(error) = self
                     .persistence
@@ -766,15 +775,14 @@ impl<P: RunPersistence> RunRecorder<P> {
                 };
             }
             AgentEvent::FileCheckpoint { id, diff } => {
+                let (name, summary) = self
+                    .step_meta
+                    .get(&id)
+                    .cloned()
+                    .unwrap_or_else(|| ("write_file".into(), format!("write {}", diff.path)));
                 let saved = self
                     .persistence
-                    .step(
-                        self.anchor,
-                        &id,
-                        "write_file",
-                        &format!("write {}", diff.path),
-                        Some(&diff),
-                    )
+                    .step(self.anchor, &id, &name, &summary, Some(&diff))
                     .await;
                 return match saved {
                     Ok(()) => Recorded {

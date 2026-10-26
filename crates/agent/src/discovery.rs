@@ -10,6 +10,7 @@ use crate::ToolOutcome;
 const CORE: &[&str] = &[
     "read_file",
     "write_file",
+    "edit_file",
     "list_dir",
     "search",
     "grep_search",

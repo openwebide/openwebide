@@ -356,6 +356,9 @@ impl<E: ToolExecutor + Sync, T: PluginTransport, S: PluginServices> ToolExecutor
     fn acknowledge(&self, id: &str) {
         self.executor.acknowledge(id);
     }
+    fn set_context_limit(&self, limit: Option<usize>) {
+        self.executor.set_context_limit(limit);
+    }
 }
 
 pub fn configure_tools(

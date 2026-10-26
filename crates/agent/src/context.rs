@@ -17,6 +17,7 @@ pub struct RunContext {
     imports_attempted: usize,
     directories: BTreeSet<String>,
     remaining: usize,
+    max_file_bytes: usize,
     limited: bool,
 }
 
@@ -130,7 +131,16 @@ impl RunContext {
             imports_attempted: 0,
             directories: BTreeSet::new(),
             remaining: MAX_BYTES,
+            max_file_bytes: MAX_FILE_BYTES,
             limited: false,
+        }
+    }
+
+    pub fn set_context_limit(&mut self, limit: Option<usize>) {
+        if let Some(limit) = limit.filter(|&limit| limit > 0) {
+            let max_bytes = (limit.saturating_mul(3) / 5).clamp(1536, MAX_BYTES);
+            self.remaining = self.remaining.min(max_bytes);
+            self.max_file_bytes = (max_bytes / 2).clamp(1024, MAX_FILE_BYTES);
         }
     }
 
@@ -270,7 +280,7 @@ impl RunContext {
                 let scope = if directory.is_empty() { "/" } else { directory };
                 let inline =
                     format!("\nInstructions from {canonical:?} (scope {scope:?}):\n{content}\n");
-                if content.len() <= MAX_FILE_BYTES
+                if content.len() <= self.max_file_bytes
                     && inline.len() <= self.remaining.saturating_sub(LIMIT_NOTE.len())
                 {
                     self.append(&mut text, &inline);
@@ -561,6 +571,12 @@ mod tests {
             }
             assert!(total.len() <= MAX_BYTES + 1024);
             assert!(total.contains("Required instructions deferred: \"large3/AGENTS.md\""));
+
+            let mut small = RunContext::new(RunEnvironment::default());
+            small.set_context_limit(Some(4096));
+            vfs.write("CLAUDE.md", &"rule\n".repeat(400)).await.unwrap();
+            let startup = small.startup(&vfs, &crate::NoopBridgeClient, &[]).await;
+            assert!(startup.contains("Required instructions deferred: \"CLAUDE.md\""));
         });
     }
 }

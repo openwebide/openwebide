@@ -45,7 +45,7 @@ impl<E> MutationExecutor<E> {
 fn mutates(call: &ToolCall) -> bool {
     matches!(
         call.name.as_str(),
-        "write_file" | "run_command" | "git_commit" | "git_branch"
+        "write_file" | "edit_file" | "run_command" | "git_commit" | "git_branch"
     )
 }
 impl<E: ToolExecutor + Sync> ToolExecutor for MutationExecutor<E> {
@@ -54,6 +54,9 @@ impl<E: ToolExecutor + Sync> ToolExecutor for MutationExecutor<E> {
     }
     fn has_context(&self) -> bool {
         self.inner.has_context()
+    }
+    fn set_context_limit(&self, limit: Option<usize>) {
+        self.inner.set_context_limit(limit);
     }
     async fn context(
         &mut self,

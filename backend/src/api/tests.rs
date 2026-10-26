@@ -814,6 +814,45 @@ fn browser_runtime_scrubs_secrets_and_native_runtime_keeps_them() {
             assert_eq!(runtime.settings.auto_compact_threshold, Some(85));
             assert_eq!(runtime.settings.fast.unwrap().model, "main");
         }
+        let connection = state.store.get_connection(connection.id).await.unwrap();
+        state
+            .store
+            .save_model_detection(
+                &connection,
+                "main",
+                &openwebide_core::ModelDetection {
+                    context_limit: Some(4096),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            super::model_setup::context_limit_store(&state.store, user.id, connection.id, None)
+                .await
+                .unwrap(),
+            Some(4096)
+        );
+        state
+            .store
+            .save_model_profile(&openwebide_core::ModelProfile {
+                selection: openwebide_core::ModelSelection {
+                    server_id: connection.id,
+                    model: "main".into(),
+                },
+                settings: openwebide_core::ModelSettings {
+                    context_limit: Some(16384),
+                    ..Default::default()
+                },
+            })
+            .await
+            .unwrap();
+        assert_eq!(
+            super::model_setup::context_limit_store(&state.store, user.id, connection.id, None)
+                .await
+                .unwrap(),
+            Some(16384)
+        );
     });
 }
 

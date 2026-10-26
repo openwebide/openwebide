@@ -48,14 +48,15 @@ impl<S: std::ops::Deref<Target = Store<AppDb>> + Send + Sync> CompactionSource f
             .map_err(|error| error.to_string())
     }
     async fn context_limit(&self, request: &ChatRequest) -> Option<usize> {
-        let mut request = request.clone();
-        provider(&self.store, self.user, &mut request, Some(5))
-            .await
-            .ok()?
-            .context_limit(request.model.as_deref())
-            .await
-            .ok()
-            .flatten()
+        super::model_setup::context_limit_store(
+            &self.store,
+            self.user,
+            request.connection_id,
+            request.model.as_deref(),
+        )
+        .await
+        .ok()
+        .flatten()
     }
     async fn tokens(&self, request: &ChatRequest) -> Option<usize> {
         tokens(&self.store, self.user, request.clone())

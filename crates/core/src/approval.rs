@@ -54,7 +54,7 @@ impl ApprovalMode {
         }
         match self {
             Self::Default | Self::Auto => false,
-            Self::AutoAcceptEdits => tool == "write_file",
+            Self::AutoAcceptEdits => matches!(tool, "write_file" | "edit_file"),
             Self::Yolo => true,
             Self::AlwaysForSession => tool != "run_command",
         }

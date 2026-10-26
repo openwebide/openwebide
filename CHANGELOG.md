@@ -9,6 +9,8 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Improve low-context local model resilience and output continuation across local and remote workspaces: resolve live Ollama `/api/ps` (`context_length`) and llama.cpp `/props` (`n_ctx`) runtime context windows when unconfigured; scale per-tool output, `read_file` line windows, search match caps, and inline `AGENTS.md` startup budgets proportionally to the resolved context window; prune older tool outputs deterministically (observation masking) before invoking LLM compaction and retain the latest completed tool turn during mid-run compaction when it fits; add a surgical `edit_file` tool (`path`, `old_string`, `new_string`) sharing diff preview, `.git` confinement, `AutoAcceptEdits` policy, and rewind checkpoints with `write_file`; retry once with `thinking = Some(false)` when a turn exhausts its output token budget inside `<think>`, append targeted recovery guidance when `StopReason::Length` truncates tool arguments, and offer an inline **Continue** button in the TUI when a reply ends with `[reply cut off: output token limit reached]`.
+
 - Re-attach orphaned plugin scheduling rows to the current host at bridge startup in server mode: scheduled jobs, background subscriptions, and project bindings still bound to a previous host id (for example after container recreation) are rebound in one transaction, so plugin-owned scheduled and background work resumes instead of staying pending. Paired mode keeps stable hostnames and is unchanged.
 
 - Fix frontend UI test compilation: define `has_element` on `Mounted` test helper and remove unused `ChatMessage` import in streaming component tests.

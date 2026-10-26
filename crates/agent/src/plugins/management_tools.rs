@@ -531,6 +531,9 @@ impl<E: ToolExecutor + Sync, H: ManagementHost> ToolExecutor for ManagementTools
     fn acknowledge(&self, id: &str) {
         self.executor.acknowledge(id);
     }
+    fn set_context_limit(&self, limit: Option<usize>) {
+        self.executor.set_context_limit(limit);
+    }
 }
 
 /// Mutations always show the prepared review, including when automatic approval is enabled.

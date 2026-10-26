@@ -28,6 +28,9 @@ impl<E, S> TodoTools<E, S> {
 }
 
 impl<E: ToolExecutor + Sync, S: TodoStore> ToolExecutor for TodoTools<E, S> {
+    fn set_context_limit(&self, limit: Option<usize>) {
+        self.executor.set_context_limit(limit);
+    }
     fn reserve_tool_call(&self) -> Result<(), String> {
         self.executor.reserve_tool_call()
     }

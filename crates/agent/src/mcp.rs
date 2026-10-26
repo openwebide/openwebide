@@ -412,6 +412,9 @@ impl<E: crate::ToolExecutor + Sync, T: Transport> crate::ToolExecutor for McpToo
     fn acknowledge(&self, id: &str) {
         self.executor.acknowledge(id);
     }
+    fn set_context_limit(&self, limit: Option<usize>) {
+        self.executor.set_context_limit(limit);
+    }
 }
 
 /// Add only validated, collision-free definitions; failure notices remain visible to the model.

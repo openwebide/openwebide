@@ -30,6 +30,14 @@ pub struct WriteFileArgs {
     pub content: String,
 }
 
+/// Arguments for `edit_file`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct EditFileArgs {
+    pub path: String,
+    pub old_string: String,
+    pub new_string: String,
+}
+
 /// Arguments for `list_dir`.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ListDirArgs {
@@ -100,6 +108,7 @@ pub struct GitBranchArgs {
 pub enum Tool {
     ReadFile(ReadFileArgs),
     WriteFile(WriteFileArgs),
+    EditFile(EditFileArgs),
     ListDir(ListDirArgs),
     Search(SearchArgs),
     GrepSearch(GrepSearchArgs),
@@ -131,6 +140,11 @@ impl Tool {
                 let n = args.content.lines().count();
                 let bytes = args.content.len();
                 format!("write {} ({n} lines, {bytes} B)", args.path)
+            }
+            Tool::EditFile(args) => {
+                let old_lines = args.old_string.lines().count().max(1);
+                let new_lines = args.new_string.lines().count();
+                format!("edit {} (-{old_lines}/+{new_lines} lines)", args.path)
             }
             Tool::ListDir(args) => format!("list {}", args.path.as_deref().unwrap_or_default()),
             Tool::Search(args) => format!("search '{}'", args.query),
@@ -225,6 +239,7 @@ impl Tool {
 pub enum ToolName {
     ReadFile,
     WriteFile,
+    EditFile,
     ListDir,
     Search,
     GrepSearch,
@@ -275,6 +290,7 @@ impl ToolName {
     pub const ALL: &[ToolName] = &[
         ToolName::ReadFile,
         ToolName::WriteFile,
+        ToolName::EditFile,
         ToolName::ListDir,
         ToolName::Search,
         ToolName::GrepSearch,
@@ -311,6 +327,7 @@ impl ToolName {
         match self {
             ToolName::ReadFile => "read_file",
             ToolName::WriteFile => "write_file",
+            ToolName::EditFile => "edit_file",
             ToolName::ListDir => "list_dir",
             ToolName::Search => "search",
             ToolName::GrepSearch => "grep_search",
@@ -349,18 +366,18 @@ impl ToolName {
         match self {
             ToolName::SkillList | ToolName::SkillRead | ToolName::SkillCreate | ToolName::SkillUpdate | ToolName::SkillDelete | ToolName::SkillCreator => crate::skills::definition(self.as_str()),
             ToolName::Monitor | ToolName::ScheduleList | ToolName::ScheduleCreate | ToolName::ScheduleUpdate | ToolName::ScheduleDelete => crate::scheduled::definition(self.as_str()),
-            ToolName::MemoryCreate => ToolDefinition { name: self.as_str().into(), description: "Store a durable project fact or convention. Omit title for an automatic name unless the user supplied a specific name. Avoid credentials, secrets and transient task state.".into(), parameters: json!({"type":"object","properties":{"auto_title":{"type":"boolean","description":"Generate and refresh the title from content"},"title":{"type":"string","maxLength":120},"content":{"type":"string","maxLength":4000}},"required":["content"],"additionalProperties":false}) },
-            ToolName::MemorySearch => ToolDefinition { name: self.as_str().into(), description: "Search project memories by text; empty query lists recent entries. Returns bounded excerpts.".into(), parameters: json!({"type":"object","properties":{"query":{"type":"string","maxLength":256}},"required":["query"],"additionalProperties":false}) },
-            ToolName::MemoryRead => ToolDefinition { name: self.as_str().into(), description: "Read a full project memory, including its current revision.".into(), parameters: json!({"type":"object","properties":{"id":{"type":"integer","minimum":1}},"required":["id"],"additionalProperties":false}) },
-            ToolName::MemoryUpdate => ToolDefinition { name: self.as_str().into(), description: "Update a project memory using its current revision; read again after a conflict.".into(), parameters: json!({"type":"object","properties":{"id":{"type":"integer","minimum":1},"revision":{"type":"integer","minimum":1},"auto_title":{"type":"boolean"},"title":{"type":"string","maxLength":120},"content":{"type":"string","maxLength":4000}},"required":["id","revision","content"],"additionalProperties":false}) },
-            ToolName::MemoryDelete => ToolDefinition { name: self.as_str().into(), description: "Delete a project memory using its current revision.".into(), parameters: json!({"type":"object","properties":{"id":{"type":"integer","minimum":1},"revision":{"type":"integer","minimum":1}},"required":["id","revision"],"additionalProperties":false}) },
+            ToolName::MemoryCreate => ToolDefinition { name: self.as_str().into(), description: "Store a durable project fact or convention. Omit title for an automatic name. Avoid secrets and transient state.".into(), parameters: json!({"type":"object","properties":{"auto_title":{"type":"boolean","description":"Generate title from content"},"title":{"type":"string","maxLength":120},"content":{"type":"string","maxLength":4000}},"required":["content"],"additionalProperties":false}) },
+            ToolName::MemorySearch => ToolDefinition { name: self.as_str().into(), description: "Search project memories; empty query lists recent entries.".into(), parameters: json!({"type":"object","properties":{"query":{"type":"string","maxLength":256}},"required":["query"],"additionalProperties":false}) },
+            ToolName::MemoryRead => ToolDefinition { name: self.as_str().into(), description: "Read a full project memory and its revision.".into(), parameters: json!({"type":"object","properties":{"id":{"type":"integer","minimum":1}},"required":["id"],"additionalProperties":false}) },
+            ToolName::MemoryUpdate => ToolDefinition { name: self.as_str().into(), description: "Update a project memory at its current revision; reread after conflicts.".into(), parameters: json!({"type":"object","properties":{"id":{"type":"integer","minimum":1},"revision":{"type":"integer","minimum":1},"auto_title":{"type":"boolean"},"title":{"type":"string","maxLength":120},"content":{"type":"string","maxLength":4000}},"required":["id","revision","content"],"additionalProperties":false}) },
+            ToolName::MemoryDelete => ToolDefinition { name: self.as_str().into(), description: "Delete a project memory at its current revision.".into(), parameters: json!({"type":"object","properties":{"id":{"type":"integer","minimum":1},"revision":{"type":"integer","minimum":1}},"required":["id","revision"],"additionalProperties":false}) },
             ToolName::AskUserQuestion => crate::questions::definition(),
             ToolName::TodoWrite => ToolDefinition {
                 name: "todo_write".into(),
-                description: "Replace the checklist: stable IDs, at most one in_progress; [] clears it.".into(),
+                description: "Replace checklist: stable IDs, at most one in_progress; [] clears.".into(),
                 parameters: json!({ "type": "object", "properties": { "todos": { "type": "array", "maxItems": 64, "items": { "type": "object", "properties": {
-                    "id": { "type": "string", "maxLength": 64, "description": "Stable item ID" },
-                    "content": { "type": "string", "maxLength": 2048, "description": "Short actionable task" },
+                    "id": { "type": "string", "maxLength": 64, "description": "Stable ID" },
+                    "content": { "type": "string", "maxLength": 2048, "description": "Task" },
                     "status": { "type": "string", "enum": ["pending", "in_progress", "completed"] }
                 }, "required": ["id", "content", "status"] } } }, "required": ["todos"] }),
             },
@@ -370,23 +387,36 @@ impl ToolName {
                 parameters: json!({
                     "type": "object",
                     "properties": {
-                        "path": { "type": "string", "description": "Project-relative path" },
-                        "offset": { "type": "integer", "description": "First line (1-based; default 1)" },
-                        "limit": { "type": "integer", "description": "Line count (default 2000)" }
+                        "path": { "type": "string", "description": "Relative path" },
+                        "offset": { "type": "integer", "description": "1-based start line" },
+                        "limit": { "type": "integer", "description": "Line count" }
                     },
                     "required": ["path"]
                 }),
             },
             ToolName::WriteFile => ToolDefinition {
                 name: "write_file".into(),
-                description: "Write a complete workspace file (create or overwrite).".into(),
+                description: "Create or overwrite a full workspace file.".into(),
                 parameters: json!({
                     "type": "object",
                     "properties": {
-                        "path": { "type": "string", "description": "Project-relative path" },
+                        "path": { "type": "string", "description": "Relative path" },
                         "content": { "type": "string" }
                     },
                     "required": ["path", "content"]
+                }),
+            },
+            ToolName::EditFile => ToolDefinition {
+                name: "edit_file".into(),
+                description: "Replace one unique exact block in an existing file. Prefer over write_file for edits.".into(),
+                parameters: json!({
+                    "type": "object",
+                    "properties": {
+                        "path": { "type": "string", "description": "Relative path" },
+                        "old_string": { "type": "string", "description": "Unique existing text" },
+                        "new_string": { "type": "string", "description": "Replacement text" }
+                    },
+                    "required": ["path", "old_string", "new_string"]
                 }),
             },
             ToolName::ListDir => ToolDefinition {
@@ -401,26 +431,26 @@ impl ToolName {
             },
             ToolName::Search => ToolDefinition {
                 name: "search".into(),
-                description: "Find workspace file names containing a substring.".into(),
+                description: "Find workspace file names matching a substring.".into(),
                 parameters: json!({
                     "type": "object",
                     "properties": {
                         "query": { "type": "string" },
                         "path": { "type": "string", "description": "Directory; empty for root" },
-                        "include_ignored": { "type": "boolean", "description": "Include .git, target, node_modules, dist; default false" }
+                        "include_ignored": { "type": "boolean", "description": "Include ignored dirs; default false" }
                     },
                     "required": ["query"]
                 }),
             },
             ToolName::GrepSearch => ToolDefinition {
                 name: "grep_search".into(),
-                description: "Find workspace lines containing a substring.".into(),
+                description: "Find workspace lines matching a substring.".into(),
                 parameters: json!({
                     "type": "object",
                     "properties": {
                         "query": { "type": "string" },
                         "path": { "type": "string", "description": "Directory; empty for root" },
-                        "include_ignored": { "type": "boolean", "description": "Include .git, target, node_modules, dist; default false" }
+                        "include_ignored": { "type": "boolean", "description": "Include ignored dirs; default false" }
                     },
                     "required": ["query"]
                 }),
@@ -432,7 +462,7 @@ impl ToolName {
                     "type": "object",
                     "properties": {
                         "query": { "type": "string" },
-                        "limit": { "type": "integer", "description": "Result count; default 5, max 10" }
+                        "limit": { "type": "integer", "description": "Default 5, max 10" }
                     },
                     "required": ["query"]
                 }),
@@ -460,7 +490,7 @@ impl ToolName {
                         },
                         "timeout_seconds": {
                             "type": "integer",
-                            "description": "Timeout; default 30 seconds, max 300"
+                            "description": "Default 30s, max 300s"
                         }
                     },
                     "required": ["command"]
@@ -468,7 +498,7 @@ impl ToolName {
             },
             ToolName::HostInfo => ToolDefinition {
                 name: "host_info".into(),
-                description: "Read bridge-host CPU, RAM, disks, GPUs and sensors. The model may run elsewhere; missing readings are unavailable and containers may report limits.".into(),
+                description: "Read bridge-host CPU, RAM, disks, GPUs and sensors.".into(),
                 parameters: json!({"type":"object", "properties":{}, "additionalProperties":false}),
             },
             ToolName::GitStatus => ToolDefinition {
@@ -481,23 +511,23 @@ impl ToolName {
             },
             ToolName::GitDiff => ToolDefinition {
                 name: "git_diff".into(),
-                description: "Show uncommitted Git diff (optionally one file).".into(),
+                description: "Show uncommitted Git diff.".into(),
                 parameters: json!({
                     "type": "object",
                     "properties": {
-                        "path": { "type": "string", "description": "Optional file path to inspect." }
+                        "path": { "type": "string", "description": "Optional file path" }
                     }
                 }),
             },
             ToolName::GitCommit => ToolDefinition {
                 name: "git_commit".into(),
-                description: "Commit selected paths; omit paths for all tracked changes. Use a conventional commit message.".into(),
+                description: "Commit selected paths (omit paths for all tracked changes).".into(),
                 parameters: json!({
                     "type": "object",
                     "required": ["message"],
                     "properties": {
                         "message": { "type": "string", "description": "Conventional commit message" },
-                        "paths": { "type": "array", "items": { "type": "string" }, "description": "Files; omit for all tracked changes" }
+                        "paths": { "type": "array", "items": { "type": "string" }, "description": "Files; omit for all tracked" }
                     }
                 }),
             },
@@ -508,7 +538,7 @@ impl ToolName {
                     "type": "object",
                     "required": ["branch_name"],
                     "properties": {
-                        "branch_name": { "type": "string", "description": "Name of the new branch (e.g. 'feat/argon2-auth')." }
+                        "branch_name": { "type": "string", "description": "New branch name" }
                     }
                 }),
             },
@@ -571,6 +601,7 @@ impl FromStr for ToolName {
         match s {
             "read_file" => Ok(ToolName::ReadFile),
             "write_file" => Ok(ToolName::WriteFile),
+            "edit_file" => Ok(ToolName::EditFile),
             "list_dir" => Ok(ToolName::ListDir),
             "search" => Ok(ToolName::Search),
             "grep_search" => Ok(ToolName::GrepSearch),
@@ -770,6 +801,7 @@ pub fn parse(call: &ToolCall) -> Result<Tool, ToolArgError> {
         ToolName::TodoWrite => parse_as!(TodoWrite, openwebide_core::TodoPlan),
         ToolName::ReadFile => parse_as!(ReadFile, ReadFileArgs),
         ToolName::WriteFile => parse_as!(WriteFile, WriteFileArgs),
+        ToolName::EditFile => parse_as!(EditFile, EditFileArgs),
         ToolName::ListDir => parse_as!(ListDir, ListDirArgs),
         ToolName::Search => parse_as!(Search, SearchArgs),
         ToolName::GrepSearch => parse_as!(GrepSearch, GrepSearchArgs),
@@ -818,6 +850,11 @@ mod tests {
                 "write_file",
                 r#"{"path": "src/main.rs", "content": "fn main() {}"}"#,
                 ToolName::WriteFile,
+            ),
+            (
+                "edit_file",
+                r#"{"path": "src/main.rs", "old_string": "fn main() {}", "new_string": "fn main() { println!(\"hi\"); }"}"#,
+                ToolName::EditFile,
             ),
             ("list_dir", r#"{"path": "src"}"#, ToolName::ListDir),
             ("list_dir", r#"{}"#, ToolName::ListDir),
@@ -870,6 +907,7 @@ mod tests {
         match tool {
             Tool::ReadFile(_) => ToolName::ReadFile,
             Tool::WriteFile(_) => ToolName::WriteFile,
+            Tool::EditFile(_) => ToolName::EditFile,
             Tool::ListDir(_) => ToolName::ListDir,
             Tool::Search(_) => ToolName::Search,
             Tool::GrepSearch(_) => ToolName::GrepSearch,

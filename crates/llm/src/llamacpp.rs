@@ -382,11 +382,10 @@ impl<C: HttpClient + 'static> LlmProvider for LlamaCppProvider<C> {
         // server, is treated as "no limit reported" rather than a hard error,
         // so the UI falls back quietly.
         match self.http.get_json(&url_for(&self.base_url, "/props")).await {
-            Ok(value) => Ok(value
-                .get("default_generation_settings")
-                .and_then(|s| s.get("n_ctx"))
-                .and_then(serde_json::Value::as_u64)
-                .map(|n| usize::try_from(n).unwrap_or(usize::MAX))),
+            Ok(value) => Ok(crate::discovery::positive(
+                value.pointer("/default_generation_settings/n_ctx"),
+            )
+            .or_else(|| crate::discovery::positive(value.get("n_ctx")))),
             Err(_) => Ok(None),
         }
     }
@@ -1144,6 +1143,12 @@ mod tests {
         let limit = block_on(provider.context_limit(None)).unwrap();
         assert_eq!(limit, Some(4096));
         assert_eq!(state.calls.lock().unwrap()[0].url, format!("{BASE}/props"));
+
+        state.push(Ok(json!({ "n_ctx": 8192 })));
+        assert_eq!(block_on(provider.context_limit(None)).unwrap(), Some(8192));
+
+        state.push(Ok(json!({ "n_ctx": 0 })));
+        assert_eq!(block_on(provider.context_limit(None)).unwrap(), None);
     }
 
     #[test]

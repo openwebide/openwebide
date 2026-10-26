@@ -163,6 +163,10 @@ pub type ToolExecutionStream = Pin<Box<dyn Stream<Item = ToolExecutionEvent> + S
 /// Implementations are responsible for confining their work (e.g. to a
 /// workspace) and for reporting a useful [`ToolOutcome`].
 pub trait ToolExecutor: Send {
+    /// Configure the active model context limit (in tokens) so tool output and
+    /// startup instruction budgets scale proportionally for small-context models.
+    fn set_context_limit(&self, _limit: Option<usize>) {}
+
     /// Opt in to startup and per-file context loading.
     fn has_context(&self) -> bool {
         false
@@ -397,6 +401,7 @@ where
             message.content = openwebide_core::strip_reasoning(&message.content).to_string();
         }
     }
+    executor.set_context_limit(request.model_settings.context_limit);
     Box::pin(stream::unfold(
         LoopState {
             provider,
@@ -405,6 +410,8 @@ where
             cancel,
             gate,
             output_limit: request.model_settings.max_output_tokens,
+            thinking_preference: request.model_settings.thinking,
+            retry_without_thinking: false,
             request,
             config,
             anchor_id,
@@ -436,6 +443,24 @@ where
                             state.next = Next::CallModel;
                             continue;
                         }
+                        if state.request.model_settings.context_limit.is_none() {
+                            let resolve = Box::pin(compaction::resolve_limit(
+                                &state.provider,
+                                &state.compaction,
+                                &mut state.request,
+                            ));
+                            let cancel = Box::pin(state.cancel.cancelled());
+                            if matches!(
+                                futures::future::select(resolve, cancel).await,
+                                futures::future::Either::Right(((), _))
+                            ) {
+                                state.next = Next::Cancelled;
+                                continue;
+                            }
+                        }
+                        state
+                            .executor
+                            .set_context_limit(state.request.model_settings.context_limit);
                         let context = {
                             let context = Box::pin(
                                 std::sync::Arc::get_mut(&mut state.executor)
@@ -474,6 +499,12 @@ where
                         }
                         // Restore the profile setting before budgeting this new completion.
                         state.request.model_settings.max_output_tokens = state.output_limit;
+                        state.request.model_settings.thinking =
+                            if std::mem::take(&mut state.retry_without_thinking) {
+                                Some(false)
+                            } else {
+                                state.thinking_preference
+                            };
                         let compacted = {
                             let prepare = Box::pin(discovery::prepare(
                                 &state.provider,
@@ -494,6 +525,9 @@ where
                             state.next = Next::Cancelled;
                             continue;
                         }
+                        state
+                            .executor
+                            .set_context_limit(state.request.model_settings.context_limit);
                         match compacted {
                             Ok(Some(compaction)) => {
                                 state.next = Next::CallModel;
@@ -600,6 +634,15 @@ where
                         {
                             ChatResponse::Text(mut text) => {
                                 if state.stop_reason == openwebide_core::StopReason::Length {
+                                    if text.trim().is_empty()
+                                        && !state.turn_reasoning.trim().is_empty()
+                                        && state.request.model_settings.thinking != Some(false)
+                                        && state.turn < state.config.max_turns
+                                    {
+                                        state.retry_without_thinking = true;
+                                        state.next = Next::CallModel;
+                                        continue;
+                                    }
                                     text.push_str(openwebide_core::REPLY_CUT_OFF_MARKER);
                                 }
                                 state.next = Next::Stop;
@@ -707,15 +750,17 @@ where
                         if let Some(context) = context {
                             append_context(&mut state.request, &context);
                             state.instructions_need_review = true;
-                            state.next = if pending.call.name == "write_file" {
-                                Next::DeferTool(pending)
-                            } else {
-                                Next::PrepareTool(pending)
-                            };
+                            state.next =
+                                if matches!(pending.call.name.as_str(), "write_file" | "edit_file")
+                                {
+                                    Next::DeferTool(pending)
+                                } else {
+                                    Next::PrepareTool(pending)
+                                };
                             return Some((AgentEvent::Context(context), state));
                         }
                         state.next = if state.instructions_need_review
-                            && pending.call.name == "write_file"
+                            && matches!(pending.call.name.as_str(), "write_file" | "edit_file")
                         {
                             Next::DeferTool(pending)
                         } else {
@@ -973,16 +1018,17 @@ where
                                 state,
                             ));
                         }
-                        let checkpoint = if pending.call.name == "write_file" {
-                            let preview = Box::pin(state.executor.checkpoint(&pending.call));
-                            let cancel = Box::pin(state.cancel.cancelled());
-                            match futures::future::select(preview, cancel).await {
-                                futures::future::Either::Left((preview, _)) => preview,
-                                futures::future::Either::Right(_) => Err("Cancelled".into()),
-                            }
-                        } else {
-                            Ok(None)
-                        };
+                        let checkpoint =
+                            if matches!(pending.call.name.as_str(), "write_file" | "edit_file") {
+                                let preview = Box::pin(state.executor.checkpoint(&pending.call));
+                                let cancel = Box::pin(state.cancel.cancelled());
+                                match futures::future::select(preview, cancel).await {
+                                    futures::future::Either::Left((preview, _)) => preview,
+                                    futures::future::Either::Right(_) => Err("Cancelled".into()),
+                                }
+                            } else {
+                                Ok(None)
+                            };
                         let checkpoint = match checkpoint {
                             Ok(checkpoint) => checkpoint,
                             Err(error) => {
@@ -1147,11 +1193,20 @@ where
                             },
                         };
                         state.tool_stream = None;
+                        let mut tool_content = outcome.content.clone();
+                        if state.stop_reason == openwebide_core::StopReason::Length
+                            && !outcome.ok
+                            && tool_content.starts_with("error: invalid arguments for ")
+                        {
+                            tool_content.push_str(
+                                "\n[Tool call arguments were cut off because the output token limit was reached. Prefer edit_file for targeted changes or break large writes into smaller steps.]",
+                            );
+                        }
                         state.request.messages.push(ChatMessage {
                             id: 0,
                             session_id: 0,
                             role: Role::Tool,
-                            content: outcome.content.clone(),
+                            content: tool_content,
                             created_at: 0,
                             tool_calls: None,
                             tool_call_id: Some(wire_id),
@@ -1265,6 +1320,8 @@ struct LoopState<P, T, C, G, S> {
     gate: G,
     request: ChatRequest,
     output_limit: Option<usize>,
+    thinking_preference: Option<bool>,
+    retry_without_thinking: bool,
     config: AgentConfig,
     /// Namespaces this run's step ids; see [`run`].
     anchor_id: i64,
@@ -3989,6 +4046,104 @@ mod tests {
         assert!(requests.lock().unwrap().is_empty());
     }
 
+    #[test]
+    fn observation_masking_prunes_older_tool_outputs_before_llm_compaction() {
+        futures::executor::block_on(async {
+            let (provider, _) = FakeProvider::new(vec![]);
+            let source = summary_source(false, false);
+            let mut request = compact_request();
+            request.model_settings.context_limit = Some(2048);
+            for idx in 1..=3 {
+                let call_id = format!("call_{idx}");
+                request.messages.push(ChatMessage {
+                    id: 0,
+                    session_id: 7,
+                    role: Role::Assistant,
+                    content: String::new(),
+                    created_at: 0,
+                    tool_calls: Some(vec![call(&call_id, "read_file", "{}")]),
+                    tool_call_id: None,
+                    usage: None,
+                });
+                request.messages.push(ChatMessage {
+                    id: 0,
+                    session_id: 7,
+                    role: Role::Tool,
+                    content: if idx == 1 {
+                        format!("first-line-header\n{}", "old file output ".repeat(350))
+                    } else {
+                        "recent small output".into()
+                    },
+                    created_at: 0,
+                    tool_calls: None,
+                    tool_call_id: Some(call_id),
+                    usage: None,
+                });
+            }
+            let compacted = compaction::prepare(&provider, &source, &mut request)
+                .await
+                .unwrap();
+            assert!(compacted.is_none());
+            assert!(source.requests.lock().unwrap().is_empty());
+            assert!(
+                request.messages[2]
+                    .content
+                    .starts_with("[older tool output pruned (read_file, ")
+                    && request.messages[2].content.contains("first-line-header")
+            );
+            assert_eq!(request.messages[4].content, "recent small output");
+            assert_eq!(request.messages[6].content, "recent small output");
+        });
+    }
+
+    #[test]
+    fn mid_run_compaction_retains_latest_completed_tool_turn_when_it_fits() {
+        futures::executor::block_on(async {
+            let (provider, _) = FakeProvider::new(vec![]);
+            let source = summary_source(false, false);
+            let mut request = compact_request();
+            request.model_settings.context_limit = Some(2048);
+            for (idx, content) in [
+                (1, "huge recent output ".repeat(300)),
+                (2, "final check passed".to_string()),
+            ] {
+                let call_id = format!("call_{idx}");
+                request.messages.push(ChatMessage {
+                    id: 0,
+                    session_id: 7,
+                    role: Role::Assistant,
+                    content: String::new(),
+                    created_at: 0,
+                    tool_calls: Some(vec![call(&call_id, "read_file", "{}")]),
+                    tool_call_id: None,
+                    usage: None,
+                });
+                request.messages.push(ChatMessage {
+                    id: 0,
+                    session_id: 7,
+                    role: Role::Tool,
+                    content,
+                    created_at: 0,
+                    tool_calls: None,
+                    tool_call_id: Some(call_id),
+                    usage: None,
+                });
+            }
+            let summary = compaction::prepare(&provider, &source, &mut request)
+                .await
+                .unwrap()
+                .unwrap();
+            assert_eq!(summary.retained.len(), 1);
+            assert_eq!(summary.retained[0].role, Role::User);
+            assert_eq!(request.messages.len(), 4);
+            assert_eq!(request.messages[0].role, Role::System);
+            assert_eq!(request.messages[1].role, Role::User);
+            assert_eq!(request.messages[2].role, Role::Assistant);
+            assert_eq!(request.messages[3].role, Role::Tool);
+            assert_eq!(request.messages[3].content, "final check passed");
+        });
+    }
+
     struct StreamingExecutor {
         finish: Mutex<Option<futures::channel::oneshot::Receiver<ToolOutcome>>>,
     }
@@ -4253,6 +4408,89 @@ mod tests {
                 .unwrap();
             assert_eq!(result.tool_call_id.as_deref(), Some("parent-wire"));
             assert!(result.content.contains("Finished A") && result.content.contains("Finished B"));
+        });
+    }
+
+    #[test]
+    fn length_cut_off_during_thinking_retries_once_without_thinking() {
+        futures::executor::block_on(async {
+            let (provider, requests) = FakeProvider::new(vec![
+                Ok(ChatCompletion {
+                    reasoning: "spending all tokens thinking...".into(),
+                    stop_reason: openwebide_core::StopReason::Length,
+                    response: ChatResponse::Text(String::new()),
+                    preamble: String::new(),
+                    usage: None,
+                }),
+                Ok(no_usage(ChatResponse::Text("direct answer".into()))),
+            ]);
+            let mut req = request();
+            req.model_settings.thinking = Some(true);
+            let events: Vec<_> = run(
+                provider,
+                FakeExecutor::new(Vec::new()),
+                req,
+                AgentConfig::default(),
+                NoopCancel,
+                NoopGate,
+                1,
+            )
+            .collect()
+            .await;
+            assert!(events.iter().any(
+                |event| matches!(event, AgentEvent::FinalText(text) if text == "direct answer")
+            ));
+            let seen = requests.lock().unwrap();
+            assert_eq!(seen.len(), 2);
+            assert_eq!(seen[0].model_settings.thinking, Some(true));
+            assert_eq!(seen[1].model_settings.thinking, Some(false));
+        });
+    }
+
+    #[test]
+    fn cut_off_tool_call_arguments_append_targeted_recovery_hint() {
+        futures::executor::block_on(async {
+            let vfs = openwebide_core::MemoryVfs::new();
+            let (provider, requests) = FakeProvider::new(vec![
+                Ok(ChatCompletion {
+                    reasoning: String::new(),
+                    stop_reason: openwebide_core::StopReason::Length,
+                    response: ChatResponse::ToolCalls(vec![call(
+                        "wire-0",
+                        "write_file",
+                        r#"{"path":"foo.rs","content":"unterminated"#,
+                    )]),
+                    preamble: String::new(),
+                    usage: None,
+                }),
+                Ok(no_usage(ChatResponse::Text("recovered".into()))),
+            ]);
+            let mut req = request();
+            req.tools = vfs_tools();
+            let events: Vec<_> = run(
+                provider,
+                VfsToolExecutor::new(vfs),
+                req,
+                AgentConfig::default(),
+                NoopCancel,
+                NoopGate,
+                1,
+            )
+            .collect()
+            .await;
+            assert!(
+                events.iter().any(
+                    |event| matches!(event, AgentEvent::FinalText(text) if text == "recovered")
+                )
+            );
+            let seen = requests.lock().unwrap();
+            let tool_msg = seen[1]
+                .messages
+                .iter()
+                .find(|m| m.role == Role::Tool)
+                .unwrap();
+            assert!(tool_msg.content.contains("output token limit was reached"));
+            assert!(tool_msg.content.contains("Prefer edit_file"));
         });
     }
 }

@@ -109,20 +109,12 @@ pub(crate) async fn model_context(
         .and_then(|s| s.parse::<i64>().ok())
         .ok_or_else(|| ApiError::bad_request("missing ?connection_id=<id>"))?;
     let model = params.get("model").cloned();
-    let runtime =
-        super::model_setup::runtime(state, user.id, connection_id, model.as_deref()).await?;
-    let connection = runtime.connection;
-    let limit = if let Some(n) = connection.context_limit {
-        Some(n)
-    } else {
-        let provider = Provider::for_connection(
-            &connection,
-            SpinHttpClient::default().with_transport(runtime.transport),
-        );
-        provider
-            .context_limit(model.as_deref())
-            .await
-            .unwrap_or(None)
-    };
+    let limit = super::model_setup::context_limit_store(
+        &state.store,
+        user.id,
+        connection_id,
+        model.as_deref(),
+    )
+    .await?;
     Ok(json_response(200, &json!({ "context_limit": limit })))
 }

@@ -92,6 +92,9 @@ impl<E: ToolExecutor + Sync + 'static, H: TaskHost> ToolExecutor for TaskExecuto
     fn acknowledge(&self, id: &str) {
         self.inner.acknowledge(id);
     }
+    fn set_context_limit(&self, limit: Option<usize>) {
+        self.inner.set_context_limit(limit);
+    }
     fn execute_stream(self: Arc<Self>, call: ToolCall) -> ToolExecutionStream {
         if call.name != "task" {
             return Box::pin(stream::once(async move {

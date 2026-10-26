@@ -95,7 +95,7 @@ pub(crate) async fn runtime_store(
         let detection = discover_model(store, &connection, &model).await?;
         settings = detection.defaults_for(&settings);
     }
-    if !explicit && connection.model.as_deref() == Some(&model) {
+    if !explicit && (connection.model.is_none() || connection.model.as_deref() == Some(&model)) {
         settings.context_limit = settings.context_limit.or(connection.context_limit);
     }
     connection.tool_stream_unsupported = connection.tool_stream_unsupported
@@ -112,6 +112,48 @@ pub(crate) async fn runtime_store(
         settings,
         transport,
     })
+}
+
+pub(crate) async fn context_limit_store(
+    store: &openwebide_storage::Store<crate::state::AppDb>,
+    user: UserId,
+    id: i64,
+    model: Option<&str>,
+) -> Result<Option<usize>, ApiError> {
+    let mut runtime = runtime_store(store, user, id, model).await?;
+    if let Some(limit) = runtime.connection.context_limit.filter(|&limit| limit > 0) {
+        return Ok(Some(limit));
+    }
+    runtime.transport.timeout_seconds = runtime.transport.timeout_seconds.min(5);
+    let provider = Provider::for_connection(
+        &runtime.connection,
+        SpinHttpClient::default().with_transport(runtime.transport),
+    );
+    let limit = provider
+        .context_limit(runtime.connection.model.as_deref())
+        .await
+        .unwrap_or(None)
+        .filter(|&limit| limit > 0);
+    if let (Some(limit), Some(model)) = (
+        limit,
+        runtime
+            .connection
+            .model
+            .as_deref()
+            .filter(|m| !m.is_empty()),
+    ) && let Ok(Some(mut cached)) = store.model_detection(&runtime.connection, model).await
+        && cached.context_limit.is_none()
+    {
+        cached.context_limit = Some(limit);
+        if runtime.connection.kind == openwebide_core::ProviderKind::Ollama {
+            cached.loaded = Some(true);
+            cached.source = "Ollama /api/ps runtime context".into();
+        }
+        let _ = store
+            .save_model_detection(&runtime.connection, model, &cached)
+            .await;
+    }
+    Ok(limit)
 }
 
 async fn probe_model(

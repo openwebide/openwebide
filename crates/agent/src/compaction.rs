@@ -136,6 +136,17 @@ async fn prepare_with<P: LlmProvider, S: CompactionSource>(
     if !tool_pairs_complete(&request.messages) {
         return Err("Cannot compact while tool calls are awaiting results. Original history has been retained.".into());
     }
+    if !manual {
+        let mut masked = request.clone();
+        if mask_older_tool_outputs(&mut masked.messages) {
+            let masked_tokens = request_tokens(provider, source, &masked).await;
+            if masked_tokens < ceiling {
+                budget_reply(&mut masked, limit, masked_tokens)?;
+                *request = masked;
+                return Ok(None);
+            }
+        }
+    }
     let retained: Vec<_> = request
         .messages
         .iter()
@@ -150,6 +161,18 @@ async fn prepare_with<P: LlmProvider, S: CompactionSource>(
     if conservative_tokens(&minimum) >= limit.saturating_sub(reserve + summary_reserve) {
         return Err("Project instructions, tool schemas and the current prompt leave no room for a summary. Reduce their size or increase the context limit.".into());
     }
+    let tail_turn = if manual {
+        None
+    } else {
+        completed_tail_tool_turn(&request.messages).filter(|(_, tail)| {
+            let mut with_tail = minimum.clone();
+            with_tail.messages.extend(tail.iter().cloned());
+            let tail_tokens =
+                conservative_tokens(&with_tail).saturating_sub(conservative_tokens(&minimum));
+            tail_tokens <= limit / 4
+                && conservative_tokens(&with_tail) < limit.saturating_sub(reserve + summary_reserve)
+        })
+    };
     let primary = ModelRuntime {
         connection: openwebide_core::Connection {
             id: request.connection_id,
@@ -166,7 +189,11 @@ async fn prepare_with<P: LlmProvider, S: CompactionSource>(
         settings: request.model_settings.clone(),
         transport: Default::default(),
     };
-    let mut history = request.messages.clone();
+    let summary_end = tail_turn
+        .as_ref()
+        .map_or(request.messages.len(), |(start, _)| *start);
+    let mut history = request.messages[..summary_end].to_vec();
+    let _ = mask_older_tool_outputs(&mut history);
     for message in &mut history {
         if message.role == Role::User {
             message.content =
@@ -210,6 +237,16 @@ async fn prepare_with<P: LlmProvider, S: CompactionSource>(
                 };
                 let mut compacted = request.clone();
                 compacted.messages = compaction.messages(session);
+                if let Some((_, ref tail)) = tail_turn {
+                    let mut with_tail = compacted.clone();
+                    with_tail.messages.extend(tail.iter().cloned());
+                    let after_with_tail = request_tokens(provider, source, &with_tail).await;
+                    if after_with_tail < tokens && after_with_tail < ceiling {
+                        budget_reply(&mut with_tail, limit, after_with_tail)?;
+                        *request = with_tail;
+                        return Ok(Some(compaction));
+                    }
+                }
                 let after = request_tokens(provider, source, &compacted).await;
                 if after >= tokens || after >= ceiling {
                     failure = "The summary still exceeds the context budget".into();
@@ -225,6 +262,96 @@ async fn prepare_with<P: LlmProvider, S: CompactionSource>(
     Err(format!(
         "Could not compact conversation: {failure}. Original history has been retained."
     ))
+}
+
+const PRUNED_TOOL_PREFIX: &str = "[older tool output pruned (";
+const MIN_PRUNE_BYTES: usize = 256;
+const RETAINED_TOOL_TURNS: usize = 2;
+
+/// Deterministically prune older `Role::Tool` outputs (outside the most recent
+/// `RETAINED_TOOL_TURNS` assistant tool-call turns) down to compact stubs.
+fn mask_older_tool_outputs(messages: &mut [ChatMessage]) -> bool {
+    let tool_turn_starts: Vec<usize> = messages
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, message)| {
+            (message.role == Role::Assistant
+                && message
+                    .tool_calls
+                    .as_ref()
+                    .is_some_and(|calls| !calls.is_empty()))
+            .then_some(idx)
+        })
+        .collect();
+    if tool_turn_starts.len() <= RETAINED_TOOL_TURNS {
+        return false;
+    }
+    let keep_from = tool_turn_starts[tool_turn_starts.len() - RETAINED_TOOL_TURNS];
+    let mut call_names = std::collections::BTreeMap::new();
+    for message in &messages[..keep_from] {
+        if let Some(calls) = &message.tool_calls {
+            for call in calls {
+                call_names.insert(call.id.clone(), call.name.clone());
+            }
+        }
+    }
+    let mut changed = false;
+    for message in &mut messages[..keep_from] {
+        if message.role != Role::Tool
+            || message.content.len() <= MIN_PRUNE_BYTES
+            || message.content.starts_with(PRUNED_TOOL_PREFIX)
+        {
+            continue;
+        }
+        let tool_name = message
+            .tool_call_id
+            .as_deref()
+            .and_then(|id| call_names.get(id))
+            .map_or("tool", String::as_str);
+        let bytes = message.content.len();
+        let first_line = message
+            .content
+            .lines()
+            .map(str::trim)
+            .find(|line| !line.is_empty())
+            .unwrap_or("");
+        let preview_end = first_line.floor_char_boundary(80);
+        let preview = &first_line[..preview_end];
+        message.content = if preview.is_empty() {
+            format!("{PRUNED_TOOL_PREFIX}{tool_name}, {bytes} bytes)]")
+        } else {
+            format!("{PRUNED_TOOL_PREFIX}{tool_name}, {bytes} bytes): {preview}]")
+        };
+        changed = true;
+    }
+    changed
+}
+
+fn completed_tail_tool_turn(messages: &[ChatMessage]) -> Option<(usize, Vec<ChatMessage>)> {
+    let user_idx = messages
+        .iter()
+        .rposition(|message| message.role == Role::User)?;
+    let tool_turns: Vec<usize> = messages[user_idx + 1..]
+        .iter()
+        .enumerate()
+        .filter_map(|(offset, message)| {
+            (message.role == Role::Assistant
+                && message
+                    .tool_calls
+                    .as_ref()
+                    .is_some_and(|calls| !calls.is_empty()))
+            .then_some(user_idx + 1 + offset)
+        })
+        .collect();
+    if tool_turns.len() < 2 {
+        return None;
+    }
+    let last_start = *tool_turns.last()?;
+    let tail = &messages[last_start..];
+    if tail.len() < 2 || !tail[1..].iter().all(|message| message.role == Role::Tool) {
+        return None;
+    }
+    Some((last_start, tail.to_vec()))
 }
 
 /// Limit only this completion; callers with a continuing request restore the profile limit.

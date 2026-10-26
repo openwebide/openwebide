@@ -133,4 +133,7 @@ impl<E: ToolExecutor + Sync, S: QuestionStore> ToolExecutor for QuestionTools<E,
     fn acknowledge(&self, id: &str) {
         self.executor.acknowledge(id);
     }
+    fn set_context_limit(&self, limit: Option<usize>) {
+        self.executor.set_context_limit(limit);
+    }
 }

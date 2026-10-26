@@ -254,10 +254,19 @@ impl<C: HttpClient> LlmProvider for OllamaProvider<C> {
             for line in params.lines() {
                 if let Some(rest) = line.trim().strip_prefix("num_ctx")
                     && let Ok(n) = rest.trim().parse::<usize>()
+                    && n > 0
                 {
                     return Ok(Some(n));
                 }
             }
+        }
+        if let Ok(running) = self
+            .http
+            .get_json(&url_for(&self.base_url, "/api/ps"))
+            .await
+            && let Some(entry) = crate::discovery::running_model(&running, model)
+        {
+            return Ok(crate::discovery::positive(entry.get("context_length")));
         }
         Ok(None)
     }
@@ -950,9 +959,34 @@ mod tests {
                 "qwen2.context_length": 32768,
             }
         })));
+        state.push(Ok(json!({ "models": [] })));
 
         let limit = block_on(provider.context_limit(Some("qwen2.5-coder:7b"))).unwrap();
         assert_eq!(limit, None);
+    }
+
+    #[test]
+    fn context_limit_falls_back_to_running_model_ps_window() {
+        let (provider, state) = provider(FakeHttpClient::new());
+        state.push(Ok(json!({
+            "parameters": "stop \"<|eot|>\"",
+            "model_info": {
+                "general.architecture": "qwen2",
+                "qwen2.context_length": 32768,
+            }
+        })));
+        state.push(Ok(json!({
+            "models": [
+                { "name": "qwen2.5-coder:latest", "context_length": 4096 }
+            ]
+        })));
+
+        let limit = block_on(provider.context_limit(Some("qwen2.5-coder"))).unwrap();
+        assert_eq!(limit, Some(4096));
+        let calls = state.calls.lock().unwrap();
+        assert_eq!(calls.len(), 2);
+        assert_eq!(calls[0].url, format!("{BASE}/api/show"));
+        assert_eq!(calls[1].url, format!("{BASE}/api/ps"));
     }
 
     #[test]

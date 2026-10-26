@@ -3,11 +3,29 @@ use crate::{HttpClient, LlmProvider, ProviderError, registry::Provider, url_for}
 use openwebide_core::{Connection, ModelDetection, ProviderKind};
 use serde_json::{Value, json};
 
-fn positive(value: Option<&Value>) -> Option<usize> {
+pub(crate) fn positive(value: Option<&Value>) -> Option<usize> {
     value
         .and_then(Value::as_u64)
         .and_then(|value| usize::try_from(value).ok())
         .filter(|value| *value > 0)
+}
+pub(crate) fn running_model<'a>(running: &'a Value, model: &str) -> Option<&'a Value> {
+    running
+        .get("models")
+        .and_then(Value::as_array)
+        .and_then(|models| {
+            models.iter().find(|entry| {
+                entry
+                    .get("name")
+                    .or_else(|| entry.get("model"))
+                    .and_then(Value::as_str)
+                    .is_some_and(|candidate| {
+                        candidate == model
+                            || (!model.contains(':')
+                                && candidate.strip_suffix(":latest") == Some(model))
+                    })
+            })
+        })
 }
 fn root(base: &str) -> &str {
     let base = base
@@ -177,18 +195,7 @@ pub async fn detect_with_preset<C: HttpClient + 'static>(
                 .map(str::to_owned);
         }
         if let Ok(running) = http.get_json(&url_for(base, "/api/ps")).await {
-            let entry = running
-                .get("models")
-                .and_then(Value::as_array)
-                .and_then(|models| {
-                    models.iter().find(|entry| {
-                        entry
-                            .get("name")
-                            .or_else(|| entry.get("model"))
-                            .and_then(Value::as_str)
-                            == Some(model)
-                    })
-                });
+            let entry = running_model(&running, model);
             result.loaded = Some(entry.is_some());
             if let Some(entry) = entry {
                 result.context_limit =

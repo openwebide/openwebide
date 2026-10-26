@@ -361,7 +361,7 @@ fn render_tool_step(
                                 "[Alt+N]o"
                             </button>
                             <Show
-                                when=move || name_sig.get() == "write_file"
+                                when=move || matches!(name_sig.get().as_str(), "write_file" | "edit_file")
                                 fallback=|| ()
                             >
                                 <button
@@ -1127,6 +1127,18 @@ pub fn ChatPane(
                             <button class="btn" on:click=move |_| chat.dismiss_interrupted_run()>"Dismiss"</button>
                         </div>
                     </Show>
+                    <Show when=move || !streaming.get() && messages.with(|msgs| msgs.last().is_some_and(|msg| msg.role == Role::Assistant && msg.content.get().ends_with(openwebide_core::REPLY_CUT_OFF_MARKER)))>
+                        <div class="tui-stopped-marker">
+                            "Reply reached the output token limit. "
+                            <button class="btn send" disabled=move || submission_blocked.get() on:click=move |_| {
+                                if !submission_blocked.get_untracked() && !streaming.get_untracked() {
+                                    history_index.set(None);
+                                    chat.draft.set("Continue from where you left off without repeating earlier text.".into());
+                                    on_send.run(());
+                                }
+                            }>"Continue"</button>
+                        </div>
+                    </Show>
             </Show>
             <Show when=move || assistance.next_actions.with(|prompts| prompts.len() > 1) && !streaming.get() && draft.get().is_empty() && chat.prompt_images.with(Vec::is_empty) && chat.prompt_edit.get().is_none() && chat.queue_edit.get().is_none()>
                 <div class="chat-followups" aria-label="Suggested next actions">
@@ -1203,7 +1215,7 @@ pub fn ChatPane(
                         if inline_hint.get().is_some() && caret_at_end.get() {
                             ""
                         } else if let Some((_, name)) = awaiting_step.get() {
-                            if name == "write_file" {
+                            if matches!(name.as_str(), "write_file" | "edit_file") {
                                 "? Tool awaiting approval: press [Alt+Y]es, [Alt+N]o, or [Alt+A]uto-accept edits..."
                             } else {
                                 "? Tool awaiting approval: press [Alt+Y]es, or [Alt+N]o..."
@@ -1290,7 +1302,7 @@ pub fn ChatPane(
                                     on_permission.run((id, false));
                                     return;
                                 }
-                                if code == "KeyA" && name == "write_file" {
+                                if code == "KeyA" && matches!(name.as_str(), "write_file" | "edit_file") {
                                     e.prevent_default();
                                     on_permission_always.run(id);
                                     return;

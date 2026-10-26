@@ -11,8 +11,9 @@ use openwebide_core::{
 
 pub use crate::clients::{BridgeClient, NoopBridgeClient, NoopWebClient, WebClient};
 use crate::tools::{
-    self, FetchWebPageArgs, GitBranchArgs, GitCommitArgs, GitDiffArgs, GrepSearchArgs, ListDirArgs,
-    ReadFileArgs, RunCommandArgs, SearchArgs, SearchWebArgs, Tool, ToolName, WriteFileArgs,
+    self, EditFileArgs, FetchWebPageArgs, GitBranchArgs, GitCommitArgs, GitDiffArgs,
+    GrepSearchArgs, ListDirArgs, ReadFileArgs, RunCommandArgs, SearchArgs, SearchWebArgs, Tool,
+    ToolName, WriteFileArgs,
 };
 use crate::{ToolExecutor, ToolOutcome, ToolPreview};
 
@@ -22,6 +23,32 @@ pub const MAX_TOOL_CONTENT: usize = 64 * 1024;
 
 /// Hard cap on the number of matches `search`/`grep_search` return.
 const MAX_SEARCH_MATCHES: usize = 200;
+
+/// Scale the per-tool content byte cap proportionally to the model's context
+/// window (~20% of the context window byte budget, clamped between 2 KiB and
+/// [`MAX_TOOL_CONTENT`]).
+pub fn tool_content_budget(context_limit: Option<usize>) -> usize {
+    match context_limit.filter(|&limit| limit > 0) {
+        Some(limit) => (limit.saturating_mul(3) / 5).clamp(2048, MAX_TOOL_CONTENT),
+        None => MAX_TOOL_CONTENT,
+    }
+}
+
+/// Scale the default `read_file` line window for small-context models.
+pub fn default_read_lines(context_limit: Option<usize>) -> u64 {
+    match context_limit.filter(|&limit| limit > 0) {
+        Some(limit) => u64::try_from((limit / 16).clamp(100, 2000)).unwrap_or(2000),
+        None => 2000,
+    }
+}
+
+/// Scale the maximum number of search/grep matches for small-context models.
+pub fn search_match_budget(context_limit: Option<usize>) -> usize {
+    match context_limit.filter(|&limit| limit > 0) {
+        Some(limit) => (limit / 64).clamp(25, MAX_SEARCH_MATCHES),
+        None => MAX_SEARCH_MATCHES,
+    }
+}
 
 /// Truncate `s` to at most `max` bytes from the head, char-boundary safe,
 /// appending a marker noting how much was shown.
@@ -75,6 +102,7 @@ pub fn vfs_tools() -> Vec<ToolDefinition> {
 pub struct VfsToolExecutor<V: Vfs, W: WebClient = NoopWebClient, B: BridgeClient = NoopBridgeClient>
 {
     context: Option<crate::context::RunContext>,
+    context_limit: std::sync::atomic::AtomicUsize,
     vfs: V,
     web: W,
     bridge: B,
@@ -84,6 +112,7 @@ impl<V: Vfs> VfsToolExecutor<V, NoopWebClient, NoopBridgeClient> {
     pub fn new(vfs: V) -> Self {
         Self {
             context: None,
+            context_limit: std::sync::atomic::AtomicUsize::new(0),
             vfs,
             web: NoopWebClient,
             bridge: NoopBridgeClient,
@@ -95,6 +124,7 @@ impl<V: Vfs, W: WebClient> VfsToolExecutor<V, W, NoopBridgeClient> {
     pub fn with_web(vfs: V, web: W) -> Self {
         Self {
             context: None,
+            context_limit: std::sync::atomic::AtomicUsize::new(0),
             vfs,
             web,
             bridge: NoopBridgeClient,
@@ -106,6 +136,7 @@ impl<V: Vfs, W: WebClient, B: BridgeClient> VfsToolExecutor<V, W, B> {
     pub fn with_web_and_bridge(vfs: V, web: W, bridge: B) -> Self {
         Self {
             context: None,
+            context_limit: std::sync::atomic::AtomicUsize::new(0),
             vfs,
             web,
             bridge,
@@ -113,8 +144,30 @@ impl<V: Vfs, W: WebClient, B: BridgeClient> VfsToolExecutor<V, W, B> {
     }
 
     pub fn with_context(mut self, environment: openwebide_core::RunEnvironment) -> Self {
-        self.context = Some(crate::context::RunContext::new(environment));
+        let mut context = crate::context::RunContext::new(environment);
+        context.set_context_limit(self.active_context_limit());
+        self.context = Some(context);
         self
+    }
+
+    pub fn with_context_limit(mut self, limit: Option<usize>) -> Self {
+        self.set_context_limit_value(limit);
+        if let Some(context) = &mut self.context {
+            context.set_context_limit(limit);
+        }
+        self
+    }
+
+    fn set_context_limit_value(&self, limit: Option<usize>) {
+        self.context_limit
+            .store(limit.unwrap_or(0), std::sync::atomic::Ordering::Relaxed);
+    }
+
+    fn active_context_limit(&self) -> Option<usize> {
+        let limit = self
+            .context_limit
+            .load(std::sync::atomic::Ordering::Relaxed);
+        (limit > 0).then_some(limit)
     }
 
     pub fn vfs(&self) -> &V {
@@ -140,11 +193,24 @@ impl<V: Vfs, W: WebClient, B: BridgeClient> VfsToolExecutor<V, W, B> {
             Ok(content) => {
                 let all_lines: Vec<&str> = content.lines().collect();
                 let total_lines = all_lines.len();
+                let context_limit = self.active_context_limit();
                 let offset = usize::try_from(args.offset.unwrap_or(1).max(1)).unwrap_or(usize::MAX);
-                let limit =
-                    usize::try_from(args.limit.unwrap_or(2000).max(1)).unwrap_or(usize::MAX);
+                let default_limit = default_read_lines(context_limit);
+                let limit = usize::try_from(args.limit.unwrap_or(default_limit).max(1))
+                    .unwrap_or(usize::MAX);
                 let start = (offset - 1).min(total_lines);
-                let end = start.saturating_add(limit).min(total_lines);
+                let max_end = start.saturating_add(limit).min(total_lines);
+                let byte_cap = tool_content_budget(context_limit).saturating_sub(96);
+                let mut end = start;
+                let mut bytes = 0usize;
+                while end < max_end {
+                    let line_bytes = all_lines[end].len() + usize::from(end > start);
+                    if end > start && bytes.saturating_add(line_bytes) > byte_cap {
+                        break;
+                    }
+                    bytes = bytes.saturating_add(line_bytes);
+                    end += 1;
+                }
                 let shown = &all_lines[start..end];
                 let mut windowed = shown.join("\n");
                 if end < total_lines {
@@ -253,6 +319,86 @@ impl<V: Vfs, W: WebClient, B: BridgeClient> VfsToolExecutor<V, W, B> {
         }
     }
 
+    fn apply_edit(path: &str, old: &str, args: &EditFileArgs) -> Result<String, String> {
+        if args.old_string.is_empty() {
+            return Err(
+                "old_string must not be empty; use write_file to overwrite an entire file".into(),
+            );
+        }
+        let (target_old, target_new) = if !old.contains(&args.old_string)
+            && old.contains("\r\n")
+            && !args.old_string.contains("\r\n")
+        {
+            (
+                args.old_string.replace('\n', "\r\n"),
+                args.new_string.replace('\n', "\r\n"),
+            )
+        } else {
+            (args.old_string.clone(), args.new_string.clone())
+        };
+        let matches = old.matches(&target_old).count();
+        match matches {
+            0 => Err(format!(
+                "old_string not found in {path}; read the surrounding lines with read_file and copy the exact text"
+            )),
+            1 => Ok(old.replacen(&target_old, &target_new, 1)),
+            n => Err(format!(
+                "old_string matched {n} locations in {path}; include more surrounding lines in old_string to match uniquely"
+            )),
+        }
+    }
+
+    async fn edit_file(&self, args: &EditFileArgs) -> ToolOutcome {
+        let raw_path = args.path.as_str();
+        let path = match normalize_vfs_path(raw_path) {
+            Ok(p) => p,
+            Err(e) => return fail("edit_file", raw_path, &e.to_string()),
+        };
+        if path.split('/').any(|seg| seg.eq_ignore_ascii_case(".git")) {
+            return fail("edit_file", &path, "refusing to write inside .git");
+        }
+        let canonical_path = match self.vfs.canonicalize(&path).await {
+            Ok(p) => p,
+            Err(e) => return fail("edit_file", &path, &e.to_string()),
+        };
+        if canonical_path
+            .split('/')
+            .any(|seg| seg.eq_ignore_ascii_case(".git"))
+        {
+            return fail("edit_file", &path, "refusing to write inside .git");
+        }
+        let old = match self.vfs.read(&path).await {
+            Ok(c) => c,
+            Err(VfsError::NotFound(_)) => {
+                return fail(
+                    "edit_file",
+                    &path,
+                    "file not found; use write_file to create a new file",
+                );
+            }
+            Err(e) => return fail("edit_file", &path, &e.to_string()),
+        };
+        let new_content = match Self::apply_edit(&path, &old, args) {
+            Ok(c) => c,
+            Err(err) => return fail("edit_file", &path, &err),
+        };
+        match self.vfs.write(&path, &new_content).await {
+            Ok(()) => ToolOutcome {
+                ok: true,
+                content: format!("edited {path}"),
+                summary: format!("edited {path}"),
+                diff: Some(FileDiff {
+                    path,
+                    old: Some(old),
+                    new: new_content,
+                    old_unavailable: false,
+                    backup_path: None,
+                }),
+            },
+            Err(e) => fail("edit_file", &path, &e.to_string()),
+        }
+    }
+
     async fn list_dir(&self, args: &ListDirArgs) -> ToolOutcome {
         let raw_dir = args.path.as_deref().unwrap_or("");
         let dir = match normalize_vfs_path(raw_dir) {
@@ -312,16 +458,17 @@ impl<V: Vfs, W: WebClient, B: BridgeClient> VfsToolExecutor<V, W, B> {
                     .collect();
 
                 let count = matches.len();
+                let max_matches = search_match_budget(self.active_context_limit());
                 let content = if matches.is_empty() {
                     format!("no files matching '{query}'")
                 } else {
                     let mut content = matches
                         .into_iter()
-                        .take(MAX_SEARCH_MATCHES)
+                        .take(max_matches)
                         .map(|e| e.path)
                         .collect::<Vec<_>>()
                         .join("\n");
-                    let extra = count.saturating_sub(MAX_SEARCH_MATCHES);
+                    let extra = count.saturating_sub(max_matches);
                     if extra > 0 {
                         content.push_str(&format!("\n…and {extra} more"));
                     }
@@ -354,16 +501,17 @@ impl<V: Vfs, W: WebClient, B: BridgeClient> VfsToolExecutor<V, W, B> {
         match self.vfs.search_content(query, &dir, opts).await {
             Ok(hits) => {
                 let count = hits.len();
+                let max_matches = search_match_budget(self.active_context_limit());
                 let content = if hits.is_empty() {
                     format!("no matches found for '{query}'")
                 } else {
                     let mut content = hits
                         .into_iter()
-                        .take(MAX_SEARCH_MATCHES)
+                        .take(max_matches)
                         .map(|h| format!("{}:{}: {}", h.path, h.line, h.text))
                         .collect::<Vec<_>>()
                         .join("\n");
-                    let extra = count.saturating_sub(MAX_SEARCH_MATCHES);
+                    let extra = count.saturating_sub(max_matches);
                     if extra > 0 {
                         content.push_str(&format!("\n…and {extra} more"));
                     }
@@ -611,6 +759,7 @@ impl<V: Vfs, W: WebClient, B: BridgeClient> VfsToolExecutor<V, W, B> {
         match tool {
             Tool::ReadFile(args) => self.read_file(&args).await,
             Tool::WriteFile(args) => self.write_file(&args, step_id).await,
+            Tool::EditFile(args) => self.edit_file(&args).await,
             Tool::ListDir(args) => self.list_dir(&args).await,
             Tool::Search(args) => self.search(&args).await,
             Tool::GrepSearch(args) => self.grep_search(&args).await,
@@ -646,6 +795,10 @@ impl<V: Vfs, W: WebClient, B: BridgeClient> VfsToolExecutor<V, W, B> {
 }
 
 impl<V: Vfs, W: WebClient, B: BridgeClient> ToolExecutor for VfsToolExecutor<V, W, B> {
+    fn set_context_limit(&self, limit: Option<usize>) {
+        self.set_context_limit_value(limit);
+    }
+
     fn has_context(&self) -> bool {
         self.context.is_some()
     }
@@ -655,12 +808,15 @@ impl<V: Vfs, W: WebClient, B: BridgeClient> ToolExecutor for VfsToolExecutor<V, 
         definitions: &[ToolDefinition],
         call: Option<&ToolCall>,
     ) -> Option<String> {
+        let limit = self.active_context_limit();
         let context = self.context.as_mut()?;
+        context.set_context_limit(limit);
         match call {
             None => Some(context.startup(&self.vfs, &self.bridge, definitions).await),
             Some(call) => match tools::parse(call).ok()? {
                 Tool::ReadFile(args) => context.for_path(&self.vfs, &args.path).await,
                 Tool::WriteFile(args) => context.for_path(&self.vfs, &args.path).await,
+                Tool::EditFile(args) => context.for_path(&self.vfs, &args.path).await,
                 _ => None,
             },
         }
@@ -691,6 +847,21 @@ impl<V: Vfs, W: WebClient, B: BridgeClient> ToolExecutor for VfsToolExecutor<V, 
                         backup_path: None,
                     }),
                     note: old_unavailable.then(|| "The existing file isn't readable as text (binary or too large); approving overwrites it — a backup is kept and Reject restores it.".into()),
+                })
+            }
+            Tool::EditFile(args) => {
+                let path = normalize_vfs_path(&args.path).ok()?;
+                let old = self.vfs.read(&path).await.ok()?;
+                let new = Self::apply_edit(&path, &old, &args).ok()?;
+                Some(ToolPreview {
+                    diff: Some(FileDiff {
+                        path,
+                        old: Some(old),
+                        new,
+                        old_unavailable: false,
+                        backup_path: None,
+                    }),
+                    note: None,
                 })
             }
             Tool::GitCommit(args) => Some(ToolPreview {
@@ -745,10 +916,18 @@ impl<V: Vfs, W: WebClient, B: BridgeClient> ToolExecutor for VfsToolExecutor<V, 
         &self,
         call: &ToolCall,
     ) -> Result<Option<openwebide_core::rewind::ProjectSnapshot>, String> {
-        if let Ok(Tool::WriteFile(args)) = tools::parse(call) {
-            return openwebide_core::rewind::capture_file(&self.vfs, &args.path)
-                .await
-                .map(Some);
+        match tools::parse(call) {
+            Ok(Tool::WriteFile(args)) => {
+                return openwebide_core::rewind::capture_file(&self.vfs, &args.path)
+                    .await
+                    .map(Some);
+            }
+            Ok(Tool::EditFile(args)) => {
+                return openwebide_core::rewind::capture_file(&self.vfs, &args.path)
+                    .await
+                    .map(Some);
+            }
+            _ => {}
         }
         if matches!(
             call.name.as_str(),
@@ -765,11 +944,12 @@ impl<V: Vfs, W: WebClient, B: BridgeClient> ToolExecutor for VfsToolExecutor<V, 
         match tools::parse(call) {
             Ok(tool) => {
                 let cap_tail = matches!(tool, Tool::RunCommand(_) | Tool::GitDiff(_));
+                let max_content = tool_content_budget(self.active_context_limit());
                 let mut outcome = self.dispatch(tool, &call.id).await;
                 outcome.content = if cap_tail {
-                    cap_head_tail(&outcome.content, MAX_TOOL_CONTENT)
+                    cap_head_tail(&outcome.content, max_content)
                 } else {
-                    cap_head(&outcome.content, MAX_TOOL_CONTENT)
+                    cap_head(&outcome.content, max_content)
                 };
                 outcome
             }
@@ -813,6 +993,13 @@ impl<E: ToolExecutor, W: WebClient, B: BridgeClient> SessionToolExecutor<E, W, B
 impl<E: ToolExecutor + Sync, W: WebClient, B: BridgeClient> ToolExecutor
     for SessionToolExecutor<E, W, B>
 {
+    fn set_context_limit(&self, limit: Option<usize>) {
+        if let Some(workspace) = &self.workspace {
+            workspace.set_context_limit(limit);
+        }
+        self.web.set_context_limit(limit);
+    }
+
     fn reserve_tool_call(&self) -> Result<(), String> {
         self.workspace.as_ref().map_or_else(
             || self.web.reserve_tool_call(),
@@ -1226,7 +1413,7 @@ mod tests {
             .filter(|tool| {
                 !matches!(
                     tool.name.as_str(),
-                    "host_info" | "todo_write" | "ask_user_question"
+                    "edit_file" | "host_info" | "todo_write" | "ask_user_question"
                 )
             })
             .collect::<Vec<_>>();
@@ -2219,5 +2406,141 @@ mod tests {
         // Head/tail capping with a 2-byte character at both cut points.
         let capped = cap_head_tail(&s, 10); // head budget 2, tail budget 8
         assert!(capped.starts_with("é\n…[truncated: showing 10 of 200 bytes]…\néééé"));
+    }
+
+    #[test]
+    fn small_context_limit_scales_tool_output_and_preserves_read_file_offset_hint() {
+        futures::executor::block_on(async {
+            let content: String = (1..=300)
+                .map(|i| format!("line {i:04} padding padding\n"))
+                .collect();
+            let vfs = MemoryVfs::new();
+            vfs.write("big.txt", &content).await.unwrap();
+            for i in 0..100 {
+                vfs.write(&format!("dir/file-{i:03}.rs"), "needle\n")
+                    .await
+                    .unwrap();
+            }
+
+            let executor = VfsToolExecutor::new(vfs).with_context_limit(Some(4096));
+            assert_eq!(tool_content_budget(Some(4096)), 2457);
+            assert_eq!(default_read_lines(Some(4096)), 256);
+            assert_eq!(search_match_budget(Some(4096)), 64);
+
+            let read_call = ToolCall {
+                id: "read-4k".into(),
+                name: "read_file".into(),
+                arguments: json!({ "path": "big.txt" }).to_string(),
+            };
+            let read_outcome = executor.execute(&read_call).await;
+            assert!(read_outcome.ok);
+            assert!(read_outcome.content.len() <= tool_content_budget(Some(4096)));
+            assert!(
+                read_outcome
+                    .content
+                    .contains("…[truncated: showing lines 1-")
+                    && read_outcome.content.contains("of 300; use offset="),
+                "expected line-based offset hint, got: {}",
+                read_outcome.content
+            );
+
+            let search_call = ToolCall {
+                id: "search-4k".into(),
+                name: "search".into(),
+                arguments: json!({ "query": "file-" }).to_string(),
+            };
+            let search_outcome = executor.execute(&search_call).await;
+            assert!(search_outcome.ok);
+            assert!(search_outcome.content.ends_with("…and 36 more"));
+        });
+    }
+
+    #[test]
+    fn edit_file_replaces_unique_block_and_validates_errors() {
+        futures::executor::block_on(async {
+            let vfs = MemoryVfs::new();
+            vfs.write(
+                "src/lib.rs",
+                "fn a() {\n    let x = 1;\n}\nfn b() {\n    let x = 1;\n}\n",
+            )
+            .await
+            .unwrap();
+            let executor = VfsToolExecutor::new(vfs.clone());
+
+            let ambiguous = ToolCall {
+                id: "edit-ambig".into(),
+                name: "edit_file".into(),
+                arguments: json!({
+                    "path": "src/lib.rs",
+                    "old_string": "let x = 1;",
+                    "new_string": "let x = 2;"
+                })
+                .to_string(),
+            };
+            assert!(executor.preview(&ambiguous).await.is_none());
+            let outcome = executor.execute(&ambiguous).await;
+            assert!(!outcome.ok);
+            assert!(outcome.content.contains("matched 2 locations"));
+
+            let missing = ToolCall {
+                id: "edit-missing".into(),
+                name: "edit_file".into(),
+                arguments: json!({
+                    "path": "src/lib.rs",
+                    "old_string": "let y = 9;",
+                    "new_string": "let y = 10;"
+                })
+                .to_string(),
+            };
+            let outcome = executor.execute(&missing).await;
+            assert!(!outcome.ok);
+            assert!(outcome.content.contains("old_string not found"));
+
+            let unique = ToolCall {
+                id: "edit-unique".into(),
+                name: "edit_file".into(),
+                arguments: json!({
+                    "path": "src/lib.rs",
+                    "old_string": "fn a() {\n    let x = 1;\n}",
+                    "new_string": "fn a() {\n    let x = 2;\n}"
+                })
+                .to_string(),
+            };
+            let preview = executor.preview(&unique).await.unwrap();
+            assert_eq!(
+                preview.diff.as_ref().unwrap().new,
+                "fn a() {\n    let x = 2;\n}\nfn b() {\n    let x = 1;\n}\n"
+            );
+            let checkpoint = executor.checkpoint(&unique).await.unwrap().unwrap();
+            assert_eq!(checkpoint.path, "src/lib.rs");
+            let snapshot = executor.project_checkpoint(&unique).await.unwrap().unwrap();
+            assert!(snapshot.files.contains_key("src/lib.rs"));
+
+            let outcome = executor.execute(&unique).await;
+            assert!(outcome.ok);
+            assert_eq!(outcome.summary, "edited src/lib.rs");
+            assert_eq!(
+                vfs.read("src/lib.rs").await.unwrap(),
+                "fn a() {\n    let x = 2;\n}\nfn b() {\n    let x = 1;\n}\n"
+            );
+
+            let git_call = ToolCall {
+                id: "edit-git".into(),
+                name: "edit_file".into(),
+                arguments: json!({
+                    "path": ".git/config",
+                    "old_string": "a",
+                    "new_string": "b"
+                })
+                .to_string(),
+            };
+            let git_outcome = executor.execute(&git_call).await;
+            assert!(!git_outcome.ok);
+            assert!(
+                git_outcome
+                    .content
+                    .contains("refusing to write inside .git")
+            );
+        });
     }
 }

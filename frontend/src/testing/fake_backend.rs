@@ -3655,6 +3655,32 @@ impl Backend for FakeBackend {
             if latency > 0 {
                 crate::util::sleep_ms(latency).await;
             }
+            let setup = self.model_setup.borrow();
+            let resolved_model = model
+                .map(str::to_string)
+                .or_else(|| {
+                    setup
+                        .defaults
+                        .primary
+                        .as_ref()
+                        .filter(|selection| selection.server_id == connection_id)
+                        .map(|selection| selection.model.clone())
+                })
+                .or_else(|| {
+                    self.connections
+                        .borrow()
+                        .iter()
+                        .find(|c| c.id == connection_id)
+                        .and_then(|c| c.model.clone())
+                })
+                .unwrap_or_default();
+            if let Some(limit) = setup
+                .resolve(connection_id, &resolved_model)
+                .context_limit
+                .filter(|&limit| limit > 0)
+            {
+                return Ok(Some(limit));
+            }
             Ok(self
                 .connections
                 .borrow()

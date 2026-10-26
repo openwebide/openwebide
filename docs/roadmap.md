@@ -1222,7 +1222,6 @@ complete; preserve the shared document/selection/extension APIs as its foundatio
   pending-edit review; reject stale selections after document or project changes.
 - Offer the same actions through keyboard and touch controls in both modes.
 
-
 ### Phone device verification
 
 The compact app/editor rows, universal search, logo drawer, responsive workspace status controls,

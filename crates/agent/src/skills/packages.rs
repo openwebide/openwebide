@@ -103,6 +103,9 @@ impl<E: ToolExecutor + Sync> ToolExecutor for PackageSkillTools<E> {
     fn acknowledge(&self, id: &str) {
         self.inner.executor.acknowledge(id);
     }
+    fn set_context_limit(&self, limit: Option<usize>) {
+        self.inner.executor.set_context_limit(limit);
+    }
     async fn execute(&self, call: &ToolCall) -> ToolOutcome {
         if let Some(call) = reader_call(call) {
             self.inner.execute(&call).await

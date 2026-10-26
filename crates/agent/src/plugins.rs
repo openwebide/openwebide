@@ -31,7 +31,7 @@ pub fn configure(
     if !tools.is_empty() {
         let workspace = tools
             .iter()
-            .any(|tool| matches!(tool.name.as_str(), "read_file" | "write_file"));
+            .any(|tool| matches!(tool.name.as_str(), "read_file" | "write_file" | "edit_file"));
         for definition in management_tools::definitions() {
             if !workspace
                 && matches!(

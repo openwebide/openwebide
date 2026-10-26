@@ -218,6 +218,7 @@ mod tests {
             "memory_update",
             "memory_delete",
             "write_file",
+            "edit_file",
             "run_command",
             "git_commit",
             "git_branch",

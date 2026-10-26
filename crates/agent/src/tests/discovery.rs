@@ -6,7 +6,13 @@ fn catalog_request() -> ChatRequest {
     request.tools.retain(|tool| {
         matches!(
             tool.name.as_str(),
-            "read_file" | "write_file" | "list_dir" | "search" | "grep_search" | "run_command"
+            "read_file"
+                | "write_file"
+                | "edit_file"
+                | "list_dir"
+                | "search"
+                | "grep_search"
+                | "run_command"
         )
     });
     for name in [
