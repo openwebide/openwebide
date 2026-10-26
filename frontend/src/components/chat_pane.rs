@@ -1127,7 +1127,7 @@ pub fn ChatPane(
                             <button class="btn" on:click=move |_| chat.dismiss_interrupted_run()>"Dismiss"</button>
                         </div>
                     </Show>
-                    <Show when=move || !streaming.get() && messages.with(|msgs| msgs.last().is_some_and(|msg| msg.role == Role::Assistant && msg.content.get().ends_with(openwebide_core::REPLY_CUT_OFF_MARKER)))>
+                    <Show when=move || !streaming.get() && messages.handles.with(|handles| handles.last().is_some_and(|handle| handle.item.with(|item| matches!(item, ConversationItem::Message(msg) if msg.role == Role::Assistant && msg.content.ends_with(openwebide_core::REPLY_CUT_OFF_MARKER)))))>
                         <div class="tui-stopped-marker">
                             "Reply reached the output token limit. "
                             <button class="btn send" disabled=move || submission_blocked.get() on:click=move |_| {

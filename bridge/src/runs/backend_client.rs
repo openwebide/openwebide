@@ -317,7 +317,9 @@ impl BackendClient {
         let value: Value = self
             .service_call("/plugins/jobs/rebind", json!({"host_id": host}))
             .await?;
-        value["changed"].as_u64().ok_or_else(|| "Invalid rebind response".to_string())
+        value["changed"]
+            .as_u64()
+            .ok_or_else(|| "Invalid rebind response".to_string())
     }
     async fn service_call<T: DeserializeOwned>(
         &self,

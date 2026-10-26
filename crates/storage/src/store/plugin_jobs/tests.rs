@@ -1528,9 +1528,7 @@ fn rebind_plugin_host_reattaches_orphaned_scheduling_rows_to_the_new_host() {
                 .unwrap()
                 .jobs;
             assert!(claimed.iter().any(|job| job.job.id == scheduled.id));
-            assert!(claimed
-                .iter()
-                .all(|job| job.prepared.host_id == new));
+            assert!(claimed.iter().all(|job| job.prepared.host_id == new));
             // Idempotent: a second rebind moves nothing.
             assert_eq!(f.store.rebind_plugin_host(new).await.unwrap(), 0);
             // Invalid hosts are rejected without touching any rows.
@@ -1539,9 +1537,7 @@ fn rebind_plugin_host_reattaches_orphaned_scheduling_rows_to_the_new_host() {
                 Err(StorageError::InvalidRequest(_))
             ));
             assert!(matches!(
-                f.store
-                    .rebind_plugin_host(&"x".repeat(1025))
-                    .await,
+                f.store.rebind_plugin_host(&"x".repeat(1025)).await,
                 Err(StorageError::InvalidRequest(_))
             ));
             // The old host is fully drained.
