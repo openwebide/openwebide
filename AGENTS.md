@@ -88,14 +88,66 @@ Instructions, conventions, and architectural principles for AI agents working on
   cargo test -p openwebide-frontend --lib
   ```
 - **Frontend UI Tests** (needs Chrome + chromedriver and `wasm-bindgen-cli` matching
-  `Cargo.lock`'s `wasm-bindgen`):
+  `Cargo.lock`'s `wasm-bindgen`; always pass `--release` on `--test components` so Chrome loads an
+  optimized WASM binary instead of a ~250 MiB debug module):
   ```bash
-  CHROMEDRIVER=<path> cargo test -p openwebide-frontend --target wasm32-unknown-unknown
+  CHROMEDRIVER=$(command -v chromedriver) cargo test -p openwebide-frontend --release --target wasm32-unknown-unknown --test components
   ```
 - **Execution Bridge**:
   ```bash
   cargo build -p openwebide-bridge
   ```
+
+### Required Pre-Commit / Pre-Push Verification & Tooling Gate
+
+**Never commit or push without running the full local CI verification suite.** Many frontend UI
+components (`frontend/src/components/*`) are gated behind `#[cfg(target_arch = "wasm32")]` and are
+**not** compiled by native `cargo test -p openwebide-frontend --lib`. Skipping WASM compilation or
+browser tests leaves compile errors, Clippy warnings, and DOM regressions undetected until GitHub
+Actions runs.
+
+1. **Verify Local Tooling First (Install If Missing — Never Skip Checks)**:
+   Before running verification, confirm all required binaries and targets are installed and on `PATH`
+   (e.g. `~/.local/bin` and `~/.cargo/bin`):
+   - `rustup` toolchain matching `rust-toolchain.toml` with components `rustfmt`, `clippy` and
+     targets `wasm32-unknown-unknown`, `wasm32-wasip2`
+   - `clang` supporting `--target=wasm32-unknown-unknown` (required by `tree-sitter` C sources when
+     compiling for WASM; e.g. Homebrew `llvm` symlinked into `~/.local/bin/clang`)
+   - `wasm-bindgen` and `wasm-bindgen-test-runner` (`wasm-bindgen-cli` matching the exact
+     `wasm-bindgen` version in `Cargo.lock`)
+   - `google-chrome` and `chromedriver` (matching versions, e.g. Chrome for Testing in
+     `~/.local/bin`)
+   - `trunk` and `spin`
+
+   Quick check:
+   ```bash
+   command -v cargo rustfmt cargo-clippy clang trunk spin wasm-bindgen-test-runner google-chrome chromedriver
+   ```
+   If any tool or target is missing or out of date, install or update it in the local environment
+   before proceeding. Do not treat missing local tooling as an excuse to defer verification to CI.
+
+2. **Mandatory Pre-Push Checks (Must Pass With Zero Warnings/Failures)**:
+   Run these commands before every commit/push:
+   ```bash
+   # 1. Formatting
+   cargo fmt --all --check
+
+   # 2. Clippy across all CI targets (native, WASI backend, WASM frontend, bridge)
+   cargo clippy -p openwebide-storage -p openwebide-core -p openwebide-auth -p openwebide-agent -p openwebide-llm --all-targets -- -D warnings
+   cargo clippy -p openwebide-backend --target wasm32-wasip2 -- -D warnings
+   cargo clippy -p openwebide-frontend --target wasm32-unknown-unknown -- -D warnings
+   cargo clippy -p openwebide-bridge --all-targets -- -D warnings
+
+   # 3. Native unit & integration tests
+   cargo test -p openwebide-storage -p openwebide-core -p openwebide-auth -p openwebide-agent -p openwebide-llm -p openwebide-bridge -p openwebide-backend
+   cargo test -p openwebide-frontend --lib
+
+   # 4. Headless Chrome WASM UI tests (required whenever frontend, core, agent, or shared types change)
+   CHROMEDRIVER=$(command -v chromedriver) cargo test -p openwebide-frontend --release --target wasm32-unknown-unknown --lib
+   CHROMEDRIVER=$(command -v chromedriver) cargo test -p openwebide-frontend --release --target wasm32-unknown-unknown --test components
+   ```
+   When iterating on a specific frontend area, run the targeted browser test module first (for
+   example `--test components -- streaming::`) and the full affected suite before pushing.
 
 ### Launching local development
 
