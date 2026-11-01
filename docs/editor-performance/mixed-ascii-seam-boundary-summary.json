@@ -1,0 +1,111 @@
+{
+  "scope": "Eight final-artifact byte/row boundary observations plus twelve final-artifact styled-line observations from the paired comparison; all twelve case/mode/wrap configurations",
+  "samples": 20,
+  "allSourceVerified": true,
+  "allFinalPssPresent": true,
+  "ranges": {
+    "inputViewportPaintMs": {
+      "min": 19.10000000000582,
+      "max": 99.69999999999709
+    },
+    "inputToPaintMs": {
+      "min": 19.10000000000582,
+      "max": 411.90000000000146
+    },
+    "coldCompleteGeometryMs": {
+      "min": 1072.3999999999942,
+      "max": 1587.8999999999942
+    },
+    "peakChromePssKiB": {
+      "min": 602558,
+      "max": 747948
+    }
+  },
+  "boundaries": [
+    {
+      "case": "byte-limit",
+      "mode": "local",
+      "wrap": false,
+      "sourceBytes": 8388416,
+      "inputViewportPaintMs": 20.89999999999418,
+      "inputToPaintMs": 20.89999999999418,
+      "coldCompleteGeometryMs": 1321.0999999999767,
+      "peakChromePssKiB": 702354
+    },
+    {
+      "case": "byte-limit",
+      "mode": "remote",
+      "wrap": false,
+      "sourceBytes": 8388416,
+      "inputViewportPaintMs": 19.10000000000582,
+      "inputToPaintMs": 19.10000000000582,
+      "coldCompleteGeometryMs": 1328.7999999999884,
+      "peakChromePssKiB": 711274
+    },
+    {
+      "case": "line-limit",
+      "mode": "local",
+      "wrap": false,
+      "sourceBytes": 199998,
+      "inputViewportPaintMs": 25.599999999976717,
+      "inputToPaintMs": 26.599999999976717,
+      "coldCompleteGeometryMs": 1072.3999999999942,
+      "peakChromePssKiB": 625906
+    },
+    {
+      "case": "line-limit",
+      "mode": "remote",
+      "wrap": false,
+      "sourceBytes": 199998,
+      "inputViewportPaintMs": 25.79999999998836,
+      "inputToPaintMs": 27.10000000000582,
+      "coldCompleteGeometryMs": 1098.6000000000058,
+      "peakChromePssKiB": 612574
+    },
+    {
+      "case": "byte-limit",
+      "mode": "local",
+      "wrap": true,
+      "sourceBytes": 8388416,
+      "inputViewportPaintMs": 58.29999999998836,
+      "inputToPaintMs": 58.39999999999418,
+      "coldCompleteGeometryMs": 1363.2999999999884,
+      "peakChromePssKiB": 709313
+    },
+    {
+      "case": "byte-limit",
+      "mode": "remote",
+      "wrap": true,
+      "sourceBytes": 8388416,
+      "inputViewportPaintMs": 46.60000000000582,
+      "inputToPaintMs": 46.70000000001164,
+      "coldCompleteGeometryMs": 1378.6000000000058,
+      "peakChromePssKiB": 708757
+    },
+    {
+      "case": "line-limit",
+      "mode": "local",
+      "wrap": true,
+      "sourceBytes": 199998,
+      "inputViewportPaintMs": 60.39999999999418,
+      "inputToPaintMs": 60.5,
+      "coldCompleteGeometryMs": 1123.8000000000175,
+      "peakChromePssKiB": 615192
+    },
+    {
+      "case": "line-limit",
+      "mode": "remote",
+      "wrap": true,
+      "sourceBytes": 199998,
+      "inputViewportPaintMs": 72,
+      "inputToPaintMs": 72,
+      "coldCompleteGeometryMs": 1151.2999999999884,
+      "peakChromePssKiB": 602558
+    }
+  ],
+  "limitations": [
+    "Byte/row boundaries are single observations per configuration; styled-line comparison has three alternating pairs.",
+    "Sampled peak PSS is not a continuous memory-coverage guarantee.",
+    "No complete responsiveness/memory/device gate claim."
+  ]
+}

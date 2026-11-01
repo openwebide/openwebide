@@ -169,6 +169,34 @@ impl LineIndex {
     /// Re-scan changed logical rows, preserving all unchanged suffix coordinates.
     /// The edit envelope includes every replacement in one overlapping row batch.
     pub fn update(&mut self, old_len: usize, new: &str, changed: Range<usize>, new_end: usize) {
+        self.update_with_ascii_seam(old_len, new, changed, new_end, false);
+    }
+
+    /// Capture original-source evidence before replacement. ASCII on both sides
+    /// prevents an edit from merging with a retained Unicode grapheme. The
+    /// complete row ending is excluded from this proof.
+    pub fn ascii_seam(&self, old: &str, changed: Range<usize>) -> bool {
+        if changed.len() > 256 {
+            return false;
+        }
+        let row = &self.rows[row_at(&self.rows, changed.start)];
+        changed.end <= row.body_end
+            && old[changed.clone()]
+                .bytes()
+                .all(|byte| matches!(byte, b' '..=b'~'))
+            && (changed.start == row.start
+                || matches!(old.as_bytes()[changed.start - 1], b' '..=b'~'))
+            && (changed.end == row.body_end || matches!(old.as_bytes()[changed.end], b' '..=b'~'))
+    }
+
+    pub fn update_with_ascii_seam(
+        &mut self,
+        old_len: usize,
+        new: &str,
+        changed: Range<usize>,
+        new_end: usize,
+        original_ascii_seam: bool,
+    ) {
         let old_rows = self.rows.len();
         let changed_start = changed.start;
         let changed_end = changed.end;
@@ -191,6 +219,7 @@ impl LineIndex {
                 &new[start..end],
                 changed_start.saturating_sub(start)..changed_end.saturating_sub(start),
                 new_end.saturating_sub(start),
+                original_ascii_seam,
             )
             .or_else(|| {
                 self.ascii_join(
@@ -258,6 +287,7 @@ impl LineIndex {
         text: &str,
         changed: Range<usize>,
         new_end: usize,
+        original_ascii_seam: bool,
     ) -> Option<Self> {
         let previous = &self.rows[rows.start];
         // A trailing EOF row is part of the same edited body, not another source
@@ -295,7 +325,19 @@ impl LineIndex {
             };
             let body_end = end - ending;
             let (coordinate, summary) = if !split {
-                self.coordinates[rows.start].updated_ascii(source, changed.clone(), new_end)?
+                self.coordinates[rows.start]
+                    .updated_ascii(source, changed.clone(), new_end)
+                    .or_else(|| {
+                        original_ascii_seam
+                            .then(|| {
+                                self.coordinates[rows.start].updated_ascii_seam(
+                                    source,
+                                    changed.clone(),
+                                    new_end,
+                                )
+                            })
+                            .flatten()
+                    })?
             } else if position == 0 {
                 self.coordinates[rows.start].updated_ascii(
                     source,
@@ -709,7 +751,13 @@ mod tests {
                     next.replace_range(changed.clone(), inserted);
                     let new_end = changed.start + inserted.len();
                     let prepared = original
-                        .ascii_replacement(0..original.rows.len(), &next, changed.clone(), new_end)
+                        .ascii_replacement(
+                            0..original.rows.len(),
+                            &next,
+                            changed.clone(),
+                            new_end,
+                            false,
+                        )
                         .expect(
                             "ASCII retained prefix/suffix must use incremental split preparation",
                         );
@@ -1357,6 +1405,185 @@ mod tests {
         assert_eq!(rows[0], prefix);
         assert_eq!(rows, LineIndex::new(changed).visible_rows());
         assert_eq!(rows[2].textarea_start, 9);
+    }
+
+    #[test]
+    fn mixed_ascii_seams_match_complete_tables_and_transaction_history() {
+        use super::super::{Document, Edit};
+        for unit in ["文😀 words ", "e\u{301} 🇺🇸 👩\u{200d}💻 words "] {
+            for ending in ["", "\n", "\r\n"] {
+                let source = format!("start {} tail{ending}", unit.repeat(6000));
+                let original = LineIndex::new(&source);
+                let middle = source[..source.floor_char_boundary(source.len() / 2)]
+                    .rfind("words")
+                    .unwrap()
+                    + 2;
+                for at in [0, 1, 4, middle, source.len() - ending.len()] {
+                    for (removed, inserted) in [(0, "a"), (0, " ; "), (0, "a_"), (1, ""), (1, "q")]
+                    {
+                        let changed = at..(at + removed).min(source.len() - ending.len());
+                        if changed.is_empty() && inserted.is_empty() {
+                            continue;
+                        }
+                        assert!(original.ascii_seam(&source, changed.clone()));
+                        let new_end = at + inserted.len();
+                        let mut next = source.clone();
+                        next.replace_range(changed.clone(), inserted);
+                        let accelerated = original.coordinates[0]
+                            .updated_ascii_seam(&next, changed.clone(), new_end)
+                            .expect("fixture must exercise coordinate reuse");
+                        assert_eq!(
+                            accelerated.0,
+                            LineCoordinates::with_summary(&next).0,
+                            "unit={unit:?}, ending={ending:?}, changed={changed:?}, inserted={inserted:?}"
+                        );
+                        let mut updated = original.clone();
+                        updated.update_with_ascii_seam(
+                            source.len(),
+                            &next,
+                            changed.clone(),
+                            new_end,
+                            true,
+                        );
+                        assert_eq!(updated, LineIndex::new(&next));
+                        let mut document = Document::new(&source);
+                        assert!(
+                            document
+                                .apply(
+                                    vec![Edit::replace(changed, inserted)],
+                                    vec![Selection::caret(new_end)],
+                                    None
+                                )
+                                .unwrap()
+                        );
+                        assert_eq!(*document.line_index, LineIndex::new(&next));
+                        assert!(document.undo());
+                        assert_eq!(*document.line_index, original);
+                        assert!(document.redo());
+                        assert_eq!(*document.line_index, LineIndex::new(&next));
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn ascii_seam_proof_rejects_unicode_controls_endings_and_large_envelopes() {
+        for (source, changed, expected) in [
+            ("a文b", 0..1, false),
+            ("a文b", 1..1, false),
+            ("a文b", 1..4, false),
+            ("a文b", 4..4, false),
+            ("a\u{301}b", 1..1, false),
+            ("\u{600}ab", 2..2, false),
+            ("a\tb", 1..2, false),
+            ("ab\r\n", 2..3, false),
+            ("ab\r\n", 2..2, true),
+            ("abc", 1..2, true),
+        ] {
+            assert_eq!(LineIndex::new(source).ascii_seam(source, changed), expected);
+        }
+        let source = format!("{} words ", "文😀 words ".repeat(6000));
+        let coordinates = LineCoordinates::new(&source);
+        for inserted in ["文", "\t", "\r", "\n", "\u{301}"] {
+            let next = format!("{source}{inserted}");
+            assert!(
+                coordinates
+                    .updated_ascii_seam(&next, source.len()..source.len(), next.len())
+                    .is_none()
+            );
+        }
+        assert!(!LineIndex::new(&"a".repeat(258)).ascii_seam(&"a".repeat(258), 0..257));
+        // Two short category runs can merge across an ASCII deletion. Reuse
+        // must reject the new long run, leaving full preparation to index it.
+        let source = format!("{}{};{}", source, "a".repeat(300), "b".repeat(300));
+        let at = source.len() - 301;
+        let mut next = source.clone();
+        next.remove(at);
+        assert!(LineIndex::new(&source).ascii_seam(&source, at..at + 1));
+        assert!(
+            LineCoordinates::new(&source)
+                .updated_ascii_seam(&next, at..at + 1, at)
+                .is_none()
+        );
+        let mut document = super::super::Document::new(&source);
+        document
+            .apply(
+                vec![super::super::Edit::replace(at..at + 1, "")],
+                vec![Selection::caret(at)],
+                None,
+            )
+            .unwrap();
+        assert_eq!(*document.line_index, LineIndex::new(&next));
+    }
+
+    #[test]
+    fn mixed_seam_checkpoints_keep_canonical_phase_and_crlf_eof() {
+        for padding in [0, 1, 2, 127, 255, 511, 512, 513] {
+            for ending in ["", "\r\n"] {
+                let source = format!(
+                    "{}{} {}{ending}",
+                    "a ".repeat(padding),
+                    "文😀 words ".repeat(5000),
+                    "ab ".repeat(100)
+                );
+                let previous = LineIndex::new(&source);
+                for removed in [0, 1, 17, 256] {
+                    let at = source.len() - ending.len() - 270;
+                    for inserted in ["", "a", "a ; "] {
+                        let changed = at..at + removed;
+                        assert!(previous.ascii_seam(&source, changed.clone()));
+                        let mut next = source.clone();
+                        next.replace_range(changed.clone(), inserted);
+                        let (coordinates, summary) = previous.coordinates[0]
+                            .updated_ascii_seam(&next, changed, at + inserted.len())
+                            .unwrap();
+                        let (rebuilt, expected) = LineCoordinates::with_summary(&next);
+                        assert_eq!(
+                            coordinates, rebuilt,
+                            "padding={padding}, ending={ending:?}, removed={removed}, inserted={inserted:?}"
+                        );
+                        assert_eq!(
+                            (summary.utf16_len, summary.breaks, summary.oversized),
+                            (expected.utf16_len, expected.breaks, expected.oversized)
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::test_runner::Config::with_cases(48))]
+        #[test]
+        fn mixed_ascii_transactions_equal_full_reconstruction(
+            padding in 0..516usize,
+            removed in 0..257usize,
+            inserted in "[a-z _;]{0,256}",
+            unit in 0..5usize,
+            beginning in proptest::bool::ANY,
+            crlf in proptest::bool::ANY,
+        ) {
+            let pattern = ["文😀 words ", "e\u{301} 🇺🇸 ; ", "👩\u{200d}💻 각 words ", "\u{600}ab words ", "א words "][unit];
+            let ending = if crlf { "\r\n" } else { "" };
+            let source = format!("start {}{} {}{ending}", "ab ".repeat(padding), pattern.repeat(6000), "ab ".repeat(200));
+            let at = if beginning { 0 } else { source.len() - ending.len() - 300 };
+            let removed = if beginning { removed.min(5) } else { removed };
+            let changed = at..at + removed;
+            let mut expected = source.clone();
+            expected.replace_range(changed.clone(), &inserted);
+            let mut document = super::super::Document::new(&source);
+            let retained = document.line_index.clone();
+            document.apply(vec![super::super::Edit::replace(changed, &inserted)], vec![Selection::caret(at + inserted.len())], None).unwrap();
+            proptest::prop_assert_eq!(&*document.line_index, &LineIndex::new(&expected));
+            proptest::prop_assert_eq!(&*retained, &LineIndex::new(&source));
+            if expected != source {
+                proptest::prop_assert!(document.undo());
+                proptest::prop_assert_eq!(&*document.line_index, &*retained);
+                proptest::prop_assert!(document.redo());
+                proptest::prop_assert_eq!(&*document.line_index, &LineIndex::new(&expected));
+            }
+        }
     }
 
     proptest::proptest! {

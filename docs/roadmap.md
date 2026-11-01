@@ -62,23 +62,28 @@ tracks the remaining work rather than every optimization already shipped.
 | Editing and history | Tab/space and indent/outdent; block-aware Enter; paired typing/deletion; grouped undo/redo; line move/duplicate/delete; comments; selected-line reindent; indentation-matching paste; EditorConfig save policies. |
 | Structure and languages | Syntax highlighting, parser-backed folding, bracket matching and structural navigation; extensible Rust/WASM language support including Rust, TypeScript/TSX, Python, JavaScript/JSX, Java, C#, C++, PHP, Shell, C, Go, HTML, CSS, JSON/JSONC, YAML/YML, TOML, INI/EditorConfig, XML ecosystem configs and Markdown with inline/fenced code. Pending text uses current source and valid retained spans; unsupported source stays plain. |
 | Navigation and review | Find/Replace; line numbers; horizontal scrolling and linked split scrolling; Edit/Inline/Split diffs; supported previews and Markdown change gutters/word differences; pending-edit review and agent context. |
-| Tabs, appearance and recovery | Tab context actions; consistent editor action-menu icons and labels; five Monaspace families; texture healing and ligature toggles enabled by default; retained caret/selection/scroll and database-backed editor recovery. Real folder-permission recovery still needs device verification. |
+| Tabs, appearance and recovery | Tab context actions; consistent editor action-menu icons and labels; five Monaspace families; texture healing and ligature toggles enabled by default; retained caret/selection/scroll and database-backed editor recovery. Native Chrome folder-permission loss, denied regrant, reload recovery and exact Unicode/CRLF saves are verified; installed PWA and Edge checks remain. |
 | Selection and browser input | Multiple/rectangular selections and clipboard transactions; scoped native windows with bounded desktop startup for unwrapped, wrapped and nonuniform views, including long tabbed/bidirectional rows; automated Chromium composition and pointer checks. The recorded line-end caret bug is fixed and user-verified in the localhost PWA. |
 | Preparation and ownership | Rust/WASM worker and cooperative fallback; retained source/token/structure allocations; bounded worker delta reconstruction/reply-source publication and final structure metadata, parsed/lexical region reconciliation and retained fallback collection; bounded eligible unwrapped and wrapped paragraph probes, retained paint-run clipping and cooperative sampled cold-row glyph measurements, exact overlap validation, exact carets from retained anchors/current painted coverage and conservative complete-layout fallback. Current-file progress is shown during preparation. Matching trusted font notifications retain current in-flight work and ordinary-row replay after edits. |
 
-The latest measured production artifact (short-row preparation and save repair)
-preserves complete edited source
-in all twelve local/remote cases: the 8 MiB byte limit, 100,000-row limit and
-near-1-MiB styled line, with wrapping on/off and verified beginning edits.
-Input viewport paint takes 22–108 ms; styled long-line input takes 174–407 ms
-through the full observed paint sequence. Cold complete geometry takes
-1.06–1.59 seconds and sampled peak Chrome PSS is about 573–696 MiB
-([summary](editor-performance/short-row-boundaries-summary.json),
-[unwrapped](editor-performance/short-row-boundaries-unwrapped.jsonl),
-[wrapped](editor-performance/short-row-boundaries-wrapped.jsonl)). Three final
-PSS snapshots are incomplete; peak samples do not prove complete coverage.
-These are single current-artifact samples per configuration, not a matched
-before/after comparison. Cold/input/memory gates remain open.
+Twenty observations of the latest production artifact preserve complete edited
+source across all twelve local/remote configurations: the 8 MiB byte limit,
+100,000-row limit and near-1-MiB styled line, wrapping on/off, with verified
+beginning edits. Input viewport paint takes 19–100 ms; styled input takes
+157–412 ms through the full observed paint sequence. Cold complete geometry
+takes 1.07–1.59 seconds and sampled peak Chrome PSS is about 588–730 MiB
+([boundary summary](editor-performance/mixed-ascii-seam-boundary-summary.json)).
+All twenty final PSS snapshots are complete; sampled peaks do not prove
+continuous coverage. Byte/row boundary configurations have single observations.
+
+The matched styled-line comparison has three alternating artifact pairs per
+mode/wrap configuration. Median viewport paint improves by 7–18 ms across all
+four configurations, while full wrapped paint stays near 403 ms; cold readiness
+and memory show no general improvement
+([comparison](editor-performance/mixed-ascii-seam-production-summary.json),
+[samples](editor-performance/mixed-ascii-seam-production.jsonl)). Cold/input/memory
+gates remain open. The earlier short-row-only artifact retains its separate
+[boundary results](editor-performance/short-row-boundaries-summary.json).
 
 Earlier styled-line observations preserve complete source and a verified
 beginning caret in all four Local/Remote samples. Input viewport paint is 167–269 ms
@@ -983,6 +988,25 @@ interleaved native process pairs reduce median construction of 99,998 rows from
 ([samples](editor-performance/short-row-construction-native.json)). These primitive
 measurements exclude editor publication, DOM layout/paint and process memory;
 the responsiveness gate below remains open.
+
+Small printable-ASCII edits with unchanged ASCII neighbors now reuse exact native
+and grapheme checkpoints on eligible mixed-Unicode long rows. Complete-table and
+history oracles retain fresh-reconstruction equality; Unicode seams, tabs,
+bidirectional rows, long graphemes and long category runs retain full preparation.
+Five alternating native process pairs reduce twenty beginning edit/undo pairs
+on the near-1-MiB styled fixture from 434.8 to 17.7 ms (middle: 434.7 to 12.3 ms;
+end: 433.1 to 9.9 ms)
+([samples](editor-performance/mixed-ascii-seam-native.json)). These native
+measurements exclude syntax, worker, DOM/layout, paint and process memory;
+the broader responsiveness and memory gates remain open.
+
+The final production comparison above quantifies the viewport improvement.
+Instrumented browser input handlers fall from 22.6–23.0 ms to
+8.7–8.8 ms, while sixteen input paragraph probes still spend 175–185 ms in layout
+([diagnostic](editor-performance/mixed-ascii-seam-profile-summary.json)). All
+required local target checks and the complete browser inventory pass
+([receipt](editor-performance/mixed-ascii-seam-local-checks.json)); hosted
+verification of this implementation remains pending.
 
 - [ ] **Responsiveness and memory:** remove measured input, cold-paint, wrapped
   geometry and process-memory stalls. Repeat admitted byte, row-count and long-line

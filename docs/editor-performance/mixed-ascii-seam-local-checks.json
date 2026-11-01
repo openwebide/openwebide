@@ -1,0 +1,172 @@
+{
+  "verificationState": "PASS: all required strict target lint, complete native/WASI/WASM checks, browser benchmark workloads and production Spin build",
+  "baseRevision": "21f5510b",
+  "nativePassed": 1400,
+  "nativeFrontend": 142,
+  "parserEnabledCore": 796,
+  "editorContracts": 221,
+  "nonEditorComponents": 402,
+  "nonEditorLibrary": 27,
+  "additionalBrowserIntegrationTests": 11,
+  "benchmarkBrowserWorkloads": 4,
+  "editorBrowserRuns": [
+    {
+      "artifact": "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-721f141bf9096fba.wasm",
+      "tests": 62,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-721f141bf9096fba.wasm",
+      "tests": 61,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-721f141bf9096fba.wasm",
+      "tests": 61,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-721f141bf9096fba.wasm",
+      "tests": 1,
+      "matrix": true,
+      "independent": true
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-721f141bf9096fba.wasm",
+      "tests": 1,
+      "matrix": false,
+      "independent": true
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-721f141bf9096fba.wasm",
+      "tests": 1,
+      "matrix": true,
+      "independent": true
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-721f141bf9096fba.wasm",
+      "tests": 1,
+      "matrix": false,
+      "independent": true
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/openwebide_frontend-14e738e76841970f.wasm",
+      "tests": 33,
+      "matrix": false,
+      "independent": false
+    }
+  ],
+  "testResults": [
+    "test result: ok. 186 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s",
+    "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.66s",
+    "test result: ok. 114 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.65s",
+    "test result: ok. 147 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 228.87s",
+    "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.02s",
+    "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s",
+    "test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.05s",
+    "test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.02s",
+    "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s",
+    "test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s",
+    "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.68s",
+    "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.22s",
+    "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.24s",
+    "test result: ok. 600 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 19.57s",
+    "test result: ok. 99 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s",
+    "test result: ok. 167 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.48s",
+    "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 142 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s",
+    "test result: ok. 796 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 36.02s",
+    "test result: ok. 27 passed; 0 failed; 0 ignored; 33 filtered out; finished in 0.75s",
+    "test result: ok. 402 passed; 0 failed; 0 ignored; 188 filtered out; finished in 143.37s",
+    "test result: ok. 4 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.00s",
+    "test result: ok. 3 passed; 0 failed; 0 ignored; 0 filtered out; finished in 1.52s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.08s",
+    "test result: ok. 3 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.01s",
+    "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 62 passed; 0 failed; 0 ignored; 528 filtered out; finished in 42.68s",
+    "test result: ok. 61 passed; 0 failed; 0 ignored; 529 filtered out; finished in 93.54s",
+    "test result: ok. 61 passed; 0 failed; 0 ignored; 529 filtered out; finished in 34.03s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 589 filtered out; finished in 27.58s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 589 filtered out; finished in 21.46s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 589 filtered out; finished in 7.69s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 589 filtered out; finished in 53.55s",
+    "test result: ok. 33 passed; 0 failed; 0 ignored; 27 filtered out; finished in 1.14s",
+    "test result: ok. 4 passed; 0 failed; 0 ignored; 0 filtered out; finished in 8.59s"
+  ],
+  "script": "#!/bin/bash\nset -euo pipefail\nexport PATH=/tmp/openwebide-editor-tools:/tmp/openwebide-editor-tools/binaryen-version_131/bin:$PATH\nexport CHROMEDRIVER=/tmp/openwebide-editor-tools/chromedriver\nexport CHROME='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'\nexport WASM_BINDGEN_TEST_TIMEOUT=300\ncargo fmt --all --check\ncargo clippy -p openwebide-storage -p openwebide-core -p openwebide-auth -p openwebide-agent -p openwebide-llm --all-targets -- -D warnings\ncargo clippy -p openwebide-backend --target wasm32-wasip2 -- -D warnings\ncargo clippy -p openwebide-frontend --target wasm32-unknown-unknown -- -D warnings\ncargo clippy -p openwebide-bridge --all-targets -- -D warnings\ncargo test -p openwebide-storage -p openwebide-core -p openwebide-auth -p openwebide-agent -p openwebide-llm -p openwebide-bridge -p openwebide-backend\ncargo test -p openwebide-frontend --lib\ncargo test -p openwebide-core --features editor-parser --lib\ncargo test -p openwebide-frontend --release --target wasm32-unknown-unknown -- --skip 'editor::'\npython3 tools/run-editor-browser-tests.py\ncargo clippy -p openwebide-editor-bench --all-targets -- -D warnings\ncargo test -p openwebide-editor-bench --release --target wasm32-unknown-unknown --lib\nNO_COLOR=true spin build\n",
+  "runtimeSources": {
+    "crates/core/src/editor/mod.rs": "e8b5a36539819eda9f53e35ea4dafdeeb560074c56cfe5c30a41ebdeb3b18f44",
+    "crates/core/src/editor/coordinates.rs": "56a79bacf8faee53fe7b0ad0e3b1258bfe3b1a4abe81e7e6e6f8beade586fa0f",
+    "crates/core/src/editor/index.rs": "0a661b60ccda5dd17a450614da032544713b689503c332296e1013e310c2e7ce",
+    "crates/core/src/editor/visual_index.rs": "ec38e1c19d67dec69771967ccfed3609be14d9106c92664dfb64cf308700ec98"
+  },
+  "note": "Original deadlines, probe limits, complete geometry oracles and independently checked browser inventory retained. Existing ignored reference tests retain their artifact/runtime prerequisites. Hosted verification, device checks and the complete performance goal remain open.",
+  "verificationExitCode": 0,
+  "verificationLogSha256": "8cbb67fb06085790d1bec6cd6ca6bb64566776164576437d0f9cde6c4b281648",
+  "productionAssets": {
+    "openwebide-frontend-3a52adcd99aa1bf5_bg.wasm": "8f16dcbc8f542c1fa842feb246fe4a4fcdb25fe8581be52aa1a964f67a937e8b",
+    "openwebide-frontend-6c69d7362cedf38b.js": "f41e4913080c5d020941b2b0655e869ec16d06d8d05da2a0a726fd142559ab3d"
+  },
+  "productionWorkerChecks": {
+    "module": {
+      "compiled_module": true,
+      "providers": 15,
+      "config_languages": 6,
+      "plain_fallback_languages": 1,
+      "nested_languages": 6,
+      "incremental": true,
+      "structural_delta": true,
+      "ui_event_during_worker": true,
+      "oversize_fallback": true,
+      "changed_row_records": 3,
+      "cooperative_yields": 2618,
+      "large_literal_bytes": 1043013,
+      "large_literal_yields": 62,
+      "yaml_bytes": 1043026,
+      "yaml_yields": 62
+    },
+    "url": {
+      "compiled_module": false,
+      "providers": 15,
+      "config_languages": 6,
+      "plain_fallback_languages": 1,
+      "nested_languages": 6,
+      "incremental": true,
+      "structural_delta": true,
+      "ui_event_during_worker": true,
+      "oversize_fallback": true,
+      "changed_row_records": 3,
+      "cooperative_yields": 2618,
+      "large_literal_bytes": 1043013,
+      "large_literal_yields": 62,
+      "yaml_bytes": 1043026,
+      "yaml_yields": 62
+    }
+  },
+  "additionalCiFeatureChecks": {
+    "parserEnabledCoreClippy": "PASS: --features editor-parser --all-targets -D warnings",
+    "candidateBenchmarkNativeClippy": "PASS: --features candidates --all-targets -D warnings",
+    "candidateBenchmarkWasmClippy": "PASS: --features candidates --target wasm32-unknown-unknown --all-targets -D warnings",
+    "candidateBenchmarkNativeResults": [
+      "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.31s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+    ],
+    "candidateBenchmarkBrowserResults": [
+      "test result: ok. 4 passed; 0 failed; 0 ignored; 0 filtered out; finished in 8.83s"
+    ]
+  }
+}

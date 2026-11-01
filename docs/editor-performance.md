@@ -13,6 +13,44 @@ Each edit workload performs 50 insert/delete or document edit/Undo pairs (100 ed
 
 Rope candidates are optional dependencies of this measurement tool and are absent from application runtime dependencies. [Crop](https://docs.rs/crop/0.4.3/crop/struct.Rope.html) exposes byte edits and an optional UTF-16 metric. [Ropey](https://docs.rs/ropey/1.6.1/ropey/struct.Rope.html) uses character edits with byte/character conversion. Ropey enables SIMD while disabling extra Unicode/bare-CR line separators to match the editor’s LF/CRLF line semantics.
 
+## ASCII edits in mixed Unicode rows
+
+`cargo run -p openwebide-editor-bench --release -- --styled-edits` measures
+twenty insertion/Undo pairs at the beginning, middle and end of the production
+near-1-MiB mixed-Unicode String fixture. Construction, complete-source equality
+and native-offset checks are outside timing. The same workload runs in the
+browser benchmark's `shared_styled_edit_workloads` contract.
+
+Five alternating native process pairs compare checkpoint `21f5510b` with exact
+coordinate reuse for small printable-ASCII edits between unchanged ASCII
+neighbors. Each process takes five samples per position; the table reports the
+median of process medians, in milliseconds per twenty pairs.
+
+| Position | Previous | Coordinate reuse |
+| --- | ---: | ---: |
+| Beginning | 434.776 | 17.701 |
+| Middle | 434.666 | 12.279 |
+| End | 433.057 | 9.932 |
+
+[Raw samples and artifact hashes](editor-performance/mixed-ascii-seam-native.json)
+retain the common measurement function and compiler context. Complete-table and
+history comparisons preserve fresh-reconstruction equality. Unicode seams,
+tabs, bidirectional rows, long graphemes and long category runs retain full
+preparation. These primitive measurements exclude syntax, workers, DOM/layout,
+paint and process memory; whole-editor completion remains open.
+
+The [24-sample production comparison](editor-performance/mixed-ascii-seam-production-summary.json)
+uses three alternating artifact pairs in each local/remote and wrapping
+configuration. Median viewport paint improves by 7–18 ms; full wrapped paint
+remains near 403 ms, and cold readiness and sampled PSS show no general gain.
+[Boundary observations](editor-performance/mixed-ascii-seam-boundary-summary.json)
+also preserve complete source at the byte and row limits. Instrumented
+[wrapped profiles](editor-performance/mixed-ascii-seam-profile-summary.json)
+show input handlers at 8.7–8.8 ms versus 22.6–23.0 ms, with sixteen paragraph
+probes still spending 175–185 ms in layout. These profiles include instrumentation
+overhead. The [complete local verification](editor-performance/mixed-ascii-seam-local-checks.json)
+passes; final hosted and physical-device gates remain open.
+
 ## Recorded comparison
 
 One local observation on 2026-10-06, Rust 1.98.1, macOS arm64, Chrome 154.0.8037.98. All numbers are total milliseconds for 100 operations. Repeat on deployment hardware before choosing thresholds.

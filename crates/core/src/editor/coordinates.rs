@@ -205,6 +205,145 @@ impl NativeCoordinates {
 }
 
 impl LineCoordinates {
+    /// Original ASCII seam evidence is captured before the source is mutated.
+    /// All other Unicode, control, category-run and layout cases retain the
+    /// complete preparation path.
+    pub fn updated_ascii_seam(
+        &self,
+        text: &str,
+        changed: std::ops::Range<usize>,
+        new_end: usize,
+    ) -> Option<(Self, RowSummary)> {
+        let body = text
+            .strip_suffix("\r\n")
+            .or_else(|| text.strip_suffix('\n'))
+            .unwrap_or(text);
+        if new_end > body.len()
+            || new_end - changed.start > 256
+            || !text
+                .get(changed.start..new_end)?
+                .bytes()
+                .all(|byte| matches!(byte, b' '..=b'~'))
+        {
+            return None;
+        }
+        let visual = self
+            .visual
+            .as_ref()?
+            .updated_ascii_seam(body, changed.clone(), new_end)?;
+        let previous = self.native.as_deref()?;
+        let prefix = previous.partition_point(|point| point.byte <= changed.start);
+        let seed = prefix
+            .checked_sub(1)
+            .map_or_else(Coordinate::default, |index| previous[index]);
+        let mut collector = NativeCoordinates::new(true);
+        collector.checkpoints.extend_from_slice(&previous[..prefix]);
+        collector.position = seed;
+        collector.last = seed.byte;
+        let shift = |value| value + new_end - changed.end;
+        let body_native = visual.at(body, visual.len() - 1)?.1;
+        let summary = RowSummary {
+            utf16_len: body_native + text.len() - body.len(),
+            breaks: usize::from(body.len() != text.len()),
+            oversized: body.len() > super::MAX_EDITOR_LINE_BYTES,
+        };
+        let old_tail = previous
+            .iter()
+            .rev()
+            .find(|point| point.byte <= changed.start || point.byte >= changed.end)
+            .copied()
+            .unwrap_or_default();
+        let tail = if old_tail.byte >= changed.end && old_tail.byte > changed.start {
+            Coordinate {
+                byte: shift(old_tail.byte),
+                native: shift(old_tail.native),
+                chars: shift(old_tail.chars),
+            }
+        } else {
+            old_tail
+        };
+        let end = Coordinate {
+            byte: text.len(),
+            native: body_native + summary.breaks,
+            chars: tail.chars + text[tail.byte..].chars().count(),
+        };
+        let mut suffix = false;
+        for (offset, ch) in text[seed.byte..].char_indices() {
+            let before = collector.checkpoints.len();
+            collector.visit(text, seed.byte + offset, ch);
+            if collector.checkpoints.len() != before
+                && collector.checkpoints.last()?.byte >= new_end
+            {
+                suffix = true;
+                break;
+            }
+        }
+        if suffix {
+            while collector.checkpoints.last()?.byte + STEP_BYTES < text.len() {
+                let threshold = collector.checkpoints.last()?.byte + STEP_BYTES;
+                let old_threshold = changed.end + (threshold - new_end);
+                let index = previous.partition_point(|point| point.byte < old_threshold);
+                let mut cursor = previous.get(index).map_or(end, |point| Coordinate {
+                    byte: shift(point.byte),
+                    native: shift(point.native),
+                    chars: shift(point.chars),
+                });
+                let mut next = cursor;
+                let before = index.checked_sub(1).and_then(|index| previous.get(index));
+                if let Some(before) = before.filter(|point| {
+                    point.byte >= changed.end
+                        && old_threshold - point.byte < cursor.byte - threshold
+                }) {
+                    let start = shift(before.byte);
+                    let mut byte = text.ceil_char_boundary(threshold);
+                    if text.as_bytes().get(byte) == Some(&b'\n')
+                        && text.as_bytes().get(byte.wrapping_sub(1)) == Some(&b'\r')
+                    {
+                        byte += 1;
+                    }
+                    next = Coordinate {
+                        byte,
+                        native: shift(before.native)
+                            + super::byte_to_textarea(&text[start..], byte - start).ok()?,
+                        chars: shift(before.chars) + text[start..byte].chars().count(),
+                    };
+                } else {
+                    for (byte, ch) in text[..cursor.byte].char_indices().rev() {
+                        if byte < threshold {
+                            break;
+                        }
+                        cursor.byte = byte;
+                        cursor.chars -= 1;
+                        cursor.native -=
+                            if ch == '\r' && text.as_bytes().get(byte + 1) == Some(&b'\n') {
+                                0
+                            } else {
+                                ch.len_utf16()
+                            };
+                        // A native checkpoint must never split the CRLF pair.
+                        if !(ch == '\n'
+                            && text.as_bytes().get(byte.wrapping_sub(1)) == Some(&b'\r'))
+                        {
+                            next = cursor;
+                        }
+                    }
+                }
+                if next.byte == text.len() {
+                    break;
+                }
+                collector.checkpoints.push(next);
+            }
+        }
+        Some((
+            Self {
+                native: Some(collector.checkpoints.into()),
+                visual: Some(visual),
+                ascii_body: self.ascii_body,
+            },
+            summary,
+        ))
+    }
+
     pub fn new(text: &str) -> Self {
         if text.len() <= STEP_BYTES {
             let body = text

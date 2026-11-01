@@ -353,6 +353,128 @@ impl VisualLineIndex {
         self.updated_ascii_with_cost(body, changed, new_end)
             .map(|(index, _)| index)
     }
+
+    /// The document proves the edited bytes and both retained neighbors are
+    /// printable ASCII. Grapheme identities outside that seam are unchanged.
+    /// Resume at a true checkpoint through the seam, then derive each canonical
+    /// suffix checkpoint from a nearby retained boundary. Category runs crossing
+    /// the seam are checked with a full checkpoint of context on either side.
+    pub(super) fn updated_ascii_seam(
+        &self,
+        body: &str,
+        changed: std::ops::Range<usize>,
+        new_end: usize,
+    ) -> Option<Self> {
+        if !self.0.horizontal
+            || self.0.tabs
+            || !self.0.long_clusters.is_empty()
+            || !self.0.word_runs.is_empty()
+            || body.len() <= super::MAX_MEASURE_BYTES
+            || body.len() > super::MAX_STRUCTURE_BYTES
+        {
+            return None;
+        }
+        let retained = &self.0.points[..self.0.points.len() - 1];
+        let seed_index = retained
+            .partition_point(|point| point.byte <= changed.start.saturating_sub(STEP_BYTES))
+            .checked_sub(1)?;
+        let seed = retained[seed_index];
+        let mut preparation = VisualLinePreparation::new(&body[seed.byte..])?;
+        let shift = |value| value + new_end - changed.end;
+        let absolute = |point: Position| Position {
+            byte: seed.byte + point.byte,
+            native: seed.native + point.native,
+            glyph: seed.glyph + point.glyph,
+        };
+        loop {
+            let done = preparation.advance(1);
+            if !preparation.coordinates.word_runs.is_empty()
+                || preparation
+                    .word_run
+                    .is_some_and(|run| run.end - run.start >= STEP_BYTES)
+                || !preparation.coordinates.long_clusters.is_empty()
+            {
+                return None;
+            }
+            if done
+                || seed.byte + preparation.coordinates.points.last()?.byte >= new_end + STEP_BYTES
+            {
+                break;
+            }
+        }
+        let end = Position {
+            byte: body.len(),
+            native: shift(self.0.end.native),
+            glyph: shift(self.0.end.glyph),
+        };
+        let mut points = Vec::with_capacity(body.len().div_ceil(STEP_BYTES) + 1);
+        points.extend_from_slice(&retained[..=seed_index]);
+        points.extend(
+            preparation.coordinates.points[1..]
+                .iter()
+                .copied()
+                .map(absolute),
+        );
+        while points.last()?.byte + STEP_BYTES < body.len() {
+            let threshold = points.last()?.byte + STEP_BYTES;
+            let old_threshold = changed.end + (threshold - new_end);
+            let index = self
+                .0
+                .points
+                .partition_point(|point| point.byte < old_threshold);
+            let old = *self.0.points.get(index)?;
+            let mut next = Position {
+                byte: shift(old.byte),
+                native: shift(old.native),
+                glyph: shift(old.glyph),
+            };
+            let before = index.checked_sub(1).map(|index| self.0.points[index]);
+            if let Some(before) = before.filter(|point| {
+                point.byte >= changed.end && old_threshold - point.byte < old.byte - old_threshold
+            }) {
+                next = Position {
+                    byte: shift(before.byte),
+                    native: shift(before.native),
+                    glyph: shift(before.glyph),
+                };
+                for cluster in body[next.byte..].graphemes(true) {
+                    if next.byte >= threshold {
+                        break;
+                    }
+                    next.byte += cluster.len();
+                    next.native += cluster.encode_utf16().count();
+                    next.glyph += 1;
+                }
+            } else {
+                // Both endpoints are true grapheme boundaries. Existing long
+                // clusters and category runs exclude unbounded reverse context,
+                // including regional-indicator parity around a checkpoint.
+                for cluster in body[..next.byte].graphemes(true).rev() {
+                    if next.byte - cluster.len() < threshold {
+                        break;
+                    }
+                    next.byte -= cluster.len();
+                    next.native -= cluster.encode_utf16().count();
+                    next.glyph -= 1;
+                }
+            }
+            if next.byte == body.len() {
+                break;
+            }
+            points.push(next);
+        }
+        if points.last().unwrap().byte != body.len() {
+            points.push(end);
+        }
+        Some(Self(Arc::new(Coordinates {
+            points,
+            long_clusters: Vec::new(),
+            end,
+            horizontal: true,
+            tabs: false,
+            word_runs: Vec::new(),
+        })))
+    }
     fn updated_ascii_with_cost(
         &self,
         body: &str,
