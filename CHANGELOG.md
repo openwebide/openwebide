@@ -9,6 +9,8 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Verify installed Chrome PWA editing, native dead-key commit/cancel and exact Unicode/CRLF saves in both project modes, plus local folder-permission recovery.
+
 - Reuse exact native and grapheme checkpoints for small printable-ASCII edits inside eligible mixed-Unicode long lines. Preserve full preparation for Unicode seams, tabs, bidirectional text, long graphemes and long word-category runs.
 
 - Honor Ctrl/⌘S in the editor through the existing save action, including clean, read-only and recovery guards.

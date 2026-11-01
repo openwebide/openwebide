@@ -36,7 +36,8 @@ The following checks still require hands-on device or environment testing:
 - Git pane polish on live local/remote repositories: cold primary-model drafting
   and configured transport timeouts, dense file timelines and pointer resizing.
 - A phone on the LAN; podman/systemd.
-- Editor IME composition, paste and caret behaviour with a real input method.
+- Editor candidate-selection IME, physical touch and assistive-technology checks;
+  native macOS dead-key, clipboard and keyboard checks pass in the Chrome PWA.
 - Windows runtime process cleanup. The Windows adapter compiles without TLS locally;
   the Windows CI job checks the full TLS build.
 
@@ -62,7 +63,7 @@ tracks the remaining work rather than every optimization already shipped.
 | Editing and history | Tab/space and indent/outdent; block-aware Enter; paired typing/deletion; grouped undo/redo; line move/duplicate/delete; comments; selected-line reindent; indentation-matching paste; EditorConfig save policies. |
 | Structure and languages | Syntax highlighting, parser-backed folding, bracket matching and structural navigation; extensible Rust/WASM language support including Rust, TypeScript/TSX, Python, JavaScript/JSX, Java, C#, C++, PHP, Shell, C, Go, HTML, CSS, JSON/JSONC, YAML/YML, TOML, INI/EditorConfig, XML ecosystem configs and Markdown with inline/fenced code. Pending text uses current source and valid retained spans; unsupported source stays plain. |
 | Navigation and review | Find/Replace; line numbers; horizontal scrolling and linked split scrolling; Edit/Inline/Split diffs; supported previews and Markdown change gutters/word differences; pending-edit review and agent context. |
-| Tabs, appearance and recovery | Tab context actions; consistent editor action-menu icons and labels; five Monaspace families; texture healing and ligature toggles enabled by default; retained caret/selection/scroll and database-backed editor recovery. Native Chrome folder-permission loss, denied regrant, reload recovery and exact Unicode/CRLF saves are verified; installed PWA and Edge checks remain. |
+| Tabs, appearance and recovery | Tab context actions; consistent editor action-menu icons and labels; five Monaspace families; texture healing and ligature toggles enabled by default; retained caret/selection/scroll and database-backed editor recovery. Native desktop Chrome and installed Chrome PWA folder-permission loss, denied regrant, reload recovery and exact Unicode/CRLF saves are verified; Edge checks remain. |
 | Selection and browser input | Multiple/rectangular selections and clipboard transactions; scoped native windows with bounded desktop startup for unwrapped, wrapped and nonuniform views, including long tabbed/bidirectional rows; automated Chromium composition and pointer checks. The recorded line-end caret bug is fixed and user-verified in the localhost PWA. |
 | Preparation and ownership | Rust/WASM worker and cooperative fallback; retained source/token/structure allocations; bounded worker delta reconstruction/reply-source publication and final structure metadata, parsed/lexical region reconciliation and retained fallback collection; bounded eligible unwrapped and wrapped paragraph probes, retained paint-run clipping and cooperative sampled cold-row glyph measurements, exact overlap validation, exact carets from retained anchors/current painted coverage and conservative complete-layout fallback. Current-file progress is shown during preparation. Matching trusted font notifications retain current in-flight work and ordinary-row replay after edits. |
 
@@ -1078,15 +1079,18 @@ verification of this implementation remains pending.
   ([receipt](editor-performance/editor-ci-98bb-success.json)). Direct encoder-to-
   Blob streaming and incremental ASCII row indexes still need the final gate.
 
-- [ ] **Physical Chrome/Edge PWA input:** verify real input-method commit/cancel,
-  Unicode and LF/CRLF undo/redo, multiple-cursor clipboard transactions and touch
-  without rewriting unrelated source. Automated Chromium composition/pointer
-  contracts support this gate but do not replace device verification.
-- [ ] **Folder permissions and recovery:** native desktop Chrome loss/regrant,
-  denied regrant and unsaved-draft reload recovery now pass with a real directory
-  handle and exact Unicode/CRLF disk verification
-  ([receipt](editor-performance/native-folder-recovery-desktop.json)). Repeat on
-  the installed PWA/Edge and expand permission/error contracts. Preserve
+- [ ] **Physical Chrome/Edge PWA input:** installed Chrome PWA checks pass in both
+  modes for native macOS dead-key commit/cancel, Unicode paste, undo/redo,
+  Command-S and exact CRLF saves
+  ([receipt](editor-performance/native-pwa-recovery-current.json)). Candidate-selection
+  IME, richer multiple-cursor clipboard, physical touch and Edge PWA checks remain.
+  Preserve unrelated source; automated Chromium contracts supplement device checks.
+- [ ] **Folder permissions and recovery:** native desktop Chrome and installed
+  Chrome PWA loss/regrant, denied regrant and unsaved-draft reload recovery pass
+  with a real directory handle and exact Unicode/CRLF disk verification
+  ([desktop](editor-performance/native-folder-recovery-desktop.json),
+  [installed PWA](editor-performance/native-pwa-recovery-current.json)). Repeat on
+  Edge and expand permission/error contracts. Preserve
   stale account/folder/bridge/project rejection, held/failed/background saves,
   newer edits, disk reload during saves and late acknowledgements. Coordinate with
   Offline & error-state recovery below; a disposable test without a native handle

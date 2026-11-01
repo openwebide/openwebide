@@ -51,6 +51,23 @@ probes still spending 175–185 ms in layout. These profiles include instrumenta
 overhead. The [complete local verification](editor-performance/mixed-ascii-seam-local-checks.json)
 passes; final hosted and physical-device gates remain open.
 
+## Installed Chrome PWA verification
+
+Native Computer Use checks on macOS Chrome 156 verify keyboard input, Unicode
+clipboard paste, undo/redo, Command-S, dead-key commit/cancel and Tab focus escape
+in the installed PWA's local and remote modes. Revoking native folder access,
+editing and reloading retains the draft with Save blocked. Denied regrant retains
+it; restored browser permissions and the native write prompt permit disk
+verification and an exact Unicode/CRLF save.
+
+The [receipt](editor-performance/native-pwa-recovery-current.json) records the
+actual loaded WASM fingerprint and byte hashes. An older active service worker
+initially served the cached pre-fix editor after reload. Closing the test app's
+clients and reopening activated the waiting update; native DevTools confirmed
+`3a52adcd99aa1bf5`, and both-mode checks repeated successfully on that artifact.
+Candidate-selection IME, physical touch, assistive technology and Edge remain
+unverified. These checks do not close the performance gates.
+
 ## Recorded comparison
 
 One local observation on 2026-10-06, Rust 1.98.1, macOS arm64, Chrome 154.0.8037.98. All numbers are total milliseconds for 100 operations. Repeat on deployment hardware before choosing thresholds.
