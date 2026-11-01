@@ -6943,7 +6943,7 @@ The same candidate workload passes Chrome/WASM, without a paired WASM baseline.
 These exclude editor state publication, worker transfer, syntax, geometry, paint
 and process memory. They do not establish an end-to-end editor improvement or
 close the performance gate. Reproduce with the construction commands in the
-[benchmark guide](../tools/editor-bench/README.md).
+[benchmark guide](https://github.com/openwebide/openwebide/blob/main/tools/editor-bench/README.md).
 
 
 ### Native desktop permission and recovery verification

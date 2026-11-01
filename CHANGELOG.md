@@ -14,7 +14,7 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 - Reuse exact native and grapheme checkpoints for small printable-ASCII edits inside eligible mixed-Unicode long lines. Preserve full preparation for Unicode seams, tabs, bidirectional text, long graphemes and long word-category runs.
 
 - Honor Ctrl/⌘S in the editor through the existing save action, including clean, read-only and recovery guards.
-- Build editor worker bootstraps with independently fingerprinted JavaScript and WASM assets from newer Trunk versions.
+- Build editor worker bootstraps with independently fingerprinted JavaScript and WASM assets from newer Trunk versions, and recognize those URLs in production composition checks.
 - Verify native Chrome folder permission revocation, denied regrant, reload recovery and exact Unicode/CRLF saves using a real directory handle.
 
 - Batch printable ASCII during short-row coordinate preparation while preserving Unicode, CRLF, admission and continuation limits. Add native/browser construction measurements and scalar-reference coverage.
