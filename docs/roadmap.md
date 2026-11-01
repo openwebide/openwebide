@@ -66,18 +66,19 @@ tracks the remaining work rather than every optimization already shipped.
 | Selection and browser input | Multiple/rectangular selections and clipboard transactions; scoped native windows with bounded desktop startup for unwrapped, wrapped and nonuniform views, including long tabbed/bidirectional rows; automated Chromium composition and pointer checks. The recorded line-end caret bug is fixed and user-verified in the localhost PWA. |
 | Preparation and ownership | Rust/WASM worker and cooperative fallback; retained source/token/structure allocations; bounded worker delta reconstruction/reply-source publication and final structure metadata, parsed/lexical region reconciliation and retained fallback collection; bounded eligible unwrapped and wrapped paragraph probes, retained paint-run clipping and cooperative sampled cold-row glyph measurements, exact overlap validation, exact carets from retained anchors/current painted coverage and conservative complete-layout fallback. Current-file progress is shown during preparation. Matching trusted font notifications retain current in-flight work and ordinary-row replay after edits. |
 
-The latest integrated production matrix at `e3b2ee59` preserves complete source
-after verified beginning edits in all twelve local/remote cases: the 8 MiB byte
-limit, 100,000-row limit and near-1-MiB styled line, with wrapping on/off. Styled
-viewport paint takes 139–181 ms; cold complete geometry across the matrix takes
-1.6–3.5 seconds and peak Chrome PSS is about 588–756 MiB
-([summary](editor-performance/integrated-boundary-summary.json),
-[unwrapped samples](editor-performance/integrated-boundary-unwrapped.jsonl),
-[wrapped samples](editor-performance/integrated-boundary-wrapped.jsonl)).
-The styled native input handler takes 34–61 ms, including synchronous changed-row
-coordinate reconstruction. Paragraph geometry timings include internal task
-yields and do not establish individual task stalls. These instrumented samples
-confirm remaining work; they are not a matched before/after improvement.
+The latest measured production artifact (short-row preparation and save repair)
+preserves complete edited source
+in all twelve local/remote cases: the 8 MiB byte limit, 100,000-row limit and
+near-1-MiB styled line, with wrapping on/off and verified beginning edits.
+Input viewport paint takes 22–108 ms; styled long-line input takes 174–407 ms
+through the full observed paint sequence. Cold complete geometry takes
+1.06–1.59 seconds and sampled peak Chrome PSS is about 573–696 MiB
+([summary](editor-performance/short-row-boundaries-summary.json),
+[unwrapped](editor-performance/short-row-boundaries-unwrapped.jsonl),
+[wrapped](editor-performance/short-row-boundaries-wrapped.jsonl)). Three final
+PSS snapshots are incomplete; peak samples do not prove complete coverage.
+These are single current-artifact samples per configuration, not a matched
+before/after comparison. Cold/input/memory gates remain open.
 
 Earlier styled-line observations preserve complete source and a verified
 beginning caret in all four Local/Remote samples. Input viewport paint is 167–269 ms
@@ -974,6 +975,15 @@ CPUs/four GiB in 87.29 seconds
 ([receipt](editor-performance/wrapped-replay-current-official.json)); hosted
 Linux/x64 verification also passes in the complete `67b3a529` inventory.
 
+Short-row coordinate preparation now batches printable ASCII inside the existing
+512-byte continuation step. Independent scalar-reference, parser-enabled core,
+WASM construction and both-mode dense-row worker contracts pass. Seven quiet
+interleaved native process pairs reduce median construction of 99,998 rows from
+21.1 to 8.4 ms (ASCII) and 20.8 to 10.3 ms (mixed Unicode/CRLF)
+([samples](editor-performance/short-row-construction-native.json)). These primitive
+measurements exclude editor publication, DOM layout/paint and process memory;
+the responsiveness gate below remains open.
+
 - [ ] **Responsiveness and memory:** remove measured input, cold-paint, wrapped
   geometry and process-memory stalls. Repeat admitted byte, row-count and long-line
   boundary workloads in both modes, wrapping on/off, beginning edits and startup/
@@ -1048,8 +1058,11 @@ Linux/x64 verification also passes in the complete `67b3a529` inventory.
   Unicode and LF/CRLF undo/redo, multiple-cursor clipboard transactions and touch
   without rewriting unrelated source. Automated Chromium composition/pointer
   contracts support this gate but do not replace device verification.
-- [ ] **Folder permissions and recovery:** expand permission/error contracts and
-  verify real local directory-handle loss/regrant and reload recovery. Preserve
+- [ ] **Folder permissions and recovery:** native desktop Chrome loss/regrant,
+  denied regrant and unsaved-draft reload recovery now pass with a real directory
+  handle and exact Unicode/CRLF disk verification
+  ([receipt](editor-performance/native-folder-recovery-desktop.json)). Repeat on
+  the installed PWA/Edge and expand permission/error contracts. Preserve
   stale account/folder/bridge/project rejection, held/failed/background saves,
   newer edits, disk reload during saves and late acknowledgements. Coordinate with
   Offline & error-state recovery below; a disposable test without a native handle

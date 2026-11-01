@@ -7,6 +7,79 @@ use wasm_bindgen_test::*;
 use super::support::{Mounted, editor_view, mount_test, settle, wait_until};
 
 #[wasm_bindgen_test]
+async fn save_shortcuts_use_editor_save_and_suppress_browser_save_in_both_modes() {
+    use openwebide_core::WorkspaceMode;
+    use openwebide_frontend::components::Editor;
+    use std::{
+        cell::Cell,
+        rc::Rc,
+        sync::{
+            Arc,
+            atomic::{AtomicUsize, Ordering},
+        },
+    };
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let saves = Arc::new(AtomicUsize::new(0));
+        let saved = saves.clone();
+        let read_only_slot = Rc::new(Cell::new(None));
+        let captured = read_only_slot.clone();
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            state.workspace.open_file.set(Some("save.rs".into()));
+            state.workspace.content.set("// 文😀\r\n".into());
+            state.workspace.dirty.set(true);
+            let read_only = RwSignal::new(false);
+            captured.set(Some(read_only));
+            view! { <Editor read_only=read_only.into() on_open_lossy=Callback::new(|()| ()) on_save=Callback::new(move |()| { saved.fetch_add(1, Ordering::Relaxed); }) on_accept=Callback::new(|()| ()) on_reject=Callback::new(|()| ()) /> }
+        });
+        settle().await;
+        let textarea: web_sys::HtmlTextAreaElement =
+            mounted.element(".editor-textarea").dyn_into().unwrap();
+        let dispatch = |meta: bool, shift, alt, composing| {
+            let init = web_sys::KeyboardEventInit::new();
+            init.set_key("s");
+            init.set_ctrl_key(!meta);
+            init.set_meta_key(meta);
+            init.set_shift_key(shift);
+            init.set_alt_key(alt);
+            init.set_is_composing(composing);
+            init.set_bubbles(true);
+            init.set_cancelable(true);
+            let event = web_sys::KeyboardEvent::new_with_keyboard_event_init_dict("keydown", &init)
+                .unwrap();
+            textarea.dispatch_event(&event).unwrap();
+            event.default_prevented()
+        };
+        for meta in [false, true] {
+            assert!(dispatch(meta, false, false, false));
+        }
+        assert_eq!(saves.load(Ordering::Relaxed), 2);
+        for (shift, alt, composing) in [
+            (true, false, false),
+            (false, true, false),
+            (false, false, true),
+        ] {
+            assert!(!dispatch(true, shift, alt, composing));
+        }
+        assert_eq!(saves.load(Ordering::Relaxed), 2);
+        mounted.state.workspace.dirty.set(false);
+        assert!(dispatch(true, false, false, false));
+        mounted.state.workspace.dirty.set(true);
+        read_only_slot.get().unwrap().set(true);
+        assert!(dispatch(false, false, false, false));
+        assert_eq!(saves.load(Ordering::Relaxed), 2);
+        assert_eq!(
+            mounted.state.workspace.content.get_untracked().as_str(),
+            "// 文😀\r\n"
+        );
+    }
+}
+
+#[wasm_bindgen_test]
 async fn cancelled_recovery_disk_decoding_keeps_overwrite_permits_in_both_modes() {
     use openwebide_core::WorkspaceMode;
     use openwebide_frontend::{

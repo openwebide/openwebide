@@ -1,0 +1,23 @@
+{
+  "samples": 12,
+  "completeSourceAfterInputVerified": true,
+  "actualNearMiBStringStyling": true,
+  "viewportInputMs": [
+    22.5,
+    108.40000000000146
+  ],
+  "styledInputToPaintMs": [
+    174,
+    407.40000000000146
+  ],
+  "coldCompleteGeometryMs": [
+    1058.6000000000004,
+    1591.699999999997
+  ],
+  "peakChromePssMiB": [
+    573.388671875,
+    696.4794921875
+  ],
+  "incompleteFinalSnapshots": 3,
+  "note": "Single current-artifact observation per mode/case/wrap; not a matched baseline or latency percentile. Peak sampled process-tree PSS does not prove complete snapshot coverage."
+}

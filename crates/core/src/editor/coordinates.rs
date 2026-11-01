@@ -88,8 +88,19 @@ impl<'a> LineCoordinatePreparation<'a> {
                 let end = self
                     .text
                     .floor_char_boundary((self.next + STEP_BYTES).min(self.text.len()));
-                for (offset, ch) in self.text[self.next..end].char_indices() {
-                    self.collector.visit(self.text, self.next + offset, ch);
+                while self.next < end {
+                    let printable = self.text.as_bytes()[self.next..end]
+                        .iter()
+                        .take_while(|byte| matches!(byte, b' '..=b'~'))
+                        .count();
+                    if printable != 0 {
+                        self.collector.visit_ascii(self.next..self.next + printable);
+                        self.next += printable;
+                    } else {
+                        let ch = self.text[self.next..end].chars().next().unwrap();
+                        self.collector.visit(self.text, self.next, ch);
+                        self.next += ch.len_utf8();
+                    }
                 }
                 self.next = end;
                 self.done = end == self.text.len();
@@ -351,6 +362,39 @@ impl LineCoordinates {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn native_chunks_match_scalar_scan_across_ascii_unicode_and_crlf_seams() {
+        for length in [0, 1, 510, 511, 512, 513, 1023] {
+            for seam in [
+                "",
+                "\r\n",
+                "\r",
+                "\n",
+                "\t",
+                "文😀",
+                "\u{0600}a\u{301}",
+                "\0",
+            ] {
+                let text = format!("{}{seam}{}\r\n", "x".repeat(length), "y".repeat(513));
+                let mut reference = NativeCoordinates::new(text.len() > STEP_BYTES);
+                reference.ascii_body_end = text.len() - 2;
+                for (byte, ch) in text.char_indices() {
+                    reference.visit(&text, byte, ch);
+                }
+                let mut preparation = LineCoordinatePreparation::new(&text);
+                while !preparation.advance(1) {}
+                let actual = &preparation.collector;
+                assert_eq!(actual.checkpoints, reference.checkpoints);
+                assert_eq!(actual.position, reference.position);
+                assert_eq!(actual.summary.utf16_len, reference.summary.utf16_len);
+                assert_eq!(actual.summary.breaks, reference.summary.breaks);
+                assert_eq!(actual.summary.oversized, reference.summary.oversized);
+                assert_eq!(actual.ascii_body, reference.ascii_body);
+                assert_eq!(actual.width, reference.width);
+                assert_eq!(actual.previous_cr, reference.previous_cr);
+            }
+        }
+    }
     #[test]
     fn printable_body_proof_is_latched_and_ignores_only_the_original_ending() {
         for (text, expected) in [

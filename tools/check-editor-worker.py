@@ -20,8 +20,10 @@ def check(compiled_module=False):
     assert (dist / 'editor-worker.js').is_file(), 'Build the frontend first'
     assert '"/editor-worker.js"' in (dist / 'service-worker.js').read_text(), 'Worker missing from PWA shell'
     module = next(dist.glob('openwebide-frontend-*.js'))
-    binary = module.with_name(module.stem + '_bg.wasm')
-    versioned = 'editor-worker-' + module.stem.removeprefix('openwebide-frontend-') + '.js'
+    binaries = list(dist.glob('openwebide-frontend-*_bg.wasm'))
+    assert len(binaries) == 1, 'Expected one generated application WASM binary'
+    binary = binaries[0]
+    versioned = 'editor-worker-' + module.stem.removeprefix('openwebide-frontend-') + '-' + binary.name.removeprefix('openwebide-frontend-').removesuffix('_bg.wasm') + '.js'
     assert (dist / versioned).is_file(), 'Missing matching worker bootstrap'
     assert json.dumps('/' + versioned) in (dist / 'service-worker.js').read_text(), 'Versioned worker missing from PWA shell'
     handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(dist))
@@ -354,7 +356,7 @@ def check(compiled_module=False):
                     run().catch(error => done({error:String(error)}));
                 '''
                 script = script.replace('__INITIALIZE__', initialize).replace('__WORKER_URL__', json.dumps('/' + versioned if compiled_module else '/editor-worker.js'))
-                script = script.replace('__HANDOFF__', "worker.postMessage({kind:'openwebide-editor-module:1',module:parentModule,bundle_url:bundle.href});" if compiled_module else '')
+                script = script.replace('__HANDOFF__', f"worker.postMessage({{kind:'openwebide-editor-module:1',module:parentModule,bundle_url:bundle.href,binary_url:new URL({json.dumps('/' + binary.name)},location.href).href}});" if compiled_module else '')
                 result = browser.call('POST', '/execute/async', {'script':script, 'args':[]})
                 assert 'error' not in result, result
                 assert result['heavyDelta'] and result['heavyUpdateSource'], result

@@ -6861,3 +6861,132 @@ slices and exact source ownership. Strict native/parser and release WASM fronten
 lint pass. This establishes removal of the in-process wire copies, not a measured
 end-to-end latency or process-memory improvement. Background worker decoding,
 metadata publication and other full-source paths remain unfinished.
+
+
+### Batched short-row native coordinates
+
+Nonvisual row preparation now accounts for contiguous printable ASCII with the
+existing bulk collector inside each 512-byte source step. Unicode and controls
+retain scalar handling, including CRLF seam state, exact sparse checkpoints and
+admission totals. Initial documents, changed rows and worker preparation share
+this core path; no transport-specific implementation was added.
+
+The new scalar oracle covers printable runs, tabs, NUL, Unicode combining/Prepend
+seams and CRLF around chunk boundaries. All 595 minimal and 792 parser-enabled
+core tests pass (one pre-existing ignored test in each configuration), with strict
+native core/benchmark and WASM frontend lint. The Chrome/WASM construction
+workload and existing local/remote dense-row worker contract pass
+([checks](editor-performance/short-row-construction-checks.json)).
+
+Seven quiet interleaved native release process pairs measure seven constructions
+per workload per process. Median 99,998-row ASCII construction falls from 21.1 to
+8.4 ms; mixed Unicode/CRLF construction falls from 20.8 to 10.3 ms. Source cloning
+is untimed; document allocation, admission and coordinates are timed, followed by
+complete-source, row-count and sampled native-offset checks
+([samples and binary identities](editor-performance/short-row-construction-native.json)).
+The same candidate workload passes Chrome/WASM, without a paired WASM baseline.
+These exclude editor state publication, worker transfer, syntax, geometry, paint
+and process memory. They do not establish an end-to-end editor improvement or
+close the performance gate. Reproduce with the construction commands in the
+[benchmark guide](../tools/editor-bench/README.md).
+
+
+### Native desktop permission and recovery verification
+
+Computer Use drove the normal Chrome window through a disposable Spin account
+and a real temporary project directory. Both remote and local projects preserve
+Unicode clipboard text, native keyboard edits and undo/redo; Save button writes
+match the complete expected file bytes including every original CRLF.
+
+Chrome's native file-access control revoked the local directory grant. Editing
+continued; reload restored the unsaved draft and blocked saving while disk
+verification lacked permission. Denying the native regrant prompt preserved that
+draft. Regranting access verified disk, enabled save, and wrote exactly the
+recovered Unicode/CRLF source
+([receipt and artifact hashes](editor-performance/native-folder-recovery-desktop.json)).
+This establishes desktop native-folder behavior without a fake directory handle;
+Native macOS dead-key commit/cancel, composition undo and forward/backward Tab
+escape also pass through the normal Chrome window. Installed PWA/Edge, East Asian
+candidate IME, touch hardware and assistive technology remain outstanding.
+
+The direct check also reproduced Cmd+S opening Chrome's Save Page dialog. The
+editor root now consumes Ctrl/Cmd+S and calls the existing save callback under
+the same dirty/read-only/recovery guards as the Save button. Its Ctrl/Cmd, modifier, composition, clean and read-only browser regression now
+passes in both modes, alongside strict all-target WASM lint. After a production
+rebuild and native hard reload, Cmd+S also writes exact Unicode/CRLF source in
+both local and remote projects without opening Save Page.
+
+The release build exposed Trunk 0.22.1 fingerprinting the JavaScript and WASM
+assets independently. The PWA worker hook and production-worker verifier now
+select the actual application binary instead of deriving its hash from JS. A
+complete Spin build succeeds; both URL and compiled-module production-worker
+checks pass for all 15 providers, six configuration languages, nested syntax,
+incremental changes, structural deltas, large literals and oversized fallback.
+
+
+The final save-repair production artifact also passes the twelve Linux boundary
+cases with wrapping on/off and both project modes: 8 MiB, 100,000 rows and a
+near-MiB styled String. Every beginning caret and complete edited source is
+verified. Input viewport paint is 22–108 ms, full styled input observations are
+174–407 ms, cold complete geometry is 1.06–1.59 seconds and sampled peak Chrome
+PSS is 573–696 MiB. Three final PSS snapshots are incomplete; the record retains
+that limitation. Artifact hashes, container limits, Chrome version and all samples
+are preserved in the [summary](editor-performance/short-row-boundaries-summary.json),
+[unwrapped run](editor-performance/short-row-boundaries-unwrapped.jsonl) and
+[wrapped run](editor-performance/short-row-boundaries-wrapped.jsonl). These single
+observations do not establish a stable speedup over a paired baseline. Long-line
+input, cold readiness and browser memory still fail to establish completion.
+
+
+The Trunk compatibility repair also requires paired asset identity: the versioned
+worker filename now includes both JavaScript and WASM hashes, and compiled-module
+handoff validates both URLs. A JavaScript hash can remain unchanged across Rust
+code changes, so JS-only cache keys no longer identify the binary. Added browser
+contracts check a binary-only hash change and send an unusable module with the
+correct JS URL but a different binary URL; that case must initialize from the
+worker's own URL. All five focused browser worker contracts and strict all-target WASM lint pass.
+A fresh complete production build and both module/URL worker checks also pass
+([receipt](editor-performance/trunk-independent-worker-assets.json)).
+The preceding production measurements identify the earlier save-repair artifact
+by hash and do not verify this subsequent transport change.
+
+Diagnostic CPU/phase traces of the preceding wrapped styled-line artifact retain
+complete source in both modes. Native input handlers take about 23 ms; sixteen
+input paragraph probes per mode spend 177–180 ms in layout in total, with
+individual layout phases up to 14.4 ms. Total probe times include cooperative
+range batches; the traces include CPU sampling and instrumentation overhead
+([summary](editor-performance/short-row-wrapped-profile-summary.json),
+[profiles](editor-performance/short-row-wrapped-profile.jsonl)). These identify
+remaining work without establishing quiet latency or isolated CPU ownership.
+
+
+Complete local verification reaches a repeatable native bridge exit-test failure:
+`fast_spawns_all_see_exited` sees a spawned `true` child still running at its
+existing one-second deadline. Isolated repetition and diagnostics do not establish
+a WebSocket replay loss. A spawn-acknowledgement barrier did not fix it; that
+experiment and all temporary diagnostic edits were removed. The original test
+and deadlines remain unchanged
+([failure evidence](editor-performance/native-verification-fast-spawn-failure.json)).
+The replay fixture now waits for ordered process-list confirmation that all 300
+children have completed, draining setup replies instead of relying on the 500 ms
+sleep. Setup is bounded at five seconds; every original one-second per-session
+exit-replay assertion remains. Three complete native 11-test repetitions pass.
+This changes the test precondition, not bridge runtime behavior, and does not
+attribute slow process completion to an OS cause. The complete required native command passes 1,396 tests, and a subsequent quiet
+Linux repeat passes all 11 delivery contracts. An earlier concurrent Linux run
+exceeded completion/kill bounds; that failure remains recorded without attributing
+it to a proven OS cause.
+
+
+The initial full non-editor browser run lacked CI's 1280×900 Chrome configuration
+and failed layout/focus contracts. With that exact configuration restored, all
+22 panel-filter contracts and the complete 402 non-editor component checks pass
+without changed assertions or deadlines. All 142 native frontend tests and 60
+WASM library tests also pass. The official current editor inventory has 221
+contracts in eight checked browser runs; all eight executions now pass, including both font matrices. The four additional
+browser integration binaries and all three candidate-enabled storage/construction
+workloads also pass. Full source hashes and scoped results are recorded in the
+[local verification receipt](editor-performance/editor-current-local-checks.json).
+The pre-push gate and agent instructions now match CI: all non-editor artifacts,
+checked disjoint editor groups with separate font matrices, and the native plugin
+compiler test. Existing browser deadlines and complete inventories are preserved.

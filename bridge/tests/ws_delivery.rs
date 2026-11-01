@@ -440,9 +440,33 @@ async fn fast_spawns_all_see_exited() {
         .await;
     }
 
-    // drain any immediate Spawned/Exited from the active attachments
-    // then manually attach to each to see Exited
-    tokio::time::sleep(Duration::from_millis(500)).await;
+    // Test exit replay after the processes have actually completed. A fixed
+    // sleep does not establish that precondition for a burst of 300 children.
+    // List is ordered after the spawn requests on this connection; draining
+    // their replies also avoids making setup depend on unread socket buffers.
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            send_msg(&mut ws, BridgeClientMessage::List).await;
+            loop {
+                match recv_msg(&mut ws).await {
+                    BridgeServerMessage::Sessions { sessions } => {
+                        assert_eq!(sessions.len(), 300);
+                        if sessions.iter().all(|session| !session.running) {
+                            return;
+                        }
+                        break;
+                    }
+                    BridgeServerMessage::Error { id, message } => {
+                        panic!("spawn {id} failed: {message}");
+                    }
+                    _ => (),
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("all 300 processes should complete before checking exit replay");
 
     for i in 0..300 {
         let mut ws2 = connect_ws(port).await;

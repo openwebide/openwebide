@@ -1,0 +1,1583 @@
+{
+  "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
+  "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "command": "<variant>-bench --construction",
+  "binaries": {
+    "baseline": "f45fedb3abf98ed303555b828c3b6508ff706b55a55c81166d3803f3678f2813",
+    "candidate": "46ace30e5f3493afe61ed32934e74cafca066ed33505ef713e6d25cb6d259413"
+  },
+  "samples": [
+    {
+      "pair": 0,
+      "variant": "baseline",
+      "sample": 0,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "28.969"
+    },
+    {
+      "pair": 0,
+      "variant": "baseline",
+      "sample": 1,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "21.914"
+    },
+    {
+      "pair": 0,
+      "variant": "baseline",
+      "sample": 2,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "21.396"
+    },
+    {
+      "pair": 0,
+      "variant": "baseline",
+      "sample": 3,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "21.152"
+    },
+    {
+      "pair": 0,
+      "variant": "baseline",
+      "sample": 4,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "21.708"
+    },
+    {
+      "pair": 0,
+      "variant": "baseline",
+      "sample": 5,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "21.456"
+    },
+    {
+      "pair": 0,
+      "variant": "baseline",
+      "sample": 6,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "20.919"
+    },
+    {
+      "pair": 0,
+      "variant": "baseline",
+      "sample": 7,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.706"
+    },
+    {
+      "pair": 0,
+      "variant": "baseline",
+      "sample": 8,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.639"
+    },
+    {
+      "pair": 0,
+      "variant": "baseline",
+      "sample": 9,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.712"
+    },
+    {
+      "pair": 0,
+      "variant": "baseline",
+      "sample": 10,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.754"
+    },
+    {
+      "pair": 0,
+      "variant": "baseline",
+      "sample": 11,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.691"
+    },
+    {
+      "pair": 0,
+      "variant": "baseline",
+      "sample": 12,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.691"
+    },
+    {
+      "pair": 0,
+      "variant": "baseline",
+      "sample": 13,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.633"
+    },
+    {
+      "pair": 0,
+      "variant": "candidate",
+      "sample": 0,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "9.940"
+    },
+    {
+      "pair": 0,
+      "variant": "candidate",
+      "sample": 1,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.461"
+    },
+    {
+      "pair": 0,
+      "variant": "candidate",
+      "sample": 2,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.441"
+    },
+    {
+      "pair": 0,
+      "variant": "candidate",
+      "sample": 3,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.359"
+    },
+    {
+      "pair": 0,
+      "variant": "candidate",
+      "sample": 4,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.334"
+    },
+    {
+      "pair": 0,
+      "variant": "candidate",
+      "sample": 5,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.423"
+    },
+    {
+      "pair": 0,
+      "variant": "candidate",
+      "sample": 6,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.356"
+    },
+    {
+      "pair": 0,
+      "variant": "candidate",
+      "sample": 7,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.386"
+    },
+    {
+      "pair": 0,
+      "variant": "candidate",
+      "sample": 8,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.320"
+    },
+    {
+      "pair": 0,
+      "variant": "candidate",
+      "sample": 9,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.310"
+    },
+    {
+      "pair": 0,
+      "variant": "candidate",
+      "sample": 10,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.240"
+    },
+    {
+      "pair": 0,
+      "variant": "candidate",
+      "sample": 11,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.319"
+    },
+    {
+      "pair": 0,
+      "variant": "candidate",
+      "sample": 12,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.820"
+    },
+    {
+      "pair": 0,
+      "variant": "candidate",
+      "sample": 13,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.569"
+    },
+    {
+      "pair": 1,
+      "variant": "candidate",
+      "sample": 0,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "10.284"
+    },
+    {
+      "pair": 1,
+      "variant": "candidate",
+      "sample": 1,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.401"
+    },
+    {
+      "pair": 1,
+      "variant": "candidate",
+      "sample": 2,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.537"
+    },
+    {
+      "pair": 1,
+      "variant": "candidate",
+      "sample": 3,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.462"
+    },
+    {
+      "pair": 1,
+      "variant": "candidate",
+      "sample": 4,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.402"
+    },
+    {
+      "pair": 1,
+      "variant": "candidate",
+      "sample": 5,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.406"
+    },
+    {
+      "pair": 1,
+      "variant": "candidate",
+      "sample": 6,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.337"
+    },
+    {
+      "pair": 1,
+      "variant": "candidate",
+      "sample": 7,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.184"
+    },
+    {
+      "pair": 1,
+      "variant": "candidate",
+      "sample": 8,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.322"
+    },
+    {
+      "pair": 1,
+      "variant": "candidate",
+      "sample": 9,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.284"
+    },
+    {
+      "pair": 1,
+      "variant": "candidate",
+      "sample": 10,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.267"
+    },
+    {
+      "pair": 1,
+      "variant": "candidate",
+      "sample": 11,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.183"
+    },
+    {
+      "pair": 1,
+      "variant": "candidate",
+      "sample": 12,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.625"
+    },
+    {
+      "pair": 1,
+      "variant": "candidate",
+      "sample": 13,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "11.182"
+    },
+    {
+      "pair": 1,
+      "variant": "baseline",
+      "sample": 0,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "21.393"
+    },
+    {
+      "pair": 1,
+      "variant": "baseline",
+      "sample": 1,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "21.277"
+    },
+    {
+      "pair": 1,
+      "variant": "baseline",
+      "sample": 2,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "21.114"
+    },
+    {
+      "pair": 1,
+      "variant": "baseline",
+      "sample": 3,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "21.110"
+    },
+    {
+      "pair": 1,
+      "variant": "baseline",
+      "sample": 4,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "20.003"
+    },
+    {
+      "pair": 1,
+      "variant": "baseline",
+      "sample": 5,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "19.863"
+    },
+    {
+      "pair": 1,
+      "variant": "baseline",
+      "sample": 6,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "20.002"
+    },
+    {
+      "pair": 1,
+      "variant": "baseline",
+      "sample": 7,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.789"
+    },
+    {
+      "pair": 1,
+      "variant": "baseline",
+      "sample": 8,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.830"
+    },
+    {
+      "pair": 1,
+      "variant": "baseline",
+      "sample": 9,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.806"
+    },
+    {
+      "pair": 1,
+      "variant": "baseline",
+      "sample": 10,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.795"
+    },
+    {
+      "pair": 1,
+      "variant": "baseline",
+      "sample": 11,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.697"
+    },
+    {
+      "pair": 1,
+      "variant": "baseline",
+      "sample": 12,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.899"
+    },
+    {
+      "pair": 1,
+      "variant": "baseline",
+      "sample": 13,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.643"
+    },
+    {
+      "pair": 2,
+      "variant": "baseline",
+      "sample": 0,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "22.469"
+    },
+    {
+      "pair": 2,
+      "variant": "baseline",
+      "sample": 1,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "21.121"
+    },
+    {
+      "pair": 2,
+      "variant": "baseline",
+      "sample": 2,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "21.100"
+    },
+    {
+      "pair": 2,
+      "variant": "baseline",
+      "sample": 3,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "21.099"
+    },
+    {
+      "pair": 2,
+      "variant": "baseline",
+      "sample": 4,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "20.825"
+    },
+    {
+      "pair": 2,
+      "variant": "baseline",
+      "sample": 5,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "20.956"
+    },
+    {
+      "pair": 2,
+      "variant": "baseline",
+      "sample": 6,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "20.946"
+    },
+    {
+      "pair": 2,
+      "variant": "baseline",
+      "sample": 7,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.878"
+    },
+    {
+      "pair": 2,
+      "variant": "baseline",
+      "sample": 8,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.876"
+    },
+    {
+      "pair": 2,
+      "variant": "baseline",
+      "sample": 9,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.602"
+    },
+    {
+      "pair": 2,
+      "variant": "baseline",
+      "sample": 10,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.666"
+    },
+    {
+      "pair": 2,
+      "variant": "baseline",
+      "sample": 11,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.826"
+    },
+    {
+      "pair": 2,
+      "variant": "baseline",
+      "sample": 12,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.665"
+    },
+    {
+      "pair": 2,
+      "variant": "baseline",
+      "sample": 13,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.784"
+    },
+    {
+      "pair": 2,
+      "variant": "candidate",
+      "sample": 0,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "10.356"
+    },
+    {
+      "pair": 2,
+      "variant": "candidate",
+      "sample": 1,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.535"
+    },
+    {
+      "pair": 2,
+      "variant": "candidate",
+      "sample": 2,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.386"
+    },
+    {
+      "pair": 2,
+      "variant": "candidate",
+      "sample": 3,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.284"
+    },
+    {
+      "pair": 2,
+      "variant": "candidate",
+      "sample": 4,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.331"
+    },
+    {
+      "pair": 2,
+      "variant": "candidate",
+      "sample": 5,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.697"
+    },
+    {
+      "pair": 2,
+      "variant": "candidate",
+      "sample": 6,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.761"
+    },
+    {
+      "pair": 2,
+      "variant": "candidate",
+      "sample": 7,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.728"
+    },
+    {
+      "pair": 2,
+      "variant": "candidate",
+      "sample": 8,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.640"
+    },
+    {
+      "pair": 2,
+      "variant": "candidate",
+      "sample": 9,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.502"
+    },
+    {
+      "pair": 2,
+      "variant": "candidate",
+      "sample": 10,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.684"
+    },
+    {
+      "pair": 2,
+      "variant": "candidate",
+      "sample": 11,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.538"
+    },
+    {
+      "pair": 2,
+      "variant": "candidate",
+      "sample": 12,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.288"
+    },
+    {
+      "pair": 2,
+      "variant": "candidate",
+      "sample": 13,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.411"
+    },
+    {
+      "pair": 3,
+      "variant": "candidate",
+      "sample": 0,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "9.806"
+    },
+    {
+      "pair": 3,
+      "variant": "candidate",
+      "sample": 1,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.511"
+    },
+    {
+      "pair": 3,
+      "variant": "candidate",
+      "sample": 2,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.403"
+    },
+    {
+      "pair": 3,
+      "variant": "candidate",
+      "sample": 3,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.381"
+    },
+    {
+      "pair": 3,
+      "variant": "candidate",
+      "sample": 4,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.292"
+    },
+    {
+      "pair": 3,
+      "variant": "candidate",
+      "sample": 5,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.297"
+    },
+    {
+      "pair": 3,
+      "variant": "candidate",
+      "sample": 6,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.265"
+    },
+    {
+      "pair": 3,
+      "variant": "candidate",
+      "sample": 7,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.095"
+    },
+    {
+      "pair": 3,
+      "variant": "candidate",
+      "sample": 8,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.580"
+    },
+    {
+      "pair": 3,
+      "variant": "candidate",
+      "sample": 9,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.323"
+    },
+    {
+      "pair": 3,
+      "variant": "candidate",
+      "sample": 10,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.344"
+    },
+    {
+      "pair": 3,
+      "variant": "candidate",
+      "sample": 11,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.273"
+    },
+    {
+      "pair": 3,
+      "variant": "candidate",
+      "sample": 12,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.284"
+    },
+    {
+      "pair": 3,
+      "variant": "candidate",
+      "sample": 13,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.198"
+    },
+    {
+      "pair": 3,
+      "variant": "baseline",
+      "sample": 0,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "21.079"
+    },
+    {
+      "pair": 3,
+      "variant": "baseline",
+      "sample": 1,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "19.630"
+    },
+    {
+      "pair": 3,
+      "variant": "baseline",
+      "sample": 2,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "19.785"
+    },
+    {
+      "pair": 3,
+      "variant": "baseline",
+      "sample": 3,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "19.932"
+    },
+    {
+      "pair": 3,
+      "variant": "baseline",
+      "sample": 4,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "19.915"
+    },
+    {
+      "pair": 3,
+      "variant": "baseline",
+      "sample": 5,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "19.856"
+    },
+    {
+      "pair": 3,
+      "variant": "baseline",
+      "sample": 6,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "19.830"
+    },
+    {
+      "pair": 3,
+      "variant": "baseline",
+      "sample": 7,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.937"
+    },
+    {
+      "pair": 3,
+      "variant": "baseline",
+      "sample": 8,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.902"
+    },
+    {
+      "pair": 3,
+      "variant": "baseline",
+      "sample": 9,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.989"
+    },
+    {
+      "pair": 3,
+      "variant": "baseline",
+      "sample": 10,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.980"
+    },
+    {
+      "pair": 3,
+      "variant": "baseline",
+      "sample": 11,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "21.105"
+    },
+    {
+      "pair": 3,
+      "variant": "baseline",
+      "sample": 12,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.705"
+    },
+    {
+      "pair": 3,
+      "variant": "baseline",
+      "sample": 13,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.781"
+    },
+    {
+      "pair": 4,
+      "variant": "baseline",
+      "sample": 0,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "23.428"
+    },
+    {
+      "pair": 4,
+      "variant": "baseline",
+      "sample": 1,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "21.244"
+    },
+    {
+      "pair": 4,
+      "variant": "baseline",
+      "sample": 2,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "21.183"
+    },
+    {
+      "pair": 4,
+      "variant": "baseline",
+      "sample": 3,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "21.391"
+    },
+    {
+      "pair": 4,
+      "variant": "baseline",
+      "sample": 4,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "20.977"
+    },
+    {
+      "pair": 4,
+      "variant": "baseline",
+      "sample": 5,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "20.934"
+    },
+    {
+      "pair": 4,
+      "variant": "baseline",
+      "sample": 6,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "20.991"
+    },
+    {
+      "pair": 4,
+      "variant": "baseline",
+      "sample": 7,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.716"
+    },
+    {
+      "pair": 4,
+      "variant": "baseline",
+      "sample": 8,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "21.240"
+    },
+    {
+      "pair": 4,
+      "variant": "baseline",
+      "sample": 9,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.796"
+    },
+    {
+      "pair": 4,
+      "variant": "baseline",
+      "sample": 10,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.538"
+    },
+    {
+      "pair": 4,
+      "variant": "baseline",
+      "sample": 11,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.478"
+    },
+    {
+      "pair": 4,
+      "variant": "baseline",
+      "sample": 12,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.496"
+    },
+    {
+      "pair": 4,
+      "variant": "baseline",
+      "sample": 13,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.521"
+    },
+    {
+      "pair": 4,
+      "variant": "candidate",
+      "sample": 0,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "9.767"
+    },
+    {
+      "pair": 4,
+      "variant": "candidate",
+      "sample": 1,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.527"
+    },
+    {
+      "pair": 4,
+      "variant": "candidate",
+      "sample": 2,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.541"
+    },
+    {
+      "pair": 4,
+      "variant": "candidate",
+      "sample": 3,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.380"
+    },
+    {
+      "pair": 4,
+      "variant": "candidate",
+      "sample": 4,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.376"
+    },
+    {
+      "pair": 4,
+      "variant": "candidate",
+      "sample": 5,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.382"
+    },
+    {
+      "pair": 4,
+      "variant": "candidate",
+      "sample": 6,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.438"
+    },
+    {
+      "pair": 4,
+      "variant": "candidate",
+      "sample": 7,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.172"
+    },
+    {
+      "pair": 4,
+      "variant": "candidate",
+      "sample": 8,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.195"
+    },
+    {
+      "pair": 4,
+      "variant": "candidate",
+      "sample": 9,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.229"
+    },
+    {
+      "pair": 4,
+      "variant": "candidate",
+      "sample": 10,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.319"
+    },
+    {
+      "pair": 4,
+      "variant": "candidate",
+      "sample": 11,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.766"
+    },
+    {
+      "pair": 4,
+      "variant": "candidate",
+      "sample": 12,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.053"
+    },
+    {
+      "pair": 4,
+      "variant": "candidate",
+      "sample": 13,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.002"
+    },
+    {
+      "pair": 5,
+      "variant": "candidate",
+      "sample": 0,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "10.101"
+    },
+    {
+      "pair": 5,
+      "variant": "candidate",
+      "sample": 1,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.495"
+    },
+    {
+      "pair": 5,
+      "variant": "candidate",
+      "sample": 2,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.496"
+    },
+    {
+      "pair": 5,
+      "variant": "candidate",
+      "sample": 3,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.461"
+    },
+    {
+      "pair": 5,
+      "variant": "candidate",
+      "sample": 4,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.703"
+    },
+    {
+      "pair": 5,
+      "variant": "candidate",
+      "sample": 5,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.461"
+    },
+    {
+      "pair": 5,
+      "variant": "candidate",
+      "sample": 6,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.418"
+    },
+    {
+      "pair": 5,
+      "variant": "candidate",
+      "sample": 7,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.187"
+    },
+    {
+      "pair": 5,
+      "variant": "candidate",
+      "sample": 8,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.376"
+    },
+    {
+      "pair": 5,
+      "variant": "candidate",
+      "sample": 9,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.257"
+    },
+    {
+      "pair": 5,
+      "variant": "candidate",
+      "sample": 10,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.301"
+    },
+    {
+      "pair": 5,
+      "variant": "candidate",
+      "sample": 11,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.052"
+    },
+    {
+      "pair": 5,
+      "variant": "candidate",
+      "sample": 12,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.076"
+    },
+    {
+      "pair": 5,
+      "variant": "candidate",
+      "sample": 13,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.234"
+    },
+    {
+      "pair": 5,
+      "variant": "baseline",
+      "sample": 0,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "23.000"
+    },
+    {
+      "pair": 5,
+      "variant": "baseline",
+      "sample": 1,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "21.034"
+    },
+    {
+      "pair": 5,
+      "variant": "baseline",
+      "sample": 2,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "20.972"
+    },
+    {
+      "pair": 5,
+      "variant": "baseline",
+      "sample": 3,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "20.974"
+    },
+    {
+      "pair": 5,
+      "variant": "baseline",
+      "sample": 4,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "21.072"
+    },
+    {
+      "pair": 5,
+      "variant": "baseline",
+      "sample": 5,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "21.310"
+    },
+    {
+      "pair": 5,
+      "variant": "baseline",
+      "sample": 6,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "22.106"
+    },
+    {
+      "pair": 5,
+      "variant": "baseline",
+      "sample": 7,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.709"
+    },
+    {
+      "pair": 5,
+      "variant": "baseline",
+      "sample": 8,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.877"
+    },
+    {
+      "pair": 5,
+      "variant": "baseline",
+      "sample": 9,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.957"
+    },
+    {
+      "pair": 5,
+      "variant": "baseline",
+      "sample": 10,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.979"
+    },
+    {
+      "pair": 5,
+      "variant": "baseline",
+      "sample": 11,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.483"
+    },
+    {
+      "pair": 5,
+      "variant": "baseline",
+      "sample": 12,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "21.525"
+    },
+    {
+      "pair": 5,
+      "variant": "baseline",
+      "sample": 13,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "23.903"
+    },
+    {
+      "pair": 6,
+      "variant": "baseline",
+      "sample": 0,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "22.383"
+    },
+    {
+      "pair": 6,
+      "variant": "baseline",
+      "sample": 1,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "21.116"
+    },
+    {
+      "pair": 6,
+      "variant": "baseline",
+      "sample": 2,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "21.155"
+    },
+    {
+      "pair": 6,
+      "variant": "baseline",
+      "sample": 3,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "21.149"
+    },
+    {
+      "pair": 6,
+      "variant": "baseline",
+      "sample": 4,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "21.059"
+    },
+    {
+      "pair": 6,
+      "variant": "baseline",
+      "sample": 5,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "20.990"
+    },
+    {
+      "pair": 6,
+      "variant": "baseline",
+      "sample": 6,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "21.032"
+    },
+    {
+      "pair": 6,
+      "variant": "baseline",
+      "sample": 7,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.782"
+    },
+    {
+      "pair": 6,
+      "variant": "baseline",
+      "sample": 8,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.884"
+    },
+    {
+      "pair": 6,
+      "variant": "baseline",
+      "sample": 9,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.907"
+    },
+    {
+      "pair": 6,
+      "variant": "baseline",
+      "sample": 10,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "21.023"
+    },
+    {
+      "pair": 6,
+      "variant": "baseline",
+      "sample": 11,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.741"
+    },
+    {
+      "pair": 6,
+      "variant": "baseline",
+      "sample": 12,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.849"
+    },
+    {
+      "pair": 6,
+      "variant": "baseline",
+      "sample": 13,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "20.868"
+    },
+    {
+      "pair": 6,
+      "variant": "candidate",
+      "sample": 0,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "9.521"
+    },
+    {
+      "pair": 6,
+      "variant": "candidate",
+      "sample": 1,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.305"
+    },
+    {
+      "pair": 6,
+      "variant": "candidate",
+      "sample": 2,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.355"
+    },
+    {
+      "pair": 6,
+      "variant": "candidate",
+      "sample": 3,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.357"
+    },
+    {
+      "pair": 6,
+      "variant": "candidate",
+      "sample": 4,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.289"
+    },
+    {
+      "pair": 6,
+      "variant": "candidate",
+      "sample": 5,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.373"
+    },
+    {
+      "pair": 6,
+      "variant": "candidate",
+      "sample": 6,
+      "operation": "ascii_rows_construction",
+      "bytes": "5699886",
+      "total_ms": "8.344"
+    },
+    {
+      "pair": 6,
+      "variant": "candidate",
+      "sample": 7,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.143"
+    },
+    {
+      "pair": 6,
+      "variant": "candidate",
+      "sample": 8,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.056"
+    },
+    {
+      "pair": 6,
+      "variant": "candidate",
+      "sample": 9,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "9.948"
+    },
+    {
+      "pair": 6,
+      "variant": "candidate",
+      "sample": 10,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.166"
+    },
+    {
+      "pair": 6,
+      "variant": "candidate",
+      "sample": 11,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.251"
+    },
+    {
+      "pair": 6,
+      "variant": "candidate",
+      "sample": 12,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.294"
+    },
+    {
+      "pair": 6,
+      "variant": "candidate",
+      "sample": 13,
+      "operation": "mixed_rows_construction",
+      "bytes": "6099878",
+      "total_ms": "10.174"
+    }
+  ],
+  "baselineHead": "5d1155a45789a7480d3636d5e1d25498a698ecc8",
+  "change": "Printable ASCII bulk native-coordinate accounting in LineCoordinatePreparation; --construction workload identical in both binaries.",
+  "candidateCoordinatesSha256": "d9dcd8c1e2297429fc1062f8ad851d6367c220a2b5b98ed79d7540579c7f030b",
+  "scope": "Native core document construction only. Seven interleaved fresh-process pairs, seven constructions per workload per process. No local cargo/rustc/trunk process at measurement launch. No editor latency or process-memory claim."
+}

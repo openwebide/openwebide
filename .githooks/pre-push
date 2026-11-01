@@ -47,13 +47,13 @@ cargo clippy -p openwebide-frontend --target wasm32-unknown-unknown -- -D warnin
 cargo clippy -p openwebide-bridge --all-targets -- -D warnings
 
 echo "[pre-push] 3/4 Running native unit & integration tests..."
-cargo test -p openwebide-storage -p openwebide-core -p openwebide-auth -p openwebide-agent -p openwebide-llm -p openwebide-bridge -p openwebide-backend -- --skip source_compilation_validates_tools_caches_offline_and_rejects_artifact_corruption
+cargo test -p openwebide-storage -p openwebide-core -p openwebide-auth -p openwebide-agent -p openwebide-llm -p openwebide-bridge -p openwebide-backend
 cargo test -p openwebide-frontend --lib
 
 if [[ -z "$changed_files" ]] || echo "$changed_files" | grep -qE '^(frontend/|crates/core/|crates/agent/|Cargo\.)'; then
   echo "[pre-push] 4/4 Running headless Chrome WASM UI tests..."
-  CHROMEDRIVER="$(command -v chromedriver)" cargo test -p openwebide-frontend --release --target wasm32-unknown-unknown --lib
-  CHROMEDRIVER="$(command -v chromedriver)" cargo test -p openwebide-frontend --release --target wasm32-unknown-unknown --test components
+  CHROMEDRIVER="$(command -v chromedriver)" WASM_BINDGEN_TEST_TIMEOUT=300 cargo test -p openwebide-frontend --release --target wasm32-unknown-unknown -- --skip 'editor::'
+  CHROMEDRIVER="$(command -v chromedriver)" WASM_BINDGEN_TEST_TIMEOUT=300 python3 tools/run-editor-browser-tests.py
 fi
 
 echo "[pre-push] All verification gates passed."

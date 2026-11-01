@@ -20,12 +20,21 @@ export function editor_worker_bundle_url() {
     }
     return null;
 }
+function editor_worker_binary_url() {
+    for (const link of document.querySelectorAll('link[rel="preload"][as="fetch"][type="application/wasm"][href]')) {
+        const url = new URL(link.href, document.baseURI);
+        if (/\/openwebide-frontend-[a-f0-9]+_bg\.wasm$/.test(url.pathname)) return url.href;
+    }
+    return null;
+}
 export function editor_worker_entry_url(bundle) {
     const match = bundle && new URL(bundle).pathname.match(/\/openwebide-frontend-([a-f0-9]+)\.js$/);
-    return match ? `/editor-worker-${match[1]}.js` : '/editor-worker.js';
+    const binary = editor_worker_binary_url();
+    const wasm = binary && new URL(binary).pathname.match(/\/openwebide-frontend-([a-f0-9]+)_bg\.wasm$/);
+    return match && wasm ? `/editor-worker-${match[1]}-${wasm[1]}.js` : '/editor-worker.js';
 }
 export function send_editor_module(worker, module, bundle_url) {
-    worker.postMessage({kind:'openwebide-editor-module:1', module, bundle_url});
+    worker.postMessage({kind:'openwebide-editor-module:1', module, bundle_url, binary_url:editor_worker_binary_url()});
 }
 "#)]
 extern "C" {
@@ -553,7 +562,7 @@ mod tests {
     }
 
     #[wasm_bindgen::prelude::wasm_bindgen(inline_js = r#"
-    export function installRealSyntaxWorker(template, rejectModule) {
+    export function installRealSyntaxWorker(template, rejectModule, wrongBinary) {
         const original = globalThis.Worker;
         const module = performance.getEntriesByType('resource').map(entry => entry.name)
             .find(url => /\/(?:tests\.js|wasm-bindgen-test(?:\.js)?)$/.test(new URL(url).pathname));
@@ -574,6 +583,17 @@ mod tests {
                 if (rejectModule && value?.kind === 'openwebide-editor-module:1') {
                     throw new DOMException('Fixture cannot clone a Module', 'DataCloneError');
                 }
+                if (value?.kind === 'openwebide-editor-module:1') {
+                    // The generated test page has no production WASM preload;
+                    // this adapter already owns the exact fixture binary URL.
+                    value = {...value, binary_url:wasm.href};
+                }
+                if (wrongBinary && value?.kind === 'openwebide-editor-module:1') {
+                    // A matching JS bundle must not authorize another binary.
+                    // This empty module cannot initialize the real test runtime.
+                    value = {...value, binary_url:wasm.href + '?other-binary',
+                        module:new WebAssembly.Module(new Uint8Array([0,97,115,109,1,0,0,0]))};
+                }
                 super.postMessage(value, ...args);
             }
         };
@@ -583,14 +603,47 @@ mod tests {
     }
     "#)]
     extern "C" {
-        fn installRealSyntaxWorker(template: &str, reject_module: bool) -> js_sys::Function;
+        fn installRealSyntaxWorker(
+            template: &str,
+            reject_module: bool,
+            wrong_binary: bool,
+        ) -> js_sys::Function;
+    }
+
+    #[wasm_bindgen_test]
+    fn worker_entry_identity_changes_when_only_the_wasm_hash_changes() {
+        let document = web_sys::window().unwrap().document().unwrap();
+        let link = document.create_element("link").unwrap();
+        for (name, value) in [
+            ("rel", "preload"),
+            ("as", "fetch"),
+            ("type", "application/wasm"),
+            ("href", "/openwebide-frontend-bb_bg.wasm"),
+        ] {
+            link.set_attribute(name, value).unwrap();
+        }
+        document.body().unwrap().append_child(&link).unwrap();
+        let first =
+            editor_worker_entry_url(Some("https://example.invalid/openwebide-frontend-aa.js"));
+        link.set_attribute("href", "/openwebide-frontend-cc_bg.wasm")
+            .unwrap();
+        let second =
+            editor_worker_entry_url(Some("https://example.invalid/openwebide-frontend-aa.js"));
+        link.remove();
+        assert_eq!(first, "/editor-worker-aa-bb.js");
+        assert_eq!(second, "/editor-worker-aa-cc.js");
+        assert_eq!(
+            editor_worker_entry_url(Some("https://example.invalid/openwebide-frontend-aa.js")),
+            "/editor-worker.js"
+        );
     }
 
     #[wasm_bindgen_test]
     async fn dedicated_framed_worker_and_cooperative_adapter_preserve_language_contracts() {
         use openwebide_core::highlight::Language;
         use std::sync::Arc;
-        let restore = installRealSyntaxWorker(include_str!("../pwa/editor-worker.js"), false);
+        let restore =
+            installRealSyntaxWorker(include_str!("../pwa/editor-worker.js"), false, false);
         let bundle = js_sys::Reflect::get(&restore, &"module_url".into())
             .unwrap()
             .as_string()
@@ -702,14 +755,21 @@ mod tests {
 
     #[wasm_bindgen_test]
     async fn module_clone_failures_and_bundle_mismatches_use_url_initialization() {
-        for reject_module in [false, true] {
-            let restore =
-                installRealSyntaxWorker(include_str!("../pwa/editor-worker.js"), reject_module);
+        for (reject_module, wrong_binary, wrong_bundle) in [
+            (false, false, true),
+            (true, false, false),
+            (false, true, false),
+        ] {
+            let restore = installRealSyntaxWorker(
+                include_str!("../pwa/editor-worker.js"),
+                reject_module,
+                wrong_binary,
+            );
             let mut bundle = js_sys::Reflect::get(&restore, &"module_url".into())
                 .unwrap()
                 .as_string()
                 .unwrap();
-            if !reject_module {
+            if wrong_bundle {
                 bundle.push_str("?different-bundle");
             }
             let result = async {

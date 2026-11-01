@@ -1,0 +1,126 @@
+{
+  "editorInventory": 221,
+  "editorBrowserRuns": [
+    {
+      "artifact": "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-721f141bf9096fba.wasm",
+      "tests": 62,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-721f141bf9096fba.wasm",
+      "tests": 61,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-721f141bf9096fba.wasm",
+      "tests": 61,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-721f141bf9096fba.wasm",
+      "tests": 1,
+      "matrix": true,
+      "independent": true
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-721f141bf9096fba.wasm",
+      "tests": 1,
+      "matrix": false,
+      "independent": true
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-721f141bf9096fba.wasm",
+      "tests": 1,
+      "matrix": true,
+      "independent": true
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-721f141bf9096fba.wasm",
+      "tests": 1,
+      "matrix": false,
+      "independent": true
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/openwebide_frontend-14e738e76841970f.wasm",
+      "tests": 33,
+      "matrix": false,
+      "independent": false
+    }
+  ],
+  "editorResults": [
+    "test result: ok. 62 passed; 0 failed; 0 ignored; 528 filtered out; finished in 44.74s",
+    "test result: ok. 61 passed; 0 failed; 0 ignored; 529 filtered out; finished in 95.86s",
+    "test result: ok. 61 passed; 0 failed; 0 ignored; 529 filtered out; finished in 35.80s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 589 filtered out; finished in 28.23s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 589 filtered out; finished in 23.71s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 589 filtered out; finished in 9.36s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 589 filtered out; finished in 55.99s",
+    "test result: ok. 33 passed; 0 failed; 0 ignored; 27 filtered out; finished in 1.15s"
+  ],
+  "nativeSuiteResults": [
+    "test result: ok. 186 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s",
+    "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.64s",
+    "test result: ok. 114 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.87s",
+    "test result: ok. 147 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 237.36s",
+    "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.05s",
+    "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s",
+    "test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.69s",
+    "test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.06s",
+    "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s",
+    "test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s",
+    "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.06s",
+    "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.25s",
+    "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.18s",
+    "test result: ok. 596 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 20.52s",
+    "test result: ok. 99 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s",
+    "test result: ok. 167 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.37s",
+    "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+  ],
+  "nativePassed": 1396,
+  "nonEditorComponents": 402,
+  "nativeFrontend": 142,
+  "browserLibrary": 60,
+  "note": "Complete required local commands pass. Existing ignored native reference tests retain documented artifact/runtime prerequisites. Hosted checks for this implementation and the full editor performance/device gates remain open.",
+  "additionalBrowserBinaries": [
+    "     Running tests/fake_backend.rs (target/wasm32-unknown-unknown/release/deps/fake_backend-df51aae69230b7a4.wasm)",
+    "test result: ok. 4 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.00s",
+    "     Running tests/panel_playground.rs (target/wasm32-unknown-unknown/release/deps/panel_playground-4a8dd76d5685462e.wasm)",
+    "test result: ok. 3 passed; 0 failed; 0 ignored; 0 filtered out; finished in 1.53s",
+    "     Running tests/plugin_authoring.rs (target/wasm32-unknown-unknown/release/deps/plugin_authoring-54a5973f18901387.wasm)",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.08s",
+    "     Running tests/plugin_panels.rs (target/wasm32-unknown-unknown/release/deps/plugin_panels-ea41bbe6fea9408c.wasm)",
+    "test result: ok. 3 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.01s"
+  ],
+  "storageBrowser": [
+    "test result: ok. 3 passed; 0 failed; 0 ignored; 0 filtered out; finished in 7.98s"
+  ],
+  "quietLinuxWsDelivery": [
+    "test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.76s"
+  ],
+  "baseRevision": "5d1155a45789a7480d3636d5e1d25498a698ecc8",
+  "sources": {
+    "crates/core/src/editor/coordinates.rs": "d9dcd8c1e2297429fc1062f8ad851d6367c220a2b5b98ed79d7540579c7f030b",
+    "frontend/src/components/editor.rs": "acfc257d619fb1ad7864305a12f587a87a40682dd1723d5cd87316bd0724f45f",
+    "frontend/src/editor_worker.rs": "1f8ec0386e5ced88208ca02265e7c553431ef0b6e2b4ef273e31f4a0c6286b95",
+    "frontend/pwa/editor-worker.js": "19ccc5e8fd456f7f3c1afe48381bf0ac240a4c7eaf5a9e91e12c550fc89cca8f",
+    "frontend/pwa/build.sh": "cc5e9b527472b99a5b9085858357308461d2ce1699485cf63c42b836d85bc371",
+    "frontend/tests/components/editor.rs": "822c6777809a7194b3091e4afa09939ada116afaef9d094f4522491ae4221363",
+    "bridge/tests/ws_delivery.rs": "ffdfe7fbecd68b2006d618ab72bc3073de7e503c6585368546662e0a93821a96",
+    "tools/editor-bench/src/lib.rs": "f8a2a72b9f18815d95a1daaaba0bb6fa3cde34ed4910aaecb4e6b0f8ab6eb813",
+    "tools/editor-bench/src/main.rs": "ba15e2520556f87926a535b998f0e9874071da6bdfd1139a69b606888beeec22",
+    "tools/check-editor-worker.py": "43788e16536ff3b037b7b5b5198de895bf240aee2c920e490cb5700fec986d08"
+  }
+}

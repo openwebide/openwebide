@@ -1,0 +1,43 @@
+{
+  "gate": "Full local native verification",
+  "test": "openwebide-bridge --test ws_delivery fast_spawns_all_see_exited",
+  "platform": "macOS arm64",
+  "originalSuite": "10 pass, 1 fail; session fast_2 missing exit within unchanged one-second deadline",
+  "isolatedOriginal": "same failure, session fast_5",
+  "diagnostics": [
+    "No protocol messages received before deadline",
+    "Acknowledging all 300 spawns before attaching did not fix the failure; original fixture restored",
+    "Session List after failure shows the failed session still running",
+    "OS ps for the failed spawned child shows true in S state at the failed deadline"
+  ],
+  "cause": "Unresolved; evidence does not establish a WebSocket replay loss or prove environmental causation. Temporary diagnostics and barrier experiment removed.",
+  "status": "Required local native gate passes with the completion-precondition correction. Concurrent-run failures are retained; no platform-specific causation or process-speed guarantee is claimed.",
+  "linuxReproduction": "Original complete ws_delivery suite also failed on Linux (10 pass/1 fail), excluding a Mac-only explanation.",
+  "resolution": {
+    "change": "Replace the fixed 500 ms sleep with an ordered List/process-completion barrier and drain setup replies before checking exit replay. Setup has a bounded five-second timeout; all 300 starts and one-second per-session exit-replay assertions remain.",
+    "scope": "Test precondition only; no bridge production behavior change or claim about the cause of slow process completion.",
+    "nativeRepetitions": [
+      {
+        "suite": "ws_delivery",
+        "passed": 11,
+        "failed": 0,
+        "seconds": 3.31
+      },
+      {
+        "suite": "ws_delivery",
+        "passed": 11,
+        "failed": 0,
+        "seconds": 3.18
+      },
+      {
+        "suite": "ws_delivery",
+        "passed": 11,
+        "failed": 0,
+        "seconds": 3.52
+      }
+    ],
+    "fullRequiredNativeRepeat": "Passed: 1396 native tests across the required crates (default ignored tests retain prerequisites).",
+    "linuxFixedSuite": "Failed: 9 pass/2 fail (process completion setup and kill responsiveness); local verification was concurrent with native compilation and browser checks. Cause not proven.",
+    "quietLinuxFixedSuite": "Passed: 11 tests in 4.76 seconds after the concurrent verification jobs completed."
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "browser": "Google Chrome 156.0.8078.79 macOS arm64",
+  "method": "Computer Use via @oai/sky, native browser window; isolated Spin account and temporary actual filesystem folder",
+  "verified": [
+    "Remote native keyboard + Unicode paste + undo/redo + Save button, exact source/CRLF checked on disk",
+    "Local native folder picker and Chrome edit permission prompt",
+    "Local native keyboard + undo/redo + Save button, exact source/CRLF checked on disk",
+    "Remove native folder access through Chrome file access UI; permission banner shown",
+    "Edit with access revoked, reload, original draft recovered and save blocked pending disk verification",
+    "Deny regrant; draft retained",
+    "Regrant through Chrome native prompt; disk verified; save enabled; recovered draft saved exactly",
+    "Native macOS Option+E dead-key composition followed by E commits \u00e9; Cmd+Z restores exact clean source",
+    "Native dead-key composition followed by Backspace cancels the accent and restores clean source",
+    "Ctrl+M announces Tab focus mode; native Tab exits editor to Resize Editor splitter and Shift+Tab returns to editor",
+    "After production rebuild and native hard reload, Cmd+S saves exact local Unicode/CRLF source without Save Page dialog",
+    "After switching projects, Cmd+S saves exact remote Unicode/CRLF source without Save Page dialog"
+  ],
+  "savedSourceSha256": "3b14c7ee5c1fd5cffe64d47a1c400e78aba9ea04bb1fa5cad45ade33d3580260",
+  "remaining": [
+    "Installed PWA, East Asian candidate IME, touch hardware, assistive technology and Edge not established"
+  ],
+  "assets": {
+    "openwebide-frontend-2e226cecf88dd9b7_bg.wasm": "66a0b96b709e84d003416cb2c6775b3548a251dfd0ad8a6f271cb1f192322219",
+    "openwebide-frontend-47678b66868dc9d5.js": "7b1c7463c42dd154782e1e2c7c760982d55b434e63b6351b40bc05dc61f622f6"
+  },
+  "saveRepairAssets": {
+    "openwebide-frontend-b37dea028db0d069_bg.wasm": "86200a850d407758fdb38847227b9e8bcfcb3827bac0ccb6ed3abca9ad6ddbfe",
+    "openwebide-frontend-47678b66868dc9d5.js": "7b1c7463c42dd154782e1e2c7c760982d55b434e63b6351b40bc05dc61f622f6"
+  }
+}

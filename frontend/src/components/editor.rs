@@ -3478,7 +3478,10 @@ pub fn Editor(
     view! {
         <div class="editor" node_ref=root style=move || format!("{}; --editor-tab-width: {}", editor_actions.preferences().font_style(), editor_actions.rules().indentation.tab_width()) on:keydown=move |event: web_sys::KeyboardEvent| {
             if event.is_composing() { return; }
-            if (event.ctrl_key() || event.meta_key()) && !event.alt_key() && view_mode.get_untracked() == ViewMode::Code && ta.get_untracked().is_some() && event.key().eq_ignore_ascii_case("g") {
+            if (event.ctrl_key() || event.meta_key()) && !event.alt_key() && !event.shift_key() && event.key().eq_ignore_ascii_case("s") {
+                event.prevent_default(); event.stop_propagation();
+                if !read_only.get_untracked() && dirty.get_untracked() && !recovery_blocks_save.get_untracked() { on_save.run(()); }
+            } else if (event.ctrl_key() || event.meta_key()) && !event.alt_key() && view_mode.get_untracked() == ViewMode::Code && ta.get_untracked().is_some() && event.key().eq_ignore_ascii_case("g") {
                 event.prevent_default(); event.stop_propagation(); open_go.run(());
             } else if (event.ctrl_key() || event.meta_key()) && event.shift_key() && !event.alt_key() && view_mode.get_untracked() == ViewMode::Code && (matches!(event.key().as_str(), "\\" | "|") || event.code() == "Backslash") {
                 event.prevent_default(); event.stop_propagation(); jump_bracket.run(());

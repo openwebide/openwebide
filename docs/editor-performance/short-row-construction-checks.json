@@ -1,0 +1,52 @@
+{
+  "checks": {
+    "minimalCore": {
+      "result": [
+        "    Finished `test` profile [unoptimized + debuginfo] target(s) in 20.61s",
+        "test result: ok. 595 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 20.08s"
+      ]
+    },
+    "parserCore": {
+      "result": [
+        "    Finished `test` profile [unoptimized + debuginfo] target(s) in 22.94s",
+        "test result: ok. 792 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 51.12s"
+      ]
+    },
+    "browserConstruction": {
+      "result": [
+        "    Finished `release` profile [optimized] target(s) in 4.25s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 2 filtered out; finished in 0.37s"
+      ]
+    },
+    "bothModeDenseRows": {
+      "result": [
+        "    Finished `release` profile [optimized] target(s) in 4m 10s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 588 filtered out; finished in 0.57s"
+      ]
+    },
+    "nativeLint": {
+      "result": [
+        "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 19.72s"
+      ]
+    },
+    "wasmLint": {
+      "result": [
+        "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1m 23s"
+      ]
+    }
+  },
+  "browser": "Google Chrome 156.0.8078.79, macOS arm64",
+  "wasmBindgen": "0.2.128",
+  "note": "Targeted checks only; full release and production latency/memory gates remain open.",
+  "saveShortcut": {
+    "result": [
+      "test editor::save_shortcuts_use_editor_save_and_suppress_browser_save_in_both_modes ... ok",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 589 filtered out; finished in 0.05s"
+    ]
+  },
+  "finalWasmLint": {
+    "result": [
+      "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 56.76s"
+    ]
+  }
+}

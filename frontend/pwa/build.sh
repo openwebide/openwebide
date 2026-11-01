@@ -8,12 +8,18 @@ python3 ../tools/open_source.py --page-output "$dist/about.html"
 # Reuse the exact frontend build in a dedicated Rust/WASM module worker.
 module=$(find "$dist" -maxdepth 1 -name 'openwebide-frontend-*.js' -type f)
 [ -n "$module" ] && [ -f "$module" ]
-wasm="${module%.js}_bg.wasm"
+# Trunk versions may fingerprint JavaScript and WASM independently. Select the
+# single generated application binary rather than deriving its name from JS.
+wasm=$(find "$dist" -maxdepth 1 -name 'openwebide-frontend-*_bg.wasm' -type f)
 [ -f "$wasm" ]
 sed -e "s/__EDITOR_MODULE__/${module##*/}/g" -e "s/__EDITOR_WASM__/${wasm##*/}/g" pwa/editor-worker.js > "$dist/editor-worker.js"
 fingerprint=${module##*/}
 fingerprint=${fingerprint#openwebide-frontend-}
 fingerprint=${fingerprint%.js}
+binary_fingerprint=${wasm##*/}
+binary_fingerprint=${binary_fingerprint#openwebide-frontend-}
+binary_fingerprint=${binary_fingerprint%_bg.wasm}
+fingerprint=$fingerprint-$binary_fingerprint
 cp "$dist/editor-worker.js" "$dist/editor-worker-$fingerprint.js"
 version=$({ cksum "$dist/index.html" "$dist/pwa.js" "$dist/manifest.webmanifest" "$dist/offline.html" "$dist/about.html" "$dist"/about-software-*.html "$dist/logo.svg" "$dist/favicon.svg" "$dist/favicon.png" "$dist/apple-touch-icon.png" "$dist/icon-192.png" "$dist/icon-512.png" "$dist/maskable-icon-192.png" "$dist/maskable-icon-512.png" pwa/service-worker.js pwa/build.sh pwa/editor-worker.js; find "$dist/fonts" -type f -name '*.woff2' -exec cksum {} \; | sort; } | cksum | cut -d ' ' -f 1)
 {

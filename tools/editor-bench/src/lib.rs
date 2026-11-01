@@ -8,6 +8,40 @@ pub struct Measurement {
     pub bytes: usize,
     pub milliseconds: f64,
 }
+/// Cold admitted documents with many short rows, independently checked after timing.
+pub fn measure_construction(clock: impl Fn() -> f64) -> Vec<Measurement> {
+    let mut records = Vec::new();
+    for (label, pattern) in [
+        (
+            "ascii_rows_construction",
+            "let value = function(argument); // ordinary source text\r\n",
+        ),
+        (
+            "mixed_rows_construction",
+            "let value = function(\"文😀e\u{301}\"); // ordinary source text\r\n",
+        ),
+    ] {
+        let source = pattern.repeat(99_998);
+        for _ in 0..7 {
+            let owned = source.clone();
+            let mut document = None;
+            time(&mut records, &clock, label, source.len(), || {
+                document = Some(Document::for_editor(owned).unwrap());
+            });
+            let document = document.unwrap();
+            assert_eq!(document.text(), source);
+            assert_eq!(document.line_count(), 99_999);
+            for byte in [0, pattern.len() * 49_999, source.len()] {
+                assert_eq!(
+                    document.byte_to_textarea(byte),
+                    openwebide_core::editor::byte_to_textarea(&source, byte)
+                );
+            }
+            black_box(document);
+        }
+    }
+    records
+}
 /// Measure edit/undo pairs with construction and exact-source verification outside
 /// timing. This includes core allocation, admission, history and index publication,
 /// but excludes browser input, syntax preparation, shaping and layout.
@@ -556,6 +590,21 @@ fn measure_visual_lines(records: &mut Vec<Measurement>, clock: &impl Fn() -> f64
 #[cfg(all(test, target_arch = "wasm32"))]
 mod browser {
     wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    fn shared_construction_workloads() {
+        let clock = js_sys::Function::new_no_args("return performance.now()");
+        for record in super::measure_construction(|| {
+            clock.call0(&js_sys::global()).unwrap().as_f64().unwrap()
+        }) {
+            wasm_bindgen_test::console_log!(
+                "{},{},{:.3}",
+                record.operation,
+                record.bytes,
+                record.milliseconds
+            );
+            assert!(record.milliseconds.is_finite() && record.milliseconds >= 0.0);
+        }
+    }
     #[wasm_bindgen_test::wasm_bindgen_test]
     fn shared_lexical_workloads() {
         let clock = js_sys::Function::new_no_args("return performance.now()");
