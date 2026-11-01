@@ -1,6 +1,7 @@
 #!/bin/sh
 set -eu
 dist=${TRUNK_STAGING_DIR:?Trunk staging directory is required}
+startup_files=$(python3 ../tools/prepare-frontend-startup.py --shell-files --dist "$dist")
 for file in manifest.webmanifest pwa.js offline.html logo.svg favicon.svg favicon.png apple-touch-icon.png icon-192.png icon-512.png maskable-icon-192.png maskable-icon-512.png; do
   cp "pwa/$file" "$dist/$file"
 done
@@ -20,10 +21,11 @@ binary_fingerprint=${wasm##*/}
 binary_fingerprint=${binary_fingerprint#openwebide-frontend-}
 binary_fingerprint=${binary_fingerprint%_bg.wasm}
 fingerprint=$fingerprint-$binary_fingerprint
+rm -f "$dist"/editor-worker-*.js
 cp "$dist/editor-worker.js" "$dist/editor-worker-$fingerprint.js"
 version=$({ cksum "$dist/index.html" "$dist/pwa.js" "$dist/manifest.webmanifest" "$dist/offline.html" "$dist/about.html" "$dist"/about-software-*.html "$dist/logo.svg" "$dist/favicon.svg" "$dist/favicon.png" "$dist/apple-touch-icon.png" "$dist/icon-192.png" "$dist/icon-512.png" "$dist/maskable-icon-192.png" "$dist/maskable-icon-512.png" pwa/service-worker.js pwa/build.sh pwa/editor-worker.js; find "$dist/fonts" -type f -name '*.woff2' -exec cksum {} \; | sort; } | cksum | cut -d ' ' -f 1)
 {
-  printf 'const BUILD_ID = "%s";\nconst SHELL_FILES = ["/", "/offline.html", "/about.html", "/manifest.webmanifest", "/logo.svg", "/favicon.svg", "/favicon.png", "/apple-touch-icon.png", "/icon-192.png", "/icon-512.png", "/maskable-icon-192.png", "/maskable-icon-512.png", "/pwa.js"' "$version"
+  printf 'const BUILD_ID = "%s";\nconst SHELL_FILES = [%s"/", "/offline.html", "/about.html", "/manifest.webmanifest", "/logo.svg", "/favicon.svg", "/favicon.png", "/apple-touch-icon.png", "/icon-192.png", "/icon-512.png", "/maskable-icon-192.png", "/maskable-icon-512.png", "/pwa.js"' "$version" "$startup_files"
   for file in "$dist"/*.wasm "$dist"/*.js "$dist"/*.css "$dist"/about-software-*.html; do
     [ -f "$file" ] || continue
     name=${file##*/}

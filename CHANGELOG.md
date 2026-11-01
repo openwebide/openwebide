@@ -9,6 +9,8 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Reduce frontend startup downloads by loading verified static initialization into the same memory before page and worker initialization. Preserve all grammars, offline assets, synchronous worker initialization and a raw-data fallback for browsers without native decompression.
+
 - Keep a smaller surrounding native text window in wrapped editors to reduce browser shaping, preserving complete-source edits, composition, geometry proofs and the existing unwrapped window.
 
 - Verify installed Chrome PWA editing, native dead-key commit/cancel and exact Unicode/CRLF saves in both project modes, plus local folder-permission recovery.

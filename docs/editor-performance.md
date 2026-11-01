@@ -7098,3 +7098,77 @@ with its compiled playground also pass
 ([production receipt](editor-performance/wrapped-native-context-production-checks.json)).
 Repeat integrated release verification for the final implementation. The broader
 cold/input/memory and physical-device gates remain open.
+
+### Static startup data: controlled screen and portable loader
+
+The frontend now initializes the same static memory through its generated bindings
+before either initialization API runs. The compiled module keeps every original
+active data index as an empty segment; executable code, function indices and bulk
+`memory.init`/`data.drop` lifetimes remain intact. The loader streams integrity-checked
+gzip data, with a raw-data path when decompression is unavailable. The PWA caches
+the representation supported by that browser. Both modes use this shared startup
+path; no grammar or cooperative fallback is removed.
+Overlapping asynchronous initialization shares one attempt. Mixed synchronous calls
+reuse the initialized instance, and a failed module load can be retried.
+
+A frozen pre-integration comparison contains 72 observations: three fresh pairs for
+small/styled files, both modes and both wrapping settings, plus 24 candidate boundary
+and embedded-language cases. All preserve complete edited source, required near-MiB
+String styling and actual final/sampled peak Linux Chrome PSS. Cold medians fall
+159–337 ms in all eight paired configurations. Final PSS medians are lower in seven;
+wrapped Local styled-file memory rises from 660.7 to 665.9 MiB. Input results vary,
+and this small cohort establishes neither p95 nor a general memory improvement
+([samples](editor-performance/startup-data-production-screen.jsonl),
+[manifest](editor-performance/startup-data-production-screen-manifest.json),
+[summary](editor-performance/startup-data-production-screen-summary.json)).
+
+The unchanged executable section accompanies a 29,639,299 → 14,182,130-byte module.
+Static initialization occupies 1,977,136 compressed bytes, with an 18,889,718-byte
+raw fallback also stored in the release artifact. One actual Chrome transfer per
+changed asset over the existing Brotli-enabled Spin server totals 6,845,633 →
+6,360,187 encoded bytes with gzip data, or 6,537,283 with raw fallback. These are
+changed-asset transfers, not total page traffic or WAN latency measurements
+([transfers](editor-performance/startup-data-transfer.json)).
+
+Four input-geometry timings in the original screen remain null. The observer had
+stopped recording geometry after switching from input to the existing deferred
+phase. It now observes later geometry while preserving the original viewport
+measurement, waits and deadlines. Eight separate affected baseline/candidate cases
+record completion and independently verify matching current input/paint/extent
+ownership, positive complete extent, full edited source and final PSS. The original
+screen is retained without filling its missing values
+([observations](editor-performance/startup-data-geometry-observation.jsonl)).
+
+The portable builder's native WASM oracle covers overlapping segments, explicit zero
+writes, arbitrary bytes, original bulk-data indices, both initialization APIs and
+both data formats. Actual Chrome checks cover missing/corrupt data rejection,
+capability-matched offline main/worker startup and synchronous worker initialization.
+These focused checks pass; guarded-build measurements and complete local
+verification are recorded below. Hosted and physical-device gates remain open.
+
+The guarded portable build has a separate final 72-observation comparison against
+its byte-verified original Trunk output. Both use identical compiled Rust code and
+static bytes. All complete-source, actual near-MiB String styling, syntax, geometry
+observation and true final/sampled-peak PSS checks pass. Cold medians are 153–301 ms
+lower across all eight paired configurations. Small-file final PSS medians fall
+12–16 MiB; styled-file memory varies, including wrapped Remote 663.8 → 672.8 MiB.
+Input medians vary and remain a separate gate. No missing geometry timings remain
+in this corrected capture; it does not fill earlier raw observations
+([samples](editor-performance/startup-memory-production.jsonl),
+[manifest](editor-performance/startup-memory-production-manifest.json),
+[summary](editor-performance/startup-memory-production-summary.json)).
+
+The final changed-asset transfers total 6,838,879 → 6,361,257 encoded bytes with gzip
+data, or 6,538,988 with raw fallback. Actual Chrome tests verify missing/corrupt data
+rejection, capability-matched cached startup and sync/concurrent/mixed/retry worker
+initialization with one Rust entry and identical exports
+([transfers](editor-performance/startup-memory-transfers.json),
+[browser contracts](editor-performance/startup-memory-browser-contracts.json)).
+The complete local native/WASI/WASM gate, all 221 editor contracts, separate font
+matrices and final Spin build pass, reproducing all four measured payload hashes.
+Final production workers, trusted input/pointer checks and strict real compiled
+site/playground checks also pass
+([local verification](editor-performance/startup-memory-local-checks.json),
+[production verification](editor-performance/startup-memory-production-checks.json)).
+Hosted verification, broader responsiveness/memory and physical-device checks remain
+open for this implementation.

@@ -1,0 +1,71 @@
+{
+  "scope": "One actual Chrome no-store transfer per changed frontend asset over pinned Spin fileserver, not total page/network traffic. gzip/raw data are capability alternatives. Same Rust code and original static image; private pre-integration comparison, no final release claim.",
+  "variants": {
+    "control": {
+      "scope": "Actual Chrome changed-asset transfer sizes over the pinned Spin fileserver; one no-store fetch per asset, not total app/page traffic. Raw fallback and gzip capability are alternatives. No app is initialized, no latency or memory claim.",
+      "variant": "control",
+      "assets": [
+        {
+          "role": "moduleJavaScript",
+          "file": "openwebide-frontend-f41e4913080c5d02.js",
+          "actualDecodedBytes": 123939,
+          "contentEncoding": "br",
+          "decodedBodyBytes": 123939,
+          "encodedBodyBytes": 17774,
+          "transferBytes": 18074
+        },
+        {
+          "role": "wasm",
+          "file": "openwebide-frontend-698a969a7f10077f_bg.wasm",
+          "actualDecodedBytes": 29639299,
+          "contentEncoding": "br",
+          "decodedBodyBytes": 29639299,
+          "encodedBodyBytes": 6827859,
+          "transferBytes": 6828159
+        }
+      ]
+    },
+    "imported": {
+      "scope": "Actual Chrome changed-asset transfer sizes over the pinned Spin fileserver; one no-store fetch per asset, not total app/page traffic. Raw fallback and gzip capability are alternatives. No app is initialized, no latency or memory claim.",
+      "variant": "imported",
+      "assets": [
+        {
+          "role": "moduleJavaScript",
+          "file": "openwebide-frontend-0b22ce53acab811d.js",
+          "actualDecodedBytes": 125300,
+          "contentEncoding": "br",
+          "decodedBodyBytes": 125300,
+          "encodedBodyBytes": 18390,
+          "transferBytes": 18690
+        },
+        {
+          "role": "wasm",
+          "file": "openwebide-frontend-5707a0305fa3c496_bg.wasm",
+          "actualDecodedBytes": 14182130,
+          "contentEncoding": "br",
+          "decodedBodyBytes": 14182130,
+          "encodedBodyBytes": 4461608,
+          "transferBytes": 4461908
+        },
+        {
+          "role": "gzipData",
+          "file": "frontend-startup-4a8c6f49bac9eb11.bin",
+          "actualDecodedBytes": 1977136,
+          "contentEncoding": "br",
+          "decodedBodyBytes": 1977136,
+          "encodedBodyBytes": 1880189,
+          "transferBytes": 1880489
+        },
+        {
+          "role": "rawData",
+          "file": "frontend-startup-6f0be268252db6e2.raw.bin",
+          "actualDecodedBytes": 18889718,
+          "contentEncoding": "br",
+          "decodedBodyBytes": 18889718,
+          "encodedBodyBytes": 2057285,
+          "transferBytes": 2057585
+        }
+      ]
+    }
+  }
+}

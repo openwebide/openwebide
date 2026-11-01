@@ -490,9 +490,9 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
                                     measurement.coldCompleteGeometryMs = performance.now();
                                 if (syntaxReady && measurement.coldSyntaxReadyMs === null)
                                     measurement.coldSyntaxReadyMs = performance.now();
-                            } else if (measurement.phase === 'input' && measurement.inputAt &&
+                            } else if (['input', 'deferred'].includes(measurement.phase) && measurement.inputAt &&
                                 scope !== measurement.inputPreviousScope) {
-                                if (measurement.inputViewportPaintMs === null) {
+                                if (measurement.phase === 'input' && measurement.inputViewportPaintMs === null) {
                                     measurement.inputViewportPaintMs = performance.now() - measurement.inputAt;
                                     measurement.inputViewportHadCompleteExtent = complete;
                                 }

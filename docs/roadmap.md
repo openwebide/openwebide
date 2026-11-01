@@ -1023,6 +1023,30 @@ matrices pass for this checkpoint
 integrated release verification for the final implementation; the responsiveness,
 memory and physical-device gates remain open.
 
+The startup loader now preserves executable code and active data indices while
+initializing equivalent memory before page and worker startup. A pre-integration
+72-observation screen shows cold medians 159–337 ms lower across eight paired
+configurations; memory is lower in seven and higher in one. Complete edited source
+and actual final PSS pass throughout; four geometry timings remain unavailable in
+that original capture ([screen](editor-performance/startup-data-production-screen-summary.json)).
+Actual changed-asset transfers fall about 7% with the existing HTTP compression
+([transfers](editor-performance/startup-data-transfer.json)). Later geometry is now
+observed during the existing deferred phase, with eight affected baseline/candidate
+cases independently checking complete current extents
+([observations](editor-performance/startup-data-geometry-observation.jsonl)).
+Repeat the complete integrated and production gates for the portable loader before
+closing the remaining responsiveness, memory or device work.
+The guarded portable build subsequently passes 72 fresh observations with the
+corrected geometry observer, full edited source, real near-MiB styling and final
+PSS throughout. Cold medians are 153–301 ms lower in all eight paired configurations;
+memory is lower in seven and wrapped Remote styled-file PSS rises by 9 MiB
+([final comparison](editor-performance/startup-memory-production-summary.json)).
+The complete local native/WASI/WASM suite, all 221 editor contracts and both font
+matrices pass ([local checks](editor-performance/startup-memory-local-checks.json)).
+Production worker/input/pointer checks and the strict compiled site/playground also
+pass ([production checks](editor-performance/startup-memory-production-checks.json)).
+Hosted verification and the remaining responsiveness/memory/device gates stay open.
+
 - [ ] **Responsiveness and memory:** remove measured input, cold-paint, wrapped
   geometry and process-memory stalls. Repeat admitted byte, row-count and long-line
   boundary workloads in both modes, wrapping on/off, beginning edits and startup/
