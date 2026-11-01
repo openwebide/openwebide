@@ -20042,9 +20042,21 @@ async fn file_tab_context_actions_share_tree_actions_and_guard_bulk_closes_in_bo
 async fn bounded_native_context_replaces_complete_selections_and_preserves_history_in_both_modes() {
     use openwebide_core::{WorkspaceMode, editor::Selection};
     use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
-    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+    for (mode, wrapped, single_line) in [WorkspaceMode::Local, WorkspaceMode::Remote]
+        .into_iter()
+        .flat_map(|mode| {
+            [(false, false), (true, false), (true, true)]
+                .into_iter()
+                .map(move |(wrapped, single_line)| (mode, wrapped, single_line))
+        })
+    {
         for backward in [false, true] {
-            let original = format!("before\r\n{}after\r\nlast", "row α🦀 kept\r\n".repeat(2000));
+            let row = if single_line {
+                "row α🦀 kept "
+            } else {
+                "row α🦀 kept\r\n"
+            };
+            let original = format!("before\r\n{}after\r\nlast", row.repeat(2000));
             let start = original.find('α').unwrap();
             let end = original.rfind("kept").unwrap() + 4;
             let selected = if backward {
@@ -20064,6 +20076,10 @@ async fn bounded_native_context_replaces_complete_selections_and_preserves_histo
             let mounted = mount_test(move |state| {
                 state.seed_project();
                 state
+                    .settings
+                    .editor_preferences
+                    .update(|preferences| preferences.word_wrap = wrapped);
+                state
                     .projects
                     .projects
                     .update(|projects| projects[0].mode = mode);
@@ -20076,6 +20092,9 @@ async fn bounded_native_context_replaces_complete_selections_and_preserves_histo
             });
             let actions = slot.get().unwrap();
             let context = actions.native_context().unwrap();
+            if wrapped && single_line {
+                assert!(context.projection().textarea_text().len() <= 4 * 1024);
+            }
             assert!(context.projection().is_windowed());
             assert!(context.projection().textarea_text().len() <= 16 * 1024);
             let native = context.native_selection().unwrap();
@@ -20351,9 +20370,21 @@ async fn bounded_native_context_keeps_composition_values_through_clipped_replace
  {
     use openwebide_core::{WorkspaceMode, editor::Selection};
     use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
-    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+    for (mode, wrapped, single_line) in [WorkspaceMode::Local, WorkspaceMode::Remote]
+        .into_iter()
+        .flat_map(|mode| {
+            [(false, false), (true, false), (true, true)]
+                .into_iter()
+                .map(move |(wrapped, single_line)| (mode, wrapped, single_line))
+        })
+    {
         for backward in [false, true] {
-            let original = format!("before\r\n{}after\r\nlast", "row α🦀 kept\r\n".repeat(3000));
+            let row = if single_line {
+                "row α🦀 kept "
+            } else {
+                "row α🦀 kept\r\n"
+            };
+            let original = format!("before\r\n{}after\r\nlast", row.repeat(3000));
             let begin = original.find('α').unwrap();
             let end = original.rfind("kept").unwrap() + 4;
             let selected = if backward {
@@ -20373,6 +20404,10 @@ async fn bounded_native_context_keeps_composition_values_through_clipped_replace
             let mounted = mount_test(move |state| {
                 state.seed_project();
                 state
+                    .settings
+                    .editor_preferences
+                    .update(|preferences| preferences.word_wrap = wrapped);
+                state
                     .projects
                     .projects
                     .update(|projects| projects[0].mode = mode);
@@ -20389,6 +20424,9 @@ async fn bounded_native_context_keeps_composition_values_through_clipped_replace
             let actions = slot.get().unwrap();
             actions.begin_composition();
             let context = actions.native_context().unwrap();
+            if wrapped && single_line {
+                assert!(context.projection().textarea_text().len() <= 4 * 1024);
+            }
             let range = context.native_selection().unwrap().range();
             let start = openwebide_core::editor::utf16_to_byte(
                 context.projection().textarea_text(),
@@ -20578,11 +20616,30 @@ async fn bound_editor_composition_keeps_native_ownership_across_provider_metadat
         editor::{FoldRange, Selection},
     };
     use openwebide_frontend::state_actions::editor::EditorActions;
-    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        let source = "a source row with 文🦀\r\n".repeat(900);
+    for (mode, wrapped) in [WorkspaceMode::Local, WorkspaceMode::Remote]
+        .into_iter()
+        .flat_map(|mode| {
+            [false, true]
+                .into_iter()
+                .map(move |wrapped| (mode, wrapped))
+        })
+    {
+        let source = if wrapped {
+            format!(
+                "a source row with 文🦀 {}\r\n",
+                "surrounding words ".repeat(8)
+            )
+            .repeat(900)
+        } else {
+            "a source row with 文🦀\r\n".repeat(900)
+        };
         let original = source.clone();
         let mounted = mount_test(move |state| {
             state.seed_project();
+            state
+                .settings
+                .editor_preferences
+                .update(|preferences| preferences.word_wrap = wrapped);
             state
                 .projects
                 .projects

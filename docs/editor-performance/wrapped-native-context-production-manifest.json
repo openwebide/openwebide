@@ -1,0 +1,65 @@
+{
+  "scope": "Final wrapped-only native-context production verification. Same full-feature source across modes, default optimizer and worker startup; complete source, actual near-1MiB String styling, original readiness deadlines, peak and final Linux PSS required. Three styled pairs per mode/wrap plus candidate admitted/boundary and embedded-source cases. No physical device claim.",
+  "waitSyntax": true,
+  "image": "sha256:5d362a9df35f1c81d967d68cfd7432961c534cc11894950da3ff0d826255dbab",
+  "sourceFiles": {
+    "frontend/src/state_actions/editor/input.rs": "85f93ae53b77de814842d51d8d9b166c67005abc8bcfcbb79d20ee79a03340bf",
+    "CHANGELOG.md": "52823f23b154a6e93b74a3aacb12dc40e915cffabcbac0063f2a8fdf3add11a5",
+    "docs/roadmap.md": "7c800a011b5591da4224b51dd0199c807356f70411257ba99595e90a456c88bc"
+  },
+  "variants": {
+    "baseline": {
+      "openwebide-frontend-d72c9f1f8d929e93_bg.wasm": {
+        "bytes": 29639017,
+        "sha256": "dc445e4b18743a45332462543a8a24afb2c2646deb35b389cbbd8bbb6bf63c80"
+      },
+      "editor-worker-6c69d7362cedf38b-d72c9f1f8d929e93.js": {
+        "bytes": 990,
+        "sha256": "92e7be2232410002b68ea006c8740ddddc7775c95075bb25da38d74ae64d52e3"
+      },
+      "editor-worker.js": {
+        "bytes": 990,
+        "sha256": "92e7be2232410002b68ea006c8740ddddc7775c95075bb25da38d74ae64d52e3"
+      },
+      "openwebide-frontend-6c69d7362cedf38b.js": {
+        "bytes": 123939,
+        "sha256": "f41e4913080c5d020941b2b0655e869ec16d06d8d05da2a0a726fd142559ab3d"
+      },
+      "service-worker.js": {
+        "bytes": 5925,
+        "sha256": "846df085f299acb6f5cb5f621f459a31a5748234d6ff876b83238992fc1cfe61"
+      },
+      "pwa.js": {
+        "bytes": 5297,
+        "sha256": "81c9716c0f4d573404f365a05ee343ac62c77735d81f72e5bf045425e42a33e1"
+      }
+    },
+    "candidate": {
+      "openwebide-frontend-c9af9d809b445db4_bg.wasm": {
+        "bytes": 29639299,
+        "sha256": "698a969a7f10077fc9ec3336c507eadc8da7af6278d20de4df814f4873926174"
+      },
+      "editor-worker.js": {
+        "bytes": 990,
+        "sha256": "b448b8a3efc65344ce442a98dda1f3acecc0283f3c1547a035cdb1ad155350a9"
+      },
+      "editor-worker-6c69d7362cedf38b-c9af9d809b445db4.js": {
+        "bytes": 990,
+        "sha256": "b448b8a3efc65344ce442a98dda1f3acecc0283f3c1547a035cdb1ad155350a9"
+      },
+      "openwebide-frontend-6c69d7362cedf38b.js": {
+        "bytes": 123939,
+        "sha256": "f41e4913080c5d020941b2b0655e869ec16d06d8d05da2a0a726fd142559ab3d"
+      },
+      "service-worker.js": {
+        "bytes": 5924,
+        "sha256": "076ccd1ead18aefdc640ba4c02e8ebf22cddea72e976c04e900621baef14c6bf"
+      },
+      "pwa.js": {
+        "bytes": 5297,
+        "sha256": "81c9716c0f4d573404f365a05ee343ac62c77735d81f72e5bf045425e42a33e1"
+      }
+    }
+  },
+  "measurementScriptSha256": "8fb6a329a8dec34ef34ba538a369d9f65d66c81e5b6b8a717651a1fd20c24e01"
+}

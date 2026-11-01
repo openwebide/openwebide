@@ -200,6 +200,9 @@ jobs:
         run: |
           python3 tools/check-editor-input.py
           python3 tools/check-editor-input.py --windowed
+          python3 tools/check-editor-input.py --wrap
+          python3 tools/check-editor-input.py --windowed --wrap
+          python3 tools/check-editor-input.py --windowed --ascii-row --wrap
           python3 tools/check-editor-pointer.py
           python3 tools/check-editor-pointer.py --language rs --repeat 1 --source crates/auth/src/lib.rs --line 62 --ending lf
 

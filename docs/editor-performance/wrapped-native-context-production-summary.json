@@ -1,0 +1,1443 @@
+{
+  "scope": "Final wrapped-only source with default optimizer; editor/view measurements using recovery-backed local fixtures, not native folder permission checks. Three fresh-process pairs per mode/wrap. Separate cold, final and sampled peak memory; incomplete early snapshots stay null. All source checks, final PSS and original deadlines retained. Does not close overall performance/device gates.",
+  "rawSha256": "3b3df87f068f46d99b903b2dbe33c81313733ac89550cdcfadb2be402079ef1c",
+  "observations": 48,
+  "paired": [
+    {
+      "mode": "local",
+      "wrap": false,
+      "variant": "baseline",
+      "n": 3,
+      "metrics": {
+        "loadToPaintMs": {
+          "n": 3,
+          "median": 1311.598083999968,
+          "range": [
+            1288.3314169999949,
+            1411.1933340000178
+          ]
+        },
+        "coldViewportPaintMs": {
+          "n": 3,
+          "median": 1306.7000000000116,
+          "range": [
+            1284,
+            1406.3000000000466
+          ]
+        },
+        "coldCompleteGeometryMs": {
+          "n": 3,
+          "median": 1306.7000000000116,
+          "range": [
+            1284,
+            1406.3000000000466
+          ]
+        },
+        "coldSyntaxReadyMs": {
+          "n": 3,
+          "median": 1306.7000000000116,
+          "range": [
+            1284,
+            1406.3000000000466
+          ]
+        },
+        "inputViewportPaintMs": {
+          "n": 3,
+          "median": 91.20000000001164,
+          "range": [
+            85.70000000001164,
+            95
+          ]
+        },
+        "inputCompleteGeometryMs": {
+          "n": 3,
+          "median": 151.30000000001746,
+          "range": [
+            140.79999999998836,
+            151.89999999996508
+          ]
+        },
+        "inputSyntaxReadyMs": {
+          "n": 3,
+          "median": 91.20000000001164,
+          "range": [
+            85.70000000001164,
+            95
+          ]
+        },
+        "inputToPaintMs": {
+          "n": 3,
+          "median": 160.80000000001746,
+          "range": [
+            158.89999999996508,
+            172.79999999998836
+          ]
+        },
+        "maxLongTaskMs": {
+          "n": 3,
+          "median": 64,
+          "range": [
+            64,
+            71
+          ]
+        },
+        "nativeInputLength": {
+          "n": 3,
+          "median": 8782,
+          "range": [
+            8782,
+            8782
+          ]
+        },
+        "coldChromePssMiB": {
+          "n": 3,
+          "median": 637.767578125,
+          "range": [
+            637.6748046875,
+            690.7158203125
+          ]
+        },
+        "finalChromePssMiB": {
+          "n": 3,
+          "median": 681.455078125,
+          "range": [
+            651.7255859375,
+            701.5771484375
+          ]
+        },
+        "sampledPeakChromePssMiB": {
+          "n": 3,
+          "median": 684.5888671875,
+          "range": [
+            670.138671875,
+            701.4755859375
+          ]
+        }
+      }
+    },
+    {
+      "mode": "local",
+      "wrap": false,
+      "variant": "candidate",
+      "n": 3,
+      "metrics": {
+        "loadToPaintMs": {
+          "n": 3,
+          "median": 1314.9937510000314,
+          "range": [
+            1289.0986680000083,
+            1328.3770840000102
+          ]
+        },
+        "coldViewportPaintMs": {
+          "n": 3,
+          "median": 1309.899999999965,
+          "range": [
+            1283.6999999999825,
+            1324.2000000000116
+          ]
+        },
+        "coldCompleteGeometryMs": {
+          "n": 3,
+          "median": 1309.899999999965,
+          "range": [
+            1283.6999999999825,
+            1324.2000000000116
+          ]
+        },
+        "coldSyntaxReadyMs": {
+          "n": 3,
+          "median": 1309.899999999965,
+          "range": [
+            1283.6999999999825,
+            1324.2000000000116
+          ]
+        },
+        "inputViewportPaintMs": {
+          "n": 3,
+          "median": 92.5,
+          "range": [
+            87.70000000001164,
+            94.09999999997672
+          ]
+        },
+        "inputCompleteGeometryMs": {
+          "n": 3,
+          "median": 148.40000000002328,
+          "range": [
+            145.79999999998836,
+            150.29999999998836
+          ]
+        },
+        "inputSyntaxReadyMs": {
+          "n": 3,
+          "median": 92.5,
+          "range": [
+            87.70000000001164,
+            94.20000000001164
+          ]
+        },
+        "inputToPaintMs": {
+          "n": 3,
+          "median": 158.29999999998836,
+          "range": [
+            157.40000000002328,
+            160.29999999998836
+          ]
+        },
+        "maxLongTaskMs": {
+          "n": 3,
+          "median": 65,
+          "range": [
+            64,
+            65
+          ]
+        },
+        "nativeInputLength": {
+          "n": 3,
+          "median": 8782,
+          "range": [
+            8782,
+            8782
+          ]
+        },
+        "coldChromePssMiB": {
+          "n": 2,
+          "median": 629.19091796875,
+          "range": [
+            623.6171875,
+            634.7646484375
+          ]
+        },
+        "finalChromePssMiB": {
+          "n": 3,
+          "median": 647.62890625,
+          "range": [
+            643.5087890625,
+            653.9267578125
+          ]
+        },
+        "sampledPeakChromePssMiB": {
+          "n": 3,
+          "median": 654.0087890625,
+          "range": [
+            643.654296875,
+            663.765625
+          ]
+        }
+      }
+    },
+    {
+      "mode": "local",
+      "wrap": true,
+      "variant": "baseline",
+      "n": 3,
+      "metrics": {
+        "loadToPaintMs": {
+          "n": 3,
+          "median": 1563.6797500000057,
+          "range": [
+            1535.5467509999983,
+            1603.555708999977
+          ]
+        },
+        "coldViewportPaintMs": {
+          "n": 3,
+          "median": 1274.600000000035,
+          "range": [
+            1255.7999999999884,
+            1298.7999999999884
+          ]
+        },
+        "coldCompleteGeometryMs": {
+          "n": 3,
+          "median": 1540.9000000000233,
+          "range": [
+            1505.5,
+            1578.7999999999884
+          ]
+        },
+        "coldSyntaxReadyMs": {
+          "n": 3,
+          "median": 1274.600000000035,
+          "range": [
+            1255.7999999999884,
+            1298.7999999999884
+          ]
+        },
+        "inputViewportPaintMs": {
+          "n": 3,
+          "median": 102.70000000001164,
+          "range": [
+            97.20000000001164,
+            107.10000000003492
+          ]
+        },
+        "inputCompleteGeometryMs": {
+          "n": 3,
+          "median": 425.70000000001164,
+          "range": [
+            388.5,
+            434.20000000001164
+          ]
+        },
+        "inputSyntaxReadyMs": {
+          "n": 3,
+          "median": 102.70000000001164,
+          "range": [
+            97.20000000001164,
+            107.20000000001164
+          ]
+        },
+        "inputToPaintMs": {
+          "n": 3,
+          "median": 425.70000000001164,
+          "range": [
+            388.5,
+            434.30000000001746
+          ]
+        },
+        "maxLongTaskMs": {
+          "n": 3,
+          "median": 66,
+          "range": [
+            64,
+            69
+          ]
+        },
+        "nativeInputLength": {
+          "n": 3,
+          "median": 8782,
+          "range": [
+            8782,
+            8782
+          ]
+        },
+        "coldChromePssMiB": {
+          "n": 3,
+          "median": 696.8515625,
+          "range": [
+            696.109375,
+            697.189453125
+          ]
+        },
+        "finalChromePssMiB": {
+          "n": 3,
+          "median": 691.3251953125,
+          "range": [
+            691.01953125,
+            691.5234375
+          ]
+        },
+        "sampledPeakChromePssMiB": {
+          "n": 3,
+          "median": 719.7109375,
+          "range": [
+            704.0556640625,
+            730.015625
+          ]
+        }
+      }
+    },
+    {
+      "mode": "local",
+      "wrap": true,
+      "variant": "candidate",
+      "n": 3,
+      "metrics": {
+        "loadToPaintMs": {
+          "n": 3,
+          "median": 1566.2612099999933,
+          "range": [
+            1505.7004589999963,
+            1577.0967500000097
+          ]
+        },
+        "coldViewportPaintMs": {
+          "n": 3,
+          "median": 1251.7000000000116,
+          "range": [
+            1226.3999999999942,
+            1270.8999999999942
+          ]
+        },
+        "coldCompleteGeometryMs": {
+          "n": 3,
+          "median": 1536.600000000035,
+          "range": [
+            1475.2999999999884,
+            1553.6999999999825
+          ]
+        },
+        "coldSyntaxReadyMs": {
+          "n": 3,
+          "median": 1251.7000000000116,
+          "range": [
+            1226.3999999999942,
+            1270.8999999999942
+          ]
+        },
+        "inputViewportPaintMs": {
+          "n": 3,
+          "median": 67.70000000001164,
+          "range": [
+            63.40000000002328,
+            76.09999999997672
+          ]
+        },
+        "inputCompleteGeometryMs": {
+          "n": 3,
+          "median": 373.6000000000058,
+          "range": [
+            363.29999999998836,
+            405.29999999998836
+          ]
+        },
+        "inputSyntaxReadyMs": {
+          "n": 3,
+          "median": 67.70000000001164,
+          "range": [
+            63.40000000002328,
+            76.09999999997672
+          ]
+        },
+        "inputToPaintMs": {
+          "n": 3,
+          "median": 373.6000000000058,
+          "range": [
+            363.3999999999942,
+            405.3999999999651
+          ]
+        },
+        "maxLongTaskMs": {
+          "n": 3,
+          "median": 66,
+          "range": [
+            66,
+            72
+          ]
+        },
+        "nativeInputLength": {
+          "n": 3,
+          "median": 2931,
+          "range": [
+            2931,
+            2931
+          ]
+        },
+        "coldChromePssMiB": {
+          "n": 3,
+          "median": 640.9013671875,
+          "range": [
+            636.8798828125,
+            641.3828125
+          ]
+        },
+        "finalChromePssMiB": {
+          "n": 3,
+          "median": 662.6318359375,
+          "range": [
+            657.71875,
+            663.482421875
+          ]
+        },
+        "sampledPeakChromePssMiB": {
+          "n": 3,
+          "median": 662.7490234375,
+          "range": [
+            657.625,
+            663.3525390625
+          ]
+        }
+      }
+    },
+    {
+      "mode": "remote",
+      "wrap": false,
+      "variant": "baseline",
+      "n": 3,
+      "metrics": {
+        "loadToPaintMs": {
+          "n": 3,
+          "median": 1368.613874999994,
+          "range": [
+            1353.1609590000073,
+            1453.13037599999
+          ]
+        },
+        "coldViewportPaintMs": {
+          "n": 3,
+          "median": 1363.8000000000466,
+          "range": [
+            1344.2999999999884,
+            1449.7000000000116
+          ]
+        },
+        "coldCompleteGeometryMs": {
+          "n": 3,
+          "median": 1363.8000000000466,
+          "range": [
+            1344.2999999999884,
+            1449.7000000000116
+          ]
+        },
+        "coldSyntaxReadyMs": {
+          "n": 3,
+          "median": 1363.8000000000466,
+          "range": [
+            1344.2999999999884,
+            1449.7000000000116
+          ]
+        },
+        "inputViewportPaintMs": {
+          "n": 3,
+          "median": 92.79999999998836,
+          "range": [
+            89.89999999996508,
+            96.29999999998836
+          ]
+        },
+        "inputCompleteGeometryMs": {
+          "n": 3,
+          "median": 149.79999999998836,
+          "range": [
+            149.39999999999418,
+            159.89999999996508
+          ]
+        },
+        "inputSyntaxReadyMs": {
+          "n": 3,
+          "median": 92.79999999998836,
+          "range": [
+            89.89999999996508,
+            96.29999999998836
+          ]
+        },
+        "inputToPaintMs": {
+          "n": 3,
+          "median": 156.5,
+          "range": [
+            155.89999999999418,
+            177.29999999998836
+          ]
+        },
+        "maxLongTaskMs": {
+          "n": 3,
+          "median": 66,
+          "range": [
+            65,
+            69
+          ]
+        },
+        "nativeInputLength": {
+          "n": 3,
+          "median": 8782,
+          "range": [
+            8782,
+            8782
+          ]
+        },
+        "coldChromePssMiB": {
+          "n": 1,
+          "median": 634.7060546875,
+          "range": [
+            634.7060546875,
+            634.7060546875
+          ]
+        },
+        "finalChromePssMiB": {
+          "n": 3,
+          "median": 659.8203125,
+          "range": [
+            643.8095703125,
+            672.1552734375
+          ]
+        },
+        "sampledPeakChromePssMiB": {
+          "n": 3,
+          "median": 666.6025390625,
+          "range": [
+            648.4638671875,
+            672.6005859375
+          ]
+        }
+      }
+    },
+    {
+      "mode": "remote",
+      "wrap": false,
+      "variant": "candidate",
+      "n": 3,
+      "metrics": {
+        "loadToPaintMs": {
+          "n": 3,
+          "median": 1376.1402509999812,
+          "range": [
+            1347.7324590000421,
+            1498.2842499999833
+          ]
+        },
+        "coldViewportPaintMs": {
+          "n": 3,
+          "median": 1368.1999999999825,
+          "range": [
+            1342.899999999965,
+            1494.899999999965
+          ]
+        },
+        "coldCompleteGeometryMs": {
+          "n": 3,
+          "median": 1368.1999999999825,
+          "range": [
+            1342.899999999965,
+            1494.899999999965
+          ]
+        },
+        "coldSyntaxReadyMs": {
+          "n": 3,
+          "median": 1368.1999999999825,
+          "range": [
+            1342.899999999965,
+            1494.899999999965
+          ]
+        },
+        "inputViewportPaintMs": {
+          "n": 3,
+          "median": 87.70000000001164,
+          "range": [
+            86.5,
+            89.60000000003492
+          ]
+        },
+        "inputCompleteGeometryMs": {
+          "n": 3,
+          "median": 147.5,
+          "range": [
+            147.40000000002328,
+            150.29999999998836
+          ]
+        },
+        "inputSyntaxReadyMs": {
+          "n": 3,
+          "median": 87.70000000001164,
+          "range": [
+            86.5,
+            89.60000000003492
+          ]
+        },
+        "inputToPaintMs": {
+          "n": 3,
+          "median": 158.70000000001164,
+          "range": [
+            157.20000000001164,
+            179.70000000001164
+          ]
+        },
+        "maxLongTaskMs": {
+          "n": 3,
+          "median": 66,
+          "range": [
+            64,
+            68
+          ]
+        },
+        "nativeInputLength": {
+          "n": 3,
+          "median": 8782,
+          "range": [
+            8782,
+            8782
+          ]
+        },
+        "coldChromePssMiB": {
+          "n": 2,
+          "median": 644.1748046875,
+          "range": [
+            634.953125,
+            653.396484375
+          ]
+        },
+        "finalChromePssMiB": {
+          "n": 3,
+          "median": 664.736328125,
+          "range": [
+            654.2431640625,
+            684.783203125
+          ]
+        },
+        "sampledPeakChromePssMiB": {
+          "n": 3,
+          "median": 668.6904296875,
+          "range": [
+            654.6982421875,
+            686.4013671875
+          ]
+        }
+      }
+    },
+    {
+      "mode": "remote",
+      "wrap": true,
+      "variant": "baseline",
+      "n": 3,
+      "metrics": {
+        "loadToPaintMs": {
+          "n": 3,
+          "median": 1601.3966680000067,
+          "range": [
+            1537.8502089999984,
+            1673.5446259999662
+          ]
+        },
+        "coldViewportPaintMs": {
+          "n": 3,
+          "median": 1313.399999999965,
+          "range": [
+            1258.6000000000058,
+            1336.600000000035
+          ]
+        },
+        "coldCompleteGeometryMs": {
+          "n": 3,
+          "median": 1573.5,
+          "range": [
+            1505.2999999999884,
+            1634.600000000035
+          ]
+        },
+        "coldSyntaxReadyMs": {
+          "n": 3,
+          "median": 1313.399999999965,
+          "range": [
+            1258.6000000000058,
+            1336.600000000035
+          ]
+        },
+        "inputViewportPaintMs": {
+          "n": 3,
+          "median": 96,
+          "range": [
+            86.5,
+            96
+          ]
+        },
+        "inputCompleteGeometryMs": {
+          "n": 3,
+          "median": 389.20000000001164,
+          "range": [
+            379.6000000000349,
+            400.5
+          ]
+        },
+        "inputSyntaxReadyMs": {
+          "n": 3,
+          "median": 96,
+          "range": [
+            86.5,
+            96
+          ]
+        },
+        "inputToPaintMs": {
+          "n": 3,
+          "median": 389.29999999998836,
+          "range": [
+            379.6000000000349,
+            400.5
+          ]
+        },
+        "maxLongTaskMs": {
+          "n": 3,
+          "median": 66,
+          "range": [
+            64,
+            69
+          ]
+        },
+        "nativeInputLength": {
+          "n": 3,
+          "median": 8782,
+          "range": [
+            8782,
+            8782
+          ]
+        },
+        "coldChromePssMiB": {
+          "n": 3,
+          "median": 656.494140625,
+          "range": [
+            654.2392578125,
+            703.2021484375
+          ]
+        },
+        "finalChromePssMiB": {
+          "n": 3,
+          "median": 676.1376953125,
+          "range": [
+            673.552734375,
+            700.0537109375
+          ]
+        },
+        "sampledPeakChromePssMiB": {
+          "n": 3,
+          "median": 676.0283203125,
+          "range": [
+            673.818359375,
+            739.212890625
+          ]
+        }
+      }
+    },
+    {
+      "mode": "remote",
+      "wrap": true,
+      "variant": "candidate",
+      "n": 3,
+      "metrics": {
+        "loadToPaintMs": {
+          "n": 3,
+          "median": 1552.078292999994,
+          "range": [
+            1549.8948339999856,
+            1614.6194169999717
+          ]
+        },
+        "coldViewportPaintMs": {
+          "n": 3,
+          "median": 1241.5,
+          "range": [
+            1234.8000000000466,
+            1310.9000000000233
+          ]
+        },
+        "coldCompleteGeometryMs": {
+          "n": 3,
+          "median": 1527.2000000000116,
+          "range": [
+            1522,
+            1583.9000000000233
+          ]
+        },
+        "coldSyntaxReadyMs": {
+          "n": 3,
+          "median": 1241.5,
+          "range": [
+            1234.8000000000466,
+            1310.9000000000233
+          ]
+        },
+        "inputViewportPaintMs": {
+          "n": 3,
+          "median": 91.30000000004657,
+          "range": [
+            67.29999999998836,
+            92.79999999998836
+          ]
+        },
+        "inputCompleteGeometryMs": {
+          "n": 3,
+          "median": 355.6000000000349,
+          "range": [
+            336.5,
+            361.69999999998254
+          ]
+        },
+        "inputSyntaxReadyMs": {
+          "n": 3,
+          "median": 91.30000000004657,
+          "range": [
+            67.29999999998836,
+            92.79999999998836
+          ]
+        },
+        "inputToPaintMs": {
+          "n": 3,
+          "median": 355.70000000001164,
+          "range": [
+            336.6000000000349,
+            361.79999999998836
+          ]
+        },
+        "maxLongTaskMs": {
+          "n": 3,
+          "median": 65,
+          "range": [
+            64,
+            65
+          ]
+        },
+        "nativeInputLength": {
+          "n": 3,
+          "median": 2931,
+          "range": [
+            2931,
+            2931
+          ]
+        },
+        "coldChromePssMiB": {
+          "n": 2,
+          "median": 627.94384765625,
+          "range": [
+            611.3232421875,
+            644.564453125
+          ]
+        },
+        "finalChromePssMiB": {
+          "n": 3,
+          "median": 666.357421875,
+          "range": [
+            663.41015625,
+            666.8017578125
+          ]
+        },
+        "sampledPeakChromePssMiB": {
+          "n": 3,
+          "median": 666.212890625,
+          "range": [
+            663.59765625,
+            666.9658203125
+          ]
+        }
+      }
+    }
+  ],
+  "boundaries": [
+    {
+      "case": "small",
+      "fileName": "measure.rs",
+      "mode": "local",
+      "wrap": false,
+      "sourceBytes": 58000,
+      "completeSourceAfterInputVerified": true,
+      "nativeBound": true,
+      "loadToPaintMs": 1188.666542999954,
+      "coldViewportPaintMs": 1075.3000000000466,
+      "coldCompleteGeometryMs": 1075.3000000000466,
+      "coldSyntaxReadyMs": 1134.4000000000233,
+      "inputViewportPaintMs": 10.600000000034925,
+      "inputCompleteGeometryMs": 22.400000000023283,
+      "inputSyntaxReadyMs": 43.70000000001164,
+      "inputToPaintMs": 23.300000000046566,
+      "maxLongTaskMs": 69,
+      "nativeInputLength": 6656,
+      "coldChromePssMiB": null,
+      "finalChromePssMiB": 584.951171875,
+      "sampledPeakChromePssMiB": 585.197265625
+    },
+    {
+      "case": "small",
+      "fileName": "measure.rs",
+      "mode": "remote",
+      "wrap": false,
+      "sourceBytes": 58000,
+      "completeSourceAfterInputVerified": true,
+      "nativeBound": true,
+      "loadToPaintMs": 1162.7143759999967,
+      "coldViewportPaintMs": 1048.6999999999534,
+      "coldCompleteGeometryMs": 1048.6999999999534,
+      "coldSyntaxReadyMs": 1109.399999999965,
+      "inputViewportPaintMs": 11,
+      "inputCompleteGeometryMs": 24.20000000001164,
+      "inputSyntaxReadyMs": 41.5,
+      "inputToPaintMs": 25.20000000001164,
+      "maxLongTaskMs": 64,
+      "nativeInputLength": 6656,
+      "coldChromePssMiB": null,
+      "finalChromePssMiB": 581.9697265625,
+      "sampledPeakChromePssMiB": 581.9267578125
+    },
+    {
+      "case": "small",
+      "fileName": "measure.rs",
+      "mode": "local",
+      "wrap": true,
+      "sourceBytes": 58000,
+      "completeSourceAfterInputVerified": true,
+      "nativeBound": true,
+      "loadToPaintMs": 1149.892541999975,
+      "coldViewportPaintMs": 1146.7000000000116,
+      "coldCompleteGeometryMs": 1146.7000000000116,
+      "coldSyntaxReadyMs": 1146.7000000000116,
+      "inputViewportPaintMs": 59.70000000001164,
+      "inputCompleteGeometryMs": 59.70000000001164,
+      "inputSyntaxReadyMs": 59.70000000001164,
+      "inputToPaintMs": 59.70000000001164,
+      "maxLongTaskMs": 64,
+      "nativeInputLength": 3671,
+      "coldChromePssMiB": 630.95703125,
+      "finalChromePssMiB": 578.658203125,
+      "sampledPeakChromePssMiB": 634.1337890625
+    },
+    {
+      "case": "small",
+      "fileName": "measure.rs",
+      "mode": "remote",
+      "wrap": true,
+      "sourceBytes": 58000,
+      "completeSourceAfterInputVerified": true,
+      "nativeBound": true,
+      "loadToPaintMs": 1263.6881249999874,
+      "coldViewportPaintMs": 1208.5,
+      "coldCompleteGeometryMs": 1208.5,
+      "coldSyntaxReadyMs": 1208.5,
+      "inputViewportPaintMs": 24.899999999965075,
+      "inputCompleteGeometryMs": 24.899999999965075,
+      "inputSyntaxReadyMs": 37.59999999997672,
+      "inputToPaintMs": 25,
+      "maxLongTaskMs": 65,
+      "nativeInputLength": 3671,
+      "coldChromePssMiB": 626.4501953125,
+      "finalChromePssMiB": 579.279296875,
+      "sampledPeakChromePssMiB": 625.9189453125
+    },
+    {
+      "case": "byte-limit",
+      "fileName": "measure.rs",
+      "mode": "local",
+      "wrap": false,
+      "sourceBytes": 8388416,
+      "completeSourceAfterInputVerified": true,
+      "nativeBound": true,
+      "loadToPaintMs": 1379.100875000006,
+      "coldViewportPaintMs": 1361,
+      "coldCompleteGeometryMs": 1361.100000000035,
+      "coldSyntaxReadyMs": 1361.100000000035,
+      "inputViewportPaintMs": 16.899999999965075,
+      "inputCompleteGeometryMs": 33.5,
+      "inputSyntaxReadyMs": 16.899999999965075,
+      "inputToPaintMs": 33.70000000001164,
+      "maxLongTaskMs": 147,
+      "nativeInputLength": 12115,
+      "coldChromePssMiB": 624.90234375,
+      "finalChromePssMiB": 686.9814453125,
+      "sampledPeakChromePssMiB": 687.015625
+    },
+    {
+      "case": "byte-limit",
+      "fileName": "measure.rs",
+      "mode": "remote",
+      "wrap": false,
+      "sourceBytes": 8388416,
+      "completeSourceAfterInputVerified": true,
+      "nativeBound": true,
+      "loadToPaintMs": 1395.6571259999464,
+      "coldViewportPaintMs": 1375.600000000035,
+      "coldCompleteGeometryMs": 1375.600000000035,
+      "coldSyntaxReadyMs": 1375.600000000035,
+      "inputViewportPaintMs": 17.5,
+      "inputCompleteGeometryMs": 41.20000000001164,
+      "inputSyntaxReadyMs": 17.5,
+      "inputToPaintMs": 41.29999999998836,
+      "maxLongTaskMs": 143,
+      "nativeInputLength": 12115,
+      "coldChromePssMiB": 629.974609375,
+      "finalChromePssMiB": 687.16015625,
+      "sampledPeakChromePssMiB": 694.515625
+    },
+    {
+      "case": "byte-limit",
+      "fileName": "measure.rs",
+      "mode": "local",
+      "wrap": true,
+      "sourceBytes": 8388416,
+      "completeSourceAfterInputVerified": true,
+      "nativeBound": true,
+      "loadToPaintMs": 1424.8517920000268,
+      "coldViewportPaintMs": 1420.2000000000116,
+      "coldCompleteGeometryMs": 1420.2000000000116,
+      "coldSyntaxReadyMs": 1420.2000000000116,
+      "inputViewportPaintMs": 56.20000000001164,
+      "inputCompleteGeometryMs": 56.29999999998836,
+      "inputSyntaxReadyMs": 56.29999999998836,
+      "inputToPaintMs": 56.29999999998836,
+      "maxLongTaskMs": 150,
+      "nativeInputLength": 4037,
+      "coldChromePssMiB": 618.068359375,
+      "finalChromePssMiB": 647.783203125,
+      "sampledPeakChromePssMiB": 676.6865234375
+    },
+    {
+      "case": "byte-limit",
+      "fileName": "measure.rs",
+      "mode": "remote",
+      "wrap": true,
+      "sourceBytes": 8388416,
+      "completeSourceAfterInputVerified": true,
+      "nativeBound": true,
+      "loadToPaintMs": 1397.6706669999999,
+      "coldViewportPaintMs": 1393.2000000000116,
+      "coldCompleteGeometryMs": 1393.2000000000116,
+      "coldSyntaxReadyMs": 1393.2000000000116,
+      "inputViewportPaintMs": 47.40000000002328,
+      "inputCompleteGeometryMs": 47.40000000002328,
+      "inputSyntaxReadyMs": 47.40000000002328,
+      "inputToPaintMs": 47.40000000002328,
+      "maxLongTaskMs": 144,
+      "nativeInputLength": 4037,
+      "coldChromePssMiB": null,
+      "finalChromePssMiB": 678.830078125,
+      "sampledPeakChromePssMiB": 678.873046875
+    },
+    {
+      "case": "line-limit",
+      "fileName": "measure.rs",
+      "mode": "local",
+      "wrap": false,
+      "sourceBytes": 199998,
+      "completeSourceAfterInputVerified": true,
+      "nativeBound": true,
+      "loadToPaintMs": 1130.5206670000416,
+      "coldViewportPaintMs": 1114.5,
+      "coldCompleteGeometryMs": 1114.5,
+      "coldSyntaxReadyMs": 1114.5,
+      "inputViewportPaintMs": 25.899999999965075,
+      "inputCompleteGeometryMs": null,
+      "inputSyntaxReadyMs": 25.899999999965075,
+      "inputToPaintMs": 26.899999999965075,
+      "maxLongTaskMs": 65,
+      "nativeInputLength": 256,
+      "coldChromePssMiB": 579.4853515625,
+      "finalChromePssMiB": 577.4775390625,
+      "sampledPeakChromePssMiB": 597.5263671875
+    },
+    {
+      "case": "line-limit",
+      "fileName": "measure.rs",
+      "mode": "remote",
+      "wrap": false,
+      "sourceBytes": 199998,
+      "completeSourceAfterInputVerified": true,
+      "nativeBound": true,
+      "loadToPaintMs": 1123.501000000033,
+      "coldViewportPaintMs": 1106.600000000035,
+      "coldCompleteGeometryMs": 1106.600000000035,
+      "coldSyntaxReadyMs": 1106.600000000035,
+      "inputViewportPaintMs": 26,
+      "inputCompleteGeometryMs": null,
+      "inputSyntaxReadyMs": 26,
+      "inputToPaintMs": 26.20000000001164,
+      "maxLongTaskMs": 67,
+      "nativeInputLength": 256,
+      "coldChromePssMiB": 578.6435546875,
+      "finalChromePssMiB": 578.68359375,
+      "sampledPeakChromePssMiB": 601.15625
+    },
+    {
+      "case": "line-limit",
+      "fileName": "measure.rs",
+      "mode": "local",
+      "wrap": true,
+      "sourceBytes": 199998,
+      "completeSourceAfterInputVerified": true,
+      "nativeBound": true,
+      "loadToPaintMs": 1162.7480419999756,
+      "coldViewportPaintMs": 1160,
+      "coldCompleteGeometryMs": 1160,
+      "coldSyntaxReadyMs": 1160,
+      "inputViewportPaintMs": 62.300000000046566,
+      "inputCompleteGeometryMs": 62.300000000046566,
+      "inputSyntaxReadyMs": 62.300000000046566,
+      "inputToPaintMs": 62.300000000046566,
+      "maxLongTaskMs": 65,
+      "nativeInputLength": 256,
+      "coldChromePssMiB": 568.0634765625,
+      "finalChromePssMiB": 578.9814453125,
+      "sampledPeakChromePssMiB": 613.0166015625
+    },
+    {
+      "case": "line-limit",
+      "fileName": "measure.rs",
+      "mode": "remote",
+      "wrap": true,
+      "sourceBytes": 199998,
+      "completeSourceAfterInputVerified": true,
+      "nativeBound": true,
+      "loadToPaintMs": 1213.0588339999804,
+      "coldViewportPaintMs": 1203.399999999965,
+      "coldCompleteGeometryMs": 1203.399999999965,
+      "coldSyntaxReadyMs": 1203.399999999965,
+      "inputViewportPaintMs": 70.70000000001164,
+      "inputCompleteGeometryMs": 70.70000000001164,
+      "inputSyntaxReadyMs": 70.70000000001164,
+      "inputToPaintMs": 70.79999999998836,
+      "maxLongTaskMs": 67,
+      "nativeInputLength": 256,
+      "coldChromePssMiB": 562.390625,
+      "finalChromePssMiB": 576.982421875,
+      "sampledPeakChromePssMiB": 604.4296875
+    },
+    {
+      "case": "long-line",
+      "fileName": "measure.rs",
+      "mode": "local",
+      "wrap": false,
+      "sourceBytes": 1048572,
+      "completeSourceAfterInputVerified": true,
+      "nativeBound": true,
+      "loadToPaintMs": 1776.4321260000315,
+      "coldViewportPaintMs": 1323.2000000000116,
+      "coldCompleteGeometryMs": 1323.2000000000116,
+      "coldSyntaxReadyMs": 1757.8000000000466,
+      "inputViewportPaintMs": 90.90000000002328,
+      "inputCompleteGeometryMs": 90.90000000002328,
+      "inputSyntaxReadyMs": 646.6000000000349,
+      "inputToPaintMs": 116.60000000003492,
+      "maxLongTaskMs": 65,
+      "nativeInputLength": 8776,
+      "coldChromePssMiB": 647.6787109375,
+      "finalChromePssMiB": 698.91796875,
+      "sampledPeakChromePssMiB": 702.4609375
+    },
+    {
+      "case": "long-line",
+      "fileName": "measure.rs",
+      "mode": "remote",
+      "wrap": false,
+      "sourceBytes": 1048572,
+      "completeSourceAfterInputVerified": true,
+      "nativeBound": true,
+      "loadToPaintMs": 1849.8235840000348,
+      "coldViewportPaintMs": 1403.399999999965,
+      "coldCompleteGeometryMs": 1403.399999999965,
+      "coldSyntaxReadyMs": 1830.7000000000116,
+      "inputViewportPaintMs": 88.59999999997672,
+      "inputCompleteGeometryMs": 88.59999999997672,
+      "inputSyntaxReadyMs": 645.2000000000116,
+      "inputToPaintMs": 91.59999999997672,
+      "maxLongTaskMs": 64,
+      "nativeInputLength": 8776,
+      "coldChromePssMiB": 647.8935546875,
+      "finalChromePssMiB": 729.9404296875,
+      "sampledPeakChromePssMiB": 734.66796875
+    },
+    {
+      "case": "long-line",
+      "fileName": "measure.rs",
+      "mode": "local",
+      "wrap": true,
+      "sourceBytes": 1048572,
+      "completeSourceAfterInputVerified": true,
+      "nativeBound": true,
+      "loadToPaintMs": 1788.2065840000223,
+      "coldViewportPaintMs": 1208.7999999999884,
+      "coldCompleteGeometryMs": 1478.600000000035,
+      "coldSyntaxReadyMs": 1785.600000000035,
+      "inputViewportPaintMs": 72,
+      "inputCompleteGeometryMs": 111.29999999998836,
+      "inputSyntaxReadyMs": 665.7999999999884,
+      "inputToPaintMs": 111.40000000002328,
+      "maxLongTaskMs": 66,
+      "nativeInputLength": 2924,
+      "coldChromePssMiB": 621.4658203125,
+      "finalChromePssMiB": 646.25,
+      "sampledPeakChromePssMiB": 646.1484375
+    },
+    {
+      "case": "long-line",
+      "fileName": "measure.rs",
+      "mode": "remote",
+      "wrap": true,
+      "sourceBytes": 1048572,
+      "completeSourceAfterInputVerified": true,
+      "nativeBound": true,
+      "loadToPaintMs": 1794.7098340000025,
+      "coldViewportPaintMs": 1240.5,
+      "coldCompleteGeometryMs": 1532.600000000035,
+      "coldSyntaxReadyMs": 1792.2999999999884,
+      "inputViewportPaintMs": 68.20000000001164,
+      "inputCompleteGeometryMs": 117,
+      "inputSyntaxReadyMs": 645.7000000000116,
+      "inputToPaintMs": 117.20000000001164,
+      "maxLongTaskMs": 65,
+      "nativeInputLength": 2924,
+      "coldChromePssMiB": 647.845703125,
+      "finalChromePssMiB": 669.0283203125,
+      "sampledPeakChromePssMiB": 669.1689453125
+    },
+    {
+      "case": "embedded-html",
+      "fileName": "measure.html",
+      "mode": "local",
+      "wrap": false,
+      "sourceBytes": 28000,
+      "completeSourceAfterInputVerified": true,
+      "nativeBound": true,
+      "loadToPaintMs": 1195.6293339999888,
+      "coldViewportPaintMs": 1075.4000000000233,
+      "coldCompleteGeometryMs": 1075.4000000000233,
+      "coldSyntaxReadyMs": 1140.7000000000116,
+      "inputViewportPaintMs": 16.70000000001164,
+      "inputCompleteGeometryMs": 23.79999999998836,
+      "inputSyntaxReadyMs": 37.20000000001164,
+      "inputToPaintMs": 37.20000000001164,
+      "maxLongTaskMs": 67,
+      "nativeInputLength": 11848,
+      "coldChromePssMiB": 584.224609375,
+      "finalChromePssMiB": 588.681640625,
+      "sampledPeakChromePssMiB": 606.353515625
+    },
+    {
+      "case": "embedded-html",
+      "fileName": "measure.html",
+      "mode": "remote",
+      "wrap": false,
+      "sourceBytes": 28000,
+      "completeSourceAfterInputVerified": true,
+      "nativeBound": true,
+      "loadToPaintMs": 1324.996001000045,
+      "coldViewportPaintMs": 1175.1999999999534,
+      "coldCompleteGeometryMs": 1175.1999999999534,
+      "coldSyntaxReadyMs": 1277.899999999965,
+      "inputViewportPaintMs": 17.70000000001164,
+      "inputCompleteGeometryMs": 25.400000000023283,
+      "inputSyntaxReadyMs": 37.20000000001164,
+      "inputToPaintMs": 37.300000000046566,
+      "maxLongTaskMs": 65,
+      "nativeInputLength": 11848,
+      "coldChromePssMiB": 602.044921875,
+      "finalChromePssMiB": 591.8349609375,
+      "sampledPeakChromePssMiB": 639.5947265625
+    },
+    {
+      "case": "embedded-html",
+      "fileName": "measure.html",
+      "mode": "local",
+      "wrap": true,
+      "sourceBytes": 28000,
+      "completeSourceAfterInputVerified": true,
+      "nativeBound": true,
+      "loadToPaintMs": 1184.056542999997,
+      "coldViewportPaintMs": 1180.3000000000466,
+      "coldCompleteGeometryMs": 1180.3000000000466,
+      "coldSyntaxReadyMs": 1180.3000000000466,
+      "inputViewportPaintMs": 23.20000000001164,
+      "inputCompleteGeometryMs": 23.20000000001164,
+      "inputSyntaxReadyMs": 35.90000000002328,
+      "inputToPaintMs": 23.20000000001164,
+      "maxLongTaskMs": 65,
+      "nativeInputLength": 3948,
+      "coldChromePssMiB": 647.7177734375,
+      "finalChromePssMiB": 578.76953125,
+      "sampledPeakChromePssMiB": 600.611328125
+    },
+    {
+      "case": "embedded-html",
+      "fileName": "measure.html",
+      "mode": "remote",
+      "wrap": true,
+      "sourceBytes": 28000,
+      "completeSourceAfterInputVerified": true,
+      "nativeBound": true,
+      "loadToPaintMs": 1227.7295000000095,
+      "coldViewportPaintMs": 1189.7999999999884,
+      "coldCompleteGeometryMs": 1224,
+      "coldSyntaxReadyMs": 1189.7999999999884,
+      "inputViewportPaintMs": 23.20000000001164,
+      "inputCompleteGeometryMs": 23.20000000001164,
+      "inputSyntaxReadyMs": 36.70000000001164,
+      "inputToPaintMs": 23.29999999998836,
+      "maxLongTaskMs": 65,
+      "nativeInputLength": 3948,
+      "coldChromePssMiB": 639.9619140625,
+      "finalChromePssMiB": 584.859375,
+      "sampledPeakChromePssMiB": 635.0478515625
+    },
+    {
+      "case": "embedded-markdown",
+      "fileName": "measure.md",
+      "mode": "local",
+      "wrap": false,
+      "sourceBytes": 15000,
+      "completeSourceAfterInputVerified": true,
+      "nativeBound": true,
+      "loadToPaintMs": 1252.9240430000073,
+      "coldViewportPaintMs": 1079.2999999999884,
+      "coldCompleteGeometryMs": 1079.399999999965,
+      "coldSyntaxReadyMs": 1193.2000000000116,
+      "inputViewportPaintMs": 11.800000000046566,
+      "inputCompleteGeometryMs": 17.5,
+      "inputSyntaxReadyMs": 52.20000000001164,
+      "inputToPaintMs": 52.300000000046566,
+      "maxLongTaskMs": 67,
+      "nativeInputLength": 1664,
+      "coldChromePssMiB": 628.1650390625,
+      "finalChromePssMiB": 582.052734375,
+      "sampledPeakChromePssMiB": 628.3134765625
+    },
+    {
+      "case": "embedded-markdown",
+      "fileName": "measure.md",
+      "mode": "remote",
+      "wrap": false,
+      "sourceBytes": 15000,
+      "completeSourceAfterInputVerified": true,
+      "nativeBound": true,
+      "loadToPaintMs": 1415.9460839999838,
+      "coldViewportPaintMs": 1234.2999999999884,
+      "coldCompleteGeometryMs": 1234.2999999999884,
+      "coldSyntaxReadyMs": 1347.6999999999534,
+      "inputViewportPaintMs": 11.5,
+      "inputCompleteGeometryMs": 23.70000000001164,
+      "inputSyntaxReadyMs": 60.59999999997672,
+      "inputToPaintMs": 24.79999999998836,
+      "maxLongTaskMs": 67,
+      "nativeInputLength": 1664,
+      "coldChromePssMiB": 629.8095703125,
+      "finalChromePssMiB": 583.091796875,
+      "sampledPeakChromePssMiB": 638.607421875
+    },
+    {
+      "case": "embedded-markdown",
+      "fileName": "measure.md",
+      "mode": "local",
+      "wrap": true,
+      "sourceBytes": 15000,
+      "completeSourceAfterInputVerified": true,
+      "nativeBound": true,
+      "loadToPaintMs": 1234.9090839999803,
+      "coldViewportPaintMs": 1150.7999999999884,
+      "coldCompleteGeometryMs": 1150.7999999999884,
+      "coldSyntaxReadyMs": 1190.1999999999534,
+      "inputViewportPaintMs": 60.79999999998836,
+      "inputCompleteGeometryMs": 60.79999999998836,
+      "inputSyntaxReadyMs": 60.79999999998836,
+      "inputToPaintMs": 60.79999999998836,
+      "maxLongTaskMs": 63,
+      "nativeInputLength": 1664,
+      "coldChromePssMiB": null,
+      "finalChromePssMiB": 639.7763671875,
+      "sampledPeakChromePssMiB": 639.5966796875
+    },
+    {
+      "case": "embedded-markdown",
+      "fileName": "measure.md",
+      "mode": "remote",
+      "wrap": true,
+      "sourceBytes": 15000,
+      "completeSourceAfterInputVerified": true,
+      "nativeBound": true,
+      "loadToPaintMs": 1359.044750999999,
+      "coldViewportPaintMs": 1336,
+      "coldCompleteGeometryMs": 1336,
+      "coldSyntaxReadyMs": 1336,
+      "inputViewportPaintMs": 75.09999999997672,
+      "inputCompleteGeometryMs": 75.09999999997672,
+      "inputSyntaxReadyMs": 75.09999999997672,
+      "inputToPaintMs": 75.29999999998836,
+      "maxLongTaskMs": 65,
+      "nativeInputLength": 1664,
+      "coldChromePssMiB": 624.4873046875,
+      "finalChromePssMiB": 580.7236328125,
+      "sampledPeakChromePssMiB": 677.17578125
+    }
+  ],
+  "audits": [
+    {
+      "compilerProcesses": [],
+      "time": 1793556510.409473
+    },
+    {
+      "compilerProcesses": [],
+      "time": 1793556791.9288042
+    }
+  ]
+}

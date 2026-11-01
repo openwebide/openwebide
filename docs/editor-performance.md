@@ -7045,3 +7045,56 @@ workloads also pass. Full source hashes and scoped results are recorded in the
 The pre-push gate and agent instructions now match CI: all non-editor artifacts,
 checked disjoint editor groups with separate font matrices, and the native plugin
 compiler test. Existing browser deadlines and complete inventories are preserved.
+
+
+### Smaller native input windows for wrapped views
+
+The shared native-input facade now starts wrapped views with at most 4 KiB of
+surrounding source. Unwrapped views keep their 12 KiB context; the maximum
+retained native value remains 16 KiB. Complete document selections, Unicode/CRLF
+mapping, composition retention, ownership checks and geometry fallbacks use the
+existing contracts. Paragraph geometry probes remain 16 KiB. A universal smaller
+window was rejected after it delayed some unwrapped viewport publications.
+
+The final full-feature bundle was compared with the clean `10dec781` baseline in
+three fresh-process pairs per mode/wrap configuration. In the near-1-MiB styled
+Rust String workload, wrapped median viewport paint changes from 102.7 to 67.7 ms
+Local and 96.0 to 91.3 ms Remote. Complete-geometry medians change from 425.7 to
+373.6 ms Local and 389.2 to 355.6 ms Remote. Unwrapped viewport medians remain
+91.2/92.8 ms baseline and 92.5/87.7 ms candidate. These are small controlled
+cohorts, not latency percentiles or a completed responsiveness gate
+([samples](editor-performance/wrapped-native-context-production.jsonl),
+[artifact and harness identity](editor-performance/wrapped-native-context-production-manifest.json),
+[summary](editor-performance/wrapped-native-context-production-summary.json)).
+
+All 48 observations verify complete source after input, including 24 candidate
+boundary observations covering byte/row limits, plain long lines, ordinary rows
+and embedded HTML/Markdown in both modes with wrapping on/off. Current-file syntax
+readiness is required. The actual styled native value falls from 8,782 to 2,931
+UTF-16 units in wrapped views; unwrapped values remain 8,782. Two unwrapped
+row-limit observations have no separately observed complete-geometry timestamp;
+they retain `null`, and their full-source checks pass. Across the 36 candidate
+observations, input readiness spans 23.2–405.4 ms and cold readiness 1.12–1.85 s;
+sampled peak Chrome PSS spans 582–735 MiB. Cold and final PSS are recorded
+separately. The small workload-specific memory differences do not establish a
+general memory improvement. Local fixtures use recovery without a directory
+handle; native folder permissions and physical input remain separate checks.
+
+The release input probe also verifies twelve wrapped LF/CRLF configurations in
+both modes, including 80,000-character ASCII rows. Candidate commit/cancel,
+grouped history, insertion/splitting, full source recovery, keyboard focus escape
+and accessible-name checks pass with the original event-trust requirements
+([input receipt](editor-performance/wrapped-native-context-input.json)). These
+browser-engine checks do not establish physical IME or assistive-technology
+behavior.
+
+Complete local native/WASI/WASM checks, the unchanged 221-editor inventory and
+both font matrices pass, alongside the other 402 component checks and all
+additional browser artifacts
+([verification receipt](editor-performance/wrapped-native-context-local-checks.json)).
+Both production worker startup paths, About/offline navigation, the original
+unwrapped input/history checks, all pointer configurations and the strict site
+with its compiled playground also pass
+([production receipt](editor-performance/wrapped-native-context-production-checks.json)).
+Repeat integrated release verification for the final implementation. The broader
+cold/input/memory and physical-device gates remain open.

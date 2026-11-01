@@ -85,7 +85,7 @@ def snapshot(browser):
     """)
 
 
-def check(mode, ending, windowed, ascii_row=False):
+def check(mode, ending, windowed, ascii_row=False, wrapped=False):
     row = ('// ' + 'a' * 80000 if ascii_row else '// 文😀 tail') + ending
     source = row if ascii_row else row * (1500 if windowed else 3)
     with tempfile.TemporaryDirectory(prefix='openwebide-input-') as state, \
@@ -108,7 +108,7 @@ def check(mode, ending, windowed, ascii_row=False):
             endpoint = f"/api/projects/{project['id']}/editor-recovery"
             runtime.request('PUT', endpoint, {'revision': 0, 'state': recovery})
             for key, value in {'open_tabs': json.dumps([project['id']]), 'active_project': str(project['id']),
-                    'bridge_url': 'http://127.0.0.1:1', 'editor_preferences': json.dumps({'word_wrap': False})}.items():
+                    'bridge_url': 'http://127.0.0.1:1', 'editor_preferences': json.dumps({'word_wrap': wrapped})}.items():
                 runtime.request('PUT', '/api/settings', {'key': key, 'value': value})
             browser = Browser(state)
             browser.call('POST', '/url', {'url': runtime.url + '/offline.html'})
@@ -151,7 +151,7 @@ def check(mode, ending, windowed, ascii_row=False):
             wait('editor hydration', lambda: snapshot(browser))
             if windowed:
                 wait('bounded native input', lambda: snapshot(browser)['bound'])
-                assert len(snapshot(browser)['value'].encode()) <= 12 * 1024
+                assert len(snapshot(browser)['value'].encode()) <= (4 if wrapped else 12) * 1024
             else:
                 wait('initial native text', lambda: snapshot(browser)['value'] == source.replace('\r\n', '\n'))
             if not windowed:
@@ -208,7 +208,7 @@ def check(mode, ending, windowed, ascii_row=False):
             assert sum(event['type'] == 'compositionend' for event in events) >= 2
             assert any(event['type'] == 'input' and event['composing'] for event in events)
             print(json.dumps({'mode': mode, 'ending': 'CRLF' if ending == '\r\n' else 'LF',
-                'windowed': windowed, 'ascii_row': ascii_row, 'ascii_insert_split_undo_redo': ascii_row, 'pending_syntax': not windowed, 'trusted_events': sum(event['trusted'] for event in events), 'commit_undo_redo_cancel': True, 'tab_focus_escape_and_accessible_name': True}), flush=True)
+                'windowed': windowed, 'wrapped': wrapped, 'ascii_row': ascii_row, 'ascii_insert_split_undo_redo': ascii_row, 'pending_syntax': not windowed, 'trusted_events': sum(event['trusted'] for event in events), 'commit_undo_redo_cancel': True, 'tab_focus_escape_and_accessible_name': True}), flush=True)
         finally:
             if browser:
                 browser.stop()
@@ -219,10 +219,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--modes', nargs='+', choices=['local', 'remote'], default=['local', 'remote'])
     parser.add_argument('--windowed', action='store_true', help='Require bounded surrounding text')
+    parser.add_argument('--wrap', action='store_true', help='Verify wrapped editor input and its smaller initial native context')
     parser.add_argument('--ascii-row', action='store_true', help='Exercise a long printable-ASCII row before composition')
     args = parser.parse_args()
     if args.ascii_row and not args.windowed:
         parser.error('--ascii-row requires --windowed')
     for mode in args.modes:
         for ending in ['\n', '\r\n']:
-            check(mode, ending, args.windowed, args.ascii_row)
+            check(mode, ending, args.windowed, args.ascii_row, args.wrap)

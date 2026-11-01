@@ -1,0 +1,158 @@
+{
+  "state": "PASS: all 12 trusted Chromium wrapped-input configurations",
+  "scope": "Browser-engine-generated candidate updates, commit/cancel, Unicode/CRLF source recovery, grouped history, Tab focus escape and accessible name; not proof of a physical candidate IME, screen reader, touch device or installed PWA. Includes actual 80,000-ASCII-character rows with initial native source bounded to4KiB.",
+  "baseRevision": "10dec78130c6887df5ab9aa1e36a05445232a7bd",
+  "frontendWasm": {
+    "file": "openwebide-frontend-c9af9d809b445db4_bg.wasm",
+    "sha256": "698a969a7f10077fc9ec3336c507eadc8da7af6278d20de4df814f4873926174"
+  },
+  "probeSha256": "7a6a936341f63deaa8ed2ce84b99d7f41c5ebe00bd23cff6d2e46dd41c09bd53",
+  "sourceSha256": "85f93ae53b77de814842d51d8d9b166c67005abc8bcfcbb79d20ee79a03340bf",
+  "browser": "Google Chrome 156.0.8078.79",
+  "runs": [
+    {
+      "mode": "local",
+      "ending": "LF",
+      "windowed": false,
+      "wrapped": true,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "CRLF",
+      "windowed": false,
+      "wrapped": true,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "LF",
+      "windowed": false,
+      "wrapped": true,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "CRLF",
+      "windowed": false,
+      "wrapped": true,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "LF",
+      "windowed": true,
+      "wrapped": true,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "CRLF",
+      "windowed": true,
+      "wrapped": true,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "LF",
+      "windowed": true,
+      "wrapped": true,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "CRLF",
+      "windowed": true,
+      "wrapped": true,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "LF",
+      "windowed": true,
+      "wrapped": true,
+      "ascii_row": true,
+      "ascii_insert_split_undo_redo": true,
+      "pending_syntax": false,
+      "trusted_events": 47,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "CRLF",
+      "windowed": true,
+      "wrapped": true,
+      "ascii_row": true,
+      "ascii_insert_split_undo_redo": true,
+      "pending_syntax": false,
+      "trusted_events": 47,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "LF",
+      "windowed": true,
+      "wrapped": true,
+      "ascii_row": true,
+      "ascii_insert_split_undo_redo": true,
+      "pending_syntax": false,
+      "trusted_events": 47,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "CRLF",
+      "windowed": true,
+      "wrapped": true,
+      "ascii_row": true,
+      "ascii_insert_split_undo_redo": true,
+      "pending_syntax": false,
+      "trusted_events": 47,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    }
+  ]
+}

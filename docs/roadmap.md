@@ -1006,8 +1006,22 @@ Instrumented browser input handlers fall from 22.6–23.0 ms to
 8.7–8.8 ms, while sixteen input paragraph probes still spend 175–185 ms in layout
 ([diagnostic](editor-performance/mixed-ascii-seam-profile-summary.json)). All
 required local target checks and the complete browser inventory pass
-([receipt](editor-performance/mixed-ascii-seam-local-checks.json)); hosted
-verification of this implementation remains pending.
+([receipt](editor-performance/mixed-ascii-seam-local-checks.json)). Hosted CI at
+`10dec781` passes all twelve required checks, including both editor partitions,
+platform builds, production frontend checks and the documentation build
+([CI run](https://github.com/openwebide/openwebide/actions/runs/41326968739)).
+Wrapped editors now start with a smaller surrounding native text window while
+unwrapped editors retain their existing context. Three final production pairs
+per mode/wrap show wrapped complete-geometry medians changing from 425.7 to
+373.6 ms Local and 389.2 to 355.6 ms Remote; all 48 observations preserve complete
+source, including byte/row limits, long lines and embedded HTML/Markdown
+([samples](editor-performance/wrapped-native-context-production.jsonl),
+[summary](editor-performance/wrapped-native-context-production-summary.json)).
+The complete local native/WASI/WASM gate, all 221 editor checks and both font
+matrices pass for this checkpoint
+([receipt](editor-performance/wrapped-native-context-local-checks.json)). Repeat
+integrated release verification for the final implementation; the responsiveness,
+memory and physical-device gates remain open.
 
 - [ ] **Responsiveness and memory:** remove measured input, cold-paint, wrapped
   geometry and process-memory stalls. Repeat admitted byte, row-count and long-line
