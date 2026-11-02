@@ -1,5 +1,120 @@
 # Editor performance measurements
 
+## Viewport publication and repeated edits
+
+Within an already published viewport, current complete measurements can publish
+edits after native source installation and CSS metrics agree. Scroll, native-window
+and font/layout transitions retain scheduled paint. Oversized unwrapped rows require
+current glyph anchors for the visible slice; failed fragment proofs retain the
+scheduled fallback. Warm wrapped measurements coalesce through a browser task.
+
+The agreed criteria are at least 95% of measured edits below 50 ms for ordinary
+files and 100 ms at admitted limits, cold readiness below two seconds, and stable
+retained memory with natural resident peaks reported separately.
+
+The final [328-edit cohort](editor-performance/viewport-scoped-memory-summary.json)
+uses one fresh edit and 40 beginning edit/Undo cycles per Local/Remote and wrapping
+configuration, Linux Chromium, four CPUs and a 10 GiB limit. Every transition
+verifies complete persisted source, current syntax and geometry.
+
+| Source | Wrap | Local p95 | Remote p95 | Slowest edit |
+| --- | --- | ---: | ---: | ---: |
+| Ordinary Rust, 58,000 bytes | On | 18.6 ms | 18.9 ms | 30.2 ms |
+| Ordinary Rust, 58,000 bytes | Off | 14.3 ms | 15.4 ms | 16.6 ms |
+| Styled Rust line, 1,048,567 bytes | On | 87.0 ms | 86.0 ms | 94.7 ms |
+| Styled Rust line, 1,048,567 bytes | Off | 85.7 ms | 85.4 ms | 88.4 ms |
+
+All 328 edits meet their thresholds. Maximum full cold readiness is 1,348.9 ms;
+the natural sampled Chrome PSS peak in this 40-cycle cohort is 1,013.6 MiB.
+[Raw observations](editor-performance/viewport-scoped-natural.jsonl) retain
+source checks, timing samples and memory snapshots. The measured production WASM
+is `99d5053f2966e2f0`, 14,192,587 bytes. The earlier
+[unscoped recording](editor-performance/viewport-fragment-production-summary.json)
+is retained for comparison.
+
+The [broader comparisons](editor-performance/viewport-broad-comparison-summary.json)
+add 32 fresh ordinary-file observations across Rust, plain text, HTML and Markdown,
+and 32 at admitted byte, row and long-line limits. All 64 candidate observations
+meet their paint and cold-readiness targets: ordinary maximum paint is 42.1 ms,
+admitted maximum is 94.2 ms and full cold readiness stays below 1.669 seconds.
+Each configuration has two fresh samples; the separate 41-edit configurations
+above supply the latency percentile evidence. The production artifact is identical;
+these single-input observations do not use the repeated-script wrapper.
+
+## Retained memory and measurement controls
+
+The [collected-memory matrix](editor-performance/viewport-scoped-retained.jsonl)
+covers the same eight configurations. Collection reaches every owned page, worker
+and service-worker heap, then rechecks complete source, syntax and geometry.
+Its timings are excluded from latency acceptance.
+
+The [production Remote run](editor-performance/viewport-scoped-retained-800-remote.jsonl)
+verifies 1,601 transitions over 800 admitted-size cycles. Main WASM capacity stays
+fixed from cycle 100 through 800. Page JavaScript heap is 4,069,492 bytes at both
+cycles 700 and 800; worker heap is fixed from cycle 500 onward. The service-worker
+heap stays within 264 bytes over the last 600 cycles. Head children, native editor
+count and overlay rows remain fixed; total elements vary between 737 and 740 with
+transient UI state. These are observations of stable retained application storage,
+not a requirement for process PSS to remain flat.
+
+A separate [800-cycle Local allocator run](editor-performance/viewport-live-rust-heap-summary.json)
+uses the exact editor changes plus a private
+[Rust allocation counter](editor-performance/retained-rust-probe.rs). From cycle 20
+onward, requested live heap bytes range from 9,331,860 to 9,331,873 and allocation
+count from 23,034 to 23,035. JavaScript reference-table occupancy and main WASM
+capacity stay fixed. This diagnostic build attributes live storage independently
+of reserved capacity; its timings and memory totals are excluded from primary
+acceptance.
+
+The [script-result controls](editor-performance/viewport-script-result-calibration.json)
+identify measurement results rooted in ChromeDriver's inspector. Repeated
+synchronous scripts now use a releasable object group through an owned root
+element; original script arguments are restored before execution. Inspector roots
+stay at 30 between cycles 20 and 100, versus 284 to over 1,200 in the unscoped
+control. Both console-clearing controls were ineffective and were not adopted.
+The wrapper applies only after the original single-input observations.
+
+The matching [native allocation profile](editor-performance/viewport-native-sampling-summary.json)
+resolves an 18 MiB allocation to Chromium's deleted IPC-link set. Chromium rotates
+these sets every five minutes; independent
+[long native observations](editor-performance/viewport-native-retained-summary.json)
+show periodic cleanup. Chromium also
+[bounds native undo history to 1,000 entries](https://github.com/chromium/chromium/blob/154.0.8037.92/third_party/blink/renderer/core/editing/commands/undo_stack.cc#L36).
+The earlier [WASM capacity probes](editor-performance/viewport-wasm-retained-summary.json)
+separately observe main and worker capacities through 100 cycles. Missing memory
+counters remain unavailable rather than being replaced with zero.
+
+Natural resident peaks are reported separately. Historical end-only collection
+controls on the same production artifact sample 1,413.3 MiB before collection at
+100 admitted-size cycles and 2,121.7 MiB at 200 cycles. Those records predate script
+result scoping and remain identified in the native summary; their timings are
+excluded from latency acceptance. The
+[collection calibration](editor-performance/viewport-memory-collection-calibration.json)
+shows why page-only collection is insufficient: service-worker upload blobs remain
+live until that heap is collected. The application recovery transport is unchanged.
+
+The [full local CI receipt](editor-performance/viewport-local-checks.json) covers
+224 editor contracts and both font matrices. The
+[exact-bundle production receipt](editor-performance/viewport-production-checks.json)
+covers worker/provider, About/offline PWA, input, pointer and compiled site contracts.
+Trunk can reorder identical module-preload links on rebuild; the receipts retain
+the exact frozen-bundle comparison. Hosted checks are tracked per commit on
+[draft PR 2](https://github.com/openwebide/openwebide/pull/2/checks).
+Current native-device checks remain on the [roadmap](roadmap.md).
+
+After building the current source, reproduce the natural cohort with:
+
+```sh
+tools/measure-editor-view-linux.sh --cases small styled-long-line --modes local remote --input-position beginning --wait-syntax --memory-cycles 40 --wrap
+```
+
+Repeat without `--wrap` for unwrapped views. Add `--memory-retention` for a separate
+collected cohort. The tool supports up to 1,000 cycles and checkpoints every 100
+for longer runs. Local measurements use recovery without an OS directory handle;
+they do not establish native filesystem-permission behavior.
+
+## Shared workloads
+
 Run the same Rust workloads on the native host and in Chrome/WASM:
 
 ```sh
@@ -53,7 +168,8 @@ passes; final hosted and physical-device gates remain open.
 
 ## Installed Chrome PWA verification
 
-Native Computer Use checks on macOS Chrome 156 verify keyboard input, Unicode
+On the earlier `3a52adcd99aa1bf5` bundle, native Computer Use checks on macOS
+Chrome 156 verified keyboard input, Unicode
 clipboard paste, undo/redo, Command-S, dead-key commit/cancel and Tab focus escape
 in the installed PWA's local and remote modes. Revoking native folder access,
 editing and reloading retains the draft with Save blocked. Denied regrant retains

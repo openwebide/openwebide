@@ -1,0 +1,53 @@
+{
+  "scope": "Same original recovery transport, styled Local/unwrapped source, five edit/Undo cycles. Native MemoryInfra tracing and explicit GC; excluded from latency acceptance. Missing blob scalar remains null; child allocations are counted, never inferred byte zeros. All browser targets are disposable and owned by the harness.",
+  "comparison": [
+    {
+      "collection": "page-only",
+      "rawSha256": "cc43987a12dc4f6a6bfa28316ab1993366946816a93e2e918bc8a8af4489951c",
+      "observations": [
+        {
+          "cycle": 0,
+          "browserMallocAllocatedBytes": 28763952,
+          "blobStorageSizeBytes": 5592894,
+          "blobStorageChildAllocations": 1,
+          "ownedHeapTypes": []
+        },
+        {
+          "cycle": 5,
+          "browserMallocAllocatedBytes": 64869484,
+          "blobStorageSizeBytes": 33557367,
+          "blobStorageChildAllocations": 1,
+          "ownedHeapTypes": []
+        }
+      ]
+    },
+    {
+      "collection": "all-owned-targets",
+      "rawSha256": "812079b1a24d87f1da8ec0f3b2ea40798d4dcb70e3e2b86eb8fb93b75af4a215",
+      "observations": [
+        {
+          "cycle": 0,
+          "browserMallocAllocatedBytes": 21630288,
+          "blobStorageSizeBytes": null,
+          "blobStorageChildAllocations": 1,
+          "ownedHeapTypes": [
+            "service_worker",
+            "worker",
+            "page"
+          ]
+        },
+        {
+          "cycle": 5,
+          "browserMallocAllocatedBytes": 22525804,
+          "blobStorageSizeBytes": null,
+          "blobStorageChildAllocations": 1,
+          "ownedHeapTypes": [
+            "service_worker",
+            "worker",
+            "page"
+          ]
+        }
+      ]
+    }
+  ]
+}

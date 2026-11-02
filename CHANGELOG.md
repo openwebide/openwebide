@@ -9,6 +9,8 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Paint verified visible fragments sooner in large unwrapped lines and reduce measurement delays in warm wrapped editors, preserving current source, highlighting, native geometry and recovery in both project modes.
+
 - Reduce frontend startup downloads by loading verified static initialization into the same memory before page and worker initialization. Preserve all grammars, offline assets, synchronous worker initialization and a raw-data fallback for browsers without native decompression.
 
 - Keep a smaller surrounding native text window in wrapped editors to reduce browser shaping, preserving complete-source edits, composition, geometry proofs and the existing unwrapped window.

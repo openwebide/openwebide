@@ -1045,15 +1045,33 @@ The complete local native/WASI/WASM suite, all 221 editor contracts and both fon
 matrices pass ([local checks](editor-performance/startup-memory-local-checks.json)).
 Production worker/input/pointer checks and the strict compiled site/playground also
 pass ([production checks](editor-performance/startup-memory-production-checks.json)).
-Hosted verification and the remaining responsiveness/memory/device gates stay open.
+That checkpoint left hosted and responsiveness/memory/device verification open;
+the subsequent viewport and retention results follow below.
 
 - [ ] **Responsiveness and memory:** remove measured input, cold-paint, wrapped
   geometry and process-memory stalls. Repeat admitted byte, row-count and long-line
   boundary workloads in both modes, wrapping on/off, beginning edits and startup/
   scroll shaping. Verify complete source after input, actual near-1-MiB String
-  styling and Linux Chrome PSS. Multi-second preparation and the current latency/
-  memory results do not satisfy this gate. Preserve source ownership, bounded
+  styling and Linux Chrome PSS. Earlier multi-second preparation and latency/
+  memory results did not satisfy this gate. Preserve source ownership, bounded
   terminal fallback, grammar paint coalescing and localized reuse.
+  The final source-verified [328-edit viewport cohort](editor-performance/viewport-scoped-memory-summary.json)
+  meets the agreed 95% criterion in all eight ordinary/styled, Local/Remote and
+  wrapping configurations; every measured edit passes. Full cold readiness stays
+  below 1.35 seconds, with a 1,013.6 MiB natural PSS peak over 40 cycles.
+  [Broader comparisons](editor-performance/viewport-broad-comparison-summary.json)
+  add 64 passing fresh observations across ordinary files and admitted boundaries.
+  The combined source passes [full local CI](editor-performance/viewport-local-checks.json)
+  with 224 editor contracts and both font matrices, plus
+  [exact-bundle production checks](editor-performance/viewport-production-checks.json).
+  Retention checks cover all owned heaps. The production 800-cycle Remote run
+  keeps main WASM capacity fixed after warmup, reaches a final page-JS plateau and
+  retains bounded DOM counts. A separate 800-cycle Local diagnostic finds live
+  Rust storage within 13 bytes after warmup. Script-result scoping removes retained
+  measurement handles; matching native profiles identify bounded Chromium IPC
+  retention. Historical uncollected controls report a 2,121.7 MiB natural peak.
+  Current native-device verification remains open; hosted checks follow each
+  checkpoint on the draft PR. These results do not close the device gates.
 - [ ] **Exact geometry and fallbacks:** preserve complete-renderer extent, anchor
   and hit comparisons; font/family/feature/whitespace matrices; Unicode/caret mapping;
   partial endpoint rejection; sparse gaps; ambiguous wrap boundaries; unsupported

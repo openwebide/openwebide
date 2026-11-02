@@ -1,0 +1,1495 @@
+{
+  "scope": "Two fresh alternating artifact pairs per file/mode/wrap configuration on the same isolated Linux resource limits. These guard observations supplement the 328-edit latency cohort; two samples per configuration do not estimate a robust percentile. Complete persisted source, current geometry, syntax and final/peak PSS remain required.",
+  "cohorts": {
+    "ordinary": {
+      "rawSha256": "2b311f62ba22574501cbe04817a25692a7c5b6ff3e4182457e8f651cb3674df1",
+      "candidateObservations": 32,
+      "thresholdMs": 50,
+      "misses": [],
+      "maximumViewportMs": 42.100000000034925,
+      "maximumColdFullReadinessMs": 1192.9185010000083,
+      "naturalSampledPeakChromePssKiB": 638789,
+      "manifest": {
+        "scope": "Final-source paired ordinary/embedded-language and admitted-boundary observations. Current measured source/style ownership, native binding, CSS identity and bounded glyph/source proofs retained; warm wrapped task coalescing only. The separate forty-cycle normal cohort supplies the per-configuration 95-percent measured-edit criterion. Every fresh-case miss and complete source/style/geometry/final+peak PSS observation remains visible.",
+        "image": "sha256:5d362a9df35f1c81d967d68cfd7432961c534cc11894950da3ff0d826255dbab",
+        "cohort": "ordinary",
+        "repetitions": 2,
+        "measurementSha256": "320e35f97e0bcbb3d7bf319cd139d1fc75dc418be806ab2927c5635639f2077a",
+        "sources": {
+          "baseline": {
+            "editor.rs": "0f5b84ae79c50186b84865357749a4ce2532bffedd7e8ca6df39a0138811150f",
+            "rows.rs": "40dce0a2d5878dd8bf3fd777cac4a5c0ea9eb620306882267cfc4359ef97d5c6",
+            "preparation.rs": "813b7172310f68fccf770ba486330db6c1984d524700d21de773a3542331a129"
+          },
+          "viewport-stable": {
+            "editor.rs": "c4df8394b71b707619c6e3f90668e5276309fd1e75517281f43340b581bec534",
+            "rows.rs": "0c624a10e002593c628471d8037e38018ee02bdbbb5eb348886d7c63f9a31aea",
+            "preparation.rs": "d97c96222dbecfb46e3a2118dc52f4f48a9f57c2698eaef2fa2f378f3289118a"
+          }
+        },
+        "assets": {
+          "baseline": {
+            "editor-worker-1b99b3a7ae795b44-bd58640923e7efec.js": {
+              "bytes": 990,
+              "sha256": "074f2afaeb746fd09057eb56460ba35ccfc6aa3bdfb7724d5aee67f5195809de"
+            },
+            "offline.html": {
+              "bytes": 824,
+              "sha256": "216edd3f2ec8c644b5108948692afc3d125d7cf4f4b61b886e03630cba6eb841"
+            },
+            "openwebide-frontend-1b99b3a7ae795b44.js": {
+              "bytes": 125952,
+              "sha256": "1b99b3a7ae795b44e8fca4ef93823f89403906d7fd81b2d9838133a734ff0419"
+            },
+            "index.html": {
+              "bytes": 4295,
+              "sha256": "400395397b74df46866f3ab4bc60f66ae8a916bcedd876ec0ab52db7504fc6d0"
+            },
+            "about-software-c6f51fd795a96ac1.html": {
+              "bytes": 5812783,
+              "sha256": "c6f51fd795a96ac1c12e443480c302e526d0d987e2986b82d207a1e6e9e5f8fb"
+            },
+            "apple-touch-icon.png": {
+              "bytes": 2443,
+              "sha256": "12866be1ff99b5221423a4698886f1a350099a8eb88b81f090d0a896346cbef6"
+            },
+            "about.html": {
+              "bytes": 2727,
+              "sha256": "d4404029203c399e7cff051979b6ebd6064c0685454a6bacb15a3a62c7f2f167"
+            },
+            "editor-worker.js": {
+              "bytes": 990,
+              "sha256": "074f2afaeb746fd09057eb56460ba35ccfc6aa3bdfb7724d5aee67f5195809de"
+            },
+            "maskable-icon-512.png": {
+              "bytes": 6463,
+              "sha256": "ecc7a56e47afbbd957957633dea877e3f6077a6971d1586e409442834529f31f"
+            },
+            "icon-192.png": {
+              "bytes": 3807,
+              "sha256": "f947eb0c832410d7a422683b1ba263aec234754db3e2a38f63a9102a86701eed"
+            },
+            "openwebide-frontend-bd58640923e7efec_bg.wasm": {
+              "bytes": 14182130,
+              "sha256": "bd58640923e7efecd2d68ee48b9fd9f72b54b5d3a994eb69d35fe27d96afd746"
+            },
+            ".trunk-lock": {
+              "bytes": 0,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "favicon.png": {
+              "bytes": 757,
+              "sha256": "dca4e62f62b06faab8c788d0a9d07921dceb138be4ee624775c97eab9b812cfe"
+            },
+            "frontend-startup-12d936f41a95b7a3.bin": {
+              "bytes": 1977080,
+              "sha256": "12d936f41a95b7a32abefd970d21edf8458f5b79f695523f80ffbd864859923c"
+            },
+            "frontend-startup.json": {
+              "bytes": 1845,
+              "sha256": "08be91ff0690dec261d3bd189c33ff521ab5279035ba8fc373a84a0bd737a97b"
+            },
+            "frontend-startup-fc389a3e4e6c8b4d.raw.bin": {
+              "bytes": 18890102,
+              "sha256": "fc389a3e4e6c8b4d38a8f300e95e12162a3522ad869fa632f0af200012f17559"
+            },
+            "styles-41e482798e1db462.css": {
+              "bytes": 127545,
+              "sha256": "5b081ea10781072d9f809bc92c09331de707e63c35f280cea8f03d57323b42b8"
+            },
+            "service-worker.js": {
+              "bytes": 6066,
+              "sha256": "b5c676ef878777bcfe9ec5d9e0ffbe68d358ff9faaff482bc2fdacbec8164572"
+            },
+            "manifest.webmanifest": {
+              "bytes": 666,
+              "sha256": "cbec4dcfee8c294df6e33d782e8c1dcc9db6747c9456be89dff32a32bec78ae8"
+            },
+            "logo.svg": {
+              "bytes": 499,
+              "sha256": "28db742d4d42122325bd86b324bb60f05ccb3df055ed58307536a41c4e920ab7"
+            },
+            "favicon.svg": {
+              "bytes": 556,
+              "sha256": "c85ddc89e0a2d99d52e124a3f16e4f7cea2d68da4908680255e03245c687512b"
+            },
+            "maskable-icon-192.png": {
+              "bytes": 2151,
+              "sha256": "5cf9b9bb76d2a30997da6272c93e873190c2d11771ffa052f8181375e774fd3e"
+            },
+            "icon-512.png": {
+              "bytes": 11097,
+              "sha256": "5b1bfb344b6c5525f31532d805534f54b496e2f1cb6f5aae7deafbf19e5d43d9"
+            },
+            "pwa.js": {
+              "bytes": 5297,
+              "sha256": "81c9716c0f4d573404f365a05ee343ac62c77735d81f72e5bf045425e42a33e1"
+            }
+          },
+          "viewport-stable": {
+            "offline.html": {
+              "bytes": 824,
+              "sha256": "216edd3f2ec8c644b5108948692afc3d125d7cf4f4b61b886e03630cba6eb841"
+            },
+            "index.html": {
+              "bytes": 4295,
+              "sha256": "3eea72c4bc25e6f5fe047ca4a1a38f7b2700d38e6d23c4361a682c868e607258"
+            },
+            "about-software-c6f51fd795a96ac1.html": {
+              "bytes": 5812783,
+              "sha256": "c6f51fd795a96ac1c12e443480c302e526d0d987e2986b82d207a1e6e9e5f8fb"
+            },
+            "apple-touch-icon.png": {
+              "bytes": 2443,
+              "sha256": "12866be1ff99b5221423a4698886f1a350099a8eb88b81f090d0a896346cbef6"
+            },
+            "about.html": {
+              "bytes": 2727,
+              "sha256": "d4404029203c399e7cff051979b6ebd6064c0685454a6bacb15a3a62c7f2f167"
+            },
+            "editor-worker.js": {
+              "bytes": 990,
+              "sha256": "872eb5f65742bc797f0cba39abc3008dd9aacd39c102b348121030e82d66ad15"
+            },
+            "maskable-icon-512.png": {
+              "bytes": 6463,
+              "sha256": "ecc7a56e47afbbd957957633dea877e3f6077a6971d1586e409442834529f31f"
+            },
+            "icon-192.png": {
+              "bytes": 3807,
+              "sha256": "f947eb0c832410d7a422683b1ba263aec234754db3e2a38f63a9102a86701eed"
+            },
+            "openwebide-frontend-99d5053f2966e2f0_bg.wasm": {
+              "bytes": 14192587,
+              "sha256": "99d5053f2966e2f017a721b5535c820cdaced50d1a11fb7b75b1c4a0b8896777"
+            },
+            ".trunk-lock": {
+              "bytes": 0,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "frontend-startup-8dd5bbdbcb7cd2d8.bin": {
+              "bytes": 1977300,
+              "sha256": "8dd5bbdbcb7cd2d82ec9a3febe5800431f70d4201df4346e5b90b04f7d416e61"
+            },
+            "favicon.png": {
+              "bytes": 757,
+              "sha256": "dca4e62f62b06faab8c788d0a9d07921dceb138be4ee624775c97eab9b812cfe"
+            },
+            "editor-worker-cbe5486041565128-99d5053f2966e2f0.js": {
+              "bytes": 990,
+              "sha256": "872eb5f65742bc797f0cba39abc3008dd9aacd39c102b348121030e82d66ad15"
+            },
+            "frontend-startup.json": {
+              "bytes": 1844,
+              "sha256": "583699e57aae1557c48d1a6783ffc9c3a482902d100aa8586bf16d58fb669131"
+            },
+            "styles-41e482798e1db462.css": {
+              "bytes": 127545,
+              "sha256": "5b081ea10781072d9f809bc92c09331de707e63c35f280cea8f03d57323b42b8"
+            },
+            "service-worker.js": {
+              "bytes": 6066,
+              "sha256": "f6f3ddb0c8efee2fc5f42837b872ed417cda0c32fb14d2ad70e02177da2003fe"
+            },
+            "manifest.webmanifest": {
+              "bytes": 666,
+              "sha256": "cbec4dcfee8c294df6e33d782e8c1dcc9db6747c9456be89dff32a32bec78ae8"
+            },
+            "openwebide-frontend-cbe5486041565128.js": {
+              "bytes": 125941,
+              "sha256": "cbe54860415651285fa4ae9ad87842e491a0d717533df4b999b322c36a682a48"
+            },
+            "logo.svg": {
+              "bytes": 499,
+              "sha256": "28db742d4d42122325bd86b324bb60f05ccb3df055ed58307536a41c4e920ab7"
+            },
+            "favicon.svg": {
+              "bytes": 556,
+              "sha256": "c85ddc89e0a2d99d52e124a3f16e4f7cea2d68da4908680255e03245c687512b"
+            },
+            "maskable-icon-192.png": {
+              "bytes": 2151,
+              "sha256": "5cf9b9bb76d2a30997da6272c93e873190c2d11771ffa052f8181375e774fd3e"
+            },
+            "icon-512.png": {
+              "bytes": 11097,
+              "sha256": "5b1bfb344b6c5525f31532d805534f54b496e2f1cb6f5aae7deafbf19e5d43d9"
+            },
+            "frontend-startup-51e27ab2446bf18f.raw.bin": {
+              "bytes": 18890486,
+              "sha256": "51e27ab2446bf18fc21328c43446f02c59ea833af4a8847ad505450018b67eb5"
+            },
+            "pwa.js": {
+              "bytes": 5297,
+              "sha256": "81c9716c0f4d573404f365a05ee343ac62c77735d81f72e5bf045425e42a33e1"
+            }
+          }
+        },
+        "candidateManifest": {
+          "scope": "Viewport candidate; consult the separate verification receipt for complete-source CI status. Complete-row HTML reuse preserves CSS-only wrapping, bounded fragments require current source/syntax/glyph ownership, and warm wrapped preparations coalesce through a task. Original recovery transport. Native device and new hosted checks remain pending.",
+          "base": "c2dfe0966511fe62c10a03533f06103a637e3453",
+          "sourceFiles": {
+            "frontend/src/components/editor.rs": "c4df8394b71b707619c6e3f90668e5276309fd1e75517281f43340b581bec534",
+            "frontend/src/components/editor_geometry.rs": "afbe4b7ff00a3020f35e8288f9c65f19e9f18423f584f3f48e19396b6604fe41",
+            "frontend/src/state_actions/editor/rows.rs": "0c624a10e002593c628471d8037e38018ee02bdbbb5eb348886d7c63f9a31aea",
+            "frontend/src/state_actions/editor/preparation.rs": "d97c96222dbecfb46e3a2118dc52f4f48a9f57c2698eaef2fa2f378f3289118a",
+            "frontend/src/api.rs": "e1f79c48a8ec17a24dd41ac3942f761ceb0cd59fd2ec30ca2d8097c8519141d4",
+            "tools/measure-editor-view.py": "320e35f97e0bcbb3d7bf319cd139d1fc75dc418be806ab2927c5635639f2077a",
+            "tools/editor_memory.py": "d1874572c4f087deb3ff85898d1a703c3f3af07266b16a716105370b31439d42",
+            "tools/test_editor_measurements.py": "b990d996bc37b51982851f31e6cc6b462fb03817e8b66f0c29c781cd9f57bfd8",
+            "CHANGELOG.md": "ead7891db551db1f8371b6958801090b5dcf7661570e930710c13cd21a340c0e"
+          },
+          "assets": {
+            "offline.html": {
+              "bytes": 824,
+              "sha256": "216edd3f2ec8c644b5108948692afc3d125d7cf4f4b61b886e03630cba6eb841"
+            },
+            "index.html": {
+              "bytes": 4295,
+              "sha256": "3eea72c4bc25e6f5fe047ca4a1a38f7b2700d38e6d23c4361a682c868e607258"
+            },
+            "about-software-c6f51fd795a96ac1.html": {
+              "bytes": 5812783,
+              "sha256": "c6f51fd795a96ac1c12e443480c302e526d0d987e2986b82d207a1e6e9e5f8fb"
+            },
+            "apple-touch-icon.png": {
+              "bytes": 2443,
+              "sha256": "12866be1ff99b5221423a4698886f1a350099a8eb88b81f090d0a896346cbef6"
+            },
+            "about.html": {
+              "bytes": 2727,
+              "sha256": "d4404029203c399e7cff051979b6ebd6064c0685454a6bacb15a3a62c7f2f167"
+            },
+            "editor-worker.js": {
+              "bytes": 990,
+              "sha256": "872eb5f65742bc797f0cba39abc3008dd9aacd39c102b348121030e82d66ad15"
+            },
+            "maskable-icon-512.png": {
+              "bytes": 6463,
+              "sha256": "ecc7a56e47afbbd957957633dea877e3f6077a6971d1586e409442834529f31f"
+            },
+            "icon-192.png": {
+              "bytes": 3807,
+              "sha256": "f947eb0c832410d7a422683b1ba263aec234754db3e2a38f63a9102a86701eed"
+            },
+            "openwebide-frontend-99d5053f2966e2f0_bg.wasm": {
+              "bytes": 14192587,
+              "sha256": "99d5053f2966e2f017a721b5535c820cdaced50d1a11fb7b75b1c4a0b8896777"
+            },
+            ".trunk-lock": {
+              "bytes": 0,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "frontend-startup-8dd5bbdbcb7cd2d8.bin": {
+              "bytes": 1977300,
+              "sha256": "8dd5bbdbcb7cd2d82ec9a3febe5800431f70d4201df4346e5b90b04f7d416e61"
+            },
+            "favicon.png": {
+              "bytes": 757,
+              "sha256": "dca4e62f62b06faab8c788d0a9d07921dceb138be4ee624775c97eab9b812cfe"
+            },
+            "editor-worker-cbe5486041565128-99d5053f2966e2f0.js": {
+              "bytes": 990,
+              "sha256": "872eb5f65742bc797f0cba39abc3008dd9aacd39c102b348121030e82d66ad15"
+            },
+            "frontend-startup.json": {
+              "bytes": 1844,
+              "sha256": "583699e57aae1557c48d1a6783ffc9c3a482902d100aa8586bf16d58fb669131"
+            },
+            "styles-41e482798e1db462.css": {
+              "bytes": 127545,
+              "sha256": "5b081ea10781072d9f809bc92c09331de707e63c35f280cea8f03d57323b42b8"
+            },
+            "service-worker.js": {
+              "bytes": 6066,
+              "sha256": "f6f3ddb0c8efee2fc5f42837b872ed417cda0c32fb14d2ad70e02177da2003fe"
+            },
+            "manifest.webmanifest": {
+              "bytes": 666,
+              "sha256": "cbec4dcfee8c294df6e33d782e8c1dcc9db6747c9456be89dff32a32bec78ae8"
+            },
+            "openwebide-frontend-cbe5486041565128.js": {
+              "bytes": 125941,
+              "sha256": "cbe54860415651285fa4ae9ad87842e491a0d717533df4b999b322c36a682a48"
+            },
+            "logo.svg": {
+              "bytes": 499,
+              "sha256": "28db742d4d42122325bd86b324bb60f05ccb3df055ed58307536a41c4e920ab7"
+            },
+            "favicon.svg": {
+              "bytes": 556,
+              "sha256": "c85ddc89e0a2d99d52e124a3f16e4f7cea2d68da4908680255e03245c687512b"
+            },
+            "maskable-icon-192.png": {
+              "bytes": 2151,
+              "sha256": "5cf9b9bb76d2a30997da6272c93e873190c2d11771ffa052f8181375e774fd3e"
+            },
+            "icon-512.png": {
+              "bytes": 11097,
+              "sha256": "5b1bfb344b6c5525f31532d805534f54b496e2f1cb6f5aae7deafbf19e5d43d9"
+            },
+            "frontend-startup-51e27ab2446bf18f.raw.bin": {
+              "bytes": 18890486,
+              "sha256": "51e27ab2446bf18fc21328c43446f02c59ea833af4a8847ad505450018b67eb5"
+            },
+            "pwa.js": {
+              "bytes": 5297,
+              "sha256": "81c9716c0f4d573404f365a05ee343ac62c77735d81f72e5bf045425e42a33e1"
+            },
+            "fonts/MonaspaceRadon-v1.400.woff2": {
+              "bytes": 796308,
+              "sha256": "6411b3c2b3e02e3913248184800d6c5a83bb1ccd1472daeb7bfee605c176cb33"
+            },
+            "fonts/MonaspaceKrypton-v1.400.woff2": {
+              "bytes": 445408,
+              "sha256": "f1357532c080c3f976e35ec1d18a92b423d4261103acb7d2cdccffa03a989fad"
+            },
+            "fonts/README.md": {
+              "bytes": 352,
+              "sha256": "1d922dd2a54926d7937fc9c35e9b6a26b88d3fda2d78267ccd5b8089a25c7413"
+            },
+            "fonts/MonaspaceXenon-v1.400.woff2": {
+              "bytes": 583680,
+              "sha256": "eea00c02f4c00f09fd50e80efdb8341975f9eb8c82720ce50f44c19a962996c5"
+            },
+            "fonts/OFL.txt": {
+              "bytes": 4479,
+              "sha256": "481f459f4a5f063c0926aeefd7deac7962b36dcc51d27599a569844eedef5546"
+            },
+            "fonts/MonaspaceNeon-v1.400.woff2": {
+              "bytes": 510832,
+              "sha256": "6569968f448ae856ab5b57dff1f13b109b220ca8e3f664169e135fcb5c4f0721"
+            },
+            "fonts/MonaspaceArgon-v1.400.woff2": {
+              "bytes": 540384,
+              "sha256": "ad0ad84cb65ab56ea82b3098800403aeec1bbc445ba24da0dc87f439b3883db6"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline5.js": {
+              "bytes": 4844,
+              "sha256": "08a020ab8a7f3618e796ef620aabf266137ecb862c574a114e51b415dbc9a850"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline12.js": {
+              "bytes": 361,
+              "sha256": "70b624363333e82c279961d30faa98b59da52c983a01243f02e56e8606207377"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline1.js": {
+              "bytes": 1557,
+              "sha256": "7ead7b3ac7c9c1a5610b58aa8d6e7154c4d04d8b6f99a2a8af043b1780b0c5ca"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline0.js": {
+              "bytes": 594,
+              "sha256": "290f6e3fd61d488609a0c5ca3aef81d0ddc8bbd4546210929a432c138b36f1ab"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline4.js": {
+              "bytes": 17672,
+              "sha256": "ef8d3c20f3b1e0d9942de9e03630643f75fe6e86abba3c9d758eefac0cd82686"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline9.js": {
+              "bytes": 763,
+              "sha256": "6ad241e34559088a9b33223453f3fe87cbc63dec552c2493794cf4a078ca240a"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline8.js": {
+              "bytes": 1223,
+              "sha256": "313c7c3496931d926723d3f76680a85e708fcb20e3357da8ea26ec45f9d6672e"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline10.js": {
+              "bytes": 343,
+              "sha256": "5a03350e2b798b59840b731668642dbd6972266f857de63bb082792c43c0b49e"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline3.js": {
+              "bytes": 549,
+              "sha256": "d435183eac99e32882d1b451f07b63a269f686e90d0cb443dd6f040fe770f6d8"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline7.js": {
+              "bytes": 856,
+              "sha256": "feca7087e793e83b6070e5c2add5bb801827184434d58950827aeaacdbac1d9f"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline6.js": {
+              "bytes": 843,
+              "sha256": "c0b793ce9dc2716cb9d33a19c51c8e1bc8a5f4e14d1c515260c639f3967e4fcd"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline11.js": {
+              "bytes": 381,
+              "sha256": "dacd4f5862ac0013fd541a19440718f6963f45bb93d7512bef7fa2e29eed78ee"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline2.js": {
+              "bytes": 4088,
+              "sha256": "f6eec4498237d845bef867094bfb183460d1566245768b8a24adbc95f5bf1fbb"
+            }
+          }
+        },
+        "beforeAudit": {
+          "compilerProcesses": [],
+          "time": 1793601389.885222
+        }
+      },
+      "results": [
+        {
+          "case": "embedded-html",
+          "fileName": "measure.html",
+          "mode": "local",
+          "wrap": false,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 16.20000000001164,
+            "maximumViewportMs": 16.400000000023283,
+            "maximumColdFullReadinessMs": 1070.9593340000083,
+            "sampledPeakChromePssKiB": 590268
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 17.399999999965075,
+            "maximumViewportMs": 18.900000000023283,
+            "maximumColdFullReadinessMs": 1071.6416679999838,
+            "sampledPeakChromePssKiB": 596572
+          }
+        },
+        {
+          "case": "embedded-html",
+          "fileName": "measure.html",
+          "mode": "local",
+          "wrap": true,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 59.39999999999418,
+            "maximumViewportMs": 60.79999999998836,
+            "maximumColdFullReadinessMs": 1029.9727090000488,
+            "sampledPeakChromePssKiB": 585314
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 13.650000000023283,
+            "maximumViewportMs": 13.900000000023283,
+            "maximumColdFullReadinessMs": 1034.9287089999848,
+            "sampledPeakChromePssKiB": 590271
+          }
+        },
+        {
+          "case": "embedded-html",
+          "fileName": "measure.html",
+          "mode": "remote",
+          "wrap": false,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 17.699999999982538,
+            "maximumViewportMs": 18.29999999998836,
+            "maximumColdFullReadinessMs": 1118.4078339999814,
+            "sampledPeakChromePssKiB": 607478
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 16.799999999959255,
+            "maximumViewportMs": 17.399999999965075,
+            "maximumColdFullReadinessMs": 1125.4386670000258,
+            "sampledPeakChromePssKiB": 600565
+          }
+        },
+        {
+          "case": "embedded-html",
+          "fileName": "measure.html",
+          "mode": "remote",
+          "wrap": true,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 40.45000000001164,
+            "maximumViewportMs": 57.5,
+            "maximumColdFullReadinessMs": 1024.5620840000242,
+            "sampledPeakChromePssKiB": 591872
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 16.300000000046566,
+            "maximumViewportMs": 18.900000000023283,
+            "maximumColdFullReadinessMs": 1067.4611670000331,
+            "sampledPeakChromePssKiB": 580277
+          }
+        },
+        {
+          "case": "embedded-markdown",
+          "fileName": "measure.md",
+          "mode": "local",
+          "wrap": false,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 10.350000000034925,
+            "maximumViewportMs": 11.600000000093132,
+            "maximumColdFullReadinessMs": 1125.4080420000037,
+            "sampledPeakChromePssKiB": 618641
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 9.599999999976717,
+            "maximumViewportMs": 9.599999999976717,
+            "maximumColdFullReadinessMs": 1152.2808340000097,
+            "sampledPeakChromePssKiB": 637633
+          }
+        },
+        {
+          "case": "embedded-markdown",
+          "fileName": "measure.md",
+          "mode": "local",
+          "wrap": true,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 60.59999999997672,
+            "maximumViewportMs": 62,
+            "maximumColdFullReadinessMs": 1105.3203760000088,
+            "sampledPeakChromePssKiB": 617326
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 22.300000000017462,
+            "maximumViewportMs": 22.900000000023283,
+            "maximumColdFullReadinessMs": 1166.9208750000166,
+            "sampledPeakChromePssKiB": 605477
+          }
+        },
+        {
+          "case": "embedded-markdown",
+          "fileName": "measure.md",
+          "mode": "remote",
+          "wrap": false,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 9.450000000011642,
+            "maximumViewportMs": 9.699999999953434,
+            "maximumColdFullReadinessMs": 1134.8829170000272,
+            "sampledPeakChromePssKiB": 640067
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 9.449999999982538,
+            "maximumViewportMs": 9.599999999976717,
+            "maximumColdFullReadinessMs": 1192.9185010000083,
+            "sampledPeakChromePssKiB": 636838
+          }
+        },
+        {
+          "case": "embedded-markdown",
+          "fileName": "measure.md",
+          "mode": "remote",
+          "wrap": true,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 44.5,
+            "maximumViewportMs": 61.5,
+            "maximumColdFullReadinessMs": 1085.923084000001,
+            "sampledPeakChromePssKiB": 612316
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 17.5,
+            "maximumViewportMs": 21.800000000046566,
+            "maximumColdFullReadinessMs": 1184.1781259998925,
+            "sampledPeakChromePssKiB": 638789
+          }
+        },
+        {
+          "case": "small",
+          "fileName": "measure.rs",
+          "mode": "local",
+          "wrap": false,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 10.349999999976717,
+            "maximumViewportMs": 10.5,
+            "maximumColdFullReadinessMs": 1054.9739170000976,
+            "sampledPeakChromePssKiB": 582399
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 10.450000000011642,
+            "maximumViewportMs": 10.5,
+            "maximumColdFullReadinessMs": 1114.6555000000262,
+            "sampledPeakChromePssKiB": 586973
+          }
+        },
+        {
+          "case": "small",
+          "fileName": "measure.rs",
+          "mode": "local",
+          "wrap": true,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 41.0,
+            "maximumViewportMs": 59.5,
+            "maximumColdFullReadinessMs": 1034.3234590000066,
+            "sampledPeakChromePssKiB": 576746
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 17.10000000000582,
+            "maximumViewportMs": 21.79999999998836,
+            "maximumColdFullReadinessMs": 1089.1274589999966,
+            "sampledPeakChromePssKiB": 576257
+          }
+        },
+        {
+          "case": "small",
+          "fileName": "measure.rs",
+          "mode": "remote",
+          "wrap": false,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 12.949999999982538,
+            "maximumViewportMs": 14.699999999953434,
+            "maximumColdFullReadinessMs": 1007.4319589999732,
+            "sampledPeakChromePssKiB": 582438
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 11.199999999982538,
+            "maximumViewportMs": 11.29999999993015,
+            "maximumColdFullReadinessMs": 1120.4524180000135,
+            "sampledPeakChromePssKiB": 590465
+          }
+        },
+        {
+          "case": "small",
+          "fileName": "measure.rs",
+          "mode": "remote",
+          "wrap": true,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 44.05000000001746,
+            "maximumViewportMs": 61.90000000002328,
+            "maximumColdFullReadinessMs": 1047.7043340000023,
+            "sampledPeakChromePssKiB": 579180
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 31.499999999970896,
+            "maximumViewportMs": 32.399999999965075,
+            "maximumColdFullReadinessMs": 1079.3250839999473,
+            "sampledPeakChromePssKiB": 579971
+          }
+        },
+        {
+          "case": "small",
+          "fileName": "measure.txt",
+          "mode": "local",
+          "wrap": false,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 24.400000000023283,
+            "maximumViewportMs": 25,
+            "maximumColdFullReadinessMs": 911.9035840000151,
+            "sampledPeakChromePssKiB": 563473
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 26.0,
+            "maximumViewportMs": 26.5,
+            "maximumColdFullReadinessMs": 967.2855420000133,
+            "sampledPeakChromePssKiB": 564623
+          }
+        },
+        {
+          "case": "small",
+          "fileName": "measure.txt",
+          "mode": "local",
+          "wrap": true,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 49.05000000001746,
+            "maximumViewportMs": 55.70000000001164,
+            "maximumColdFullReadinessMs": 945.2900830000317,
+            "sampledPeakChromePssKiB": 557056
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 33.35000000000582,
+            "maximumViewportMs": 40.600000000034925,
+            "maximumColdFullReadinessMs": 945.92908300001,
+            "sampledPeakChromePssKiB": 558965
+          }
+        },
+        {
+          "case": "small",
+          "fileName": "measure.txt",
+          "mode": "remote",
+          "wrap": false,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 21.299999999959255,
+            "maximumViewportMs": 22.29999999998836,
+            "maximumColdFullReadinessMs": 926.121749999993,
+            "sampledPeakChromePssKiB": 561608
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 18.800000000017462,
+            "maximumViewportMs": 19.70000000001164,
+            "maximumColdFullReadinessMs": 994.4011669999782,
+            "sampledPeakChromePssKiB": 564540
+          }
+        },
+        {
+          "case": "small",
+          "fileName": "measure.txt",
+          "mode": "remote",
+          "wrap": true,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 47.999999999970896,
+            "maximumViewportMs": 52.09999999997672,
+            "maximumColdFullReadinessMs": 949.8090429999593,
+            "sampledPeakChromePssKiB": 561373
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 41.500000000029104,
+            "maximumViewportMs": 42.100000000034925,
+            "maximumColdFullReadinessMs": 993.2562920000123,
+            "sampledPeakChromePssKiB": 566061
+          }
+        }
+      ]
+    },
+    "boundary": {
+      "rawSha256": "a3b4e94a27aacfb0ef7e7d8a0cb767d14792788b8829b973a34afeaec8f901ff",
+      "candidateObservations": 32,
+      "thresholdMs": 100,
+      "misses": [],
+      "maximumViewportMs": 94.19999999995343,
+      "maximumColdFullReadinessMs": 1668.8218340000276,
+      "naturalSampledPeakChromePssKiB": 746368,
+      "manifest": {
+        "scope": "Final-source paired ordinary/embedded-language and admitted-boundary observations. Current measured source/style ownership, native binding, CSS identity and bounded glyph/source proofs retained; warm wrapped task coalescing only. The separate forty-cycle normal cohort supplies the per-configuration 95-percent measured-edit criterion. Every fresh-case miss and complete source/style/geometry/final+peak PSS observation remains visible.",
+        "image": "sha256:5d362a9df35f1c81d967d68cfd7432961c534cc11894950da3ff0d826255dbab",
+        "cohort": "boundary",
+        "repetitions": 2,
+        "measurementSha256": "320e35f97e0bcbb3d7bf319cd139d1fc75dc418be806ab2927c5635639f2077a",
+        "sources": {
+          "baseline": {
+            "editor.rs": "0f5b84ae79c50186b84865357749a4ce2532bffedd7e8ca6df39a0138811150f",
+            "rows.rs": "40dce0a2d5878dd8bf3fd777cac4a5c0ea9eb620306882267cfc4359ef97d5c6",
+            "preparation.rs": "813b7172310f68fccf770ba486330db6c1984d524700d21de773a3542331a129"
+          },
+          "viewport-stable": {
+            "editor.rs": "c4df8394b71b707619c6e3f90668e5276309fd1e75517281f43340b581bec534",
+            "rows.rs": "0c624a10e002593c628471d8037e38018ee02bdbbb5eb348886d7c63f9a31aea",
+            "preparation.rs": "d97c96222dbecfb46e3a2118dc52f4f48a9f57c2698eaef2fa2f378f3289118a"
+          }
+        },
+        "assets": {
+          "baseline": {
+            "editor-worker-1b99b3a7ae795b44-bd58640923e7efec.js": {
+              "bytes": 990,
+              "sha256": "074f2afaeb746fd09057eb56460ba35ccfc6aa3bdfb7724d5aee67f5195809de"
+            },
+            "offline.html": {
+              "bytes": 824,
+              "sha256": "216edd3f2ec8c644b5108948692afc3d125d7cf4f4b61b886e03630cba6eb841"
+            },
+            "openwebide-frontend-1b99b3a7ae795b44.js": {
+              "bytes": 125952,
+              "sha256": "1b99b3a7ae795b44e8fca4ef93823f89403906d7fd81b2d9838133a734ff0419"
+            },
+            "index.html": {
+              "bytes": 4295,
+              "sha256": "400395397b74df46866f3ab4bc60f66ae8a916bcedd876ec0ab52db7504fc6d0"
+            },
+            "about-software-c6f51fd795a96ac1.html": {
+              "bytes": 5812783,
+              "sha256": "c6f51fd795a96ac1c12e443480c302e526d0d987e2986b82d207a1e6e9e5f8fb"
+            },
+            "apple-touch-icon.png": {
+              "bytes": 2443,
+              "sha256": "12866be1ff99b5221423a4698886f1a350099a8eb88b81f090d0a896346cbef6"
+            },
+            "about.html": {
+              "bytes": 2727,
+              "sha256": "d4404029203c399e7cff051979b6ebd6064c0685454a6bacb15a3a62c7f2f167"
+            },
+            "editor-worker.js": {
+              "bytes": 990,
+              "sha256": "074f2afaeb746fd09057eb56460ba35ccfc6aa3bdfb7724d5aee67f5195809de"
+            },
+            "maskable-icon-512.png": {
+              "bytes": 6463,
+              "sha256": "ecc7a56e47afbbd957957633dea877e3f6077a6971d1586e409442834529f31f"
+            },
+            "icon-192.png": {
+              "bytes": 3807,
+              "sha256": "f947eb0c832410d7a422683b1ba263aec234754db3e2a38f63a9102a86701eed"
+            },
+            "openwebide-frontend-bd58640923e7efec_bg.wasm": {
+              "bytes": 14182130,
+              "sha256": "bd58640923e7efecd2d68ee48b9fd9f72b54b5d3a994eb69d35fe27d96afd746"
+            },
+            ".trunk-lock": {
+              "bytes": 0,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "favicon.png": {
+              "bytes": 757,
+              "sha256": "dca4e62f62b06faab8c788d0a9d07921dceb138be4ee624775c97eab9b812cfe"
+            },
+            "frontend-startup-12d936f41a95b7a3.bin": {
+              "bytes": 1977080,
+              "sha256": "12d936f41a95b7a32abefd970d21edf8458f5b79f695523f80ffbd864859923c"
+            },
+            "frontend-startup.json": {
+              "bytes": 1845,
+              "sha256": "08be91ff0690dec261d3bd189c33ff521ab5279035ba8fc373a84a0bd737a97b"
+            },
+            "frontend-startup-fc389a3e4e6c8b4d.raw.bin": {
+              "bytes": 18890102,
+              "sha256": "fc389a3e4e6c8b4d38a8f300e95e12162a3522ad869fa632f0af200012f17559"
+            },
+            "styles-41e482798e1db462.css": {
+              "bytes": 127545,
+              "sha256": "5b081ea10781072d9f809bc92c09331de707e63c35f280cea8f03d57323b42b8"
+            },
+            "service-worker.js": {
+              "bytes": 6066,
+              "sha256": "b5c676ef878777bcfe9ec5d9e0ffbe68d358ff9faaff482bc2fdacbec8164572"
+            },
+            "manifest.webmanifest": {
+              "bytes": 666,
+              "sha256": "cbec4dcfee8c294df6e33d782e8c1dcc9db6747c9456be89dff32a32bec78ae8"
+            },
+            "logo.svg": {
+              "bytes": 499,
+              "sha256": "28db742d4d42122325bd86b324bb60f05ccb3df055ed58307536a41c4e920ab7"
+            },
+            "favicon.svg": {
+              "bytes": 556,
+              "sha256": "c85ddc89e0a2d99d52e124a3f16e4f7cea2d68da4908680255e03245c687512b"
+            },
+            "maskable-icon-192.png": {
+              "bytes": 2151,
+              "sha256": "5cf9b9bb76d2a30997da6272c93e873190c2d11771ffa052f8181375e774fd3e"
+            },
+            "icon-512.png": {
+              "bytes": 11097,
+              "sha256": "5b1bfb344b6c5525f31532d805534f54b496e2f1cb6f5aae7deafbf19e5d43d9"
+            },
+            "pwa.js": {
+              "bytes": 5297,
+              "sha256": "81c9716c0f4d573404f365a05ee343ac62c77735d81f72e5bf045425e42a33e1"
+            }
+          },
+          "viewport-stable": {
+            "offline.html": {
+              "bytes": 824,
+              "sha256": "216edd3f2ec8c644b5108948692afc3d125d7cf4f4b61b886e03630cba6eb841"
+            },
+            "index.html": {
+              "bytes": 4295,
+              "sha256": "3eea72c4bc25e6f5fe047ca4a1a38f7b2700d38e6d23c4361a682c868e607258"
+            },
+            "about-software-c6f51fd795a96ac1.html": {
+              "bytes": 5812783,
+              "sha256": "c6f51fd795a96ac1c12e443480c302e526d0d987e2986b82d207a1e6e9e5f8fb"
+            },
+            "apple-touch-icon.png": {
+              "bytes": 2443,
+              "sha256": "12866be1ff99b5221423a4698886f1a350099a8eb88b81f090d0a896346cbef6"
+            },
+            "about.html": {
+              "bytes": 2727,
+              "sha256": "d4404029203c399e7cff051979b6ebd6064c0685454a6bacb15a3a62c7f2f167"
+            },
+            "editor-worker.js": {
+              "bytes": 990,
+              "sha256": "872eb5f65742bc797f0cba39abc3008dd9aacd39c102b348121030e82d66ad15"
+            },
+            "maskable-icon-512.png": {
+              "bytes": 6463,
+              "sha256": "ecc7a56e47afbbd957957633dea877e3f6077a6971d1586e409442834529f31f"
+            },
+            "icon-192.png": {
+              "bytes": 3807,
+              "sha256": "f947eb0c832410d7a422683b1ba263aec234754db3e2a38f63a9102a86701eed"
+            },
+            "openwebide-frontend-99d5053f2966e2f0_bg.wasm": {
+              "bytes": 14192587,
+              "sha256": "99d5053f2966e2f017a721b5535c820cdaced50d1a11fb7b75b1c4a0b8896777"
+            },
+            ".trunk-lock": {
+              "bytes": 0,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "frontend-startup-8dd5bbdbcb7cd2d8.bin": {
+              "bytes": 1977300,
+              "sha256": "8dd5bbdbcb7cd2d82ec9a3febe5800431f70d4201df4346e5b90b04f7d416e61"
+            },
+            "favicon.png": {
+              "bytes": 757,
+              "sha256": "dca4e62f62b06faab8c788d0a9d07921dceb138be4ee624775c97eab9b812cfe"
+            },
+            "editor-worker-cbe5486041565128-99d5053f2966e2f0.js": {
+              "bytes": 990,
+              "sha256": "872eb5f65742bc797f0cba39abc3008dd9aacd39c102b348121030e82d66ad15"
+            },
+            "frontend-startup.json": {
+              "bytes": 1844,
+              "sha256": "583699e57aae1557c48d1a6783ffc9c3a482902d100aa8586bf16d58fb669131"
+            },
+            "styles-41e482798e1db462.css": {
+              "bytes": 127545,
+              "sha256": "5b081ea10781072d9f809bc92c09331de707e63c35f280cea8f03d57323b42b8"
+            },
+            "service-worker.js": {
+              "bytes": 6066,
+              "sha256": "f6f3ddb0c8efee2fc5f42837b872ed417cda0c32fb14d2ad70e02177da2003fe"
+            },
+            "manifest.webmanifest": {
+              "bytes": 666,
+              "sha256": "cbec4dcfee8c294df6e33d782e8c1dcc9db6747c9456be89dff32a32bec78ae8"
+            },
+            "openwebide-frontend-cbe5486041565128.js": {
+              "bytes": 125941,
+              "sha256": "cbe54860415651285fa4ae9ad87842e491a0d717533df4b999b322c36a682a48"
+            },
+            "logo.svg": {
+              "bytes": 499,
+              "sha256": "28db742d4d42122325bd86b324bb60f05ccb3df055ed58307536a41c4e920ab7"
+            },
+            "favicon.svg": {
+              "bytes": 556,
+              "sha256": "c85ddc89e0a2d99d52e124a3f16e4f7cea2d68da4908680255e03245c687512b"
+            },
+            "maskable-icon-192.png": {
+              "bytes": 2151,
+              "sha256": "5cf9b9bb76d2a30997da6272c93e873190c2d11771ffa052f8181375e774fd3e"
+            },
+            "icon-512.png": {
+              "bytes": 11097,
+              "sha256": "5b1bfb344b6c5525f31532d805534f54b496e2f1cb6f5aae7deafbf19e5d43d9"
+            },
+            "frontend-startup-51e27ab2446bf18f.raw.bin": {
+              "bytes": 18890486,
+              "sha256": "51e27ab2446bf18fc21328c43446f02c59ea833af4a8847ad505450018b67eb5"
+            },
+            "pwa.js": {
+              "bytes": 5297,
+              "sha256": "81c9716c0f4d573404f365a05ee343ac62c77735d81f72e5bf045425e42a33e1"
+            }
+          }
+        },
+        "candidateManifest": {
+          "scope": "Viewport candidate; consult the separate verification receipt for complete-source CI status. Complete-row HTML reuse preserves CSS-only wrapping, bounded fragments require current source/syntax/glyph ownership, and warm wrapped preparations coalesce through a task. Original recovery transport. Native device and new hosted checks remain pending.",
+          "base": "c2dfe0966511fe62c10a03533f06103a637e3453",
+          "sourceFiles": {
+            "frontend/src/components/editor.rs": "c4df8394b71b707619c6e3f90668e5276309fd1e75517281f43340b581bec534",
+            "frontend/src/components/editor_geometry.rs": "afbe4b7ff00a3020f35e8288f9c65f19e9f18423f584f3f48e19396b6604fe41",
+            "frontend/src/state_actions/editor/rows.rs": "0c624a10e002593c628471d8037e38018ee02bdbbb5eb348886d7c63f9a31aea",
+            "frontend/src/state_actions/editor/preparation.rs": "d97c96222dbecfb46e3a2118dc52f4f48a9f57c2698eaef2fa2f378f3289118a",
+            "frontend/src/api.rs": "e1f79c48a8ec17a24dd41ac3942f761ceb0cd59fd2ec30ca2d8097c8519141d4",
+            "tools/measure-editor-view.py": "320e35f97e0bcbb3d7bf319cd139d1fc75dc418be806ab2927c5635639f2077a",
+            "tools/editor_memory.py": "d1874572c4f087deb3ff85898d1a703c3f3af07266b16a716105370b31439d42",
+            "tools/test_editor_measurements.py": "b990d996bc37b51982851f31e6cc6b462fb03817e8b66f0c29c781cd9f57bfd8",
+            "CHANGELOG.md": "ead7891db551db1f8371b6958801090b5dcf7661570e930710c13cd21a340c0e"
+          },
+          "assets": {
+            "offline.html": {
+              "bytes": 824,
+              "sha256": "216edd3f2ec8c644b5108948692afc3d125d7cf4f4b61b886e03630cba6eb841"
+            },
+            "index.html": {
+              "bytes": 4295,
+              "sha256": "3eea72c4bc25e6f5fe047ca4a1a38f7b2700d38e6d23c4361a682c868e607258"
+            },
+            "about-software-c6f51fd795a96ac1.html": {
+              "bytes": 5812783,
+              "sha256": "c6f51fd795a96ac1c12e443480c302e526d0d987e2986b82d207a1e6e9e5f8fb"
+            },
+            "apple-touch-icon.png": {
+              "bytes": 2443,
+              "sha256": "12866be1ff99b5221423a4698886f1a350099a8eb88b81f090d0a896346cbef6"
+            },
+            "about.html": {
+              "bytes": 2727,
+              "sha256": "d4404029203c399e7cff051979b6ebd6064c0685454a6bacb15a3a62c7f2f167"
+            },
+            "editor-worker.js": {
+              "bytes": 990,
+              "sha256": "872eb5f65742bc797f0cba39abc3008dd9aacd39c102b348121030e82d66ad15"
+            },
+            "maskable-icon-512.png": {
+              "bytes": 6463,
+              "sha256": "ecc7a56e47afbbd957957633dea877e3f6077a6971d1586e409442834529f31f"
+            },
+            "icon-192.png": {
+              "bytes": 3807,
+              "sha256": "f947eb0c832410d7a422683b1ba263aec234754db3e2a38f63a9102a86701eed"
+            },
+            "openwebide-frontend-99d5053f2966e2f0_bg.wasm": {
+              "bytes": 14192587,
+              "sha256": "99d5053f2966e2f017a721b5535c820cdaced50d1a11fb7b75b1c4a0b8896777"
+            },
+            ".trunk-lock": {
+              "bytes": 0,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "frontend-startup-8dd5bbdbcb7cd2d8.bin": {
+              "bytes": 1977300,
+              "sha256": "8dd5bbdbcb7cd2d82ec9a3febe5800431f70d4201df4346e5b90b04f7d416e61"
+            },
+            "favicon.png": {
+              "bytes": 757,
+              "sha256": "dca4e62f62b06faab8c788d0a9d07921dceb138be4ee624775c97eab9b812cfe"
+            },
+            "editor-worker-cbe5486041565128-99d5053f2966e2f0.js": {
+              "bytes": 990,
+              "sha256": "872eb5f65742bc797f0cba39abc3008dd9aacd39c102b348121030e82d66ad15"
+            },
+            "frontend-startup.json": {
+              "bytes": 1844,
+              "sha256": "583699e57aae1557c48d1a6783ffc9c3a482902d100aa8586bf16d58fb669131"
+            },
+            "styles-41e482798e1db462.css": {
+              "bytes": 127545,
+              "sha256": "5b081ea10781072d9f809bc92c09331de707e63c35f280cea8f03d57323b42b8"
+            },
+            "service-worker.js": {
+              "bytes": 6066,
+              "sha256": "f6f3ddb0c8efee2fc5f42837b872ed417cda0c32fb14d2ad70e02177da2003fe"
+            },
+            "manifest.webmanifest": {
+              "bytes": 666,
+              "sha256": "cbec4dcfee8c294df6e33d782e8c1dcc9db6747c9456be89dff32a32bec78ae8"
+            },
+            "openwebide-frontend-cbe5486041565128.js": {
+              "bytes": 125941,
+              "sha256": "cbe54860415651285fa4ae9ad87842e491a0d717533df4b999b322c36a682a48"
+            },
+            "logo.svg": {
+              "bytes": 499,
+              "sha256": "28db742d4d42122325bd86b324bb60f05ccb3df055ed58307536a41c4e920ab7"
+            },
+            "favicon.svg": {
+              "bytes": 556,
+              "sha256": "c85ddc89e0a2d99d52e124a3f16e4f7cea2d68da4908680255e03245c687512b"
+            },
+            "maskable-icon-192.png": {
+              "bytes": 2151,
+              "sha256": "5cf9b9bb76d2a30997da6272c93e873190c2d11771ffa052f8181375e774fd3e"
+            },
+            "icon-512.png": {
+              "bytes": 11097,
+              "sha256": "5b1bfb344b6c5525f31532d805534f54b496e2f1cb6f5aae7deafbf19e5d43d9"
+            },
+            "frontend-startup-51e27ab2446bf18f.raw.bin": {
+              "bytes": 18890486,
+              "sha256": "51e27ab2446bf18fc21328c43446f02c59ea833af4a8847ad505450018b67eb5"
+            },
+            "pwa.js": {
+              "bytes": 5297,
+              "sha256": "81c9716c0f4d573404f365a05ee343ac62c77735d81f72e5bf045425e42a33e1"
+            },
+            "fonts/MonaspaceRadon-v1.400.woff2": {
+              "bytes": 796308,
+              "sha256": "6411b3c2b3e02e3913248184800d6c5a83bb1ccd1472daeb7bfee605c176cb33"
+            },
+            "fonts/MonaspaceKrypton-v1.400.woff2": {
+              "bytes": 445408,
+              "sha256": "f1357532c080c3f976e35ec1d18a92b423d4261103acb7d2cdccffa03a989fad"
+            },
+            "fonts/README.md": {
+              "bytes": 352,
+              "sha256": "1d922dd2a54926d7937fc9c35e9b6a26b88d3fda2d78267ccd5b8089a25c7413"
+            },
+            "fonts/MonaspaceXenon-v1.400.woff2": {
+              "bytes": 583680,
+              "sha256": "eea00c02f4c00f09fd50e80efdb8341975f9eb8c82720ce50f44c19a962996c5"
+            },
+            "fonts/OFL.txt": {
+              "bytes": 4479,
+              "sha256": "481f459f4a5f063c0926aeefd7deac7962b36dcc51d27599a569844eedef5546"
+            },
+            "fonts/MonaspaceNeon-v1.400.woff2": {
+              "bytes": 510832,
+              "sha256": "6569968f448ae856ab5b57dff1f13b109b220ca8e3f664169e135fcb5c4f0721"
+            },
+            "fonts/MonaspaceArgon-v1.400.woff2": {
+              "bytes": 540384,
+              "sha256": "ad0ad84cb65ab56ea82b3098800403aeec1bbc445ba24da0dc87f439b3883db6"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline5.js": {
+              "bytes": 4844,
+              "sha256": "08a020ab8a7f3618e796ef620aabf266137ecb862c574a114e51b415dbc9a850"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline12.js": {
+              "bytes": 361,
+              "sha256": "70b624363333e82c279961d30faa98b59da52c983a01243f02e56e8606207377"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline1.js": {
+              "bytes": 1557,
+              "sha256": "7ead7b3ac7c9c1a5610b58aa8d6e7154c4d04d8b6f99a2a8af043b1780b0c5ca"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline0.js": {
+              "bytes": 594,
+              "sha256": "290f6e3fd61d488609a0c5ca3aef81d0ddc8bbd4546210929a432c138b36f1ab"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline4.js": {
+              "bytes": 17672,
+              "sha256": "ef8d3c20f3b1e0d9942de9e03630643f75fe6e86abba3c9d758eefac0cd82686"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline9.js": {
+              "bytes": 763,
+              "sha256": "6ad241e34559088a9b33223453f3fe87cbc63dec552c2493794cf4a078ca240a"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline8.js": {
+              "bytes": 1223,
+              "sha256": "313c7c3496931d926723d3f76680a85e708fcb20e3357da8ea26ec45f9d6672e"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline10.js": {
+              "bytes": 343,
+              "sha256": "5a03350e2b798b59840b731668642dbd6972266f857de63bb082792c43c0b49e"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline3.js": {
+              "bytes": 549,
+              "sha256": "d435183eac99e32882d1b451f07b63a269f686e90d0cb443dd6f040fe770f6d8"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline7.js": {
+              "bytes": 856,
+              "sha256": "feca7087e793e83b6070e5c2add5bb801827184434d58950827aeaacdbac1d9f"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline6.js": {
+              "bytes": 843,
+              "sha256": "c0b793ce9dc2716cb9d33a19c51c8e1bc8a5f4e14d1c515260c639f3967e4fcd"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline11.js": {
+              "bytes": 381,
+              "sha256": "dacd4f5862ac0013fd541a19440718f6963f45bb93d7512bef7fa2e29eed78ee"
+            },
+            "snippets/openwebide-frontend-a1c24f78e62ce5e7/inline2.js": {
+              "bytes": 4088,
+              "sha256": "f6eec4498237d845bef867094bfb183460d1566245768b8a24adbc95f5bf1fbb"
+            }
+          }
+        },
+        "beforeAudit": {
+          "compilerProcesses": [],
+          "time": 1793602060.488859
+        }
+      },
+      "results": [
+        {
+          "case": "byte-limit",
+          "fileName": "measure.rs",
+          "mode": "local",
+          "wrap": false,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 17.54999999993015,
+            "maximumViewportMs": 18.199999999953434,
+            "maximumColdFullReadinessMs": 1195.7753340000181,
+            "sampledPeakChromePssKiB": 717850
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 19.40000000008149,
+            "maximumViewportMs": 20.400000000023283,
+            "maximumColdFullReadinessMs": 1236.6932090000091,
+            "sampledPeakChromePssKiB": 704185
+          }
+        },
+        {
+          "case": "byte-limit",
+          "fileName": "measure.rs",
+          "mode": "local",
+          "wrap": true,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 51.25000000005821,
+            "maximumViewportMs": 52.40000000002328,
+            "maximumColdFullReadinessMs": 1226.499333999982,
+            "sampledPeakChromePssKiB": 683838
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 34.59999999991851,
+            "maximumViewportMs": 39.5999999998603,
+            "maximumColdFullReadinessMs": 1273.806792000073,
+            "sampledPeakChromePssKiB": 683455
+          }
+        },
+        {
+          "case": "byte-limit",
+          "fileName": "measure.rs",
+          "mode": "remote",
+          "wrap": false,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 21.20000000001164,
+            "maximumViewportMs": 22,
+            "maximumColdFullReadinessMs": 1198.1514170000764,
+            "sampledPeakChromePssKiB": 707335
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 24.999999999883585,
+            "maximumViewportMs": 28.799999999813735,
+            "maximumColdFullReadinessMs": 1241.9951670000273,
+            "sampledPeakChromePssKiB": 705205
+          }
+        },
+        {
+          "case": "byte-limit",
+          "fileName": "measure.rs",
+          "mode": "remote",
+          "wrap": true,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 43.99999999994179,
+            "maximumViewportMs": 45.40000000002328,
+            "maximumColdFullReadinessMs": 1241.0897920000252,
+            "sampledPeakChromePssKiB": 695745
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 32.90000000008149,
+            "maximumViewportMs": 34.60000000009313,
+            "maximumColdFullReadinessMs": 1299.5438760000297,
+            "sampledPeakChromePssKiB": 700038
+          }
+        },
+        {
+          "case": "line-limit",
+          "fileName": "measure.rs",
+          "mode": "local",
+          "wrap": false,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 19.750000000058208,
+            "maximumViewportMs": 22.099999999976717,
+            "maximumColdFullReadinessMs": 932.9272080001374,
+            "sampledPeakChromePssKiB": 575618
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 24.54999999993015,
+            "maximumViewportMs": 25.399999999906868,
+            "maximumColdFullReadinessMs": 990.7452919999287,
+            "sampledPeakChromePssKiB": 585318
+          }
+        },
+        {
+          "case": "line-limit",
+          "fileName": "measure.rs",
+          "mode": "local",
+          "wrap": true,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 61.249999999883585,
+            "maximumViewportMs": 62.799999999813735,
+            "maximumColdFullReadinessMs": 990.0145829999474,
+            "sampledPeakChromePssKiB": 575752
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 47.40000000002328,
+            "maximumViewportMs": 50.800000000046566,
+            "maximumColdFullReadinessMs": 1029.2738759999338,
+            "sampledPeakChromePssKiB": 575693
+          }
+        },
+        {
+          "case": "line-limit",
+          "fileName": "measure.rs",
+          "mode": "remote",
+          "wrap": false,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 22.44999999983702,
+            "maximumViewportMs": 25.799999999813735,
+            "maximumColdFullReadinessMs": 957.0089579999603,
+            "sampledPeakChromePssKiB": 575682
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 24.699999999953434,
+            "maximumViewportMs": 31.199999999953434,
+            "maximumColdFullReadinessMs": 1003.9904170000682,
+            "sampledPeakChromePssKiB": 578408
+          }
+        },
+        {
+          "case": "line-limit",
+          "fileName": "measure.rs",
+          "mode": "remote",
+          "wrap": true,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 61.70000000001164,
+            "maximumViewportMs": 62.199999999953434,
+            "maximumColdFullReadinessMs": 1000.8824579999782,
+            "sampledPeakChromePssKiB": 576067
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 51.34999999997672,
+            "maximumViewportMs": 54.699999999953434,
+            "maximumColdFullReadinessMs": 1043.1160420000651,
+            "sampledPeakChromePssKiB": 585446
+          }
+        },
+        {
+          "case": "long-line",
+          "fileName": "measure.rs",
+          "mode": "local",
+          "wrap": false,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 90.29999999981374,
+            "maximumViewportMs": 91.29999999981374,
+            "maximumColdFullReadinessMs": 1590.3141670000878,
+            "sampledPeakChromePssKiB": 718692
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 86.74999999988358,
+            "maximumViewportMs": 87.39999999990687,
+            "maximumColdFullReadinessMs": 1642.0420419999573,
+            "sampledPeakChromePssKiB": 746368
+          }
+        },
+        {
+          "case": "long-line",
+          "fileName": "measure.rs",
+          "mode": "local",
+          "wrap": true,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 65.75,
+            "maximumViewportMs": 65.89999999990687,
+            "maximumColdFullReadinessMs": 1614.3662920001134,
+            "sampledPeakChromePssKiB": 671341
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 66.00000000011642,
+            "maximumViewportMs": 66.9000000001397,
+            "maximumColdFullReadinessMs": 1637.072126000021,
+            "sampledPeakChromePssKiB": 673049
+          }
+        },
+        {
+          "case": "long-line",
+          "fileName": "measure.rs",
+          "mode": "remote",
+          "wrap": false,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 87.55000000004657,
+            "maximumViewportMs": 87.9000000001397,
+            "maximumColdFullReadinessMs": 1609.6700839998448,
+            "sampledPeakChromePssKiB": 752203
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 87.0,
+            "maximumViewportMs": 87.9000000001397,
+            "maximumColdFullReadinessMs": 1668.8218340000276,
+            "sampledPeakChromePssKiB": 721395
+          }
+        },
+        {
+          "case": "long-line",
+          "fileName": "measure.rs",
+          "mode": "remote",
+          "wrap": true,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 68.25,
+            "maximumViewportMs": 69.5,
+            "maximumColdFullReadinessMs": 1567.0977090001088,
+            "sampledPeakChromePssKiB": 678140
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 66.44999999995343,
+            "maximumViewportMs": 66.69999999995343,
+            "maximumColdFullReadinessMs": 1641.0732510000798,
+            "sampledPeakChromePssKiB": 682430
+          }
+        },
+        {
+          "case": "styled-long-line",
+          "fileName": "measure.rs",
+          "mode": "local",
+          "wrap": false,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 92.74999999988358,
+            "maximumViewportMs": 92.89999999990687,
+            "maximumColdFullReadinessMs": 1140.9330839999257,
+            "sampledPeakChromePssKiB": 683336
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 83.59999999997672,
+            "maximumViewportMs": 85,
+            "maximumColdFullReadinessMs": 1199.4254999999612,
+            "sampledPeakChromePssKiB": 697910
+          }
+        },
+        {
+          "case": "styled-long-line",
+          "fileName": "measure.rs",
+          "mode": "local",
+          "wrap": true,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 66.34999999997672,
+            "maximumViewportMs": 67,
+            "maximumColdFullReadinessMs": 1379.6102090000204,
+            "sampledPeakChromePssKiB": 668392
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 89.14999999990687,
+            "maximumViewportMs": 89.5999999998603,
+            "maximumColdFullReadinessMs": 1407.9662919998555,
+            "sampledPeakChromePssKiB": 684692
+          }
+        },
+        {
+          "case": "styled-long-line",
+          "fileName": "measure.rs",
+          "mode": "remote",
+          "wrap": false,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 92.55000000004657,
+            "maximumViewportMs": 93,
+            "maximumColdFullReadinessMs": 1289.6710840000196,
+            "sampledPeakChromePssKiB": 669029
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 85.04999999993015,
+            "maximumViewportMs": 85.0999999998603,
+            "maximumColdFullReadinessMs": 1348.8369169999714,
+            "sampledPeakChromePssKiB": 699323
+          }
+        },
+        {
+          "case": "styled-long-line",
+          "fileName": "measure.rs",
+          "mode": "remote",
+          "wrap": true,
+          "baseline": {
+            "observations": 2,
+            "medianViewportMs": 66.79999999993015,
+            "maximumViewportMs": 66.89999999990687,
+            "maximumColdFullReadinessMs": 1385.6633339999007,
+            "sampledPeakChromePssKiB": 674077
+          },
+          "viewport-stable": {
+            "observations": 2,
+            "medianViewportMs": 92.54999999993015,
+            "maximumViewportMs": 94.19999999995343,
+            "maximumColdFullReadinessMs": 1428.4256259998074,
+            "sampledPeakChromePssKiB": 695557
+          }
+        }
+      ]
+    }
+  }
+}
