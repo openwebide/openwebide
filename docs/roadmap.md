@@ -22,7 +22,9 @@ inspection and shared Git-status icons in both project modes.
 The model setup and code hardening follow-ups are implemented. Native and browser
 contracts cover both modes, failures, stale results and fallbacks. Chat and agent
 reply budgets now use remaining context capacity per request unless explicitly
-limited; compaction keeps a separate planning reserve. Docker checks
+limited; compaction keeps a separate planning reserve. Invalid tool-call history
+replays as valid diagnostic data through the shared model transport, preserving
+failed-call details and execution validation in both project modes. Docker checks
 cover authenticated WebSocket PTYs, real-model streaming, remote file writes,
 host-owned Git workspaces, supervisor shutdown and bridge-disabled SSE fallback.
 [Reload recovery](reload-recovery.md) covers mid-run and multi-window checks, plus

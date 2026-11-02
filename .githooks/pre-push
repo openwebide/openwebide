@@ -24,6 +24,11 @@ for tool in "${required_tools[@]}"; do
 done
 
 repo_root="$(git rev-parse --show-toplevel)"
+# Tests create their own repositories. Hook-local Git variables otherwise make
+# those commands target this checkout, especially from a linked worktree.
+while IFS= read -r git_local_variable; do
+  unset "$git_local_variable"
+done < <(git rev-parse --local-env-vars)
 cd "$repo_root"
 
 # Determine changed files relative to upstream (or HEAD~1 if no upstream)
