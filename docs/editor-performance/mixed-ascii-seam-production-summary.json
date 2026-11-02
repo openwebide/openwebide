@@ -1,0 +1,257 @@
+{
+  "scope": "Production near-MiB styled Rust String, verified beginning caret and complete source after edit in both modes, wrapping off/on; three alternating artifact pairs per configuration",
+  "samples": 24,
+  "rawSha256": "f64fbe8eda30a7bc5ac7bf6f9583d2cdc40d359f505e24b338d8e0bee8f28432",
+  "allSourceVerified": true,
+  "allFinalPssPresent": true,
+  "audits": [
+    {
+      "beforeComparisonAudit": {
+        "compilerProcesses": [],
+        "auditTime": 1793544205.811709
+      }
+    },
+    {
+      "afterComparisonAudit": {
+        "compilerProcesses": [],
+        "auditTime": 1793544345.26289
+      }
+    }
+  ],
+  "configurations": [
+    {
+      "mode": "local",
+      "wrap": false,
+      "medians": {
+        "baseline": {
+          "inputViewportPaintMs": 102,
+          "inputToPaintMs": 177.6999999999971,
+          "coldCompleteGeometryMs": 1332.2999999999997,
+          "peakChromePssKiB": 676569
+        },
+        "candidate": {
+          "inputViewportPaintMs": 92,
+          "inputToPaintMs": 159,
+          "coldCompleteGeometryMs": 1301.4000000000087,
+          "peakChromePssKiB": 688645
+        }
+      },
+      "pairs": [
+        {
+          "pair": 1,
+          "candidateMinusBaselineMs": {
+            "inputViewportPaintMs": -11.400000000000546,
+            "inputToPaintMs": -19.199999999999818,
+            "coldCompleteGeometryMs": 78.70000000000027
+          }
+        },
+        {
+          "pair": 2,
+          "candidateMinusBaselineMs": {
+            "inputViewportPaintMs": -10.799999999995634,
+            "inputToPaintMs": -18.0,
+            "coldCompleteGeometryMs": -36.700000000004366
+          }
+        },
+        {
+          "pair": 3,
+          "candidateMinusBaselineMs": {
+            "inputViewportPaintMs": -9.19999999999709,
+            "inputToPaintMs": -19.80000000000291,
+            "coldCompleteGeometryMs": -24.79999999998836
+          }
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "wrap": false,
+      "medians": {
+        "baseline": {
+          "inputViewportPaintMs": 103.10000000000036,
+          "inputToPaintMs": 177.89999999999964,
+          "coldCompleteGeometryMs": 1383.4000000000087,
+          "peakChromePssKiB": 670733
+        },
+        "candidate": {
+          "inputViewportPaintMs": 96.09999999999854,
+          "inputToPaintMs": 177.60000000000218,
+          "coldCompleteGeometryMs": 1352.5999999999985,
+          "peakChromePssKiB": 716537
+        }
+      },
+      "pairs": [
+        {
+          "pair": 1,
+          "candidateMinusBaselineMs": {
+            "inputViewportPaintMs": -11.899999999999636,
+            "inputToPaintMs": -0.2999999999974534,
+            "coldCompleteGeometryMs": -179.50000000000182
+          }
+        },
+        {
+          "pair": 2,
+          "candidateMinusBaselineMs": {
+            "inputViewportPaintMs": -2.7000000000043656,
+            "inputToPaintMs": 3.099999999998545,
+            "coldCompleteGeometryMs": -36.60000000000582
+          }
+        },
+        {
+          "pair": 3,
+          "candidateMinusBaselineMs": {
+            "inputViewportPaintMs": -6.100000000005821,
+            "inputToPaintMs": -4.0,
+            "coldCompleteGeometryMs": 126.09999999999127
+          }
+        }
+      ]
+    },
+    {
+      "mode": "local",
+      "wrap": true,
+      "medians": {
+        "baseline": {
+          "inputViewportPaintMs": 109.19999999999709,
+          "inputToPaintMs": 402.1000000000058,
+          "coldCompleteGeometryMs": 1542,
+          "peakChromePssKiB": 720286
+        },
+        "candidate": {
+          "inputViewportPaintMs": 99,
+          "inputToPaintMs": 403.79999999999563,
+          "coldCompleteGeometryMs": 1530.699999999997,
+          "peakChromePssKiB": 736724
+        }
+      },
+      "pairs": [
+        {
+          "pair": 1,
+          "candidateMinusBaselineMs": {
+            "inputViewportPaintMs": -8.399999999997817,
+            "inputToPaintMs": -2.600000000002183,
+            "coldCompleteGeometryMs": 1.3000000000029104
+          }
+        },
+        {
+          "pair": 2,
+          "candidateMinusBaselineMs": {
+            "inputViewportPaintMs": -9.60000000000582,
+            "inputToPaintMs": 4.69999999999709,
+            "coldCompleteGeometryMs": 41.89999999999418
+          }
+        },
+        {
+          "pair": 3,
+          "candidateMinusBaselineMs": {
+            "inputViewportPaintMs": -10.999999999985448,
+            "inputToPaintMs": -4.800000000017462,
+            "coldCompleteGeometryMs": -12.599999999991269
+          }
+        }
+      ]
+    },
+    {
+      "mode": "remote",
+      "wrap": true,
+      "medians": {
+        "baseline": {
+          "inputViewportPaintMs": 110.79999999999563,
+          "inputToPaintMs": 403.1999999999971,
+          "coldCompleteGeometryMs": 1588.199999999997,
+          "peakChromePssKiB": 727315
+        },
+        "candidate": {
+          "inputViewportPaintMs": 93.19999999999709,
+          "inputToPaintMs": 403.59999999999127,
+          "coldCompleteGeometryMs": 1557,
+          "peakChromePssKiB": 698608
+        }
+      },
+      "pairs": [
+        {
+          "pair": 1,
+          "candidateMinusBaselineMs": {
+            "inputViewportPaintMs": -17.499999999992724,
+            "inputToPaintMs": 9.80000000000291,
+            "coldCompleteGeometryMs": -84.39999999999782
+          }
+        },
+        {
+          "pair": 2,
+          "candidateMinusBaselineMs": {
+            "inputViewportPaintMs": -17.80000000000291,
+            "inputToPaintMs": 0.39999999999417923,
+            "coldCompleteGeometryMs": -26
+          }
+        },
+        {
+          "pair": 3,
+          "candidateMinusBaselineMs": {
+            "inputViewportPaintMs": -11.699999999982538,
+            "inputToPaintMs": -11.799999999973807,
+            "coldCompleteGeometryMs": -0.3000000000029104
+          }
+        }
+      ]
+    }
+  ],
+  "conclusion": "Median input viewport paint is 7.0\u201317.6 ms lower across the four configurations. Full wrapped paint stays near 403 ms; cold complete geometry and sampled peak PSS establish no general improvement. The complete responsiveness/memory/device goal remains open.",
+  "limitations": [
+    "Three samples per artifact/configuration; observations are not a universal performance guarantee.",
+    "Peak PSS is sampled every 200 ms and does not prove complete continuous coverage. All 24 final PSS snapshots are complete.",
+    "Local view measurements use recovery without a directory handle; native permission checks are separate."
+  ],
+  "metadataByArtifact": {
+    "baseline": {
+      "host": "Linux-7.0.14-linuxkit-aarch64-with-glibc2.36",
+      "measurement": "production editor; process-tree memory",
+      "cpuCount": 14,
+      "cgroupMemoryMax": "10737418240",
+      "cgroupCpuMax": "400000 100000",
+      "repetitions": 1,
+      "fileName": "measure.rs",
+      "measurementImage": "sha256:5d362a9df35f1c81d967d68cfd7432961c534cc11894950da3ff0d826255dbab",
+      "inputTimingStart": "beforeinput",
+      "inputPosition": "beginning",
+      "cpuProfiling": false,
+      "workerStartup": "default",
+      "frontendWasmSha256": {
+        "openwebide-frontend-6b05f5e58fbc343f_bg.wasm": "a93ac6cf727de4f7177de94c33ca9147666c08d12a1b9073cef610b408f16518"
+      },
+      "backendWasmSha256": "03d7ab35687e4b64ac2cb68dcacbc93a27edeeef2c570f951e5139da2144491a",
+      "measurementScriptSha256": "8fb6a329a8dec34ef34ba538a369d9f65d66c81e5b6b8a717651a1fd20c24e01",
+      "checkoutHead": "21f5510b6d259845afc61b28b1fb5788d18ed866",
+      "browser": "Chromium 154.0.8037.92 built on Debian GNU/Linux 12 (bookworm)",
+      "artifact": "baseline",
+      "pair": 3,
+      "mode": "remote",
+      "wrap": true
+    },
+    "candidate": {
+      "host": "Linux-7.0.14-linuxkit-aarch64-with-glibc2.36",
+      "measurement": "production editor; process-tree memory",
+      "cpuCount": 14,
+      "cgroupMemoryMax": "10737418240",
+      "cgroupCpuMax": "400000 100000",
+      "repetitions": 1,
+      "fileName": "measure.rs",
+      "measurementImage": "sha256:5d362a9df35f1c81d967d68cfd7432961c534cc11894950da3ff0d826255dbab",
+      "inputTimingStart": "beforeinput",
+      "inputPosition": "beginning",
+      "cpuProfiling": false,
+      "workerStartup": "default",
+      "frontendWasmSha256": {
+        "openwebide-frontend-3a52adcd99aa1bf5_bg.wasm": "8f16dcbc8f542c1fa842feb246fe4a4fcdb25fe8581be52aa1a964f67a937e8b"
+      },
+      "backendWasmSha256": "03d7ab35687e4b64ac2cb68dcacbc93a27edeeef2c570f951e5139da2144491a",
+      "measurementScriptSha256": "8fb6a329a8dec34ef34ba538a369d9f65d66c81e5b6b8a717651a1fd20c24e01",
+      "checkoutHead": "21f5510b6d259845afc61b28b1fb5788d18ed866",
+      "browser": "Chromium 154.0.8037.92 built on Debian GNU/Linux 12 (bookworm)",
+      "artifact": "candidate",
+      "pair": 3,
+      "mode": "remote",
+      "wrap": true
+    }
+  }
+}

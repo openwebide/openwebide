@@ -1582,9 +1582,23 @@ fn HighlightOverlay(
                 whitespace,
             );
         });
+        let frame = actions
+            .row_paint_snapshot(
+                metrics.clone(),
+                projection.clone(),
+                prepared_tokens.clone(),
+                guides.clone(),
+                tab,
+                whitespace,
+            )
+            .is_none_or(|paint| actions.row_preparation_needs_frame(&paint));
         wasm_bindgen_futures::spawn_local(async move {
-            // Collapse a burst before allocating plans or rendering source probes.
-            crate::util::yield_frame().await;
+            // Coalesce input before allocating plans or rendering source probes.
+            if frame {
+                crate::util::yield_frame().await;
+            } else {
+                crate::util::yield_task().await;
+            }
             if batch_key.try_get_value().as_ref().and_then(Option::as_ref) != Some(&key)
                 || !actions.row_preparation_current(ticket)
             {
@@ -1727,6 +1741,52 @@ fn HighlightOverlay(
             && actions.measured_prefix().is_none()
             && actions.paragraph_coverage().is_none()
     });
+    // Wake paint only when complete current viewport geometry becomes eligible.
+    // A boolean memo avoids subscribing the scheduling effect to every row-table
+    // update while still publishing pending grammar before its worker reply.
+    let measured_paint_ready = Memo::new(move |_| {
+        content.track();
+        actions.preparation_revision();
+        actions.font_epoch();
+        tokens.track();
+        indentation.track();
+        show_whitespace.track();
+        let rows = visible.get();
+        let windows = fragment_windows.get();
+        let input = textarea_ref.get();
+        if actions.measured_rows().is_none() {
+            return false;
+        }
+        untrack(|| {
+            let Some(input) = input.filter(|input| current_editor_target(actions, input)) else {
+                return false;
+            };
+            let Some(metrics) = super::editor_rows::metrics_identity(&input) else {
+                return false;
+            };
+            if actions
+                .measured_viewport_paint_metrics(
+                    &rows,
+                    &tokens.get_untracked(),
+                    show_whitespace.get_untracked(),
+                )
+                .as_ref()
+                == Some(&metrics)
+            {
+                return true;
+            }
+            if actions.preferences().word_wrap || windows.is_empty() {
+                return false;
+            }
+            let mut ready = false;
+            fragment_cache.update_value(|cache| {
+                ready = actions
+                    .measured_fragment_paint(cache, &rows, &windows, editor_row_height(&input))
+                    .is_some_and(|(measured, _)| measured == metrics);
+            });
+            ready
+        })
+    });
     let partial_geometry = Memo::new(move |_| {
         actions.measured_rows().is_none()
             && (actions.paragraph_coverage().is_some()
@@ -1740,163 +1800,290 @@ fn HighlightOverlay(
     let generation = StoredValue::new(0_u64);
     let queued_generation = StoredValue::new(0_u64);
     let path = StoredValue::new(None::<String>);
-    let paint = Callback::new(move |immediate: bool| {
-        request.set_value(None);
-        if generation.get_value() != queued_generation.get_value()
-            || open_file.get_untracked() != path.get_value()
-            || node_ref.get_untracked().is_none()
-        {
-            return;
-        }
-        if !immediate && retain_style.run(()) {
-            return;
-        }
-        if !immediate && !actions.viewport_paint_ready(&visible.get_untracked()) {
-            if actions.defer_viewport_paint(&visible.get_untracked()) {
-                presentation.set(false);
+    #[derive(Clone, PartialEq)]
+    struct PublishedViewport {
+        scope: Option<crate::state_actions::editor::EditorPresentationScope>,
+        rows: Vec<usize>,
+        top: f64,
+        scroll_left: f64,
+        scroll_top: f64,
+        metrics: String,
+        font: u64,
+        input: web_sys::HtmlTextAreaElement,
+    }
+    let viewport_identity = Callback::new(move |()| {
+        untrack(|| {
+            let rows = visible.get_untracked();
+            if rows.is_empty() || viewport.get_untracked().rows.is_empty() {
+                return None;
             }
-            return;
-        }
-        let render = |source_slices: &[crate::state_actions::editor::EditorRowSourceSlice]| {
-            tokens.with_untracked(|(prepared, tokens)| {
-                guides.with_untracked(|guides| {
-                    highlight_html(
-                        tokens,
-                        *prepared,
-                        guides,
-                        PaintRows {
-                            paint: None,
-                            indices: &visible.get_untracked(),
-                            projection: actions.projection().as_ref(),
-                            source: actions.projection().as_ref(),
-                            source_slices,
-                        },
-                        indentation.get_untracked(),
-                        show_whitespace.get_untracked(),
-                        actions.projection().is_some_and(|projection| {
-                            viewport.get_untracked().rows.end < projection.lines().len()
-                        }),
-                    )
-                })
+            let input = textarea_ref.get_untracked()?;
+            let scroll = crate::viewport::editor_scroll(&input);
+            Some(PublishedViewport {
+                scope: presentation_scope.get_untracked(),
+                rows,
+                top: viewport.get_untracked().top,
+                scroll_left: scroll.scroll_left(),
+                scroll_top: scroll.scroll_top(),
+                metrics: super::editor_rows::metrics_identity(&input)?,
+                font: actions.font_epoch(),
+                input,
             })
-        };
-        let input = textarea_ref.get_untracked();
-        let windows = fragment_windows.get_untracked();
-        // Native cold input remains visible. Explicit motion/caret probes can
-        // still flush immediately; ordinary paint reuses the pending probe.
-        if !immediate && !windows.is_empty() && geometry_pending.get_untracked() {
-            return;
-        }
-        let mut cached = None;
-        let mut cache_window = None;
-        if let Some(input) = input.as_ref()
-            && current_editor_target(actions, input)
-            && let Some(metrics) = super::editor_rows::metrics_identity(input)
-        {
-            let key =
-                (!windows.is_empty()).then(|| crate::state_actions::editor::EditorFragmentWindow {
-                    rows: visible.get_untracked(),
-                    windows: windows.clone(),
-                    width: crate::viewport::editor_scroll(input).scroll_width(),
-                    height: crate::viewport::editor_scroll(input).client_height(),
-                    trailing: actions.projection().is_some_and(|projection| {
-                        viewport.get_untracked().rows.end < projection.lines().len()
-                    }),
-                });
-            fragment_cache.update_value(|cache| {
-                if actions.fragment_scope(
-                    cache,
-                    metrics,
-                    tokens.get_untracked(),
-                    guides.get_untracked(),
-                    indentation.get_untracked(),
-                    show_whitespace.get_untracked(),
-                ) && let Some(key) = key
-                {
-                    cached = actions.cached_fragment(cache, &key);
-                    cache_window = Some(key);
-                }
-            });
-        }
-        let partial_paragraph =
-            actions.measured_rows().is_none() && actions.paragraph_coverage().is_some();
-        let html = cached.map(Some).unwrap_or_else(|| {
-            let fragment = input.as_ref().and_then(|input| {
-                let mut result = None;
-                fragment_cache.update_value(|cache| {
-                    result = super::editor_geometry::window_paint(
-                        actions, input, render, &windows, cache,
-                    );
-                });
-                result
-            });
-            fragment.map_or_else(
-                || (!partial_paragraph).then(|| render(&[])),
-                |fragment| {
-                    if let Some(key) = cache_window {
-                        fragment_cache.update_value(|cache| {
-                            actions.retain_fragment(cache, key, fragment.clone());
-                        });
-                    }
-                    Some(fragment)
-                },
-            )
-        });
-        let Some(html) = html else {
-            // A failed partial shaping proof waits for complete geometry. It
-            // cannot turn bounded preparation into synchronous full-row paint.
-            ready.set(false);
-            presentation.set(false);
-            return;
-        };
-        if immediate && let Some(overlay) = node_ref.get_untracked() {
-            if let Ok(Some(content)) = overlay.query_selector(".editor-highlight-content") {
-                content.set_inner_html(&html);
-                let _ = content.set_attribute(
-                    "data-editor-scope",
-                    &actions.projection_revision().to_string(),
-                );
-            }
-            if let Some(parent) = overlay.parent_element() {
-                if viewport.get_untracked().rows.is_empty() {
-                    let _ = parent.class_list().remove_1("highlight-ready");
-                } else {
-                    let _ = parent.class_list().add_1("highlight-ready");
-                }
-            }
-            if let Some(textarea) = textarea_ref.get_untracked() {
-                sync_highlight_scroll(&textarea, &overlay);
-            }
-        }
-        painted_whitespace.set_value(show_whitespace.get_untracked());
-        painted_syntax.set_value(Some(tokens.get_untracked()));
-        painted_complete_source
-            .set_value(actions.source_paint_complete(!prepared_paint.get_untracked().1.is_empty()));
-        rendered_scope.set(actions.projection_revision());
-        rendered.set(html);
-        presented_scope.set_value(presentation_scope.get_untracked());
-        presentation.set(!viewport.get_untracked().rows.is_empty());
-        ready.set(
-            !viewport.get_untracked().rows.is_empty()
-                && (!partial_geometry.get_untracked() || actions.paragraph_coverage().is_some()),
-        );
-        let published_generation = generation.get_value();
-        // Re-align after the highlighted HTML reaches the DOM.
-        leptos::leptos_dom::helpers::queue_microtask(move || {
-            if generation.try_get_value() != Some(published_generation)
-                || open_file.try_get_untracked() != path.try_get_value()
+        })
+    });
+    let published_viewport = StoredValue::new_local(None::<PublishedViewport>);
+    #[derive(Clone, PartialEq)]
+    struct WholePaint {
+        scope: Option<crate::state_actions::editor::EditorPresentationScope>,
+        projection: u64,
+        font: u64,
+        rows: Vec<usize>,
+        prepared_source: bool,
+        tokens: usize,
+        guides: Vec<usize>,
+        indentation: openwebide_core::editor::Indentation,
+        whitespace: bool,
+        trailing: bool,
+        input: Option<web_sys::HtmlTextAreaElement>,
+        overlay: Option<web_sys::HtmlElement>,
+    }
+    let whole_paint = StoredValue::new_local(None::<WholePaint>);
+    #[derive(Clone, Copy)]
+    enum OverlayPaint {
+        Scheduled,
+        Immediate,
+        BoundedFragment,
+    }
+    // Paint reads current geometry as a side effect. Immediate publication must
+    // not subscribe its scheduling effect to measurement/cache notifications.
+    let paint = Callback::new(move |mode: OverlayPaint| {
+        untrack(|| {
+            let immediate = !matches!(mode, OverlayPaint::Scheduled);
+            let bounded_only = matches!(mode, OverlayPaint::BoundedFragment);
+            request.set_value(None);
+            if generation.get_value() != queued_generation.get_value()
+                || open_file.get_untracked() != path.get_value()
+                || node_ref.get_untracked().is_none()
             {
                 return;
             }
-            if let (Some(Some(textarea)), Some(Some(overlay))) = (
-                textarea_ref.try_get_untracked(),
-                node_ref.try_get_untracked(),
-            ) {
-                sync_highlight_scroll(&textarea, &overlay);
+            if !immediate && retain_style.run(()) {
+                return;
             }
+            if !immediate && !actions.viewport_paint_ready(&visible.get_untracked()) {
+                if actions.defer_viewport_paint(&visible.get_untracked()) {
+                    presentation.set(false);
+                }
+                return;
+            }
+            let render =
+                |source_slices: &[crate::state_actions::editor::EditorRowSourceSlice]| {
+                    tokens.with_untracked(|(prepared, tokens)| {
+                        guides.with_untracked(|guides| {
+                            highlight_html(
+                                tokens,
+                                *prepared,
+                                guides,
+                                PaintRows {
+                                    paint: None,
+                                    indices: &visible.get_untracked(),
+                                    projection: actions.projection().as_ref(),
+                                    source: actions.projection().as_ref(),
+                                    source_slices,
+                                },
+                                indentation.get_untracked(),
+                                show_whitespace.get_untracked(),
+                                actions.projection().is_some_and(|projection| {
+                                    viewport.get_untracked().rows.end < projection.lines().len()
+                                }),
+                            )
+                        })
+                    })
+                };
+            let input = textarea_ref.get_untracked();
+            let windows = fragment_windows.get_untracked();
+            // Complete source rows reflow through CSS. Their HTML depends on source,
+            // folds and syntax, but not on the measured width or wrapping preference.
+            // Fragment HTML continues to require its exact measured window.
+            let whole = windows.is_empty().then(|| {
+                let rows = visible.get_untracked();
+                WholePaint {
+                    scope: presentation_scope.get_untracked(),
+                    projection: actions.projection_revision(),
+                    font: actions.font_epoch(),
+                    prepared_source: tokens.with_untracked(|paint| paint.0),
+                    tokens: tokens.with_untracked(|(_, tokens)| {
+                        std::sync::Arc::as_ptr(tokens) as *const () as usize
+                    }),
+                    guides: guides.with_untracked(|guides| {
+                        rows.iter()
+                            .map(|row| guides.get(*row).copied().unwrap_or(0))
+                            .collect()
+                    }),
+                    rows,
+                    indentation: indentation.get_untracked(),
+                    whitespace: show_whitespace.get_untracked(),
+                    trailing: actions.projection().is_some_and(|projection| {
+                        viewport.get_untracked().rows.end < projection.lines().len()
+                    }),
+                    input: input.clone(),
+                    overlay: node_ref.get_untracked().map(|overlay| (*overlay).clone()),
+                }
+            });
+            // Native cold input remains visible. Explicit motion/caret probes can
+            // still flush immediately; ordinary paint reuses the pending probe.
+            if !immediate && !windows.is_empty() && geometry_pending.get_untracked() {
+                return;
+            }
+            let mut cached = None;
+            let mut cache_window = None;
+            let mut bounded_ready = !bounded_only;
+            if let Some(input) = input.as_ref()
+                && current_editor_target(actions, input)
+                && let Some(metrics) = super::editor_rows::metrics_identity(input)
+            {
+                let key = (!windows.is_empty()).then(|| {
+                    crate::state_actions::editor::EditorFragmentWindow {
+                        rows: visible.get_untracked(),
+                        windows: windows.clone(),
+                        width: crate::viewport::editor_scroll(input).scroll_width(),
+                        height: crate::viewport::editor_scroll(input).client_height(),
+                        trailing: actions.projection().is_some_and(|projection| {
+                            viewport.get_untracked().rows.end < projection.lines().len()
+                        }),
+                    }
+                });
+                fragment_cache.update_value(|cache| {
+                    if actions.fragment_scope(
+                        cache,
+                        metrics.clone(),
+                        tokens.get_untracked(),
+                        guides.get_untracked(),
+                        indentation.get_untracked(),
+                        show_whitespace.get_untracked(),
+                    ) {
+                        if bounded_only {
+                            bounded_ready = actions
+                                .measured_fragment_paint(
+                                    cache,
+                                    &visible.get_untracked(),
+                                    &windows,
+                                    editor_row_height(input),
+                                )
+                                .is_some_and(|(measured, _)| measured == metrics);
+                        }
+                        if let Some(key) = key {
+                            cached = actions.cached_fragment(cache, &key);
+                            cache_window = Some(key);
+                        }
+                    }
+                });
+            }
+            if !bounded_ready {
+                ready.set(false);
+                presentation.set(false);
+                return;
+            }
+            let partial_paragraph =
+                actions.measured_rows().is_none() && actions.paragraph_coverage().is_some();
+            let reused = whole.as_ref().and_then(|whole| {
+                whole_paint.with_value(|previous| {
+                    (previous.as_ref() == Some(whole)).then(|| rendered.get_untracked())
+                })
+            });
+            let html = reused.or(cached).map(Some).unwrap_or_else(|| {
+                let fragment = input.as_ref().and_then(|input| {
+                    let mut result = None;
+                    fragment_cache.update_value(|cache| {
+                        result = super::editor_geometry::window_paint(
+                            actions,
+                            input,
+                            render,
+                            &windows,
+                            cache,
+                            bounded_only.then_some(visible.get_untracked()).as_deref(),
+                        );
+                    });
+                    result
+                });
+                fragment.map_or_else(
+                    || (!bounded_only && !partial_paragraph).then(|| render(&[])),
+                    |fragment| {
+                        if let Some(key) = cache_window {
+                            fragment_cache.update_value(|cache| {
+                                actions.retain_fragment(cache, key, fragment.clone());
+                            });
+                        }
+                        Some(fragment)
+                    },
+                )
+            });
+            let Some(html) = html else {
+                // A failed partial shaping proof waits for complete geometry. It
+                // cannot turn bounded preparation into synchronous full-row paint.
+                ready.set(false);
+                presentation.set(false);
+                return;
+            };
+            if immediate && let Some(overlay) = node_ref.get_untracked() {
+                if let Ok(Some(content)) = overlay.query_selector(".editor-highlight-content") {
+                    content.set_inner_html(&html);
+                    let _ = content.set_attribute(
+                        "data-editor-scope",
+                        &actions.projection_revision().to_string(),
+                    );
+                }
+                if let Some(parent) = overlay.parent_element() {
+                    if viewport.get_untracked().rows.is_empty() {
+                        let _ = parent.class_list().remove_1("highlight-ready");
+                    } else {
+                        let _ = parent.class_list().add_1("highlight-ready");
+                    }
+                }
+                if let Some(textarea) = textarea_ref.get_untracked() {
+                    sync_highlight_scroll(&textarea, &overlay);
+                }
+            }
+            painted_whitespace.set_value(show_whitespace.get_untracked());
+            painted_syntax.set_value(Some(tokens.get_untracked()));
+            whole_paint.set_value(whole);
+            painted_complete_source.set_value(
+                actions.source_paint_complete(!prepared_paint.get_untracked().1.is_empty()),
+            );
+            rendered_scope.set(actions.projection_revision());
+            rendered.set(html);
+            presented_scope.set_value(presentation_scope.get_untracked());
+            // Measurement invalidation can temporarily hide every row. Keep
+            // the last real viewport, including its owner, through that gap.
+            if let Some(viewport) = viewport_identity.run(()) {
+                published_viewport.set_value(Some(viewport));
+            }
+            presentation.set(!viewport.get_untracked().rows.is_empty());
+            ready.set(
+                !viewport.get_untracked().rows.is_empty()
+                    && (!partial_geometry.get_untracked()
+                        || actions.paragraph_coverage().is_some()),
+            );
+            let published_generation = generation.get_value();
+            // Re-align after the highlighted HTML reaches the DOM.
+            leptos::leptos_dom::helpers::queue_microtask(move || {
+                if generation.try_get_value() != Some(published_generation)
+                    || open_file.try_get_untracked() != path.try_get_value()
+                {
+                    return;
+                }
+                if let (Some(Some(textarea)), Some(Some(overlay))) = (
+                    textarea_ref.try_get_untracked(),
+                    node_ref.try_get_untracked(),
+                ) {
+                    sync_highlight_scroll(&textarea, &overlay);
+                }
+            });
         });
     });
-    let callback = StoredValue::new_local(Closure::<dyn FnMut()>::new(move || paint.run(false)));
+    let callback = StoredValue::new_local(Closure::<dyn FnMut()>::new(move || {
+        paint.run(OverlayPaint::Scheduled);
+    }));
     paint_epoch.update(|epoch| *epoch = epoch.wrapping_add(1));
     let paint_ticket = paint_epoch.get_untracked();
     let render_probe = Callback::new(move |(rows, suffix): (Vec<usize>, bool)| {
@@ -1964,7 +2151,7 @@ fn HighlightOverlay(
                 let _ = window().cancel_animation_frame(id);
             }
             queued_generation.set_value(generation.get_value());
-            paint.run(true);
+            paint.run(OverlayPaint::Immediate);
         }),
     }));
 
@@ -1981,13 +2168,15 @@ fn HighlightOverlay(
     }
     let neutral_frame = StoredValue::new_local(None::<NeutralFrame>);
     #[derive(Clone, PartialEq)]
-    struct PendingFrame {
+    struct PaintFrame {
         native: NeutralFrame,
+        bounded_layout: Option<(u64, u64)>,
+        prepared_source: bool,
         tokens: usize,
         guides: Vec<usize>,
         windows: Vec<(usize, openwebide_core::editor::RowPaintWindow)>,
     }
-    let pending_frame = StoredValue::new_local(None::<PendingFrame>);
+    let paint_frame = StoredValue::new_local(None::<PaintFrame>);
 
     Effect::new(move || {
         content.track();
@@ -2013,6 +2202,7 @@ fn HighlightOverlay(
         // stay equal. The memo suppresses unchanged geometry notifications so
         // typing keeps its existing paint coalescing.
         viewport_paint_ready.track();
+        let _ = measured_paint_ready.get();
         let current_path = open_file.get();
         let mounted = node_ref.get().is_some();
         if current_path != path.get_value() || !mounted {
@@ -2046,7 +2236,40 @@ fn HighlightOverlay(
         } else {
             (false, false)
         };
-        let native_current = (neutral_ready || pending_ready)
+        let (source_metrics, fragment_metrics) = untrack(|| {
+            let source_metrics = tokens.with_untracked(|paint| {
+                actions.measured_viewport_paint_metrics(
+                    &visible.get_untracked(),
+                    paint,
+                    show_whitespace.get_untracked(),
+                )
+            });
+            let mut fragment_metrics = None;
+            if source_metrics.is_none()
+                && mounted
+                && !actions.preferences().word_wrap
+                && actions.measured_rows().is_some()
+                && let Some(input) = textarea_ref.get_untracked()
+                && current_editor_target(actions, &input)
+                && let Some(metrics) = super::editor_rows::metrics_identity(&input)
+            {
+                fragment_cache.update_value(|cache| {
+                    fragment_metrics = actions
+                        .measured_fragment_paint(
+                            cache,
+                            &visible.get_untracked(),
+                            &fragment_windows.get_untracked(),
+                            editor_row_height(&input),
+                        )
+                        .filter(|(measured, _)| measured == &metrics)
+                        .map(|(metrics, _)| metrics);
+                });
+            }
+            (source_metrics, fragment_metrics)
+        });
+        let bounded_only = source_metrics.is_none() && fragment_metrics.is_some();
+        let measured_metrics = source_metrics.or(fragment_metrics);
+        let native_current = (neutral_ready || pending_ready || measured_metrics.is_some())
             && mounted
             && textarea_ref.get_untracked().is_some_and(|input| {
                 current_editor_target(actions, &input)
@@ -2056,6 +2279,19 @@ fn HighlightOverlay(
                         == Some(actions.projection_revision())
                     && crate::viewport::editor_scroll(&input).client_width() > 0
                     && crate::viewport::editor_scroll(&input).client_height() > 0
+            });
+        let measured_current = native_current
+            && measured_metrics.as_ref().is_some_and(|metrics| {
+                textarea_ref.get_untracked().is_some_and(|input| {
+                    super::editor_rows::metrics_identity(&input).as_ref() == Some(metrics)
+                })
+            })
+            // Scroll, native-window and font/layout transitions must install
+            // their viewport through the existing scheduled path before edits
+            // can publish immediately into it.
+            && presented_scope.get_value() == presentation_scope.get_untracked()
+            && viewport_identity.run(()).is_some_and(|current| {
+                published_viewport.with_value(|published| published.as_ref() == Some(&current))
             });
         let neutral = native_current && neutral_ready;
         if neutral {
@@ -2086,19 +2322,21 @@ fn HighlightOverlay(
                 request.set_value(None);
                 neutral_frame.set_value(Some(frame));
                 queued_generation.set_value(generation.get_value());
-                paint.run(true);
+                paint.run(OverlayPaint::Immediate);
                 return;
             }
         }
         neutral_frame.set_value(None);
-        if native_current && pending_ready {
+        if native_current && (pending_ready || measured_current) {
             if let Some(id) = request.get_value() {
                 let _ = window().cancel_animation_frame(id);
             }
             request.set_value(None);
             let input = textarea_ref.get_untracked().unwrap();
             let rows = visible.get_untracked();
-            let frame = PendingFrame {
+            let frame = PaintFrame {
+                bounded_layout: bounded_only
+                    .then_some((actions.projection_revision(), actions.layout_epoch())),
                 native: NeutralFrame {
                     scope: presentation_scope.get_untracked(),
                     // Native-window ownership can advance without changing the
@@ -2111,7 +2349,8 @@ fn HighlightOverlay(
                     rows: rows.clone(),
                     input: input.clone(),
                 },
-                tokens: prepared_paint.with_untracked(|(_, tokens)| {
+                prepared_source: tokens.with_untracked(|paint| paint.0),
+                tokens: tokens.with_untracked(|(_, tokens)| {
                     std::sync::Arc::as_ptr(tokens) as *const () as usize
                 }),
                 guides: guides.with_untracked(|guides| {
@@ -2121,7 +2360,7 @@ fn HighlightOverlay(
                 }),
                 windows: fragment_windows.get_untracked(),
             };
-            if pending_frame.with_value(|previous| previous.as_ref() == Some(&frame)) {
+            if paint_frame.with_value(|previous| previous.as_ref() == Some(&frame)) {
                 let scope = actions.projection_revision();
                 rendered_scope.set(scope);
                 if let Some(overlay) = node_ref.get_untracked() {
@@ -2133,12 +2372,18 @@ fn HighlightOverlay(
                 ready.set(true);
                 return;
             }
-            pending_frame.set_value(Some(frame));
+            paint_frame.set_value(Some(frame));
             queued_generation.set_value(generation.get_value());
-            paint.run(true);
-            return;
+            paint.run(if bounded_only {
+                OverlayPaint::BoundedFragment
+            } else {
+                OverlayPaint::Immediate
+            });
+            if ready.get_untracked() {
+                return;
+            }
         }
-        pending_frame.set_value(None);
+        paint_frame.set_value(None);
         if mounted && request.get_value().is_none() {
             queued_generation.set_value(generation.get_value());
             let id = callback.with_value(|callback| {
@@ -3478,7 +3723,10 @@ pub fn Editor(
     view! {
         <div class="editor" node_ref=root style=move || format!("{}; --editor-tab-width: {}", editor_actions.preferences().font_style(), editor_actions.rules().indentation.tab_width()) on:keydown=move |event: web_sys::KeyboardEvent| {
             if event.is_composing() { return; }
-            if (event.ctrl_key() || event.meta_key()) && !event.alt_key() && view_mode.get_untracked() == ViewMode::Code && ta.get_untracked().is_some() && event.key().eq_ignore_ascii_case("g") {
+            if (event.ctrl_key() || event.meta_key()) && !event.alt_key() && !event.shift_key() && event.key().eq_ignore_ascii_case("s") {
+                event.prevent_default(); event.stop_propagation();
+                if !read_only.get_untracked() && dirty.get_untracked() && !recovery_blocks_save.get_untracked() { on_save.run(()); }
+            } else if (event.ctrl_key() || event.meta_key()) && !event.alt_key() && view_mode.get_untracked() == ViewMode::Code && ta.get_untracked().is_some() && event.key().eq_ignore_ascii_case("g") {
                 event.prevent_default(); event.stop_propagation(); open_go.run(());
             } else if (event.ctrl_key() || event.meta_key()) && event.shift_key() && !event.alt_key() && view_mode.get_untracked() == ViewMode::Code && (matches!(event.key().as_str(), "\\" | "|") || event.code() == "Backslash") {
                 event.prevent_default(); event.stop_propagation(); jump_bracket.run(());

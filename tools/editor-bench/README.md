@@ -49,3 +49,15 @@ publication; they exclude browser input, syntax, shaping, layout and paint.
 Compare baseline/candidate binaries built with the same compiler, dependencies
 and profile, interleaving runs on the same otherwise idle host. Single samples
 are not evidence of a whole-editor latency or memory improvement.
+
+For cold admitted documents with 99,998 short ASCII or mixed Unicode/CRLF rows:
+
+```sh
+./target/release/openwebide-editor-bench --construction
+CHROMEDRIVER=/path/to/chromedriver cargo test -p openwebide-editor-bench --release --target wasm32-unknown-unknown shared_construction_workloads -- --nocapture
+```
+
+Each workload repeats construction seven times. Source cloning is outside timing;
+document allocation, admission and coordinate preparation are inside. Complete
+source, row count and sampled native offsets are checked after every construction.
+These exclude editor state publication, worker transport, DOM layout and paint.

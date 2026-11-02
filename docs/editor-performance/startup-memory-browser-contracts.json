@@ -1,0 +1,123 @@
+{
+  "scope": "Actual guarded production bundle in native Chrome: normal and emulated missing decompression capability. Static data missing/corrupt rejected, cache-matched offline page+worker initialized; each valid capability checks sync/concurrent/mixed/retry worker initialization with one Rust ready and the same exports. No physical IME/touch/AT/PWA installation claim.",
+  "metadata": {
+    "memory": {
+      "initial": 321
+    },
+    "offset": 2097152,
+    "end": 20987254,
+    "activeSegments": 100000,
+    "codeSha256": "de38d744e7c1abe8aacfa3f3186267adb728c6656e4c7006c150c2616d0f3b54",
+    "version": 1,
+    "raw": {
+      "file": "frontend-startup-1b040cb470b6d5c3.raw.bin",
+      "bytes": 18890102,
+      "sha256": "1b040cb470b6d5c342a923e64c8dc35bdfc746b817f6095de97fa342454e81e0",
+      "integrity": "sha384-xEU3A0PGuNyHImAxhggHCq+dYP8IpsXPCfzZVV4MUjRTTdNReVnVMZ0ugkJN3W+g"
+    },
+    "gzip": {
+      "file": "frontend-startup-22d0346dbabeea38.bin",
+      "bytes": 1977086,
+      "sha256": "22d0346dbabeea3894f4f64b76e10b82b28d792db9ac928b9e2b8bf703c09406",
+      "integrity": "sha384-/p5+2YMsQhqc5BRa+GbBQeYoRIWr+Jh3673ge0YIaj2e5NfTaGtYXdbYbgNhHEew"
+    },
+    "wasm": {
+      "file": "openwebide-frontend-bd58640923e7efec_bg.wasm",
+      "bytes": 14182130,
+      "sha256": "bd58640923e7efecd2d68ee48b9fd9f72b54b5d3a994eb69d35fe27d96afd746",
+      "integrity": "sha384-g3jU+1ErEL1voc8uoivQzcI3l03FjUs48iXHjp1mNYLT+WjUmYlfcjQqBdiJWQpt"
+    },
+    "bindings": {
+      "file": "openwebide-frontend-18c122db604e9a05.js",
+      "bytes": 125952,
+      "sha256": "18c122db604e9a059482caf840c96eeef235c3cf98c64231a5879e2480302ed7",
+      "integrity": "sha384-k43MpYI8o/+3oe+5iBserJXqfNTA2jOy/wzR8zIL6ILaGzQnVnz/5RNXbPOEQ4kf"
+    },
+    "originalWasm": {
+      "file": "openwebide-frontend-c74b388a40190eb6_bg.wasm",
+      "bytes": 29639572,
+      "sha256": "a70b2f9e2e6c4dc6cde3c1315afd102a09bac8f7bf30b76c3fbefc263d358407",
+      "integrity": "sha384-Qbcp/lJadvHGcS+y3YnvD1xGpcqXtrZrhB9wGu+dNqaQ1xT956eABewrsQqb4+zp"
+    },
+    "originalBindings": {
+      "file": "openwebide-frontend-6c69d7362cedf38b.js",
+      "bytes": 123939,
+      "sha256": "f41e4913080c5d020941b2b0655e869ec16d06d8d05da2a0a726fd142559ab3d",
+      "integrity": "sha384-9fzc7GydA0cKbkaMB4ivj48hca04Uz+5t5BxtDiLSVSfeRO9H4w5Hyqo2FBOT6LT"
+    }
+  },
+  "results": [
+    {
+      "rawCapability": false,
+      "fault": "missing",
+      "result": {
+        "error": "TypeError: Failed to fetch",
+        "errorName": "TypeError",
+        "initialized": false
+      }
+    },
+    {
+      "rawCapability": false,
+      "fault": "corrupt",
+      "result": {
+        "error": "TypeError: Failed to fetch",
+        "errorName": "TypeError",
+        "initialized": false
+      }
+    },
+    {
+      "rawCapability": false,
+      "fault": null,
+      "result": {
+        "initialized": true,
+        "linearBytes": 21299200,
+        "startupAssets": [
+          "/frontend-startup-22d0346dbabeea38.bin"
+        ],
+        "workerReady": true
+      },
+      "workerInitializationContracts": [
+        "sync",
+        "concurrent",
+        "mixed",
+        "retry"
+      ]
+    },
+    {
+      "rawCapability": true,
+      "fault": "missing",
+      "result": {
+        "error": "TypeError: Failed to fetch",
+        "errorName": "TypeError",
+        "initialized": false
+      }
+    },
+    {
+      "rawCapability": true,
+      "fault": "corrupt",
+      "result": {
+        "error": "TypeError: Failed to fetch",
+        "errorName": "TypeError",
+        "initialized": false
+      }
+    },
+    {
+      "rawCapability": true,
+      "fault": null,
+      "result": {
+        "initialized": true,
+        "linearBytes": 21299200,
+        "startupAssets": [
+          "/frontend-startup-1b040cb470b6d5c3.raw.bin"
+        ],
+        "workerReady": true
+      },
+      "workerInitializationContracts": [
+        "sync",
+        "concurrent",
+        "mixed",
+        "retry"
+      ]
+    }
+  ]
+}

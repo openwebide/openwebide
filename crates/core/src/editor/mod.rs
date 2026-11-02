@@ -1024,11 +1024,16 @@ fn replace_indexed_text<T: AsRef<str>>(
         let edits = &edits[batch];
         let changed = edits[0].range.start..edits.last().unwrap().range.end;
         let old_len = text.len();
+        let ascii_seam = index.ascii_seam(text, changed.clone());
         for edit in edits.iter().rev() {
             text.replace_range(edit.range.clone(), edit.text);
         }
         let new_end = text.len() - (old_len - changed.end);
-        index.update(old_len, text, changed, new_end);
+        if ascii_seam {
+            index.update_with_ascii_seam(old_len, text, changed, new_end, true);
+        } else {
+            index.update(old_len, text, changed, new_end);
+        }
     }
     folds.finish_rebase(boundaries, &index.rows);
 }

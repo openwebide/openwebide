@@ -287,6 +287,66 @@ impl EditorActions {
             && self.bounded_viewport_paint_ready(source_rows)
     }
 
+    /// Complete current geometry can paint without another frame after the
+    /// browser adapter verifies these exact native metrics and source install.
+    pub fn measured_viewport_paint_metrics(
+        self,
+        source_rows: &[usize],
+        paint: &(bool, std::sync::Arc<openwebide_core::highlight::TokenRows>),
+        whitespace: bool,
+    ) -> Option<String> {
+        let projection = self.projection()?;
+        if !Self::bounded_source_paint_ready(&projection, source_rows) {
+            return None;
+        }
+        self.measured_paint_metrics(paint, whitespace)
+    }
+
+    pub(super) fn measured_paint_metrics(
+        self,
+        paint: &(bool, std::sync::Arc<openwebide_core::highlight::TokenRows>),
+        whitespace: bool,
+    ) -> Option<String> {
+        if self.is_composing() || !self.full_row_paint_ready() {
+            return None;
+        }
+        let projection = self.projection()?;
+        let measured = self.measured_rows()?;
+        if measured.rows.len() != projection.lines().len()
+            || measured.whitespace != whitespace
+            || measured
+                .syntax
+                .as_ref()
+                .is_none_or(|old| old.0 != paint.0 || !std::sync::Arc::ptr_eq(&old.1, &paint.1))
+        {
+            return None;
+        }
+        let current = self.render_paint(self.syntax_paint());
+        if current.0 != paint.0 || !std::sync::Arc::ptr_eq(&current.1, &paint.1) {
+            return None;
+        }
+        if !paint.0 {
+            let retained = self
+                .retained_paint()
+                .is_some_and(|tokens| std::sync::Arc::ptr_eq(&tokens, &paint.1));
+            let current_source = self.workspace.editor_row_cache.with_untracked(|cache| {
+                cache.as_ref().is_some_and(|cache| {
+                    let old = &cache.paint;
+                    self.row_paint_current(old)
+                        && old.projection.shares_text_version(&projection)
+                        && old.prepared_source == paint.0
+                        && std::sync::Arc::ptr_eq(&old.tokens, &paint.1)
+                        && old.metrics == measured.metrics
+                        && old.whitespace == whitespace
+                        && old.indentation == self.rules_untracked().indentation
+                })
+            });
+            if !retained && !current_source {
+                return None;
+            }
+        }
+        Some(measured.metrics)
+    }
     fn bounded_viewport_paint_ready(self, source_rows: &[usize]) -> bool {
         if self.is_composing() || self.preferences().word_wrap {
             return false;
@@ -850,6 +910,280 @@ mod tests {
     use super::*;
     use crate::state::{auth::AuthState, workspace::WorkspaceState};
     use std::sync::Arc;
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    fn measured_viewport_paint_requires_complete_current_geometry_in_both_modes() {
+        crate::testing::initialize_runtime();
+        use crate::state::{
+            projects::ProjectsState,
+            settings::{SettingsState, Theme},
+        };
+        use openwebide_core::{
+            Project, WorkspaceMode,
+            editor::{MeasuredRows, SyntaxPreparations},
+            highlight::Language,
+        };
+        for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+            for wrapped in [false, true] {
+                for change in [
+                    "complete",
+                    "source",
+                    "path",
+                    "project",
+                    "account",
+                    "read",
+                    "epoch",
+                    "view",
+                    "composition",
+                    "retained",
+                    "neutral",
+                    "long-row",
+                ] {
+                    let owner = Owner::new();
+                    owner.with(|| {
+                        let workspace = WorkspaceState::new();
+                        let auth = AuthState::new();
+                        provide_context(auth);
+                        let settings = SettingsState::new(Theme::Dark, String::new());
+                        settings
+                            .editor_preferences
+                            .update(|preferences| preferences.word_wrap = wrapped);
+                        provide_context(settings);
+                        let projects = ProjectsState::with_active_project(workspace.active_project);
+                        projects.projects.set(vec![Project {
+                            id: 1,
+                            name: "one".into(),
+                            mode,
+                            path: Some("one".into()),
+                            user_id: None,
+                            created_at: 1,
+                        }]);
+                        provide_context(projects);
+                        workspace.active_project.set(Some(1));
+                        workspace.open_file.set(Some("current.rs".into()));
+                        let source = if change == "long-row" {
+                            format!(
+                                "const VALUE: &str = \"{}\";",
+                                "a".repeat(openwebide_core::editor::MAX_MEASURE_BYTES + 1)
+                            )
+                        } else {
+                            "fn sample() { let text = \"文😀e\u{301}\"; }\r\n"
+                                .repeat(openwebide_core::editor::MAX_MEASURE_ROWS + 1)
+                        };
+                        workspace.content.set(source.into());
+                        let actions = EditorActions::new(workspace);
+                        let scope = actions.syntax_scope().unwrap();
+                        let mut syntax = SyntaxPreparations::default();
+                        let (status, analysis) = syntax.prepare_shared(
+                            scope.key.clone(),
+                            Language::Rust,
+                            scope.source.clone(),
+                            scope.tab_width,
+                            || true,
+                        );
+                        assert!(
+                            analysis.is_some(),
+                            "fixture must have prepared syntax: {status:?}"
+                        );
+                        workspace.editor_worker_active.set(true);
+                        workspace.editor_preparation.set(Some(
+                            crate::state::workspace::PreparedEditorSyntax {
+                                scope,
+                                status,
+                                analysis,
+                            },
+                        ));
+                        let paint = actions.syntax_paint();
+                        assert!(paint.0, "fixture must use the current prepared token owner");
+                        let projection = actions.prepare_projection().unwrap();
+                        let count = projection.lines().len();
+                        assert!(
+                            change == "long-row"
+                                || count > openwebide_core::editor::MAX_MEASURE_ROWS
+                        );
+                        assert!(
+                            actions
+                                .measured_viewport_paint_metrics(&[0], &paint, false)
+                                .is_none(),
+                            "cold geometry must wait"
+                        );
+                        let measured =
+                            MeasuredRows::layout(vec![20.0; count], vec![300.0; count]).unwrap();
+                        assert!(actions.publish_measured_paint(
+                            actions.view_revision(),
+                            "exact native metrics".into(),
+                            measured,
+                            Some(paint.clone()),
+                            false
+                        ));
+                        if change == "long-row" {
+                            assert!(
+                                actions
+                                    .measured_viewport_paint_metrics(&[0], &paint, false)
+                                    .is_none(),
+                                "a complete table does not permit unbounded visible paint"
+                            );
+                            return;
+                        }
+                        assert_eq!(
+                            actions
+                                .measured_viewport_paint_metrics(&[0, 1], &paint, false)
+                                .as_deref(),
+                            Some("exact native metrics")
+                        );
+                        assert!(
+                            actions
+                                .measured_viewport_paint_metrics(&[], &paint, false)
+                                .is_none()
+                        );
+                        assert!(
+                            actions
+                                .measured_viewport_paint_metrics(
+                                    &(0..count).collect::<Vec<_>>(),
+                                    &paint,
+                                    false
+                                )
+                                .is_none(),
+                            "visible rows retain the existing bound"
+                        );
+                        assert!(
+                            actions
+                                .measured_viewport_paint_metrics(&[0], &paint, true)
+                                .is_none()
+                        );
+                        assert!(
+                            actions
+                                .measured_viewport_paint_metrics(
+                                    &[0],
+                                    &(false, paint.1.clone()),
+                                    false
+                                )
+                                .is_none()
+                        );
+                        let copied = (true, Arc::new(paint.1.as_ref().clone()));
+                        assert!(
+                            actions
+                                .measured_viewport_paint_metrics(&[0], &copied, false)
+                                .is_none(),
+                            "equal tokens from another owner are not proof"
+                        );
+                        if change == "retained" {
+                            actions
+                                .prepare_edit(openwebide_core::editor::Selection::caret(0))
+                                .unwrap();
+                            actions.insert_native_text("z", 1.0).unwrap().unwrap();
+                            let current_projection = actions.projection().unwrap();
+                            let pending = actions.render_paint(actions.syntax_paint());
+                            assert!(
+                                !pending.0,
+                                "a changed source must retain provisional grammar ownership"
+                            );
+                            let rows = MeasuredRows::layout(
+                                vec![20.0; current_projection.lines().len()],
+                                vec![300.0; current_projection.lines().len()],
+                            )
+                            .unwrap();
+                            assert!(actions.publish_measured_paint(
+                                actions.view_revision(),
+                                "exact native metrics".into(),
+                                rows,
+                                Some(pending.clone()),
+                                false
+                            ));
+                            assert_eq!(
+                                actions
+                                    .measured_viewport_paint_metrics(&[0, 1], &pending, false)
+                                    .as_deref(),
+                                Some("exact native metrics")
+                            );
+                            workspace.editor_read_revision.update(|value| *value += 1);
+                            assert!(
+                                actions
+                                    .measured_viewport_paint_metrics(&[0], &pending, false)
+                                    .is_none(),
+                                "retained grammar cannot cross a read boundary"
+                            );
+                            return;
+                        }
+                        if change == "neutral" {
+                            workspace.editor_preparation.set(None);
+                            let neutral = actions.render_paint(actions.syntax_paint());
+                            assert!(!neutral.0 && neutral.1.is_empty());
+                            let current_projection = actions.projection().unwrap();
+                            let rows = MeasuredRows::layout(
+                                vec![20.0; current_projection.lines().len()],
+                                vec![300.0; current_projection.lines().len()],
+                            )
+                            .unwrap();
+                            assert!(actions.publish_measured_paint(
+                                actions.view_revision(),
+                                "exact native metrics".into(),
+                                rows.clone(),
+                                Some(neutral.clone()),
+                                false
+                            ));
+                            assert!(
+                                actions
+                                    .measured_viewport_paint_metrics(&[0], &neutral, false)
+                                    .is_none(),
+                                "a shared neutral token owner does not identify a measured source"
+                            );
+                            let indentation = actions.rules_untracked().indentation;
+                            let snapshot = actions
+                                .row_paint_snapshot(
+                                    "exact native metrics".into(),
+                                    current_projection,
+                                    neutral.clone(),
+                                    actions.indent_guides(indentation),
+                                    indentation,
+                                    false,
+                                )
+                                .unwrap();
+                            workspace.editor_row_cache.set(Some(
+                                crate::state::workspace::EditorRowCache {
+                                    paint: snapshot,
+                                    rows,
+                                },
+                            ));
+                            assert_eq!(
+                                actions
+                                    .measured_viewport_paint_metrics(&[0, 1], &neutral, false)
+                                    .as_deref(),
+                                Some("exact native metrics")
+                            );
+                            workspace.editor_read_revision.update(|value| *value += 1);
+                            assert!(
+                                actions
+                                    .measured_viewport_paint_metrics(&[0], &neutral, false)
+                                    .is_none(),
+                                "current-source geometry cannot cross a read boundary"
+                            );
+                            return;
+                        }
+                        match change {
+                            "source" => workspace.content.set("replacement".into()),
+                            "path" => workspace.open_file.set(Some("other.rs".into())),
+                            "project" => workspace.active_project.set(Some(2)),
+                            "account" => auth.generation.update(|value| *value += 1),
+                            "read" => workspace.editor_read_revision.update(|value| *value += 1),
+                            "epoch" => workspace.pending_epoch.update(|value| *value += 1),
+                            "view" => workspace.editor_layout_epoch.update(|value| *value += 1),
+                            "composition" => actions.begin_composition(),
+                            _ => {}
+                        }
+                        assert_eq!(
+                            actions
+                                .measured_viewport_paint_metrics(&[0], &paint, false)
+                                .is_some(),
+                            change == "complete",
+                            "stale {change} must not authorize immediate paint"
+                        );
+                    });
+                    owner.cleanup();
+                }
+            }
+        }
+    }
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn request_publication_yields_and_rejects_replaced_owners_in_both_modes() {

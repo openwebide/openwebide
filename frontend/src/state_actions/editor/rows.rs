@@ -1007,6 +1007,24 @@ impl EditorActions {
         let plan = preparation.finish()?;
         Some((paint, plan))
     }
+    /// Warm wrapped grammar measurements can coalesce through the task queue.
+    /// All planning, measurement and publication retain their existing budgets
+    /// and ownership checks; unwrapped, cold or replaced views wait for a frame.
+    pub fn row_preparation_needs_frame(self, paint: &EditorRowPaint) -> bool {
+        !paint.word_wrap
+            || paint.tokens.is_empty()
+            || self.is_composing()
+            || !self.full_row_paint_ready()
+            || !self.row_paint_current(paint)
+            || self.workspace.editor_row_cache.with_untracked(|cache| {
+                cache.as_ref().is_none_or(|cache| {
+                    cache.paint.tokens.is_empty()
+                        || cache.rows.len() != cache.paint.projection.lines().len()
+                        || !same_measurement_environment(&cache.paint, paint)
+                })
+            })
+    }
+
     fn row_reuse_cache(
         self,
         paint: &EditorRowPaint,
@@ -1487,6 +1505,81 @@ impl EditorActions {
             paint_runs: None,
         })
     }
+
+    /// Complete current geometry can authorize a bounded visible fragment of
+    /// an oversized unwrapped row. The adapter must still validate the cropped
+    /// glyphs and may never fall back to full source within this operation.
+    pub fn measured_fragment_paint(
+        self,
+        cache: &mut EditorFragmentCache,
+        source_rows: &[usize],
+        windows: &[(usize, openwebide_core::editor::RowPaintWindow)],
+        line_height: f64,
+    ) -> Option<(String, Vec<EditorRowSourceSlice>)> {
+        if source_rows.is_empty()
+            || source_rows.len() > openwebide_core::editor::MAX_MEASURE_ROWS
+            || source_rows.windows(2).any(|rows| rows[0] >= rows[1])
+            || windows.is_empty()
+            || windows.len() > source_rows.len()
+            || !line_height.is_finite()
+            || line_height <= 0.0
+        {
+            return None;
+        }
+        let paint = cache.scope.as_ref()?.0.clone();
+        let projection = self.projection()?;
+        if paint.word_wrap
+            || paint.whitespace != self.preferences().show_whitespace
+            || !self.row_paint_current(&paint)
+            || !paint.projection.shares_text_version(&projection)
+            || paint.indentation != self.rules_untracked().indentation
+        {
+            return None;
+        }
+        if windows.iter().enumerate().any(|(at, (row, _))| {
+            projection
+                .lines()
+                .get(*row)
+                .is_none_or(|line| source_rows.binary_search(&line.source_line).is_err())
+                || windows[..at].iter().any(|(previous, _)| previous == row)
+        }) {
+            return None;
+        }
+        let metrics = self.measured_paint_metrics(
+            &(paint.prepared_source, paint.tokens.clone()),
+            paint.whitespace,
+        )?;
+        if paint.metrics != metrics {
+            return None;
+        }
+        let mut bytes = 0_usize;
+        let mut oversized = false;
+        let mut slices = Vec::new();
+        for source in source_rows {
+            let row = projection
+                .lines()
+                .binary_search_by_key(source, |line| line.source_line)
+                .ok()?;
+            let body = projection.line_body(row)?;
+            let slice = windows
+                .iter()
+                .find(|(index, _)| *index == row)
+                .and_then(|(_, window)| self.row_source_slice(cache, row, window, line_height));
+            if body.len() > openwebide_core::editor::MAX_MEASURE_BYTES {
+                oversized = true;
+                slice.as_ref()?;
+            }
+            let count = slice.as_ref().map_or(body.len(), |slice| slice.bytes.len());
+            bytes = bytes.checked_add(count)?;
+            if bytes > openwebide_core::editor::MAX_MEASURE_BYTES {
+                return None;
+            }
+            if let Some(slice) = slice {
+                slices.push(slice);
+            }
+        }
+        oversized.then_some((metrics, slices))
+    }
     fn retained_styled_paint_runs(
         self,
         paint: &EditorRowPaint,
@@ -1792,6 +1885,395 @@ impl EditorActions {
 mod tests {
     use super::*;
     use openwebide_core::highlight::TokenKind;
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    fn measured_fragments_require_current_bounded_source_and_geometry_in_both_modes() {
+        use crate::state::{
+            auth::AuthState,
+            projects::ProjectsState,
+            settings::{SettingsState, Theme},
+            workspace::{PreparedEditorSyntax, WorkspaceState},
+        };
+        use openwebide_core::{
+            Project, WorkspaceMode,
+            editor::{
+                GlyphRectangle, HorizontalGeometry, MeasuredRowGeometry, MeasuredRows,
+                RowPaintWindow, SyntaxPreparations,
+            },
+            highlight::Language,
+        };
+        crate::testing::initialize_runtime();
+        for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+            for change in [
+                "complete",
+                "cold",
+                "missing-anchor",
+                "oversized-window",
+                "stale-window",
+                "duplicate-window",
+                "duplicate-source",
+                "unknown-row",
+                "source",
+                "path",
+                "project",
+                "account",
+                "read",
+                "epoch",
+                "layout",
+                "font",
+                "composition",
+                "tokens",
+                "whitespace",
+                "wrap",
+            ] {
+                let owner = Owner::new();
+                owner.with(|| {
+                    let workspace = WorkspaceState::new();
+                    let auth = AuthState::new();
+                    provide_context(auth);
+                    let settings = SettingsState::new(Theme::Dark, String::new());
+                    settings
+                        .editor_preferences
+                        .update(|preferences| preferences.word_wrap = false);
+                    provide_context(settings);
+                    let projects = ProjectsState::with_active_project(workspace.active_project);
+                    projects.projects.set(vec![Project {
+                        id: 1,
+                        name: "one".into(),
+                        mode,
+                        path: Some("one".into()),
+                        user_id: None,
+                        created_at: 1,
+                    }]);
+                    provide_context(projects);
+                    workspace.active_project.set(Some(1));
+                    workspace.open_file.set(Some("current.rs".into()));
+                    workspace.content.set(
+                        format!(
+                            "const VALUE: &str = \"{}\";\r\n//tail",
+                            "a".repeat(openwebide_core::editor::MAX_MEASURE_BYTES + 1)
+                        )
+                        .into(),
+                    );
+                    let actions = EditorActions::new(workspace);
+                    let scope = actions.syntax_scope().unwrap();
+                    let (status, analysis) = SyntaxPreparations::default().prepare_shared(
+                        scope.key.clone(),
+                        Language::Rust,
+                        scope.source.clone(),
+                        scope.tab_width,
+                        || true,
+                    );
+                    assert!(analysis.is_some());
+                    workspace.editor_worker_active.set(true);
+                    workspace.editor_preparation.set(Some(PreparedEditorSyntax {
+                        scope,
+                        status,
+                        analysis,
+                    }));
+                    let tokens = actions.syntax_paint();
+                    assert!(tokens.0);
+                    let projection = actions.prepare_projection().unwrap();
+                    let glyphs = projection.visual_line_index(0).unwrap().len() - 1;
+                    let width = glyphs as f64 * 10.0;
+                    let indentation = actions.rules_untracked().indentation;
+                    let mut cache = EditorFragmentCache::default();
+                    assert!(actions.fragment_scope(
+                        &mut cache,
+                        "native metrics".into(),
+                        tokens.clone(),
+                        actions.indent_guides(indentation),
+                        indentation,
+                        false
+                    ));
+                    let mut windows = vec![(0, RowPaintWindow::Horizontal(0.0..100.0))];
+                    assert!(
+                        actions
+                            .measured_fragment_paint(&mut cache, &[0], &windows, 20.0)
+                            .is_none(),
+                        "cold geometry cannot mint a fragment proof"
+                    );
+                    assert!(actions.publish_measured_paint(
+                        actions.view_revision(),
+                        "native metrics".into(),
+                        MeasuredRows::layout(vec![20.0; 2], vec![width, 60.0]).unwrap(),
+                        Some(tokens.clone()),
+                        false
+                    ));
+                    assert!(actions.fragment_scope(
+                        &mut cache,
+                        "native metrics".into(),
+                        tokens.clone(),
+                        actions.indent_guides(indentation),
+                        indentation,
+                        false
+                    ));
+                    // Synthetic anchors test authorization only. The browser
+                    // adapter independently checks the actual cropped glyphs.
+                    let mut anchors = (0..40)
+                        .map(|glyph| GlyphRectangle {
+                            glyph,
+                            left: glyph as f64 * 10.0,
+                            top: 0.0,
+                            width: 10.0,
+                            height: 20.0,
+                        })
+                        .collect::<Vec<_>>();
+                    anchors.push(GlyphRectangle {
+                        glyph: glyphs - 1,
+                        left: (glyphs - 1) as f64 * 10.0,
+                        top: 0.0,
+                        width: 10.0,
+                        height: 20.0,
+                    });
+                    actions.retain_measured_row_geometry(
+                        &mut cache,
+                        0,
+                        MeasuredRowGeometry::Horizontal(
+                            HorizontalGeometry::new(glyphs, width, 20.0, anchors).unwrap(),
+                        ),
+                    );
+                    assert!(
+                        actions
+                            .measured_viewport_paint_metrics(&[0], &tokens, false)
+                            .is_none(),
+                        "full source remains over budget"
+                    );
+                    let (metrics, slices) = actions
+                        .measured_fragment_paint(&mut cache, &[0], &windows, 20.0)
+                        .unwrap();
+                    assert_eq!(metrics, "native metrics");
+                    assert_eq!(slices.len(), 1);
+                    assert!(slices[0].bytes.len() < openwebide_core::editor::MAX_MEASURE_BYTES);
+                    assert!(
+                        actions
+                            .measured_fragment_paint(&mut cache, &[], &windows, 20.0)
+                            .is_none()
+                    );
+                    assert!(
+                        actions
+                            .measured_fragment_paint(
+                                &mut cache,
+                                &vec![0; openwebide_core::editor::MAX_MEASURE_ROWS + 1],
+                                &windows,
+                                20.0
+                            )
+                            .is_none()
+                    );
+                    let mut rows = vec![0];
+                    match change {
+                        "cold" => actions.invalidate_measured_rows(),
+                        "missing-anchor" => cache.geometry.clear(),
+                        "oversized-window" => windows[0].1 = RowPaintWindow::Horizontal(0.0..width),
+                        "stale-window" => {
+                            rows.push(1);
+                            windows.push((3, RowPaintWindow::Horizontal(0.0..100.0)));
+                        }
+                        "duplicate-window" => {
+                            rows.push(1);
+                            windows.push(windows[0].clone());
+                        }
+                        "duplicate-source" => rows.push(0),
+                        "unknown-row" => rows[0] = 2,
+                        "source" => workspace.content.set("replacement".into()),
+                        "path" => workspace.open_file.set(Some("other.rs".into())),
+                        "project" => workspace.active_project.set(Some(2)),
+                        "account" => auth.generation.update(|value| *value += 1),
+                        "read" => workspace.editor_read_revision.update(|value| *value += 1),
+                        "epoch" => workspace.pending_epoch.update(|value| *value += 1),
+                        "layout" => workspace.editor_layout_epoch.update(|value| *value += 1),
+                        "font" => workspace.editor_font_epoch.update(|value| *value += 1),
+                        "composition" => actions.begin_composition(),
+                        "tokens" => {
+                            let paint = &mut cache.scope.as_mut().unwrap().0;
+                            paint.tokens = Arc::new(paint.tokens.as_ref().clone());
+                        }
+                        "whitespace" => settings
+                            .editor_preferences
+                            .update(|preferences| preferences.show_whitespace = true),
+                        "wrap" => settings
+                            .editor_preferences
+                            .update(|preferences| preferences.word_wrap = true),
+                        _ => {}
+                    }
+                    assert_eq!(
+                        actions
+                            .measured_fragment_paint(&mut cache, &rows, &windows, 20.0)
+                            .is_some(),
+                        change == "complete",
+                        "{mode:?} {change}"
+                    );
+                });
+                owner.cleanup();
+            }
+        }
+    }
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    fn warm_wrapped_scheduling_rejects_replaced_environments_in_both_modes() {
+        use crate::state::{
+            auth::AuthState,
+            projects::ProjectsState,
+            settings::{SettingsState, Theme},
+            workspace::{EditorRowCache, WorkspaceState},
+        };
+        use openwebide_core::{Project, WorkspaceMode, editor::MeasuredRows};
+        crate::testing::initialize_runtime();
+        for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+            for wrapped in [false, true] {
+                for long_row in [false, true] {
+                    for change in [
+                        "warm",
+                        "source",
+                        "path",
+                        "project",
+                        "account",
+                        "read",
+                        "epoch",
+                        "view",
+                        "font",
+                        "composition",
+                        "missing",
+                        "incomplete",
+                        "neutral",
+                        "cold-style",
+                        "metrics",
+                        "whitespace",
+                        "indentation",
+                        "wrap",
+                    ] {
+                        let owner = Owner::new();
+                        owner.with(|| {
+                            let workspace = WorkspaceState::new();
+                            let auth = AuthState::new();
+                            provide_context(auth);
+                            let settings = SettingsState::new(Theme::Dark, String::new());
+                            settings.editor_preferences.update(|preferences| {
+                                preferences.word_wrap = wrapped;
+                            });
+                            provide_context(settings);
+                            let projects =
+                                ProjectsState::with_active_project(workspace.active_project);
+                            projects.projects.set(vec![Project {
+                                id: 1,
+                                name: "one".into(),
+                                mode,
+                                path: Some("one".into()),
+                                user_id: None,
+                                created_at: 1,
+                            }]);
+                            provide_context(projects);
+                            workspace.active_project.set(Some(1));
+                            workspace.open_file.set(Some("current.rs".into()));
+                            workspace.content.set(if long_row {
+                                "word "
+                                    .repeat(openwebide_core::editor::MAX_MEASURE_BYTES / 5 + 1)
+                                    .into()
+                            } else {
+                                "let text = \"文😀e\u{301}\";\r\n".repeat(1000).into()
+                            });
+                            let actions = EditorActions::new(workspace);
+                            let scope = actions.syntax_scope().unwrap();
+                            let (status, analysis) =
+                                openwebide_core::editor::SyntaxPreparations::default()
+                                    .prepare_shared(
+                                        scope.key.clone(),
+                                        openwebide_core::highlight::Language::Rust,
+                                        scope.source.clone(),
+                                        scope.tab_width,
+                                        || true,
+                                    );
+                            assert!(analysis.is_some());
+                            workspace.editor_preparation.set(Some(
+                                crate::state::workspace::PreparedEditorSyntax {
+                                    scope,
+                                    status,
+                                    analysis,
+                                },
+                            ));
+                            let projection = actions.prepare_projection().unwrap();
+                            workspace.editor_worker_active.set(true);
+                            let indentation = actions.rules_untracked().indentation;
+                            let snapshot = |projection| {
+                                actions
+                                    .row_paint_snapshot(
+                                        "native metrics".into(),
+                                        projection,
+                                        actions.render_paint(actions.syntax_paint()),
+                                        actions.indent_guides(indentation),
+                                        indentation,
+                                        false,
+                                    )
+                                    .unwrap()
+                            };
+                            let old = snapshot(projection);
+                            assert!(!old.tokens.is_empty());
+                            assert!(
+                                actions.row_preparation_needs_frame(&old),
+                                "cold measurements wait for a frame"
+                            );
+                            let count = old.projection.lines().len();
+                            // Geometry here establishes scheduling eligibility only.
+                            // Browser tests independently verify native measurements.
+                            workspace.editor_row_cache.set(Some(EditorRowCache {
+                                paint: old,
+                                rows: MeasuredRows::layout(vec![20.0; count], vec![300.0; count])
+                                    .unwrap(),
+                            }));
+                            actions
+                                .prepare_edit(openwebide_core::editor::Selection::caret(0))
+                                .unwrap();
+                            actions.insert_native_text("z", 1.0).unwrap().unwrap();
+                            let mut current = snapshot(actions.projection().unwrap());
+                            assert_eq!(
+                                actions.row_preparation_needs_frame(&current),
+                                !wrapped,
+                                "only wrapped edits task-coalesce with completed measurements"
+                            );
+                            match change {
+                                "source" => workspace.content.set("replacement".into()),
+                                "path" => workspace.open_file.set(Some("other.rs".into())),
+                                "project" => workspace.active_project.set(Some(2)),
+                                "account" => auth.generation.update(|value| *value += 1),
+                                "read" => {
+                                    workspace.editor_read_revision.update(|value| *value += 1);
+                                }
+                                "epoch" => workspace.pending_epoch.update(|value| *value += 1),
+                                "view" => workspace.editor_layout_epoch.update(|value| *value += 1),
+                                "font" => workspace.editor_font_epoch.update(|value| *value += 1),
+                                "composition" => actions.begin_composition(),
+                                "missing" => workspace.editor_row_cache.set(None),
+                                "neutral" => current.tokens = Arc::new(Vec::new()),
+                                "cold-style" => workspace.editor_row_cache.update(|cache| {
+                                    cache.as_mut().unwrap().paint.tokens = Arc::new(Vec::new());
+                                }),
+                                "incomplete" => workspace.editor_row_cache.update(|cache| {
+                                    cache.as_mut().unwrap().rows = MeasuredRows::layout(
+                                        vec![20.0; count - 1],
+                                        vec![300.0; count - 1],
+                                    )
+                                    .unwrap();
+                                }),
+                                "metrics" => current.metrics.push_str(" changed"),
+                                "whitespace" => current.whitespace = true,
+                                "indentation" => current.indentation.tab_width += 1,
+                                "wrap" => settings
+                                    .editor_preferences
+                                    .update(|preferences| preferences.word_wrap = !wrapped),
+                                _ => {}
+                            }
+                            assert_eq!(
+                                actions.row_preparation_needs_frame(&current),
+                                !wrapped || change != "warm",
+                                "{mode:?}, wrap={wrapped}, long_row={long_row}, {change}"
+                            );
+                        });
+                        owner.cleanup();
+                    }
+                }
+            }
+        }
+    }
 
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn styled_run_preparation_yields_preserves_boundaries_and_rejects_stale_owners() {

@@ -5,4 +5,4 @@ dist = "dist"
 [[hooks]]
 stage = "post_build"
 command = "sh"
-command_arguments = ["pwa/build.sh"]
+command_arguments = ["build.sh"]

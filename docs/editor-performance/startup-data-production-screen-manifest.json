@@ -1,0 +1,101 @@
+{
+  "scope": "Private imported startup-memory comparison, not a shipped change. All original active data-segment indices preserved with empty segments; exact complete original memory restored before initialization. Same full-feature source, executable code and data. Same full-feature source across modes, default optimizer and worker startup; complete source, actual near-1MiB String styling, original readiness deadlines, peak and final Linux PSS required. Three pairs per small/styled/mode/wrap plus candidate admitted/boundary and embedded-source cases. PWA caches current capability data format. No physical device claim.",
+  "startupMemoryManifest": {
+    "scope": "PRIVATE imported-memory attribution, not shipped. Same full code/grammars/UI/fallback. Create the exact original memory in generated glue and stream identical initial bytes before both async and sync initialization. Wasm has explicit memory import, so direct initialization cannot silently use zero data. Raw-data capability fallback included, integrity pinned for both representations, PWA caches the representation supported by this browser; failure/source integration still need verification.",
+    "baselineWasmSha256": "698a969a7f10077fc9ec3336c507eadc8da7af6278d20de4df814f4873926174",
+    "staticImageSha256": "10d264e4be76c22aec0b1cc92bd7dcb23c1b4bcc3e299cfd2884ca10a54b6396",
+    "initialMemoryBytes": 21037056,
+    "staticOffset": 2097152,
+    "staticEnd": 20986870,
+    "staticRawBytes": 18889718,
+    "compressedBytes": 1977136,
+    "staticDataSha256": "4a8c6f49bac9eb1113d33b684a29e94706c639c699f924a70c8159eb1268d6b3",
+    "variants": {
+      "control": {
+        "wasm": "openwebide-frontend-698a969a7f10077f_bg.wasm",
+        "wasmSha256": "698a969a7f10077fc9ec3336c507eadc8da7af6278d20de4df814f4873926174",
+        "wasmBytes": 29639299,
+        "js": "openwebide-frontend-f41e4913080c5d02.js",
+        "jsSha256": "f41e4913080c5d020941b2b0655e869ec16d06d8d05da2a0a726fd142559ab3d"
+      },
+      "imported": {
+        "wasm": "openwebide-frontend-5707a0305fa3c496_bg.wasm",
+        "wasmSha256": "5707a0305fa3c496b4e2d2df1de33b5296fd141baae6164b54ea239edd4479d0",
+        "wasmBytes": 14182130,
+        "js": "openwebide-frontend-0b22ce53acab811d.js",
+        "jsSha256": "0b22ce53acab811d09780b8ddf84485753a6c09598b9252a530010e08049c9a7"
+      }
+    },
+    "emptyActiveSegmentsPreserved": 100000
+  },
+  "waitSyntax": true,
+  "image": "sha256:5d362a9df35f1c81d967d68cfd7432961c534cc11894950da3ff0d826255dbab",
+  "sourceFiles": {
+    "frontend/src/state_actions/editor/input.rs": "85f93ae53b77de814842d51d8d9b166c67005abc8bcfcbb79d20ee79a03340bf",
+    "CHANGELOG.md": "52823f23b154a6e93b74a3aacb12dc40e915cffabcbac0063f2a8fdf3add11a5",
+    "docs/roadmap.md": "6e7bcbefef25f1697026d44f0e7cc7c485b62c076159e2125cd9364b927ba11f"
+  },
+  "variants": {
+    "baseline": {
+      "openwebide-frontend-698a969a7f10077f_bg.wasm": {
+        "bytes": 29639299,
+        "sha256": "698a969a7f10077fc9ec3336c507eadc8da7af6278d20de4df814f4873926174"
+      },
+      "editor-worker-f41e4913080c5d02-698a969a7f10077f.js": {
+        "bytes": 990,
+        "sha256": "7479e7a0d5d431453617d6f7f74723a39aee4ae549ec7a2841a01b6365451d98"
+      },
+      "editor-worker.js": {
+        "bytes": 990,
+        "sha256": "7479e7a0d5d431453617d6f7f74723a39aee4ae549ec7a2841a01b6365451d98"
+      },
+      "openwebide-frontend-f41e4913080c5d02.js": {
+        "bytes": 123939,
+        "sha256": "f41e4913080c5d020941b2b0655e869ec16d06d8d05da2a0a726fd142559ab3d"
+      },
+      "service-worker.js": {
+        "bytes": 5925,
+        "sha256": "e7d4fa29ae3ad9eacb38c107d85daa9882707d38dfdae5c9f85cffce6f0230d3"
+      },
+      "pwa.js": {
+        "bytes": 5297,
+        "sha256": "81c9716c0f4d573404f365a05ee343ac62c77735d81f72e5bf045425e42a33e1"
+      }
+    },
+    "candidate": {
+      "openwebide-frontend-5707a0305fa3c496_bg.wasm": {
+        "bytes": 14182130,
+        "sha256": "5707a0305fa3c496b4e2d2df1de33b5296fd141baae6164b54ea239edd4479d0"
+      },
+      "openwebide-frontend-0b22ce53acab811d.js": {
+        "bytes": 125300,
+        "sha256": "0b22ce53acab811d09780b8ddf84485753a6c09598b9252a530010e08049c9a7"
+      },
+      "editor-worker.js": {
+        "bytes": 990,
+        "sha256": "8737130802232a45f54651e439f3e146f64096670abe3b63725b2d1ea9b370e6"
+      },
+      "service-worker.js": {
+        "bytes": 6066,
+        "sha256": "b9ba1a07eccdc989c58202d0ce42282267e976e51d8b3f1ccbb448303d55103e"
+      },
+      "editor-worker-0b22ce53acab811d-5707a0305fa3c496.js": {
+        "bytes": 990,
+        "sha256": "8737130802232a45f54651e439f3e146f64096670abe3b63725b2d1ea9b370e6"
+      },
+      "pwa.js": {
+        "bytes": 5297,
+        "sha256": "81c9716c0f4d573404f365a05ee343ac62c77735d81f72e5bf045425e42a33e1"
+      },
+      "frontend-startup-6f0be268252db6e2.raw.bin": {
+        "bytes": 18889718,
+        "sha256": "6f0be268252db6e2522716325dfd0c45e5e770407cc2ea88bc5788cbc42ba90d"
+      },
+      "frontend-startup-4a8c6f49bac9eb11.bin": {
+        "bytes": 1977136,
+        "sha256": "4a8c6f49bac9eb1113d33b684a29e94706c639c699f924a70c8159eb1268d6b3"
+      }
+    }
+  },
+  "measurementScriptSha256": "8fb6a329a8dec34ef34ba538a369d9f65d66c81e5b6b8a717651a1fd20c24e01"
+}

@@ -1,0 +1,70 @@
+{
+  "browser": "Google Chrome 156.0.8078.79 macOS arm64 installed PWA",
+  "method": "Native Computer Use via node_repl @oai/sky; actual OS-picked local directory, synthetic Unicode/CRLF fixture and isolated Spin account",
+  "origin": "http://127.0.0.1:58669",
+  "appBundleId": "com.google.Chrome.app.gblgjkpmmncmoenfkhggjiiikajgkpch",
+  "installation": "Explicit user action-time approval, then native Chrome install wizard; test PWA remains installed",
+  "loadedWasmVerifiedThroughNativeDevTools": "openwebide-frontend-3a52adcd99aa1bf5_bg.wasm",
+  "assets": {
+    "openwebide-frontend-3a52adcd99aa1bf5_bg.wasm": "8f16dcbc8f542c1fa842feb246fe4a4fcdb25fe8581be52aa1a964f67a937e8b",
+    "openwebide-frontend-6c69d7362cedf38b.js": "f41e4913080c5d020941b2b0655e869ec16d06d8d05da2a0a726fd142559ab3d"
+  },
+  "verified": [
+    "Current local and remote PWA: native keyboard, Unicode clipboard paste, undo/redo and Command-S; complete expected file bytes and CRLF checked on disk",
+    "Current local and remote PWA: macOS Option+E then E commits \u00e9; undo restores saved source; Option+E then Backspace cancels accent and leaves clean source",
+    "Current local and remote PWA: Ctrl+M lets Tab leave editor for Resize Editor; local Shift+Tab return and Ctrl+M indentation restoration verified",
+    "Native PWA App Info: revoke file editing, apply browser reload; folder/recovery banners and disabled Save preserve source",
+    "Edit while permission revoked; Command-S is consumed without writing or opening Save Page; disk remains unchanged",
+    "Reload installed PWA with revoked permission: exact draft is restored; Save remains blocked pending disk verification",
+    "Native read regrant denied: draft retained and Save remains blocked",
+    "Read regrant alone cannot bypass blocked write permission; restore original browser file-editing setting, reload, then native Save changes to folder prompt grants write access",
+    "After native write regrant, disk verification clears recovery block and enables Save; Command-S writes exact recovered Unicode/CRLF bytes"
+  ],
+  "savedFiles": {
+    "initial": {
+      "bytes": 133,
+      "sha256": "2ae0a430ac22b92e6ecd02ccac47007e164820abee40070cc2f393bdaae647b9",
+      "crlf": 4
+    },
+    "currentLocalSave": {
+      "bytes": 208,
+      "sha256": "6ce6e0276d87675b4300e763cc293c6caa8dfec1d052f09062f62ebda9aaaec9",
+      "crlf": 4
+    },
+    "recoveredLocalSave": {
+      "bytes": 232,
+      "sha256": "eba1bb7fa617b6ac4cf9ce33d283c7aa1e49f3f969f2c3407d7f0760883641ad",
+      "crlf": 4
+    },
+    "currentRemoteSave": {
+      "bytes": 258,
+      "sha256": "a64cf7b4e0e8f509018e7aa6a38615e38f798f63c47d9d0c39494e6d1c9be721",
+      "crlf": 4
+    }
+  },
+  "cachedBuildObservation": {
+    "observed": "After an initial reload, old cached WASM 2e226cecf88dd9b7 opened Save Page on Command-S; draft remained intact",
+    "nativeDevToolsState": {
+      "active": "activated",
+      "waiting": "installed"
+    },
+    "resolution": "Close DevTools, quit only the test PWA, reopen; pending worker activates normally. Native DevTools confirms current WASM 3a52adcd99aa1bf5. Both-mode checks then repeat successfully on the current build.",
+    "scope": "Earlier cached-build checks are excluded from current-artifact pass claims"
+  },
+  "remaining": [
+    "East Asian candidate-selection IME coverage",
+    "Physical touch hardware",
+    "Assistive technology behavior",
+    "Edge/PWA parity",
+    "Overall wrapped/cold/process-memory performance gates"
+  ],
+  "interruptedObservation": "Final remote Shift+Tab/Ctrl+M restoration commands were issued, but desktop capture became unavailable before their result could be observed",
+  "sourceCheckpoint": "87eefd61",
+  "runtimeSources": {
+    "frontend/src/components/editor.rs": "acfc257d619fb1ad7864305a12f587a87a40682dd1723d5cd87316bd0724f45f",
+    "crates/core/src/editor/mod.rs": "e8b5a36539819eda9f53e35ea4dafdeeb560074c56cfe5c30a41ebdeb3b18f44",
+    "crates/core/src/editor/coordinates.rs": "56a79bacf8faee53fe7b0ad0e3b1258bfe3b1a4abe81e7e6e6f8beade586fa0f",
+    "crates/core/src/editor/index.rs": "0a661b60ccda5dd17a450614da032544713b689503c332296e1013e310c2e7ce",
+    "crates/core/src/editor/visual_index.rs": "ec38e1c19d67dec69771967ccfed3609be14d9106c92664dfb64cf308700ec98"
+  }
+}

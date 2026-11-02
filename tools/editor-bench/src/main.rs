@@ -15,7 +15,11 @@ fn main() {
             }
             return;
         }
-        let records = if std::env::args().any(|argument| argument == "--edits") {
+        let records = if std::env::args().any(|argument| argument == "--styled-edits") {
+            openwebide_editor_bench::measure_styled_edits(clock)
+        } else if std::env::args().any(|argument| argument == "--construction") {
+            openwebide_editor_bench::measure_construction(clock)
+        } else if std::env::args().any(|argument| argument == "--edits") {
             openwebide_editor_bench::measure_edits(clock)
         } else if std::env::args().any(|argument| argument == "--lexical") {
             openwebide_editor_bench::measure_lexical(clock)

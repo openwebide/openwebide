@@ -1,0 +1,2903 @@
+{
+  "scope": "Current immutable production artifact 99d5053f2966e2f0, scoped repeated WebDriver results, source-verified Local/Remote and wrapping configurations. Natural cohort supplies latency and natural resident peak; explicit all-owned-target collection cohorts supply retained heaps and DOM counts and are excluded from latency acceptance. Every transition checks complete persisted source and current syntax/geometry. Rust live requested-byte attribution uses a separately identified diagnostic build.",
+  "criteria": {
+    "ordinaryPaintStrictlyBelowMs": 50,
+    "admittedPaintStrictlyBelowMs": 100,
+    "minimumFraction": 0.95,
+    "coldReadinessStrictlyBelowMs": 2000,
+    "memory": "Stable retained application storage after collection; natural resident peaks reported separately."
+  },
+  "natural": [
+    {
+      "case": "small",
+      "sourceBytes": 58000,
+      "mode": "local",
+      "wrap": true,
+      "observations": 41,
+      "underThreshold": 41,
+      "thresholdMs": 50,
+      "p95Ms": 18.59999999962747,
+      "maxMs": 22.90000000037253,
+      "fullColdReadinessMs": 1041.9152509994092,
+      "naturalPeakPssKiB": 605463,
+      "scriptResultScope": "Repeated synchronous script results use ChromeDriver object groups through an owned root element; original script arguments are restored before execution. Initial single-input observation is unchanged."
+    },
+    {
+      "case": "small",
+      "sourceBytes": 58000,
+      "mode": "remote",
+      "wrap": true,
+      "observations": 41,
+      "underThreshold": 41,
+      "thresholdMs": 50,
+      "p95Ms": 18.899999999441206,
+      "maxMs": 30.200000000186265,
+      "fullColdReadinessMs": 1039.5314580000559,
+      "naturalPeakPssKiB": 602449,
+      "scriptResultScope": "Repeated synchronous script results use ChromeDriver object groups through an owned root element; original script arguments are restored before execution. Initial single-input observation is unchanged."
+    },
+    {
+      "case": "small",
+      "sourceBytes": 58000,
+      "mode": "local",
+      "wrap": false,
+      "observations": 41,
+      "underThreshold": 41,
+      "thresholdMs": 50,
+      "p95Ms": 14.299999999813735,
+      "maxMs": 14.599999999627471,
+      "fullColdReadinessMs": 958.9622090006742,
+      "naturalPeakPssKiB": 610017,
+      "scriptResultScope": "Repeated synchronous script results use ChromeDriver object groups through an owned root element; original script arguments are restored before execution. Initial single-input observation is unchanged."
+    },
+    {
+      "case": "small",
+      "sourceBytes": 58000,
+      "mode": "remote",
+      "wrap": false,
+      "observations": 41,
+      "underThreshold": 41,
+      "thresholdMs": 50,
+      "p95Ms": 15.399999999441206,
+      "maxMs": 16.59999999962747,
+      "fullColdReadinessMs": 1056.683000000703,
+      "naturalPeakPssKiB": 603910,
+      "scriptResultScope": "Repeated synchronous script results use ChromeDriver object groups through an owned root element; original script arguments are restored before execution. Initial single-input observation is unchanged."
+    },
+    {
+      "case": "styled-long-line",
+      "sourceBytes": 1048567,
+      "mode": "local",
+      "wrap": true,
+      "observations": 41,
+      "underThreshold": 41,
+      "thresholdMs": 100,
+      "p95Ms": 87,
+      "maxMs": 94.70000000018626,
+      "fullColdReadinessMs": 1332.0010840006944,
+      "naturalPeakPssKiB": 1003252,
+      "scriptResultScope": "Repeated synchronous script results use ChromeDriver object groups through an owned root element; original script arguments are restored before execution. Initial single-input observation is unchanged."
+    },
+    {
+      "case": "styled-long-line",
+      "sourceBytes": 1048567,
+      "mode": "remote",
+      "wrap": true,
+      "observations": 41,
+      "underThreshold": 41,
+      "thresholdMs": 100,
+      "p95Ms": 86,
+      "maxMs": 87.29999999981374,
+      "fullColdReadinessMs": 1348.8547919996563,
+      "naturalPeakPssKiB": 1000933,
+      "scriptResultScope": "Repeated synchronous script results use ChromeDriver object groups through an owned root element; original script arguments are restored before execution. Initial single-input observation is unchanged."
+    },
+    {
+      "case": "styled-long-line",
+      "sourceBytes": 1048567,
+      "mode": "local",
+      "wrap": false,
+      "observations": 41,
+      "underThreshold": 41,
+      "thresholdMs": 100,
+      "p95Ms": 85.70000000018626,
+      "maxMs": 86.30000000074506,
+      "fullColdReadinessMs": 1173.7512919989967,
+      "naturalPeakPssKiB": 978516,
+      "scriptResultScope": "Repeated synchronous script results use ChromeDriver object groups through an owned root element; original script arguments are restored before execution. Initial single-input observation is unchanged."
+    },
+    {
+      "case": "styled-long-line",
+      "sourceBytes": 1048567,
+      "mode": "remote",
+      "wrap": false,
+      "observations": 41,
+      "underThreshold": 41,
+      "thresholdMs": 100,
+      "p95Ms": 85.3999999994412,
+      "maxMs": 88.40000000037253,
+      "fullColdReadinessMs": 1175.6103339994297,
+      "naturalPeakPssKiB": 1037970,
+      "scriptResultScope": "Repeated synchronous script results use ChromeDriver object groups through an owned root element; original script arguments are restored before execution. Initial single-input observation is unchanged."
+    }
+  ],
+  "retained": [
+    {
+      "case": "small",
+      "sourceBytes": 58000,
+      "mode": "local",
+      "wrap": true,
+      "snapshots": [
+        {
+          "cycle": 0,
+          "sourceSha256": "2af3d71c6124a969e95a2d139d6ef4283539e568984a591440947bd0b9890094",
+          "sourceBytes": 58000,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 23986176,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 893,
+            "headChildren": 40,
+            "overlayRows": 17
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 313364,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 43456,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2092904,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3637668,
+                "totalSize": 4894720,
+                "embedderHeapUsedSize": 3355152,
+                "backingStorageSize": 173312
+              }
+            }
+          ],
+          "retainedPssKiB": 567674
+        },
+        {
+          "cycle": 1,
+          "sourceSha256": "2af3d71c6124a969e95a2d139d6ef4283539e568984a591440947bd0b9890094",
+          "sourceBytes": 58000,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 24051712,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 893,
+            "headChildren": 40,
+            "overlayRows": 17
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 313364,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 33592,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2098260,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3649168,
+                "totalSize": 4894720,
+                "embedderHeapUsedSize": 3328064,
+                "backingStorageSize": 173312
+              }
+            }
+          ],
+          "retainedPssKiB": 569615
+        },
+        {
+          "cycle": 5,
+          "sourceSha256": "2af3d71c6124a969e95a2d139d6ef4283539e568984a591440947bd0b9890094",
+          "sourceBytes": 58000,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 24182784,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 893,
+            "headChildren": 40,
+            "overlayRows": 17
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 34816,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2098228,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3697520,
+                "totalSize": 4632576,
+                "embedderHeapUsedSize": 2891008,
+                "backingStorageSize": 173305
+              }
+            }
+          ],
+          "retainedPssKiB": 566679
+        },
+        {
+          "cycle": 10,
+          "sourceSha256": "2af3d71c6124a969e95a2d139d6ef4283539e568984a591440947bd0b9890094",
+          "sourceBytes": 58000,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 24182784,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 893,
+            "headChildren": 40,
+            "overlayRows": 17
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 34848,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2098096,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3722960,
+                "totalSize": 4632576,
+                "embedderHeapUsedSize": 2719304,
+                "backingStorageSize": 173305
+              }
+            }
+          ],
+          "retainedPssKiB": 561152
+        },
+        {
+          "cycle": 20,
+          "sourceSha256": "2af3d71c6124a969e95a2d139d6ef4283539e568984a591440947bd0b9890094",
+          "sourceBytes": 58000,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 24182784,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 893,
+            "headChildren": 40,
+            "overlayRows": 17
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 35296,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2104784,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3796876,
+                "totalSize": 4894720,
+                "embedderHeapUsedSize": 3240536,
+                "backingStorageSize": 173314
+              }
+            }
+          ],
+          "retainedPssKiB": 559416
+        },
+        {
+          "cycle": 40,
+          "sourceSha256": "2af3d71c6124a969e95a2d139d6ef4283539e568984a591440947bd0b9890094",
+          "sourceBytes": 58000,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 24313856,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 893,
+            "headChildren": 40,
+            "overlayRows": 17
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 37864,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2104784,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3841356,
+                "totalSize": 4632576,
+                "embedderHeapUsedSize": 2766384,
+                "backingStorageSize": 173305
+              }
+            }
+          ],
+          "retainedPssKiB": 556966
+        }
+      ]
+    },
+    {
+      "case": "small",
+      "sourceBytes": 58000,
+      "mode": "remote",
+      "wrap": true,
+      "snapshots": [
+        {
+          "cycle": 0,
+          "sourceSha256": "2af3d71c6124a969e95a2d139d6ef4283539e568984a591440947bd0b9890094",
+          "sourceBytes": 58000,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 23986176,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 923,
+            "headChildren": 40,
+            "overlayRows": 18
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 43456,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2092904,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3670064,
+                "totalSize": 4894720,
+                "embedderHeapUsedSize": 3419336,
+                "backingStorageSize": 173312
+              }
+            }
+          ],
+          "retainedPssKiB": 564768
+        },
+        {
+          "cycle": 1,
+          "sourceSha256": "2af3d71c6124a969e95a2d139d6ef4283539e568984a591440947bd0b9890094",
+          "sourceBytes": 58000,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 24117248,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 923,
+            "headChildren": 40,
+            "overlayRows": 18
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 33592,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2098260,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3681160,
+                "totalSize": 4894720,
+                "embedderHeapUsedSize": 3456152,
+                "backingStorageSize": 173312
+              }
+            }
+          ],
+          "retainedPssKiB": 567740
+        },
+        {
+          "cycle": 5,
+          "sourceSha256": "2af3d71c6124a969e95a2d139d6ef4283539e568984a591440947bd0b9890094",
+          "sourceBytes": 58000,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 24182784,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 923,
+            "headChildren": 40,
+            "overlayRows": 18
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 34968,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2098228,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3731940,
+                "totalSize": 4108288,
+                "embedderHeapUsedSize": 2949080,
+                "backingStorageSize": 173305
+              }
+            }
+          ],
+          "retainedPssKiB": 570656
+        },
+        {
+          "cycle": 10,
+          "sourceSha256": "2af3d71c6124a969e95a2d139d6ef4283539e568984a591440947bd0b9890094",
+          "sourceBytes": 58000,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 24182784,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 923,
+            "headChildren": 40,
+            "overlayRows": 18
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 34968,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2098096,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3756672,
+                "totalSize": 4894720,
+                "embedderHeapUsedSize": 3386512,
+                "backingStorageSize": 173314
+              }
+            }
+          ],
+          "retainedPssKiB": 559614
+        },
+        {
+          "cycle": 20,
+          "sourceSha256": "2af3d71c6124a969e95a2d139d6ef4283539e568984a591440947bd0b9890094",
+          "sourceBytes": 58000,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 24182784,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 923,
+            "headChildren": 40,
+            "overlayRows": 18
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 37576,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2104784,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3829916,
+                "totalSize": 4894720,
+                "embedderHeapUsedSize": 3240872,
+                "backingStorageSize": 173314
+              }
+            }
+          ],
+          "retainedPssKiB": 562078
+        },
+        {
+          "cycle": 40,
+          "sourceSha256": "2af3d71c6124a969e95a2d139d6ef4283539e568984a591440947bd0b9890094",
+          "sourceBytes": 58000,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 24313856,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 923,
+            "headChildren": 40,
+            "overlayRows": 18
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 42472,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2104784,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3871312,
+                "totalSize": 4632576,
+                "embedderHeapUsedSize": 2895688,
+                "backingStorageSize": 173305
+              }
+            }
+          ],
+          "retainedPssKiB": 558759
+        }
+      ]
+    },
+    {
+      "case": "small",
+      "sourceBytes": 58000,
+      "mode": "local",
+      "wrap": false,
+      "snapshots": [
+        {
+          "cycle": 0,
+          "sourceSha256": "2af3d71c6124a969e95a2d139d6ef4283539e568984a591440947bd0b9890094",
+          "sourceBytes": 58000,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 24051712,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 1069,
+            "headChildren": 40,
+            "overlayRows": 33
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 313364,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 43456,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2092904,
+                "totalSize": 2797568,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3646096,
+                "totalSize": 4632576,
+                "embedderHeapUsedSize": 3720648,
+                "backingStorageSize": 176297
+              }
+            }
+          ],
+          "retainedPssKiB": 563851
+        },
+        {
+          "cycle": 1,
+          "sourceSha256": "2af3d71c6124a969e95a2d139d6ef4283539e568984a591440947bd0b9890094",
+          "sourceBytes": 58000,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 24182784,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 1069,
+            "headChildren": 40,
+            "overlayRows": 33
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 313364,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 33592,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2098260,
+                "totalSize": 2797568,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3653228,
+                "totalSize": 4632576,
+                "embedderHeapUsedSize": 3666864,
+                "backingStorageSize": 176297
+              }
+            }
+          ],
+          "retainedPssKiB": 566579
+        },
+        {
+          "cycle": 5,
+          "sourceSha256": "2af3d71c6124a969e95a2d139d6ef4283539e568984a591440947bd0b9890094",
+          "sourceBytes": 58000,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 24182784,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 1069,
+            "headChildren": 40,
+            "overlayRows": 33
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 34816,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2098228,
+                "totalSize": 2797568,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3691636,
+                "totalSize": 4632576,
+                "embedderHeapUsedSize": 3653720,
+                "backingStorageSize": 176299
+              }
+            }
+          ],
+          "retainedPssKiB": 565143
+        },
+        {
+          "cycle": 10,
+          "sourceSha256": "2af3d71c6124a969e95a2d139d6ef4283539e568984a591440947bd0b9890094",
+          "sourceBytes": 58000,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 24248320,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 1069,
+            "headChildren": 40,
+            "overlayRows": 33
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 34848,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2098096,
+                "totalSize": 2797568,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3726700,
+                "totalSize": 4370432,
+                "embedderHeapUsedSize": 3476288,
+                "backingStorageSize": 176299
+              }
+            }
+          ],
+          "retainedPssKiB": 556954
+        },
+        {
+          "cycle": 20,
+          "sourceSha256": "2af3d71c6124a969e95a2d139d6ef4283539e568984a591440947bd0b9890094",
+          "sourceBytes": 58000,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 24248320,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 1069,
+            "headChildren": 40,
+            "overlayRows": 33
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 35296,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2104784,
+                "totalSize": 2797568,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3811156,
+                "totalSize": 4894720,
+                "embedderHeapUsedSize": 3689192,
+                "backingStorageSize": 176299
+              }
+            }
+          ],
+          "retainedPssKiB": 560066
+        },
+        {
+          "cycle": 40,
+          "sourceSha256": "2af3d71c6124a969e95a2d139d6ef4283539e568984a591440947bd0b9890094",
+          "sourceBytes": 58000,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 24248320,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 1069,
+            "headChildren": 40,
+            "overlayRows": 33
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 37864,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2104784,
+                "totalSize": 2797568,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3841568,
+                "totalSize": 4632576,
+                "embedderHeapUsedSize": 3605264,
+                "backingStorageSize": 176299
+              }
+            }
+          ],
+          "retainedPssKiB": 551814
+        }
+      ]
+    },
+    {
+      "case": "small",
+      "sourceBytes": 58000,
+      "mode": "remote",
+      "wrap": false,
+      "snapshots": [
+        {
+          "cycle": 0,
+          "sourceSha256": "2af3d71c6124a969e95a2d139d6ef4283539e568984a591440947bd0b9890094",
+          "sourceBytes": 58000,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 24051712,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 1121,
+            "headChildren": 40,
+            "overlayRows": 36
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312952,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 43456,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2092904,
+                "totalSize": 2797568,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3681440,
+                "totalSize": 4894720,
+                "embedderHeapUsedSize": 3925928,
+                "backingStorageSize": 176297
+              }
+            }
+          ],
+          "retainedPssKiB": 565394
+        },
+        {
+          "cycle": 1,
+          "sourceSha256": "2af3d71c6124a969e95a2d139d6ef4283539e568984a591440947bd0b9890094",
+          "sourceBytes": 58000,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 24182784,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 1121,
+            "headChildren": 40,
+            "overlayRows": 36
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312952,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 33592,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2098260,
+                "totalSize": 2797568,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3687180,
+                "totalSize": 4632576,
+                "embedderHeapUsedSize": 3903080,
+                "backingStorageSize": 176297
+              }
+            }
+          ],
+          "retainedPssKiB": 570758
+        },
+        {
+          "cycle": 5,
+          "sourceSha256": "2af3d71c6124a969e95a2d139d6ef4283539e568984a591440947bd0b9890094",
+          "sourceBytes": 58000,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 24248320,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 1121,
+            "headChildren": 40,
+            "overlayRows": 36
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 34968,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2098228,
+                "totalSize": 2797568,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3726936,
+                "totalSize": 4370432,
+                "embedderHeapUsedSize": 3431104,
+                "backingStorageSize": 176290
+              }
+            }
+          ],
+          "retainedPssKiB": 569999
+        },
+        {
+          "cycle": 10,
+          "sourceSha256": "2af3d71c6124a969e95a2d139d6ef4283539e568984a591440947bd0b9890094",
+          "sourceBytes": 58000,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 24379392,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 1121,
+            "headChildren": 40,
+            "overlayRows": 36
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 34968,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2098096,
+                "totalSize": 2797568,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3762988,
+                "totalSize": 4108288,
+                "embedderHeapUsedSize": 3343096,
+                "backingStorageSize": 176290
+              }
+            }
+          ],
+          "retainedPssKiB": 562839
+        },
+        {
+          "cycle": 20,
+          "sourceSha256": "2af3d71c6124a969e95a2d139d6ef4283539e568984a591440947bd0b9890094",
+          "sourceBytes": 58000,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 24379392,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 1121,
+            "headChildren": 40,
+            "overlayRows": 36
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 37576,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2104784,
+                "totalSize": 2797568,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3845780,
+                "totalSize": 4370432,
+                "embedderHeapUsedSize": 3342832,
+                "backingStorageSize": 176290
+              }
+            }
+          ],
+          "retainedPssKiB": 564205
+        },
+        {
+          "cycle": 40,
+          "sourceSha256": "2af3d71c6124a969e95a2d139d6ef4283539e568984a591440947bd0b9890094",
+          "sourceBytes": 58000,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 24379392,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 1121,
+            "headChildren": 40,
+            "overlayRows": 36
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 42472,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2104784,
+                "totalSize": 2797568,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3873304,
+                "totalSize": 4632576,
+                "embedderHeapUsedSize": 3833320,
+                "backingStorageSize": 176299
+              }
+            }
+          ],
+          "retainedPssKiB": 556523
+        }
+      ]
+    },
+    {
+      "case": "styled-long-line",
+      "sourceBytes": 1048567,
+      "mode": "local",
+      "wrap": true,
+      "snapshots": [
+        {
+          "cycle": 0,
+          "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+          "sourceBytes": 1048567,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 38207488,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 718,
+            "headChildren": 40,
+            "overlayRows": 1
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 313364,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 43456,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2085432,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3694248,
+                "totalSize": 4370432,
+                "embedderHeapUsedSize": 3034160,
+                "backingStorageSize": 172584
+              }
+            }
+          ],
+          "retainedPssKiB": 578896
+        },
+        {
+          "cycle": 1,
+          "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+          "sourceBytes": 1048567,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 39256064,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 718,
+            "headChildren": 40,
+            "overlayRows": 1
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312952,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 33592,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2092648,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3711788,
+                "totalSize": 4632576,
+                "embedderHeapUsedSize": 2988624,
+                "backingStorageSize": 172584
+              }
+            }
+          ],
+          "retainedPssKiB": 580965
+        },
+        {
+          "cycle": 5,
+          "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+          "sourceBytes": 1048567,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 41353216,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 718,
+            "headChildren": 40,
+            "overlayRows": 1
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 34848,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2092588,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3755868,
+                "totalSize": 4632576,
+                "embedderHeapUsedSize": 2954024,
+                "backingStorageSize": 172586
+              }
+            }
+          ],
+          "retainedPssKiB": 571984
+        },
+        {
+          "cycle": 10,
+          "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+          "sourceBytes": 1048567,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 41353216,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 718,
+            "headChildren": 40,
+            "overlayRows": 1
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 34848,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2092588,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3775548,
+                "totalSize": 4370432,
+                "embedderHeapUsedSize": 3046800,
+                "backingStorageSize": 172586
+              }
+            }
+          ],
+          "retainedPssKiB": 578128
+        },
+        {
+          "cycle": 20,
+          "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+          "sourceBytes": 1048567,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 43450368,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 718,
+            "headChildren": 40,
+            "overlayRows": 1
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 35296,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2098616,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3862036,
+                "totalSize": 4894720,
+                "embedderHeapUsedSize": 3014528,
+                "backingStorageSize": 172586
+              }
+            }
+          ],
+          "retainedPssKiB": 571773
+        },
+        {
+          "cycle": 40,
+          "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+          "sourceBytes": 1048567,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 43450368,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 718,
+            "headChildren": 40,
+            "overlayRows": 1
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 37984,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2104328,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3922440,
+                "totalSize": 4894720,
+                "embedderHeapUsedSize": 3033736,
+                "backingStorageSize": 172586
+              }
+            }
+          ],
+          "retainedPssKiB": 575065
+        }
+      ]
+    },
+    {
+      "case": "styled-long-line",
+      "sourceBytes": 1048567,
+      "mode": "remote",
+      "wrap": true,
+      "snapshots": [
+        {
+          "cycle": 0,
+          "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+          "sourceBytes": 1048567,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 38076416,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 737,
+            "headChildren": 40,
+            "overlayRows": 1
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 43456,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2085432,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3731504,
+                "totalSize": 4894720,
+                "embedderHeapUsedSize": 3125216,
+                "backingStorageSize": 172584
+              }
+            }
+          ],
+          "retainedPssKiB": 578518
+        },
+        {
+          "cycle": 1,
+          "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+          "sourceBytes": 1048567,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 39321600,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 737,
+            "headChildren": 40,
+            "overlayRows": 1
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 33656,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2092648,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3749168,
+                "totalSize": 4370432,
+                "embedderHeapUsedSize": 3068680,
+                "backingStorageSize": 172584
+              }
+            }
+          ],
+          "retainedPssKiB": 581510
+        },
+        {
+          "cycle": 5,
+          "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+          "sourceBytes": 1048567,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 41418752,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 737,
+            "headChildren": 40,
+            "overlayRows": 1
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 34968,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2092588,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3790976,
+                "totalSize": 4632576,
+                "embedderHeapUsedSize": 3028072,
+                "backingStorageSize": 172586
+              }
+            }
+          ],
+          "retainedPssKiB": 574162
+        },
+        {
+          "cycle": 10,
+          "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+          "sourceBytes": 1048567,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 41418752,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 737,
+            "headChildren": 40,
+            "overlayRows": 1
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 34968,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2092588,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3815356,
+                "totalSize": 4632576,
+                "embedderHeapUsedSize": 3056216,
+                "backingStorageSize": 172586
+              }
+            }
+          ],
+          "retainedPssKiB": 577954
+        },
+        {
+          "cycle": 20,
+          "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+          "sourceBytes": 1048567,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 41418752,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 737,
+            "headChildren": 40,
+            "overlayRows": 1
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 37576,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2098616,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3896832,
+                "totalSize": 4632576,
+                "embedderHeapUsedSize": 3134408,
+                "backingStorageSize": 172586
+              }
+            }
+          ],
+          "retainedPssKiB": 569647
+        },
+        {
+          "cycle": 40,
+          "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+          "sourceBytes": 1048567,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 41418752,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 737,
+            "headChildren": 40,
+            "overlayRows": 1
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 42768,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2104328,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3953808,
+                "totalSize": 4894720,
+                "embedderHeapUsedSize": 3144848,
+                "backingStorageSize": 172586
+              }
+            }
+          ],
+          "retainedPssKiB": 578494
+        }
+      ]
+    },
+    {
+      "case": "styled-long-line",
+      "sourceBytes": 1048567,
+      "mode": "local",
+      "wrap": false,
+      "snapshots": [
+        {
+          "cycle": 0,
+          "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+          "sourceBytes": 1048567,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 35586048,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 717,
+            "headChildren": 40,
+            "overlayRows": 1
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 313364,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 43456,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2085432,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3708308,
+                "totalSize": 4894720,
+                "embedderHeapUsedSize": 4444040,
+                "backingStorageSize": 178421
+              }
+            }
+          ],
+          "retainedPssKiB": 567537
+        },
+        {
+          "cycle": 1,
+          "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+          "sourceBytes": 1048567,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 37683200,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 717,
+            "headChildren": 40,
+            "overlayRows": 1
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 313652,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 33592,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2092648,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3725428,
+                "totalSize": 4894720,
+                "embedderHeapUsedSize": 4490456,
+                "backingStorageSize": 178421
+              }
+            }
+          ],
+          "retainedPssKiB": 570609
+        },
+        {
+          "cycle": 5,
+          "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+          "sourceBytes": 1048567,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 37683200,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 717,
+            "headChildren": 40,
+            "overlayRows": 1
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 34816,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2092588,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3773724,
+                "totalSize": 4894720,
+                "embedderHeapUsedSize": 4495296,
+                "backingStorageSize": 178423
+              }
+            }
+          ],
+          "retainedPssKiB": 564214
+        },
+        {
+          "cycle": 10,
+          "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+          "sourceBytes": 1048567,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 37683200,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 717,
+            "headChildren": 40,
+            "overlayRows": 1
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 34848,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2092588,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3808456,
+                "totalSize": 4632576,
+                "embedderHeapUsedSize": 4434952,
+                "backingStorageSize": 178423
+              }
+            }
+          ],
+          "retainedPssKiB": 568668
+        },
+        {
+          "cycle": 20,
+          "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+          "sourceBytes": 1048567,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 37683200,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 717,
+            "headChildren": 40,
+            "overlayRows": 1
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 35296,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2098616,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3846072,
+                "totalSize": 4894720,
+                "embedderHeapUsedSize": 4528344,
+                "backingStorageSize": 178423
+              }
+            }
+          ],
+          "retainedPssKiB": 562750
+        },
+        {
+          "cycle": 40,
+          "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+          "sourceBytes": 1048567,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 37683200,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 717,
+            "headChildren": 40,
+            "overlayRows": 1
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 37864,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2104328,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3877232,
+                "totalSize": 4894720,
+                "embedderHeapUsedSize": 4555256,
+                "backingStorageSize": 178423
+              }
+            }
+          ],
+          "retainedPssKiB": 569558
+        }
+      ]
+    },
+    {
+      "case": "styled-long-line",
+      "sourceBytes": 1048567,
+      "mode": "remote",
+      "wrap": false,
+      "snapshots": [
+        {
+          "cycle": 0,
+          "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+          "sourceBytes": 1048567,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 37879808,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 736,
+            "headChildren": 40,
+            "overlayRows": 1
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312952,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 43456,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2085432,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3744384,
+                "totalSize": 4632576,
+                "embedderHeapUsedSize": 4649056,
+                "backingStorageSize": 178421
+              }
+            }
+          ],
+          "retainedPssKiB": 574956
+        },
+        {
+          "cycle": 1,
+          "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+          "sourceBytes": 1048567,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 37879808,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 736,
+            "headChildren": 40,
+            "overlayRows": 1
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 33656,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2092648,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3774092,
+                "totalSize": 4632576,
+                "embedderHeapUsedSize": 4638616,
+                "backingStorageSize": 178421
+              }
+            }
+          ],
+          "retainedPssKiB": 579856
+        },
+        {
+          "cycle": 5,
+          "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+          "sourceBytes": 1048567,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 37879808,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 736,
+            "headChildren": 40,
+            "overlayRows": 1
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 34968,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2092588,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3814172,
+                "totalSize": 4370432,
+                "embedderHeapUsedSize": 4588488,
+                "backingStorageSize": 178423
+              }
+            }
+          ],
+          "retainedPssKiB": 574232
+        },
+        {
+          "cycle": 10,
+          "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+          "sourceBytes": 1048567,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 37879808,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 736,
+            "headChildren": 40,
+            "overlayRows": 1
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 34968,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2092588,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3848752,
+                "totalSize": 4894720,
+                "embedderHeapUsedSize": 4675520,
+                "backingStorageSize": 178423
+              }
+            }
+          ],
+          "retainedPssKiB": 576068
+        },
+        {
+          "cycle": 20,
+          "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+          "sourceBytes": 1048567,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 37879808,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 736,
+            "headChildren": 40,
+            "overlayRows": 1
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 37576,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2098616,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3880156,
+                "totalSize": 4894720,
+                "embedderHeapUsedSize": 4750912,
+                "backingStorageSize": 178423
+              }
+            }
+          ],
+          "retainedPssKiB": 569924
+        },
+        {
+          "cycle": 40,
+          "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+          "sourceBytes": 1048567,
+          "completeSourceVerified": true,
+          "wasmCommittedBytes": 37879808,
+          "domNodes": {
+            "editorInputs": 1,
+            "elements": 736,
+            "headChildren": 40,
+            "overlayRows": 1
+          },
+          "retainedTargets": [
+            {
+              "targetType": "service_worker",
+              "heap": {
+                "usedSize": 312976,
+                "totalSize": 786432,
+                "embedderHeapUsedSize": 42768,
+                "backingStorageSize": 7459
+              }
+            },
+            {
+              "targetType": "worker",
+              "heap": {
+                "usedSize": 2104328,
+                "totalSize": 3059712,
+                "embedderHeapUsedSize": 38360,
+                "backingStorageSize": 163127
+              }
+            },
+            {
+              "targetType": "page",
+              "heap": {
+                "usedSize": 3908776,
+                "totalSize": 4894720,
+                "embedderHeapUsedSize": 4681584,
+                "backingStorageSize": 178423
+              }
+            }
+          ],
+          "retainedPssKiB": 576540
+        }
+      ]
+    }
+  ],
+  "longProduction": {
+    "case": "styled-long-line",
+    "sourceBytes": 1048567,
+    "mode": "remote",
+    "wrap": true,
+    "cycles": 800,
+    "verifiedSourceTransitions": 1601,
+    "mainWasmCommittedBytesFrom100": 44630016,
+    "finalPageJsUsedBytes": 4069492,
+    "pageJsFinalPlateauCycles": [
+      700,
+      800
+    ],
+    "elementCountRange": {
+      "min": 737,
+      "max": 740
+    },
+    "snapshots": [
+      {
+        "cycle": 0,
+        "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+        "sourceBytes": 1048567,
+        "completeSourceVerified": true,
+        "wasmCommittedBytes": 38338560,
+        "domNodes": {
+          "editorInputs": 1,
+          "elements": 737,
+          "headChildren": 40,
+          "overlayRows": 1
+        },
+        "retainedTargets": [
+          {
+            "targetType": "service_worker",
+            "heap": {
+              "usedSize": 312976,
+              "totalSize": 786432,
+              "embedderHeapUsedSize": 43456,
+              "backingStorageSize": 7459
+            }
+          },
+          {
+            "targetType": "worker",
+            "heap": {
+              "usedSize": 2085432,
+              "totalSize": 3059712,
+              "embedderHeapUsedSize": 38360,
+              "backingStorageSize": 163127
+            }
+          },
+          {
+            "targetType": "page",
+            "heap": {
+              "usedSize": 3728996,
+              "totalSize": 4370432,
+              "embedderHeapUsedSize": 2497936,
+              "backingStorageSize": 172575
+            }
+          }
+        ],
+        "retainedPssKiB": 581409
+      },
+      {
+        "cycle": 1,
+        "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+        "sourceBytes": 1048567,
+        "completeSourceVerified": true,
+        "wasmCommittedBytes": 40435712,
+        "domNodes": {
+          "editorInputs": 1,
+          "elements": 737,
+          "headChildren": 40,
+          "overlayRows": 1
+        },
+        "retainedTargets": [
+          {
+            "targetType": "service_worker",
+            "heap": {
+              "usedSize": 312976,
+              "totalSize": 786432,
+              "embedderHeapUsedSize": 33656,
+              "backingStorageSize": 7459
+            }
+          },
+          {
+            "targetType": "worker",
+            "heap": {
+              "usedSize": 2092648,
+              "totalSize": 3059712,
+              "embedderHeapUsedSize": 38360,
+              "backingStorageSize": 163127
+            }
+          },
+          {
+            "targetType": "page",
+            "heap": {
+              "usedSize": 3747896,
+              "totalSize": 4370432,
+              "embedderHeapUsedSize": 3093976,
+              "backingStorageSize": 172584
+            }
+          }
+        ],
+        "retainedPssKiB": 584185
+      },
+      {
+        "cycle": 5,
+        "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+        "sourceBytes": 1048567,
+        "completeSourceVerified": true,
+        "wasmCommittedBytes": 40435712,
+        "domNodes": {
+          "editorInputs": 1,
+          "elements": 737,
+          "headChildren": 40,
+          "overlayRows": 1
+        },
+        "retainedTargets": [
+          {
+            "targetType": "service_worker",
+            "heap": {
+              "usedSize": 312976,
+              "totalSize": 786432,
+              "embedderHeapUsedSize": 34968,
+              "backingStorageSize": 7459
+            }
+          },
+          {
+            "targetType": "worker",
+            "heap": {
+              "usedSize": 2092588,
+              "totalSize": 3059712,
+              "embedderHeapUsedSize": 38360,
+              "backingStorageSize": 163127
+            }
+          },
+          {
+            "targetType": "page",
+            "heap": {
+              "usedSize": 3791068,
+              "totalSize": 4632576,
+              "embedderHeapUsedSize": 3127976,
+              "backingStorageSize": 172586
+            }
+          }
+        ],
+        "retainedPssKiB": 576210
+      },
+      {
+        "cycle": 10,
+        "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+        "sourceBytes": 1048567,
+        "completeSourceVerified": true,
+        "wasmCommittedBytes": 42532864,
+        "domNodes": {
+          "editorInputs": 1,
+          "elements": 737,
+          "headChildren": 40,
+          "overlayRows": 1
+        },
+        "retainedTargets": [
+          {
+            "targetType": "service_worker",
+            "heap": {
+              "usedSize": 312976,
+              "totalSize": 786432,
+              "embedderHeapUsedSize": 34968,
+              "backingStorageSize": 7459
+            }
+          },
+          {
+            "targetType": "worker",
+            "heap": {
+              "usedSize": 2092588,
+              "totalSize": 3059712,
+              "embedderHeapUsedSize": 38360,
+              "backingStorageSize": 163127
+            }
+          },
+          {
+            "targetType": "page",
+            "heap": {
+              "usedSize": 3816320,
+              "totalSize": 4632576,
+              "embedderHeapUsedSize": 3032976,
+              "backingStorageSize": 172586
+            }
+          }
+        ],
+        "retainedPssKiB": 579236
+      },
+      {
+        "cycle": 20,
+        "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+        "sourceBytes": 1048567,
+        "completeSourceVerified": true,
+        "wasmCommittedBytes": 42532864,
+        "domNodes": {
+          "editorInputs": 1,
+          "elements": 737,
+          "headChildren": 40,
+          "overlayRows": 1
+        },
+        "retainedTargets": [
+          {
+            "targetType": "service_worker",
+            "heap": {
+              "usedSize": 312976,
+              "totalSize": 786432,
+              "embedderHeapUsedSize": 37576,
+              "backingStorageSize": 7459
+            }
+          },
+          {
+            "targetType": "worker",
+            "heap": {
+              "usedSize": 2098616,
+              "totalSize": 3059712,
+              "embedderHeapUsedSize": 38360,
+              "backingStorageSize": 163127
+            }
+          },
+          {
+            "targetType": "page",
+            "heap": {
+              "usedSize": 3897944,
+              "totalSize": 4894720,
+              "embedderHeapUsedSize": 3111784,
+              "backingStorageSize": 172586
+            }
+          }
+        ],
+        "retainedPssKiB": 574094
+      },
+      {
+        "cycle": 40,
+        "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+        "sourceBytes": 1048567,
+        "completeSourceVerified": true,
+        "wasmCommittedBytes": 42532864,
+        "domNodes": {
+          "editorInputs": 1,
+          "elements": 737,
+          "headChildren": 40,
+          "overlayRows": 1
+        },
+        "retainedTargets": [
+          {
+            "targetType": "service_worker",
+            "heap": {
+              "usedSize": 312976,
+              "totalSize": 786432,
+              "embedderHeapUsedSize": 42472,
+              "backingStorageSize": 7459
+            }
+          },
+          {
+            "targetType": "worker",
+            "heap": {
+              "usedSize": 2104328,
+              "totalSize": 3059712,
+              "embedderHeapUsedSize": 38360,
+              "backingStorageSize": 163127
+            }
+          },
+          {
+            "targetType": "page",
+            "heap": {
+              "usedSize": 3953168,
+              "totalSize": 5156864,
+              "embedderHeapUsedSize": 3255904,
+              "backingStorageSize": 172586
+            }
+          }
+        ],
+        "retainedPssKiB": 580366
+      },
+      {
+        "cycle": 100,
+        "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+        "sourceBytes": 1048567,
+        "completeSourceVerified": true,
+        "wasmCommittedBytes": 44630016,
+        "domNodes": {
+          "editorInputs": 1,
+          "elements": 737,
+          "headChildren": 40,
+          "overlayRows": 1
+        },
+        "retainedTargets": [
+          {
+            "targetType": "service_worker",
+            "heap": {
+              "usedSize": 312976,
+              "totalSize": 786432,
+              "embedderHeapUsedSize": 54680,
+              "backingStorageSize": 7459
+            }
+          },
+          {
+            "targetType": "worker",
+            "heap": {
+              "usedSize": 2104328,
+              "totalSize": 3059712,
+              "embedderHeapUsedSize": 38360,
+              "backingStorageSize": 163127
+            }
+          },
+          {
+            "targetType": "page",
+            "heap": {
+              "usedSize": 3994308,
+              "totalSize": 5156864,
+              "embedderHeapUsedSize": 3269904,
+              "backingStorageSize": 172588
+            }
+          }
+        ],
+        "retainedPssKiB": 614680
+      },
+      {
+        "cycle": 200,
+        "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+        "sourceBytes": 1048567,
+        "completeSourceVerified": true,
+        "wasmCommittedBytes": 44630016,
+        "domNodes": {
+          "editorInputs": 1,
+          "elements": 737,
+          "headChildren": 40,
+          "overlayRows": 1
+        },
+        "retainedTargets": [
+          {
+            "targetType": "service_worker",
+            "heap": {
+              "usedSize": 319888,
+              "totalSize": 1048576,
+              "embedderHeapUsedSize": 74424,
+              "backingStorageSize": 7459
+            }
+          },
+          {
+            "targetType": "worker",
+            "heap": {
+              "usedSize": 2108680,
+              "totalSize": 3059712,
+              "embedderHeapUsedSize": 38360,
+              "backingStorageSize": 163127
+            }
+          },
+          {
+            "targetType": "page",
+            "heap": {
+              "usedSize": 4005608,
+              "totalSize": 5156864,
+              "embedderHeapUsedSize": 3332088,
+              "backingStorageSize": 172091
+            }
+          }
+        ],
+        "retainedPssKiB": 642774
+      },
+      {
+        "cycle": 300,
+        "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+        "sourceBytes": 1048567,
+        "completeSourceVerified": true,
+        "wasmCommittedBytes": 44630016,
+        "domNodes": {
+          "editorInputs": 1,
+          "elements": 737,
+          "headChildren": 40,
+          "overlayRows": 1
+        },
+        "retainedTargets": [
+          {
+            "targetType": "service_worker",
+            "heap": {
+              "usedSize": 319888,
+              "totalSize": 1048576,
+              "embedderHeapUsedSize": 75848,
+              "backingStorageSize": 7459
+            }
+          },
+          {
+            "targetType": "worker",
+            "heap": {
+              "usedSize": 2117000,
+              "totalSize": 3059712,
+              "embedderHeapUsedSize": 38360,
+              "backingStorageSize": 163127
+            }
+          },
+          {
+            "targetType": "page",
+            "heap": {
+              "usedSize": 4027056,
+              "totalSize": 5156864,
+              "embedderHeapUsedSize": 3293176,
+              "backingStorageSize": 172091
+            }
+          }
+        ],
+        "retainedPssKiB": 655302
+      },
+      {
+        "cycle": 400,
+        "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+        "sourceBytes": 1048567,
+        "completeSourceVerified": true,
+        "wasmCommittedBytes": 44630016,
+        "domNodes": {
+          "editorInputs": 1,
+          "elements": 737,
+          "headChildren": 40,
+          "overlayRows": 1
+        },
+        "retainedTargets": [
+          {
+            "targetType": "service_worker",
+            "heap": {
+              "usedSize": 319888,
+              "totalSize": 1048576,
+              "embedderHeapUsedSize": 75848,
+              "backingStorageSize": 7459
+            }
+          },
+          {
+            "targetType": "worker",
+            "heap": {
+              "usedSize": 2117000,
+              "totalSize": 3059712,
+              "embedderHeapUsedSize": 38360,
+              "backingStorageSize": 163127
+            }
+          },
+          {
+            "targetType": "page",
+            "heap": {
+              "usedSize": 4032248,
+              "totalSize": 5156864,
+              "embedderHeapUsedSize": 3244832,
+              "backingStorageSize": 172091
+            }
+          }
+        ],
+        "retainedPssKiB": 668174
+      },
+      {
+        "cycle": 500,
+        "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+        "sourceBytes": 1048567,
+        "completeSourceVerified": true,
+        "wasmCommittedBytes": 44630016,
+        "domNodes": {
+          "editorInputs": 1,
+          "elements": 740,
+          "headChildren": 40,
+          "overlayRows": 1
+        },
+        "retainedTargets": [
+          {
+            "targetType": "service_worker",
+            "heap": {
+              "usedSize": 319888,
+              "totalSize": 1048576,
+              "embedderHeapUsedSize": 75848,
+              "backingStorageSize": 7459
+            }
+          },
+          {
+            "targetType": "worker",
+            "heap": {
+              "usedSize": 2118652,
+              "totalSize": 3059712,
+              "embedderHeapUsedSize": 38360,
+              "backingStorageSize": 163127
+            }
+          },
+          {
+            "targetType": "page",
+            "heap": {
+              "usedSize": 4035908,
+              "totalSize": 5156864,
+              "embedderHeapUsedSize": 3259800,
+              "backingStorageSize": 172093
+            }
+          }
+        ],
+        "retainedPssKiB": 660530
+      },
+      {
+        "cycle": 600,
+        "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+        "sourceBytes": 1048567,
+        "completeSourceVerified": true,
+        "wasmCommittedBytes": 44630016,
+        "domNodes": {
+          "editorInputs": 1,
+          "elements": 737,
+          "headChildren": 40,
+          "overlayRows": 1
+        },
+        "retainedTargets": [
+          {
+            "targetType": "service_worker",
+            "heap": {
+              "usedSize": 319888,
+              "totalSize": 1048576,
+              "embedderHeapUsedSize": 74424,
+              "backingStorageSize": 7459
+            }
+          },
+          {
+            "targetType": "worker",
+            "heap": {
+              "usedSize": 2118652,
+              "totalSize": 3059712,
+              "embedderHeapUsedSize": 38360,
+              "backingStorageSize": 163127
+            }
+          },
+          {
+            "targetType": "page",
+            "heap": {
+              "usedSize": 4057076,
+              "totalSize": 5156864,
+              "embedderHeapUsedSize": 3398088,
+              "backingStorageSize": 172093
+            }
+          }
+        ],
+        "retainedPssKiB": 672210
+      },
+      {
+        "cycle": 700,
+        "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+        "sourceBytes": 1048567,
+        "completeSourceVerified": true,
+        "wasmCommittedBytes": 44630016,
+        "domNodes": {
+          "editorInputs": 1,
+          "elements": 737,
+          "headChildren": 40,
+          "overlayRows": 1
+        },
+        "retainedTargets": [
+          {
+            "targetType": "service_worker",
+            "heap": {
+              "usedSize": 319888,
+              "totalSize": 1048576,
+              "embedderHeapUsedSize": 75848,
+              "backingStorageSize": 7459
+            }
+          },
+          {
+            "targetType": "worker",
+            "heap": {
+              "usedSize": 2118652,
+              "totalSize": 3059712,
+              "embedderHeapUsedSize": 38360,
+              "backingStorageSize": 163127
+            }
+          },
+          {
+            "targetType": "page",
+            "heap": {
+              "usedSize": 4069492,
+              "totalSize": 5156864,
+              "embedderHeapUsedSize": 3379528,
+              "backingStorageSize": 172093
+            }
+          }
+        ],
+        "retainedPssKiB": 661150
+      },
+      {
+        "cycle": 800,
+        "sourceSha256": "1f1a98dc3eb5c66749d4a408b1af5cc4d709fdc6eeaa20e0ca5d8431b5de64cc",
+        "sourceBytes": 1048567,
+        "completeSourceVerified": true,
+        "wasmCommittedBytes": 44630016,
+        "domNodes": {
+          "editorInputs": 1,
+          "elements": 737,
+          "headChildren": 40,
+          "overlayRows": 1
+        },
+        "retainedTargets": [
+          {
+            "targetType": "service_worker",
+            "heap": {
+              "usedSize": 320152,
+              "totalSize": 1310720,
+              "embedderHeapUsedSize": 524320,
+              "backingStorageSize": 7628
+            }
+          },
+          {
+            "targetType": "worker",
+            "heap": {
+              "usedSize": 2118652,
+              "totalSize": 3059712,
+              "embedderHeapUsedSize": 38360,
+              "backingStorageSize": 163127
+            }
+          },
+          {
+            "targetType": "page",
+            "heap": {
+              "usedSize": 4069492,
+              "totalSize": 5156864,
+              "embedderHeapUsedSize": 3393352,
+              "backingStorageSize": 172093
+            }
+          }
+        ],
+        "retainedPssKiB": 678328
+      }
+    ]
+  },
+  "rawSha256": {
+    "viewport-scoped-natural.jsonl": "fb8dc780dc4536300ec5d2c8aaf893ac8d8b9a5ba81ff3631846dc25f6289bce",
+    "viewport-scoped-retained.jsonl": "0a3ec0a2e2456dcf8c7d83fd74522c3c76a855b42a4dcfd3c1996f945aa4fb99",
+    "viewport-scoped-retained-800-remote.jsonl": "a9e100180c2c6ca3b915393bfc3eea8a164dbb51371328e2ce1f07ab92ae2933"
+  },
+  "verification": {
+    "fullLocalCi": "PASS on unchanged production editor sources: 224 editor contracts and both font matrices; measurement helper tests updated to 17 passing tests.",
+    "productionContracts": "PASS on exact immutable measured distribution; see viewport-production-checks.json.",
+    "nativeDevice": "pending: Computer Use runtime lacks trusted desktop services in this session although installed configuration is enabled.",
+    "hosted": "Tracked per commit at https://github.com/openwebide/openwebide/pull/2/checks"
+  },
+  "totals": {
+    "naturalObservations": 328,
+    "naturalUnderThreshold": 328,
+    "maxPaintMs": 94.70000000018626,
+    "maxFullColdReadinessMs": 1348.8547919996563,
+    "natural40CyclePeakPssKiB": 1037970,
+    "natural40CyclePeakPssMiB": 1013.642578125
+  },
+  "memoryFinding": "Observed stable application storage in these cohorts: Local diagnostic Rust live bytes vary by 13 bytes from cycle 20 through 800; production Remote main WASM capacity is fixed from 100 through 800, page JS is equal at 700 and 800, worker JS settles and DOM counts stay bounded. Browser IPC retention is bounded by five-minute set rotation; source-verified historical uncollected 200-cycle peak remains separately reported. This is measured behavior, not a guarantee for every device or workload.",
+  "liveRustAttribution": "viewport-live-rust-heap-summary.json",
+  "historicalUncollectedPeaks": {
+    "source": "viewport-native-retained-summary.json",
+    "admitted100CyclesMiB": 1413.3271484375,
+    "admitted200CyclesMiB": 2121.6865234375,
+    "scope": "Historical end-only collection controls on the same production artifact before script-result scoping; natural sampled peak is captured before final collection/tracing."
+  }
+}

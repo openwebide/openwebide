@@ -1,0 +1,100 @@
+{
+  "trunk": "0.22.1",
+  "priorChecks": {
+    "trunk": "0.22.1",
+    "build": "NO_COLOR=true spin build: all components succeeded",
+    "module": "openwebide-frontend-47678b66868dc9d5.js",
+    "binary": "openwebide-frontend-2e226cecf88dd9b7_bg.wasm",
+    "checks": [
+      {
+        "compiled_module": true,
+        "providers": 15,
+        "config_languages": 6,
+        "plain_fallback_languages": 1,
+        "nested_languages": 6,
+        "incremental": true,
+        "structural_delta": true,
+        "ui_event_during_worker": true,
+        "oversize_fallback": true,
+        "changed_row_records": 3,
+        "cooperative_yields": 2618,
+        "large_literal_bytes": 1043013,
+        "large_literal_yields": 62,
+        "yaml_bytes": 1043026,
+        "yaml_yields": 62
+      },
+      {
+        "compiled_module": false,
+        "providers": 15,
+        "config_languages": 6,
+        "plain_fallback_languages": 1,
+        "nested_languages": 6,
+        "incremental": true,
+        "structural_delta": true,
+        "ui_event_during_worker": true,
+        "oversize_fallback": true,
+        "changed_row_records": 3,
+        "cooperative_yields": 2618,
+        "large_literal_bytes": 1043013,
+        "large_literal_yields": 62,
+        "yaml_bytes": 1043026,
+        "yaml_yields": 62
+      }
+    ]
+  },
+  "finalBuild": "NO_COLOR=true spin build: all components succeeded",
+  "finalAssets": {
+    "openwebide-frontend-6b05f5e58fbc343f_bg.wasm": "a93ac6cf727de4f7177de94c33ca9147666c08d12a1b9073cef610b408f16518",
+    "openwebide-frontend-47678b66868dc9d5.js": "7b1c7463c42dd154782e1e2c7c760982d55b434e63b6351b40bc05dc61f622f6"
+  },
+  "versionedWorkers": [
+    "editor-worker-47678b66868dc9d5-6b05f5e58fbc343f.js"
+  ],
+  "workerBrowserChecks": [
+    "test editor_worker::tests::worker_entry_identity_changes_when_only_the_wasm_hash_changes ... ok",
+    "test editor_worker::tests::module_clone_failures_and_bundle_mismatches_use_url_initialization ... ok",
+    "test editor_worker::tests::dropped_framed_requests_release_partial_transactions ... ok",
+    "test editor_worker::tests::dedicated_framed_worker_and_cooperative_adapter_preserve_language_contracts ... ok",
+    "test editor_worker::tests::bounded_worker_routing_preserves_complete_reply_validation ... ok",
+    "test result: ok. 5 passed; 0 failed; 0 ignored; 55 filtered out; finished in 0.25s"
+  ],
+  "finalProductionChecks": [
+    {
+      "compiled_module": true,
+      "providers": 15,
+      "config_languages": 6,
+      "plain_fallback_languages": 1,
+      "nested_languages": 6,
+      "incremental": true,
+      "structural_delta": true,
+      "ui_event_during_worker": true,
+      "oversize_fallback": true,
+      "changed_row_records": 3,
+      "cooperative_yields": 2618,
+      "large_literal_bytes": 1043013,
+      "large_literal_yields": 62,
+      "yaml_bytes": 1043026,
+      "yaml_yields": 62
+    },
+    {
+      "compiled_module": false,
+      "providers": 15,
+      "config_languages": 6,
+      "plain_fallback_languages": 1,
+      "nested_languages": 6,
+      "incremental": true,
+      "structural_delta": true,
+      "ui_event_during_worker": true,
+      "oversize_fallback": true,
+      "changed_row_records": 3,
+      "cooperative_yields": 2618,
+      "large_literal_bytes": 1043013,
+      "large_literal_yields": 62,
+      "yaml_bytes": 1043026,
+      "yaml_yields": 62
+    }
+  ],
+  "finalWasmLint": [
+    "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.54s"
+  ]
+}

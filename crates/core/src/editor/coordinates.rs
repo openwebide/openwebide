@@ -88,8 +88,19 @@ impl<'a> LineCoordinatePreparation<'a> {
                 let end = self
                     .text
                     .floor_char_boundary((self.next + STEP_BYTES).min(self.text.len()));
-                for (offset, ch) in self.text[self.next..end].char_indices() {
-                    self.collector.visit(self.text, self.next + offset, ch);
+                while self.next < end {
+                    let printable = self.text.as_bytes()[self.next..end]
+                        .iter()
+                        .take_while(|byte| matches!(byte, b' '..=b'~'))
+                        .count();
+                    if printable != 0 {
+                        self.collector.visit_ascii(self.next..self.next + printable);
+                        self.next += printable;
+                    } else {
+                        let ch = self.text[self.next..end].chars().next().unwrap();
+                        self.collector.visit(self.text, self.next, ch);
+                        self.next += ch.len_utf8();
+                    }
                 }
                 self.next = end;
                 self.done = end == self.text.len();
@@ -194,6 +205,145 @@ impl NativeCoordinates {
 }
 
 impl LineCoordinates {
+    /// Original ASCII seam evidence is captured before the source is mutated.
+    /// All other Unicode, control, category-run and layout cases retain the
+    /// complete preparation path.
+    pub fn updated_ascii_seam(
+        &self,
+        text: &str,
+        changed: std::ops::Range<usize>,
+        new_end: usize,
+    ) -> Option<(Self, RowSummary)> {
+        let body = text
+            .strip_suffix("\r\n")
+            .or_else(|| text.strip_suffix('\n'))
+            .unwrap_or(text);
+        if new_end > body.len()
+            || new_end - changed.start > 256
+            || !text
+                .get(changed.start..new_end)?
+                .bytes()
+                .all(|byte| matches!(byte, b' '..=b'~'))
+        {
+            return None;
+        }
+        let visual = self
+            .visual
+            .as_ref()?
+            .updated_ascii_seam(body, changed.clone(), new_end)?;
+        let previous = self.native.as_deref()?;
+        let prefix = previous.partition_point(|point| point.byte <= changed.start);
+        let seed = prefix
+            .checked_sub(1)
+            .map_or_else(Coordinate::default, |index| previous[index]);
+        let mut collector = NativeCoordinates::new(true);
+        collector.checkpoints.extend_from_slice(&previous[..prefix]);
+        collector.position = seed;
+        collector.last = seed.byte;
+        let shift = |value| value + new_end - changed.end;
+        let body_native = visual.at(body, visual.len() - 1)?.1;
+        let summary = RowSummary {
+            utf16_len: body_native + text.len() - body.len(),
+            breaks: usize::from(body.len() != text.len()),
+            oversized: body.len() > super::MAX_EDITOR_LINE_BYTES,
+        };
+        let old_tail = previous
+            .iter()
+            .rev()
+            .find(|point| point.byte <= changed.start || point.byte >= changed.end)
+            .copied()
+            .unwrap_or_default();
+        let tail = if old_tail.byte >= changed.end && old_tail.byte > changed.start {
+            Coordinate {
+                byte: shift(old_tail.byte),
+                native: shift(old_tail.native),
+                chars: shift(old_tail.chars),
+            }
+        } else {
+            old_tail
+        };
+        let end = Coordinate {
+            byte: text.len(),
+            native: body_native + summary.breaks,
+            chars: tail.chars + text[tail.byte..].chars().count(),
+        };
+        let mut suffix = false;
+        for (offset, ch) in text[seed.byte..].char_indices() {
+            let before = collector.checkpoints.len();
+            collector.visit(text, seed.byte + offset, ch);
+            if collector.checkpoints.len() != before
+                && collector.checkpoints.last()?.byte >= new_end
+            {
+                suffix = true;
+                break;
+            }
+        }
+        if suffix {
+            while collector.checkpoints.last()?.byte + STEP_BYTES < text.len() {
+                let threshold = collector.checkpoints.last()?.byte + STEP_BYTES;
+                let old_threshold = changed.end + (threshold - new_end);
+                let index = previous.partition_point(|point| point.byte < old_threshold);
+                let mut cursor = previous.get(index).map_or(end, |point| Coordinate {
+                    byte: shift(point.byte),
+                    native: shift(point.native),
+                    chars: shift(point.chars),
+                });
+                let mut next = cursor;
+                let before = index.checked_sub(1).and_then(|index| previous.get(index));
+                if let Some(before) = before.filter(|point| {
+                    point.byte >= changed.end
+                        && old_threshold - point.byte < cursor.byte - threshold
+                }) {
+                    let start = shift(before.byte);
+                    let mut byte = text.ceil_char_boundary(threshold);
+                    if text.as_bytes().get(byte) == Some(&b'\n')
+                        && text.as_bytes().get(byte.wrapping_sub(1)) == Some(&b'\r')
+                    {
+                        byte += 1;
+                    }
+                    next = Coordinate {
+                        byte,
+                        native: shift(before.native)
+                            + super::byte_to_textarea(&text[start..], byte - start).ok()?,
+                        chars: shift(before.chars) + text[start..byte].chars().count(),
+                    };
+                } else {
+                    for (byte, ch) in text[..cursor.byte].char_indices().rev() {
+                        if byte < threshold {
+                            break;
+                        }
+                        cursor.byte = byte;
+                        cursor.chars -= 1;
+                        cursor.native -=
+                            if ch == '\r' && text.as_bytes().get(byte + 1) == Some(&b'\n') {
+                                0
+                            } else {
+                                ch.len_utf16()
+                            };
+                        // A native checkpoint must never split the CRLF pair.
+                        if !(ch == '\n'
+                            && text.as_bytes().get(byte.wrapping_sub(1)) == Some(&b'\r'))
+                        {
+                            next = cursor;
+                        }
+                    }
+                }
+                if next.byte == text.len() {
+                    break;
+                }
+                collector.checkpoints.push(next);
+            }
+        }
+        Some((
+            Self {
+                native: Some(collector.checkpoints.into()),
+                visual: Some(visual),
+                ascii_body: self.ascii_body,
+            },
+            summary,
+        ))
+    }
+
     pub fn new(text: &str) -> Self {
         if text.len() <= STEP_BYTES {
             let body = text
@@ -351,6 +501,39 @@ impl LineCoordinates {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn native_chunks_match_scalar_scan_across_ascii_unicode_and_crlf_seams() {
+        for length in [0, 1, 510, 511, 512, 513, 1023] {
+            for seam in [
+                "",
+                "\r\n",
+                "\r",
+                "\n",
+                "\t",
+                "文😀",
+                "\u{0600}a\u{301}",
+                "\0",
+            ] {
+                let text = format!("{}{seam}{}\r\n", "x".repeat(length), "y".repeat(513));
+                let mut reference = NativeCoordinates::new(text.len() > STEP_BYTES);
+                reference.ascii_body_end = text.len() - 2;
+                for (byte, ch) in text.char_indices() {
+                    reference.visit(&text, byte, ch);
+                }
+                let mut preparation = LineCoordinatePreparation::new(&text);
+                while !preparation.advance(1) {}
+                let actual = &preparation.collector;
+                assert_eq!(actual.checkpoints, reference.checkpoints);
+                assert_eq!(actual.position, reference.position);
+                assert_eq!(actual.summary.utf16_len, reference.summary.utf16_len);
+                assert_eq!(actual.summary.breaks, reference.summary.breaks);
+                assert_eq!(actual.summary.oversized, reference.summary.oversized);
+                assert_eq!(actual.ascii_body, reference.ascii_body);
+                assert_eq!(actual.width, reference.width);
+                assert_eq!(actual.previous_cr, reference.previous_cr);
+            }
+        }
+    }
     #[test]
     fn printable_body_proof_is_latched_and_ignores_only_the_original_ending() {
         for (text, expected) in [

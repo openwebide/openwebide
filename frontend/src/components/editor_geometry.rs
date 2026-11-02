@@ -1088,6 +1088,7 @@ pub(super) fn window_paint(
     render: impl Fn(&[crate::state_actions::editor::EditorRowSourceSlice]) -> String,
     windows: &[(usize, openwebide_core::editor::RowPaintWindow)],
     cache: &mut crate::state_actions::editor::EditorFragmentCache,
+    bounded_rows: Option<&[usize]>,
 ) -> Option<String> {
     if windows.is_empty() {
         return None;
@@ -1131,10 +1132,18 @@ pub(super) fn window_paint(
             )
             .ok()?;
     }
-    let slices = windows
-        .iter()
-        .filter_map(|(index, window)| actions.row_source_slice(cache, *index, window, line_height))
-        .collect::<Vec<_>>();
+    let slices = if let Some(rows) = bounded_rows {
+        actions
+            .measured_fragment_paint(cache, rows, windows, line_height)?
+            .1
+    } else {
+        windows
+            .iter()
+            .filter_map(|(index, window)| {
+                actions.row_source_slice(cache, *index, window, line_height)
+            })
+            .collect::<Vec<_>>()
+    };
     if actions.measured_rows().is_none()
         && actions.paragraph_coverage().is_some()
         && windows.iter().any(|(index, _)| {

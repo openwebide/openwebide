@@ -1,0 +1,612 @@
+{
+  "scope": "Private frozen full-feature startup-memory comparison; no production change yet. Same executable WASM code and initial static memory, all active data-segment indices preserved. Three fresh pairs/configuration plus 24 admitted boundary/embedded cases. Complete source, actual near-MiB String styling, syntax readiness, true final and sampled peak Linux Chrome PSS required. Cold snapshot differs from final. No p95, physical device or overall completion claim. Null geometry values retained and counted.",
+  "observations": 72,
+  "sourceVerifiedObservations": 72,
+  "paired": [
+    {
+      "case": "small",
+      "mode": "local",
+      "wrap": false,
+      "variants": {
+        "baseline": {
+          "observations": 3,
+          "coldCompleteGeometryMsMedian": 1069.7999999998137,
+          "inputViewportPaintMsMedian": 10.600000000093132,
+          "inputCompleteGeometryMsMedian": 20.5,
+          "inputCompleteGeometryAvailableCount": 3,
+          "coldPssMiBMedian": 576.591796875,
+          "coldPssAvailableCount": 3,
+          "finalPssMiBMedian": 582.37890625,
+          "sampledPeakPssMiBMedian": 603.6328125
+        },
+        "candidate": {
+          "observations": 3,
+          "coldCompleteGeometryMsMedian": 896.3999999999069,
+          "inputViewportPaintMsMedian": 10.700000000186265,
+          "inputCompleteGeometryMsMedian": 23.700000000186265,
+          "inputCompleteGeometryAvailableCount": 3,
+          "coldPssMiBMedian": 560.8798828125,
+          "coldPssAvailableCount": 3,
+          "finalPssMiBMedian": 566.1103515625,
+          "sampledPeakPssMiBMedian": 566.3447265625
+        }
+      }
+    },
+    {
+      "case": "small",
+      "mode": "local",
+      "wrap": true,
+      "variants": {
+        "baseline": {
+          "observations": 3,
+          "coldCompleteGeometryMsMedian": 1185.2000000001863,
+          "inputViewportPaintMsMedian": 59.8000000002794,
+          "inputCompleteGeometryMsMedian": 59.8000000002794,
+          "inputCompleteGeometryAvailableCount": 3,
+          "coldPssMiBMedian": 640.7744140625,
+          "coldPssAvailableCount": 3,
+          "finalPssMiBMedian": 579.4609375,
+          "sampledPeakPssMiBMedian": 630.9013671875
+        },
+        "candidate": {
+          "observations": 3,
+          "coldCompleteGeometryMsMedian": 990.1000000000931,
+          "inputViewportPaintMsMedian": 63.10000000009313,
+          "inputCompleteGeometryMsMedian": 63.200000000186265,
+          "inputCompleteGeometryAvailableCount": 3,
+          "coldPssMiBMedian": 552.216796875,
+          "coldPssAvailableCount": 3,
+          "finalPssMiBMedian": 558.3212890625,
+          "sampledPeakPssMiBMedian": 558.5361328125
+        }
+      }
+    },
+    {
+      "case": "small",
+      "mode": "remote",
+      "wrap": false,
+      "variants": {
+        "baseline": {
+          "observations": 3,
+          "coldCompleteGeometryMsMedian": 1120,
+          "inputViewportPaintMsMedian": 11,
+          "inputCompleteGeometryMsMedian": 23.799999999813735,
+          "inputCompleteGeometryAvailableCount": 3,
+          "coldPssMiBMedian": 575.2255859375,
+          "coldPssAvailableCount": 3,
+          "finalPssMiBMedian": 581.029296875,
+          "sampledPeakPssMiBMedian": 603.7451171875
+        },
+        "candidate": {
+          "observations": 3,
+          "coldCompleteGeometryMsMedian": 887.5,
+          "inputViewportPaintMsMedian": 10.899999999906868,
+          "inputCompleteGeometryMsMedian": 21.59999999962747,
+          "inputCompleteGeometryAvailableCount": 3,
+          "coldPssMiBMedian": 558.8291015625,
+          "coldPssAvailableCount": 3,
+          "finalPssMiBMedian": 565.5986328125,
+          "sampledPeakPssMiBMedian": 565.828125
+        }
+      }
+    },
+    {
+      "case": "small",
+      "mode": "remote",
+      "wrap": true,
+      "variants": {
+        "baseline": {
+          "observations": 3,
+          "coldCompleteGeometryMsMedian": 1145.5,
+          "inputViewportPaintMsMedian": 58.1999999997206,
+          "inputCompleteGeometryMsMedian": 58.1999999997206,
+          "inputCompleteGeometryAvailableCount": 3,
+          "coldPssMiBMedian": null,
+          "coldPssAvailableCount": 0,
+          "finalPssMiBMedian": 583.146484375,
+          "sampledPeakPssMiBMedian": 583.326171875
+        },
+        "candidate": {
+          "observations": 3,
+          "coldCompleteGeometryMsMedian": 987.1000000000931,
+          "inputViewportPaintMsMedian": 25.600000000093132,
+          "inputCompleteGeometryMsMedian": 25.699999999720603,
+          "inputCompleteGeometryAvailableCount": 3,
+          "coldPssMiBMedian": 557.37646484375,
+          "coldPssAvailableCount": 2,
+          "finalPssMiBMedian": 561.26171875,
+          "sampledPeakPssMiBMedian": 561.39453125
+        }
+      }
+    },
+    {
+      "case": "styled-long-line",
+      "mode": "local",
+      "wrap": false,
+      "variants": {
+        "baseline": {
+          "observations": 3,
+          "coldCompleteGeometryMsMedian": 1411,
+          "inputViewportPaintMsMedian": 87,
+          "inputCompleteGeometryMsMedian": 147,
+          "inputCompleteGeometryAvailableCount": 3,
+          "coldPssMiBMedian": 659.71826171875,
+          "coldPssAvailableCount": 2,
+          "finalPssMiBMedian": 684.4375,
+          "sampledPeakPssMiBMedian": 684.5078125
+        },
+        "candidate": {
+          "observations": 3,
+          "coldCompleteGeometryMsMedian": 1154.3999999999069,
+          "inputViewportPaintMsMedian": 89.40000000037253,
+          "inputCompleteGeometryMsMedian": 151.10000000009313,
+          "inputCompleteGeometryAvailableCount": 3,
+          "coldPssMiBMedian": 623.5537109375,
+          "coldPssAvailableCount": 2,
+          "finalPssMiBMedian": 657.5546875,
+          "sampledPeakPssMiBMedian": 658.03515625
+        }
+      }
+    },
+    {
+      "case": "styled-long-line",
+      "mode": "local",
+      "wrap": true,
+      "variants": {
+        "baseline": {
+          "observations": 3,
+          "coldCompleteGeometryMsMedian": 1496.2000000001863,
+          "inputViewportPaintMsMedian": 64.5,
+          "inputCompleteGeometryMsMedian": 354.39999999990687,
+          "inputCompleteGeometryAvailableCount": 3,
+          "coldPssMiBMedian": 638.6015625,
+          "coldPssAvailableCount": 3,
+          "finalPssMiBMedian": 660.7314453125,
+          "sampledPeakPssMiBMedian": 660.6025390625
+        },
+        "candidate": {
+          "observations": 3,
+          "coldCompleteGeometryMsMedian": 1322.5,
+          "inputViewportPaintMsMedian": 66.40000000037253,
+          "inputCompleteGeometryMsMedian": 374,
+          "inputCompleteGeometryAvailableCount": 3,
+          "coldPssMiBMedian": 617.662109375,
+          "coldPssAvailableCount": 1,
+          "finalPssMiBMedian": 665.9111328125,
+          "sampledPeakPssMiBMedian": 665.9970703125
+        }
+      }
+    },
+    {
+      "case": "styled-long-line",
+      "mode": "remote",
+      "wrap": false,
+      "variants": {
+        "baseline": {
+          "observations": 3,
+          "coldCompleteGeometryMsMedian": 1497.1999999997206,
+          "inputViewportPaintMsMedian": 90.8000000002794,
+          "inputCompleteGeometryMsMedian": 145.89999999990687,
+          "inputCompleteGeometryAvailableCount": 3,
+          "coldPssMiBMedian": 683.1923828125,
+          "coldPssAvailableCount": 3,
+          "finalPssMiBMedian": 693.8134765625,
+          "sampledPeakPssMiBMedian": 694.2724609375
+        },
+        "candidate": {
+          "observations": 3,
+          "coldCompleteGeometryMsMedian": 1159.5,
+          "inputViewportPaintMsMedian": 89,
+          "inputCompleteGeometryMsMedian": 148.20000000018626,
+          "inputCompleteGeometryAvailableCount": 3,
+          "coldPssMiBMedian": 624.6201171875,
+          "coldPssAvailableCount": 3,
+          "finalPssMiBMedian": 652.67578125,
+          "sampledPeakPssMiBMedian": 656.69921875
+        }
+      }
+    },
+    {
+      "case": "styled-long-line",
+      "mode": "remote",
+      "wrap": true,
+      "variants": {
+        "baseline": {
+          "observations": 3,
+          "coldCompleteGeometryMsMedian": 1542.3999999999069,
+          "inputViewportPaintMsMedian": 70.1999999997206,
+          "inputCompleteGeometryMsMedian": 356.89999999990687,
+          "inputCompleteGeometryAvailableCount": 3,
+          "coldPssMiBMedian": 636.3330078125,
+          "coldPssAvailableCount": 3,
+          "finalPssMiBMedian": 682.1513671875,
+          "sampledPeakPssMiBMedian": 682.349609375
+        },
+        "candidate": {
+          "observations": 3,
+          "coldCompleteGeometryMsMedian": 1378.8999999999069,
+          "inputViewportPaintMsMedian": 64.89999999990687,
+          "inputCompleteGeometryMsMedian": 361.09999999962747,
+          "inputCompleteGeometryAvailableCount": 3,
+          "coldPssMiBMedian": 622.8623046875,
+          "coldPssAvailableCount": 3,
+          "finalPssMiBMedian": 671.1337890625,
+          "sampledPeakPssMiBMedian": 671.75
+        }
+      }
+    }
+  ],
+  "boundary": [
+    {
+      "case": "small",
+      "mode": "local",
+      "wrap": false,
+      "observations": 1,
+      "coldCompleteGeometryMsMedian": 899,
+      "inputViewportPaintMsMedian": 10.200000000186265,
+      "inputCompleteGeometryMsMedian": 26.100000000093132,
+      "inputCompleteGeometryAvailableCount": 1,
+      "coldPssMiBMedian": 558.6611328125,
+      "coldPssAvailableCount": 1,
+      "finalPssMiBMedian": 564.2919921875,
+      "sampledPeakPssMiBMedian": 564.552734375
+    },
+    {
+      "case": "small",
+      "mode": "local",
+      "wrap": true,
+      "observations": 1,
+      "coldCompleteGeometryMsMedian": 893.1000000000931,
+      "inputViewportPaintMsMedian": 61.799999999813735,
+      "inputCompleteGeometryMsMedian": 61.799999999813735,
+      "inputCompleteGeometryAvailableCount": 1,
+      "coldPssMiBMedian": null,
+      "coldPssAvailableCount": 0,
+      "finalPssMiBMedian": 560.1982421875,
+      "sampledPeakPssMiBMedian": 560.3857421875
+    },
+    {
+      "case": "small",
+      "mode": "remote",
+      "wrap": false,
+      "observations": 1,
+      "coldCompleteGeometryMsMedian": 903.7000000001863,
+      "inputViewportPaintMsMedian": 11,
+      "inputCompleteGeometryMsMedian": 22.899999999906868,
+      "inputCompleteGeometryAvailableCount": 1,
+      "coldPssMiBMedian": 560.6083984375,
+      "coldPssAvailableCount": 1,
+      "finalPssMiBMedian": 562.267578125,
+      "sampledPeakPssMiBMedian": 562.544921875
+    },
+    {
+      "case": "small",
+      "mode": "remote",
+      "wrap": true,
+      "observations": 1,
+      "coldCompleteGeometryMsMedian": 1003.1999999997206,
+      "inputViewportPaintMsMedian": 28.200000000186265,
+      "inputCompleteGeometryMsMedian": 28.200000000186265,
+      "inputCompleteGeometryAvailableCount": 1,
+      "coldPssMiBMedian": 555.6572265625,
+      "coldPssAvailableCount": 1,
+      "finalPssMiBMedian": 562.1005859375,
+      "sampledPeakPssMiBMedian": 562.2919921875
+    },
+    {
+      "case": "byte-limit",
+      "mode": "local",
+      "wrap": false,
+      "observations": 1,
+      "coldCompleteGeometryMsMedian": 1158.2999999998137,
+      "inputViewportPaintMsMedian": 21,
+      "inputCompleteGeometryMsMedian": null,
+      "inputCompleteGeometryAvailableCount": 0,
+      "coldPssMiBMedian": 590.6298828125,
+      "coldPssAvailableCount": 1,
+      "finalPssMiBMedian": 680.9169921875,
+      "sampledPeakPssMiBMedian": 680.900390625
+    },
+    {
+      "case": "byte-limit",
+      "mode": "local",
+      "wrap": true,
+      "observations": 1,
+      "coldCompleteGeometryMsMedian": 1254.1999999997206,
+      "inputViewportPaintMsMedian": 44.89999999990687,
+      "inputCompleteGeometryMsMedian": 44.89999999990687,
+      "inputCompleteGeometryAvailableCount": 1,
+      "coldPssMiBMedian": 580.4658203125,
+      "coldPssAvailableCount": 1,
+      "finalPssMiBMedian": 666.3515625,
+      "sampledPeakPssMiBMedian": 688.52734375
+    },
+    {
+      "case": "byte-limit",
+      "mode": "remote",
+      "wrap": false,
+      "observations": 1,
+      "coldCompleteGeometryMsMedian": 1187.2999999998137,
+      "inputViewportPaintMsMedian": 21.600000000093132,
+      "inputCompleteGeometryMsMedian": null,
+      "inputCompleteGeometryAvailableCount": 0,
+      "coldPssMiBMedian": 594.431640625,
+      "coldPssAvailableCount": 1,
+      "finalPssMiBMedian": 683.7763671875,
+      "sampledPeakPssMiBMedian": 691.787109375
+    },
+    {
+      "case": "byte-limit",
+      "mode": "remote",
+      "wrap": true,
+      "observations": 1,
+      "coldCompleteGeometryMsMedian": 1288.2000000001863,
+      "inputViewportPaintMsMedian": 52.89999999990687,
+      "inputCompleteGeometryMsMedian": 52.89999999990687,
+      "inputCompleteGeometryAvailableCount": 1,
+      "coldPssMiBMedian": 579.1923828125,
+      "coldPssAvailableCount": 1,
+      "finalPssMiBMedian": 675.0390625,
+      "sampledPeakPssMiBMedian": 686.0712890625
+    },
+    {
+      "case": "line-limit",
+      "mode": "local",
+      "wrap": false,
+      "observations": 1,
+      "coldCompleteGeometryMsMedian": 900.7000000001863,
+      "inputViewportPaintMsMedian": 23.699999999720603,
+      "inputCompleteGeometryMsMedian": null,
+      "inputCompleteGeometryAvailableCount": 0,
+      "coldPssMiBMedian": 574.3564453125,
+      "coldPssAvailableCount": 1,
+      "finalPssMiBMedian": 558.630859375,
+      "sampledPeakPssMiBMedian": 558.783203125
+    },
+    {
+      "case": "line-limit",
+      "mode": "local",
+      "wrap": true,
+      "observations": 1,
+      "coldCompleteGeometryMsMedian": 959.6999999997206,
+      "inputViewportPaintMsMedian": 63.6999999997206,
+      "inputCompleteGeometryMsMedian": 63.6999999997206,
+      "inputCompleteGeometryAvailableCount": 1,
+      "coldPssMiBMedian": 546.08203125,
+      "coldPssAvailableCount": 1,
+      "finalPssMiBMedian": 557.8095703125,
+      "sampledPeakPssMiBMedian": 557.9462890625
+    },
+    {
+      "case": "line-limit",
+      "mode": "remote",
+      "wrap": false,
+      "observations": 1,
+      "coldCompleteGeometryMsMedian": 941.2000000001863,
+      "inputViewportPaintMsMedian": 19.5,
+      "inputCompleteGeometryMsMedian": null,
+      "inputCompleteGeometryAvailableCount": 0,
+      "coldPssMiBMedian": 577.765625,
+      "coldPssAvailableCount": 1,
+      "finalPssMiBMedian": 568.001953125,
+      "sampledPeakPssMiBMedian": 568.1064453125
+    },
+    {
+      "case": "line-limit",
+      "mode": "remote",
+      "wrap": true,
+      "observations": 1,
+      "coldCompleteGeometryMsMedian": 1036.7999999998137,
+      "inputViewportPaintMsMedian": 75.1999999997206,
+      "inputCompleteGeometryMsMedian": 75.1999999997206,
+      "inputCompleteGeometryAvailableCount": 1,
+      "coldPssMiBMedian": 551.677734375,
+      "coldPssAvailableCount": 1,
+      "finalPssMiBMedian": 563.1591796875,
+      "sampledPeakPssMiBMedian": 568.70703125
+    },
+    {
+      "case": "long-line",
+      "mode": "local",
+      "wrap": false,
+      "observations": 1,
+      "coldCompleteGeometryMsMedian": 1145.3999999999069,
+      "inputViewportPaintMsMedian": 91.60000000009313,
+      "inputCompleteGeometryMsMedian": 91.60000000009313,
+      "inputCompleteGeometryAvailableCount": 1,
+      "coldPssMiBMedian": 626.1494140625,
+      "coldPssAvailableCount": 1,
+      "finalPssMiBMedian": 709.111328125,
+      "sampledPeakPssMiBMedian": 714.470703125
+    },
+    {
+      "case": "long-line",
+      "mode": "local",
+      "wrap": true,
+      "observations": 1,
+      "coldCompleteGeometryMsMedian": 1329.0999999996275,
+      "inputViewportPaintMsMedian": 64.5,
+      "inputCompleteGeometryMsMedian": 96,
+      "inputCompleteGeometryAvailableCount": 1,
+      "coldPssMiBMedian": 638.17578125,
+      "coldPssAvailableCount": 1,
+      "finalPssMiBMedian": 655.431640625,
+      "sampledPeakPssMiBMedian": 658.02734375
+    },
+    {
+      "case": "long-line",
+      "mode": "remote",
+      "wrap": false,
+      "observations": 1,
+      "coldCompleteGeometryMsMedian": 1152.3999999999069,
+      "inputViewportPaintMsMedian": 89.60000000009313,
+      "inputCompleteGeometryMsMedian": 89.70000000018626,
+      "inputCompleteGeometryAvailableCount": 1,
+      "coldPssMiBMedian": 630.4921875,
+      "coldPssAvailableCount": 1,
+      "finalPssMiBMedian": 711.0859375,
+      "sampledPeakPssMiBMedian": 711.0888671875
+    },
+    {
+      "case": "long-line",
+      "mode": "remote",
+      "wrap": true,
+      "observations": 1,
+      "coldCompleteGeometryMsMedian": 1298.0999999996275,
+      "inputViewportPaintMsMedian": 68.39999999990687,
+      "inputCompleteGeometryMsMedian": 113.89999999990687,
+      "inputCompleteGeometryAvailableCount": 1,
+      "coldPssMiBMedian": 639.2783203125,
+      "coldPssAvailableCount": 1,
+      "finalPssMiBMedian": 676.298828125,
+      "sampledPeakPssMiBMedian": 677.615234375
+    },
+    {
+      "case": "embedded-html",
+      "mode": "local",
+      "wrap": false,
+      "observations": 1,
+      "coldCompleteGeometryMsMedian": 892.2000000001863,
+      "inputViewportPaintMsMedian": 15.699999999720603,
+      "inputCompleteGeometryMsMedian": 27,
+      "inputCompleteGeometryAvailableCount": 1,
+      "coldPssMiBMedian": 581.6884765625,
+      "coldPssAvailableCount": 1,
+      "finalPssMiBMedian": 570.1025390625,
+      "sampledPeakPssMiBMedian": 570.390625
+    },
+    {
+      "case": "embedded-html",
+      "mode": "local",
+      "wrap": true,
+      "observations": 1,
+      "coldCompleteGeometryMsMedian": 935.6999999997206,
+      "inputViewportPaintMsMedian": 21.5,
+      "inputCompleteGeometryMsMedian": 21.5,
+      "inputCompleteGeometryAvailableCount": 1,
+      "coldPssMiBMedian": null,
+      "coldPssAvailableCount": 0,
+      "finalPssMiBMedian": 562.91015625,
+      "sampledPeakPssMiBMedian": 562.77734375
+    },
+    {
+      "case": "embedded-html",
+      "mode": "remote",
+      "wrap": false,
+      "observations": 1,
+      "coldCompleteGeometryMsMedian": 905.0999999996275,
+      "inputViewportPaintMsMedian": 21.200000000186265,
+      "inputCompleteGeometryMsMedian": 28.600000000093132,
+      "inputCompleteGeometryAvailableCount": 1,
+      "coldPssMiBMedian": 585.2255859375,
+      "coldPssAvailableCount": 1,
+      "finalPssMiBMedian": 572.521484375,
+      "sampledPeakPssMiBMedian": 576.068359375
+    },
+    {
+      "case": "embedded-html",
+      "mode": "remote",
+      "wrap": true,
+      "observations": 1,
+      "coldCompleteGeometryMsMedian": 1003.3999999999069,
+      "inputViewportPaintMsMedian": 23.399999999906868,
+      "inputCompleteGeometryMsMedian": 23.399999999906868,
+      "inputCompleteGeometryAvailableCount": 1,
+      "coldPssMiBMedian": 578.103515625,
+      "coldPssAvailableCount": 1,
+      "finalPssMiBMedian": 566.216796875,
+      "sampledPeakPssMiBMedian": 566.056640625
+    },
+    {
+      "case": "embedded-markdown",
+      "mode": "local",
+      "wrap": false,
+      "observations": 1,
+      "coldCompleteGeometryMsMedian": 876.1999999997206,
+      "inputViewportPaintMsMedian": 13.100000000093132,
+      "inputCompleteGeometryMsMedian": 21.90000000037253,
+      "inputCompleteGeometryAvailableCount": 1,
+      "coldPssMiBMedian": 556.310546875,
+      "coldPssAvailableCount": 1,
+      "finalPssMiBMedian": 560.9833984375,
+      "sampledPeakPssMiBMedian": 561.2099609375
+    },
+    {
+      "case": "embedded-markdown",
+      "mode": "local",
+      "wrap": true,
+      "observations": 1,
+      "coldCompleteGeometryMsMedian": 1074.6000000000931,
+      "inputViewportPaintMsMedian": 25,
+      "inputCompleteGeometryMsMedian": 25,
+      "inputCompleteGeometryAvailableCount": 1,
+      "coldPssMiBMedian": 553.2392578125,
+      "coldPssAvailableCount": 1,
+      "finalPssMiBMedian": 564.3486328125,
+      "sampledPeakPssMiBMedian": 607.87109375
+    },
+    {
+      "case": "embedded-markdown",
+      "mode": "remote",
+      "wrap": false,
+      "observations": 1,
+      "coldCompleteGeometryMsMedian": 945.2000000001863,
+      "inputViewportPaintMsMedian": 9.700000000186265,
+      "inputCompleteGeometryMsMedian": 25,
+      "inputCompleteGeometryAvailableCount": 1,
+      "coldPssMiBMedian": 553.3369140625,
+      "coldPssAvailableCount": 1,
+      "finalPssMiBMedian": 558.626953125,
+      "sampledPeakPssMiBMedian": 597.64453125
+    },
+    {
+      "case": "embedded-markdown",
+      "mode": "remote",
+      "wrap": true,
+      "observations": 1,
+      "coldCompleteGeometryMsMedian": 1080,
+      "inputViewportPaintMsMedian": 75.39999999990687,
+      "inputCompleteGeometryMsMedian": 75.39999999990687,
+      "inputCompleteGeometryAvailableCount": 1,
+      "coldPssMiBMedian": 557.80078125,
+      "coldPssAvailableCount": 1,
+      "finalPssMiBMedian": 562.875,
+      "sampledPeakPssMiBMedian": 620.1962890625
+    }
+  ],
+  "missingGeometry": [
+    {
+      "cohort": "boundary",
+      "variant": "candidate",
+      "case": "byte-limit",
+      "mode": "local",
+      "wrap": false,
+      "repetition": 1
+    },
+    {
+      "cohort": "boundary",
+      "variant": "candidate",
+      "case": "byte-limit",
+      "mode": "remote",
+      "wrap": false,
+      "repetition": 1
+    },
+    {
+      "cohort": "boundary",
+      "variant": "candidate",
+      "case": "line-limit",
+      "mode": "local",
+      "wrap": false,
+      "repetition": 1
+    },
+    {
+      "cohort": "boundary",
+      "variant": "candidate",
+      "case": "line-limit",
+      "mode": "remote",
+      "wrap": false,
+      "repetition": 1
+    }
+  ],
+  "rawSha256": "3d8ef4babd60cf2d20650d4c632ba475cb827c2508678b044209dffb741ac928"
+}

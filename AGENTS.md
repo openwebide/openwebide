@@ -125,6 +125,10 @@ Actions runs.
    ```
    If any tool or target is missing or out of date, install or update it in the local environment
    before proceeding. Do not treat missing local tooling as an excuse to defer verification to CI.
+   Use CI's Chrome capabilities in ignored `webdriver.json` files at the root,
+   `frontend/` and `tools/editor-bench/`: set `goog:chromeOptions.binary` to the
+   installed Chrome executable and `args` to `["--window-size=1280,900"]`.
+   Run suites with wall-clock deadlines without concurrent compilation or other heavy checks.
 
 2. **Mandatory Pre-Push Checks (Must Pass With Zero Warnings/Failures)**:
    Run these commands before every commit/push:
@@ -143,11 +147,14 @@ Actions runs.
    cargo test -p openwebide-frontend --lib
 
    # 4. Headless Chrome WASM UI tests (required whenever frontend, core, agent, or shared types change)
-   CHROMEDRIVER=$(command -v chromedriver) cargo test -p openwebide-frontend --release --target wasm32-unknown-unknown --lib
-   CHROMEDRIVER=$(command -v chromedriver) cargo test -p openwebide-frontend --release --target wasm32-unknown-unknown --test components
+   CHROMEDRIVER=$(command -v chromedriver) WASM_BINDGEN_TEST_TIMEOUT=300 cargo test -p openwebide-frontend --release --target wasm32-unknown-unknown -- --skip 'editor::'
+   CHROMEDRIVER=$(command -v chromedriver) WASM_BINDGEN_TEST_TIMEOUT=300 python3 tools/run-editor-browser-tests.py
    ```
    When iterating on a specific frontend area, run the targeted browser test module first (for
    example `--test components -- streaming::`) and the full affected suite before pushing.
+   The complete browser gate uses the same partitions as CI: every non-editor test
+   artifact, then independently checked editor groups and separate font matrices.
+   Keep the existing per-run and per-test deadlines and complete compiled inventory.
 
 3. **Tracked Pre-Push Git Hook (`.githooks/pre-push`)**:
    Ensure the repository's tracked Git hooks directory is active (never bypass with `--no-verify`):
@@ -178,8 +185,8 @@ spin up --direct-mounts --allow-transient-write
 ```
 
 - **Launch both Spin and the bridge outside the coding agent's filesystem sandbox.**
-  In Codex, use `exec_command` with `sandbox_permissions: "require_escalated"` and
-  `tty: true` for both server commands. Builds can stay sandboxed. A sandboxed server
+  Use normal host access and a persistent terminal for both server commands.
+  Builds can stay sandboxed. A sandboxed server
   can start successfully and serve the UI while agent writes and shell commands fail
   with permission denials in other remote projects. Restart sandboxed processes with
   normal host access; do not change project permissions to compensate.

@@ -1,0 +1,277 @@
+{
+  "verificationState": "PASS: final-source production worker, About/PWA, unwrapped input/history, pointer, strict site and compiled playground checks",
+  "scope": "Isolated browser-engine and software device simulations. This does not establish physical candidate IME, assistive technology, touch hardware or native Edge/PWA behavior.",
+  "frontendWasmSha256": "698a969a7f10077fc9ec3336c507eadc8da7af6278d20de4df814f4873926174",
+  "sourceFiles": {
+    "frontend/src/state_actions/editor/input.rs": "85f93ae53b77de814842d51d8d9b166c67005abc8bcfcbb79d20ee79a03340bf",
+    "frontend/tests/components/editor.rs": "51cf047fd544fc056503b2f312b55db5410061fd585158b7fcdd1055fcc8e444",
+    "tools/check-editor-input.py": "7a6a936341f63deaa8ed2ce84b99d7f41c5ebe00bd23cff6d2e46dd41c09bd53",
+    ".github/workflows/ci.yml": "9cd16babef851c262c8ebd8d765b3163fa5d15b611e1deb69fd2e160a49581ad",
+    "CHANGELOG.md": "52823f23b154a6e93b74a3aacb12dc40e915cffabcbac0063f2a8fdf3add11a5"
+  },
+  "workerUrl": {
+    "compiled_module": false,
+    "providers": 15,
+    "config_languages": 6,
+    "plain_fallback_languages": 1,
+    "nested_languages": 6,
+    "incremental": true,
+    "structural_delta": true,
+    "ui_event_during_worker": true,
+    "oversize_fallback": true,
+    "changed_row_records": 3,
+    "cooperative_yields": 2618,
+    "large_literal_bytes": 1043013,
+    "large_literal_yields": 62,
+    "yaml_bytes": 1043026,
+    "yaml_yields": 62
+  },
+  "workerCompiledModule": {
+    "compiled_module": true,
+    "providers": 15,
+    "config_languages": 6,
+    "plain_fallback_languages": 1,
+    "nested_languages": 6,
+    "incremental": true,
+    "structural_delta": true,
+    "ui_event_during_worker": true,
+    "oversize_fallback": true,
+    "changed_row_records": 3,
+    "cooperative_yields": 2618,
+    "large_literal_bytes": 1043013,
+    "large_literal_yields": 62,
+    "yaml_bytes": 1043026,
+    "yaml_yields": 62
+  },
+  "unwrappedFullInput": [
+    {
+      "mode": "local",
+      "ending": "LF",
+      "windowed": false,
+      "wrapped": false,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "CRLF",
+      "windowed": false,
+      "wrapped": false,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "LF",
+      "windowed": false,
+      "wrapped": false,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "CRLF",
+      "windowed": false,
+      "wrapped": false,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    }
+  ],
+  "unwrappedWindowedInput": [
+    {
+      "mode": "local",
+      "ending": "LF",
+      "windowed": true,
+      "wrapped": false,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "CRLF",
+      "windowed": true,
+      "wrapped": false,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "LF",
+      "windowed": true,
+      "wrapped": false,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "CRLF",
+      "windowed": true,
+      "wrapped": false,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    }
+  ],
+  "pointerConfigurations": [
+    {
+      "mode": "local",
+      "repeat": 1,
+      "language": "rs",
+      "ending": "crlf",
+      "wrap": false,
+      "trusted_clicks": true
+    },
+    {
+      "mode": "local",
+      "repeat": 1000,
+      "language": "rs",
+      "ending": "crlf",
+      "wrap": false,
+      "trusted_clicks": true
+    },
+    {
+      "mode": "remote",
+      "repeat": 1,
+      "language": "rs",
+      "ending": "crlf",
+      "wrap": false,
+      "trusted_clicks": true
+    },
+    {
+      "mode": "remote",
+      "repeat": 1000,
+      "language": "rs",
+      "ending": "crlf",
+      "wrap": false,
+      "trusted_clicks": true
+    },
+    {
+      "mode": "local",
+      "repeat": 1,
+      "language": "cs",
+      "ending": "crlf",
+      "wrap": false,
+      "trusted_clicks": true
+    },
+    {
+      "mode": "local",
+      "repeat": 1000,
+      "language": "cs",
+      "ending": "crlf",
+      "wrap": false,
+      "trusted_clicks": true
+    },
+    {
+      "mode": "remote",
+      "repeat": 1,
+      "language": "cs",
+      "ending": "crlf",
+      "wrap": false,
+      "trusted_clicks": true
+    },
+    {
+      "mode": "remote",
+      "repeat": 1000,
+      "language": "cs",
+      "ending": "crlf",
+      "wrap": false,
+      "trusted_clicks": true
+    },
+    {
+      "mode": "local",
+      "repeat": 1,
+      "language": "json",
+      "ending": "crlf",
+      "wrap": false,
+      "trusted_clicks": true
+    },
+    {
+      "mode": "local",
+      "repeat": 1000,
+      "language": "json",
+      "ending": "crlf",
+      "wrap": false,
+      "trusted_clicks": true
+    },
+    {
+      "mode": "remote",
+      "repeat": 1,
+      "language": "json",
+      "ending": "crlf",
+      "wrap": false,
+      "trusted_clicks": true
+    },
+    {
+      "mode": "remote",
+      "repeat": 1000,
+      "language": "json",
+      "ending": "crlf",
+      "wrap": false,
+      "trusted_clicks": true
+    }
+  ],
+  "authSourceCaret": [
+    {
+      "mode": "local",
+      "repeat": 1,
+      "language": "rs",
+      "ending": "lf",
+      "wrap": false,
+      "trusted_clicks": true
+    },
+    {
+      "mode": "remote",
+      "repeat": 1,
+      "language": "rs",
+      "ending": "lf",
+      "wrap": false,
+      "trusted_clicks": true
+    }
+  ],
+  "siteNavigationTests": 6,
+  "strictRealPlaygroundSiteBuild": "PASS",
+  "compiledPlayground": "PASS: mouse/touch/pen, nesting and cycle/stale-gesture rejection, phone/desktop, dark/light and downloads",
+  "logsSha256": {
+    "worker-url": "2e8b2aaac5d995d664adbe77e69a575bf27ceec72cf4e665853184c267bc1db0",
+    "worker-module": "13472a1460c7def6d9e537eaf91948da0183f649ffae7a180f88bb7034a62d32",
+    "about": "e01414d32839e26b2009480ad050dea59682d5c35fb7f874cfb08049e8dbff41",
+    "unwrapped-full-input": "01bacf668f9433a1edf0a5d41ad683e3fd8be056e110eabe8c77af81e7129c30",
+    "unwrapped-windowed-input": "06be55fbc5549edbbce87b974fd04a8bbe7bbcfc412a795250d5a5393c657055",
+    "pointer": "47e251d93b1369e199296dcc198129dcf81ef7984b0bf5d9de0d0eb10e122196",
+    "pointer-auth": "288998724261b1211a8ca26fae9ac13fd67b8ed602e741b1bd07659337b82f49",
+    "site-tests": "1e43b905e11ca028139fe5078016515111aaf7cebf8d6a3e224b7d03b9cb6ac9",
+    "site-build": "376b643ca15fd24a88aabdf01916bcdb8592764896ffccd6b583af537184384d",
+    "site-playground": "06926e0a45fb383e55ca86cec533d1f94b71c0ab478732fba9e9b46dd60100a2"
+  }
+}

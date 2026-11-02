@@ -1,5 +1,120 @@
 # Editor performance measurements
 
+## Viewport publication and repeated edits
+
+Within an already published viewport, current complete measurements can publish
+edits after native source installation and CSS metrics agree. Scroll, native-window
+and font/layout transitions retain scheduled paint. Oversized unwrapped rows require
+current glyph anchors for the visible slice; failed fragment proofs retain the
+scheduled fallback. Warm wrapped measurements coalesce through a browser task.
+
+The agreed criteria are at least 95% of measured edits below 50 ms for ordinary
+files and 100 ms at admitted limits, cold readiness below two seconds, and stable
+retained memory with natural resident peaks reported separately.
+
+The final [328-edit cohort](editor-performance/viewport-scoped-memory-summary.json)
+uses one fresh edit and 40 beginning edit/Undo cycles per Local/Remote and wrapping
+configuration, Linux Chromium, four CPUs and a 10 GiB limit. Every transition
+verifies complete persisted source, current syntax and geometry.
+
+| Source | Wrap | Local p95 | Remote p95 | Slowest edit |
+| --- | --- | ---: | ---: | ---: |
+| Ordinary Rust, 58,000 bytes | On | 18.6 ms | 18.9 ms | 30.2 ms |
+| Ordinary Rust, 58,000 bytes | Off | 14.3 ms | 15.4 ms | 16.6 ms |
+| Styled Rust line, 1,048,567 bytes | On | 87.0 ms | 86.0 ms | 94.7 ms |
+| Styled Rust line, 1,048,567 bytes | Off | 85.7 ms | 85.4 ms | 88.4 ms |
+
+All 328 edits meet their thresholds. Maximum full cold readiness is 1,348.9 ms;
+the natural sampled Chrome PSS peak in this 40-cycle cohort is 1,013.6 MiB.
+[Raw observations](editor-performance/viewport-scoped-natural.jsonl) retain
+source checks, timing samples and memory snapshots. The measured production WASM
+is `99d5053f2966e2f0`, 14,192,587 bytes. The earlier
+[unscoped recording](editor-performance/viewport-fragment-production-summary.json)
+is retained for comparison.
+
+The [broader comparisons](editor-performance/viewport-broad-comparison-summary.json)
+add 32 fresh ordinary-file observations across Rust, plain text, HTML and Markdown,
+and 32 at admitted byte, row and long-line limits. All 64 candidate observations
+meet their paint and cold-readiness targets: ordinary maximum paint is 42.1 ms,
+admitted maximum is 94.2 ms and full cold readiness stays below 1.669 seconds.
+Each configuration has two fresh samples; the separate 41-edit configurations
+above supply the latency percentile evidence. The production artifact is identical;
+these single-input observations do not use the repeated-script wrapper.
+
+## Retained memory and measurement controls
+
+The [collected-memory matrix](editor-performance/viewport-scoped-retained.jsonl)
+covers the same eight configurations. Collection reaches every owned page, worker
+and service-worker heap, then rechecks complete source, syntax and geometry.
+Its timings are excluded from latency acceptance.
+
+The [production Remote run](editor-performance/viewport-scoped-retained-800-remote.jsonl)
+verifies 1,601 transitions over 800 admitted-size cycles. Main WASM capacity stays
+fixed from cycle 100 through 800. Page JavaScript heap is 4,069,492 bytes at both
+cycles 700 and 800; worker heap is fixed from cycle 500 onward. The service-worker
+heap stays within 264 bytes over the last 600 cycles. Head children, native editor
+count and overlay rows remain fixed; total elements vary between 737 and 740 with
+transient UI state. These are observations of stable retained application storage,
+not a requirement for process PSS to remain flat.
+
+A separate [800-cycle Local allocator run](editor-performance/viewport-live-rust-heap-summary.json)
+uses the exact editor changes plus a private
+[Rust allocation counter](editor-performance/retained-rust-probe.rs). From cycle 20
+onward, requested live heap bytes range from 9,331,860 to 9,331,873 and allocation
+count from 23,034 to 23,035. JavaScript reference-table occupancy and main WASM
+capacity stay fixed. This diagnostic build attributes live storage independently
+of reserved capacity; its timings and memory totals are excluded from primary
+acceptance.
+
+The [script-result controls](editor-performance/viewport-script-result-calibration.json)
+identify measurement results rooted in ChromeDriver's inspector. Repeated
+synchronous scripts now use a releasable object group through an owned root
+element; original script arguments are restored before execution. Inspector roots
+stay at 30 between cycles 20 and 100, versus 284 to over 1,200 in the unscoped
+control. Both console-clearing controls were ineffective and were not adopted.
+The wrapper applies only after the original single-input observations.
+
+The matching [native allocation profile](editor-performance/viewport-native-sampling-summary.json)
+resolves an 18 MiB allocation to Chromium's deleted IPC-link set. Chromium rotates
+these sets every five minutes; independent
+[long native observations](editor-performance/viewport-native-retained-summary.json)
+show periodic cleanup. Chromium also
+[bounds native undo history to 1,000 entries](https://github.com/chromium/chromium/blob/154.0.8037.92/third_party/blink/renderer/core/editing/commands/undo_stack.cc#L36).
+The earlier [WASM capacity probes](editor-performance/viewport-wasm-retained-summary.json)
+separately observe main and worker capacities through 100 cycles. Missing memory
+counters remain unavailable rather than being replaced with zero.
+
+Natural resident peaks are reported separately. Historical end-only collection
+controls on the same production artifact sample 1,413.3 MiB before collection at
+100 admitted-size cycles and 2,121.7 MiB at 200 cycles. Those records predate script
+result scoping and remain identified in the native summary; their timings are
+excluded from latency acceptance. The
+[collection calibration](editor-performance/viewport-memory-collection-calibration.json)
+shows why page-only collection is insufficient: service-worker upload blobs remain
+live until that heap is collected. The application recovery transport is unchanged.
+
+The [full local CI receipt](editor-performance/viewport-local-checks.json) covers
+224 editor contracts and both font matrices. The
+[exact-bundle production receipt](editor-performance/viewport-production-checks.json)
+covers worker/provider, About/offline PWA, input, pointer and compiled site contracts.
+Trunk can reorder identical module-preload links on rebuild; the receipts retain
+the exact frozen-bundle comparison. Hosted checks are tracked per commit on
+[draft PR 2](https://github.com/openwebide/openwebide/pull/2/checks).
+Current native-device checks remain on the [roadmap](roadmap.md).
+
+After building the current source, reproduce the natural cohort with:
+
+```sh
+tools/measure-editor-view-linux.sh --cases small styled-long-line --modes local remote --input-position beginning --wait-syntax --memory-cycles 40 --wrap
+```
+
+Repeat without `--wrap` for unwrapped views. Add `--memory-retention` for a separate
+collected cohort. The tool supports up to 1,000 cycles and checkpoints every 100
+for longer runs. Local measurements use recovery without an OS directory handle;
+they do not establish native filesystem-permission behavior.
+
+## Shared workloads
+
 Run the same Rust workloads on the native host and in Chrome/WASM:
 
 ```sh
@@ -12,6 +127,62 @@ The browser command needs the matching `wasm-bindgen-test-runner` on PATH and Ch
 Each edit workload performs 50 insert/delete or document edit/Undo pairs (100 edits) at the middle of a Unicode/CRLF buffer. Document history stores replacement deltas. Candidate rope runs compare isolated edits and edits that also materialize the complete display string after every operation. Queries repeat 100 times. `document_100_textarea_queries` exercises actual CRLF-aware browser offsets; raw UTF-16 candidate queries measure their indexing primitives and are not interchangeable with textarea offsets.
 
 Rope candidates are optional dependencies of this measurement tool and are absent from application runtime dependencies. [Crop](https://docs.rs/crop/0.4.3/crop/struct.Rope.html) exposes byte edits and an optional UTF-16 metric. [Ropey](https://docs.rs/ropey/1.6.1/ropey/struct.Rope.html) uses character edits with byte/character conversion. Ropey enables SIMD while disabling extra Unicode/bare-CR line separators to match the editor’s LF/CRLF line semantics.
+
+## ASCII edits in mixed Unicode rows
+
+`cargo run -p openwebide-editor-bench --release -- --styled-edits` measures
+twenty insertion/Undo pairs at the beginning, middle and end of the production
+near-1-MiB mixed-Unicode String fixture. Construction, complete-source equality
+and native-offset checks are outside timing. The same workload runs in the
+browser benchmark's `shared_styled_edit_workloads` contract.
+
+Five alternating native process pairs compare checkpoint `21f5510b` with exact
+coordinate reuse for small printable-ASCII edits between unchanged ASCII
+neighbors. Each process takes five samples per position; the table reports the
+median of process medians, in milliseconds per twenty pairs.
+
+| Position | Previous | Coordinate reuse |
+| --- | ---: | ---: |
+| Beginning | 434.776 | 17.701 |
+| Middle | 434.666 | 12.279 |
+| End | 433.057 | 9.932 |
+
+[Raw samples and artifact hashes](editor-performance/mixed-ascii-seam-native.json)
+retain the common measurement function and compiler context. Complete-table and
+history comparisons preserve fresh-reconstruction equality. Unicode seams,
+tabs, bidirectional rows, long graphemes and long category runs retain full
+preparation. These primitive measurements exclude syntax, workers, DOM/layout,
+paint and process memory; whole-editor completion remains open.
+
+The [24-sample production comparison](editor-performance/mixed-ascii-seam-production-summary.json)
+uses three alternating artifact pairs in each local/remote and wrapping
+configuration. Median viewport paint improves by 7–18 ms; full wrapped paint
+remains near 403 ms, and cold readiness and sampled PSS show no general gain.
+[Boundary observations](editor-performance/mixed-ascii-seam-boundary-summary.json)
+also preserve complete source at the byte and row limits. Instrumented
+[wrapped profiles](editor-performance/mixed-ascii-seam-profile-summary.json)
+show input handlers at 8.7–8.8 ms versus 22.6–23.0 ms, with sixteen paragraph
+probes still spending 175–185 ms in layout. These profiles include instrumentation
+overhead. The [complete local verification](editor-performance/mixed-ascii-seam-local-checks.json)
+passes; final hosted and physical-device gates remain open.
+
+## Installed Chrome PWA verification
+
+On the earlier `3a52adcd99aa1bf5` bundle, native Computer Use checks on macOS
+Chrome 156 verified keyboard input, Unicode
+clipboard paste, undo/redo, Command-S, dead-key commit/cancel and Tab focus escape
+in the installed PWA's local and remote modes. Revoking native folder access,
+editing and reloading retains the draft with Save blocked. Denied regrant retains
+it; restored browser permissions and the native write prompt permit disk
+verification and an exact Unicode/CRLF save.
+
+The [receipt](editor-performance/native-pwa-recovery-current.json) records the
+actual loaded WASM fingerprint and byte hashes. An older active service worker
+initially served the cached pre-fix editor after reload. Closing the test app's
+clients and reopening activated the waiting update; native DevTools confirmed
+`3a52adcd99aa1bf5`, and both-mode checks repeated successfully on that artifact.
+Candidate-selection IME, physical touch, assistive technology and Edge remain
+unverified. These checks do not close the performance gates.
 
 ## Recorded comparison
 
@@ -6861,3 +7032,259 @@ slices and exact source ownership. Strict native/parser and release WASM fronten
 lint pass. This establishes removal of the in-process wire copies, not a measured
 end-to-end latency or process-memory improvement. Background worker decoding,
 metadata publication and other full-source paths remain unfinished.
+
+
+### Batched short-row native coordinates
+
+Nonvisual row preparation now accounts for contiguous printable ASCII with the
+existing bulk collector inside each 512-byte source step. Unicode and controls
+retain scalar handling, including CRLF seam state, exact sparse checkpoints and
+admission totals. Initial documents, changed rows and worker preparation share
+this core path; no transport-specific implementation was added.
+
+The new scalar oracle covers printable runs, tabs, NUL, Unicode combining/Prepend
+seams and CRLF around chunk boundaries. All 595 minimal and 792 parser-enabled
+core tests pass (one pre-existing ignored test in each configuration), with strict
+native core/benchmark and WASM frontend lint. The Chrome/WASM construction
+workload and existing local/remote dense-row worker contract pass
+([checks](editor-performance/short-row-construction-checks.json)).
+
+Seven quiet interleaved native release process pairs measure seven constructions
+per workload per process. Median 99,998-row ASCII construction falls from 21.1 to
+8.4 ms; mixed Unicode/CRLF construction falls from 20.8 to 10.3 ms. Source cloning
+is untimed; document allocation, admission and coordinates are timed, followed by
+complete-source, row-count and sampled native-offset checks
+([samples and binary identities](editor-performance/short-row-construction-native.json)).
+The same candidate workload passes Chrome/WASM, without a paired WASM baseline.
+These exclude editor state publication, worker transfer, syntax, geometry, paint
+and process memory. They do not establish an end-to-end editor improvement or
+close the performance gate. Reproduce with the construction commands in the
+[benchmark guide](https://github.com/openwebide/openwebide/blob/main/tools/editor-bench/README.md).
+
+
+### Native desktop permission and recovery verification
+
+Computer Use drove the normal Chrome window through a disposable Spin account
+and a real temporary project directory. Both remote and local projects preserve
+Unicode clipboard text, native keyboard edits and undo/redo; Save button writes
+match the complete expected file bytes including every original CRLF.
+
+Chrome's native file-access control revoked the local directory grant. Editing
+continued; reload restored the unsaved draft and blocked saving while disk
+verification lacked permission. Denying the native regrant prompt preserved that
+draft. Regranting access verified disk, enabled save, and wrote exactly the
+recovered Unicode/CRLF source
+([receipt and artifact hashes](editor-performance/native-folder-recovery-desktop.json)).
+This establishes desktop native-folder behavior without a fake directory handle;
+Native macOS dead-key commit/cancel, composition undo and forward/backward Tab
+escape also pass through the normal Chrome window. Installed PWA/Edge, East Asian
+candidate IME, touch hardware and assistive technology remain outstanding.
+
+The direct check also reproduced Cmd+S opening Chrome's Save Page dialog. The
+editor root now consumes Ctrl/Cmd+S and calls the existing save callback under
+the same dirty/read-only/recovery guards as the Save button. Its Ctrl/Cmd, modifier, composition, clean and read-only browser regression now
+passes in both modes, alongside strict all-target WASM lint. After a production
+rebuild and native hard reload, Cmd+S also writes exact Unicode/CRLF source in
+both local and remote projects without opening Save Page.
+
+The release build exposed Trunk 0.22.1 fingerprinting the JavaScript and WASM
+assets independently. The PWA worker hook and production-worker verifier now
+select the actual application binary instead of deriving its hash from JS. A
+complete Spin build succeeds; both URL and compiled-module production-worker
+checks pass for all 15 providers, six configuration languages, nested syntax,
+incremental changes, structural deltas, large literals and oversized fallback.
+
+
+The final save-repair production artifact also passes the twelve Linux boundary
+cases with wrapping on/off and both project modes: 8 MiB, 100,000 rows and a
+near-MiB styled String. Every beginning caret and complete edited source is
+verified. Input viewport paint is 22–108 ms, full styled input observations are
+174–407 ms, cold complete geometry is 1.06–1.59 seconds and sampled peak Chrome
+PSS is 573–696 MiB. Three final PSS snapshots are incomplete; the record retains
+that limitation. Artifact hashes, container limits, Chrome version and all samples
+are preserved in the [summary](editor-performance/short-row-boundaries-summary.json),
+[unwrapped run](editor-performance/short-row-boundaries-unwrapped.jsonl) and
+[wrapped run](editor-performance/short-row-boundaries-wrapped.jsonl). These single
+observations do not establish a stable speedup over a paired baseline. Long-line
+input, cold readiness and browser memory still fail to establish completion.
+
+
+The Trunk compatibility repair also requires paired asset identity: the versioned
+worker filename now includes both JavaScript and WASM hashes, and compiled-module
+handoff validates both URLs. A JavaScript hash can remain unchanged across Rust
+code changes, so JS-only cache keys no longer identify the binary. Added browser
+contracts check a binary-only hash change and send an unusable module with the
+correct JS URL but a different binary URL; that case must initialize from the
+worker's own URL. All five focused browser worker contracts and strict all-target WASM lint pass.
+A fresh complete production build and both module/URL worker checks also pass
+([receipt](editor-performance/trunk-independent-worker-assets.json)).
+The preceding production measurements identify the earlier save-repair artifact
+by hash and do not verify this subsequent transport change.
+
+Diagnostic CPU/phase traces of the preceding wrapped styled-line artifact retain
+complete source in both modes. Native input handlers take about 23 ms; sixteen
+input paragraph probes per mode spend 177–180 ms in layout in total, with
+individual layout phases up to 14.4 ms. Total probe times include cooperative
+range batches; the traces include CPU sampling and instrumentation overhead
+([summary](editor-performance/short-row-wrapped-profile-summary.json),
+[profiles](editor-performance/short-row-wrapped-profile.jsonl)). These identify
+remaining work without establishing quiet latency or isolated CPU ownership.
+
+
+Complete local verification reaches a repeatable native bridge exit-test failure:
+`fast_spawns_all_see_exited` sees a spawned `true` child still running at its
+existing one-second deadline. Isolated repetition and diagnostics do not establish
+a WebSocket replay loss. A spawn-acknowledgement barrier did not fix it; that
+experiment and all temporary diagnostic edits were removed. The original test
+and deadlines remain unchanged
+([failure evidence](editor-performance/native-verification-fast-spawn-failure.json)).
+The replay fixture now waits for ordered process-list confirmation that all 300
+children have completed, draining setup replies instead of relying on the 500 ms
+sleep. Setup is bounded at five seconds; every original one-second per-session
+exit-replay assertion remains. Three complete native 11-test repetitions pass.
+This changes the test precondition, not bridge runtime behavior, and does not
+attribute slow process completion to an OS cause. The complete required native command passes 1,396 tests, and a subsequent quiet
+Linux repeat passes all 11 delivery contracts. An earlier concurrent Linux run
+exceeded completion/kill bounds; that failure remains recorded without attributing
+it to a proven OS cause.
+
+
+The initial full non-editor browser run lacked CI's 1280×900 Chrome configuration
+and failed layout/focus contracts. With that exact configuration restored, all
+22 panel-filter contracts and the complete 402 non-editor component checks pass
+without changed assertions or deadlines. All 142 native frontend tests and 60
+WASM library tests also pass. The official current editor inventory has 221
+contracts in eight checked browser runs; all eight executions now pass, including both font matrices. The four additional
+browser integration binaries and all three candidate-enabled storage/construction
+workloads also pass. Full source hashes and scoped results are recorded in the
+[local verification receipt](editor-performance/editor-current-local-checks.json).
+The pre-push gate and agent instructions now match CI: all non-editor artifacts,
+checked disjoint editor groups with separate font matrices, and the native plugin
+compiler test. Existing browser deadlines and complete inventories are preserved.
+
+
+### Smaller native input windows for wrapped views
+
+The shared native-input facade now starts wrapped views with at most 4 KiB of
+surrounding source. Unwrapped views keep their 12 KiB context; the maximum
+retained native value remains 16 KiB. Complete document selections, Unicode/CRLF
+mapping, composition retention, ownership checks and geometry fallbacks use the
+existing contracts. Paragraph geometry probes remain 16 KiB. A universal smaller
+window was rejected after it delayed some unwrapped viewport publications.
+
+The final full-feature bundle was compared with the clean `10dec781` baseline in
+three fresh-process pairs per mode/wrap configuration. In the near-1-MiB styled
+Rust String workload, wrapped median viewport paint changes from 102.7 to 67.7 ms
+Local and 96.0 to 91.3 ms Remote. Complete-geometry medians change from 425.7 to
+373.6 ms Local and 389.2 to 355.6 ms Remote. Unwrapped viewport medians remain
+91.2/92.8 ms baseline and 92.5/87.7 ms candidate. These are small controlled
+cohorts, not latency percentiles or a completed responsiveness gate
+([samples](editor-performance/wrapped-native-context-production.jsonl),
+[artifact and harness identity](editor-performance/wrapped-native-context-production-manifest.json),
+[summary](editor-performance/wrapped-native-context-production-summary.json)).
+
+All 48 observations verify complete source after input, including 24 candidate
+boundary observations covering byte/row limits, plain long lines, ordinary rows
+and embedded HTML/Markdown in both modes with wrapping on/off. Current-file syntax
+readiness is required. The actual styled native value falls from 8,782 to 2,931
+UTF-16 units in wrapped views; unwrapped values remain 8,782. Two unwrapped
+row-limit observations have no separately observed complete-geometry timestamp;
+they retain `null`, and their full-source checks pass. Across the 36 candidate
+observations, input readiness spans 23.2–405.4 ms and cold readiness 1.12–1.85 s;
+sampled peak Chrome PSS spans 582–735 MiB. Cold and final PSS are recorded
+separately. The small workload-specific memory differences do not establish a
+general memory improvement. Local fixtures use recovery without a directory
+handle; native folder permissions and physical input remain separate checks.
+
+The release input probe also verifies twelve wrapped LF/CRLF configurations in
+both modes, including 80,000-character ASCII rows. Candidate commit/cancel,
+grouped history, insertion/splitting, full source recovery, keyboard focus escape
+and accessible-name checks pass with the original event-trust requirements
+([input receipt](editor-performance/wrapped-native-context-input.json)). These
+browser-engine checks do not establish physical IME or assistive-technology
+behavior.
+
+Complete local native/WASI/WASM checks, the unchanged 221-editor inventory and
+both font matrices pass, alongside the other 402 component checks and all
+additional browser artifacts
+([verification receipt](editor-performance/wrapped-native-context-local-checks.json)).
+Both production worker startup paths, About/offline navigation, the original
+unwrapped input/history checks, all pointer configurations and the strict site
+with its compiled playground also pass
+([production receipt](editor-performance/wrapped-native-context-production-checks.json)).
+Repeat integrated release verification for the final implementation. The broader
+cold/input/memory and physical-device gates remain open.
+
+### Static startup data: controlled screen and portable loader
+
+The frontend now initializes the same static memory through its generated bindings
+before either initialization API runs. The compiled module keeps every original
+active data index as an empty segment; executable code, function indices and bulk
+`memory.init`/`data.drop` lifetimes remain intact. The loader streams integrity-checked
+gzip data, with a raw-data path when decompression is unavailable. The PWA caches
+the representation supported by that browser. Both modes use this shared startup
+path; no grammar or cooperative fallback is removed.
+Overlapping asynchronous initialization shares one attempt. Mixed synchronous calls
+reuse the initialized instance, and a failed module load can be retried.
+
+A frozen pre-integration comparison contains 72 observations: three fresh pairs for
+small/styled files, both modes and both wrapping settings, plus 24 candidate boundary
+and embedded-language cases. All preserve complete edited source, required near-MiB
+String styling and actual final/sampled peak Linux Chrome PSS. Cold medians fall
+159–337 ms in all eight paired configurations. Final PSS medians are lower in seven;
+wrapped Local styled-file memory rises from 660.7 to 665.9 MiB. Input results vary,
+and this small cohort establishes neither p95 nor a general memory improvement
+([samples](editor-performance/startup-data-production-screen.jsonl),
+[manifest](editor-performance/startup-data-production-screen-manifest.json),
+[summary](editor-performance/startup-data-production-screen-summary.json)).
+
+The unchanged executable section accompanies a 29,639,299 → 14,182,130-byte module.
+Static initialization occupies 1,977,136 compressed bytes, with an 18,889,718-byte
+raw fallback also stored in the release artifact. One actual Chrome transfer per
+changed asset over the existing Brotli-enabled Spin server totals 6,845,633 →
+6,360,187 encoded bytes with gzip data, or 6,537,283 with raw fallback. These are
+changed-asset transfers, not total page traffic or WAN latency measurements
+([transfers](editor-performance/startup-data-transfer.json)).
+
+Four input-geometry timings in the original screen remain null. The observer had
+stopped recording geometry after switching from input to the existing deferred
+phase. It now observes later geometry while preserving the original viewport
+measurement, waits and deadlines. Eight separate affected baseline/candidate cases
+record completion and independently verify matching current input/paint/extent
+ownership, positive complete extent, full edited source and final PSS. The original
+screen is retained without filling its missing values
+([observations](editor-performance/startup-data-geometry-observation.jsonl)).
+
+The portable builder's native WASM oracle covers overlapping segments, explicit zero
+writes, arbitrary bytes, original bulk-data indices, both initialization APIs and
+both data formats. Actual Chrome checks cover missing/corrupt data rejection,
+capability-matched offline main/worker startup and synchronous worker initialization.
+These focused checks pass; guarded-build measurements and complete local
+verification are recorded below. Hosted and physical-device gates remain open.
+
+The guarded portable build has a separate final 72-observation comparison against
+its byte-verified original Trunk output. Both use identical compiled Rust code and
+static bytes. All complete-source, actual near-MiB String styling, syntax, geometry
+observation and true final/sampled-peak PSS checks pass. Cold medians are 153–301 ms
+lower across all eight paired configurations. Small-file final PSS medians fall
+12–16 MiB; styled-file memory varies, including wrapped Remote 663.8 → 672.8 MiB.
+Input medians vary and remain a separate gate. No missing geometry timings remain
+in this corrected capture; it does not fill earlier raw observations
+([samples](editor-performance/startup-memory-production.jsonl),
+[manifest](editor-performance/startup-memory-production-manifest.json),
+[summary](editor-performance/startup-memory-production-summary.json)).
+
+The final changed-asset transfers total 6,838,879 → 6,361,257 encoded bytes with gzip
+data, or 6,538,988 with raw fallback. Actual Chrome tests verify missing/corrupt data
+rejection, capability-matched cached startup and sync/concurrent/mixed/retry worker
+initialization with one Rust entry and identical exports
+([transfers](editor-performance/startup-memory-transfers.json),
+[browser contracts](editor-performance/startup-memory-browser-contracts.json)).
+The complete local native/WASI/WASM gate, all 221 editor contracts, separate font
+matrices and final Spin build pass, reproducing all four measured payload hashes.
+Final production workers, trusted input/pointer checks and strict real compiled
+site/playground checks also pass
+([local verification](editor-performance/startup-memory-local-checks.json),
+[production verification](editor-performance/startup-memory-production-checks.json)).
+Hosted verification, broader responsiveness/memory and physical-device checks remain
+open for this implementation.

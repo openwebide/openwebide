@@ -21,6 +21,7 @@ pub struct EditorNativeCommit {
 }
 
 const CONTEXT_HEADROOM_BYTES: usize = 4 * 1024;
+const WRAPPED_CONTEXT_BYTES: usize = 4 * 1024;
 
 pub(super) struct EditorNativeText {
     pub scope: super::EditorPresentationScope,
@@ -385,9 +386,16 @@ impl EditorActions {
                     return None;
                 }
                 let original = document.projection();
-                let projection = document
-                    .input_context(NATIVE_CONTEXT_BYTES - CONTEXT_HEADROOM_BYTES)
-                    .ok()?;
+                // A smaller native surface reduces wrapped browser shaping.
+                // Unwrapped paint keeps its measured earlier viewport publication
+                // with the larger context. Both retain the same full-source
+                // selection, composition, ownership and geometry fallback gates.
+                let context_bytes = if self.preferences().word_wrap {
+                    WRAPPED_CONTEXT_BYTES
+                } else {
+                    NATIVE_CONTEXT_BYTES - CONTEXT_HEADROOM_BYTES
+                };
+                let projection = document.input_context(context_bytes).ok()?;
                 let geometry_pending = self.native_binding.with_untracked(|previous| {
                     previous.as_ref().is_some_and(|previous| {
                         previous.geometry_pending

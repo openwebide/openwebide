@@ -36,7 +36,8 @@ The following checks still require hands-on device or environment testing:
 - Git pane polish on live local/remote repositories: cold primary-model drafting
   and configured transport timeouts, dense file timelines and pointer resizing.
 - A phone on the LAN; podman/systemd.
-- Editor IME composition, paste and caret behaviour with a real input method.
+- Editor candidate-selection IME, physical touch and assistive-technology checks;
+  native macOS dead-key, clipboard and keyboard checks pass in the Chrome PWA.
 - Windows runtime process cleanup. The Windows adapter compiles without TLS locally;
   the Windows CI job checks the full TLS build.
 
@@ -62,22 +63,28 @@ tracks the remaining work rather than every optimization already shipped.
 | Editing and history | Tab/space and indent/outdent; block-aware Enter; paired typing/deletion; grouped undo/redo; line move/duplicate/delete; comments; selected-line reindent; indentation-matching paste; EditorConfig save policies. |
 | Structure and languages | Syntax highlighting, parser-backed folding, bracket matching and structural navigation; extensible Rust/WASM language support including Rust, TypeScript/TSX, Python, JavaScript/JSX, Java, C#, C++, PHP, Shell, C, Go, HTML, CSS, JSON/JSONC, YAML/YML, TOML, INI/EditorConfig, XML ecosystem configs and Markdown with inline/fenced code. Pending text uses current source and valid retained spans; unsupported source stays plain. |
 | Navigation and review | Find/Replace; line numbers; horizontal scrolling and linked split scrolling; Edit/Inline/Split diffs; supported previews and Markdown change gutters/word differences; pending-edit review and agent context. |
-| Tabs, appearance and recovery | Tab context actions; consistent editor action-menu icons and labels; five Monaspace families; texture healing and ligature toggles enabled by default; retained caret/selection/scroll and database-backed editor recovery. Real folder-permission recovery still needs device verification. |
+| Tabs, appearance and recovery | Tab context actions; consistent editor action-menu icons and labels; five Monaspace families; texture healing and ligature toggles enabled by default; retained caret/selection/scroll and database-backed editor recovery. Native desktop Chrome and installed Chrome PWA folder-permission loss, denied regrant, reload recovery and exact Unicode/CRLF saves are verified; Edge checks remain. |
 | Selection and browser input | Multiple/rectangular selections and clipboard transactions; scoped native windows with bounded desktop startup for unwrapped, wrapped and nonuniform views, including long tabbed/bidirectional rows; automated Chromium composition and pointer checks. The recorded line-end caret bug is fixed and user-verified in the localhost PWA. |
 | Preparation and ownership | Rust/WASM worker and cooperative fallback; retained source/token/structure allocations; bounded worker delta reconstruction/reply-source publication and final structure metadata, parsed/lexical region reconciliation and retained fallback collection; bounded eligible unwrapped and wrapped paragraph probes, retained paint-run clipping and cooperative sampled cold-row glyph measurements, exact overlap validation, exact carets from retained anchors/current painted coverage and conservative complete-layout fallback. Current-file progress is shown during preparation. Matching trusted font notifications retain current in-flight work and ordinary-row replay after edits. |
 
-The latest integrated production matrix at `e3b2ee59` preserves complete source
-after verified beginning edits in all twelve local/remote cases: the 8 MiB byte
-limit, 100,000-row limit and near-1-MiB styled line, with wrapping on/off. Styled
-viewport paint takes 139–181 ms; cold complete geometry across the matrix takes
-1.6–3.5 seconds and peak Chrome PSS is about 588–756 MiB
-([summary](editor-performance/integrated-boundary-summary.json),
-[unwrapped samples](editor-performance/integrated-boundary-unwrapped.jsonl),
-[wrapped samples](editor-performance/integrated-boundary-wrapped.jsonl)).
-The styled native input handler takes 34–61 ms, including synchronous changed-row
-coordinate reconstruction. Paragraph geometry timings include internal task
-yields and do not establish individual task stalls. These instrumented samples
-confirm remaining work; they are not a matched before/after improvement.
+Twenty observations of the latest production artifact preserve complete edited
+source across all twelve local/remote configurations: the 8 MiB byte limit,
+100,000-row limit and near-1-MiB styled line, wrapping on/off, with verified
+beginning edits. Input viewport paint takes 19–100 ms; styled input takes
+157–412 ms through the full observed paint sequence. Cold complete geometry
+takes 1.07–1.59 seconds and sampled peak Chrome PSS is about 588–730 MiB
+([boundary summary](editor-performance/mixed-ascii-seam-boundary-summary.json)).
+All twenty final PSS snapshots are complete; sampled peaks do not prove
+continuous coverage. Byte/row boundary configurations have single observations.
+
+The matched styled-line comparison has three alternating artifact pairs per
+mode/wrap configuration. Median viewport paint improves by 7–18 ms across all
+four configurations, while full wrapped paint stays near 403 ms; cold readiness
+and memory show no general improvement
+([comparison](editor-performance/mixed-ascii-seam-production-summary.json),
+[samples](editor-performance/mixed-ascii-seam-production.jsonl)). Cold/input/memory
+gates remain open. The earlier short-row-only artifact retains its separate
+[boundary results](editor-performance/short-row-boundaries-summary.json).
 
 Earlier styled-line observations preserve complete source and a verified
 beginning caret in all four Local/Remote samples. Input viewport paint is 167–269 ms
@@ -974,13 +981,97 @@ CPUs/four GiB in 87.29 seconds
 ([receipt](editor-performance/wrapped-replay-current-official.json)); hosted
 Linux/x64 verification also passes in the complete `67b3a529` inventory.
 
+Short-row coordinate preparation now batches printable ASCII inside the existing
+512-byte continuation step. Independent scalar-reference, parser-enabled core,
+WASM construction and both-mode dense-row worker contracts pass. Seven quiet
+interleaved native process pairs reduce median construction of 99,998 rows from
+21.1 to 8.4 ms (ASCII) and 20.8 to 10.3 ms (mixed Unicode/CRLF)
+([samples](editor-performance/short-row-construction-native.json)). These primitive
+measurements exclude editor publication, DOM layout/paint and process memory;
+the responsiveness gate below remains open.
+
+Small printable-ASCII edits with unchanged ASCII neighbors now reuse exact native
+and grapheme checkpoints on eligible mixed-Unicode long rows. Complete-table and
+history oracles retain fresh-reconstruction equality; Unicode seams, tabs,
+bidirectional rows, long graphemes and long category runs retain full preparation.
+Five alternating native process pairs reduce twenty beginning edit/undo pairs
+on the near-1-MiB styled fixture from 434.8 to 17.7 ms (middle: 434.7 to 12.3 ms;
+end: 433.1 to 9.9 ms)
+([samples](editor-performance/mixed-ascii-seam-native.json)). These native
+measurements exclude syntax, worker, DOM/layout, paint and process memory;
+the broader responsiveness and memory gates remain open.
+
+The final production comparison above quantifies the viewport improvement.
+Instrumented browser input handlers fall from 22.6–23.0 ms to
+8.7–8.8 ms, while sixteen input paragraph probes still spend 175–185 ms in layout
+([diagnostic](editor-performance/mixed-ascii-seam-profile-summary.json)). All
+required local target checks and the complete browser inventory pass
+([receipt](editor-performance/mixed-ascii-seam-local-checks.json)). Hosted CI at
+`10dec781` passes all twelve required checks, including both editor partitions,
+platform builds, production frontend checks and the documentation build
+([CI run](https://github.com/openwebide/openwebide/actions/runs/41326968739)).
+Wrapped editors now start with a smaller surrounding native text window while
+unwrapped editors retain their existing context. Three final production pairs
+per mode/wrap show wrapped complete-geometry medians changing from 425.7 to
+373.6 ms Local and 389.2 to 355.6 ms Remote; all 48 observations preserve complete
+source, including byte/row limits, long lines and embedded HTML/Markdown
+([samples](editor-performance/wrapped-native-context-production.jsonl),
+[summary](editor-performance/wrapped-native-context-production-summary.json)).
+The complete local native/WASI/WASM gate, all 221 editor checks and both font
+matrices pass for this checkpoint
+([receipt](editor-performance/wrapped-native-context-local-checks.json)). Repeat
+integrated release verification for the final implementation; the responsiveness,
+memory and physical-device gates remain open.
+
+The startup loader now preserves executable code and active data indices while
+initializing equivalent memory before page and worker startup. A pre-integration
+72-observation screen shows cold medians 159–337 ms lower across eight paired
+configurations; memory is lower in seven and higher in one. Complete edited source
+and actual final PSS pass throughout; four geometry timings remain unavailable in
+that original capture ([screen](editor-performance/startup-data-production-screen-summary.json)).
+Actual changed-asset transfers fall about 7% with the existing HTTP compression
+([transfers](editor-performance/startup-data-transfer.json)). Later geometry is now
+observed during the existing deferred phase, with eight affected baseline/candidate
+cases independently checking complete current extents
+([observations](editor-performance/startup-data-geometry-observation.jsonl)).
+Repeat the complete integrated and production gates for the portable loader before
+closing the remaining responsiveness, memory or device work.
+The guarded portable build subsequently passes 72 fresh observations with the
+corrected geometry observer, full edited source, real near-MiB styling and final
+PSS throughout. Cold medians are 153–301 ms lower in all eight paired configurations;
+memory is lower in seven and wrapped Remote styled-file PSS rises by 9 MiB
+([final comparison](editor-performance/startup-memory-production-summary.json)).
+The complete local native/WASI/WASM suite, all 221 editor contracts and both font
+matrices pass ([local checks](editor-performance/startup-memory-local-checks.json)).
+Production worker/input/pointer checks and the strict compiled site/playground also
+pass ([production checks](editor-performance/startup-memory-production-checks.json)).
+That checkpoint left hosted and responsiveness/memory/device verification open;
+the subsequent viewport and retention results follow below.
+
 - [ ] **Responsiveness and memory:** remove measured input, cold-paint, wrapped
   geometry and process-memory stalls. Repeat admitted byte, row-count and long-line
   boundary workloads in both modes, wrapping on/off, beginning edits and startup/
   scroll shaping. Verify complete source after input, actual near-1-MiB String
-  styling and Linux Chrome PSS. Multi-second preparation and the current latency/
-  memory results do not satisfy this gate. Preserve source ownership, bounded
+  styling and Linux Chrome PSS. Earlier multi-second preparation and latency/
+  memory results did not satisfy this gate. Preserve source ownership, bounded
   terminal fallback, grammar paint coalescing and localized reuse.
+  The final source-verified [328-edit viewport cohort](editor-performance/viewport-scoped-memory-summary.json)
+  meets the agreed 95% criterion in all eight ordinary/styled, Local/Remote and
+  wrapping configurations; every measured edit passes. Full cold readiness stays
+  below 1.35 seconds, with a 1,013.6 MiB natural PSS peak over 40 cycles.
+  [Broader comparisons](editor-performance/viewport-broad-comparison-summary.json)
+  add 64 passing fresh observations across ordinary files and admitted boundaries.
+  The combined source passes [full local CI](editor-performance/viewport-local-checks.json)
+  with 224 editor contracts and both font matrices, plus
+  [exact-bundle production checks](editor-performance/viewport-production-checks.json).
+  Retention checks cover all owned heaps. The production 800-cycle Remote run
+  keeps main WASM capacity fixed after warmup, reaches a final page-JS plateau and
+  retains bounded DOM counts. A separate 800-cycle Local diagnostic finds live
+  Rust storage within 13 bytes after warmup. Script-result scoping removes retained
+  measurement handles; matching native profiles identify bounded Chromium IPC
+  retention. Historical uncollected controls report a 2,121.7 MiB natural peak.
+  Current native-device verification remains open; hosted checks follow each
+  checkpoint on the draft PR. These results do not close the device gates.
 - [ ] **Exact geometry and fallbacks:** preserve complete-renderer extent, anchor
   and hit comparisons; font/family/feature/whitespace matrices; Unicode/caret mapping;
   partial endpoint rejection; sparse gaps; ambiguous wrap boundaries; unsupported
@@ -1044,12 +1135,18 @@ Linux/x64 verification also passes in the complete `67b3a529` inventory.
   ([receipt](editor-performance/editor-ci-98bb-success.json)). Direct encoder-to-
   Blob streaming and incremental ASCII row indexes still need the final gate.
 
-- [ ] **Physical Chrome/Edge PWA input:** verify real input-method commit/cancel,
-  Unicode and LF/CRLF undo/redo, multiple-cursor clipboard transactions and touch
-  without rewriting unrelated source. Automated Chromium composition/pointer
-  contracts support this gate but do not replace device verification.
-- [ ] **Folder permissions and recovery:** expand permission/error contracts and
-  verify real local directory-handle loss/regrant and reload recovery. Preserve
+- [ ] **Physical Chrome/Edge PWA input:** installed Chrome PWA checks pass in both
+  modes for native macOS dead-key commit/cancel, Unicode paste, undo/redo,
+  Command-S and exact CRLF saves
+  ([receipt](editor-performance/native-pwa-recovery-current.json)). Candidate-selection
+  IME, richer multiple-cursor clipboard, physical touch and Edge PWA checks remain.
+  Preserve unrelated source; automated Chromium contracts supplement device checks.
+- [ ] **Folder permissions and recovery:** native desktop Chrome and installed
+  Chrome PWA loss/regrant, denied regrant and unsaved-draft reload recovery pass
+  with a real directory handle and exact Unicode/CRLF disk verification
+  ([desktop](editor-performance/native-folder-recovery-desktop.json),
+  [installed PWA](editor-performance/native-pwa-recovery-current.json)). Repeat on
+  Edge and expand permission/error contracts. Preserve
   stale account/folder/bridge/project rejection, held/failed/background saves,
   newer edits, disk reload during saves and late acknowledgements. Coordinate with
   Offline & error-state recovery below; a disposable test without a native handle
@@ -1098,7 +1195,44 @@ Research references: [VS Code editing](https://code.visualstudio.com/docs/editin
 [Monaco support/architecture](https://github.com/microsoft/monaco-editor),
 and [EditorConfig](https://editorconfig.org/).
 
+### Language support as plugins
+
+After the Full code editor work is complete, establish the shared language
+contribution and runtime contracts and migrate existing language support into
+bundled plugins. This is a **blocking prerequisite for Code intelligence and LSP**;
+verify the migration in both project modes before starting that item. Preserve the
+editor's shared document/selection/extension APIs as the foundation.
+
+- Define language contribution contracts for file recognition, syntax
+  highlighting/folding, comment and indentation rules, with extension points for
+  snippets, formatting, host diagnostics and LSP configuration. Language packages
+  may provide only a subset of these features and may also include agent skills
+  or tools. Implement LSP services in the following Code intelligence item on top
+  of these contracts.
+  Use a shared language-service facade for document synchronization, feature
+  routing, diagnostics, conflicts and failure handling, with thin host adapters
+  for running plugin syntax analysis and servers beside local or remote project
+  files. The core editor renders shared results and applies declarative editing
+  rules without executing plugin code in the browser. Preserve editing with a
+  core plain-text fallback when the host is unavailable. Guard results by document
+  revision and account/project/session ownership; define competing-provider
+  selection, missing-runtime behavior, server recovery and formatter precedence.
+- Move all existing language support behind those same contribution contracts,
+  shipped as bundled packages enabled by default to preserve today's experience.
+  Distinguish bundled artifacts, installed versions and enablement; record
+  installation/configuration in the database and activate language services on
+  matching files rather than starting every installed server. Bundled packages
+  use the same validation, configuration, conflict and lifecycle rules as
+  community packages. Compiled-in grammars can initially register through the
+  contract, but externally supplied syntax grammars require a versioned loading
+  and runtime contract before claiming full language extensibility.
+
 ### Code intelligence: host language services, LSP & caching
+
+**Blocked by [Language support as plugins](#language-support-as-plugins).** The
+shared contribution/runtime contracts and migration of existing language support
+must be complete and verified in both modes before implementing host diagnostics,
+LSP features or their caching. New language features use those plugin contracts.
 
 Treat the homelab server and paired native bridges as persistent development
 hosts. Language services belong to a project on its execution host, rather than
@@ -1159,11 +1293,11 @@ autocomplete) into the editor while keeping the core diagnostics engine
   host outages and restart recovery. Benchmark interactive latency and bounded
   resource use on a small homelab before claiming prefetching improves performance.
 
-Expose language features through the shared contribution contracts described in
-[Plugins & Git marketplaces](#plugins-git-marketplaces), so existing
-languages can become bundled plugins and community packages can add languages.
-Defer the language-plugin migration until the ongoing Full code editor work is
-complete; preserve the shared document/selection/extension APIs as its foundation.
+Expose language features through the contribution contracts established by
+[Language support as plugins](#language-support-as-plugins), using the same
+validation, permissions and lifecycle for bundled and community packages. Extend
+those contracts for code intelligence without adding a separate built-in language
+implementation.
 
 ### Editor Git annotations
 
@@ -1276,6 +1410,10 @@ Extend agent and editor capabilities through versioned plugin packages that user
 and the agent can manage, without requiring changes to the app for each new
 capability.
 
+The language contribution contracts and migration of existing language support are
+tracked separately under [Next](#language-support-as-plugins), as a prerequisite
+for Code intelligence and LSP.
+
 - Finish manual PWA lifecycle checks on server and paired hosts: asynchronous
   install/cancel and failure recovery, cold action caches, compiled-default
   initialization, and install/run/update/disable/uninstall flows.
@@ -1331,28 +1469,6 @@ capability.
   and conflicts between providers. Treat annotations as a presentation contract,
   separate from hook delivery and document edits. Use the bundled
   [Git annotations plugin](#editor-git-annotations) as the first reference package.
-- After the ongoing Full code editor work is complete, support language
-  contributions for file recognition, syntax highlighting/folding, comment and
-  indentation rules, snippets, formatting, host diagnostics and LSP
-  configuration. Build on Code intelligence above; language packages may provide
-  only a subset of these features and may also include agent skills or tools.
-  Use a shared language-service facade for document synchronization, feature
-  routing, diagnostics, conflicts and failure handling, with thin host adapters
-  for running plugin syntax analysis and servers beside local or remote project
-  files. The core editor renders shared results and applies declarative editing
-  rules without executing plugin code in the browser. Preserve editing with a
-  core plain-text fallback when the host is unavailable. Guard results by document
-  revision and account/project/session ownership; define competing-provider
-  selection, missing-runtime behavior, server recovery and formatter precedence.
-- Move all existing language support behind those same contribution contracts,
-  shipped as bundled packages enabled by default to preserve today's experience.
-  Distinguish bundled artifacts, installed versions and enablement; record
-  installation/configuration in the database and activate language services on
-  matching files rather than starting every installed server. Bundled packages
-  use the same validation, configuration, conflict and lifecycle rules as
-  community packages. Compiled-in grammars can initially register through the
-  contract, but externally supplied syntax grammars require a versioned loading
-  and runtime contract before claiming full language extensibility.
 - Publish first-party reference packages through the official marketplace using
   the community package format and permission rules: a GitHub integration with
   authentication, MCP tools and review/issue skills, extending the existing

@@ -34,6 +34,7 @@ jobs:
           python3 -m unittest discover -s tools -p 'test_host_updates.py'
           python3 -m unittest discover -s tools -p 'test_open_source.py'
           python3 -m unittest discover -s tools -p 'test_editor_measurements.py'
+          python3 -m unittest discover -s tools -p 'test_frontend_startup.py'
           python3 -m unittest discover -s tools -p 'test_editor_browser_runner.py'
           python3 tools/bundle_plugins.py --check
           python3 tools/release.py validate
@@ -183,6 +184,8 @@ jobs:
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
         run: |
           python3 tools/check-editor-worker.py
+          python3 tools/check-editor-worker.py --compiled-module
+          python3 tools/check-frontend-startup.py
           python3 tools/check-about.py
 
       - name: Install Spin runtime for editor input verification
@@ -200,6 +203,9 @@ jobs:
         run: |
           python3 tools/check-editor-input.py
           python3 tools/check-editor-input.py --windowed
+          python3 tools/check-editor-input.py --wrap
+          python3 tools/check-editor-input.py --windowed --wrap
+          python3 tools/check-editor-input.py --windowed --ascii-row --wrap
           python3 tools/check-editor-pointer.py
           python3 tools/check-editor-pointer.py --language rs --repeat 1 --source crates/auth/src/lib.rs --line 62 --ending lf
 

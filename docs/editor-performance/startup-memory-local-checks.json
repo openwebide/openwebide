@@ -1,0 +1,189 @@
+{
+  "nativePassed": 1400,
+  "nativeFrontend": 142,
+  "parserEnabledCore": 796,
+  "nonEditorLibrary": 27,
+  "nonEditorComponents": 402,
+  "additionalBrowserIntegrationTests": 11,
+  "editorContracts": 221,
+  "benchmarkBrowserWorkloads": 4,
+  "warnings": "Four native frontend dead-code warnings and proc-macro-error2 future-compatibility notice pre-exist and match the prior verified checkpoint; required strict lint targets and the additional all-target WASM frontend lint pass.",
+  "verificationState": "PASS: complete required local lint/native/WASI/WASM suite, all editor/browser/font inventories and Spin build",
+  "baseRevision": "38c359ec135fa247e387d979c831befa19f92e25",
+  "editorBrowserRuns": [
+    {
+      "artifact": "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-721f141bf9096fba.wasm",
+      "tests": 62,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-721f141bf9096fba.wasm",
+      "tests": 61,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-721f141bf9096fba.wasm",
+      "tests": 61,
+      "matrix": false,
+      "independent": false
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-721f141bf9096fba.wasm",
+      "tests": 1,
+      "matrix": true,
+      "independent": true
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-721f141bf9096fba.wasm",
+      "tests": 1,
+      "matrix": false,
+      "independent": true
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-721f141bf9096fba.wasm",
+      "tests": 1,
+      "matrix": true,
+      "independent": true
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/components-721f141bf9096fba.wasm",
+      "tests": 1,
+      "matrix": false,
+      "independent": true
+    },
+    {
+      "artifact": "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-unknown-unknown/release/deps/openwebide_frontend-14e738e76841970f.wasm",
+      "tests": 33,
+      "matrix": false,
+      "independent": false
+    }
+  ],
+  "testResults": [
+    "test result: ok. 186 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s",
+    "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.65s",
+    "test result: ok. 114 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.60s",
+    "test result: ok. 147 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 228.02s",
+    "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.07s",
+    "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s",
+    "test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.04s",
+    "test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.06s",
+    "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s",
+    "test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s",
+    "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.35s",
+    "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.25s",
+    "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.30s",
+    "test result: ok. 600 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 19.48s",
+    "test result: ok. 99 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s",
+    "test result: ok. 167 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.63s",
+    "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 142 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s",
+    "test result: ok. 796 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 35.92s",
+    "test result: ok. 27 passed; 0 failed; 0 ignored; 33 filtered out; finished in 0.73s",
+    "test result: ok. 402 passed; 0 failed; 0 ignored; 188 filtered out; finished in 143.49s",
+    "test result: ok. 4 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.00s",
+    "test result: ok. 3 passed; 0 failed; 0 ignored; 0 filtered out; finished in 1.53s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.09s",
+    "test result: ok. 3 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.01s",
+    "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "test result: ok. 62 passed; 0 failed; 0 ignored; 528 filtered out; finished in 43.13s",
+    "test result: ok. 61 passed; 0 failed; 0 ignored; 529 filtered out; finished in 93.57s",
+    "test result: ok. 61 passed; 0 failed; 0 ignored; 529 filtered out; finished in 34.04s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 589 filtered out; finished in 27.62s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 589 filtered out; finished in 20.62s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 589 filtered out; finished in 7.86s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 589 filtered out; finished in 53.48s",
+    "test result: ok. 33 passed; 0 failed; 0 ignored; 27 filtered out; finished in 1.14s",
+    "test result: ok. 4 passed; 0 failed; 0 ignored; 0 filtered out; finished in 8.93s"
+  ],
+  "startupBuilderTests": 8,
+  "startupNativeEngineVariants": [
+    "gzip",
+    "raw"
+  ],
+  "startupInitCases": [
+    "sync",
+    "async",
+    "concurrent",
+    "mixed",
+    "retry"
+  ],
+  "trustedWrappedInputConfigurations": 12,
+  "strictAllTargetWasmFrontendLint": "PASS",
+  "sourceFiles": {
+    "frontend/build.sh": "a7b7b1defad2b5a07fbed706557aca4bcba7af3f74cc8e48abde65c751469b80",
+    "frontend/Trunk.toml": "a74cccf5ac011a4e8bc75d39d46f3851c8df27553072268def4811d87122d552",
+    "frontend/pwa/build.sh": "28e95dda8470abd088c5cd72b0fc19d4c284ef6cb9ddac4f03d304e60df17fef",
+    "tools/prepare-frontend-startup.py": "aa1e3b2f8305fcc9493c990f9bc78c534da9950752bfd8d13248b44c3b0a6650",
+    "tools/check-frontend-startup.py": "a0ce561153e84b31dc768ce7d5f65c90b853e13f4bc4b3ec3768c8f79d42c188",
+    "tools/test_frontend_startup.py": "5ab59bf4c5fdd344e87f4f6c1d06873537bb1debd9a9c4a39e0fa47578a18cef",
+    "tools/measure-editor-view.py": "926cee63745f3f5a7061a53c95cbafd2596e4b5a71adf57491fe450883f60a08",
+    ".github/workflows/ci.yml": "7e11cabb0014ab911ef98ac01cc1cfa89989fe0b62041c9622ad4a7008b8b7b1",
+    "CHANGELOG.md": "a48ad519a7c5532e41719616ad53dabc51e3abf05d3629c021585ad5589478f9"
+  },
+  "payloads": {
+    "memory": {
+      "initial": 321
+    },
+    "offset": 2097152,
+    "end": 20987254,
+    "activeSegments": 100000,
+    "codeSha256": "de38d744e7c1abe8aacfa3f3186267adb728c6656e4c7006c150c2616d0f3b54",
+    "version": 1,
+    "raw": {
+      "file": "frontend-startup-1b040cb470b6d5c3.raw.bin",
+      "bytes": 18890102,
+      "sha256": "1b040cb470b6d5c342a923e64c8dc35bdfc746b817f6095de97fa342454e81e0",
+      "integrity": "sha384-xEU3A0PGuNyHImAxhggHCq+dYP8IpsXPCfzZVV4MUjRTTdNReVnVMZ0ugkJN3W+g"
+    },
+    "gzip": {
+      "file": "frontend-startup-22d0346dbabeea38.bin",
+      "bytes": 1977086,
+      "sha256": "22d0346dbabeea3894f4f64b76e10b82b28d792db9ac928b9e2b8bf703c09406",
+      "integrity": "sha384-/p5+2YMsQhqc5BRa+GbBQeYoRIWr+Jh3673ge0YIaj2e5NfTaGtYXdbYbgNhHEew"
+    },
+    "wasm": {
+      "file": "openwebide-frontend-bd58640923e7efec_bg.wasm",
+      "bytes": 14182130,
+      "sha256": "bd58640923e7efecd2d68ee48b9fd9f72b54b5d3a994eb69d35fe27d96afd746",
+      "integrity": "sha384-g3jU+1ErEL1voc8uoivQzcI3l03FjUs48iXHjp1mNYLT+WjUmYlfcjQqBdiJWQpt"
+    },
+    "bindings": {
+      "file": "openwebide-frontend-18c122db604e9a05.js",
+      "bytes": 125952,
+      "sha256": "18c122db604e9a059482caf840c96eeef235c3cf98c64231a5879e2480302ed7",
+      "integrity": "sha384-k43MpYI8o/+3oe+5iBserJXqfNTA2jOy/wzR8zIL6ILaGzQnVnz/5RNXbPOEQ4kf"
+    },
+    "originalWasm": {
+      "file": "openwebide-frontend-c74b388a40190eb6_bg.wasm",
+      "bytes": 29639572,
+      "sha256": "a70b2f9e2e6c4dc6cde3c1315afd102a09bac8f7bf30b76c3fbefc263d358407",
+      "integrity": "sha384-Qbcp/lJadvHGcS+y3YnvD1xGpcqXtrZrhB9wGu+dNqaQ1xT956eABewrsQqb4+zp"
+    },
+    "originalBindings": {
+      "file": "openwebide-frontend-6c69d7362cedf38b.js",
+      "bytes": 123939,
+      "sha256": "f41e4913080c5d020941b2b0655e869ec16d06d8d05da2a0a726fd142559ab3d",
+      "integrity": "sha384-9fzc7GydA0cKbkaMB4ivj48hca04Uz+5t5BxtDiLSVSfeRO9H4w5Hyqo2FBOT6LT"
+    }
+  },
+  "logSha256": "df9dada5fb9a49ac5f8296ab8a40993048a283dae9ccdcee424ba8f6910714ff",
+  "script": "#!/bin/bash\nset -euo pipefail\nexport PATH=/tmp/openwebide-editor-tools:/tmp/openwebide-editor-tools/binaryen-version_131/bin:$PATH\nexport CHROMEDRIVER=/tmp/openwebide-editor-tools/chromedriver\nexport CHROME='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'\nexport WASM_BINDGEN_TEST_TIMEOUT=300\ncargo fmt --all --check\ncargo clippy -p openwebide-storage -p openwebide-core -p openwebide-auth -p openwebide-agent -p openwebide-llm --all-targets -- -D warnings\ncargo clippy -p openwebide-backend --target wasm32-wasip2 -- -D warnings\ncargo clippy -p openwebide-frontend --target wasm32-unknown-unknown --all-targets -- -D warnings\ncargo clippy -p openwebide-bridge --all-targets -- -D warnings\ncargo test -p openwebide-storage -p openwebide-core -p openwebide-auth -p openwebide-agent -p openwebide-llm -p openwebide-bridge -p openwebide-backend\ncargo test -p openwebide-frontend --lib\ncargo test -p openwebide-core --features editor-parser --lib\ncargo test -p openwebide-frontend --release --target wasm32-unknown-unknown -- --skip 'editor::'\npython3 tools/run-editor-browser-tests.py\ncargo clippy -p openwebide-editor-bench --all-targets -- -D warnings\ncargo test -p openwebide-editor-bench --release --target wasm32-unknown-unknown --lib\nNO_COLOR=true spin build\n",
+  "scopeReview": {
+    "sharedImplementation": "Frontend build wrapper and one generated initialization path used by page and dedicated worker, before either project mode starts. EditorActions/Workspace adapters are unchanged.",
+    "preserved": "All grammars, complete source, workerless/URL/compiled-module fallback, synchronous worker entry, original active data indices and executable code, existing native/paragraph budgets, all browser inventories and original deadlines.",
+    "proof": "Native WASM oracle compares full initialized memory and active bulk-data lifetimes. Actual Chrome checks normal/raw offline and integrity failures; real worker calls share one initialized instance across overlapping and mixed calls and permit retry after module-load failure."
+  },
+  "remaining": "Broad responsiveness/memory and physical IME/AT/touch/Edge, hosted and integrated release gates remain open."
+}

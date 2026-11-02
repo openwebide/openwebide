@@ -1,0 +1,319 @@
+{
+  "verificationState": "PASS: final production workers, About/offline checks, all original unwrapped input contracts, trusted pointer/caret contracts and strict real compiled site/playground",
+  "baseRevision": "38c359ec135fa247e387d979c831befa19f92e25",
+  "payloads": {
+    "memory": {
+      "initial": 321
+    },
+    "offset": 2097152,
+    "end": 20987254,
+    "activeSegments": 100000,
+    "codeSha256": "de38d744e7c1abe8aacfa3f3186267adb728c6656e4c7006c150c2616d0f3b54",
+    "version": 1,
+    "raw": {
+      "file": "frontend-startup-1b040cb470b6d5c3.raw.bin",
+      "bytes": 18890102,
+      "sha256": "1b040cb470b6d5c342a923e64c8dc35bdfc746b817f6095de97fa342454e81e0",
+      "integrity": "sha384-xEU3A0PGuNyHImAxhggHCq+dYP8IpsXPCfzZVV4MUjRTTdNReVnVMZ0ugkJN3W+g"
+    },
+    "gzip": {
+      "file": "frontend-startup-22d0346dbabeea38.bin",
+      "bytes": 1977086,
+      "sha256": "22d0346dbabeea3894f4f64b76e10b82b28d792db9ac928b9e2b8bf703c09406",
+      "integrity": "sha384-/p5+2YMsQhqc5BRa+GbBQeYoRIWr+Jh3673ge0YIaj2e5NfTaGtYXdbYbgNhHEew"
+    },
+    "wasm": {
+      "file": "openwebide-frontend-bd58640923e7efec_bg.wasm",
+      "bytes": 14182130,
+      "sha256": "bd58640923e7efecd2d68ee48b9fd9f72b54b5d3a994eb69d35fe27d96afd746",
+      "integrity": "sha384-g3jU+1ErEL1voc8uoivQzcI3l03FjUs48iXHjp1mNYLT+WjUmYlfcjQqBdiJWQpt"
+    },
+    "bindings": {
+      "file": "openwebide-frontend-18c122db604e9a05.js",
+      "bytes": 125952,
+      "sha256": "18c122db604e9a059482caf840c96eeef235c3cf98c64231a5879e2480302ed7",
+      "integrity": "sha384-k43MpYI8o/+3oe+5iBserJXqfNTA2jOy/wzR8zIL6ILaGzQnVnz/5RNXbPOEQ4kf"
+    },
+    "originalWasm": {
+      "file": "openwebide-frontend-c74b388a40190eb6_bg.wasm",
+      "bytes": 29639572,
+      "sha256": "a70b2f9e2e6c4dc6cde3c1315afd102a09bac8f7bf30b76c3fbefc263d358407",
+      "integrity": "sha384-Qbcp/lJadvHGcS+y3YnvD1xGpcqXtrZrhB9wGu+dNqaQ1xT956eABewrsQqb4+zp"
+    },
+    "originalBindings": {
+      "file": "openwebide-frontend-6c69d7362cedf38b.js",
+      "bytes": 123939,
+      "sha256": "f41e4913080c5d020941b2b0655e869ec16d06d8d05da2a0a726fd142559ab3d",
+      "integrity": "sha384-9fzc7GydA0cKbkaMB4ivj48hca04Uz+5t5BxtDiLSVSfeRO9H4w5Hyqo2FBOT6LT"
+    }
+  },
+  "workerUrl": [
+    {
+      "compiled_module": false,
+      "providers": 15,
+      "config_languages": 6,
+      "plain_fallback_languages": 1,
+      "nested_languages": 6,
+      "incremental": true,
+      "structural_delta": true,
+      "ui_event_during_worker": true,
+      "oversize_fallback": true,
+      "changed_row_records": 3,
+      "cooperative_yields": 2618,
+      "large_literal_bytes": 1043013,
+      "large_literal_yields": 62,
+      "yaml_bytes": 1043026,
+      "yaml_yields": 62
+    }
+  ],
+  "workerCompiledModule": [
+    {
+      "compiled_module": true,
+      "providers": 15,
+      "config_languages": 6,
+      "plain_fallback_languages": 1,
+      "nested_languages": 6,
+      "incremental": true,
+      "structural_delta": true,
+      "ui_event_during_worker": true,
+      "oversize_fallback": true,
+      "changed_row_records": 3,
+      "cooperative_yields": 2618,
+      "large_literal_bytes": 1043013,
+      "large_literal_yields": 62,
+      "yaml_bytes": 1043026,
+      "yaml_yields": 62
+    }
+  ],
+  "unwrappedInput": [
+    {
+      "mode": "local",
+      "ending": "LF",
+      "windowed": false,
+      "wrapped": false,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "CRLF",
+      "windowed": false,
+      "wrapped": false,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "LF",
+      "windowed": false,
+      "wrapped": false,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "CRLF",
+      "windowed": false,
+      "wrapped": false,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": true,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "LF",
+      "windowed": true,
+      "wrapped": false,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "local",
+      "ending": "CRLF",
+      "windowed": true,
+      "wrapped": false,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "LF",
+      "windowed": true,
+      "wrapped": false,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    },
+    {
+      "mode": "remote",
+      "ending": "CRLF",
+      "windowed": true,
+      "wrapped": false,
+      "ascii_row": false,
+      "ascii_insert_split_undo_redo": false,
+      "pending_syntax": false,
+      "trusted_events": 34,
+      "commit_undo_redo_cancel": true,
+      "tab_focus_escape_and_accessible_name": true
+    }
+  ],
+  "pointer": [
+    {
+      "mode": "local",
+      "repeat": 1,
+      "language": "rs",
+      "ending": "crlf",
+      "wrap": false,
+      "trusted_clicks": true
+    },
+    {
+      "mode": "local",
+      "repeat": 1000,
+      "language": "rs",
+      "ending": "crlf",
+      "wrap": false,
+      "trusted_clicks": true
+    },
+    {
+      "mode": "remote",
+      "repeat": 1,
+      "language": "rs",
+      "ending": "crlf",
+      "wrap": false,
+      "trusted_clicks": true
+    },
+    {
+      "mode": "remote",
+      "repeat": 1000,
+      "language": "rs",
+      "ending": "crlf",
+      "wrap": false,
+      "trusted_clicks": true
+    },
+    {
+      "mode": "local",
+      "repeat": 1,
+      "language": "cs",
+      "ending": "crlf",
+      "wrap": false,
+      "trusted_clicks": true
+    },
+    {
+      "mode": "local",
+      "repeat": 1000,
+      "language": "cs",
+      "ending": "crlf",
+      "wrap": false,
+      "trusted_clicks": true
+    },
+    {
+      "mode": "remote",
+      "repeat": 1,
+      "language": "cs",
+      "ending": "crlf",
+      "wrap": false,
+      "trusted_clicks": true
+    },
+    {
+      "mode": "remote",
+      "repeat": 1000,
+      "language": "cs",
+      "ending": "crlf",
+      "wrap": false,
+      "trusted_clicks": true
+    },
+    {
+      "mode": "local",
+      "repeat": 1,
+      "language": "json",
+      "ending": "crlf",
+      "wrap": false,
+      "trusted_clicks": true
+    },
+    {
+      "mode": "local",
+      "repeat": 1000,
+      "language": "json",
+      "ending": "crlf",
+      "wrap": false,
+      "trusted_clicks": true
+    },
+    {
+      "mode": "remote",
+      "repeat": 1,
+      "language": "json",
+      "ending": "crlf",
+      "wrap": false,
+      "trusted_clicks": true
+    },
+    {
+      "mode": "remote",
+      "repeat": 1000,
+      "language": "json",
+      "ending": "crlf",
+      "wrap": false,
+      "trusted_clicks": true
+    }
+  ],
+  "realRustCaret": [
+    {
+      "mode": "local",
+      "repeat": 1,
+      "language": "rs",
+      "ending": "lf",
+      "wrap": false,
+      "trusted_clicks": true
+    },
+    {
+      "mode": "remote",
+      "repeat": 1,
+      "language": "rs",
+      "ending": "lf",
+      "wrap": false,
+      "trusted_clicks": true
+    }
+  ],
+  "about": [],
+  "siteNavigationTests": 6,
+  "strictCompiledSiteBuild": true,
+  "compiledPlayground": "Mouse/touch/pen, nesting, cycle/stale gesture rejection, desktop/phone, dark/light, downloads and embedded renderer PASS",
+  "scope": "All use the measured guarded artifacts; actual hardware touch/AT/IME/Edge remains unverified. No browser deadline, editor inventory or geometry/source oracle weakened.",
+  "logSha256": {
+    "worker-url": "e79f5540275ce91fdc31910cf28e8e581e1da0ade5ae75d14697da738c30d169",
+    "worker-module": "f288a28fd9a945762b092baa3b4ab31b24f95d86bc24340c34a54752423a5787",
+    "about": "e7b5ada8597f25ed5768ce0ebfd411e5ef01de0d36f258d8fc6b45a3b2b55a80",
+    "unwrapped-full-input": "01bacf668f9433a1edf0a5d41ad683e3fd8be056e110eabe8c77af81e7129c30",
+    "unwrapped-windowed-input": "06be55fbc5549edbbce87b974fd04a8bbe7bbcfc412a795250d5a5393c657055",
+    "pointer": "47e251d93b1369e199296dcc198129dcf81ef7984b0bf5d9de0d0eb10e122196",
+    "pointer-auth": "288998724261b1211a8ca26fae9ac13fd67b8ed602e741b1bd07659337b82f49",
+    "site-tests": "1e43b905e11ca028139fe5078016515111aaf7cebf8d6a3e224b7d03b9cb6ac9",
+    "site-build": "cede866fef97523120342ec7f5f8322852c3b0e0b3561fbf751b3740fe1c0edd",
+    "site-playground": "06926e0a45fb383e55ca86cec533d1f94b71c0ab478732fba9e9b46dd60100a2"
+  }
+}

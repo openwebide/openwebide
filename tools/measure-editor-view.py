@@ -62,7 +62,7 @@ def chrome_process_role(pid):
     for arg in args:
         if arg.startswith(b"--type="):
             return roles.get(arg.removeprefix(b"--type="), "other")
-    return "browser" if args and b"chrome" in args[0] else "other"
+    return "browser" if args and (b"chrome" in args[0] or b"chromium" in args[0]) else "other"
 
 
 def process_memory_snapshot(driver):
@@ -190,7 +190,9 @@ READY = """
 """
 
 
-def measure(case, mode, wrapped, trace=False, repetition=1, input_position="start", profile=False, file_name="measure.rs", wait_syntax=False, worker_startup="default"):
+def measure(case, mode, wrapped, trace=False, repetition=1, input_position="start", profile=False, file_name="measure.rs", wait_syntax=False, worker_startup="default", memory_cycle_count=0, memory_retention=False):
+    assert not memory_retention or memory_cycle_count, "Retention collection requires edit/Undo cycles"
+    collect_garbage = runpy.run_path(str(ROOT / "tools/editor_memory.py"))["collect_garbage"] if memory_retention else None
     source = source_for(case)
     require_styled = case in {"styled-long-line", "styled-long-line-following-row"}
     native = source.replace("\r\n", "\n")
@@ -490,9 +492,9 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
                                     measurement.coldCompleteGeometryMs = performance.now();
                                 if (syntaxReady && measurement.coldSyntaxReadyMs === null)
                                     measurement.coldSyntaxReadyMs = performance.now();
-                            } else if (measurement.phase === 'input' && measurement.inputAt &&
+                            } else if (['input', 'deferred'].includes(measurement.phase) && measurement.inputAt &&
                                 scope !== measurement.inputPreviousScope) {
-                                if (measurement.inputViewportPaintMs === null) {
+                                if (measurement.phase === 'input' && measurement.inputViewportPaintMs === null) {
                                     measurement.inputViewportPaintMs = performance.now() - measurement.inputAt;
                                     measurement.inputViewportHadCompleteExtent = complete;
                                 }
@@ -648,9 +650,110 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
                 while not browser.call("POST", "/execute/sync", {"script": READY, "args": [native_length + 1, require_styled, True]}):
                     assert time.monotonic() < deadline, "Input syntax readiness timed out"
                     time.sleep(.05)
+            memory_cycle_results = {}
+            if memory_cycle_count:
+                # Optional repeated-edit measurement: preserve the original single-input
+                # snapshot, then verify every edit and Undo through persisted source.
+                single_input_memory = process_memory(browser.process.pid)
+                single_input_wasm_bytes = browser.script("return window.editorViewWasmMemory.buffer.byteLength;")
+                single_input_tasks = browser.script("return {...window.editorViewMeasurement, wasmBytes: window.editorViewWasmMemory.buffer.byteLength};")
+                assert input_position == "beginning", "Memory cycles require the verified beginning caret"
+                assert platform.system() == "Linux", "Memory cycles use the isolated Linux Control-Z contract"
+                from editor_memory import ScopedScriptResults
+                browser = ScopedScriptResults(browser)
+                cycle_count = memory_cycle_count
+                assert 1 <= cycle_count <= 1000
+                browser.script("editorViewMeasurement.phase = 'memory';")
+                cycle_snapshots = []
+                cycle_inputs = []
+                original_hash = hashlib.sha256(source.encode()).hexdigest()
+                edited_source = "m" + source
+
+                def undo_cycle():
+                    browser.call("POST", "/actions", {"actions": [{"type": "key", "id": "memory-history", "actions": [
+                        {"type": "keyDown", "value": "\ue009"},
+                        {"type": "keyDown", "value": "z"},
+                        {"type": "keyUp", "value": "z"},
+                        {"type": "keyUp", "value": "\ue009"},
+                    ]}]})
+
+                def wait_cycle_ready(expected_native_length):
+                    cycle_deadline = time.monotonic() + 60
+                    while not browser.call("POST", "/execute/sync", {"script": READY, "args": [expected_native_length, require_styled, True]}):
+                        assert time.monotonic() < cycle_deadline, "Memory-cycle source/layout/syntax readiness timed out"
+                        time.sleep(.05)
+
+                def verify_cycle_source(expected):
+                    cycle_deadline = time.monotonic() + 10
+                    while True:
+                        recovery = runtime.request("GET", f"/api/projects/{project['id']}/editor-recovery")
+                        actual_source = base64.b64decode(recovery["state"]["files"][0]["document"]["text"]).decode()
+                        if actual_source == expected:
+                            return
+                        assert time.monotonic() < cycle_deadline, "Memory-cycle complete source did not match its edit/Undo transition"
+                        time.sleep(.25)
+
+                def capture_cycle_memory():
+                    snapshot = process_memory(browser.process.pid)
+                    assert snapshot["chrome_pss_kib"] is not None, "Memory checkpoint needs complete process-tree PSS"
+                    return snapshot
+
+                def memory_checkpoint(cycle):
+                    snapshot = capture_cycle_memory()
+                    entry = {"cycle": cycle, "sourceSha256": original_hash,
+                        "sourceBytes": len(source.encode()), "completeSourceVerified": True,
+                        "memory": snapshot, "wasmCommittedBytes": browser.script("return window.editorViewWasmMemory.buffer.byteLength;"),
+                        "domNodes": browser.script("return {elements:document.getElementsByTagName('*').length, headChildren:document.head.childNodes.length, overlayRows:document.querySelectorAll('.editor-source-line').length, editorInputs:document.querySelectorAll('textarea[data-editor-path]').length};")}
+                    if collect_garbage:
+                        entry["retainedTargets"] = collect_garbage(browser)
+                        wait_cycle_ready(native_length)
+                        verify_cycle_source(source)
+                        entry["retainedMemory"] = capture_cycle_memory()
+                    cycle_snapshots.append(entry)
+                    print(json.dumps({"memoryCheckpoint": {"cycle": cycle, "chromePssKiB": snapshot["chrome_pss_kib"],
+                        "wasmCommittedBytes": entry["wasmCommittedBytes"], "completeSourceVerified": True}}), flush=True)
+
+                phase = "memory initial Undo"
+                undo_cycle()
+                wait_cycle_ready(native_length)
+                verify_cycle_source(source)
+                memory_checkpoint(0)
+                for cycle in range(1, cycle_count + 1):
+                    phase = f"memory cycle {cycle} insert"
+                    browser.script("Object.assign(editorViewMeasurement, {phase:'input', inputAt:0, inputPreviousScope:null, inputViewportPaintMs:null, inputCompleteGeometryMs:null, inputSyntaxReadyMs:null, inputViewportHadCompleteExtent:null});")
+                    browser.call("POST", "/goog/cdp/execute", {"cmd": "Input.insertText", "params": {"text": "m"}})
+                    wait_cycle_ready(native_length + 1)
+                    verify_cycle_source(edited_source)
+                    input_metrics = browser.script("editorViewObservePaint(); return {inputViewportPaintMs:editorViewMeasurement.inputViewportPaintMs, inputCompleteGeometryMs:editorViewMeasurement.inputCompleteGeometryMs, inputSyntaxReadyMs:editorViewMeasurement.inputSyntaxReadyMs};")
+                    assert input_metrics["inputViewportPaintMs"] is not None, "Memory-cycle viewport paint was not observed"
+                    assert input_metrics["inputCompleteGeometryMs"] is not None, "Memory-cycle complete geometry was not observed"
+                    cycle_inputs.append({"cycle": cycle, "completeSourceVerified": True, **input_metrics})
+                    browser.script("editorViewMeasurement.phase = 'memory';")
+                    phase = f"memory cycle {cycle} Undo"
+                    undo_cycle()
+                    wait_cycle_ready(native_length)
+                    verify_cycle_source(source)
+                    if cycle in {1, 5, 10, 20, 40, cycle_count} or cycle % 100 == 0:
+                        memory_checkpoint(cycle)
+                memory_cycles = {"cycles": cycle_count, "verifiedSourceTransitions": 2 * cycle_count + 1,
+                    "sourceSha256": original_hash, "sourceBytes": len(source.encode()),
+                    "scriptResultScope": "Repeated synchronous script results use ChromeDriver object groups through an owned root element; original script arguments are restored before execution. Initial single-input observation is unchanged.",
+                    "scope": "Native one-character beginning edits and Control-Z. Full persisted source must alternate before each next action. No clipboard, forced GC, changed readiness deadlines or synthetic source publication. Checkpoints follow confirmed autosave and syntax/layout readiness. Peak sampling spans cold startup, original input and all cycles.",
+                    "snapshots": cycle_snapshots, "inputObservations": cycle_inputs}
+                memory_cycle_results = {"memoryCycles": memory_cycles,
+                    "memoryAfterCycles": cycle_snapshots[-1]["memory"] if memory_retention else capture_cycle_memory(),
+                    "sampledPeakIncludesMemoryCycles": True,
+                    "afterCyclesWasmCommittedBytes": browser.script("return window.editorViewWasmMemory.buffer.byteLength;")}
+                if memory_retention:
+                    memory_cycles["scope"] = memory_cycles["scope"].replace("No clipboard, forced GC,", "No clipboard,") + " Explicit collection covers all owned page/worker/service-worker heaps at checkpoints; complete persisted source, syntax and layout are rechecked afterward. These timings are excluded from latency acceptance; use the separate no-collection cohort for natural resident-memory peak."
+                    memory_cycle_results.update({
+                        "retainedMemoryStudy": True, "excludedFromLatencyAcceptance": True,
+                        "memoryAfterRetentionCollection": capture_cycle_memory(),
+                        "peakMeasurementScope": "Periodic collection study; uninterrupted natural peak comes from the separate normal cohort",
+                    })
             sampled = samples.finish()
             samples = None
-            tasks = browser.script("return {...window.editorViewMeasurement, wasmBytes: window.editorViewWasmMemory.buffer.byteLength};")
+            tasks = single_input_tasks if memory_cycle_count else browser.script("return {...window.editorViewMeasurement, wasmBytes: window.editorViewWasmMemory.buffer.byteLength};")
             profiling = {}
             if profile:
                 metrics = browser.call("POST", "/goog/cdp/execute", {"cmd": "Performance.getMetrics", "params": {}})
@@ -660,14 +763,14 @@ def measure(case, mode, wrapped, trace=False, repetition=1, input_position="star
             if worker_startup != 'default':
                 assert startup['attempted'] > 0, 'No production worker module handoff was attempted'
                 assert startup['dropped' if worker_startup == 'url' else 'accepted'] > 0, startup
-            return {**profiling, "workerStartup":worker_startup, "workerStartupEvidence":startup, "cpuProfiling": profile, "waitedForSyntax": wait_syntax, "case": case, "fileName": file_name, "mode": mode, "wrap": wrapped, "repetition": repetition, "sourceBytes": len(source.encode()),
+            return {**profiling, **memory_cycle_results, "workerStartup":worker_startup, "workerStartupEvidence":startup, "cpuProfiling": profile, "waitedForSyntax": wait_syntax, "case": case, "fileName": file_name, "mode": mode, "wrap": wrapped, "repetition": repetition, "sourceBytes": len(source.encode()),
                     "inputPosition": input_position, "verifiedSourceCaretBeforeInput": verified_source_caret,
                     "completeSourceAfterInputVerified": input_position in {"beginning", "end"}, "loadToPaintMs": load_ms, **snapshot, **scroll, **edited, **memory,
-                    "afterInputMemory": process_memory(browser.process.pid), **sampled,
+                    "afterInputMemory": single_input_memory if memory_cycle_count else process_memory(browser.process.pid), **sampled,
                     **{key: tasks[key] for key in ["coldViewportPaintMs", "coldCompleteGeometryMs",
                         "coldViewportHadCompleteExtent", "coldSyntaxReadyMs", "inputViewportPaintMs", "inputCompleteGeometryMs", "inputSyntaxReadyMs",
                         "inputViewportHadCompleteExtent", "inputScrollTop", "inputScrollLeft"]},
-                    "afterInputWasmCommittedBytes": tasks["wasmBytes"],
+                    "afterInputWasmCommittedBytes": single_input_wasm_bytes if memory_cycle_count else tasks["wasmBytes"],
                     "longTasks": tasks["longTasks"], "longTaskMs": tasks["longTaskMs"],
                     "maxLongTaskMs": tasks["maxLongTaskMs"], "maxFrameIncludingInputMs": tasks["maxFrameMs"],
                     **({"layoutProbes": tasks["probes"], "viewportReads": tasks.get("viewportReads", []), "paragraphCandidates": tasks.get("paragraphCandidates", []), "preparationBatches": tasks["batches"], "workerEvents": tasks["workers"], "fontEvents": tasks["fonts"], "nativeEvents": tasks["nativeEvents"], "longTaskEvents": tasks["longTaskEvents"], "traceTruncated": tasks["traceTruncated"]} if trace else {})}
@@ -728,7 +831,15 @@ if __name__ == "__main__":
     parser.add_argument("--repeat", type=int, default=1, help="Fresh browser/runtime runs for each case and mode")
     parser.add_argument("--require-pss", action="store_true", help="Fail if apportioned Chrome process memory cannot be measured")
     parser.add_argument('--worker-startup', choices=['default','compiled','url'], default='default', help='Compare the same production artifact with module handoff or its URL fallback')
+    parser.add_argument("--memory-cycles", type=int, default=0, help="Repeat 1-1000 verified beginning edits and Undo in one Linux browser; requires --wait-syntax and --input-position beginning; preserves original single-input observations")
+    parser.add_argument("--memory-retention", action="store_true", help="Collect all owned page/worker/service-worker heaps at memory checkpoints; requires --memory-cycles; excludes these timings from latency acceptance")
     args = parser.parse_args()
+    if args.memory_retention and not args.memory_cycles:
+        parser.error("--memory-retention requires --memory-cycles")
+    if not 0 <= args.memory_cycles <= 1000:
+        parser.error("--memory-cycles must be between 0 and 1000")
+    if args.memory_cycles and (platform.system() != "Linux" or args.input_position != "beginning" or not args.wait_syntax):
+        parser.error("--memory-cycles requires Linux, --input-position beginning and --wait-syntax")
     if args.repeat < 1:
         parser.error("--repeat must be positive")
     if Path(args.file_name).name != args.file_name or args.file_name in {"", ".", ".."}:
@@ -736,7 +847,8 @@ if __name__ == "__main__":
     assert os.environ.get("CHROMEDRIVER"), "Set CHROMEDRIVER to a compatible driver"
     print(json.dumps({"host": platform.platform(), "measurement": "production editor; process-tree memory",
                       **host_constraints(),
-                      "repetitions": args.repeat, "fileName": args.file_name,
+                      "repetitions": args.repeat, "memoryCycleCount": args.memory_cycles, "memoryRetention": args.memory_retention,
+                      **({"retentionHelperSha256": hashlib.sha256((ROOT / "tools/editor_memory.py").read_bytes()).hexdigest()} if args.memory_retention else {}), "fileName": args.file_name,
                       "measurementImage": os.environ.get("EDITOR_VIEW_IMAGE"),
                       "inputTimingStart": "beforeinput", "inputPosition": args.input_position, "cpuProfiling": args.profile, "workerStartup":args.worker_startup,
                       "frontendWasmSha256": {
@@ -747,12 +859,13 @@ if __name__ == "__main__":
                           (ROOT / "target/wasm32-wasip2/release/openwebide_backend.wasm").read_bytes()
                       ).hexdigest(),
                       "measurementScriptSha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+                      "memoryHelperSha256": hashlib.sha256((ROOT / "tools/editor_memory.py").read_bytes()).hexdigest() if args.memory_cycles else None,
                       "checkoutHead": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
                       "browser": subprocess.check_output([os.environ["CHROME"], "--version"], text=True).strip() if os.environ.get("CHROME") else "WebDriver default"}), flush=True)
     for case in args.cases:
         for mode in args.modes:
             for repetition in range(1, args.repeat + 1):
-                result = measure(case, mode, args.wrap, args.trace, repetition, args.input_position, args.profile, args.file_name, args.wait_syntax, args.worker_startup)
+                result = measure(case, mode, args.wrap, args.trace, repetition, args.input_position, args.profile, args.file_name, args.wait_syntax, args.worker_startup, args.memory_cycles, args.memory_retention)
                 print(json.dumps(result), flush=True)
                 if args.require_pss:
                     assert result["peakChromePssKiB"] is not None, "Chrome peak PSS was unavailable"
