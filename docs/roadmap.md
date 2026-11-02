@@ -1100,7 +1100,44 @@ Research references: [VS Code editing](https://code.visualstudio.com/docs/editin
 [Monaco support/architecture](https://github.com/microsoft/monaco-editor),
 and [EditorConfig](https://editorconfig.org/).
 
+### Language support as plugins
+
+After the Full code editor work is complete, establish the shared language
+contribution and runtime contracts and migrate existing language support into
+bundled plugins. This is a **blocking prerequisite for Code intelligence and LSP**;
+verify the migration in both project modes before starting that item. Preserve the
+editor's shared document/selection/extension APIs as the foundation.
+
+- Define language contribution contracts for file recognition, syntax
+  highlighting/folding, comment and indentation rules, with extension points for
+  snippets, formatting, host diagnostics and LSP configuration. Language packages
+  may provide only a subset of these features and may also include agent skills
+  or tools. Implement LSP services in the following Code intelligence item on top
+  of these contracts.
+  Use a shared language-service facade for document synchronization, feature
+  routing, diagnostics, conflicts and failure handling, with thin host adapters
+  for running plugin syntax analysis and servers beside local or remote project
+  files. The core editor renders shared results and applies declarative editing
+  rules without executing plugin code in the browser. Preserve editing with a
+  core plain-text fallback when the host is unavailable. Guard results by document
+  revision and account/project/session ownership; define competing-provider
+  selection, missing-runtime behavior, server recovery and formatter precedence.
+- Move all existing language support behind those same contribution contracts,
+  shipped as bundled packages enabled by default to preserve today's experience.
+  Distinguish bundled artifacts, installed versions and enablement; record
+  installation/configuration in the database and activate language services on
+  matching files rather than starting every installed server. Bundled packages
+  use the same validation, configuration, conflict and lifecycle rules as
+  community packages. Compiled-in grammars can initially register through the
+  contract, but externally supplied syntax grammars require a versioned loading
+  and runtime contract before claiming full language extensibility.
+
 ### Code intelligence: host language services, LSP & caching
+
+**Blocked by [Language support as plugins](#language-support-as-plugins).** The
+shared contribution/runtime contracts and migration of existing language support
+must be complete and verified in both modes before implementing host diagnostics,
+LSP features or their caching. New language features use those plugin contracts.
 
 Treat the homelab server and paired native bridges as persistent development
 hosts. Language services belong to a project on its execution host, rather than
@@ -1161,11 +1198,11 @@ autocomplete) into the editor while keeping the core diagnostics engine
   host outages and restart recovery. Benchmark interactive latency and bounded
   resource use on a small homelab before claiming prefetching improves performance.
 
-Expose language features through the shared contribution contracts described in
-[Plugins & Git marketplaces](#plugins-git-marketplaces), so existing
-languages can become bundled plugins and community packages can add languages.
-Defer the language-plugin migration until the ongoing Full code editor work is
-complete; preserve the shared document/selection/extension APIs as its foundation.
+Expose language features through the contribution contracts established by
+[Language support as plugins](#language-support-as-plugins), using the same
+validation, permissions and lifecycle for bundled and community packages. Extend
+those contracts for code intelligence without adding a separate built-in language
+implementation.
 
 ### Editor Git annotations
 
@@ -1278,6 +1315,10 @@ Extend agent and editor capabilities through versioned plugin packages that user
 and the agent can manage, without requiring changes to the app for each new
 capability.
 
+The language contribution contracts and migration of existing language support are
+tracked separately under [Next](#language-support-as-plugins), as a prerequisite
+for Code intelligence and LSP.
+
 - Finish manual PWA lifecycle checks on server and paired hosts: asynchronous
   install/cancel and failure recovery, cold action caches, compiled-default
   initialization, and install/run/update/disable/uninstall flows.
@@ -1333,28 +1374,6 @@ capability.
   and conflicts between providers. Treat annotations as a presentation contract,
   separate from hook delivery and document edits. Use the bundled
   [Git annotations plugin](#editor-git-annotations) as the first reference package.
-- After the ongoing Full code editor work is complete, support language
-  contributions for file recognition, syntax highlighting/folding, comment and
-  indentation rules, snippets, formatting, host diagnostics and LSP
-  configuration. Build on Code intelligence above; language packages may provide
-  only a subset of these features and may also include agent skills or tools.
-  Use a shared language-service facade for document synchronization, feature
-  routing, diagnostics, conflicts and failure handling, with thin host adapters
-  for running plugin syntax analysis and servers beside local or remote project
-  files. The core editor renders shared results and applies declarative editing
-  rules without executing plugin code in the browser. Preserve editing with a
-  core plain-text fallback when the host is unavailable. Guard results by document
-  revision and account/project/session ownership; define competing-provider
-  selection, missing-runtime behavior, server recovery and formatter precedence.
-- Move all existing language support behind those same contribution contracts,
-  shipped as bundled packages enabled by default to preserve today's experience.
-  Distinguish bundled artifacts, installed versions and enablement; record
-  installation/configuration in the database and activate language services on
-  matching files rather than starting every installed server. Bundled packages
-  use the same validation, configuration, conflict and lifecycle rules as
-  community packages. Compiled-in grammars can initially register through the
-  contract, but externally supplied syntax grammars require a versioned loading
-  and runtime contract before claiming full language extensibility.
 - Publish first-party reference packages through the official marketplace using
   the community package format and permission rules: a GitHub integration with
   authentication, MCP tools and review/issue skills, extending the existing
