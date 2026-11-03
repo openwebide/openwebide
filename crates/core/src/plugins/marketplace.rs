@@ -121,10 +121,12 @@ impl MarketplaceCatalog {
                 || plugin.releases.is_empty()
                 || plugin.releases.len() > 32
                 || plugin.categories.is_empty()
-                || plugin
-                    .categories
-                    .iter()
-                    .any(|category| !matches!(category.as_str(), "skills" | "tools" | "panels"))
+                || plugin.categories.iter().any(|category| {
+                    !matches!(
+                        category.as_str(),
+                        "skills" | "tools" | "panels" | "languages"
+                    )
+                })
                 || plugin.categories.iter().collect::<BTreeSet<_>>().len()
                     != plugin.categories.len()
             {
@@ -152,6 +154,7 @@ impl MarketplaceCatalog {
                     compatibility: super::PluginCompatibility { plugin_api: 1 },
                     executable: None,
                     contributions: super::PluginContributions {
+                        languages: Vec::new(),
                         panels: Vec::new(),
                         background: None,
                         events: Vec::new(),
@@ -326,9 +329,9 @@ mod tests {
     use super::*;
     use crate::plugins::testing::catalog;
     #[test]
-    fn panel_categories_are_supported_without_admitting_arbitrary_contributions() {
+    fn panel_and_language_categories_are_supported_without_admitting_arbitrary_contributions() {
         let mut value = catalog().catalog;
-        value.plugins[0].categories = vec!["skills".into(), "panels".into()];
+        value.plugins[0].categories = vec!["skills".into(), "panels".into(), "languages".into()];
         value.validate().unwrap();
         value.plugins[0].categories.push("browser-code".into());
         assert!(value.validate().is_err());

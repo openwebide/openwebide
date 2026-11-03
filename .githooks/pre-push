@@ -13,6 +13,7 @@ required_tools=(
   wasm-bindgen-test-runner
   google-chrome
   chromedriver
+  python3
 )
 
 for tool in "${required_tools[@]}"; do
@@ -42,23 +43,29 @@ if [[ -n "$changed_files" ]] && ! echo "$changed_files" | grep -qvE '(\.(md|txt)
   exit 0
 fi
 
+if [[ -z "${WASI_SDK_PATH:-}" ]]; then
+  WASI_SDK_PATH="$(python3 tools/install_wasi_sdk.py "${XDG_CACHE_HOME:-$HOME/.cache}/openwebide/wasi-sdk")"
+  export WASI_SDK_PATH
+fi
+
 echo "[pre-push] 1/4 Checking formatting (cargo fmt --all --check)..."
 cargo fmt --all --check
 
 echo "[pre-push] 2/4 Running Clippy across native, WASI, WASM, and bridge targets..."
-cargo clippy -p openwebide-storage -p openwebide-core -p openwebide-auth -p openwebide-agent -p openwebide-llm --all-targets -- -D warnings
+cargo clippy -p openwebide-storage -p openwebide-core -p openwebide-auth -p openwebide-agent -p openwebide-llm -p openwebide-plugin-sdk -p openwebide-plugin-runtime -p openwebide-plugin-build -p openwebide-language-syntax --features openwebide-core/editor-parser --all-targets -- -D warnings
+cargo check -p openwebide-language-syntax --target wasm32-wasip2 --locked
 cargo clippy -p openwebide-backend --target wasm32-wasip2 -- -D warnings
 cargo clippy -p openwebide-frontend --target wasm32-unknown-unknown -- -D warnings
 cargo clippy -p openwebide-bridge --all-targets -- -D warnings
 
 echo "[pre-push] 3/4 Running native unit & integration tests..."
-cargo test -p openwebide-storage -p openwebide-core -p openwebide-auth -p openwebide-agent -p openwebide-llm -p openwebide-bridge -p openwebide-backend -- --skip source_compilation_validates_tools_caches_offline_and_rejects_artifact_corruption
+cargo test -p openwebide-storage -p openwebide-core -p openwebide-auth -p openwebide-agent -p openwebide-llm -p openwebide-bridge -p openwebide-backend -p openwebide-plugin-sdk -p openwebide-plugin-runtime -p openwebide-language-syntax --features openwebide-core/editor-parser -- --skip source_compilation_validates_tools_caches_offline_and_rejects_artifact_corruption
 cargo test -p openwebide-frontend --lib
 
 if [[ -z "$changed_files" ]] || echo "$changed_files" | grep -qE '^(frontend/|crates/core/|crates/agent/|Cargo\.)'; then
   echo "[pre-push] 4/4 Running headless Chrome WASM UI tests..."
-  CHROMEDRIVER="$(command -v chromedriver)" cargo test -p openwebide-frontend --release --target wasm32-unknown-unknown --lib
-  CHROMEDRIVER="$(command -v chromedriver)" cargo test -p openwebide-frontend --release --target wasm32-unknown-unknown --test components
+  CHROMEDRIVER="$(command -v chromedriver)" WASM_BINDGEN_TEST_TIMEOUT=300 cargo test -p openwebide-frontend --release --target wasm32-unknown-unknown -- --skip 'editor::'
+  CHROMEDRIVER="$(command -v chromedriver)" WASM_BINDGEN_TEST_TIMEOUT=300 python3 tools/run-editor-browser-tests.py
 fi
 
 echo "[pre-push] All verification gates passed."

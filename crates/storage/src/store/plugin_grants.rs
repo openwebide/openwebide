@@ -179,6 +179,20 @@ impl<D: Db> Store<D> {
                             "Panel invocations require user-interface authority".into(),
                         ));
                     }
+                    if matches!(
+                        request.call.operation,
+                        openwebide_core::plugins::execution::PluginOperation::Language
+                    ) {
+                        if !context.user_action || context.project_id.is_none() {
+                            return Err(StorageError::InvalidRequest(
+                                "Language invocations require project user-interface authority"
+                                    .into(),
+                            ));
+                        }
+                        store
+                            .validate_enabled_plugin(user, context.project_id, &plugin)
+                            .await?;
+                    }
                     Ok((plugin, context))
                 })
                 .await
@@ -438,6 +452,141 @@ mod tests {
                 skills: Vec::new(),
             })),
         }
+    }
+    #[test]
+    fn language_authority_requires_current_project_enablement_in_both_modes() {
+        block_on(async {
+            use openwebide_core::plugins::{ProjectPluginCommand, execution::*, languages::*};
+            for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+                let store = Store::new(RusqliteDb::open_in_memory().unwrap());
+                store.migrate().await.unwrap();
+                let user = store
+                    .insert_user("owner", "hash", UserRole::Admin, 0)
+                    .await
+                    .unwrap()
+                    .id;
+                let other = store
+                    .insert_user("other", "hash", UserRole::User, 0)
+                    .await
+                    .unwrap()
+                    .id;
+                let project = store
+                    .create_project(
+                        &NewProject {
+                            name: "project".into(),
+                            mode,
+                            path: Some("project".into()),
+                        },
+                        user,
+                        0,
+                    )
+                    .await
+                    .unwrap()
+                    .id;
+                let mut plugin = receipt();
+                plugin.manifest.compatibility.plugin_api = 5;
+                plugin.manifest.contributions.languages = serde_json::from_value(json!([{"id":"custom","name":"Custom","extensions":["custom"],"features":{"syntax":true}}])).unwrap();
+                store
+                    .record_plugin(user, &installation(&plugin, None), 1)
+                    .await
+                    .unwrap();
+                let input = LanguageInput::Analyze(AnalysisRequest {
+                    version: VERSION,
+                    document: "project/client/document".into(),
+                    request: 1,
+                    revision: 1,
+                    language: "custom".into(),
+                    path: "file.custom".into(),
+                    source_digest: source_digest("text"),
+                    source: SourceChange::Full {
+                        text: "text".into(),
+                    },
+                    tab_width: 4,
+                });
+                let call = InvokePlugin {
+                    operation: PluginOperation::Language,
+                    prepared: plugin.clone(),
+                    name: SERVICE_HANDLER.into(),
+                    arguments: serde_json::to_string(&input).unwrap(),
+                };
+                let mut request = PluginStartRequest {
+                    grant: "a".repeat(32),
+                    session_id: None,
+                    call,
+                };
+                for (index, context) in [
+                    PluginExecutionContext {
+                        user_action: false,
+                        project_id: Some(project),
+                        ..Default::default()
+                    },
+                    PluginExecutionContext {
+                        user_action: true,
+                        project_id: None,
+                        ..Default::default()
+                    },
+                    PluginExecutionContext {
+                        user_action: true,
+                        project_id: Some(project),
+                        ..Default::default()
+                    },
+                ]
+                .into_iter()
+                .enumerate()
+                {
+                    request.grant = format!("{index:032x}");
+                    store
+                        .issue_plugin_context_grant(user, &context, &plugin, &request.grant, 2)
+                        .await
+                        .unwrap();
+                    assert_eq!(
+                        store
+                            .authorize_plugin_invocation(user, &request, 3)
+                            .await
+                            .is_ok(),
+                        index == 2
+                    );
+                }
+                assert!(
+                    store
+                        .authorize_plugin_invocation(other, &request, 3)
+                        .await
+                        .is_err()
+                );
+                let binding = store
+                    .project_plugins(user, project)
+                    .await
+                    .unwrap()
+                    .remove(0);
+                store
+                    .project_plugin_command(
+                        user,
+                        project,
+                        &ProjectPluginCommand::Disable {
+                            id: binding.id,
+                            revision: binding.revision,
+                        },
+                        4,
+                    )
+                    .await
+                    .unwrap();
+                assert!(
+                    store
+                        .authorize_plugin_invocation(user, &request, 5)
+                        .await
+                        .is_err()
+                );
+                // Durable tool work keeps its issued version authority; only the
+                // interactive language service requires current enablement.
+                request.call.operation = PluginOperation::Tool;
+                request.call.name = "notes_add".into();
+                request.call.arguments = "{}".into();
+                store
+                    .authorize_plugin_invocation(user, &request, 5)
+                    .await
+                    .unwrap();
+            }
+        });
     }
     #[test]
     fn context_migration_preserves_deployed_chat_grants_and_replays() {

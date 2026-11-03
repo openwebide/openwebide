@@ -61,6 +61,7 @@ pub enum PluginOperation {
     Context,
     Event,
     Panel,
+    Language,
 }
 
 /// Host-owned execution scope. This is never passed to the plugin or model.
@@ -164,6 +165,34 @@ pub struct PluginStartRequest {
 }
 impl InvokePlugin {
     pub fn validate_event(&self) -> Result<(), String> {
+        if matches!(self.operation, PluginOperation::Language) {
+            use super::languages::*;
+            if self.name != SERVICE_HANDLER || self.arguments.len() > MAX_REQUEST_BYTES {
+                return Err("Invalid language dispatcher or oversized request".into());
+            }
+            let input: LanguageInput =
+                serde_json::from_str(&self.arguments).map_err(|error| error.to_string())?;
+            validate_input(&input)?;
+            if self.prepared.manifest.contributions.languages.is_empty() {
+                return Err("Plugin does not declare language contributions".into());
+            }
+            if let LanguageInput::Analyze(request) = input
+                && !self
+                    .prepared
+                    .manifest
+                    .contributions
+                    .languages
+                    .iter()
+                    .any(|definition| {
+                        definition.id == request.language
+                            && (definition.features.syntax
+                                || definition.features.folding
+                                || definition.features.structure)
+                    })
+            {
+                return Err("Language analysis is not declared by this plugin".into());
+            }
+        }
         if matches!(self.operation, PluginOperation::Panel) {
             if self.name != super::panels::VIEW_HANDLER {
                 return Err("Invalid panel dispatcher".into());

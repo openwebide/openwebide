@@ -9,6 +9,8 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Add the language plugin foundation: versioned SDK declarations and source/result contracts, shared provider selection and document synchronization, bounded host component sessions, and parser-free editor result validation and editing rules. Provide a public syntax toolkit and pinned WASI C toolchain for plugin authors. The editor's migration to default language packages remains in progress.
+
 - Keep chats usable after a model returns malformed tool-call JSON. Replay failed arguments as diagnostic data for both model protocols while preserving the original call, tool results and execution validation.
 
 - Improve low-context local model resilience and output continuation across local and remote workspaces: resolve live Ollama `/api/ps` (`context_length`) and llama.cpp `/props` (`n_ctx`) runtime context windows when unconfigured; scale per-tool output, `read_file` line windows, search match caps, and inline `AGENTS.md` startup budgets proportionally to the resolved context window; prune older tool outputs deterministically (observation masking) before invoking LLM compaction and retain the latest completed tool turn during mid-run compaction when it fits; add a surgical `edit_file` tool (`path`, `old_string`, `new_string`) sharing diff preview, `.git` confinement, `AutoAcceptEdits` policy, and rewind checkpoints with `write_file`; retry once with `thinking = Some(false)` when a turn exhausts its output token budget inside `<think>`, append targeted recovery guidance when `StopReason::Length` truncates tool arguments, and offer an inline **Continue** button in the TUI when a reply ends with `[reply cut off: output token limit reached]`.

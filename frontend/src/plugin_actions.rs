@@ -20,6 +20,15 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "Date.now supplies nonnegative integer epoch milliseconds within u64"
+)]
+fn language_time() -> u64 {
+    js_sys::Date::now() as u64
+}
+
 pub async fn invoke_project_plugin_action(
     api: Api,
     host: ProjectHost,
@@ -63,6 +72,60 @@ pub async fn invoke_scoped_plugin_panel(
         approved,
     )
     .await
+}
+
+pub async fn invoke_project_language(
+    api: Api,
+    host: ProjectHost,
+    project: i64,
+    provider: &openwebide_core::plugins::languages::RegisteredLanguage,
+    input: &openwebide_core::plugins::languages::LanguageInput,
+    source: Option<&str>,
+    current: impl Fn() -> bool + Clone + 'static,
+) -> Result<openwebide_core::plugins::languages::LanguageOutput, String> {
+    let (adapter, bindings) = scoped_action_host(api, host, Some(project), current).await?;
+    openwebide_agent::plugins::languages::invoke_language(
+        &adapter, &bindings, provider, input, source,
+    )
+    .await
+}
+
+/// Browser adapter for the shared document/service policy. Editor ownership
+/// guards the client; preparation, grants and source resync live in the facade.
+#[derive(Clone)]
+pub struct ProjectLanguageService {
+    service: openwebide_agent::plugins::languages::LanguageService<ActionHost>,
+}
+impl ProjectLanguageService {
+    pub async fn new(
+        api: Api,
+        host: ProjectHost,
+        project: i64,
+        provider: openwebide_core::plugins::languages::RegisteredLanguage,
+        current: impl Fn() -> bool + Clone + 'static,
+    ) -> Result<Self, String> {
+        let (adapter, bindings) = scoped_action_host(api, host, Some(project), current).await?;
+        Ok(Self {
+            service: openwebide_agent::plugins::languages::LanguageService::new(
+                adapter, bindings, provider,
+            )?,
+        })
+    }
+    pub async fn analyze(
+        &self,
+        request: openwebide_agent::plugins::languages::LanguageDocumentRequest,
+    ) -> Result<openwebide_core::plugins::languages::LanguageOutput, String> {
+        self.service.analyze(request, language_time()).await
+    }
+    pub async fn close(&self, document: &str) -> Result<(), String> {
+        self.service.close(document, language_time()).await
+    }
+    pub fn provider(&self) -> &openwebide_core::plugins::languages::RegisteredLanguage {
+        self.service.provider()
+    }
+    pub fn definitions(&self) -> &[openwebide_core::plugins::languages::LanguageDefinition] {
+        self.service.definitions()
+    }
 }
 
 async fn scoped_action_host(
@@ -129,6 +192,12 @@ impl ActionHost {
     }
 }
 impl PluginActionHost for ActionHost {
+    fn now_ms(&self) -> Option<u64> {
+        Some(language_time())
+    }
+    async fn yield_task(&self) {
+        SendWrapper::new(crate::util::yield_task()).await;
+    }
     async fn prepare(&self, plugin: &PreparedPlugin) -> Result<PreparedPlugin, String> {
         SendWrapper::new(async move {
             let transport = match &*self.transport {

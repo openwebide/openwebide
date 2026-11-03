@@ -2973,6 +2973,7 @@ dependencies = [
  "hpke",
  "html5ever",
  "ignore",
+ "openwebide-language-grammars",
  "openwebide-plugin-sdk",
  "proptest",
  "rand_chacha 0.9.0",
@@ -2986,25 +2987,6 @@ dependencies = [
  "sha2 0.11.0",
  "tar",
  "tree-sitter",
- "tree-sitter-bash",
- "tree-sitter-c",
- "tree-sitter-c-sharp",
- "tree-sitter-cpp",
- "tree-sitter-css",
- "tree-sitter-go",
- "tree-sitter-html",
- "tree-sitter-ini",
- "tree-sitter-java",
- "tree-sitter-javascript",
- "tree-sitter-json",
- "tree-sitter-md",
- "tree-sitter-php",
- "tree-sitter-python",
- "tree-sitter-rust",
- "tree-sitter-toml-ng",
- "tree-sitter-typescript",
- "tree-sitter-xml",
- "tree-sitter-yaml",
  "unicode-bidi",
  "unicode-segmentation",
  "unicode-width",
@@ -3047,6 +3029,42 @@ dependencies = [
  "wasm-bindgen-futures",
  "wasm-bindgen-test",
  "web-sys",
+]
+
+[[package]]
+name = "openwebide-language-grammars"
+version = "0.1.0"
+dependencies = [
+ "html5ever",
+ "openwebide-plugin-sdk",
+ "tree-sitter",
+ "tree-sitter-bash",
+ "tree-sitter-c",
+ "tree-sitter-c-sharp",
+ "tree-sitter-cpp",
+ "tree-sitter-css",
+ "tree-sitter-go",
+ "tree-sitter-html",
+ "tree-sitter-ini",
+ "tree-sitter-java",
+ "tree-sitter-javascript",
+ "tree-sitter-json",
+ "tree-sitter-md",
+ "tree-sitter-php",
+ "tree-sitter-python",
+ "tree-sitter-rust",
+ "tree-sitter-toml-ng",
+ "tree-sitter-typescript",
+ "tree-sitter-xml",
+ "tree-sitter-yaml",
+]
+
+[[package]]
+name = "openwebide-language-syntax"
+version = "0.1.0"
+dependencies = [
+ "openwebide-core",
+ "openwebide-plugin-sdk",
 ]
 
 [[package]]

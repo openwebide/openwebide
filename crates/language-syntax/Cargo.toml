@@ -1,0 +1,17 @@
+[package]
+name = "openwebide-language-syntax"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.94"
+license = "MIT"
+description = "Syntax engines for language plugins using the public Open WebIDE component protocol"
+
+[dependencies]
+openwebide-core = { path = "../core", features = ["editor-parser"] }
+openwebide-plugin-sdk = { version = "=0.1.0", default-features = false }
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+openwebide-core = { path = "../core", features = ["editor-parser", "test-support"] }

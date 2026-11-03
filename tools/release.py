@@ -10,6 +10,11 @@ import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+INDEPENDENT_PACKAGES = {
+    "openwebide-plugin-sdk",
+    "openwebide-language-grammars",
+    "openwebide-language-syntax",
+}
 RELEASE_VERSION = re.compile(
     r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"
     r"(?:-(?:(?P<channel>rc)\.(?:0|[1-9][0-9]*)|(?P<nightly>nightly)(?:\+sha\.[0-9a-f]{12})?))?"
@@ -42,9 +47,9 @@ def version(root=ROOT):
     for member in cargo["workspace"]["members"]:
         package = tomllib.loads((root / member / "Cargo.toml").read_text())["package"]
         declared = package["version"]
-        independent_sdk = package["name"] == "openwebide-plugin-sdk"
-        expected = declared if independent_sdk else current
-        if independent_sdk:
+        independent = package["name"] in INDEPENDENT_PACKAGES
+        expected = declared if independent else current
+        if independent:
             release_channel(expected)
         elif declared != {"workspace": True} and declared != current:
             raise ValueError(f"{member} does not use workspace version {current}")
@@ -63,12 +68,12 @@ def stamp_nightly(root, commit):
         path = root / name
         path.write_text(path.read_text().replace(f'version = "{current}"', f'version = "{stamped}"', 1))
     path = root / "Cargo.lock"
-    # Update only source-free workspace packages; dependencies and the independent SDK stay pinned.
+    # Update app packages; dependencies and public SDK/toolkit versions stay pinned.
     cargo = tomllib.loads((root / "Cargo.toml").read_text())
     members = set()
     for member in cargo["workspace"]["members"]:
         package = tomllib.loads((root / member / "Cargo.toml").read_text())["package"]
-        if package["name"] != "openwebide-plugin-sdk":
+        if package["name"] not in INDEPENDENT_PACKAGES:
             members.add(package["name"])
     entries = path.read_text().split("[[package]]")
     for index, entry in enumerate(entries[1:], 1):

@@ -29,6 +29,8 @@ fn main() -> Result<()> {
     let staging = tempfile::tempdir()?;
     let bytes = build::compile(&source, library, staging.path())?;
     let runtime = Runtime::new()?;
+    let definition = serde_json::from_value(manifest.clone())?;
+    runtime.validate_exports(&bytes, &definition)?;
     let tools = runtime.tools(&bytes, Fixtures(BTreeMap::new()), &[])?;
     let declared: Vec<sdk::Tool> = serde_json::from_value(
         manifest["contributions"]
@@ -82,9 +84,10 @@ fn main() -> Result<()> {
         }
     } else {
         println!(
-            "Validated {} exported tools and {} events ({} WASM bytes)",
+            "Validated {} exported tools, {} events and {} languages ({} WASM bytes)",
             tools.len(),
             events.len(),
+            definition.contributions.languages.len(),
             bytes.len()
         );
     }

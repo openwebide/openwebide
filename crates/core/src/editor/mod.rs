@@ -3,7 +3,7 @@
 
 use std::ops::Range;
 mod change;
-pub(crate) use change::TextChangePreparation;
+pub use change::TextChangePreparation;
 
 mod fold_providers;
 pub use fold_providers::fold_ranges;
@@ -89,28 +89,28 @@ pub use viewport::{
 };
 mod projection;
 pub use projection::{FoldProjection, ProjectionError, VisibleLine};
+#[cfg(feature = "editor-analysis")]
+mod analysis;
+#[cfg(feature = "editor-analysis")]
+pub use analysis::{SyntaxAnalysis, SyntaxStatus};
 #[cfg(feature = "editor-parser")]
 mod syntax;
 #[cfg(all(feature = "editor-parser", any(test, feature = "test-support")))]
 pub mod syntax_contracts;
 #[cfg(feature = "editor-parser")]
-mod syntax_injections;
-#[cfg(feature = "editor-parser")]
-mod syntax_providers;
+pub use openwebide_language_grammars::{
+    ContextSelector, HighlightSelector, InjectionSelector, SYNTAX_PROVIDERS, SyntaxContextKind,
+    SyntaxContextScope, SyntaxHighlightScope, SyntaxProvider, syntax_provider,
+};
 #[cfg(feature = "editor-parser")]
 pub use syntax::{
     MAX_ANALYSIS_MESSAGE_BYTES, MAX_SYNTAX_DOCUMENTS, MAX_SYNTAX_FRAME_BYTES,
     MAX_SYNTAX_REQUEST_BYTES, MAX_SYNTAX_SOURCE_BYTES, SYNTAX_BATCH_MS, SYNTAX_FRAME_VERSION,
     SYNTAX_INPUT_BUDGET_MS, SYNTAX_PROTOCOL_VERSION, SYNTAX_REQUEST_BATCH_BYTES, SyntaxAdmission,
-    SyntaxAdmissionStatus, SyntaxAnalysis, SyntaxAnalysisData, SyntaxDocument, SyntaxFrameProgress,
+    SyntaxAdmissionStatus, SyntaxAnalysisData, SyntaxDocument, SyntaxFrameProgress,
     SyntaxPreparations, SyntaxReply, SyntaxReplyFrameDecoding, SyntaxReplyFrames,
-    SyntaxReplyReception, SyntaxRequest, SyntaxRequestPublication, SyntaxSource, SyntaxStatus,
-    SyntaxWorker, preparation_exceeds_limits,
-};
-#[cfg(feature = "editor-parser")]
-pub use syntax_providers::{
-    ContextSelector, HighlightSelector, InjectionSelector, SYNTAX_PROVIDERS, SyntaxContextKind,
-    SyntaxContextScope, SyntaxHighlightScope, SyntaxProvider, syntax_provider,
+    SyntaxReplyReception, SyntaxRequest, SyntaxRequestPublication, SyntaxSource, SyntaxWorker,
+    preparation_exceeds_limits,
 };
 mod comments;
 pub use comments::{block_comment, line_comment, supports_block_comment, supports_line_comment};

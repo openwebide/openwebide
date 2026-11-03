@@ -10,15 +10,17 @@ use std::{
 
 pub const TOOLCHAIN: &str = "1.98.1";
 pub const TARGET: &str = "wasm32-wasip2";
+pub const WASI_SDK_VERSION: &str = "34.0";
 const SDK_MANIFEST: &str = include_str!("../../plugin-sdk/Cargo.toml");
 const SDK_SOURCE: &str = include_str!("../../plugin-sdk/src/lib.rs");
 const SDK_WIT: &str = include_str!("../../plugin-sdk/wit/plugin.wit");
 const SDK_PANELS: &str = include_str!("../../plugin-sdk/src/panels.rs");
+const SDK_LANGUAGES: &str = include_str!("../../plugin-sdk/src/languages.rs");
 
 pub fn sdk_digest() -> String {
     use sha2::{Digest, Sha256};
     let bytes = Sha256::digest(format!(
-        "{SDK_MANIFEST}\n{SDK_SOURCE}\n{SDK_WIT}\n{SDK_PANELS}"
+        "{SDK_MANIFEST}\n{SDK_SOURCE}\n{SDK_WIT}\n{SDK_PANELS}\n{SDK_LANGUAGES}\n{WASI_SDK_VERSION}"
     ));
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
@@ -62,6 +64,7 @@ pub fn compile_cancellable(
         ("Cargo.toml", SDK_MANIFEST),
         ("src/lib.rs", SDK_SOURCE),
         ("src/panels.rs", SDK_PANELS),
+        ("src/languages.rs", SDK_LANGUAGES),
         ("wit/plugin.wit", SDK_WIT),
     ] {
         let path = sdk.join(path);
@@ -86,6 +89,7 @@ pub fn compile_cancellable(
         .canonicalize()?;
     let cargo = tool(&rustup_home, "cargo")?;
     let rustc = tool(&rustup_home, "rustc")?;
+    let wasi = wasi_sdk()?;
     let patch = format!(
         "patch.crates-io.openwebide-plugin-sdk.path={:?}",
         sdk.to_string_lossy()
@@ -95,8 +99,23 @@ pub fn compile_cancellable(
     // this trusted staging cwd, not from the plugin's working directory. Fetch
     // the complete lockfile: filtering to the WASI target can omit native
     // dependencies needed by proc macros and build scripts during cross builds.
-    let mut fetch = sandbox(&cargo, &source, &work, &rustup_home, &sdk, true)?;
-    configure(&mut fetch, &rustc, &rustup_home, &cargo_home, &work);
+    let mut fetch = sandbox(
+        &cargo,
+        &source,
+        &work,
+        &rustup_home,
+        &sdk,
+        true,
+        wasi.as_deref(),
+    )?;
+    configure(
+        &mut fetch,
+        &rustc,
+        &rustup_home,
+        &cargo_home,
+        &work,
+        wasi.as_deref(),
+    );
     fetch
         .arg("fetch")
         .args(common)
@@ -104,8 +123,23 @@ pub fn compile_cancellable(
         .args(["--config", &patch]);
     run_cancellable(fetch, Duration::from_secs(180), cancelled)
         .context("Fetch Rust plugin dependencies")?;
-    let mut build = sandbox(&cargo, &source, &work, &rustup_home, &sdk, false)?;
-    configure(&mut build, &rustc, &rustup_home, &cargo_home, &work);
+    let mut build = sandbox(
+        &cargo,
+        &source,
+        &work,
+        &rustup_home,
+        &sdk,
+        false,
+        wasi.as_deref(),
+    )?;
+    configure(
+        &mut build,
+        &rustc,
+        &rustup_home,
+        &cargo_home,
+        &work,
+        wasi.as_deref(),
+    );
     build
         .args(["build", "--release", "--offline"])
         .args(common)
@@ -142,6 +176,7 @@ fn configure(
     rustup: &Path,
     cargo_home: &Path,
     staging: &Path,
+    wasi: Option<&Path>,
 ) {
     command
         .env_clear()
@@ -153,6 +188,32 @@ fn configure(
         .env("CARGO_HOME", cargo_home)
         .env("RUSTC", rustc)
         .env("CARGO_TARGET_DIR", staging.join("target"));
+    if let Some(wasi) = wasi {
+        command
+            .env("WASI_SDK_PATH", wasi)
+            .env("WASI_SYSROOT", wasi.join("share/wasi-sysroot"));
+    }
+}
+
+fn wasi_sdk() -> Result<Option<PathBuf>> {
+    std::env::var_os("WASI_SDK_PATH")
+        .map(|path| {
+            let path = PathBuf::from(path)
+                .canonicalize()
+                .context("Locate the configured WASI SDK")?;
+            let version = std::fs::read_to_string(path.join("VERSION"))
+                .context("Read the WASI SDK version")?;
+            if version.lines().next() != Some(WASI_SDK_VERSION)
+                || !path.join("bin/clang").is_file()
+                || !path
+                    .join("share/wasi-sysroot/include/wasm32-wasip2/stdio.h")
+                    .is_file()
+            {
+                bail!("Configure WASI_SDK_PATH with the complete WASI SDK {WASI_SDK_VERSION}");
+            }
+            Ok(path)
+        })
+        .transpose()
 }
 #[cfg(target_os = "macos")]
 fn sandbox(
@@ -162,6 +223,7 @@ fn sandbox(
     rustup: &Path,
     sdk: &Path,
     network: bool,
+    wasi: Option<&Path>,
 ) -> Result<Command> {
     // Child processes inherit this profile, including build.rs and procedural macros.
     let quote = |path: &Path| serde_json::to_string(&path.to_string_lossy()).expect("path JSON");
@@ -191,13 +253,17 @@ fn sandbox(
     } else {
         developer.as_path()
     };
+    let extra_read = wasi
+        .map(|path| format!("(subpath {})", quote(path)))
+        .unwrap_or_default();
     let profile = format!(
-        "(version 1)(deny default)(allow process*)(allow file-read-metadata)(allow sysctl-read)(allow mach-lookup)(allow file-read* (literal \"/\") (literal \"/private/etc/ssl/openssl.cnf\") (literal \"/private/etc/ssl/cert.pem\") (literal \"/private/etc/resolv.conf\") (literal \"/private/etc/hosts\") (subpath \"/System\") (subpath \"/usr\") (subpath \"/Library\") (subpath \"/bin\") (subpath \"/dev\") (subpath {}) (subpath {}) (subpath {}) (subpath {}) (subpath {}))(allow file-write* (subpath {}) (literal \"/dev/null\")){}",
+        "(version 1)(deny default)(allow process*)(allow file-read-metadata)(allow sysctl-read)(allow mach-lookup)(allow file-read* (literal \"/\") (literal \"/private/etc/ssl/openssl.cnf\") (literal \"/private/etc/ssl/cert.pem\") (literal \"/private/etc/resolv.conf\") (literal \"/private/etc/hosts\") (subpath \"/System\") (subpath \"/usr\") (subpath \"/Library\") (subpath \"/bin\") (subpath \"/dev\") (subpath {}) (subpath {}) (subpath {}) (subpath {}) (subpath {}){})(allow file-write* (subpath {}) (literal \"/dev/null\")){}",
         quote(source),
         quote(staging),
         quote(rustup),
         quote(sdk),
         quote(developer),
+        extra_read,
         quote(staging),
         if network { "(allow network*)" } else { "" }
     );
@@ -213,6 +279,7 @@ fn sandbox(
     rustup: &Path,
     sdk: &Path,
     network: bool,
+    wasi: Option<&Path>,
 ) -> Result<Command> {
     // SAFETY: geteuid has no arguments and does not mutate process state.
     if unsafe { libc::geteuid() } == 0 {
@@ -275,6 +342,9 @@ fn sandbox(
         .arg("--ro-bind")
         .arg(sdk)
         .arg(sdk);
+    if let Some(wasi) = wasi {
+        result.arg("--ro-bind").arg(wasi).arg(wasi);
+    }
     // Fetch may use TLS and DNS, without granting access to private host files.
     if network {
         for path in [
@@ -308,6 +378,7 @@ fn sandbox(
     _rustup: &Path,
     _sdk: &Path,
     _network: bool,
+    _wasi: Option<&Path>,
 ) -> Result<Command> {
     bail!("Isolated Rust plugin builds are not available on this host platform")
 }

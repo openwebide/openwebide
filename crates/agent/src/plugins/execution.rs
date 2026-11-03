@@ -186,6 +186,10 @@ async fn invoke_inner<T: PluginTransport, S: PluginServices>(
         call.operation,
         openwebide_core::plugins::execution::PluginOperation::Context
     );
+    let language = matches!(
+        call.operation,
+        openwebide_core::plugins::execution::PluginOperation::Language
+    );
     let panel_view =
         matches!(
             call.operation,
@@ -243,6 +247,9 @@ async fn invoke_inner<T: PluginTransport, S: PluginServices>(
                 capability,
                 payload,
             } => {
+                if language {
+                    return Err("Language analysis cannot call host services".into());
+                }
                 if !started || sequence <= last_sequence || sequence > 128 {
                     return Err("Plugin transport returned a stale host call.".into());
                 }

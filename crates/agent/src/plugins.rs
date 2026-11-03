@@ -3,6 +3,7 @@ pub mod actions;
 pub mod completion;
 pub mod execution;
 pub mod jobs;
+pub mod languages;
 pub mod management;
 pub mod management_tools;
 pub mod panels;

@@ -1,6 +1,46 @@
 use openwebide_plugin_sdk::{Plugin, Tool, Outcome, serde_json::{self, json}};
 struct Fixture;
+thread_local! {
+    static SOURCE: std::cell::RefCell<Option<(u64, String)>> = const { std::cell::RefCell::new(None) };
+}
 impl Plugin for Fixture {
+    fn languages() -> Vec<openwebide_plugin_sdk::languages::LanguageDefinition> {
+        vec![serde_json::from_value(json!({"id":"fixture-language","name":"Fixture language","extensions":["fixture"],"features":{"syntax":true,"structure":false,"folding":false}})).unwrap()]
+    }
+    fn language(input: openwebide_plugin_sdk::languages::LanguageInput) -> Result<openwebide_plugin_sdk::languages::LanguageOutput, String> {
+        use openwebide_plugin_sdk::languages::*;
+        let LanguageInput::Analyze(request) = input else {
+            let LanguageInput::Close { version, document } = input else { unreachable!() };
+            SOURCE.with(|source| *source.borrow_mut() = None);
+            return Ok(LanguageOutput::Closed { version, document });
+        };
+        if request.path == "loop.fixture" { loop { std::hint::black_box(1); } }
+        if request.path == "trap.fixture" { panic!("language fixture trap"); }
+        let source = SOURCE.with(|source| {
+            match &request.source {
+                SourceChange::Full { text } => Some(text.clone()),
+                SourceChange::Replace { base_revision, start, end, text } => {
+                    let source = source.borrow();
+                    let (revision, previous) = source.as_ref()?;
+                    if revision != base_revision || previous.get(*start..*end).is_none() { return None; }
+                    let mut next = previous.clone();
+                    next.replace_range(*start..*end, text);
+                    Some(next)
+                }
+            }
+        });
+        let analysis = source.as_ref().map(|source| SyntaxAnalysis {
+            highlights: Some(source.split('\n').map(|row| if row.is_empty() { vec![] } else { vec![TokenSpan { end:row.len(), kind:TokenKind::Keyword }] }).collect()),
+            folds: vec![], structure: None,
+        });
+        let status = if source.is_some() { AnalysisStatus::Ready { incremental:false } } else { AnalysisStatus::NeedsSource };
+        SOURCE.with(|cached| *cached.borrow_mut() = source.map(|source| (request.revision, source)));
+        Ok(LanguageOutput::Analyzed(Box::new(AnalysisResponse {
+            version:VERSION, document:request.document, request:request.request,
+            revision:request.revision + u64::from(request.path == "invalid.fixture"),
+            language:request.language, source_digest:request.source_digest, status, analysis,
+        })))
+    }
     fn panels()->Vec<openwebide_plugin_sdk::panels::PanelDefinition> {
         use openwebide_plugin_sdk::panels::*;
         vec![PanelDefinition{id:"fixture-panel".into(),title:"Fixture panel".into(),icon:PanelIcon::Puzzle,view:"render".into(),actions:vec![PanelAction{id:"write".into(),handler:"write".into(),title:"Write record".into(),requires_approval:true}],refresh_seconds:None}]

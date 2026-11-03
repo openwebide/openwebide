@@ -4,6 +4,7 @@ pub mod completion;
 pub mod execution;
 pub mod icon;
 pub mod jobs;
+pub mod languages;
 pub mod management;
 pub mod marketplace;
 pub mod panels;
@@ -117,6 +118,8 @@ pub struct PluginCompatibility {
 #[serde(deny_unknown_fields)]
 pub struct PluginContributions {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub languages: Vec<languages::LanguageDefinition>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub panels: Vec<panels::PanelDefinition>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub background: Option<PluginBackground>,
@@ -186,7 +189,7 @@ impl PluginManifest {
         ).expect("static SemVer pattern")
         });
         if self.schema_version != 1
-            || !matches!(self.compatibility.plugin_api, 1..=4)
+            || !matches!(self.compatibility.plugin_api, 1..=5)
             || self
                 .schema
                 .as_deref()
@@ -232,6 +235,7 @@ impl PluginManifest {
             && self.contributions.tools.is_empty())
             && self.contributions.events.is_empty()
             && self.contributions.panels.is_empty()
+            && self.contributions.languages.is_empty()
             || self.contributions.skills.len() > crate::skills::MAX_SKILLS
             || self.contributions.tool_groups.len() > 4
             || self
@@ -250,7 +254,7 @@ impl PluginManifest {
         let executable = self.executable.as_ref();
         if self.contributions.panels.len() > 16
             || (!self.contributions.panels.is_empty()
-                && (executable.is_none() || self.compatibility.plugin_api != 4))
+                && (executable.is_none() || !matches!(self.compatibility.plugin_api, 4 | 5)))
             || self
                 .contributions
                 .panels
@@ -298,12 +302,29 @@ impl PluginManifest {
                 "Background events require a declared event, jobs capability and an interval of 60–86,400 seconds.",
             ));
         }
-        if executable.is_some() != matches!(self.compatibility.plugin_api, 3 | 4)
+        if !self.contributions.languages.is_empty() {
+            if self.compatibility.plugin_api != 5 {
+                return Err(invalid("Language contributions require plugin API 5."));
+            }
+            languages::validate_definitions(&self.contributions.languages).map_err(invalid)?;
+            if executable.is_none()
+                && self.contributions.languages.iter().any(|definition| {
+                    definition.features.syntax
+                        || definition.features.folding
+                        || definition.features.structure
+                })
+            {
+                return Err(invalid("Language analysis requires a Rust executable."));
+            }
+        }
+        if (executable.is_some() && !matches!(self.compatibility.plugin_api, 3..=5))
+            || (executable.is_none() && matches!(self.compatibility.plugin_api, 3 | 4))
+            || (self.compatibility.plugin_api == 5 && self.contributions.languages.is_empty())
             || (executable.is_none() && !self.contributions.tools.is_empty())
             || self.contributions.tools.len() > 100
         {
             return Err(invalid(
-                "Executable contributions require a Rust plugin using API 3 or 4.",
+                "Executable contributions require a Rust plugin using API 3, 4 or 5.",
             ));
         }
         if let Some(rust) = executable
@@ -337,7 +358,8 @@ impl PluginManifest {
                     != rust.capabilities.len()
                 || (self.contributions.tools.is_empty()
                     && self.contributions.events.is_empty()
-                    && self.contributions.panels.is_empty())
+                    && self.contributions.panels.is_empty()
+                    && self.contributions.languages.is_empty())
                 || !self.contributions.tool_groups.is_empty())
         {
             return Err(invalid(

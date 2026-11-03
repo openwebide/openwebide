@@ -53,3 +53,37 @@ phone clients do not install or execute plugins. Follow the authoring guide's
 failure, cancellation, update and duplicate-event checks. Remaining product
 verification and future contracts live in [the roadmap](roadmap.md); documentation
 of those plans does not make them supported contributions.
+
+## Language plugin build toolchain
+
+API 5 introduces versioned language definitions and pure host syntax handlers.
+The editor migration and bundled language packages remain tracked in the
+[roadmap](roadmap.md#language-support-as-plugins). Host analysis uses the same
+component installation and export checks as tools and panels; it receives no
+filesystem, process, HTTP or model grants.
+
+Packages with C/C++ dependencies, including Tree-sitter grammars, use WASI SDK
+34.0 in addition to the pinned Rust toolchain. The container distribution includes
+it. For a native development or paired host, run from the app checkout:
+
+```bash
+export WASI_SDK_PATH="$(python3 tools/install_wasi_sdk.py ~/.cache/openwebide/wasi-sdk)"
+```
+
+Start the bridge with that environment. The installer chooses the supported
+Linux/macOS architecture and verifies the release archive against
+`tools/wasi-sdk.json`. The source compiler validates the configured SDK version,
+exposes it read-only inside the compiler sandbox, and preserves offline,
+read-only package compilation. Packages cannot choose another host directory or
+grant themselves compiler access. Pure Rust packages can build without this
+additional C/C++ toolchain.
+
+Language source snapshots are limited to 2 MiB. Requests support full snapshots
+and revision-checked UTF-8 replacements; a missing base requests a full snapshot.
+Results carry the document, request, revision, language and SHA-256 source digest.
+The shared service validates source rows, token coverage, folds and structural
+coordinates before clients can use them. Analysis results are limited to 32 MiB
+and 100,000 records. Components retain bounded, owner-isolated document state on
+the host; eviction, restart and close discard that state. Cancellation, traps
+and invalid results discard the affected component session. Clients retain plain
+editing when analysis is unavailable.

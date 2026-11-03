@@ -1102,19 +1102,24 @@ and [EditorConfig](https://editorconfig.org/).
 
 ### Language support as plugins
 
-After the Full code editor work is complete, establish the shared language
+With editor performance and device verification tracked separately, establish the shared language
 contribution and runtime contracts and migrate existing language support into
 bundled plugins. This is a **blocking prerequisite for Code intelligence and LSP**;
 verify the migration in both project modes before starting that item. Preserve the
 editor's shared document/selection/extension APIs as the foundation.
 
-- Define language contribution contracts for file recognition, syntax
+The foundation now includes versioned language declarations and analysis results,
+provider selection, shared host document synchronization, bounded component
+sessions, declarative editing rules and a public syntax toolkit. The production
+editor still uses its existing parser path. Remaining work:
+
+- Integrate the language contribution contracts for file recognition, syntax
   highlighting/folding, comment and indentation rules, with extension points for
   snippets, formatting, host diagnostics and LSP configuration. Language packages
   may provide only a subset of these features and may also include agent skills
   or tools. Implement LSP services in the following Code intelligence item on top
   of these contracts.
-  Use a shared language-service facade for document synchronization, feature
+  Connect the editor to the shared language-service facade for document synchronization, feature
   routing, diagnostics, conflicts and failure handling, with thin host adapters
   for running plugin syntax analysis and servers beside local or remote project
   files. The core editor renders shared results and applies declarative editing

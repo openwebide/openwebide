@@ -1,10 +1,13 @@
 //! Host component runtime; every plugin uses the same imports and limits.
 pub mod build;
 pub mod bundled;
+pub mod languages;
 pub use openwebide_plugin_sdk as sdk;
 
 use anyhow::{Context, Result, bail};
 use openwebide_plugin_sdk::{Outcome, Tool};
+use sha2::{Digest, Sha256};
+use std::{collections::BTreeMap, sync::Mutex, time::Instant};
 use wasmtime::component::{Component, Linker, ResourceTable};
 use wasmtime::{Config, Engine, Store, StoreLimits, StoreLimitsBuilder};
 use wasmtime_wasi::{WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView};
@@ -79,6 +82,12 @@ impl<H: HostServices> openwebide::plugin::host::Host for State<H> {
 
 pub struct Runtime {
     engine: Engine,
+    components: Mutex<BTreeMap<String, CompiledComponent>>,
+}
+struct CompiledComponent {
+    component: Component,
+    bytes: usize,
+    used: Instant,
 }
 impl Runtime {
     pub fn panel<H: HostServices + 'static>(
@@ -102,14 +111,63 @@ impl Runtime {
     }
     pub fn new() -> Result<Self> {
         let mut config = Config::new();
-        config.wasm_component_model(true).consume_fuel(true);
+        config
+            .wasm_component_model(true)
+            .consume_fuel(true)
+            .epoch_interruption(true);
         Ok(Self {
             engine: Engine::new(&config)?,
+            components: Mutex::default(),
         })
     }
     pub fn validate(&self, bytes: &[u8]) -> Result<()> {
-        Component::new(&self.engine, bytes).context("Invalid plugin component")?;
+        self.component(bytes).context("Invalid plugin component")?;
         Ok(())
+    }
+    fn component(&self, bytes: &[u8]) -> Result<Component> {
+        if bytes.len() > 32 * 1024 * 1024 {
+            bail!("Plugin component exceeds its byte limit");
+        }
+        let digest: String = Sha256::digest(bytes)
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect();
+        let mut components = self
+            .components
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Plugin compiler cache stopped"))?;
+        if let Some(compiled) = components.get_mut(&digest) {
+            compiled.used = Instant::now();
+            return Ok(compiled.component.clone());
+        }
+        while components.len() >= 4
+            || components
+                .values()
+                .map(|compiled| compiled.bytes)
+                .sum::<usize>()
+                + bytes.len()
+                > 64 * 1024 * 1024
+        {
+            let oldest = components
+                .iter()
+                .min_by_key(|(_, compiled)| compiled.used)
+                .map(|(digest, _)| digest.clone());
+            if let Some(oldest) = oldest {
+                components.remove(&oldest);
+            } else {
+                break;
+            }
+        }
+        let component = Component::new(&self.engine, bytes)?;
+        components.insert(
+            digest,
+            CompiledComponent {
+                component: component.clone(),
+                bytes: bytes.len(),
+                used: Instant::now(),
+            },
+        );
+        Ok(component)
     }
     /// Build-time bundles and installation use the same public export contract.
     pub fn validate_exports(
@@ -139,6 +197,25 @@ impl Runtime {
                 bail!("Compiled panels do not match the manifest.");
             }
         }
+        if !manifest.contributions.languages.is_empty() {
+            let result = self.execute(
+                bytes,
+                NoServices,
+                &[],
+                sdk::languages::METADATA_HANDLER,
+                "{}",
+            )?;
+            let definitions: Vec<sdk::languages::LanguageDefinition> =
+                serde_json::from_str(&result.content)?;
+            if !result.ok {
+                bail!("Plugin language metadata failed.");
+            }
+            openwebide_core::plugins::languages::validate_definitions(&definitions)
+                .map_err(anyhow::Error::msg)?;
+            if definitions != manifest.contributions.languages {
+                bail!("Compiled languages do not match the manifest.");
+            }
+        }
         Ok(())
     }
     fn instantiate<H: HostServices + 'static>(
@@ -153,7 +230,16 @@ impl Runtime {
         {
             bail!("Unsupported plugin capability");
         }
-        let component = Component::new(&self.engine, bytes)?;
+        let component = self.component(bytes)?;
+        self.instantiate_component(&component, services, grants, 64 * 1024 * 1024)
+    }
+    fn instantiate_component<H: HostServices + 'static>(
+        &self,
+        component: &Component,
+        services: H,
+        grants: &[String],
+        memory_bytes: usize,
+    ) -> Result<(Store<State<H>>, Plugin)> {
         let mut linker = Linker::new(&self.engine);
         wasmtime_wasi::p2::add_to_linker_sync(&mut linker)?;
         Plugin::add_to_linker::<_, wasmtime::component::HasSelf<_>>(&mut linker, |state| state)?;
@@ -165,16 +251,17 @@ impl Runtime {
                 table: ResourceTable::new(),
                 wasi: WasiCtxBuilder::new().build(),
                 limits: StoreLimitsBuilder::new()
-                    .memory_size(64 * 1024 * 1024)
+                    .memory_size(memory_bytes)
                     .instances(16)
                     .build(),
             },
         );
         store.limiter(|state| &mut state.limits);
+        store.set_epoch_deadline(u64::MAX / 2);
         // Include JSON/base64 transfer and bounded HTML parsing, not just small
         // fixture handlers. Fuel still bounds untrusted CPU work per invocation.
         store.set_fuel(250_000_000)?;
-        let plugin = Plugin::instantiate(&mut store, &component, &linker)?;
+        let plugin = Plugin::instantiate(&mut store, component, &linker)?;
         Ok((store, plugin))
     }
     pub fn tools<H: HostServices + 'static>(
@@ -393,7 +480,7 @@ mod tests {
             Ok(payload.into())
         }
     }
-    fn fixture() -> Vec<u8> {
+    pub(super) fn fixture() -> Vec<u8> {
         static BYTES: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
         BYTES
             .get_or_init(|| {

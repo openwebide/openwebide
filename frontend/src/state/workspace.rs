@@ -265,9 +265,11 @@ pub struct EditorRowPaint {
     pub indentation: openwebide_core::editor::Indentation,
     pub whitespace: bool,
     pub word_wrap: bool,
+    #[cfg(target_arch = "wasm32")]
     pub(crate) token_matches: Arc<std::sync::Mutex<EditorRowTokenMatches>>,
 }
 #[derive(Default, Debug)]
+#[cfg(target_arch = "wasm32")]
 pub(crate) struct EditorRowTokenMatches {
     pub owners: Option<(
         openwebide_core::editor::FoldProjection,
@@ -275,6 +277,7 @@ pub(crate) struct EditorRowTokenMatches {
     )>,
     pub rows: Vec<EditorRowTokenMatch>,
 }
+#[cfg(target_arch = "wasm32")]
 #[derive(Clone, Debug)]
 pub(crate) struct EditorRowTokenMatch {
     pub row: usize,
@@ -1174,6 +1177,7 @@ impl WorkspaceState {
         self.editor_recovery_target_current(project, guard, recovery, active_read_only)
     }
 
+    #[cfg(target_arch = "wasm32")]
     pub(crate) fn can_restore_validated_editor_recovery(
         &self,
         project: &openwebide_core::Project,

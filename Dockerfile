@@ -7,6 +7,12 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends curl ca-certificates build-essential clang python3 git && \
     rm -rf /var/lib/apt/lists/*
 
+COPY tools/install_wasi_sdk.py tools/wasi-sdk.json /tmp/openwebide-wasi-tools/
+RUN python3 /tmp/openwebide-wasi-tools/install_wasi_sdk.py /opt/openwebide-wasi-sdk \
+    > /tmp/openwebide-wasi-sdk-path && \
+    ln -s "$(cat /tmp/openwebide-wasi-sdk-path)" /opt/openwebide-wasi-sdk/current
+ENV WASI_SDK_PATH=/opt/openwebide-wasi-sdk/current
+
 ENV PATH="/root/.cargo/bin:${PATH}"
 # Both build-time and runtime plugin compilers drop privileges. The public
 # toolchain must be traversable without exposing the builder's private /root.
@@ -64,8 +70,10 @@ COPY --from=builder /src/target/release/openwebide-plugin-build /usr/local/bin/
 # The source compiler uses the pinned toolchain without relying on /root traversal
 # after dropping privileges. Package code cannot write this toolchain or the SDK.
 COPY --from=builder /opt/openwebide-toolchain/rustup /opt/openwebide-toolchain/rustup
+COPY --from=builder /opt/openwebide-wasi-sdk /opt/openwebide-wasi-sdk
 COPY --from=builder /root/.cargo/bin/rustup /opt/openwebide-toolchain/bin/rustup
 ENV RUSTUP_HOME=/opt/openwebide-toolchain/rustup
+ENV WASI_SDK_PATH=/opt/openwebide-wasi-sdk/current
 ENV PATH="/opt/openwebide-toolchain/bin:${PATH}"
 RUN ln -s rustup /opt/openwebide-toolchain/bin/cargo && \
     ln -s rustup /opt/openwebide-toolchain/bin/rustc

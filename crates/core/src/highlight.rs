@@ -10,25 +10,7 @@
 mod paint;
 pub use paint::{PaintToken, RowPaintIter, RowPaintMatch, RowPaintTokens};
 
-/// The syntactic category of a token, used to pick a display color.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum TokenKind {
-    /// Whitespace, identifiers, and anything unclassified.
-    Plain,
-    Keyword,
-    Type,
-    String,
-    Char,
-    Comment,
-    Number,
-    Function,
-    Operator,
-    Punct,
-    Attribute,
-    Macro,
-    Lifetime,
-    Boolean,
-}
+pub use openwebide_plugin_sdk::languages::TokenKind;
 
 /// One token: a run of source text plus its category.
 /// Text buffers are immutable and shared across retained pieces and paint rows.
@@ -80,34 +62,7 @@ fn plain_token_row(text: String) -> TokenRow {
     }
 }
 
-/// The language a file is written in, chosen from its extension.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum Language {
-    Rust,
-    Python,
-    JavaScript,
-    Jsx,
-    TypeScript,
-    Tsx,
-    Java,
-    CSharp,
-    Php,
-    Json,
-    Html,
-    Css,
-    Markdown,
-    MarkdownInline,
-    Ini,
-    Xml,
-    Shell,
-    Toml,
-    Yaml,
-    Sql,
-    C,
-    Cpp,
-    Go,
-    Plain,
-}
+pub use openwebide_plugin_sdk::languages::SyntaxLanguage as Language;
 
 /// Pick a language from a file path's extension.
 pub fn language_from_path(path: &str) -> Language {

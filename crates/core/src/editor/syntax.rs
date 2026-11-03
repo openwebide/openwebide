@@ -6,6 +6,7 @@ mod folds;
 mod highlighting;
 mod highlights;
 pub(super) mod json;
+mod language_data;
 mod preparation;
 mod request;
 pub use request::{SYNTAX_REQUEST_BATCH_BYTES, SyntaxRequestPublication};
@@ -31,46 +32,7 @@ use tree_sitter::{InputEdit, Node, Parser, Point, Range, Tree};
 
 const MAX_PROGRESS_CHECKS: usize = 4_096;
 const MAX_FOLD_NODES: usize = 100_000;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum SyntaxStatus {
-    Ready {
-        incremental: bool,
-    },
-    TooLarge,
-    Cancelled,
-    /// Worker control response: retry once with a complete source snapshot.
-    NeedsSource,
-}
-
-/// Immutable source-bound preparation shared by rendering and editing callers.
-#[derive(Clone, Debug)]
-pub struct SyntaxAnalysis {
-    source: Arc<String>,
-    folds: Vec<FoldRange>,
-    structure: Option<Arc<Structure>>,
-    highlights: Option<Arc<crate::highlight::TokenRows>>,
-}
-impl SyntaxAnalysis {
-    pub fn matches_source(&self, source: &str) -> bool {
-        std::ptr::eq(self.source.as_str(), source) || self.source.as_str() == source
-    }
-    pub fn source(&self) -> &str {
-        &self.source
-    }
-    pub fn source_snapshot(&self) -> &Arc<String> {
-        &self.source
-    }
-    pub fn folds(&self) -> &[FoldRange] {
-        &self.folds
-    }
-    pub fn structure(&self) -> Option<&Arc<Structure>> {
-        self.structure.as_ref()
-    }
-    pub fn highlights(&self) -> Option<&Arc<crate::highlight::TokenRows>> {
-        self.highlights.as_ref()
-    }
-}
+pub use super::analysis::{SyntaxAnalysis, SyntaxStatus};
 
 mod admission;
 pub use admission::{SyntaxAdmission, SyntaxAdmissionStatus, preparation_exceeds_limits};
@@ -3051,11 +3013,11 @@ mod tests {
         let provider = SyntaxProvider {
             language: Language::Rust,
             context: None,
-            context_scope: super::super::syntax_providers::SyntaxContextScope::Document,
+            context_scope: super::super::SyntaxContextScope::Document,
             highlight: None,
             highlight_scope: super::super::SyntaxHighlightScope::Document,
             injection: None,
-            grammar: || tree_sitter_rust::LANGUAGE.into(),
+            grammar: syntax_provider(Language::Rust).unwrap().grammar,
             fold_nodes: &["arguments"],
             parent_headers: &[],
         };

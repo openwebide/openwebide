@@ -1,7 +1,5 @@
 //! Reindent selected lines from shared block contexts; not a formatter.
-use super::{
-    Document, Edit, EditError, Indentation, Structure, lines::selected_rows, structure::closing,
-};
+use super::{Document, Edit, EditError, Indentation, Structure, lines::selected_rows};
 use crate::highlight::Language;
 
 /// Containers support reindent through their parsed code bodies. This command
@@ -60,7 +58,7 @@ impl Document {
                 .map_or(existing, |(_, columns)| columns + indentation.width());
             if let Some(&(position, ch, Some(open))) = syntax.brackets.get(cursor)
                 && position == first
-                && matches!(ch, ')' | ']' | '}')
+                && syntax.is_closing_at(position, ch)
                 && let Some((_, base)) = stack.iter().find(|(position, _)| *position == open)
             {
                 columns = *base;
@@ -68,7 +66,10 @@ impl Document {
 
             if selected.iter().any(|range| range.contains(&index))
                 && !trimmed.is_empty()
-                && super::structure::supports_brackets(syntax.language_at(first))
+                && syntax.configuration_at(first).map_or_else(
+                    || super::structure::supports_brackets(syntax.language_at(first)),
+                    |configuration| !configuration.brackets.is_empty(),
+                )
                 && syntax.is_code(row.start)
                 && syntax.is_code(first)
             {
@@ -90,7 +91,7 @@ impl Document {
                 {
                     stack.clear();
                 }
-                if closing(bracket).is_some() {
+                if syntax.closing_at(position, bracket).is_some() {
                     stack.push((position, columns));
                 } else if let Some(open) = pair
                     && stack.last().is_some_and(|(position, _)| *position == open)

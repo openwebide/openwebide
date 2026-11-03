@@ -4,7 +4,7 @@ use super::TextChange;
 /// Callers retain the same two immutable sources until completion or discard
 /// this job on source replacement. No borrowed source escapes an advance.
 #[derive(Default)]
-pub(crate) struct TextChangePreparation {
+pub struct TextChangePreparation {
     prefix: usize,
     suffix: usize,
     prefix_complete: bool,
@@ -13,16 +13,16 @@ pub(crate) struct TextChangePreparation {
 }
 
 impl TextChangePreparation {
-    pub(crate) const fn is_complete(&self) -> bool {
+    pub const fn is_complete(&self) -> bool {
         self.complete
     }
-    pub(crate) fn change(&self) -> Option<&TextChange> {
+    pub fn change(&self) -> Option<&TextChange> {
         self.change.as_ref()
     }
 
     /// Charge every raw-byte comparison to the budget, then round the finished
     /// boundaries to UTF-8 scalar positions. Zero budgets never advance.
-    pub(crate) fn advance(&mut self, old: &str, new: &str, budget: usize) -> usize {
+    pub fn advance(&mut self, old: &str, new: &str, budget: usize) -> usize {
         if self.complete || budget == 0 {
             return 0;
         }

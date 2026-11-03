@@ -7,6 +7,8 @@ members = [
     "crates/agent",
     "crates/auth",
     "crates/core",
+    "crates/language-grammars",
+    "crates/language-syntax",
     "crates/llm",
     "crates/plugin-sdk",
     "crates/plugin-runtime",
@@ -194,6 +196,7 @@ unused_self = "warn"
 used_underscore_binding = "warn"
 
 [patch.crates-io]
+openwebide-plugin-sdk = { path = "crates/plugin-sdk" }
 ec4rs = { path = "vendor/ec4rs" }
 tree-sitter-rust = { path = "vendor/tree-sitter-rust" }
 

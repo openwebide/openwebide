@@ -18,6 +18,13 @@ use tokio::sync::{Mutex, mpsc as async_mpsc};
 #[derive(Clone, Debug, Default)]
 pub struct Invocations {
     entries: Arc<Mutex<HashMap<String, Arc<Invocation>>>>,
+    languages: Arc<LanguageSessions>,
+}
+
+#[derive(Debug, Default)]
+struct LanguageSessions {
+    runtime: std::sync::Mutex<Option<openwebide_plugin_runtime::languages::LanguageRuntime>>,
+    cleanup_started: AtomicBool,
 }
 
 #[cfg(test)]
@@ -69,7 +76,8 @@ struct InvocationState {
 }
 #[derive(Debug)]
 struct DeferredInvocation {
-    bytes: Vec<u8>,
+    bytes: Option<Vec<u8>>,
+    installer: NativePluginInstaller,
     call: InvokePlugin,
     grants: Vec<String>,
     sender: async_mpsc::Sender<Event>,
@@ -138,6 +146,28 @@ impl HostServices for Services {
     }
 }
 impl Invocations {
+    fn expire_languages(&self) {
+        if self.languages.cleanup_started.swap(true, Ordering::Relaxed) {
+            return;
+        }
+        let weak = Arc::downgrade(&self.languages);
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(openwebide_plugin_runtime::languages::IDLE_TIMEOUT).await;
+                let Some(languages) = weak.upgrade() else {
+                    return;
+                };
+                let _ = tokio::task::spawn_blocking(move || {
+                    if let Ok(mut runtime) = languages.runtime.lock()
+                        && let Some(runtime) = runtime.as_mut()
+                    {
+                        runtime.expire_idle();
+                    }
+                })
+                .await;
+            }
+        });
+    }
     fn expire_after(&self, id: String, ttl: Duration) {
         let entries = self.entries.clone();
         tokio::spawn(async move {
@@ -165,6 +195,9 @@ impl Invocations {
             .as_ref()
             .ok_or("Plugin has no executable")?;
         let declared = match call.operation {
+            PluginOperation::Language => {
+                call.name == openwebide_core::plugins::languages::SERVICE_HANDLER
+            }
             PluginOperation::Panel => call.name == openwebide_core::plugins::panels::VIEW_HANDLER,
             PluginOperation::Context | PluginOperation::Event => call.name.is_empty(),
             PluginOperation::Tool => call
@@ -175,17 +208,31 @@ impl Invocations {
                 .iter()
                 .any(|tool| tool.name == call.name),
         };
-        if !declared || call.arguments.len() > MAX_MESSAGE_BYTES {
+        let limit = if matches!(call.operation, PluginOperation::Language) {
+            openwebide_core::plugins::languages::MAX_REQUEST_BYTES
+        } else {
+            MAX_MESSAGE_BYTES
+        };
+        if !declared || call.arguments.len() > limit {
             return Err(
                 "Tool is not declared by this plugin, or its arguments exceed the limit.".into(),
             );
         }
         let _: serde_json::Value =
             serde_json::from_str(&call.arguments).map_err(|error| error.to_string())?;
-        let bytes = installer
-            .component(owner, &call.prepared)
-            .await
-            .map_err(|error| error.to_string())?;
+        let bytes = if matches!(call.operation, PluginOperation::Language) {
+            None
+        } else {
+            Some(
+                installer
+                    .component(owner, &call.prepared)
+                    .await
+                    .map_err(|error| error.to_string())?,
+            )
+        };
+        if matches!(call.operation, PluginOperation::Language) {
+            self.expire_languages();
+        }
         let id = format!("{:032x}", rand::random::<u128>());
         let cancelled = Arc::new(AtomicBool::new(false));
         let (sender, receiver) = async_mpsc::channel(1);
@@ -200,6 +247,7 @@ impl Invocations {
                 pending: None,
                 deferred: Some(DeferredInvocation {
                     bytes,
+                    installer: installer.clone(),
                     call,
                     grants,
                     sender,
@@ -255,6 +303,7 @@ impl Invocations {
                 }
                 let DeferredInvocation {
                     bytes,
+                    installer,
                     call,
                     grants,
                     sender,
@@ -266,28 +315,79 @@ impl Invocations {
                     cancelled: entry.cancelled.clone(),
                     sequence: 0,
                 };
+                let languages = self.languages.clone();
+                let owner = owner.to_string();
                 tokio::task::spawn_blocking(move || {
-                    let result = Runtime::new().and_then(|runtime| match call.operation {
-                        PluginOperation::Tool => {
-                            runtime.execute(&bytes, services, &grants, &call.name, &call.arguments)
-                        }
-                        PluginOperation::Panel => {
-                            runtime.panel(&bytes, services, &grants, &call.arguments)
-                        }
-                        PluginOperation::Context => {
+                    let result = if matches!(call.operation, PluginOperation::Language) {
+                        (|| {
                             let input = serde_json::from_str(&call.arguments)?;
-                            let context = runtime.context(&bytes, services, &grants, input)?;
+                            let mut state = languages
+                                .runtime
+                                .lock()
+                                .map_err(|_| anyhow::anyhow!("Language runtime stopped"))?;
+                            if state.is_none() {
+                                *state = Some(
+                                    openwebide_plugin_runtime::languages::LanguageRuntime::new()?,
+                                );
+                            }
+                            let runtime = state.as_mut().expect("initialized runtime");
+                            let output = if let Some(output) = runtime.execute_retained(
+                                &owner,
+                                &call.prepared,
+                                &input,
+                                services.cancelled.clone(),
+                            ) {
+                                output?
+                            } else {
+                                let bytes = services
+                                    .runtime
+                                    .block_on(installer.component(&owner, &call.prepared))
+                                    .map_err(|error| anyhow::anyhow!("{error}"))?;
+                                runtime.execute(
+                                    &owner,
+                                    &call.prepared,
+                                    &bytes,
+                                    &input,
+                                    services.cancelled.clone(),
+                                )?
+                            };
                             Ok(openwebide_plugin_runtime::sdk::Outcome {
                                 ok: true,
-                                content: serde_json::to_string(&context)?,
-                                summary: "Plugin context".into(),
+                                content: serde_json::to_string(&output)?,
+                                summary: "Language analysis".into(),
                             })
-                        }
-                        PluginOperation::Event => {
-                            let input = serde_json::from_str(&call.arguments)?;
-                            runtime.event(&bytes, services, &grants, input)
-                        }
-                    });
+                        })()
+                    } else {
+                        let bytes = bytes.expect("tool invocation loaded its artifact");
+                        Runtime::new().and_then(|runtime| match call.operation {
+                            PluginOperation::Language => {
+                                unreachable!("handled by retained language runtime")
+                            }
+                            PluginOperation::Tool => runtime.execute(
+                                &bytes,
+                                services,
+                                &grants,
+                                &call.name,
+                                &call.arguments,
+                            ),
+                            PluginOperation::Panel => {
+                                runtime.panel(&bytes, services, &grants, &call.arguments)
+                            }
+                            PluginOperation::Context => {
+                                let input = serde_json::from_str(&call.arguments)?;
+                                let context = runtime.context(&bytes, services, &grants, input)?;
+                                Ok(openwebide_plugin_runtime::sdk::Outcome {
+                                    ok: true,
+                                    content: serde_json::to_string(&context)?,
+                                    summary: "Plugin context".into(),
+                                })
+                            }
+                            PluginOperation::Event => {
+                                let input = serde_json::from_str(&call.arguments)?;
+                                runtime.event(&bytes, services, &grants, input)
+                            }
+                        })
+                    };
                     let step = match result {
                         Ok(outcome) => PluginStep::Complete {
                             ok: outcome.ok,

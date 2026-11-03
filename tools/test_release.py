@@ -412,6 +412,23 @@ if sys.argv[1] == 'inspect': print(os.environ['IMAGE'] + '@sha256:' + 'd' * 64)
         with self.assertRaises(ValueError):
             release.version(self.root)
 
+    def test_language_toolkits_keep_independent_versions_across_nightly_stamps(self):
+        members = ["bridge"]
+        lock = self.root / "Cargo.lock"
+        for name in ("openwebide-language-grammars", "openwebide-language-syntax"):
+            member = f"crates/{name}"
+            members.append(member)
+            manifest = self.root / member / "Cargo.toml"
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text(f'[package]\nname = "{name}"\nversion = "0.1.0"\n')
+            lock.write_text(lock.read_text() + f'\n[[package]]\nname = "{name}"\nversion = "0.1.0"\n')
+        cargo = self.root / "Cargo.toml"
+        cargo.write_text(cargo.read_text().replace('["bridge"]', json.dumps(members)))
+        self.assertEqual(release.version(self.root), "1.0.0")
+        release.stamp_nightly(self.root, "a" * 40)
+        for name in ("openwebide-language-grammars", "openwebide-language-syntax"):
+            self.assertIn(f'name = "{name}"\nversion = "0.1.0"', lock.read_text())
+
     def test_missing_empty_or_duplicate_notes_block_release(self):
         for changelog in ["## [Unreleased]\n- Only unreleased.\n", "## [1.0.0]\n\n", "## [1.0.0]\n- One.\n## [1.0.0]\n- Two.\n"]:
             (self.root / "CHANGELOG.md").write_text(changelog)

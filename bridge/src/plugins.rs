@@ -1604,16 +1604,113 @@ mod rust_plugin_tests {
                 .is_err()
         );
     }
+    async fn exercise_language_service(
+        installer: &NativePluginInstaller,
+        invocations: &invocations::Invocations,
+        owner: &str,
+        prepared: &PreparedPlugin,
+    ) {
+        use openwebide_core::plugins::languages::*;
+        let source = "task 文😀\r\n";
+        let mut request = AnalysisRequest {
+            version: VERSION,
+            document: "project/client/document".into(),
+            request: 1,
+            revision: 1,
+            language: "fixture-language".into(),
+            path: "file.fixture".into(),
+            source_digest: source_digest(source),
+            source: SourceChange::Full {
+                text: source.into(),
+            },
+            tab_width: 4,
+        };
+        let close = LanguageInput::Close {
+            version: VERSION,
+            document: request.document.clone(),
+        };
+        let mut inputs = vec![LanguageInput::Analyze(request.clone())];
+        request.request += 1;
+        request.revision += 1;
+        request.source = SourceChange::Replace {
+            base_revision: 1,
+            start: 0,
+            end: 0,
+            text: "文".into(),
+        };
+        request.source_digest = source_digest(&format!("文{source}"));
+        inputs.push(LanguageInput::Analyze(request.clone()));
+        inputs.push(close);
+        request.request += 1;
+        request.revision += 1;
+        request.source = SourceChange::Replace {
+            base_revision: 2,
+            start: 0,
+            end: 0,
+            text: "文".into(),
+        };
+        request.source_digest = source_digest(&format!("文文{source}"));
+        inputs.push(LanguageInput::Analyze(request));
+        for (index, input) in inputs.into_iter().enumerate() {
+            let ready = invocations
+                .start(
+                    installer,
+                    owner,
+                    execution::InvokePlugin {
+                        operation: execution::PluginOperation::Language,
+                        prepared: prepared.clone(),
+                        name: SERVICE_HANDLER.into(),
+                        arguments: serde_json::to_string(&input).unwrap(),
+                    },
+                )
+                .await
+                .unwrap();
+            let resume = execution::ContinuePlugin {
+                id: ready.id,
+                sequence: 0,
+                response: Ok(String::new()),
+            };
+            assert!(
+                invocations
+                    .resume("other-owner", resume.clone())
+                    .await
+                    .is_err()
+            );
+            let complete = invocations.resume(owner, resume).await.unwrap();
+            let execution::PluginStep::Complete {
+                ok: true, content, ..
+            } = complete.step
+            else {
+                panic!("Language component failed: {complete:?}")
+            };
+            let output: LanguageOutput = serde_json::from_str(&content).unwrap();
+            match index {
+                0 | 1 => assert!(
+                    matches!(output, LanguageOutput::Analyzed(response) if matches!(response.status, AnalysisStatus::Ready { .. }))
+                ),
+                2 => assert!(matches!(output, LanguageOutput::Closed { .. })),
+                _ => assert!(
+                    matches!(output, LanguageOutput::Analyzed(response) if response.status == AnalysisStatus::NeedsSource)
+                ),
+            }
+        }
+    }
     #[tokio::test]
     async fn source_compilation_validates_tools_caches_offline_and_rejects_artifact_corruption() {
         let root = tempfile::tempdir().unwrap();
-        let manifest: openwebide_core::plugins::PluginManifest = serde_json::from_value(serde_json::json!({
+        let mut manifest: openwebide_core::plugins::PluginManifest = serde_json::from_value(serde_json::json!({
             "schemaVersion":1,"publisher":"example","name":"fixture","version":"0.1.0",
             "displayName":"Fixture","description":"SDK adapter contract","license":"MIT",
             "compatibility":{"pluginApi":4},
             "executable":{"manifest":"Cargo.toml","library":"sdk_fixture","sdkVersion":"0.1.0","capabilities":["records","jobs","runs","collections"]},
             "contributions":{"skills":[],"panels":[{"id":"fixture-panel","title":"Fixture panel","icon":"puzzle","view":"render","actions":[{"id":"write","handler":"write","title":"Write record","requires_approval":true}]}],"events":["job_due"],"tools":[{"name":"fixture_echo","description":"Exercise the public host contract.","parameters":{"type":"object","properties":{}},"requires_approval":false}]}
         })).unwrap();
+        manifest.compatibility.plugin_api = 5;
+        manifest.contributions.languages = serde_json::from_value(serde_json::json!([{
+            "id":"fixture-language","name":"Fixture language","extensions":["fixture"],
+            "features":{"syntax":true}
+        }]))
+        .unwrap();
         let cargo = include_str!("../../crates/plugin-sdk/examples/fixture/Cargo.toml")
             .replace("{ path = \"../..\" }", "\"=0.1.0\"");
         let files = vec![
@@ -1725,6 +1822,7 @@ mod rust_plugin_tests {
             );
 
             let invocations = invocations::Invocations::default();
+            exercise_language_service(&installer, &invocations, owner, &prepared).await;
             let event = invocations
                 .start(
                     &installer,

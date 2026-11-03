@@ -5,6 +5,7 @@ use super::{
     structure::{closing, supports_brackets, supports_quote},
 };
 use crate::highlight::Language;
+mod configured;
 
 /// Characters whose pairing or closing behavior can depend on syntax context.
 /// Ordinary literal characters do not require parser preparation.
@@ -45,6 +46,9 @@ impl Document {
     }
 
     fn type_character_in(&mut self, ch: char, syntax: &Structure) -> Result<bool, EditError> {
+        if syntax.configuration_at(0).is_some() {
+            return self.type_declared_character(ch, syntax);
+        }
         let mut changes = Vec::new();
         for selection in &self.selections {
             let range = selection.range();
@@ -150,6 +154,9 @@ impl Document {
     }
 
     fn delete_pairs_in(&mut self, syntax: &Structure) -> Result<bool, EditError> {
+        if syntax.configuration_at(0).is_some() {
+            return self.delete_declared_pairs(syntax);
+        }
         let mut changes = Vec::new();
         for selection in &self.selections {
             if selection.anchor != selection.head {

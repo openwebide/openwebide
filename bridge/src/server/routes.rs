@@ -211,7 +211,11 @@ pub(super) async fn route(
                 }
                 let payload: Payload = read_json(
                     req.into_body(),
-                    openwebide_plugin_runtime::MAX_MESSAGE_BYTES + 256 * 1024,
+                    if path == "/plugins/invoke" {
+                        openwebide_core::plugins::languages::MAX_REQUEST_ENVELOPE_BYTES
+                    } else {
+                        openwebide_plugin_runtime::MAX_MESSAGE_BYTES + 256 * 1024
+                    },
                 )
                 .await?;
                 let owner = match principal {

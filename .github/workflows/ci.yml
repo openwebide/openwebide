@@ -23,6 +23,11 @@ jobs:
         timeout-minutes: 12
         run: bash tools/setup-wasm-compiler.sh
 
+      - name: Prepare host language C compiler
+        run: |
+          wasi_sdk_path=$(python3 tools/install_wasi_sdk.py "$RUNNER_TEMP/openwebide-wasi-sdk")
+          echo "WASI_SDK_PATH=$wasi_sdk_path" >> "$GITHUB_ENV"
+
       - uses: Swatinem/rust-cache@v2
 
       - name: Format check
@@ -42,10 +47,13 @@ jobs:
           OPENWEBIDE_TAILSCALE_HOST=openwebide.example.ts.net OPENWEBIDE_SERVE_CONFIG_DIR=/tmp/serve docker compose -f docker-compose.https.yml config --quiet
 
       - name: Clippy (native crates)
-        run: cargo clippy -p openwebide-core -p openwebide-llm -p openwebide-storage -p openwebide-agent -p openwebide-auth -p openwebide-plugin-sdk -p openwebide-plugin-runtime -p openwebide-plugin-build --features openwebide-core/editor-parser --all-targets -- -D warnings
+        run: cargo clippy -p openwebide-core -p openwebide-llm -p openwebide-storage -p openwebide-agent -p openwebide-auth -p openwebide-plugin-sdk -p openwebide-plugin-runtime -p openwebide-plugin-build -p openwebide-language-grammars -p openwebide-language-syntax --features openwebide-core/editor-parser --all-targets -- -D warnings
 
       - name: Clippy (backend, wasm32-wasip2)
         run: cargo clippy -p openwebide-backend --target wasm32-wasip2 -- -D warnings
+
+      - name: Check host language grammars (wasm32-wasip2)
+        run: cargo check -p openwebide-language-syntax --target wasm32-wasip2 --locked
 
       - name: Clippy (frontend, wasm32-unknown-unknown)
         run: cargo clippy -p openwebide-frontend --target wasm32-unknown-unknown -- -D warnings
@@ -59,7 +67,7 @@ jobs:
         run: cargo clippy -p openwebide-bridge --all-targets -- -D warnings
 
       - name: Tests (native)
-        run: cargo test -p openwebide-core -p openwebide-llm -p openwebide-storage -p openwebide-agent -p openwebide-auth -p openwebide-backend -p openwebide-plugin-sdk --features openwebide-core/editor-parser
+        run: cargo test -p openwebide-core -p openwebide-llm -p openwebide-storage -p openwebide-agent -p openwebide-auth -p openwebide-backend -p openwebide-plugin-sdk -p openwebide-language-syntax --features openwebide-core/editor-parser
 
       - name: Tests (editor storage workloads)
         run: cargo test -p openwebide-editor-bench --features candidates --release

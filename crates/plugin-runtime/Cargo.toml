@@ -6,7 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
-openwebide-core.workspace = true
+openwebide-core = { workspace = true, features = ["editor-analysis"] }
 anyhow.workspace = true
 serde_json.workspace = true
 serde.workspace = true

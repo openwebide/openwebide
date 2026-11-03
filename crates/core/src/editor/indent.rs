@@ -2,6 +2,7 @@
 use std::collections::BTreeSet;
 
 use super::{Document, Edit, EditError, Selection};
+mod configured;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum IndentStyle {
@@ -201,6 +202,9 @@ impl Document {
         ending: Option<super::LineEnding>,
         syntax: &super::Structure,
     ) -> Result<bool, EditError> {
+        if syntax.configuration_at(0).is_some() {
+            return self.newline_declared(indentation, ending, syntax);
+        }
         let ending = ending
             .unwrap_or_else(|| super::LineEnding::detect(&self.text))
             .text();

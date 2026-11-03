@@ -224,8 +224,13 @@ pub(crate) async fn start_invocation(
     state: &AppState,
     user: AuthedUser,
 ) -> Result<JsonResp, ApiError> {
-    let input: openwebide_core::plugins::execution::PluginStartRequest =
-        parse_json(read_body(req, 5 * 1024 * 1024).await?)?;
+    let input: openwebide_core::plugins::execution::PluginStartRequest = parse_json(
+        read_body(
+            req,
+            openwebide_core::plugins::languages::MAX_REQUEST_ENVELOPE_BYTES,
+        )
+        .await?,
+    )?;
     state
         .store
         .authorize_plugin_invocation(user.id, &input, now())

@@ -1,4 +1,5 @@
 //! Public component bindings and tool types. No application internals are linked.
+pub mod languages;
 pub mod panels;
 #[cfg(feature = "bindings")]
 pub mod bindings {
@@ -161,6 +162,12 @@ pub struct EventInput {
 
 /// Plugins implement their feature behavior here.
 pub trait Plugin {
+    fn languages() -> Vec<languages::LanguageDefinition> {
+        Vec::new()
+    }
+    fn language(_input: languages::LanguageInput) -> Result<languages::LanguageOutput, String> {
+        Err("This plugin does not provide language services".into())
+    }
     fn panels() -> Vec<panels::PanelDefinition> {
         Vec::new()
     }
@@ -222,6 +229,22 @@ macro_rules! export {
                     .expect("serializable event definitions")
             }
             fn execute(name: String, arguments: String) -> Result<String, String> {
+                if name == $crate::languages::METADATA_HANDLER {
+                    return $crate::serde_json::to_string(&$crate::Outcome {
+                        ok: true,
+                        content: $crate::serde_json::to_string(&<$plugin as $crate::Plugin>::languages()).map_err(|error|error.to_string())?,
+                        summary: String::new(),
+                    }).map_err(|error|error.to_string());
+                }
+                if name == $crate::languages::SERVICE_HANDLER {
+                    let input = $crate::serde_json::from_str(&arguments).map_err(|error|error.to_string())?;
+                    let output = <$plugin as $crate::Plugin>::language(input)?;
+                    return $crate::serde_json::to_string(&$crate::Outcome {
+                        ok: true,
+                        content: $crate::serde_json::to_string(&output).map_err(|error|error.to_string())?,
+                        summary: String::new(),
+                    }).map_err(|error|error.to_string());
+                }
                 if name == $crate::panels::METADATA_HANDLER {
                     return $crate::serde_json::to_string(&$crate::Outcome {
                         ok: true, content: $crate::serde_json::to_string(&<$plugin as $crate::Plugin>::panels()).map_err(|error|error.to_string())?, summary: String::new(),

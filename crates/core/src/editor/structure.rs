@@ -4,6 +4,7 @@ use std::ops::Range;
 use std::sync::Arc;
 #[cfg(feature = "editor-parser")]
 pub(super) mod fallback;
+pub(super) mod language_rules;
 #[cfg(feature = "editor-parser")]
 pub(super) mod ordering;
 #[cfg(feature = "editor-parser")]
@@ -36,7 +37,6 @@ const MAX_BRACKETS: usize = 65_536;
 pub(super) enum RegionKind {
     String,
     Template,
-    #[cfg(feature = "editor-parser")]
     Text,
     LineComment,
     BlockComment,
@@ -45,12 +45,10 @@ pub(super) enum RegionKind {
 
 impl RegionKind {
     fn is_literal(self) -> bool {
-        match self {
-            Self::String | Self::Template | Self::Regex => true,
-            #[cfg(feature = "editor-parser")]
-            Self::Text => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Self::String | Self::Template | Self::Regex | Self::Text
+        )
     }
 }
 
@@ -64,6 +62,7 @@ pub struct Structure {
     available: bool,
     pub(super) protected: Vec<(Range<usize>, bool, RegionKind)>,
     pub brackets: Vec<(usize, char, Option<usize>)>,
+    language_rules: Option<Arc<language_rules::LanguageRules>>,
 }
 
 #[derive(Default)]
@@ -134,6 +133,56 @@ impl LexicalStructure {
 }
 
 impl Structure {
+    #[cfg(feature = "editor-parser")]
+    pub(super) fn language_data(
+        &self,
+        language: &str,
+        scope_id: &impl Fn(Language) -> String,
+    ) -> crate::plugins::languages::Structure {
+        use crate::plugins::languages as protocol;
+        let range = |range: &Range<usize>| protocol::TextRange {
+            start: range.start,
+            end: range.end,
+        };
+        protocol::Structure {
+            language: language.into(),
+            scopes: self
+                .scopes
+                .iter()
+                .map(|(value, language)| protocol::LanguageScope {
+                    range: range(value),
+                    language: scope_id(*language),
+                })
+                .collect(),
+            selections: self.selection_ranges.iter().map(range).collect(),
+            opaque_starts: self.opaque_starts.clone(),
+            protected: self
+                .protected
+                .iter()
+                .map(|(value, complete, kind)| protocol::ProtectedRegion {
+                    range: range(value),
+                    complete: *complete,
+                    kind: match kind {
+                        RegionKind::String => protocol::RegionKind::String,
+                        RegionKind::Template => protocol::RegionKind::Template,
+                        RegionKind::Text => protocol::RegionKind::Text,
+                        RegionKind::LineComment => protocol::RegionKind::LineComment,
+                        RegionKind::BlockComment => protocol::RegionKind::BlockComment,
+                        RegionKind::Regex => protocol::RegionKind::Regex,
+                    },
+                })
+                .collect(),
+            brackets: self
+                .brackets
+                .iter()
+                .map(|(offset, character, partner)| protocol::Bracket {
+                    offset: *offset,
+                    character: *character,
+                    partner: *partner,
+                })
+                .collect(),
+        }
+    }
     pub fn new(text: &str, language: Language) -> Self {
         let Some(lexical) = Self::scan(text, language) else {
             return Self::unavailable();
@@ -147,6 +196,7 @@ impl Structure {
             available: true,
             protected: lexical.protected,
             brackets: lexical.brackets,
+            language_rules: None,
         }
     }
 
@@ -167,11 +217,12 @@ impl Structure {
             available: false,
             protected: Vec::new(),
             brackets: Vec::new(),
+            language_rules: None,
         }
     }
 
     pub fn matches_source(&self, text: &str) -> bool {
-        self.source.as_ref() == text
+        std::ptr::eq(self.source.as_str(), text) || self.source.as_ref() == text
     }
 
     pub fn opens_interpolation(&self, position: usize, ch: char) -> bool {
@@ -261,6 +312,7 @@ impl Structure {
             available: true,
             protected,
             brackets: Vec::new(),
+            language_rules: None,
         };
         StructurePreparation {
             structure: result,
@@ -1528,6 +1580,7 @@ impl StructureData {
             available: true,
             protected: self.protected,
             brackets: self.brackets,
+            language_rules: None,
         };
         for &(position, ch, partner) in &result.brackets {
             if !matches!(ch, '(' | ')' | '[' | ']' | '{' | '}')

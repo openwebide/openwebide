@@ -1,5 +1,8 @@
 //! Grammar descriptors extend the shared parser without another editor workflow.
-use crate::highlight::Language;
+use openwebide_plugin_sdk::languages::{SyntaxLanguage as Language, TokenKind};
+mod injections;
+mod recognition;
+pub use recognition::language_from_path;
 
 pub type InjectionSelector =
     for<'tree> fn(tree_sitter::Node<'tree>, &str) -> Option<(Language, tree_sitter::Range)>;
@@ -410,7 +413,7 @@ pub const SYNTAX_PROVIDERS: &[SyntaxProvider] = &[
         context_scope: SyntaxContextScope::Node,
         highlight: Some(built_in_highlight),
         highlight_scope: SyntaxHighlightScope::Parent,
-        injection: Some(super::syntax_injections::html_injection),
+        injection: Some(injections::html_injection),
         grammar: || tree_sitter_html::LANGUAGE.into(),
         parent_headers: &[],
         fold_nodes: &["element", "script_element", "style_element", "comment"],
@@ -471,7 +474,7 @@ pub const SYNTAX_PROVIDERS: &[SyntaxProvider] = &[
         context_scope: SyntaxContextScope::Node,
         highlight: Some(markdown_highlight),
         highlight_scope: SyntaxHighlightScope::Parent,
-        injection: Some(super::syntax_injections::markdown_injection),
+        injection: Some(injections::markdown_injection),
         grammar: || tree_sitter_md::LANGUAGE.into(),
         parent_headers: &[],
         fold_nodes: &["section", "fenced_code_block", "list", "block_quote"],
@@ -519,16 +522,13 @@ pub fn syntax_provider(language: Language) -> Option<SyntaxProvider> {
 }
 
 /// The traversal supplies the immediate parent; classifications obey highlight_scope.
-pub type HighlightSelector = for<'tree> fn(
-    tree_sitter::Node<'tree>,
-    Option<tree_sitter::Node<'tree>>,
-) -> Option<crate::highlight::TokenKind>;
+pub type HighlightSelector =
+    for<'tree> fn(tree_sitter::Node<'tree>, Option<tree_sitter::Node<'tree>>) -> Option<TokenKind>;
 
 fn built_in_highlight(
     node: tree_sitter::Node<'_>,
     parent: Option<tree_sitter::Node<'_>>,
-) -> Option<crate::highlight::TokenKind> {
-    use crate::highlight::TokenKind;
+) -> Option<TokenKind> {
     // Grammar type wrappers own their complete span, including anonymous
     // terminals named `number` or `string`. Their children cannot also paint it.
     if parent.is_some_and(|parent| {
@@ -636,23 +636,22 @@ fn built_in_highlight(
 fn config_highlight(
     node: tree_sitter::Node<'_>,
     parent: Option<tree_sitter::Node<'_>>,
-) -> Option<crate::highlight::TokenKind> {
+) -> Option<TokenKind> {
     if parent.is_some_and(|parent| config_color(parent.kind()).is_some()) {
         return None;
     }
     if node.kind() == "Name" {
         return Some(
             if parent.is_some_and(|parent| parent.kind() == "Attribute") {
-                crate::highlight::TokenKind::Attribute
+                TokenKind::Attribute
             } else {
-                crate::highlight::TokenKind::Keyword
+                TokenKind::Keyword
             },
         );
     }
     config_color(node.kind()).or_else(|| built_in_highlight(node, parent))
 }
-fn config_color(kind: &str) -> Option<crate::highlight::TokenKind> {
-    use crate::highlight::TokenKind;
+fn config_color(kind: &str) -> Option<TokenKind> {
     match kind {
         "string"
         | "quoted_key"
@@ -690,7 +689,7 @@ fn config_color(kind: &str) -> Option<crate::highlight::TokenKind> {
 fn markdown_highlight(
     node: tree_sitter::Node<'_>,
     parent: Option<tree_sitter::Node<'_>>,
-) -> Option<crate::highlight::TokenKind> {
+) -> Option<TokenKind> {
     // Prose punctuation and capitalized words remain plain. Only grammar-defined
     // Markdown constructs receive color, including delimiters and inline code.
     config_highlight(node, parent).filter(|_| config_color(node.kind()).is_some())

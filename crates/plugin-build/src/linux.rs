@@ -65,6 +65,13 @@ pub fn run() -> Result<()> {
     }
     let abi = ABI::V3;
     let mut read = vec![source, sdk, toolchain];
+    if let Some(wasi) = std::env::var_os("WASI_SDK_PATH") {
+        let wasi = directory(wasi)?;
+        if wasi.starts_with(&work) || work.starts_with(&wasi) {
+            bail!("WASI SDK must be outside the writable build directory");
+        }
+        read.push(wasi);
+    }
     for path in [
         "/usr",
         "/bin",

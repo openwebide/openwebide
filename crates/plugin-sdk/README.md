@@ -29,6 +29,42 @@ request. Host views are read-only; actions use normal capability grants and thei
 declared approval policy. UI documents contain data, never browser code or markup.
 See the app's [panel contract](../../docs/plugin-panels.md).
 
+## Language contributions (API 5)
+
+The language contract and editor migration are tracked in the
+[roadmap](../../docs/roadmap.md#language-support-as-plugins). Implement
+`languages()` with the manifest's exact `LanguageDefinition` values and
+`language(LanguageInput)` with version-1 `LanguageOutput` data. `export!` supplies
+the reserved metadata/service dispatchers; do not declare them as model tools.
+Contribution language IDs are strings. `SyntaxLanguage` tags belong to the
+optional parser toolkit and do not restrict community language IDs or engines.
+
+Definitions contain recognition, comments, brackets, conditional automatic pairs,
+surrounding pairs and indentation rules. Block comments explicitly declare
+whether they can nest. Data-only packages can contribute a subset without an
+executable. Formatting, snippets, diagnostics and language-server definitions are
+extension points; declaration alone does not launch a server or implement LSP.
+
+Syntax handlers run only on the execution host, with no host capability grants.
+Requests identify an opaque client document, request, revision, language, path,
+tab width and SHA-256 source digest. Sources use full snapshots or UTF-8 byte
+replacements with an exact base revision. Return `NeedsSource` after cache loss;
+the shared facade retries once with a full snapshot. Never claim incremental
+parsing when performing a full lexical pass.
+
+Results contain per-row token end offsets, folds and optional source-coordinate
+structure, never replacement source text. Keep token rows lossless and ordered,
+scope/protected regions ordered and nonoverlapping, and bracket partners
+reciprocal. Empty embedded scopes retain insertion rules. Limits are 2 MiB of
+source, 32 MiB of result JSON and 100,000 analysis records. Hosts may destroy a
+component on close, cancellation, failure, update or bounded idle eviction;
+component memory is disposable, not plugin configuration or persistent storage.
+
+The [syntax toolkit](../language-syntax/README.md) is optional. A custom language
+can implement this same protocol directly, including a different grammar or a
+pure Rust lexer. Browser clients only render validated results and apply
+declarative rules.
+
 ## Host capabilities
 
 Declare required capabilities in `executable.capabilities`. Every host call is

@@ -1,8 +1,8 @@
 //! Injection selection is provider policy, independent of browser/workspace adapters.
-use crate::highlight::Language;
 use html5ever::tokenizer::{
     BufferQueue, TagKind, Token, TokenSink, TokenSinkResult, Tokenizer, TokenizerOpts,
 };
+use openwebide_plugin_sdk::languages::SyntaxLanguage as Language;
 use std::cell::RefCell;
 use tree_sitter::{Node, Range};
 
@@ -156,7 +156,7 @@ pub(super) fn markdown_injection(node: Node<'_>, text: &str) -> Option<(Language
                 "csharp" | "c#" => Language::CSharp,
                 "c++" => Language::Cpp,
                 "bash" | "shell" => Language::Shell,
-                name => crate::highlight::language_from_path(&format!("code.{name}")),
+                name => crate::language_from_path(&format!("code.{name}")),
             };
             if matches!(
                 language,

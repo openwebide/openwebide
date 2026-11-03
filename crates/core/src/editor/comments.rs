@@ -55,19 +55,48 @@ pub fn supports_line_comment(language: Language) -> bool {
 pub fn supports_block_comment(language: Language) -> bool {
     block_comment(language).is_some()
 }
-fn balanced_comments(text: &str) -> bool {
+#[derive(Clone, Copy)]
+struct CommentStyle<'a> {
+    line: Option<&'a str>,
+    block: Option<(&'a str, &'a str, bool)>,
+}
+impl CommentStyle<'_> {
+    fn for_language(language: Language) -> CommentStyle<'static> {
+        CommentStyle {
+            line: line_comment(language),
+            block: block_comment(language)
+                .map(|(open, close)| (open, close, language == Language::Rust)),
+        }
+    }
+    fn at(syntax: &Structure, position: usize) -> CommentStyle<'_> {
+        syntax.configuration_at(position).map_or_else(
+            || Self::for_language(syntax.language_at(position)),
+            |configuration| CommentStyle {
+                line: configuration.line_comment.as_deref(),
+                block: configuration.block_comment.as_ref().map(|comment| {
+                    (
+                        comment.open.as_str(),
+                        comment.close.as_str(),
+                        comment.nested,
+                    )
+                }),
+            },
+        )
+    }
+}
+fn balanced_comments(text: &str, open: &str, close: &str) -> bool {
     let mut depth = 0;
     let mut position = 0;
     while position < text.len() {
-        if text[position..].starts_with("/*") {
+        if text[position..].starts_with(open) {
             depth += 1;
-            position += 2;
-        } else if text[position..].starts_with("*/") {
+            position += open.len();
+        } else if text[position..].starts_with(close) {
             if depth == 0 {
                 return false;
             }
             depth -= 1;
-            position += 2;
+            position += close.len();
         } else {
             position += text[position..].chars().next().unwrap().len_utf8();
         }
@@ -78,7 +107,7 @@ impl Document {
     /// Unsupported syntaxes leave text unchanged rather than introduce invalid comments.
     pub fn toggle_line_comments(&mut self, language: Language) -> Result<bool, EditError> {
         let length = self.text.len();
-        self.toggle_line_comments_in(|_| (language, 0..length))
+        self.toggle_line_comments_in(|_| (CommentStyle::for_language(language), 0..length))
     }
 
     pub fn toggle_line_comments_with_context(
@@ -89,13 +118,16 @@ impl Document {
             return Err(EditError::StaleContext);
         }
         self.toggle_line_comments_in(|position| {
-            (syntax.language_at(position), syntax.language_body(position))
+            (
+                CommentStyle::at(syntax, position),
+                syntax.language_body(position),
+            )
         })
     }
 
-    fn toggle_line_comments_in(
+    fn toggle_line_comments_in<'a>(
         &mut self,
-        context: impl Fn(usize) -> (Language, std::ops::Range<usize>),
+        context: impl Fn(usize) -> (CommentStyle<'a>, std::ops::Range<usize>),
     ) -> Result<bool, EditError> {
         let rows = &self.line_index.rows;
         let mut changes = CommentChanges::default();
@@ -107,7 +139,7 @@ impl Document {
         for (index, selection) in self.selections.iter().enumerate() {
             let range = selection.range();
             let (language, body) = context(range.start);
-            let Some(marker) = line_comment(language) else {
+            let Some(marker) = language.line else {
                 let Some((edit, after)) =
                     block_comment_change(&self.text, rows, *selection, language, body)
                 else {
@@ -151,7 +183,7 @@ impl Document {
     }
     pub fn toggle_block_comments(&mut self, language: Language) -> Result<bool, EditError> {
         let length = self.text.len();
-        self.toggle_block_comments_in(|_| (language, 0..length))
+        self.toggle_block_comments_in(|_| (CommentStyle::for_language(language), 0..length))
     }
 
     pub fn toggle_block_comments_with_context(
@@ -162,13 +194,16 @@ impl Document {
             return Err(EditError::StaleContext);
         }
         self.toggle_block_comments_in(|position| {
-            (syntax.language_at(position), syntax.language_body(position))
+            (
+                CommentStyle::at(syntax, position),
+                syntax.language_body(position),
+            )
         })
     }
 
-    fn toggle_block_comments_in(
+    fn toggle_block_comments_in<'a>(
         &mut self,
-        context: impl Fn(usize) -> (Language, std::ops::Range<usize>),
+        context: impl Fn(usize) -> (CommentStyle<'a>, std::ops::Range<usize>),
     ) -> Result<bool, EditError> {
         let rows = &self.line_index.rows;
         let mut changes = CommentChanges::default();
@@ -188,11 +223,11 @@ fn block_comment_change(
     text: &str,
     rows: &[super::lines::Line],
     selection: Selection,
-    language: Language,
+    language: CommentStyle<'_>,
     body: std::ops::Range<usize>,
 ) -> Option<(Edit, Selection)> {
     let mut range = selection.range();
-    let (open, close) = block_comment(language)?;
+    let (open, close, nested) = language.block?;
     if range.is_empty() {
         let row = &rows[row_at(rows, selection.head)];
         let body = &text[row.start..row.body_end];
@@ -224,9 +259,9 @@ fn block_comment_change(
         (inside.to_string(), 0, inside.len())
     } else {
         // A closer in the selection would terminate the outer comment early.
-        // Rust permits nested comments; other languages must leave it alone.
-        if (language == Language::Rust && !balanced_comments(selected))
-            || (language != Language::Rust && selected.contains(close))
+        // Nesting is declared by the provider, independent of its language ID.
+        if (nested && !balanced_comments(selected, open, close))
+            || (!nested && selected.contains(close))
         {
             return None;
         }

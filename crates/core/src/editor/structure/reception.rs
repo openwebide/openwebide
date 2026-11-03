@@ -143,6 +143,7 @@ impl<'a> StructureReception<'a> {
             protected: data.protected,
             brackets: data.brackets,
             available: true,
+            language_rules: None,
         }
     }
     pub fn record_count(&self) -> usize {

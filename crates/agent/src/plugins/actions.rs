@@ -14,6 +14,12 @@ use std::{collections::BTreeMap, future::Future, sync::Arc};
 
 /// Adapters provide preparation, authority and transport, never feature behavior.
 pub trait PluginActionHost: PluginTransport + GrantedHost {
+    fn yield_task(&self) -> impl Future<Output = ()> + Send {
+        async {}
+    }
+    fn now_ms(&self) -> Option<u64> {
+        None
+    }
     fn prepare(
         &self,
         plugin: &PreparedPlugin,

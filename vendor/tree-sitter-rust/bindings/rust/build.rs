@@ -3,9 +3,14 @@ fn main() {
 
     let mut c_config = cc::Build::new();
     c_config.std("c11").include(src_dir);
-    if std::env::var("TARGET").unwrap().starts_with("wasm32-unknown") {
-        c_config.include(std::env::var("DEP_TREE_SITTER_LANGUAGE_WASM_HEADERS")
-            .expect("tree-sitter-language supplies browser WASM headers"));
+    if std::env::var("TARGET")
+        .unwrap()
+        .starts_with("wasm32-unknown")
+    {
+        c_config.include(
+            std::env::var("DEP_TREE_SITTER_LANGUAGE_WASM_HEADERS")
+                .expect("tree-sitter-language supplies browser WASM headers"),
+        );
     }
 
     #[cfg(target_env = "msvc")]

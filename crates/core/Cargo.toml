@@ -8,13 +8,14 @@ license.workspace = true
 authors.workspace = true
 
 [dependencies]
-openwebide-plugin-sdk = { path = "../plugin-sdk", default-features = false }
+openwebide-plugin-sdk = { version = "=0.1.0", default-features = false }
+openwebide-language-grammars = { path = "../language-grammars", version = "0.1.0", optional = true }
 futures = { workspace = true }
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 chrono-tz = "0.10"
 croner = "4.0"
 base64 = { workspace = true }
-ec4rs = { version = "1.2", features = ["allow-empty-values"] }
+ec4rs = { version = "1.2", path = "../../vendor/ec4rs", features = ["allow-empty-values"] }
 html5ever = "0.40"
 ignore = "0.4.33"
 regex = "1.13.1"
@@ -33,27 +34,8 @@ zip = { version = "6", default-features = false, features = ["deflate-flate2"] }
 tar = { version = "0.4", default-features = false }
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 
-tree-sitter = { version = "0.27.0", optional = true }
-tree-sitter-rust = { version = "0.24.2", optional = true }
+tree-sitter = { version = "=0.27.0", optional = true }
 
-tree-sitter-typescript = { version = "0.23.2", optional = true }
-tree-sitter-javascript = { version = "0.25.0", optional = true }
-tree-sitter-python = { version = "0.25.0", optional = true }
-tree-sitter-java = { version = "0.23.5", optional = true }
-tree-sitter-c-sharp = { version = "0.23.5", optional = true }
-tree-sitter-cpp = { version = "0.23.4", optional = true }
-tree-sitter-php = { version = "0.24.2", optional = true }
-tree-sitter-bash = { version = "0.25.1", optional = true }
-tree-sitter-c = { version = "0.24.2", optional = true }
-tree-sitter-go = { version = "0.25.0", optional = true }
-tree-sitter-html = { version = "0.23.2", optional = true }
-tree-sitter-css = { version = "0.25.0", optional = true }
-tree-sitter-json = { version = "0.24.8", optional = true }
-tree-sitter-yaml = { version = "0.7.2", optional = true }
-tree-sitter-toml-ng = { version = "0.7.0", optional = true }
-tree-sitter-md = { version = "0.5.3", optional = true }
-tree-sitter-ini = { version = "1.4.0", optional = true }
-tree-sitter-xml = { version = "0.7.0", optional = true }
 
 hpke = { version = "0.13.0", default-features = false, features = ["alloc", "x25519"], optional = true }
 rand_chacha = { version = "0.9", optional = true }
@@ -61,27 +43,8 @@ rand_chacha = { version = "0.9", optional = true }
 [features]
 private-input = ["dep:hpke", "dep:rand_chacha"]
 test-support = []
-editor-parser = [
-    "dep:tree-sitter", "dep:tree-sitter-rust",
-    "dep:tree-sitter-typescript",
-    "dep:tree-sitter-javascript",
-    "dep:tree-sitter-python",
-    "dep:tree-sitter-java",
-    "dep:tree-sitter-c-sharp",
-    "dep:tree-sitter-cpp",
-    "dep:tree-sitter-php",
-    "dep:tree-sitter-bash",
-    "dep:tree-sitter-c",
-    "dep:tree-sitter-go",
-    "dep:tree-sitter-html",
-    "dep:tree-sitter-css",
-    "dep:tree-sitter-json",
-    "dep:tree-sitter-yaml",
-    "dep:tree-sitter-toml-ng",
-    "dep:tree-sitter-md",
-    "dep:tree-sitter-ini",
-    "dep:tree-sitter-xml",
-]
+editor-analysis = []
+editor-parser = ["editor-analysis", "dep:tree-sitter", "dep:openwebide-language-grammars"]
 
 [dev-dependencies]
 futures = { workspace = true }
