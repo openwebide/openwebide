@@ -7,11 +7,34 @@ license = "MIT"
 description = "Syntax engines for language plugins using the public Open WebIDE component protocol"
 
 [dependencies]
-openwebide-core = { path = "../core", features = ["editor-parser"] }
+openwebide-core = { path = "../core", features = ["syntax-engine"] }
 openwebide-plugin-sdk = { version = "=0.1.0", default-features = false }
+
+[features]
+default = ["all"]
+all = ["rust", "javascript-typescript", "python", "java", "csharp", "c-cpp", "php", "shell", "go", "html", "css", "json", "yaml", "toml", "markdown", "ini", "xml", "sql", "plain"]
+rust = ["openwebide-core/syntax-rust"]
+javascript-typescript = ["openwebide-core/syntax-javascript-typescript"]
+python = ["openwebide-core/syntax-python"]
+java = ["openwebide-core/syntax-java"]
+csharp = ["openwebide-core/syntax-csharp"]
+c-cpp = ["openwebide-core/syntax-c-cpp"]
+php = ["openwebide-core/syntax-php"]
+shell = ["openwebide-core/syntax-shell"]
+go = ["openwebide-core/syntax-go"]
+html = ["openwebide-core/syntax-html"]
+css = ["openwebide-core/syntax-css"]
+json = ["openwebide-core/syntax-json"]
+yaml = ["openwebide-core/syntax-yaml"]
+toml = ["openwebide-core/syntax-toml"]
+markdown = ["openwebide-core/syntax-markdown"]
+ini = ["openwebide-core/syntax-ini"]
+xml = ["openwebide-core/syntax-xml"]
+sql = ["openwebide-core/syntax-sql"]
+plain = ["openwebide-core/syntax-plain"]
 
 [lints]
 workspace = true
 
 [dev-dependencies]
-openwebide-core = { path = "../core", features = ["editor-parser", "test-support"] }
+openwebide-core = { path = "../core", features = ["test-support"] }

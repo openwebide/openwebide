@@ -1102,40 +1102,32 @@ and [EditorConfig](https://editorconfig.org/).
 
 ### Language support as plugins
 
-With editor performance and device verification tracked separately, establish the shared language
-contribution and runtime contracts and migrate existing language support into
-bundled plugins. This is a **blocking prerequisite for Code intelligence and LSP**;
-verify the migration in both project modes before starting that item. Preserve the
-editor's shared document/selection/extension APIs as the foundation.
+With editor performance and device verification tracked separately, complete the
+migration into independent language-family plugins, grouped by the intended
+LSP's language coverage. JavaScript/TypeScript/JSX/TSX share a package, as do C/C++.
+Other families remain independently installable, replaceable and removable. This
+is a **blocking prerequisite for Code intelligence and LSP**; LSP execution is the
+following item.
 
-The foundation now includes versioned language declarations and analysis results,
-provider selection, shared host document synchronization, bounded component
-sessions, declarative editing rules and a public syntax toolkit. The production
-editor still uses its existing parser path. Remaining work:
+The foundation includes versioned declarations and source/result contracts,
+shared provider selection and document synchronization, bounded component
+sessions, declarative editing rules, optional family grammars and cross-provider
+embedded scopes. The production editor still uses its existing parser path.
+Remaining work:
 
-- Integrate the language contribution contracts for file recognition, syntax
-  highlighting/folding, comment and indentation rules, with extension points for
-  snippets, formatting, host diagnostics and LSP configuration. Language packages
-  may provide only a subset of these features and may also include agent skills
-  or tools. Implement LSP services in the following Code intelligence item on top
-  of these contracts.
-  Connect the editor to the shared language-service facade for document synchronization, feature
-  routing, diagnostics, conflicts and failure handling, with thin host adapters
-  for running plugin syntax analysis and servers beside local or remote project
-  files. The core editor renders shared results and applies declarative editing
-  rules without executing plugin code in the browser. Preserve editing with a
-  core plain-text fallback when the host is unavailable. Guard results by document
-  revision and account/project/session ownership; define competing-provider
-  selection, missing-runtime behavior, server recovery and formatter precedence.
-- Move all existing language support behind those same contribution contracts,
-  shipped as bundled packages enabled by default to preserve today's experience.
-  Distinguish bundled artifacts, installed versions and enablement; record
-  installation/configuration in the database and activate language services on
-  matching files rather than starting every installed server. Bundled packages
-  use the same validation, configuration, conflict and lifecycle rules as
-  community packages. Compiled-in grammars can initially register through the
-  contract, but externally supplied syntax grammars require a versioned loading
-  and runtime contract before claiming full language extensibility.
+- Publish independent default family packages using the same public SDK,
+  immutable sources, artifact format and lifecycle as community packages. Each
+  component carries its own family's engines, with shared implementation in
+  public libraries.
+- Connect the editor, diffs and previews to the shared host-language facade.
+  Preserve source, selection, folding, editing, recovery and database preferences
+  in both project modes, with core plain editing when a provider is unavailable.
+- Integrate installed-provider resolution for HTML/Markdown bodies, including
+  custom languages, preferences, conflicts, disablement and failure fallback.
+  Guard results and dependency changes by document and account/project/session.
+- Verify independent install/update/disable/remove, custom marketplaces and
+  offline defaults on both execution hosts, with all existing language and full
+  native/WASI/WASM/browser/font/build gates before marking the migration complete.
 
 ### Code intelligence: host language services, LSP & caching
 

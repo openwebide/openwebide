@@ -6,6 +6,16 @@ use std::collections::{BTreeMap, BTreeSet};
 
 pub const MAX_REGISTERED_LANGUAGES: usize = 256;
 
+/// An editor composes selected definitions from independent packages. Package
+/// manifests retain their smaller per-package metadata and contribution limits.
+pub fn validate_registered_definitions(definitions: &[LanguageDefinition]) -> Result<(), String> {
+    super::validate_definition_limits(
+        definitions,
+        MAX_REGISTERED_LANGUAGES,
+        4 * super::MAX_DEFINITION_BYTES,
+    )
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RegisteredLanguage {
     pub namespace: String,
@@ -290,4 +300,20 @@ fn recognition(
         }
     }
     None
+}
+
+#[cfg(test)]
+mod selected_definition_tests {
+    use super::*;
+    #[test]
+    fn selected_definitions_span_packages_but_keep_shared_identity_and_metadata_limits() {
+        let mut definitions: Vec<LanguageDefinition> = (0..MAX_REGISTERED_LANGUAGES).map(|index| serde_json::from_value(serde_json::json!({ "id":format!("language-{index}"), "name":format!("Language {index}") })).unwrap()).collect();
+        assert!(validate_definitions(&definitions).is_err());
+        validate_registered_definitions(&definitions).unwrap();
+        definitions.push(definitions[0].clone());
+        assert!(validate_registered_definitions(&definitions).is_err());
+        definitions.pop();
+        definitions[1] = definitions[0].clone();
+        assert!(validate_registered_definitions(&definitions).is_err());
+    }
 }

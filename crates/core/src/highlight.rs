@@ -184,7 +184,7 @@ pub struct LexicalSnapshot {
     retokenized_rows: usize,
 }
 impl LexicalSnapshot {
-    #[cfg(feature = "editor-parser")]
+    #[cfg(feature = "syntax-engine")]
     pub(crate) fn source_snapshot(&self) -> &std::sync::Arc<String> {
         &self.source
     }
@@ -297,7 +297,7 @@ impl LexicalPreparation {
     /// Reuse a replacement already validated by shared syntax preparation or
     /// materialized from a resolver delta. Only its exact retained base can
     /// bypass comparison; other bases take ordinary cooperative validation.
-    #[cfg(feature = "editor-parser")]
+    #[cfg(feature = "syntax-engine")]
     pub(crate) fn reuse_validated_change(
         self,
         previous: std::sync::Arc<LexicalSnapshot>,

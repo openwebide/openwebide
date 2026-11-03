@@ -319,6 +319,9 @@ pub struct TextRange {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+/// A source-owned embedded body. The shared document service resolves its
+/// language ID or alias through installed providers and user/project preferences.
+/// Missing, disabled, ambiguous or failed providers leave the body plain.
 pub struct LanguageScope {
     pub range: TextRange,
     pub language: String,

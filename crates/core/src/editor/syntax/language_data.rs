@@ -17,6 +17,9 @@ impl SyntaxAnalysis {
                     .map(|row| {
                         let mut end = 0;
                         row.iter()
+                            // Blank source rows have no wire spans. The plain
+                            // row scanner may retain an empty paint token.
+                            .filter(|token| !token.text.is_empty())
                             .map(|token| {
                                 end += token.text.len();
                                 protocol::TokenSpan {

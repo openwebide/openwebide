@@ -88,6 +88,21 @@ the host; eviction, restart and close discard that state. Cancellation, traps
 and invalid results discard the affected component session. Clients retain plain
 editing when analysis is unavailable.
 
+The public syntax toolkit has independent family features; use
+`default-features = false` and `LanguageSyntax::new_delegated` when packaging a
+family. Related dialects share a component according to intended LSP coverage.
+See the [toolkit guide](../crates/language-syntax/README.md) for feature names.
+
+`Structure.scopes` delegates embedded source bodies by language ID or alias.
+The shared host service resolves installed providers using the same preferences
+as standalone files. Missing, disabled, ambiguous or failed providers leave the
+body plain. Child tokens, folds, selections and bracket partners are validated
+and translated into the original source coordinates. Nested delegation has
+shared depth/source/work limits; removed bodies and closed documents release
+component sessions. Markdown fence labels can name community languages without
+linking their parsers into the Markdown component. Production editor integration
+and the independent default packages remain on the roadmap.
+
 `configuration.uniformLineComments: true` promises that the declared line marker
 or block-comment fallback applies throughout the document. Omit it when embedded
 scopes can change that strategy. Structural results whose embedded scopes

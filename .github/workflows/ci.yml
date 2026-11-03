@@ -49,6 +49,9 @@ jobs:
       - name: Clippy (native crates)
         run: cargo clippy -p openwebide-core -p openwebide-llm -p openwebide-storage -p openwebide-agent -p openwebide-auth -p openwebide-plugin-sdk -p openwebide-plugin-runtime -p openwebide-plugin-build -p openwebide-language-grammars -p openwebide-language-syntax --features openwebide-core/editor-parser --all-targets -- -D warnings
 
+      - name: Isolate language-family parsers and public protocol contracts
+        run: python3 tools/check-language-isolation.py --clippy --tests
+
       - name: Clippy (backend, wasm32-wasip2)
         run: cargo clippy -p openwebide-backend --target wasm32-wasip2 -- -D warnings
 

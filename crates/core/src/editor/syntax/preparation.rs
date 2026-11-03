@@ -625,14 +625,16 @@ impl SyntaxWork {
                 continue;
             }
             if self.embedded.is_none() {
-                if !self.selection.advance(
-                    self.tree.as_ref().unwrap(),
-                    document.provider,
-                    &self.source,
-                    &document.source_lines,
-                    should_continue,
-                    should_yield,
-                )? {
+                if !document.delegate_embeddings
+                    && !self.selection.advance(
+                        self.tree.as_ref().unwrap(),
+                        document.provider,
+                        &self.source,
+                        &document.source_lines,
+                        should_continue,
+                        should_yield,
+                    )?
+                {
                     return Ok(false);
                 }
                 let selected = std::mem::take(&mut self.selection.selected);

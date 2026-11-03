@@ -93,16 +93,16 @@ pub use projection::{FoldProjection, ProjectionError, VisibleLine};
 mod analysis;
 #[cfg(feature = "editor-analysis")]
 pub use analysis::{SyntaxAnalysis, SyntaxStatus};
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 mod syntax;
-#[cfg(all(feature = "editor-parser", any(test, feature = "test-support")))]
+#[cfg(all(feature = "syntax-engine", any(test, feature = "test-support")))]
 pub mod syntax_contracts;
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 pub use openwebide_language_grammars::{
     ContextSelector, HighlightSelector, InjectionSelector, SYNTAX_PROVIDERS, SyntaxContextKind,
-    SyntaxContextScope, SyntaxHighlightScope, SyntaxProvider, syntax_provider,
+    SyntaxContextScope, SyntaxHighlightScope, SyntaxProvider, language_injection, syntax_provider,
 };
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 pub use syntax::{
     MAX_ANALYSIS_MESSAGE_BYTES, MAX_SYNTAX_DOCUMENTS, MAX_SYNTAX_FRAME_BYTES,
     MAX_SYNTAX_REQUEST_BYTES, MAX_SYNTAX_SOURCE_BYTES, SYNTAX_BATCH_MS, SYNTAX_FRAME_VERSION,

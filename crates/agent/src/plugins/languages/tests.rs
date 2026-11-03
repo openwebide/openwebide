@@ -21,6 +21,8 @@ struct Host {
     dynamic: bool,
     needs_source: Arc<AtomicUsize>,
     cancel_on_yield: bool,
+    analyses: Arc<Mutex<std::collections::BTreeMap<String, SyntaxAnalysis>>>,
+    rejected_packages: Arc<Mutex<std::collections::BTreeSet<String>>>,
 }
 impl PluginActionHost for Host {
     async fn yield_task(&self) {
@@ -36,9 +38,15 @@ impl PluginActionHost for Host {
         }
         Ok(prepared)
     }
-    async fn grant(&self, _: &PreparedPlugin) -> Result<String, String> {
+    async fn grant(&self, prepared: &PreparedPlugin) -> Result<String, String> {
         self.grants.fetch_add(1, Ordering::Relaxed);
-        if self.deny_grant.load(Ordering::Relaxed) {
+        if self.deny_grant.load(Ordering::Relaxed)
+            || self
+                .rejected_packages
+                .lock()
+                .unwrap()
+                .contains(&prepared.manifest.name)
+        {
             return Err("Plugin is no longer enabled".into());
         }
         Ok("authority".into())
@@ -79,11 +87,21 @@ impl PluginTransport for Host {
                         },
                     );
                     if !missing && let LanguageOutput::Analyzed(response) = &mut output {
-                        response.analysis = Some(SyntaxAnalysis {
-                            highlights: None,
-                            folds: vec![],
-                            structure: None,
-                        });
+                        let analyses = self.analyses.lock().unwrap();
+                        response.analysis = Some(
+                            analyses
+                                .get(&format!(
+                                    "{}:{}",
+                                    call.prepared.manifest.name, request.language
+                                ))
+                                .or_else(|| analyses.get(&request.language))
+                                .cloned()
+                                .unwrap_or(SyntaxAnalysis {
+                                    highlights: None,
+                                    folds: vec![],
+                                    structure: None,
+                                }),
+                        );
                     }
                     output
                 }
@@ -186,6 +204,8 @@ fn setup(profile: &str) -> (Host, Vec<ProjectPlugin>, RegisteredLanguage, Langua
         dynamic: false,
         needs_source: Arc::default(),
         cancel_on_yield: false,
+        analyses: Arc::default(),
+        rejected_packages: Arc::default(),
     };
     (host, bindings, provider, LanguageInput::Analyze(request))
 }
@@ -456,6 +476,317 @@ fn document_diff_yields_and_cannot_send_a_request_after_its_owner_changes() {
                     .is_err()
             );
             assert_eq!(host.starts.load(Ordering::Relaxed), 1);
+        }
+    });
+}
+
+#[test]
+fn embedded_custom_languages_follow_preferences_and_close_both_host_stores() {
+    futures::executor::block_on(async {
+        for profile in ["server", "paired"] {
+            for disabled in [false, true] {
+                let (mut host, mut bindings, provider, _) = setup(profile);
+                host.dynamic = true;
+                let mut child = bindings[0].clone();
+                child.id = 2;
+                child.prepared.manifest.name = "child-language".into();
+                child.prepared.manifest.contributions.languages = serde_json::from_value(serde_json::json!([{"id":"embedded", "name":"Embedded", "features":{"syntax":true,"structure":true},"configuration":{"lineComment":"#"}}])).unwrap();
+                bindings.push(child);
+                let source = "[文😀]";
+                let empty_structure = |language: &str| Structure {
+                    language: language.into(),
+                    scopes: vec![],
+                    selections: vec![],
+                    opaque_starts: vec![],
+                    protected: vec![],
+                    brackets: vec![],
+                };
+                let mut root = SyntaxAnalysis {
+                    highlights: Some(vec![vec![TokenSpan {
+                        end: source.len(),
+                        kind: TokenKind::Keyword,
+                    }]]),
+                    folds: vec![],
+                    structure: Some(empty_structure("custom")),
+                };
+                root.structure.as_mut().unwrap().scopes.push(LanguageScope {
+                    range: TextRange {
+                        start: 1,
+                        end: source.len() - 1,
+                    },
+                    language: "embedded".into(),
+                });
+                let child = SyntaxAnalysis {
+                    highlights: Some(vec![vec![TokenSpan {
+                        end: "文😀".len(),
+                        kind: TokenKind::String,
+                    }]]),
+                    folds: vec![],
+                    structure: Some(empty_structure("embedded")),
+                };
+                host.analyses.lock().unwrap().insert("custom".into(), root);
+                host.analyses
+                    .lock()
+                    .unwrap()
+                    .insert("embedded".into(), child);
+                let mut preferences = LanguagePreferences::default();
+                if disabled {
+                    preferences
+                        .providers
+                        .insert("embedded".into(), ProviderPreference::Disabled);
+                }
+                let service = LanguageService::new_with_preferences(
+                    host.clone(),
+                    bindings,
+                    provider,
+                    preferences,
+                )
+                .unwrap();
+                assert_eq!(
+                    service
+                        .definitions()
+                        .iter()
+                        .any(|definition| definition.id == "embedded"),
+                    !disabled
+                );
+                let output = service.analyze(document(source, 1), 100).await.unwrap();
+                let LanguageOutput::Analyzed(response) = output else {
+                    unreachable!()
+                };
+                let data = response.analysis.unwrap();
+                validate_analysis(&data, source, "custom").unwrap();
+                assert_eq!(
+                    data.highlights.unwrap()[0],
+                    vec![
+                        TokenSpan {
+                            end: 1,
+                            kind: TokenKind::Keyword
+                        },
+                        TokenSpan {
+                            end: 8,
+                            kind: if disabled {
+                                TokenKind::Plain
+                            } else {
+                                TokenKind::String
+                            }
+                        },
+                        TokenSpan {
+                            end: 9,
+                            kind: TokenKind::Keyword
+                        }
+                    ]
+                );
+                let expected = if disabled { 1 } else { 2 };
+                assert_eq!(host.preparations.load(Ordering::Relaxed), expected);
+                if !disabled {
+                    host.analyses
+                        .lock()
+                        .unwrap()
+                        .get_mut("custom")
+                        .unwrap()
+                        .structure
+                        .as_mut()
+                        .unwrap()
+                        .scopes
+                        .clear();
+                    service.analyze(document(source, 2), 150).await.unwrap();
+                    assert!(host.requests.lock().unwrap().iter().any(|input| matches!(input, LanguageInput::Close { document, .. } if document.starts_with("embedded:"))), "Removed bodies must close before their parent document");
+                    assert!(
+                        service
+                            .embedded_documents
+                            .lock()
+                            .unwrap()
+                            .values()
+                            .all(|entry| entry.documents.is_empty())
+                    );
+                }
+                service.close("client/project/file", 200).await.unwrap();
+                let requests = host.requests.lock().unwrap();
+                assert_eq!(
+                    requests
+                        .iter()
+                        .filter(|input| matches!(input, LanguageInput::Close { .. }))
+                        .count(),
+                    expected
+                );
+                assert_eq!(service.embedded_documents.lock().unwrap().len(), 0);
+            }
+        }
+    });
+}
+
+#[test]
+fn embedding_conflicts_replacement_aliases_and_failed_authority_preserve_plain_fallback() {
+    futures::executor::block_on(async {
+        for profile in ["server", "paired"] {
+            for scenario in [
+                "missing",
+                "conflict",
+                "preferred",
+                "unavailable-preference",
+                "revoked",
+                "alias",
+            ] {
+                let (mut host, mut bindings, provider, _) = setup(profile);
+                host.dynamic = true;
+                let mut child = bindings[0].clone();
+                child.id = 2;
+                child.prepared.manifest.name = "child-language".into();
+                child.prepared.manifest.contributions.languages = serde_json::from_value(serde_json::json!([{"id":"embedded", "name":"Embedded", "aliases":["body"],"features":{"syntax":true,"structure":true}}])).unwrap();
+                if scenario != "missing" {
+                    bindings.push(child.clone());
+                }
+                if matches!(scenario, "conflict" | "preferred") {
+                    child.id = 3;
+                    child.prepared.manifest.name = "replacement-language".into();
+                    child.revision = 2;
+                    child.prepared.digest = "c".repeat(64);
+                    bindings.push(child);
+                }
+                if scenario == "revoked" {
+                    host.rejected_packages
+                        .lock()
+                        .unwrap()
+                        .insert("child-language".into());
+                }
+                let data = |language: &str, kind| SyntaxAnalysis {
+                    highlights: Some(vec![vec![TokenSpan { end: 1, kind }]]),
+                    folds: vec![],
+                    structure: Some(Structure {
+                        language: language.into(),
+                        scopes: vec![],
+                        selections: vec![],
+                        opaque_starts: vec![],
+                        protected: vec![],
+                        brackets: vec![],
+                    }),
+                };
+                let mut root = data("custom", TokenKind::Keyword);
+                root.structure.as_mut().unwrap().scopes.push(LanguageScope {
+                    range: TextRange { start: 0, end: 1 },
+                    language: if scenario == "alias" {
+                        "body"
+                    } else {
+                        "embedded"
+                    }
+                    .into(),
+                });
+                host.analyses.lock().unwrap().extend([
+                    ("custom".into(), root),
+                    ("embedded".into(), data("embedded", TokenKind::String)),
+                    (
+                        "replacement-language:embedded".into(),
+                        data("embedded", TokenKind::Number),
+                    ),
+                ]);
+                let mut preferences = LanguagePreferences::default();
+                if matches!(scenario, "preferred" | "unavailable-preference") {
+                    preferences.providers.insert(
+                        "embedded".into(),
+                        ProviderPreference::Provider {
+                            namespace: if scenario == "preferred" {
+                                LanguageRegistry::from_bindings(&bindings)
+                                    .providers
+                                    .into_iter()
+                                    .find(|provider| {
+                                        provider.plugin_namespace
+                                            == bindings.last().unwrap().prepared.storage_namespace()
+                                    })
+                                    .unwrap()
+                                    .namespace
+                            } else {
+                                "plugin:missing/language:embedded".into()
+                            },
+                        },
+                    );
+                }
+                let service = LanguageService::new_with_preferences(
+                    host.clone(),
+                    bindings,
+                    provider,
+                    preferences,
+                )
+                .unwrap();
+                let output = service.analyze(document("x", 1), 100).await.unwrap();
+                let LanguageOutput::Analyzed(response) = output else {
+                    unreachable!()
+                };
+                let analysis = response.analysis.unwrap();
+                validate_analysis(&analysis, "x", "custom").unwrap();
+                let expected = match scenario {
+                    "preferred" => TokenKind::Number,
+                    "alias" => TokenKind::String,
+                    _ => TokenKind::Plain,
+                };
+                assert_eq!(
+                    analysis.highlights.unwrap()[0],
+                    vec![TokenSpan {
+                        end: 1,
+                        kind: expected
+                    }],
+                    "{profile}/{scenario}"
+                );
+                if scenario == "alias" {
+                    assert_eq!(analysis.structure.unwrap().scopes[0].language, "embedded");
+                }
+            }
+        }
+    });
+}
+
+#[test]
+fn recursive_embedding_is_bounded_and_yields_cannot_publish_after_owner_changes() {
+    futures::executor::block_on(async {
+        for profile in ["server", "paired"] {
+            for cancel in [false, true] {
+                let (mut host, bindings, provider, _) = setup(profile);
+                host.dynamic = true;
+                host.cancel_on_yield = cancel;
+                host.analyses.lock().unwrap().insert(
+                    "custom".into(),
+                    SyntaxAnalysis {
+                        highlights: Some(vec![vec![TokenSpan {
+                            end: 1,
+                            kind: TokenKind::Keyword,
+                        }]]),
+                        folds: vec![],
+                        structure: Some(Structure {
+                            language: "custom".into(),
+                            scopes: vec![LanguageScope {
+                                range: TextRange { start: 0, end: 1 },
+                                language: "custom".into(),
+                            }],
+                            selections: vec![],
+                            opaque_starts: vec![],
+                            protected: vec![],
+                            brackets: vec![],
+                        }),
+                    },
+                );
+                let service = LanguageService::new(host.clone(), bindings, provider).unwrap();
+                let result = service.analyze(document("x", 1), 100).await;
+                if cancel {
+                    assert!(result.is_err());
+                    assert_eq!(host.starts.load(Ordering::Relaxed), 1);
+                } else {
+                    let LanguageOutput::Analyzed(response) = result.unwrap() else {
+                        unreachable!()
+                    };
+                    let data = response.analysis.unwrap();
+                    validate_analysis(&data, "x", "custom").unwrap();
+                    assert_eq!(
+                        data.highlights.unwrap()[0],
+                        vec![TokenSpan {
+                            end: 1,
+                            kind: TokenKind::Plain
+                        }]
+                    );
+                    assert_eq!(
+                        host.starts.load(Ordering::Relaxed),
+                        super::composition::MAX_EMBEDDING_DEPTH + 1
+                    );
+                }
+            }
         }
     });
 }

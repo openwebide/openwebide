@@ -86,7 +86,7 @@ impl Structure {
         language: &str,
         definitions: &[protocol::LanguageDefinition],
     ) -> Result<Self, String> {
-        protocol::validate_definitions(definitions)?;
+        protocol::validate_registered_definitions(definitions)?;
         let definition = definitions
             .iter()
             .find(|definition| definition.id == language)
@@ -106,7 +106,7 @@ impl Structure {
         data: protocol::Structure,
         definitions: &[protocol::LanguageDefinition],
     ) -> Result<Self, String> {
-        protocol::validate_definitions(definitions)?;
+        protocol::validate_registered_definitions(definitions)?;
         protocol::validate_analysis(
             &protocol::SyntaxAnalysis {
                 highlights: None,

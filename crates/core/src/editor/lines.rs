@@ -21,13 +21,13 @@ pub(super) struct Line {
 }
 
 /// Tree-sitter columns count source bytes, retaining CR before an LF separator.
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 #[derive(Clone, Copy)]
 pub(super) struct SyntaxLines<'a> {
     source: &'a str,
     rows: &'a [Line],
 }
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 impl<'a> SyntaxLines<'a> {
     pub fn new(source: &'a str, rows: &'a [Line]) -> Self {
         Self { source, rows }
@@ -127,7 +127,7 @@ impl LineEdit {
         self.has_suffix && row.is_some_and(|row| row.start == self.bytes.len())
     }
 
-    #[cfg(feature = "editor-parser")]
+    #[cfg(feature = "syntax-engine")]
     pub fn prepare_replacement(
         &self,
         source: std::sync::Arc<String>,
@@ -136,7 +136,7 @@ impl LineEdit {
         LineReplacement::new(source, self.bytes.clone(), self.has_suffix, limit)
     }
 
-    #[cfg(feature = "editor-parser")]
+    #[cfg(feature = "syntax-engine")]
     pub fn replacement(&self, source: &str, limit: usize) -> Option<Vec<Line>> {
         let mut scan = LineReplacementScan::new(self.bytes.clone(), self.has_suffix, limit);
         while scan.status == LineReplacementStatus::Pending {
@@ -145,7 +145,7 @@ impl LineEdit {
         (scan.status == LineReplacementStatus::Ready).then_some(scan.rows)
     }
 
-    #[cfg(feature = "editor-parser")]
+    #[cfg(feature = "syntax-engine")]
     pub fn prepare_publication(&self, replacement: Vec<Line>) -> LinePublication {
         LinePublication {
             replaced: self.rows.clone(),
@@ -179,7 +179,7 @@ fn shifted_line(row: &Line, old_start: usize, new_start: usize) -> Line {
 
 /// Retain the complete old index while assembling its replacement in row batches.
 /// Dropping pending work leaves the original coordinates untouched.
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 pub(super) struct LinePublication {
     replaced: Range<usize>,
     start: usize,
@@ -189,7 +189,7 @@ pub(super) struct LinePublication {
     next: Vec<Line>,
     complete: bool,
 }
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 impl LinePublication {
     pub fn is_complete(&self) -> bool {
         self.complete
@@ -218,7 +218,7 @@ impl LinePublication {
     }
 }
 
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum LineReplacementStatus {
     Pending,
@@ -226,7 +226,7 @@ pub(super) enum LineReplacementStatus {
     TooLarge,
 }
 
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 struct LineReplacementScan {
     bytes: Range<usize>,
     has_suffix: bool,
@@ -236,7 +236,7 @@ struct LineReplacementScan {
     rows: Vec<Line>,
     status: LineReplacementStatus,
 }
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 impl LineReplacementScan {
     fn new(bytes: Range<usize>, has_suffix: bool, limit: usize) -> Self {
         Self {
@@ -298,12 +298,12 @@ impl LineReplacementScan {
     }
 }
 
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 pub(super) struct LineReplacement {
     source: std::sync::Arc<String>,
     scan: LineReplacementScan,
 }
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 impl LineReplacement {
     fn new(
         source: std::sync::Arc<String>,
@@ -660,7 +660,7 @@ mod tests {
     }
 }
 
-#[cfg(all(test, feature = "editor-parser"))]
+#[cfg(all(test, feature = "syntax-engine"))]
 mod publication_tests {
     use super::*;
 
@@ -738,7 +738,7 @@ mod publication_tests {
     }
 }
 
-#[cfg(all(test, feature = "editor-parser"))]
+#[cfg(all(test, feature = "syntax-engine"))]
 mod replacement_tests {
     use super::*;
     use std::sync::Arc;

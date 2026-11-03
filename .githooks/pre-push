@@ -56,6 +56,7 @@ cargo clippy -p openwebide-storage -p openwebide-core -p openwebide-auth -p open
 cargo check -p openwebide-language-syntax --target wasm32-wasip2 --locked
 cargo clippy -p openwebide-backend --target wasm32-wasip2 -- -D warnings
 cargo clippy -p openwebide-frontend --target wasm32-unknown-unknown -- -D warnings
+python3 tools/check-language-isolation.py --clippy --tests
 cargo clippy -p openwebide-bridge --all-targets -- -D warnings
 
 echo "[pre-push] 3/4 Running native unit & integration tests..."

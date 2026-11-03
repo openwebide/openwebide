@@ -9,26 +9,49 @@ description = "Grammar descriptors and language policies for host-executed langu
 [dependencies]
 openwebide-plugin-sdk = { version = "=0.1.0", default-features = false }
 tree-sitter = "=0.27.0"
-html5ever = "0.40"
-tree-sitter-rust = { version = "=0.24.2", path = "../../vendor/tree-sitter-rust" }
-tree-sitter-typescript = { version = "=0.23.2" }
-tree-sitter-javascript = { version = "=0.25.0" }
-tree-sitter-python = { version = "=0.25.0" }
-tree-sitter-java = { version = "=0.23.5" }
-tree-sitter-c-sharp = { version = "=0.23.5" }
-tree-sitter-cpp = { version = "=0.23.4" }
-tree-sitter-php = { version = "=0.24.2" }
-tree-sitter-bash = { version = "=0.25.1" }
-tree-sitter-c = { version = "=0.24.2" }
-tree-sitter-go = { version = "=0.25.0" }
-tree-sitter-html = { version = "=0.23.2" }
-tree-sitter-css = { version = "=0.25.0" }
-tree-sitter-json = { version = "=0.24.8" }
-tree-sitter-yaml = { version = "=0.7.2" }
-tree-sitter-toml-ng = { version = "=0.7.0" }
-tree-sitter-md = { version = "=0.5.3" }
-tree-sitter-ini = { version = "=1.4.0" }
-tree-sitter-xml = { version = "=0.7.0" }
+html5ever = { version = "0.40", optional = true }
+tree-sitter-rust = { version = "=0.24.2", path = "../../vendor/tree-sitter-rust", optional = true }
+tree-sitter-typescript = { version = "=0.23.2", optional = true }
+tree-sitter-javascript = { version = "=0.25.0", optional = true }
+tree-sitter-python = { version = "=0.25.0", optional = true }
+tree-sitter-java = { version = "=0.23.5", optional = true }
+tree-sitter-c-sharp = { version = "=0.23.5", optional = true }
+tree-sitter-cpp = { version = "=0.23.4", optional = true }
+tree-sitter-php = { version = "=0.24.2", optional = true }
+tree-sitter-bash = { version = "=0.25.1", optional = true }
+tree-sitter-c = { version = "=0.24.2", optional = true }
+tree-sitter-go = { version = "=0.25.0", optional = true }
+tree-sitter-html = { version = "=0.23.2", optional = true }
+tree-sitter-css = { version = "=0.25.0", optional = true }
+tree-sitter-json = { version = "=0.24.8", optional = true }
+tree-sitter-yaml = { version = "=0.7.2", optional = true }
+tree-sitter-toml-ng = { version = "=0.7.0", optional = true }
+tree-sitter-md = { version = "=0.5.3", optional = true }
+tree-sitter-ini = { version = "=1.4.0", optional = true }
+tree-sitter-xml = { version = "=0.7.0", optional = true }
+
+[features]
+default = ["all"]
+all = ["rust", "javascript-typescript", "python", "java", "csharp", "c-cpp", "php", "shell", "go", "html", "css", "json", "yaml", "toml", "markdown", "ini", "xml", "sql", "plain"]
+rust = ["dep:tree-sitter-rust"]
+javascript-typescript = ["dep:tree-sitter-javascript", "dep:tree-sitter-typescript"]
+python = ["dep:tree-sitter-python"]
+java = ["dep:tree-sitter-java"]
+csharp = ["dep:tree-sitter-c-sharp"]
+c-cpp = ["dep:tree-sitter-c", "dep:tree-sitter-cpp"]
+php = ["dep:tree-sitter-php"]
+shell = ["dep:tree-sitter-bash"]
+go = ["dep:tree-sitter-go"]
+html = ["dep:tree-sitter-html", "dep:html5ever"]
+css = ["dep:tree-sitter-css"]
+json = ["dep:tree-sitter-json"]
+yaml = ["dep:tree-sitter-yaml"]
+toml = ["dep:tree-sitter-toml-ng"]
+markdown = ["dep:tree-sitter-md"]
+ini = ["dep:tree-sitter-ini"]
+xml = ["dep:tree-sitter-xml"]
+sql = []
+plain = []
 
 [lints]
 workspace = true

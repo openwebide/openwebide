@@ -41,6 +41,7 @@ pub struct LanguageSyntax {
     grammars: BTreeMap<String, LanguageGrammar>,
     documents: BTreeMap<String, Document>,
     tick: u64,
+    delegate_embeddings: bool,
 }
 impl LanguageSyntax {
     pub fn new(
@@ -59,8 +60,28 @@ impl LanguageSyntax {
             grammars,
             documents: BTreeMap::new(),
             tick: 0,
+            delegate_embeddings: false,
         })
     }
+    /// Independent families delegate embedded bodies to installed providers.
+    pub fn new_delegated(
+        definitions: Vec<LanguageDefinition>,
+        grammars: BTreeMap<String, LanguageGrammar>,
+    ) -> Result<Self, String> {
+        if grammars.values().any(|grammar| {
+            grammar.provider.is_none()
+                && !matches!(
+                    grammar.language,
+                    SyntaxLanguage::Sql | SyntaxLanguage::Plain
+                )
+        }) {
+            return Err("A declared language grammar is not enabled in this component".into());
+        }
+        let mut engine = Self::new(definitions, grammars)?;
+        engine.delegate_embeddings = true;
+        Ok(engine)
+    }
+
     pub fn definitions(&self) -> &[LanguageDefinition] {
         &self.definitions
     }
@@ -96,10 +117,13 @@ impl LanguageSyntax {
             .documents
             .remove(&request.document)
             .filter(|previous| previous.source.language == request.language);
-        let Some(mut syntax) = previous
-            .map(|document| document.syntax)
-            .or_else(|| SyntaxDocument::with_provider(grammar.language, grammar.provider))
-        else {
+        let Some(mut syntax) = previous.map(|document| document.syntax).or_else(|| {
+            if self.delegate_embeddings {
+                SyntaxDocument::with_delegated_provider(grammar.language, grammar.provider)
+            } else {
+                SyntaxDocument::with_provider(grammar.language, grammar.provider)
+            }
+        }) else {
             return Err("Language grammar could not be initialized".into());
         };
         let (status, analysis) = syntax.prepare_shared(
@@ -118,7 +142,7 @@ impl LanguageSyntax {
             unreachable!()
         };
         if matches!(status, AnalysisStatus::Ready { .. }) {
-            let Some(data) = analysis.and_then(|analysis| {
+            let Some(mut data) = analysis.and_then(|analysis| {
                 analysis.language_data(&request.language, |language| {
                     self.grammars
                         .iter()
@@ -132,6 +156,16 @@ impl LanguageSyntax {
                 response.status = AnalysisStatus::TooLarge;
                 return Ok(output);
             };
+            if self.delegate_embeddings {
+                let scopes = syntax.language_regions(|node, source| {
+                    openwebide_core::editor::language_injection(grammar.language, node, source)
+                })?;
+                let composition = protocol::LanguageComposition::new(&source.source);
+                for scope in scopes {
+                    composition.replace(&mut data, &scope, None)?;
+                }
+                protocol::validate_analysis(&data, &source.source, &request.language)?;
+            }
             response.analysis = Some(data);
             self.tick = self.tick.wrapping_add(1);
             self.documents.insert(

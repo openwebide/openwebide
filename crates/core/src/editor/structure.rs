@@ -2,29 +2,29 @@
 //! unsupported languages retain plain-text editing rather than guessing syntax.
 use std::ops::Range;
 use std::sync::Arc;
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 pub(super) mod fallback;
 pub(super) mod language_rules;
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 pub(super) mod ordering;
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 mod publication;
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 mod reception;
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 mod reconciliation;
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 pub(super) use reception::StructureReception;
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 mod framing;
 pub(super) mod scanning;
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 mod serialization;
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 pub(super) use framing::{StructureFrame, StructureFrameDecoding, StructureFrames};
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 pub(super) use publication::StructurePublicationPreparation;
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 pub(super) use serialization::StructureSerialization;
 
 use crate::highlight::Language;
@@ -133,7 +133,7 @@ impl LexicalStructure {
 }
 
 impl Structure {
-    #[cfg(feature = "editor-parser")]
+    #[cfg(feature = "syntax-engine")]
     pub(super) fn language_data(
         &self,
         language: &str,
@@ -294,7 +294,7 @@ impl Structure {
             .map_or(0..self.source.len(), |index| self.scopes[index].0.clone())
     }
 
-    #[cfg(feature = "editor-parser")]
+    #[cfg(feature = "syntax-engine")]
     pub(super) fn prepare_parsed(
         text: Arc<String>,
         language: Language,
@@ -323,7 +323,7 @@ impl Structure {
         }
     }
 
-    #[cfg(all(feature = "editor-parser", test))]
+    #[cfg(all(feature = "syntax-engine", test))]
     pub(super) fn parsed(
         text: Arc<String>,
         language: Language,
@@ -344,7 +344,7 @@ impl Structure {
         work.finish()
     }
 
-    #[cfg(all(feature = "editor-parser", test))]
+    #[cfg(all(feature = "syntax-engine", test))]
     fn link_brackets(&mut self, mut examined: impl FnMut()) -> Option<()> {
         let mut linking = BracketLinking::default();
         while !linking.advance(self, 256, &mut examined)? {}
@@ -419,7 +419,7 @@ impl Structure {
     }
 }
 
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 #[derive(Default)]
 struct MetadataPreparation {
     phase: u8,
@@ -430,7 +430,7 @@ struct MetadataPreparation {
     failed: bool,
 }
 
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 impl MetadataPreparation {
     fn complete(&self) -> bool {
         self.phase == 8 && !self.failed
@@ -564,7 +564,7 @@ impl MetadataPreparation {
     }
 }
 
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 pub(super) struct StructurePreparation {
     structure: Structure,
     fallback: Option<fallback::FallbackCollection>,
@@ -572,7 +572,7 @@ pub(super) struct StructurePreparation {
     metadata: MetadataPreparation,
     linking: BracketLinking,
 }
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 impl StructurePreparation {
     pub fn collect_fallbacks(
         &mut self,
@@ -619,7 +619,7 @@ impl StructurePreparation {
         .then_some(self.structure)
     }
 }
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 #[derive(Default)]
 struct BracketLinking {
     stack: Vec<usize>,
@@ -629,7 +629,7 @@ struct BracketLinking {
     position: usize,
     failed: bool,
 }
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 impl BracketLinking {
     fn advance(
         &mut self,
@@ -924,7 +924,7 @@ mod tests {
         );
     }
 
-    #[cfg(feature = "editor-parser")]
+    #[cfg(feature = "syntax-engine")]
     #[test]
     fn metadata_batches_match_independent_sort_dedup_and_lexical_bracket_oracles() {
         for ending in ["\n", "\r\n"] {
@@ -977,7 +977,7 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "editor-parser")]
+    #[cfg(feature = "syntax-engine")]
     #[test]
     fn invalid_metadata_remains_rejected_after_yielding_and_releases_its_source() {
         for (protected, scopes, selections) in [
@@ -1014,7 +1014,7 @@ mod tests {
             assert!(weak.upgrade().is_none());
         }
     }
-    #[cfg(feature = "editor-parser")]
+    #[cfg(feature = "syntax-engine")]
     #[test]
     fn bracket_batches_bound_region_and_scope_cursors_and_preserve_pairing() {
         for budget in [1, 7, 256] {
@@ -1058,7 +1058,7 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "editor-parser")]
+    #[cfg(feature = "syntax-engine")]
     #[test]
     fn yielded_bracket_limits_and_owned_source_release_match_synchronous_rejection() {
         for count in [MAX_BRACKETS, MAX_BRACKETS + 1] {
@@ -1106,7 +1106,7 @@ mod tests {
         assert!(weak.upgrade().is_none());
     }
 
-    #[cfg(feature = "editor-parser")]
+    #[cfg(feature = "syntax-engine")]
     #[test]
     fn parsed_brackets_match_the_original_lexical_oracle() {
         #[derive(serde::Deserialize)]
@@ -1160,7 +1160,7 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "editor-parser")]
+    #[cfg(feature = "syntax-engine")]
     #[test]
     fn parsed_brackets_skip_large_opaque_bodies_but_preserve_scope_boundaries() {
         let source = Arc::new(format!("({})", "文😀".repeat(149_000)));
@@ -1211,7 +1211,7 @@ mod tests {
         );
     }
 
-    #[cfg(feature = "editor-parser")]
+    #[cfg(feature = "syntax-engine")]
     #[test]
     fn parsed_bracket_limits_and_scope_validation_match_reconstruction() {
         let parsed = |source: &str, scopes| {
@@ -1293,7 +1293,7 @@ mod tests {
 }
 
 /// Coordinate-only representation, accepted only through validated reconstruction.
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct StructureData {
@@ -1306,7 +1306,7 @@ pub(super) struct StructureData {
 }
 
 /// Structural list patches use record indices, independently of source byte offsets.
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(untagged, deny_unknown_fields)]
 pub(super) enum StructurePublication {
@@ -1314,7 +1314,7 @@ pub(super) enum StructurePublication {
     Changes { changes: StructureChanges },
 }
 
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct StructureChanges {
@@ -1326,7 +1326,7 @@ pub(super) struct StructureChanges {
     brackets: StructuralRecords<(usize, char, Option<usize>)>,
 }
 
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(untagged, deny_unknown_fields)]
 enum StructuralRecords<T> {
@@ -1338,7 +1338,7 @@ enum StructuralRecords<T> {
     },
 }
 
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 impl<T: Clone + PartialEq> StructuralRecords<T> {
     #[cfg(test)]
     fn publication(current: &[T], previous: &[T]) -> Self {
@@ -1401,7 +1401,7 @@ impl<T: Clone + PartialEq> StructuralRecords<T> {
     }
 }
 
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 impl StructurePublication {
     #[cfg(test)]
     pub(super) fn publication(current: &Structure, previous: Option<&Structure>) -> Self {
@@ -1499,7 +1499,7 @@ impl StructurePublication {
     }
 }
 
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 impl Structure {
     pub(super) fn record_count(&self) -> usize {
         self.scopes
@@ -1522,7 +1522,7 @@ impl Structure {
     }
 }
 
-#[cfg(feature = "editor-parser")]
+#[cfg(feature = "syntax-engine")]
 impl StructureData {
     pub(super) fn record_count(&self) -> usize {
         self.scopes

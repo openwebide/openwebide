@@ -42,6 +42,25 @@ pub enum SyntaxHighlightScope {
     Document,
 }
 
+#[cfg(any(
+    feature = "rust",
+    feature = "javascript-typescript",
+    feature = "python",
+    feature = "java",
+    feature = "csharp",
+    feature = "c-cpp",
+    feature = "php",
+    feature = "shell",
+    feature = "go",
+    feature = "html",
+    feature = "css",
+    feature = "json",
+    feature = "yaml",
+    feature = "toml",
+    feature = "markdown",
+    feature = "ini",
+    feature = "xml"
+))]
 fn built_in_context(node: tree_sitter::Node<'_>) -> Option<SyntaxContextKind> {
     // Anonymous terminals such as TypeScript's `string` type are not literals.
     if !node.is_named() {
@@ -100,6 +119,7 @@ fn built_in_context(node: tree_sitter::Node<'_>) -> Option<SyntaxContextKind> {
 
 // PHP represents interpolated expressions as direct string/body children rather
 // than a dedicated interpolation node. Keep delimiters and plain text opaque.
+#[cfg(feature = "php")]
 fn php_context(node: tree_sitter::Node<'_>) -> Option<SyntaxContextKind> {
     if (node.is_named() || matches!(node.kind(), "{" | "}"))
         && node
@@ -128,6 +148,7 @@ pub struct SyntaxProvider {
 }
 
 pub const SYNTAX_PROVIDERS: &[SyntaxProvider] = &[
+    #[cfg(feature = "rust")]
     SyntaxProvider {
         language: Language::Rust,
         context: Some(built_in_context),
@@ -153,6 +174,7 @@ pub const SYNTAX_PROVIDERS: &[SyntaxProvider] = &[
             "raw_string_literal",
         ],
     },
+    #[cfg(feature = "javascript-typescript")]
     SyntaxProvider {
         language: Language::JavaScript,
         context: Some(built_in_context),
@@ -174,6 +196,7 @@ pub const SYNTAX_PROVIDERS: &[SyntaxProvider] = &[
             "jsx_element",
         ],
     },
+    #[cfg(feature = "javascript-typescript")]
     SyntaxProvider {
         language: Language::Jsx,
         context: Some(built_in_context),
@@ -195,6 +218,7 @@ pub const SYNTAX_PROVIDERS: &[SyntaxProvider] = &[
             "jsx_element",
         ],
     },
+    #[cfg(feature = "javascript-typescript")]
     SyntaxProvider {
         language: Language::TypeScript,
         context: Some(built_in_context),
@@ -218,6 +242,7 @@ pub const SYNTAX_PROVIDERS: &[SyntaxProvider] = &[
             "object_type",
         ],
     },
+    #[cfg(feature = "javascript-typescript")]
     SyntaxProvider {
         language: Language::Tsx,
         context: Some(built_in_context),
@@ -242,6 +267,7 @@ pub const SYNTAX_PROVIDERS: &[SyntaxProvider] = &[
             "jsx_element",
         ],
     },
+    #[cfg(feature = "python")]
     SyntaxProvider {
         language: Language::Python,
         context: Some(built_in_context),
@@ -263,6 +289,7 @@ pub const SYNTAX_PROVIDERS: &[SyntaxProvider] = &[
             "comment",
         ],
     },
+    #[cfg(feature = "java")]
     SyntaxProvider {
         language: Language::Java,
         context: Some(built_in_context),
@@ -284,6 +311,7 @@ pub const SYNTAX_PROVIDERS: &[SyntaxProvider] = &[
             "block_comment",
         ],
     },
+    #[cfg(feature = "csharp")]
     SyntaxProvider {
         language: Language::CSharp,
         context: Some(built_in_context),
@@ -306,6 +334,7 @@ pub const SYNTAX_PROVIDERS: &[SyntaxProvider] = &[
             "comment",
         ],
     },
+    #[cfg(feature = "c-cpp")]
     SyntaxProvider {
         language: Language::Cpp,
         context: Some(built_in_context),
@@ -326,6 +355,7 @@ pub const SYNTAX_PROVIDERS: &[SyntaxProvider] = &[
             "comment",
         ],
     },
+    #[cfg(feature = "c-cpp")]
     SyntaxProvider {
         language: Language::C,
         context: Some(built_in_context),
@@ -345,6 +375,7 @@ pub const SYNTAX_PROVIDERS: &[SyntaxProvider] = &[
             "comment",
         ],
     },
+    #[cfg(feature = "php")]
     SyntaxProvider {
         language: Language::Php,
         context: Some(php_context),
@@ -366,6 +397,7 @@ pub const SYNTAX_PROVIDERS: &[SyntaxProvider] = &[
             "comment",
         ],
     },
+    #[cfg(feature = "shell")]
     SyntaxProvider {
         language: Language::Shell,
         context: Some(built_in_context),
@@ -388,6 +420,7 @@ pub const SYNTAX_PROVIDERS: &[SyntaxProvider] = &[
             "command_substitution",
         ],
     },
+    #[cfg(feature = "go")]
     SyntaxProvider {
         language: Language::Go,
         context: Some(built_in_context),
@@ -407,6 +440,7 @@ pub const SYNTAX_PROVIDERS: &[SyntaxProvider] = &[
             "comment",
         ],
     },
+    #[cfg(feature = "html")]
     SyntaxProvider {
         language: Language::Html,
         context: Some(built_in_context),
@@ -418,6 +452,7 @@ pub const SYNTAX_PROVIDERS: &[SyntaxProvider] = &[
         parent_headers: &[],
         fold_nodes: &["element", "script_element", "style_element", "comment"],
     },
+    #[cfg(feature = "css")]
     SyntaxProvider {
         language: Language::Css,
         context: Some(built_in_context),
@@ -429,6 +464,7 @@ pub const SYNTAX_PROVIDERS: &[SyntaxProvider] = &[
         parent_headers: &[],
         fold_nodes: &["block", "comment"],
     },
+    #[cfg(feature = "json")]
     SyntaxProvider {
         language: Language::Json,
         context: Some(built_in_context),
@@ -440,6 +476,7 @@ pub const SYNTAX_PROVIDERS: &[SyntaxProvider] = &[
         parent_headers: &[],
         fold_nodes: &["object", "array"],
     },
+    #[cfg(feature = "yaml")]
     SyntaxProvider {
         language: Language::Yaml,
         context: Some(built_in_context),
@@ -457,6 +494,7 @@ pub const SYNTAX_PROVIDERS: &[SyntaxProvider] = &[
             "block_scalar",
         ],
     },
+    #[cfg(feature = "toml")]
     SyntaxProvider {
         language: Language::Toml,
         context: Some(built_in_context),
@@ -468,6 +506,7 @@ pub const SYNTAX_PROVIDERS: &[SyntaxProvider] = &[
         parent_headers: &[],
         fold_nodes: &["table", "table_array_element", "array", "inline_table"],
     },
+    #[cfg(feature = "markdown")]
     SyntaxProvider {
         language: Language::Markdown,
         context: Some(built_in_context),
@@ -479,6 +518,7 @@ pub const SYNTAX_PROVIDERS: &[SyntaxProvider] = &[
         parent_headers: &[],
         fold_nodes: &["section", "fenced_code_block", "list", "block_quote"],
     },
+    #[cfg(feature = "markdown")]
     SyntaxProvider {
         language: Language::MarkdownInline,
         context: Some(built_in_context),
@@ -490,6 +530,7 @@ pub const SYNTAX_PROVIDERS: &[SyntaxProvider] = &[
         parent_headers: &[],
         fold_nodes: &[],
     },
+    #[cfg(feature = "ini")]
     SyntaxProvider {
         language: Language::Ini,
         context: Some(built_in_context),
@@ -501,6 +542,7 @@ pub const SYNTAX_PROVIDERS: &[SyntaxProvider] = &[
         parent_headers: &[],
         fold_nodes: &["section"],
     },
+    #[cfg(feature = "xml")]
     SyntaxProvider {
         language: Language::Xml,
         context: Some(built_in_context),
@@ -525,6 +567,25 @@ pub fn syntax_provider(language: Language) -> Option<SyntaxProvider> {
 pub type HighlightSelector =
     for<'tree> fn(tree_sitter::Node<'tree>, Option<tree_sitter::Node<'tree>>) -> Option<TokenKind>;
 
+#[cfg(any(
+    feature = "rust",
+    feature = "javascript-typescript",
+    feature = "python",
+    feature = "java",
+    feature = "csharp",
+    feature = "c-cpp",
+    feature = "php",
+    feature = "shell",
+    feature = "go",
+    feature = "html",
+    feature = "css",
+    feature = "json",
+    feature = "yaml",
+    feature = "toml",
+    feature = "markdown",
+    feature = "ini",
+    feature = "xml"
+))]
 fn built_in_highlight(
     node: tree_sitter::Node<'_>,
     parent: Option<tree_sitter::Node<'_>>,
@@ -633,6 +694,14 @@ fn built_in_highlight(
     None
 }
 
+#[cfg(any(
+    feature = "json",
+    feature = "yaml",
+    feature = "toml",
+    feature = "markdown",
+    feature = "ini",
+    feature = "xml"
+))]
 fn config_highlight(
     node: tree_sitter::Node<'_>,
     parent: Option<tree_sitter::Node<'_>>,
@@ -651,6 +720,14 @@ fn config_highlight(
     }
     config_color(node.kind()).or_else(|| built_in_highlight(node, parent))
 }
+#[cfg(any(
+    feature = "json",
+    feature = "yaml",
+    feature = "toml",
+    feature = "markdown",
+    feature = "ini",
+    feature = "xml"
+))]
 fn config_color(kind: &str) -> Option<TokenKind> {
     match kind {
         "string"
@@ -686,6 +763,7 @@ fn config_color(kind: &str) -> Option<TokenKind> {
     }
 }
 
+#[cfg(feature = "markdown")]
 fn markdown_highlight(
     node: tree_sitter::Node<'_>,
     parent: Option<tree_sitter::Node<'_>>,
@@ -693,4 +771,23 @@ fn markdown_highlight(
     // Prose punctuation and capitalized words remain plain. Only grammar-defined
     // Markdown constructs receive color, including delimiters and inline code.
     config_highlight(node, parent).filter(|_| config_color(node.kind()).is_some())
+}
+
+/// Public string language identities let fenced code request community providers
+/// without linking those providers' grammars into the Markdown component.
+pub fn language_injection(
+    language: Language,
+    node: tree_sitter::Node<'_>,
+    source: &str,
+) -> Option<(String, tree_sitter::Range)> {
+    // Parameters are also valid in builds that contain neither embedding grammar.
+    let _ = (node, source);
+    match language {
+        #[cfg(feature = "html")]
+        Language::Html => injections::html_injection(node, source)
+            .map(|(language, range)| (format!("{language:?}").to_ascii_lowercase(), range)),
+        #[cfg(feature = "markdown")]
+        Language::Markdown => injections::markdown_language_injection(node, source),
+        _ => None,
+    }
 }

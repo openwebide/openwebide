@@ -4,7 +4,7 @@ pub use openwebide_plugin_sdk::languages::FoldRange;
 
 /// Validate already ordered persisted ranges without cloning and sorting them.
 /// The ancestor stack retains only end lines, bounded by nesting depth.
-#[cfg(any(test, feature = "editor-parser"))]
+#[cfg(any(test, feature = "syntax-engine"))]
 pub(super) fn are_normalized(ranges: &[FoldRange], line_count: usize) -> bool {
     let mut validation = FoldValidation::default();
     loop {
@@ -498,7 +498,7 @@ mod tests {
         assert!(!super::are_normalized(&ranges, 700));
     }
 
-    #[cfg(feature = "editor-parser")]
+    #[cfg(feature = "syntax-engine")]
     #[test]
     fn markdown_section_growth_cannot_reuse_a_collapsed_preceding_section() {
         use crate::{

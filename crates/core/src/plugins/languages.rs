@@ -2,6 +2,8 @@
 //! component execution remain host adapters; no provider is selected by identity.
 pub use openwebide_plugin_sdk::languages::*;
 use std::collections::BTreeSet;
+mod composition;
+pub use composition::LanguageComposition;
 mod registry;
 pub use registry::*;
 mod service;
@@ -52,11 +54,18 @@ fn handler(value: &LanguageHandler) -> bool {
 }
 
 pub fn validate_definitions(definitions: &[LanguageDefinition]) -> Result<(), String> {
-    if definitions.len() > MAX_LANGUAGES
+    validate_definition_limits(definitions, MAX_LANGUAGES, MAX_DEFINITION_BYTES)
+}
+fn validate_definition_limits(
+    definitions: &[LanguageDefinition],
+    limit: usize,
+    bytes: usize,
+) -> Result<(), String> {
+    if definitions.len() > limit
         || serde_json::to_vec(definitions)
             .map_err(|error| error.to_string())?
             .len()
-            > MAX_DEFINITION_BYTES
+            > bytes
     {
         return Err("Language contributions exceed their metadata limit".into());
     }

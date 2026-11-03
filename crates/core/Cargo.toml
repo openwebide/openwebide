@@ -9,7 +9,7 @@ authors.workspace = true
 
 [dependencies]
 openwebide-plugin-sdk = { version = "=0.1.0", default-features = false }
-openwebide-language-grammars = { path = "../language-grammars", version = "0.1.0", optional = true }
+openwebide-language-grammars = { path = "../language-grammars", version = "0.1.0", default-features = false, optional = true }
 futures = { workspace = true }
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 chrono-tz = "0.10"
@@ -44,7 +44,27 @@ rand_chacha = { version = "0.9", optional = true }
 private-input = ["dep:hpke", "dep:rand_chacha"]
 test-support = []
 editor-analysis = []
-editor-parser = ["editor-analysis", "dep:tree-sitter", "dep:openwebide-language-grammars"]
+syntax-engine = ["editor-analysis", "dep:tree-sitter", "dep:openwebide-language-grammars"]
+editor-parser = ["syntax-engine", "openwebide-language-grammars/all"]
+syntax-rust = ["syntax-engine", "openwebide-language-grammars/rust"]
+syntax-javascript-typescript = ["syntax-engine", "openwebide-language-grammars/javascript-typescript"]
+syntax-python = ["syntax-engine", "openwebide-language-grammars/python"]
+syntax-java = ["syntax-engine", "openwebide-language-grammars/java"]
+syntax-csharp = ["syntax-engine", "openwebide-language-grammars/csharp"]
+syntax-c-cpp = ["syntax-engine", "openwebide-language-grammars/c-cpp"]
+syntax-php = ["syntax-engine", "openwebide-language-grammars/php"]
+syntax-shell = ["syntax-engine", "openwebide-language-grammars/shell"]
+syntax-go = ["syntax-engine", "openwebide-language-grammars/go"]
+syntax-html = ["syntax-engine", "openwebide-language-grammars/html"]
+syntax-css = ["syntax-engine", "openwebide-language-grammars/css"]
+syntax-json = ["syntax-engine", "openwebide-language-grammars/json"]
+syntax-yaml = ["syntax-engine", "openwebide-language-grammars/yaml"]
+syntax-toml = ["syntax-engine", "openwebide-language-grammars/toml"]
+syntax-markdown = ["syntax-engine", "openwebide-language-grammars/markdown"]
+syntax-ini = ["syntax-engine", "openwebide-language-grammars/ini"]
+syntax-xml = ["syntax-engine", "openwebide-language-grammars/xml"]
+syntax-sql = ["syntax-engine", "openwebide-language-grammars/sql"]
+syntax-plain = ["syntax-engine", "openwebide-language-grammars/plain"]
 
 [dev-dependencies]
 futures = { workspace = true }

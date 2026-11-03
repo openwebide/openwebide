@@ -9,6 +9,8 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Add independent language-family grammar features and installed-provider composition for embedded language scopes. The public syntax toolkit supports custom Markdown fenced-code IDs without bundling their parsers; selected definitions, source coordinates, provider preferences, cancellation and child-document cleanup share one host-service contract. Fix empty trailing-row token export for SQL. Editor integration and independent default packages remain in progress.
+
 - Add an explicit uniform line-comment declaration to the language SDK and reject conflicting embedded comment strategies. Existing declarations retain their wire format unless they opt in.
 
 - Add the language plugin foundation: versioned SDK declarations and source/result contracts, shared provider selection and document synchronization, bounded host component sessions, and parser-free editor result validation and editing rules. Provide a public syntax toolkit and pinned WASI C toolchain for plugin authors. The editor's migration to default language packages remains in progress.

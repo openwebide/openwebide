@@ -11,6 +11,7 @@ use std::sync::{
     Arc, Mutex,
     atomic::{AtomicU64, Ordering},
 };
+mod composition;
 mod documents;
 pub use documents::LanguageDocumentRequest;
 #[cfg(test)]
@@ -24,6 +25,15 @@ pub struct LanguageService<H> {
     bindings: Arc<[ProjectPlugin]>,
     provider: Arc<RegisteredLanguage>,
     sequence: Arc<AtomicU64>,
+    preferences: Arc<LanguagePreferences>,
+    definitions: Arc<[LanguageDefinition]>,
+    embedded_documents: Arc<Mutex<std::collections::BTreeMap<String, EmbeddedDocuments>>>,
+    hosts: Arc<Mutex<std::collections::BTreeMap<String, Arc<Mutex<ServiceState>>>>>,
+}
+#[derive(Default)]
+struct EmbeddedDocuments {
+    request: u64,
+    documents: std::collections::BTreeMap<String, String>,
 }
 #[derive(Default)]
 struct ServiceState {
@@ -48,7 +58,7 @@ impl ServiceState {
 }
 #[derive(Clone)]
 struct CachedHost<H> {
-    host: H,
+    host: Arc<H>,
     state: Arc<Mutex<ServiceState>>,
 }
 impl<H: PluginActionHost> LanguageService<H> {
@@ -57,16 +67,68 @@ impl<H: PluginActionHost> LanguageService<H> {
         bindings: Vec<ProjectPlugin>,
         provider: RegisteredLanguage,
     ) -> Result<Self, String> {
+        Self::new_with_preferences(host, bindings, provider, LanguagePreferences::default())
+    }
+    pub fn new_with_preferences(
+        host: H,
+        bindings: Vec<ProjectPlugin>,
+        provider: RegisteredLanguage,
+        preferences: LanguagePreferences,
+    ) -> Result<Self, String> {
         select_language_provider(&bindings, &provider)?;
+        preferences.validate()?;
+        let registry = LanguageRegistry::from_bindings(&bindings);
+        let mut definitions = std::collections::BTreeMap::new();
+        for candidate in &registry.providers {
+            if let LanguageSelection::Selected(selected) =
+                registry.select("", "", Some(&candidate.definition.id), &preferences)
+            {
+                definitions.insert(selected.definition.id.clone(), selected.definition.clone());
+            }
+        }
+        definitions.insert(provider.definition.id.clone(), provider.definition.clone());
+        let definitions: Vec<_> = definitions.into_values().collect();
+        validate_registered_definitions(&definitions)?;
+        let state = Arc::default();
+        let hosts = std::collections::BTreeMap::from([(
+            provider.plugin_namespace.clone(),
+            Arc::clone(&state),
+        )]);
         Ok(Self {
             host: CachedHost {
-                host,
-                state: Arc::default(),
+                host: Arc::new(host),
+                state,
             },
             bindings: bindings.into(),
             provider: Arc::new(provider),
             sequence: Arc::default(),
+            preferences: Arc::new(preferences),
+            definitions: definitions.into(),
+            embedded_documents: Arc::default(),
+            hosts: Arc::new(Mutex::new(hosts)),
         })
+    }
+    fn for_provider(&self, provider: RegisteredLanguage) -> Self {
+        let state = self
+            .hosts
+            .lock()
+            .unwrap()
+            .entry(provider.plugin_namespace.clone())
+            .or_default()
+            .clone();
+        Self {
+            host: CachedHost {
+                host: Arc::clone(&self.host.host),
+                state,
+            },
+            bindings: Arc::clone(&self.bindings),
+            provider: Arc::new(provider),
+            sequence: Arc::clone(&self.sequence),
+            preferences: Arc::clone(&self.preferences),
+            definitions: Arc::clone(&self.definitions),
+            embedded_documents: Arc::clone(&self.embedded_documents),
+            hosts: Arc::clone(&self.hosts),
+        }
     }
     pub async fn request(
         &self,

@@ -52,6 +52,7 @@ pub struct SyntaxDocument {
     parser: Option<Parser>,
     provider: Option<SyntaxProvider>,
     language: Language,
+    delegate_embeddings: bool,
     ready: bool,
     tree: Option<Tree>,
     embedded: Vec<EmbeddedSyntax>,
@@ -93,6 +94,7 @@ impl SyntaxDocument {
             parser,
             provider,
             language,
+            delegate_embeddings: false,
             ready: false,
             tree: None,
             embedded: Vec::new(),
@@ -119,6 +121,70 @@ impl SyntaxDocument {
             paint_progress: None,
             painting: None,
         })
+    }
+
+    /// Parse only this provider's grammar; embedded regions are resolved by
+    /// the installed-provider service rather than linked parser dependencies.
+    pub fn with_delegated_provider(
+        language: Language,
+        provider: Option<SyntaxProvider>,
+    ) -> Option<Self> {
+        let mut document = Self::with_provider(language, provider)?;
+        document.delegate_embeddings = true;
+        Some(document)
+    }
+
+    /// Extract source-owned regions using a component's own injection policy.
+    pub fn language_regions(
+        &self,
+        mut select: impl FnMut(Node<'_>, &str) -> Option<(String, Range)>,
+    ) -> Result<Vec<crate::plugins::languages::LanguageScope>, String> {
+        if !self.ready {
+            return Err("Language document is not prepared".into());
+        }
+        let mut regions = Vec::new();
+        let Some(tree) = &self.tree else {
+            return Ok(regions);
+        };
+        let mut cursor = tree.walk();
+        let mut visited = 0;
+        loop {
+            visited += 1;
+            if visited > MAX_FOLD_NODES {
+                return Err("Language injection traversal exceeds its node limit".into());
+            }
+            if let Some((language, range)) = select(cursor.node(), &self.text) {
+                if range.start_byte > range.end_byte
+                    || self.text.get(range.start_byte..range.end_byte).is_none()
+                    || range.start_point != indexed_point(&self.source_lines, range.start_byte)
+                    || range.end_point != indexed_point(&self.source_lines, range.end_byte)
+                    || regions.last().is_some_and(
+                        |region: &crate::plugins::languages::LanguageScope| {
+                            region.range.end > range.start_byte
+                        },
+                    )
+                {
+                    return Err("Language injection has invalid source coordinates".into());
+                }
+                regions.push(crate::plugins::languages::LanguageScope {
+                    language,
+                    range: crate::plugins::languages::TextRange {
+                        start: range.start_byte,
+                        end: range.end_byte,
+                    },
+                });
+            }
+            if !cursor.goto_first_child() {
+                loop {
+                    if cursor.goto_next_sibling() {
+                        break;
+                    }
+                    if !cursor.goto_parent() {
+                        return Ok(regions);
+                    }
+                }
+            }
+        }
     }
 
     pub fn update(&mut self, text: &str, should_continue: impl FnMut() -> bool) -> SyntaxStatus {

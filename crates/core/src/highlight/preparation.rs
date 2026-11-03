@@ -189,7 +189,7 @@ mod tests {
     use super::*;
     use crate::highlight::{Language, highlight_lines, share_token_rows};
 
-    #[cfg(feature = "editor-parser")]
+    #[cfg(feature = "syntax-engine")]
     #[test]
     fn validated_replacements_reuse_only_the_exact_compatible_base() {
         let source = Arc::new(format!(

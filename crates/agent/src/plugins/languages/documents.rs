@@ -21,18 +21,10 @@ impl<H: PluginActionHost> LanguageService<H> {
         &self.provider
     }
     pub fn definitions(&self) -> &[LanguageDefinition] {
-        &self
-            .bindings
-            .iter()
-            .find(|binding| binding.prepared.storage_namespace() == self.provider.plugin_namespace)
-            .expect("selected binding")
-            .prepared
-            .manifest
-            .contributions
-            .languages
+        &self.definitions
     }
 
-    pub async fn analyze(
+    pub(super) async fn analyze_document(
         &self,
         document: LanguageDocumentRequest,
         now_ms: u64,
@@ -164,6 +156,40 @@ impl<H: PluginActionHost> LanguageService<H> {
     }
 
     pub async fn close(&self, document: &str, now_ms: u64) -> Result<(), String> {
+        let children = self
+            .embedded_documents
+            .lock()
+            .unwrap()
+            .remove(document)
+            .unwrap_or_default()
+            .documents;
+        let mut result = self.close_document(document, now_ms).await;
+        if let Err(error) = self.close_embedded(children, now_ms).await {
+            result = result.and(Err(error));
+        }
+        result
+    }
+    pub(super) async fn close_embedded(
+        &self,
+        documents: std::collections::BTreeMap<String, String>,
+        now_ms: u64,
+    ) -> Result<(), String> {
+        let registry = LanguageRegistry::from_bindings(&self.bindings);
+        let mut result = Ok(());
+        for (document, namespace) in documents {
+            if let Some(provider) = registry.find(&namespace)
+                && let Err(error) = self
+                    .for_provider(provider.clone())
+                    .close_document(&document, now_ms)
+                    .await
+            {
+                result = result.and(Err(error));
+            }
+        }
+        result
+    }
+
+    pub(super) async fn close_document(&self, document: &str, now_ms: u64) -> Result<(), String> {
         self.host.state.lock().unwrap().documents.remove(document);
         self.request(
             &LanguageInput::Close {
