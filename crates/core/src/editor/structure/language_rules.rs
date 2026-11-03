@@ -123,6 +123,19 @@ impl Structure {
         let root = configurations
             .get(data.language.as_str())
             .ok_or("Language structure has no declared root configuration")?;
+        if root.uniform_line_comments
+            && data.scopes.iter().any(|scope| {
+                configurations
+                    .get(scope.language.as_str())
+                    .is_none_or(|configuration| {
+                        configuration.line_comment != root.line_comment
+                            || (root.line_comment.is_none()
+                                && configuration.block_comment != root.block_comment)
+                    })
+            })
+        {
+            return Err("Embedded scopes contradict uniform line-comment rules".into());
+        }
         let rules = LanguageRules {
             root: (*root).clone(),
             root_structure: definitions

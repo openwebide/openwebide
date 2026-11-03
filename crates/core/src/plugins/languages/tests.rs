@@ -191,6 +191,7 @@ fn invalid_language_payloads_cannot_activate_a_provider() {
         json!({"id":"rust","name":"Bad","filenames":["../file.rs"]}),
         json!({"id":"rust","name":"Bad","firstLine":"["}),
         json!({"id":"rust","name":"Bad","configuration":{"lineComment":"//\n"}}),
+        json!({"id":"rust","name":"Bad","configuration":{"uniformLineComments":true}}),
         json!({"id":"rust","name":"Bad","configuration":{"wordPattern":"x".repeat(1025)}}),
     ] {
         let binding = binding("invalid", "host", definition);

@@ -88,10 +88,13 @@ pub fn validate_definitions(definitions: &[LanguageDefinition]) -> Result<(), St
         }
         optional_expression(&definition.first_line)?;
         let config = &definition.configuration;
-        if config
-            .line_comment
-            .as_deref()
-            .is_some_and(|value| !marker(value))
+        if (config.uniform_line_comments
+            && config.line_comment.is_none()
+            && config.block_comment.is_none())
+            || config
+                .line_comment
+                .as_deref()
+                .is_some_and(|value| !marker(value))
             || config.block_comment.as_ref().is_some_and(|value| {
                 !marker(&value.open)
                     || !marker(&value.close)

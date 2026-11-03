@@ -9,6 +9,8 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Add an explicit uniform line-comment declaration to the language SDK and reject conflicting embedded comment strategies. Existing declarations retain their wire format unless they opt in.
+
 - Add the language plugin foundation: versioned SDK declarations and source/result contracts, shared provider selection and document synchronization, bounded host component sessions, and parser-free editor result validation and editing rules. Provide a public syntax toolkit and pinned WASI C toolchain for plugin authors. The editor's migration to default language packages remains in progress.
 
 - Keep chats usable after a model returns malformed tool-call JSON. Replay failed arguments as diagnostic data for both model protocols while preserving the original call, tool results and execution validation.

@@ -34,6 +34,26 @@ fn context(source: &str, data: protocol::Structure) -> Structure {
 }
 
 #[test]
+fn uniform_line_comments_reject_conflicting_embedded_markers_and_block_fallbacks() {
+    let source = Arc::new("x".to_string());
+    let mut definitions = definitions();
+    definitions[0].configuration.uniform_line_comments = true;
+    let mut supplied = data();
+    supplied.scopes.push(protocol::LanguageScope {
+        range: protocol::TextRange { start: 0, end: 1 },
+        language: "embedded".into(),
+    });
+    assert!(Structure::from_language_data(source.clone(), supplied.clone(), &definitions).is_err());
+    definitions[1].configuration.line_comment = definitions[0].configuration.line_comment.clone();
+    assert!(Structure::from_language_data(source.clone(), supplied.clone(), &definitions).is_ok());
+    definitions[0].configuration.line_comment = None;
+    definitions[1].configuration.line_comment = None;
+    assert!(Structure::from_language_data(source.clone(), supplied.clone(), &definitions).is_err());
+    definitions[1].configuration.block_comment = definitions[0].configuration.block_comment.clone();
+    assert!(Structure::from_language_data(source, supplied, &definitions).is_ok());
+}
+
+#[test]
 fn custom_ids_supply_comments_in_root_and_embedded_scopes_with_unicode_and_undo() {
     let source = "文😀\r\ntext\r\n";
     let mut data = data();

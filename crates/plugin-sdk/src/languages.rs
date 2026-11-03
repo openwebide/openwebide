@@ -67,6 +67,10 @@ pub struct LanguageDefinition {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct LanguageConfiguration {
+    /// Line commenting uses this configuration throughout the document, even
+    /// before analysis. Embedded scopes must preserve its line-comment strategy.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub uniform_line_comments: bool,
     #[serde(default)]
     pub line_comment: Option<String>,
     #[serde(default)]
@@ -361,6 +365,28 @@ pub struct Structure {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn uniform_line_comments_are_explicit_and_old_configuration_wire_stays_unchanged() {
+        let mut configuration: LanguageConfiguration = serde_json::from_value(json!({
+            "lineComment": "#"
+        }))
+        .unwrap();
+        assert!(!configuration.uniform_line_comments);
+        assert!(
+            serde_json::to_value(&configuration)
+                .unwrap()
+                .get("uniformLineComments")
+                .is_none()
+        );
+        configuration.uniform_line_comments = true;
+        let wire = serde_json::to_value(&configuration).unwrap();
+        assert_eq!(wire["uniformLineComments"], true);
+        assert_eq!(
+            serde_json::from_value::<LanguageConfiguration>(wire).unwrap(),
+            configuration
+        );
+    }
 
     #[test]
     fn language_service_wire_round_trips_full_and_incremental_unicode_sources() {

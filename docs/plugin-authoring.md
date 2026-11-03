@@ -87,3 +87,10 @@ and 100,000 records. Components retain bounded, owner-isolated document state on
 the host; eviction, restart and close discard that state. Cancellation, traps
 and invalid results discard the affected component session. Clients retain plain
 editing when analysis is unavailable.
+
+`configuration.uniformLineComments: true` promises that the declared line marker
+or block-comment fallback applies throughout the document. Omit it when embedded
+scopes can change that strategy. Structural results whose embedded scopes
+contradict this declaration are rejected. The editor migration can use this
+contract to preserve immediate line-comment commands without guessing language
+identities or running a browser parser.
