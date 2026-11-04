@@ -1,7 +1,10 @@
 //! Language contribution validation and shared provider policy. Transport and
 //! component execution remain host adapters; no provider is selected by identity.
 pub use openwebide_plugin_sdk::languages::*;
-use std::collections::BTreeSet;
+use std::{
+    collections::BTreeSet,
+    sync::{LazyLock, Mutex},
+};
 mod composition;
 pub use composition::LanguageComposition;
 mod registry;
@@ -11,6 +14,9 @@ pub use service::*;
 
 pub const MAX_LANGUAGES: usize = 64;
 pub const MAX_DEFINITION_BYTES: usize = 256 * 1024;
+const MAX_VALIDATED_EXPRESSIONS: usize = 256;
+static VALID_EXPRESSIONS: LazyLock<Mutex<BTreeSet<String>>> =
+    LazyLock::new(|| Mutex::new(BTreeSet::new()));
 
 fn identifier(value: &str) -> bool {
     !value.is_empty()
@@ -27,12 +33,23 @@ fn expression(value: &str) -> Result<(), String> {
     if value.is_empty() || value.len() > 1024 {
         return Err("Language expressions require 1–1,024 bytes".into());
     }
+    if VALID_EXPRESSIONS.lock().unwrap().contains(value) {
+        return Ok(());
+    }
     regex::RegexBuilder::new(value)
         .size_limit(1024 * 1024)
         .dfa_size_limit(1024 * 1024)
         .build()
         .map(|_| ())
-        .map_err(|_| "Invalid or oversized language expression".into())
+        .map_err(|_| "Invalid or oversized language expression".to_string())?;
+    // Exact patterns have the same validity under these fixed compiler limits.
+    // Retain only bounded strings, not compiled engines or provider authority.
+    let mut validated = VALID_EXPRESSIONS.lock().unwrap();
+    validated.insert(value.to_owned());
+    while validated.len() > MAX_VALIDATED_EXPRESSIONS {
+        let _ = validated.pop_first();
+    }
+    Ok(())
 }
 fn optional_expression(value: &Option<String>) -> Result<(), String> {
     if let Some(value) = value {

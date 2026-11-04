@@ -288,8 +288,8 @@ class Browser:
             time.sleep(0.1)
         diagnostics = self.script('''
             const evidence = window.editorLanguageEvidence;
-            return {responses: evidence?.responses, sources: evidence?.sources.map(source => source.length),
-                outcomes: evidence?.outcomes, errors: evidence?.errors,
+            return {now: performance.now(), responses: evidence?.responses, sources: evidence?.sources.map(source => source.length),
+                outcomes: evidence?.outcomes, requests: evidence?.requests, errors: evidence?.errors,
                 status: document.querySelector('.statusbar')?.innerText?.slice(0, 1000),
                 notices: [...document.querySelectorAll('.statusbar button[title]')]
                     .map(button => button.title).filter(title => title).slice(0, 12)};

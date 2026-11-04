@@ -301,11 +301,13 @@ pub async fn ready(state: &TestState) {
         }
         let ready = state.languages.status.get_untracked() == LanguageStatus::Ready && !actions.syntax_is_pending();
         if !ready && js_sys::Date::now() - started >= 2500.0 && !reported.replace(true) {
-            wasm_bindgen_test::console_log!("language readiness: project={:?} path={:?} status={:?} loaded={} selected={:?} pending={} limit={:?} inputs={} prepared={:?}",
+            wasm_bindgen_test::console_log!("language readiness: project={:?} path={:?} status={:?} loaded={} selected={:?} pending={} limit={:?} inputs={} source_bytes={} source_prefix={:?} prepared={:?}",
                 state.projects.active_project.get_untracked(), state.workspace.open_file.get_untracked(),
                 state.languages.status.get_untracked(), state.languages.settings_loaded.get_untracked(),
                 state.languages.selected.with_untracked(|provider| provider.as_ref().map(|provider| provider.definition.id.clone())),
                 actions.syntax_is_pending(), actions.limit(), state.fake.language_inputs.borrow().len(),
+                state.workspace.content.with_untracked(|source| source.len()),
+                state.workspace.content.with_untracked(|source| source.chars().take(80).collect::<String>()),
                 state.workspace.editor_preparation.with_untracked(|prepared| prepared.as_ref().map(|prepared| (prepared.scope.key.clone(), prepared.status)))
             );
         }

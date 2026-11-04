@@ -3,7 +3,7 @@
 (() => {
   if (window.editorLanguageEvidence) return;
   const evidence = window.editorLanguageEvidence = {
-    hold: __HOLD_LANGUAGE__, held: 0, queued: [], sources: [], errors: [], responses: 0, outcomes: [],
+    hold: __HOLD_LANGUAGE__, held: 0, queued: [], sources: [], errors: [], responses: 0, outcomes: [], requests: [],
   };
   window.releaseEditorLanguage = () => {
     evidence.hold = false;
@@ -29,12 +29,26 @@
   window.fetch = async function(...args) {
     const request = args[0] instanceof Request ? args[0].clone() : new Request(args[0], args[1]);
     const path = new URL(request.url).pathname;
-    if (request.method !== 'POST' || !/\/plugins\/(invoke|continue)$/.test(path)) {
+    if (request.method !== 'POST' || !/\/plugins\/(invoke|continue|cancel)$/.test(path)) {
       return original.apply(this, args);
     }
     let body = null;
     try { body = JSON.parse(await request.text()); } catch {}
-    const response = await original.apply(this, args);
+    const trace = {path, started: performance.now(),
+      revision: actors.get(body?.continuation?.id ?? body?.id)?.input.revision ?? null};
+    evidence.requests.push(trace);
+    if (evidence.requests.length > 64) evidence.requests.shift();
+    let response;
+    try {
+      response = await original.apply(this, args);
+      trace.http = response.status;
+    } catch (error) {
+      trace.error = String(error).slice(0, 256);
+      throw error;
+    } finally {
+      trace.elapsed = performance.now() - trace.started;
+    }
+    if (path.endsWith('/cancel')) return response;
     if (!response.ok || !body) {
       evidence.outcomes.push({path, http: response.status});
       if (evidence.outcomes.length > 64) evidence.outcomes.shift();
@@ -48,6 +62,7 @@
         const input = JSON.parse(call.arguments);
         if (input.operation === 'close') documents.delete(input.document);
         if (input.operation !== 'analyze') return response;
+        trace.revision = input.revision;
         actors.set(invocation.id, {input, bytes: sourceFor(input)});
         if (actors.size > 128) actors.delete(actors.keys().next().value);
       }

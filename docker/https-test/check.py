@@ -89,12 +89,12 @@ try:
         context = ssl.create_default_context(cafile=str(ca))
         jar = http.cookiejar.CookieJar()
         client = urllib.request.build_opener(urllib.request.HTTPSHandler(context=context), urllib.request.HTTPCookieProcessor(jar))
-        def request(path, body=None, method=None, headers=None):
+        def request(path, body=None, method=None, headers=None, *, timeout=30):
             payload = None if body is None else body if isinstance(body, bytes) else json.dumps(body).encode()
             return client.open(urllib.request.Request(origin + path, data=payload, method=method,
-                headers={"Content-Type": "application/json", "x-openwebide": "1", **(headers or {})}), timeout=30)
-        def api(path, body=None, method=None):
-            with request("/api" + path, body, method) as response:
+                headers={"Content-Type": "application/json", "x-openwebide": "1", **(headers or {})}), timeout=timeout)
+        def api(path, body=None, method=None, *, timeout=30):
+            with request("/api" + path, body, method, timeout=timeout) as response:
                 return json.load(response)
         for _ in range(200):
             try:
@@ -109,6 +109,14 @@ try:
             raise AssertionError("App and bridge did not become ready through HTTPS")
         api("/auth/register", {"username": "https-check", "password": "disposable-https-test-password"})
         assert jar and all(cookie.secure for cookie in jar), "TLS proxy must produce Secure session cookies"
+        # Prepare the complete default package baseline before transport checks,
+        # using the normal installation API and its cold provisioning budget.
+        baseline = json.loads((source.parent.parent / "plugins/bundled.json").read_text())
+        installed = api("/plugins", timeout=300)
+        assert {
+            (entry["prepared"]["source"]["repository"], entry["prepared"]["source"]["commit"], entry["prepared"]["source"]["path"])
+            for entry in installed
+        } == {(baseline["repository"], baseline["commit"], path) for path in baseline["paths"]}, "Default packages did not initialize"
         # This fixture verifies transport, including unbuffered SSE. Give the
         # registered tools room so compaction cannot preempt the first delta.
         connection = api("/connections", {"name": "HTTPS fixture", "kind": "llamacpp", "base_url": "http://127.0.0.1:5005", "model": "proxy-test", "context_limit": 32768})

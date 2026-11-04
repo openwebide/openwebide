@@ -13,6 +13,7 @@ from pathlib import Path
 import runpy
 import secrets
 import shutil
+import subprocess
 import tempfile
 import time
 
@@ -204,6 +205,16 @@ def check(mode, ending, windowed, ascii_row=False):
             directory = Path(tempfile.gettempdir()) / 'openwebide-editor-input-diagnostics' / (
                 f'{mode}-{ending_name}-{windowed}-{ascii_row}')
             directory.mkdir(parents=True, exist_ok=True)
+            processes = [item.process for item in (host, runtime, browser)
+                         if item is not None and item.process is not None]
+            if processes:
+                try:
+                    result = subprocess.run(
+                        ['ps', '-p', ','.join(str(process.pid) for process in processes),
+                         '-o', 'pid,ppid,pcpu,rss,etime,comm'], capture_output=True, text=True, check=False)
+                    (directory / 'processes.txt').write_text(result.stdout + result.stderr)
+                except OSError:
+                    pass
             for name, original in [('bridge.log', host.state / 'bridge.log'),
                                    ('runtime.log', runtime.state / 'runtime.log')]:
                 if original.exists():

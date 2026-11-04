@@ -10137,7 +10137,14 @@ async fn diff_syntax_paint_keeps_word_changes_and_embedded_context_in_both_modes
         );
         mounted.click_text("Split");
         wait_until("host split colors", || {
-            mounted.has_element(".sbs-cell[data-line='3'] .tok-comment")
+            let panes = mounted.root.query_selector_all(".sbs-pane").unwrap();
+            panes.length() == 2
+                && (0..panes.length()).all(|index| {
+                    let pane: web_sys::Element = panes.item(index).unwrap().unchecked_into();
+                    pane.query_selector(".sbs-cell[data-line='3'] .tok-comment")
+                        .unwrap()
+                        .is_some()
+                })
         })
         .await;
         let panes = mounted.root.query_selector_all(".sbs-pane").unwrap();
@@ -13154,6 +13161,11 @@ async fn worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_
                     mounted.state.languages.status.get_untracked(),
                     openwebide_frontend::state::languages::LanguageStatus::Unavailable(_)
                 )
+                && mounted
+                    .root
+                    .query_selector(".tok-keyword,.tok-function")
+                    .unwrap()
+                    .is_none()
         })
         .await;
         assert_eq!(actions.source(), "fn fallback() {}");

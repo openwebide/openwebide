@@ -22,6 +22,27 @@ fn rust() -> serde_json::Value {
 }
 
 #[test]
+fn repeated_registration_preserves_expression_limits_and_bounds_retained_validation() {
+    let mut definition: LanguageDefinition = serde_json::from_value(rust()).unwrap();
+    for index in 0..2 * MAX_VALIDATED_EXPRESSIONS {
+        definition.first_line = Some(format!("^registration_{index}$"));
+        validate_definitions(std::slice::from_ref(&definition)).unwrap();
+        validate_definitions(std::slice::from_ref(&definition)).unwrap();
+    }
+    assert!(VALID_EXPRESSIONS.lock().unwrap().len() <= MAX_VALIDATED_EXPRESSIONS);
+    for invalid in [
+        String::new(),
+        "[".into(),
+        "^registration_511$[".into(),
+        "a".repeat(1025),
+        r"(?:\p{L}){1000}".into(),
+    ] {
+        definition.first_line = Some(invalid);
+        assert!(validate_definitions(std::slice::from_ref(&definition)).is_err());
+    }
+}
+
+#[test]
 fn declarations_require_the_versioned_contract_and_analysis_requires_a_component() {
     let mut manifest: PluginManifest = binding("rust", "host", rust()).prepared.manifest;
     manifest.validate().unwrap();
