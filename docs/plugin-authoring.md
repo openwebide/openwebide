@@ -47,6 +47,13 @@ and pure host analysis are described below. Declarative workspace
 panels use API 4 and the independent version-1 UI schema.
 Core file editing, shell and Git tools remain built in.
 
+Executable packages may set `contributions.context` to `false` when they have no
+chat-context hook. Omission preserves the existing enabled behavior; `true`
+explicitly enables it. This declaration is independent of tools, panels and
+languages, so a language package can still contribute read-only chat context.
+Language-only packages should opt out to avoid compiling unused hooks during
+chat startup.
+
 Validate manifest/export agreement and use fixture-based component checks before
 publishing. Verify real behavior on both server and paired hosts: local projects
 execute on the paired bridge, remote projects on the server bridge. Browser and

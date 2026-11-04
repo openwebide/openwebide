@@ -188,6 +188,71 @@ fn context_precedes_model_selection_and_retains_only_executable_authority_in_bot
 }
 
 #[test]
+fn language_packages_control_context_hooks_without_losing_tools_in_both_modes() {
+    futures::executor::block_on(async {
+        for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+            for tools in [false, true] {
+                for declaration in [None, Some(true), Some(false)] {
+                    let mut binding = binding();
+                    binding.prepared.manifest.compatibility.plugin_api = 5;
+                    binding.prepared.manifest.contributions.languages = vec![
+                        serde_json::from_value(serde_json::json!({
+                            "id":"notes", "name":"Notes", "extensions":["notes"]
+                        }))
+                        .unwrap(),
+                    ];
+                    binding.prepared.manifest.contributions.context = declaration;
+                    if !tools {
+                        binding.prepared.manifest.contributions.tools.clear();
+                    }
+                    binding.prepared.manifest.validate().unwrap();
+                    let transport = transport(serde_json::json!({
+                        "prompt":"CUSTOM LANGUAGE CONTEXT", "disabled_tools":[]
+                    }));
+                    let host = Host::default();
+                    let plan = plan_with_plugin_context(
+                        &runtime(),
+                        input(mode, false),
+                        std::slice::from_ref(&binding),
+                        &transport,
+                        host.clone(),
+                        |plugins| async move {
+                            assert_eq!(plugins.len(), 1);
+                            Ok(std::collections::BTreeMap::from([(
+                                plugins[0].digest.clone(),
+                                "language-context-grant".into(),
+                            )]))
+                        },
+                    )
+                    .await
+                    .unwrap();
+                    let enabled = declaration != Some(false);
+                    assert_eq!(transport.calls.lock().unwrap().len(), usize::from(enabled));
+                    assert_eq!(host.0.lock().unwrap().len(), usize::from(enabled));
+                    assert_eq!(
+                        plan.request.system_prompt.unwrap(),
+                        if enabled {
+                            "BASE\n\nCUSTOM LANGUAGE CONTEXT"
+                        } else {
+                            "BASE"
+                        }
+                    );
+                    assert_eq!(
+                        plan.request
+                            .tools
+                            .iter()
+                            .any(|tool| tool.name == "community_lookup"),
+                        tools
+                    );
+                    assert_eq!(plan.plugin_executables.len(), usize::from(tools));
+                    assert!(transport.cancelled.lock().unwrap().is_empty());
+                }
+            }
+        }
+    });
+}
+
+#[test]
 fn planning_failures_never_fall_back_to_builtin_context_or_forward_mutations() {
     futures::executor::block_on(async {
         for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {

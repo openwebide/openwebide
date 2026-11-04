@@ -140,6 +140,18 @@ impl Runtime {
             compiled.used = Instant::now();
             return Ok(compiled.component.clone());
         }
+        drop(components);
+        // Compilation must not block unrelated cache hits or evict valid code
+        // when a new component is invalid. Concurrent misses may finish first.
+        let component = Component::new(&self.engine, bytes)?;
+        let mut components = self
+            .components
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Plugin compiler cache stopped"))?;
+        if let Some(compiled) = components.get_mut(&digest) {
+            compiled.used = Instant::now();
+            return Ok(compiled.component.clone());
+        }
         while components.len() >= 4
             || components
                 .values()
@@ -158,7 +170,6 @@ impl Runtime {
                 break;
             }
         }
-        let component = Component::new(&self.engine, bytes)?;
         components.insert(
             digest,
             CompiledComponent {
@@ -565,6 +576,8 @@ mod tests {
             )
             .unwrap();
         assert_eq!(result.content, "{\"value\":42}");
+        let denied = runtime.execute(&bytes, Records, &[], "fixture_echo", "{}");
+        assert!(denied.unwrap_err().to_string().contains("not granted"));
     }
     #[test]
     fn bounded_large_transfers_fit_the_invocation_fuel_budget() {

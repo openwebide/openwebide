@@ -22575,8 +22575,25 @@ async fn bounded_wrapped_paragraphs_preserve_complete_styled_geometry_in_both_mo
 }
 
 #[wasm_bindgen_test]
-async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes() {
-    use openwebide_core::{WorkspaceMode, editor::Selection};
+async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry_local() {
+    wrapped_paragraph_edits_reuse_exact_source_owned_geometry(
+        openwebide_core::WorkspaceMode::Local,
+    )
+    .await;
+}
+
+#[wasm_bindgen_test]
+async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry_remote() {
+    wrapped_paragraph_edits_reuse_exact_source_owned_geometry(
+        openwebide_core::WorkspaceMode::Remote,
+    )
+    .await;
+}
+
+async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry(
+    mode: openwebide_core::WorkspaceMode,
+) {
+    use openwebide_core::editor::Selection;
     use openwebide_frontend::{
         components::{
             bounded_wrapped_matches_complete, take_paragraph_current_probes,
@@ -22585,39 +22602,38 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes
         state_actions::editor::EditorActions,
     };
     let language_host = super::language_support::LanguageHost::new().await;
-    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        for (styled, reconnect, width) in [
-            (false, false, 420),
-            (false, true, 420),
-            (true, false, 420),
-            (true, true, 420),
-            (true, true, 264),
-        ] {
-            let body = if reconnect {
-                // Include the production near-limit String before any prior
-                // edit changes its wrapping phase or retained probe origins.
-                "文😀 words ".repeat(if styled {
-                    // Reserve the prefix/suffix and all four test edits.
-                    (openwebide_core::editor::MAX_EDITOR_LINE_BYTES
-                        - "const VALUE: &str = \"\";".len()
-                        - 16)
-                        / "文😀 words ".len()
-                } else {
-                    16_000
-                })
+    for (styled, reconnect, width) in [
+        (false, false, 420),
+        (false, true, 420),
+        (true, false, 420),
+        (true, true, 420),
+        (true, true, 264),
+    ] {
+        let body = if reconnect {
+            // Include the production near-limit String before any prior
+            // edit changes its wrapping phase or retained probe origins.
+            "文😀 words ".repeat(if styled {
+                // Reserve the prefix/suffix and all four test edits.
+                (openwebide_core::editor::MAX_EDITOR_LINE_BYTES
+                    - "const VALUE: &str = \"\";".len()
+                    - 16)
+                    / "文😀 words ".len()
             } else {
-                // Different wrapping phase may require fresh measurements.
-                "word 文😀e\u{301} != -> café ".repeat(8000)
-            };
-            let source = if styled {
-                format!("const VALUE: &str = \"{body}\";")
-            } else {
-                body
-            };
-            let original = source.clone();
-            let slot = std::rc::Rc::new(std::cell::Cell::new(None));
-            let capture = slot.clone();
-            let mounted = language_host.mount(move |state| {
+                16_000
+            })
+        } else {
+            // Different wrapping phase may require fresh measurements.
+            "word 文😀e\u{301} != -> café ".repeat(8000)
+        };
+        let source = if styled {
+            format!("const VALUE: &str = \"{body}\";")
+        } else {
+            body
+        };
+        let original = source.clone();
+        let slot = std::rc::Rc::new(std::cell::Cell::new(None));
+        let capture = slot.clone();
+        let mounted = language_host.mount(move |state| {
                 state.seed_project();
                 state
                     .projects
@@ -22643,144 +22659,141 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes
                 state.workspace.content.set(source.into());
                 view! { <style>{include_str!("../../styles.css")}</style><div style=format!("display:flex;width:{width}px;height:320px")>{editor_view(state)}</div> }
             });
-            // Establish the installed provider before measuring cross-edit reuse.
-            // A provider generation change correctly invalidates older geometry.
-            super::language_support::ready(&mounted.state).await;
-            let actions = slot.get().unwrap();
-            let ready = |expected: &str| {
-                mounted
-                    .state
-                    .workspace
-                    .editor_paragraph_cache
-                    .with_untracked(|cache| {
-                        cache.as_ref().is_some_and(|cache| {
-                            !cache.rows.is_empty()
-                                && (!styled || cache.paint.prepared_source)
-                                && cache.paint.projection.line_body(0) == Some(expected)
-                        })
+        // Establish the installed provider before measuring cross-edit reuse.
+        // A provider generation change correctly invalidates older geometry.
+        super::language_support::ready(&mounted.state).await;
+        let actions = slot.get().unwrap();
+        let ready = |expected: &str| {
+            mounted
+                .state
+                .workspace
+                .editor_paragraph_cache
+                .with_untracked(|cache| {
+                    cache.as_ref().is_some_and(|cache| {
+                        !cache.rows.is_empty()
+                            && (!styled || cache.paint.prepared_source)
+                            && cache.paint.projection.line_body(0) == Some(expected)
                     })
-                    && actions.measured_rows().is_some()
-                    && !actions.native_geometry_pending()
+                })
+                && actions.measured_rows().is_some()
+                && !actions.native_geometry_pending()
+        };
+        super::support::wait_until_with_timeout(
+            "initial retained wrapped measurements",
+            30_000,
+            || ready(&original),
+        )
+        .await;
+        let input: web_sys::HtmlTextAreaElement =
+            mounted.element(".editor-textarea").unchecked_into();
+        let mut previous = original;
+        for change in 0..4 {
+            let mut changed = previous.clone();
+            let at = if change == 1 {
+                previous.find("word").unwrap()
+            } else if change < 3 {
+                0
+            } else {
+                previous.len()
             };
+            if change == 1 {
+                changed.replace_range(at..at + 1, "z");
+            } else {
+                changed.insert(at, 'z');
+            }
+            let measured_owner = mounted
+                .state
+                .workspace
+                .editor_paragraph_cache
+                .with_untracked(|cache| {
+                    cache.as_ref().map(|cache| {
+                        (
+                            cache.paint.language_generation,
+                            cache.paint.account_generation,
+                            cache.paint.font_epoch,
+                            cache.paint.prepared_source,
+                            cache.paint.tokens.len(),
+                        )
+                    })
+                });
+            take_paragraph_suffix_probes();
+            take_paragraph_current_probes();
+            actions
+                .native_input(
+                    changed.clone(),
+                    Selection::caret(at + 1),
+                    "insertText",
+                    f64::from(change + 1),
+                )
+                .unwrap();
             super::support::wait_until_with_timeout(
-                "initial retained wrapped measurements",
+                "edited wrapped replay and complete geometry",
                 30_000,
-                || ready(&original),
+                || ready(&changed),
             )
             .await;
-            let input: web_sys::HtmlTextAreaElement =
-                mounted.element(".editor-textarea").unchecked_into();
-            let mut previous = original;
-            for change in 0..4 {
-                let mut changed = previous.clone();
-                let at = if change == 1 {
-                    previous.find("word").unwrap()
-                } else if change < 3 {
-                    0
-                } else {
-                    previous.len()
-                };
-                if change == 1 {
-                    changed.replace_range(at..at + 1, "z");
-                } else {
-                    changed.insert(at, 'z');
-                }
-                let measured_owner = mounted
-                    .state
-                    .workspace
-                    .editor_paragraph_cache
-                    .with_untracked(|cache| {
-                        cache.as_ref().map(|cache| {
-                            (
-                                cache.paint.language_generation,
-                                cache.paint.account_generation,
-                                cache.paint.font_epoch,
-                                cache.paint.prepared_source,
-                                cache.paint.tokens.len(),
-                            )
-                        })
-                    });
-                take_paragraph_suffix_probes();
-                take_paragraph_current_probes();
-                actions
-                    .native_input(
-                        changed.clone(),
-                        Selection::caret(at + 1),
-                        "insertText",
-                        f64::from(change + 1),
-                    )
-                    .unwrap();
-                super::support::wait_until_with_timeout(
-                    "edited wrapped replay and complete geometry",
-                    30_000,
-                    || ready(&changed),
-                )
-                .await;
-                let reused = take_paragraph_suffix_probes();
-                let current_reused = take_paragraph_current_probes();
-                if change == 1 || (change < 3 && styled && reconnect) {
-                    assert!(
-                        if change == 1 {
-                            reused > 2
-                        } else {
-                            reused + current_reused > 2
-                        },
-                        "{mode:?} styled={styled} reconnect={reconnect} width={width} change={change} reused={reused} current={current_reused} measured_owner={measured_owner:?} current_language_generation={}",
-                        mounted.state.languages.generation.get_untracked()
-                    );
-                }
-                let scope = mounted
-                    .state
-                    .workspace
-                    .editor_paragraph_cache
-                    .get_untracked()
-                    .unwrap()
-                    .paint;
+            let reused = take_paragraph_suffix_probes();
+            let current_reused = take_paragraph_current_probes();
+            if change == 1 || (change < 3 && styled && reconnect) {
                 assert!(
-                    bounded_wrapped_matches_complete(&input, &scope, actions).await,
-                    "{mode:?} styled={styled} reconnect={reconnect} change={change}: every retained glyph and complete extent"
+                    if change == 1 {
+                        reused > 2
+                    } else {
+                        reused + current_reused > 2
+                    },
+                    "{mode:?} styled={styled} reconnect={reconnect} width={width} change={change} reused={reused} current={current_reused} measured_owner={measured_owner:?} current_language_generation={}",
+                    mounted.state.languages.generation.get_untracked()
                 );
-                let suffix = actions.paragraph_suffix(&scope, 0).unwrap();
-                let prefix = actions.paragraph_prefix(&scope, 0).unwrap();
-                let mut plan = actions.prepare_wrapped_paragraph(&scope, 0).unwrap();
-                let reused = actions.resume_paragraph_prefix_batch(&prefix, &mut plan);
-                assert!(
-                    reused > 2 && reused <= openwebide_core::editor::MAX_MEASURE_BATCHES_PER_FRAME
-                );
-                mounted
-                    .state
-                    .auth
-                    .generation
-                    .update(|generation| *generation += 1);
-                assert_eq!(
-                    actions.resume_current_paragraph_batch(&scope, 0, &mut plan),
-                    0
-                );
-                assert_eq!(actions.resume_paragraph_suffix(&suffix, &mut plan), 0);
-                assert_eq!(actions.resume_paragraph_prefix_batch(&prefix, &mut plan), 0);
-                assert!(plan.probe().is_some());
-                // Let the host observe revocation before restoring the owner;
-                // otherwise a delayed lifecycle transition races the next edit.
-                openwebide_frontend::util::yield_task().await;
-                mounted
-                    .state
-                    .auth
-                    .generation
-                    .update(|generation| *generation -= 1);
-                assert_eq!(actions.source(), changed);
-                // The stale-account probe also invalidates host preparation.
-                // Settle that lifecycle and its current measurements before
-                // testing reuse across the next source edit.
-                openwebide_frontend::util::yield_task().await;
-                super::language_support::ready(&mounted.state).await;
-                super::support::wait_until_with_timeout("restored owner geometry", 30_000, || {
-                    ready(&changed)
-                })
-                .await;
-                previous = changed;
             }
-            drop(mounted);
+            let scope = mounted
+                .state
+                .workspace
+                .editor_paragraph_cache
+                .get_untracked()
+                .unwrap()
+                .paint;
+            assert!(
+                bounded_wrapped_matches_complete(&input, &scope, actions).await,
+                "{mode:?} styled={styled} reconnect={reconnect} change={change}: every retained glyph and complete extent"
+            );
+            let suffix = actions.paragraph_suffix(&scope, 0).unwrap();
+            let prefix = actions.paragraph_prefix(&scope, 0).unwrap();
+            let mut plan = actions.prepare_wrapped_paragraph(&scope, 0).unwrap();
+            let reused = actions.resume_paragraph_prefix_batch(&prefix, &mut plan);
+            assert!(reused > 2 && reused <= openwebide_core::editor::MAX_MEASURE_BATCHES_PER_FRAME);
+            mounted
+                .state
+                .auth
+                .generation
+                .update(|generation| *generation += 1);
+            assert_eq!(
+                actions.resume_current_paragraph_batch(&scope, 0, &mut plan),
+                0
+            );
+            assert_eq!(actions.resume_paragraph_suffix(&suffix, &mut plan), 0);
+            assert_eq!(actions.resume_paragraph_prefix_batch(&prefix, &mut plan), 0);
+            assert!(plan.probe().is_some());
+            // Let the host observe revocation before restoring the owner;
+            // otherwise a delayed lifecycle transition races the next edit.
+            openwebide_frontend::util::yield_task().await;
+            mounted
+                .state
+                .auth
+                .generation
+                .update(|generation| *generation -= 1);
+            assert_eq!(actions.source(), changed);
+            // The stale-account probe also invalidates host preparation.
+            // Settle that lifecycle and its current measurements before
+            // testing reuse across the next source edit.
+            openwebide_frontend::util::yield_task().await;
+            super::language_support::ready(&mounted.state).await;
+            super::support::wait_until_with_timeout("restored owner geometry", 30_000, || {
+                ready(&changed)
+            })
+            .await;
+            previous = changed;
         }
+        drop(mounted);
     }
     language_host.close().await;
 }

@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/openwebide/plugins.git",
-  "commit": "2e0f33b026aec9e2c74350b4c603c0a167834d64",
+  "commit": "ad940bb96c6d656268b1b03df7a84e5478b31c4e",
   "paths": [
     "plugins/web",
     "plugins/memory",

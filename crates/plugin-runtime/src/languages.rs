@@ -46,7 +46,7 @@ struct Compiled {
 }
 
 pub struct LanguageRuntime {
-    runtime: Runtime,
+    runtime: Arc<Runtime>,
     components: BTreeMap<String, Compiled>,
     sessions: BTreeMap<SessionKey, Session>,
 }
@@ -61,11 +61,16 @@ impl std::fmt::Debug for LanguageRuntime {
 }
 impl LanguageRuntime {
     pub fn new() -> Result<Self> {
-        Ok(Self {
-            runtime: Runtime::new()?,
+        Ok(Self::with_runtime(Arc::new(Runtime::new()?)))
+    }
+
+    /// Reuse compiled code from preparation without sharing document stores.
+    pub fn with_runtime(runtime: Arc<Runtime>) -> Self {
+        Self {
+            runtime,
             components: BTreeMap::new(),
             sessions: BTreeMap::new(),
-        })
+        }
     }
 
     /// Called by the host's timer, so idle components are reclaimed even without
@@ -260,7 +265,7 @@ impl LanguageRuntime {
                 break;
             }
         }
-        let component = Component::new(&self.runtime.engine, bytes)?;
+        let component = self.runtime.component(bytes)?;
         self.components.insert(
             digest,
             Compiled {
@@ -396,6 +401,83 @@ mod tests {
             matches!(output, LanguageOutput::Analyzed(response) if response.status == AnalysisStatus::NeedsSource)
         );
     }
+    #[test]
+    fn prepared_code_is_reused_with_owner_isolated_document_stores() {
+        let bytes = crate::tests::fixture();
+        let shared = Arc::new(Runtime::new().unwrap());
+        // Metadata validation compiles and instantiates the actual component.
+        shared.tools(&bytes, NoServices, &[]).unwrap();
+        let image = shared.component(&bytes).unwrap().image_range();
+        let mut runtime = LanguageRuntime::with_runtime(shared);
+        let plugin = prepared();
+        let cancelled = Arc::new(AtomicBool::new(false));
+        ready(
+            &runtime
+                .execute(
+                    "owner",
+                    &plugin,
+                    &bytes,
+                    &input("task", 1, 1),
+                    cancelled.clone(),
+                )
+                .unwrap(),
+        );
+        assert_eq!(
+            runtime
+                .components
+                .values()
+                .next()
+                .unwrap()
+                .component
+                .image_range(),
+            image
+        );
+        missing(
+            &runtime
+                .execute(
+                    "other-owner",
+                    &plugin,
+                    &bytes,
+                    &delta("文task", 1, 2, 2),
+                    cancelled.clone(),
+                )
+                .unwrap(),
+        );
+        ready(
+            &runtime
+                .execute(
+                    "other-owner",
+                    &plugin,
+                    &bytes,
+                    &input("other task", 1, 1),
+                    cancelled.clone(),
+                )
+                .unwrap(),
+        );
+        ready(
+            &runtime
+                .execute(
+                    "owner",
+                    &plugin,
+                    &bytes,
+                    &delta("文task", 1, 2, 2),
+                    cancelled.clone(),
+                )
+                .unwrap(),
+        );
+        ready(
+            &runtime
+                .execute(
+                    "other-owner",
+                    &plugin,
+                    &bytes,
+                    &delta("文other task", 1, 2, 2),
+                    cancelled,
+                )
+                .unwrap(),
+        );
+    }
+
     #[test]
     fn real_components_retain_owned_sources_and_drop_closed_updated_or_evicted_sessions() {
         let bytes = crate::tests::fixture();

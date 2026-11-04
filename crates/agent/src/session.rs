@@ -170,7 +170,10 @@ where
         .saturating_mul(3)
         / 10;
     budget = budget.min(8192);
-    for plugin in &plugins {
+    for plugin in plugins
+        .iter()
+        .filter(|plugin| plugin.manifest.contributions.context != Some(false))
+    {
         let outcome = invoke_plugin(
             transport,
             &services,

@@ -154,6 +154,7 @@ impl MarketplaceCatalog {
                     compatibility: super::PluginCompatibility { plugin_api: 1 },
                     executable: None,
                     contributions: super::PluginContributions {
+                        context: None,
                         languages: Vec::new(),
                         panels: Vec::new(),
                         background: None,

@@ -3,7 +3,7 @@ use super::NativePluginInstaller;
 use openwebide_core::plugins::execution::{
     ContinuePlugin, InvokePlugin, PluginInvocation, PluginOperation, PluginStep,
 };
-use openwebide_plugin_runtime::{HostServices, MAX_MESSAGE_BYTES, Runtime};
+use openwebide_plugin_runtime::{HostServices, MAX_MESSAGE_BYTES};
 use std::{
     collections::HashMap,
     sync::{
@@ -327,7 +327,9 @@ impl Invocations {
                                 .map_err(|_| anyhow::anyhow!("Language runtime stopped"))?;
                             if state.is_none() {
                                 *state = Some(
-                                    openwebide_plugin_runtime::languages::LanguageRuntime::new()?,
+                                    openwebide_plugin_runtime::languages::LanguageRuntime::with_runtime(
+                                        super::execution_runtime()?,
+                                    ),
                                 );
                             }
                             let runtime = state.as_mut().expect("initialized runtime");
@@ -359,7 +361,7 @@ impl Invocations {
                         })()
                     } else {
                         let bytes = bytes.expect("tool invocation loaded its artifact");
-                        Runtime::new().and_then(|runtime| match call.operation {
+                        super::execution_runtime().and_then(|runtime| match call.operation {
                             PluginOperation::Language => {
                                 unreachable!("handled by retained language runtime")
                             }

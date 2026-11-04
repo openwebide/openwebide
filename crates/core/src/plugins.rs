@@ -117,6 +117,9 @@ pub struct PluginCompatibility {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PluginContributions {
+    /// Omitted declarations retain legacy context hooks; false skips the hook.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context: Option<bool>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub languages: Vec<languages::LanguageDefinition>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -318,6 +321,7 @@ impl PluginManifest {
             }
         }
         if (executable.is_some() && !matches!(self.compatibility.plugin_api, 3..=5))
+            || (executable.is_none() && self.contributions.context.is_some())
             || (executable.is_none() && matches!(self.compatibility.plugin_api, 3 | 4))
             || (self.compatibility.plugin_api == 5 && self.contributions.languages.is_empty())
             || (executable.is_none() && !self.contributions.tools.is_empty())
@@ -1081,6 +1085,45 @@ mod tests {
         manifest.executable.as_mut().unwrap().capabilities.clear();
         assert!(manifest.validate().is_err());
     }
+    #[test]
+    fn context_declarations_are_optional_and_require_an_executable() {
+        let mut manifest = testing::receipt().manifest;
+        assert_eq!(manifest.contributions.context, None);
+        assert!(
+            serde_json::to_value(&manifest).unwrap()["contributions"]
+                .get("context")
+                .is_none()
+        );
+        manifest.contributions.context = Some(false);
+        assert!(manifest.validate().is_err());
+        manifest.compatibility.plugin_api = 3;
+        manifest.contributions.events = vec!["job_due".into()];
+        manifest.executable = Some(RustPlugin {
+            manifest: "Cargo.toml".into(),
+            library: "context_plugin".into(),
+            sdk_version: "0.1.0".into(),
+            capabilities: vec![],
+        });
+        for declaration in [None, Some(true), Some(false)] {
+            manifest.contributions.context = declaration;
+            manifest.validate().unwrap();
+            let value = serde_json::to_value(&manifest).unwrap();
+            assert_eq!(
+                serde_json::from_value::<PluginManifest>(value).unwrap(),
+                manifest
+            );
+        }
+        for invalid in [
+            serde_json::json!("false"),
+            serde_json::json!(0),
+            serde_json::json!([]),
+        ] {
+            let mut value = serde_json::to_value(&manifest).unwrap();
+            value["contributions"]["context"] = invalid;
+            assert!(serde_json::from_value::<PluginManifest>(value).is_err());
+        }
+    }
+
     #[test]
     fn executable_event_contributions_do_not_require_model_tools() {
         let mut manifest = testing::receipt().manifest;

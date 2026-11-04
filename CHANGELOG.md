@@ -10,6 +10,8 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 ## [Unreleased]
 
 - Reuse bounded language-rule validation results so embedded preparation does not repeatedly compile unchanged provider expressions.
+- Language packages can opt out of unused chat-context hooks through the public manifest, avoiding per-language compilation during chat startup while preserving custom context contributions.
+- Reuse bounded compiled plugin code between preparation and host execution while keeping document stores, capabilities and invocation limits isolated.
 
 - Avoid embedded-language traversal in grammars without injections so large ordinary documents keep their existing admission and fallback behavior.
 

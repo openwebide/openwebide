@@ -29,7 +29,8 @@
   window.fetch = async function(...args) {
     const request = args[0] instanceof Request ? args[0].clone() : new Request(args[0], args[1]);
     const path = new URL(request.url).pathname;
-    if (request.method !== 'POST' || !/\/plugins\/(invoke|continue|cancel)$/.test(path)) {
+    const preparation = /\/plugins\/(prepare(?:\/status)?|preparation)$/.test(path);
+    if (request.method !== 'POST' || (!preparation && !/\/plugins\/(invoke|continue|cancel)$/.test(path))) {
       return original.apply(this, args);
     }
     let body = null;
@@ -47,6 +48,10 @@
       throw error;
     } finally {
       trace.elapsed = performance.now() - trace.started;
+    }
+    if (preparation) {
+      try { trace.preparation = (await response.clone().json()).state; } catch {}
+      return response;
     }
     if (path.endsWith('/cancel')) return response;
     if (!response.ok || !body) {

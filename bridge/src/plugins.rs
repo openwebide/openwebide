@@ -13,11 +13,26 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::{
     path::{Path, PathBuf},
     process::Stdio,
-    sync::Arc,
+    sync::{Arc, LazyLock},
     time::Duration,
 };
 use tokio::{io::AsyncReadExt, process::Command, sync::Mutex};
 pub mod preparations;
+
+/// Only immutable compiled code is shared. Every invocation creates its own
+/// store, services and grants; language documents retain their existing owners.
+fn execution_runtime() -> anyhow::Result<Arc<openwebide_plugin_runtime::Runtime>> {
+    static RUNTIME: LazyLock<Result<Arc<openwebide_plugin_runtime::Runtime>, String>> =
+        LazyLock::new(|| {
+            openwebide_plugin_runtime::Runtime::new()
+                .map(Arc::new)
+                .map_err(|error| format!("{error:#}"))
+        });
+    RUNTIME
+        .as_ref()
+        .map(Arc::clone)
+        .map_err(|error| anyhow::anyhow!(error.clone()))
+}
 
 /// Only host binaries contain the bundled plugin files.
 fn bundled_files(source: &PluginSource) -> Option<Vec<PackageFile>> {
@@ -512,7 +527,7 @@ impl PluginHost for ScopedHost {
                     openwebide_plugin_runtime::build::compile_cancellable(&snapshot, &rust.library, &build_dir, &cancelled)
                         .map_err(|error| host_error(format!("{error:#}")))?
                 };
-                let runtime = openwebide_plugin_runtime::Runtime::new()
+                let runtime = execution_runtime()
                     .map_err(|error| host_error(error.to_string()))?;
                 runtime
                     .validate_exports(&bytes, &manifest)

@@ -20,6 +20,11 @@ those exports before accepting an installation.
 - Skills and their resources are declared in the manifest alongside executable
   contributions; they do not require a Rust handler.
 
+Set `contributions.context: false` in the executable package manifest when no
+context hook is needed. The host then skips that hook without affecting other
+contributions. Omission preserves legacy invocation; `true` explicitly enables
+it. Language and panel packages can contribute context through the same hook.
+
 ## Declarative panels (API 4)
 
 Implement `panels()` to return the exact manifest panel definitions, and `panel()`
@@ -96,8 +101,8 @@ does not provide direct access to authenticated Open WebIDE control APIs.
 Capability additions in updates require review, including automatic updates.
 
 `workspace` is reserved in the manifest format and has no implemented host
-adapter yet. Language services, editor hooks and declarative UI panels remain
-future contribution contracts.
+adapter yet. Language servers and editor hooks remain future contracts; language
+analysis and declarative panels use the contracts above.
 
 ## Execution and authoring
 
