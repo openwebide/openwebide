@@ -10,7 +10,8 @@ Link this library into an ordinary WASI component and forward its `Plugin::langu
 callback to `LanguageSyntax::handle`. Independent families construct the engine
 with `LanguageSyntax::new_delegated`; embedded scopes use the selected installed
 providers, including custom Markdown fenced-code IDs, through the shared document
-service. Export the same definitions with
+service. Markdown's block and inline grammars run together inside its family;
+only fenced-code bodies request other installed providers. Export the same definitions with
 `Plugin::languages`. The toolkit handles UTF-8 full/delta source admission,
 incremental trees, embedded syntax, bounded source retention, close, eviction and
 version-1 token/fold/structure results. It needs no host capabilities.

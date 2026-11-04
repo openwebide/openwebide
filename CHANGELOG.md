@@ -9,6 +9,10 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Restore pinned WASI SDK extraction on the Docker image’s Python 3.11.2, preserving archive path and link checks.
+
+- Keep Markdown block and inline parsing inside its language component while delegating fenced bodies to installed providers. Large documents no longer require a separate host request per paragraph.
+
 - Add independent language-family grammar features and installed-provider composition for embedded language scopes. The public syntax toolkit supports custom Markdown fenced-code IDs without bundling their parsers; selected definitions, source coordinates, provider preferences, cancellation and child-document cleanup share one host-service contract. Fix empty trailing-row token export for SQL. Editor integration and independent default packages remain in progress.
 
 - Add an explicit uniform line-comment declaration to the language SDK and reject conflicting embedded comment strategies. Existing declarations retain their wire format unless they opt in.

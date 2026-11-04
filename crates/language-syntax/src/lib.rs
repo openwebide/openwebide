@@ -117,8 +117,11 @@ impl LanguageSyntax {
             .documents
             .remove(&request.document)
             .filter(|previous| previous.source.language == request.language);
+        // Markdown's block and inline grammars implement one language. Only
+        // fenced bodies cross the installed-provider boundary.
+        let markdown = self.delegate_embeddings && grammar.language == SyntaxLanguage::Markdown;
         let Some(mut syntax) = previous.map(|document| document.syntax).or_else(|| {
-            if self.delegate_embeddings {
+            if self.delegate_embeddings && !markdown {
                 SyntaxDocument::with_delegated_provider(grammar.language, grammar.provider)
             } else {
                 SyntaxDocument::with_provider(grammar.language, grammar.provider)
@@ -144,6 +147,9 @@ impl LanguageSyntax {
         if matches!(status, AnalysisStatus::Ready { .. }) {
             let Some(mut data) = analysis.and_then(|analysis| {
                 analysis.language_data(&request.language, |language| {
+                    if markdown && language == SyntaxLanguage::MarkdownInline {
+                        return request.language.clone();
+                    }
                     self.grammars
                         .iter()
                         .find(|(_, grammar)| grammar.language == language)
@@ -157,7 +163,15 @@ impl LanguageSyntax {
                 return Ok(output);
             };
             if self.delegate_embeddings {
+                if markdown && let Some(structure) = &mut data.structure {
+                    structure
+                        .scopes
+                        .retain(|scope| scope.language != request.language);
+                }
                 let scopes = syntax.language_regions(|node, source| {
+                    if markdown && node.kind() == "inline" {
+                        return None;
+                    }
                     openwebide_core::editor::language_injection(grammar.language, node, source)
                 })?;
                 let composition = protocol::LanguageComposition::new(&source.source);

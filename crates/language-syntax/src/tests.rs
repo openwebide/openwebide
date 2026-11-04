@@ -126,7 +126,7 @@ fn delegated_bodies_request_installed_languages_without_bundled_child_grammars()
     cases.push((
         "markdown",
         "# 文😀\n\n```custom-language\n〈hello〉\n```\n\n```rs\nfn main() {}\n```\n",
-        vec!["markdown-inline", "custom-language", "rust"],
+        vec!["custom-language", "rust"],
     ));
     for (language, source, expected) in cases {
         for source in [source.to_string(), source.replace('\n', "\r\n")] {
@@ -252,6 +252,102 @@ fn sql_snapshots_keep_exact_rows_with_trailing_newlines_and_crlf() {
             "SQL could not export its exact source: {analysis:?}"
         );
         protocol::validate_analysis(&data.unwrap(), source, "sql").unwrap();
+    }
+}
+
+#[test]
+#[cfg(feature = "markdown")]
+fn markdown_inline_is_internal_while_fences_delegate_with_custom_root_ids() {
+    let make_engine = || {
+        let definition = openwebide_plugin_sdk::serde_json::from_value(
+            openwebide_plugin_sdk::serde_json::json!({
+                "id":"prose", "name":"Prose",
+                "features":{"syntax":true,"folding":true,"structure":true}
+            }),
+        )
+        .unwrap();
+        LanguageSyntax::new_delegated(
+            vec![definition],
+            BTreeMap::from([(
+                "prose".into(),
+                LanguageGrammar::standard(SyntaxLanguage::Markdown),
+            )]),
+        )
+        .unwrap()
+    };
+    for newline in ["\n", "\r\n"] {
+        let mut engine = make_engine();
+        let initial = (0..1_000)
+            .map(|index| format!("Paragraph {index}: **文😀** and `code`.{newline}{newline}"))
+            .collect::<String>()
+            + &format!(
+                "```notes{newline}〈hello〉{newline}```{newline}{newline}```markdown-inline{newline}`external`{newline}```{newline}"
+            );
+        let edited = initial.replacen("Paragraph 500", "Changed 500", 1);
+        for (revision, source) in [(1, initial.as_str()), (2, edited.as_str())] {
+            let mut request = request(source, "prose", "large.md", revision);
+            if revision == 2 {
+                let start = initial.find("Paragraph 500").unwrap();
+                request.source = protocol::SourceChange::Replace {
+                    base_revision: 1,
+                    start,
+                    end: start + "Paragraph".len(),
+                    text: "Changed".into(),
+                };
+            }
+            let input = LanguageInput::Analyze(request);
+            let output = engine.handle(input.clone()).unwrap();
+            protocol::validate_output(&input, &output, Some(source)).unwrap();
+            let LanguageOutput::Analyzed(response) = output else {
+                unreachable!()
+            };
+            assert_eq!(
+                response.status,
+                AnalysisStatus::Ready {
+                    incremental: revision == 2
+                }
+            );
+            let data = response.analysis.unwrap();
+            assert_eq!(
+                data.structure
+                    .as_ref()
+                    .unwrap()
+                    .scopes
+                    .iter()
+                    .map(|scope| scope.language.as_str())
+                    .collect::<Vec<_>>(),
+                ["notes", "markdown-inline"]
+            );
+            for (row, spans) in source
+                .split('\n')
+                .zip(data.highlights.as_ref().unwrap())
+                .step_by(2)
+                .take(1_000)
+            {
+                let mut start = 0;
+                assert!(
+                    spans.iter().any(|span| {
+                        let code = span.kind == protocol::TokenKind::String
+                            && row[start..span.end].contains("code");
+                        start = span.end;
+                        code
+                    }),
+                    "inline code missing in {row:?}"
+                );
+            }
+            let fresh = make_engine()
+                .handle(LanguageInput::Analyze(self::request(
+                    source, "prose", "large.md", revision,
+                )))
+                .unwrap();
+            let LanguageOutput::Analyzed(fresh) = fresh else {
+                unreachable!()
+            };
+            assert_eq!(
+                openwebide_plugin_sdk::serde_json::to_value(data).unwrap(),
+                openwebide_plugin_sdk::serde_json::to_value(fresh.analysis.unwrap()).unwrap()
+            );
+        }
     }
 }
 
