@@ -63,6 +63,29 @@ fn every_existing_language_runs_through_the_public_component_protocol() {
 
 #[test]
 #[cfg(feature = "rust")]
+fn large_nonembedding_documents_keep_the_same_analysis_with_delegation() {
+    let mut ordinary = engine();
+    let mut delegated =
+        LanguageSyntax::new_delegated(ordinary.definitions.clone(), ordinary.grammars.clone())
+            .unwrap();
+    let source = "fn example() { let value = 42; }\n".repeat(10_000);
+    let input = LanguageInput::Analyze(request(&source, "rust", "large.rs", 1));
+    let expected = ordinary.handle(input.clone()).unwrap();
+    let actual = delegated.handle(input.clone());
+    assert!(
+        actual.is_ok(),
+        "ordinary={expected:?}; delegated={actual:?}"
+    );
+    let actual = actual.unwrap();
+    protocol::validate_output(&input, &actual, Some(&source)).unwrap();
+    assert_eq!(
+        openwebide_plugin_sdk::serde_json::to_value(actual).unwrap(),
+        openwebide_plugin_sdk::serde_json::to_value(expected).unwrap()
+    );
+}
+
+#[test]
+#[cfg(feature = "rust")]
 fn incremental_edits_close_configuration_changes_and_eviction_require_the_correct_source() {
     let mut engine = engine();
     let source = "fn main() { let value = 1; }\r\n";

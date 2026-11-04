@@ -162,7 +162,11 @@ impl LanguageSyntax {
                 response.status = AnalysisStatus::TooLarge;
                 return Ok(output);
             };
-            if self.delegate_embeddings {
+            if self.delegate_embeddings
+                && grammar
+                    .provider
+                    .is_some_and(|provider| provider.injection.is_some())
+            {
                 if markdown && let Some(structure) = &mut data.structure {
                     structure
                         .scopes

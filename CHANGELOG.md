@@ -9,6 +9,8 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Avoid embedded-language traversal in grammars without injections so large ordinary documents keep their existing admission and fallback behavior.
+
 - Restore pinned WASI SDK extraction on the Docker image’s Python 3.11.2, preserving archive path and link checks.
 
 - Keep Markdown block and inline parsing inside its language component while delegating fenced bodies to installed providers. Large documents no longer require a separate host request per paragraph.
