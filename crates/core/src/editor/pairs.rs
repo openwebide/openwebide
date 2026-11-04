@@ -7,6 +7,78 @@ use super::{
 use crate::highlight::Language;
 mod configured;
 
+/// An editor-created pair remains a text-edit affordance while host analysis is
+/// pending. It carries no inferred syntax, language identity or provider code.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct AutomaticPair {
+    open: usize,
+    close: usize,
+    opening: char,
+    closing: char,
+}
+
+impl Document {
+    fn automatic_closer_at(&self, position: usize, ch: char) -> bool {
+        self.automatic_pairs
+            .iter()
+            .any(|pair| pair.close == position && pair.closing == ch)
+    }
+
+    pub(super) fn rebase_automatic_pairs<T: AsRef<str>>(&mut self, edits: &[Edit<T>]) {
+        self.automatic_pairs.retain_mut(|pair| {
+            let shift = |position: usize, width: usize| {
+                let mut target = position;
+                for edit in edits {
+                    if edit.range.start < position + width && position < edit.range.end {
+                        return None;
+                    }
+                    if edit.range.end <= position {
+                        target = target
+                            .checked_sub(edit.range.len())?
+                            .checked_add(edit.text.as_ref().len())?;
+                    }
+                }
+                Some(target)
+            };
+            let (Some(open), Some(close)) = (
+                shift(pair.open, pair.opening.len_utf8()),
+                shift(pair.close, pair.closing.len_utf8()),
+            ) else {
+                return false;
+            };
+            pair.open = open;
+            pair.close = close;
+            self.text
+                .get(open..)
+                .is_some_and(|text| text.starts_with(pair.opening))
+                && self
+                    .text
+                    .get(close..)
+                    .is_some_and(|text| text.starts_with(pair.closing))
+        });
+    }
+
+    fn delete_automatic_pairs(&mut self) -> Result<bool, EditError> {
+        let mut changes = Vec::new();
+        for selection in &self.selections {
+            if selection.anchor != selection.head {
+                return Ok(false);
+            }
+            let Some(pair) = self.automatic_pairs.iter().find(|pair| {
+                pair.open + pair.opening.len_utf8() == selection.head
+                    && pair.close == selection.head
+            }) else {
+                return Ok(false);
+            };
+            changes.push((
+                Edit::replace(pair.open..pair.close + pair.closing.len_utf8(), ""),
+                Selection::caret(0),
+            ));
+        }
+        self.apply_caret_edits(changes)
+    }
+}
+
 /// Characters whose pairing or closing behavior can depend on syntax context.
 /// Ordinary literal characters do not require parser preparation.
 pub fn is_pair_character(ch: char) -> bool {
@@ -97,7 +169,8 @@ impl Document {
                     && syntax.brackets.iter().any(|&(position, bracket, pair)| {
                         position == range.start && bracket == ch && pair.is_some()
                     })
-                    || quote && syntax.quote_closes_at(range.start))
+                    || quote && syntax.quote_closes_at(range.start)
+                    || self.automatic_closer_at(range.start, ch))
             {
                 // Replace with the same character to advance the caret without a history entry.
                 changes.push((
@@ -154,6 +227,9 @@ impl Document {
     }
 
     fn delete_pairs_in(&mut self, syntax: &Structure) -> Result<bool, EditError> {
+        if self.delete_automatic_pairs()? {
+            return Ok(true);
+        }
         if syntax.configuration_at(0).is_some() {
             return self.delete_declared_pairs(syntax);
         }

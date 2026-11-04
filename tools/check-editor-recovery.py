@@ -19,6 +19,7 @@ import time
 import tomllib
 import urllib.error
 import urllib.request
+from language_host_support import ExecutionHost
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -147,13 +148,18 @@ def check(browser=False):
     with tempfile.TemporaryDirectory(prefix="openwebide-recovery-") as directory, \
             tempfile.TemporaryDirectory(prefix="editor-recovery-probe-", dir=ROOT) as files:
         runtime = Runtime(directory, frontend=browser)
+        host = ExecutionHost(runtime) if browser else None
         try:
+            if host:
+                host.start()
             runtime.start()
             runtime.request("POST", "/api/auth/register", {
                 "username": "recovery-" + secrets.token_hex(8),
                 "password": secrets.token_urlsafe(32),
             }, expected=201)
             runtime.acknowledge_release()
+            if host:
+                host.initialize_defaults()
             records = []
             for mode in ("local", "remote"):
                 path = Path(files).relative_to(ROOT.parent.parent).as_posix() if mode == "remote" else "test-folder"
@@ -203,9 +209,11 @@ def check(browser=False):
                 runtime.request("PUT", endpoint, stale, expected=409)
             print("PASS: close-all tombstones survive restart and reject stale-window resurrection")
             if browser:
-                check_browser(runtime, records, Path(files))
+                check_browser(runtime, records, Path(files), host)
         finally:
             runtime.stop()
+            if host:
+                host.stop()
 
 
 class Browser:
@@ -265,73 +273,28 @@ class Browser:
     def script(self, source):
         return self.call("POST", "/execute/sync", {"script": source, "args": []})
 
-    def observe_workers(self):
-        self.call("POST", "/goog/cdp/execute", {"cmd": "Page.addScriptToEvaluateOnNewDocument", "params": {
-            "source": r"""
-                window.editorWorkerEvidence = {instances: 0, sources: []};
-                const NativeWorker = window.Worker;
-                window.Worker = class extends NativeWorker {
-                    constructor(url, options) {
-                        super(url, options);
-                        const pending = new Map(), completed = new Map();
-                        let ready = false;
-                        this.addEventListener('message', event => {
-                            if (event.data === 'openwebide-editor-ready:6:frames:1') {
-                                if (!ready) window.editorWorkerEvidence.instances++;
-                                ready = true;
-                                return;
-                            }
-                            if (!ready || typeof event.data !== 'string' || !event.data.startsWith('{')) return;
-                            const frame = JSON.parse(event.data);
-                            if (frame.version !== 6 || frame.framing !== 1) return;
-                            if (frame.sequence === 0 && frame.part?.Begin) {
-                                pending.set(frame.ticket, {sequence:0, begin:frame.part.Begin, chunks:[]});
-                            }
-                            const state = pending.get(frame.ticket);
-                            if (!state || state.sequence !== frame.sequence) {
-                                pending.delete(frame.ticket);
-                                return;
-                            }
-                            state.sequence++;
-                            if (typeof frame.part?.Source === 'string') state.chunks.push(frame.part.Source);
-                            if (frame.part !== 'End') return;
-                            pending.delete(frame.ticket);
-                            const header = state.begin.analysis;
-                            if (!state.begin.status?.Ready || !header) return;
-                            const bytes = new TextEncoder().encode(state.chunks.join(''));
-                            let source;
-                            if (header.source.Full) {
-                                if (bytes.length !== header.source.Full.bytes) return;
-                                source = bytes;
-                            } else if (header.source.Replace) {
-                                const base = completed.get(header.base_ticket), edit = header.source.Replace;
-                                if (!base || bytes.length !== edit.bytes || edit.start > edit.end || edit.end > base.length) return;
-                                source = new Uint8Array(edit.start + bytes.length + base.length - edit.end);
-                                source.set(base.subarray(0, edit.start));
-                                source.set(bytes, edit.start);
-                                source.set(base.subarray(edit.end), edit.start + bytes.length);
-                            } else return;
-                            let text;
-                            try { text = new TextDecoder('utf-8', {fatal:true}).decode(source); } catch { return; }
-                            completed.set(frame.ticket, source);
-                            if (completed.size > 32) completed.delete(completed.keys().next().value);
-                            const sources = window.editorWorkerEvidence.sources;
-                            sources.push(text.replace(/\r\n/g, '\n'));
-                            if (sources.length > 32) sources.shift();
-                        });
-                    }
-                };
-            """,
-        }})
+    def observe_languages(self, hold=False):
+        source = (ROOT / 'tools/editor-language-observer.js').read_text().replace('__HOLD_LANGUAGE__', json.dumps(hold))
+        self.call("POST", "/goog/cdp/execute", {"cmd": "Page.addScriptToEvaluateOnNewDocument", "params": {"source": source}})
 
-    def wait_worker(self, expected):
+    def wait_language(self, expected):
         deadline = time.monotonic() + 15
         while time.monotonic() < deadline:
-            evidence = self.script("return window.editorWorkerEvidence;")
-            if evidence and evidence["instances"] and expected in evidence["sources"]:
-                return
+            evidence = self.script("return window.editorLanguageEvidence;")
+            if evidence:
+                assert not evidence['errors'], evidence['errors']
+                if evidence['responses'] and expected in evidence['sources']:
+                    return
             time.sleep(0.1)
-        raise AssertionError("The production editor did not prepare its current source in the WASM worker")
+        diagnostics = self.script('''
+            const evidence = window.editorLanguageEvidence;
+            return {responses: evidence?.responses, sources: evidence?.sources.map(source => source.length),
+                outcomes: evidence?.outcomes, errors: evidence?.errors,
+                status: document.querySelector('.statusbar')?.innerText?.slice(0, 1000),
+                notices: [...document.querySelectorAll('.statusbar button[title]')]
+                    .map(button => button.title).filter(title => title).slice(0, 12)};
+        ''')
+        raise AssertionError("The production host did not analyze the editor's current source: " + json.dumps(diagnostics))
 
     def wait_editor(self, expected):
         deadline = time.monotonic() + 30
@@ -364,22 +327,22 @@ class Browser:
         self.log.close()
 
 
-def check_browser(runtime, records, files):
+def check_browser(runtime, records, files, host):
     assert os.environ.get("CHROMEDRIVER"), "Set CHROMEDRIVER to a compatible driver"
     (files / "nested").mkdir()
     (files / "nested/a.rs").write_bytes(b"fn original() {}\r\n")
     (files / "empty.txt").write_bytes(b"")
-    runtime.request("PUT", "/api/settings", {"key": "bridge_url", "value": "http://127.0.0.1:1"})
     with tempfile.TemporaryDirectory(prefix="openwebide-recovery-browser-") as directory:
         browser = Browser(directory)
         try:
-            browser.observe_workers()
+            browser.observe_languages()
             browser.call("POST", "/url", {"url": runtime.url + "/"})
             for cookie in runtime.cookies:
                 browser.call("POST", "/cookie", {"cookie": {
                     "name": cookie.name, "value": cookie.value,
                     "domain": "127.0.0.1", "path": cookie.path, "httpOnly": True,
                 }})
+            host.pair_browser(browser)
             for endpoint, original, _ in records:
                 project = int(endpoint.split("/")[3])
                 if original["state"]["root"]["mode"] == "remote":
@@ -391,7 +354,7 @@ def check_browser(runtime, records, files):
                 expected = base64.b64decode(original["state"]["files"][0]["document"]["text"]).decode().replace("\r\n", "\n")
                 browser.call("POST", "/url", {"url": runtime.url + "/"})
                 browser.wait_editor(expected)
-                browser.wait_worker(expected)
+                browser.wait_language(expected)
                 # Use the real browser input path, then observe the app's debounced save.
                 browser.script("""
                     const input = document.querySelector('textarea[data-editor-path]');
@@ -403,7 +366,7 @@ def check_browser(runtime, records, files):
                 browser.call("POST", f"/element/{element}/value", {"text": "// browser edit"})
                 expected += "// browser edit"
                 browser.wait_editor(expected)
-                browser.wait_worker(expected)
+                browser.wait_language(expected)
                 deadline = time.monotonic() + 15
                 while time.monotonic() < deadline:
                     saved = runtime.request("GET", endpoint)
@@ -417,17 +380,17 @@ def check_browser(runtime, records, files):
                 runtime.start()
                 browser.call("POST", "/refresh", {})
                 browser.wait_editor(expected)
-                browser.wait_worker(expected)
+                browser.wait_language(expected)
                 previous = browser.call("GET", "/window")
                 window = browser.call("POST", "/window/new", {"type": "window"})
                 browser.call("POST", "/window", {"handle": window["handle"]})
-                browser.observe_workers()
+                browser.observe_languages()
                 browser.call("POST", "/url", {"url": runtime.url + "/"})
                 browser.wait_editor(expected)
-                browser.wait_worker(expected)
+                browser.wait_language(expected)
                 browser.call("DELETE", "/window")
                 browser.call("POST", "/window", {"handle": previous})
-                print(f"PASS: {original['state']['root']['mode']} actual edits, WASM worker preparation, autosave, server restart, reload/new-window tabs and draft")
+                print(f"PASS: {original['state']['root']['mode']} actual edits, host language preparation, autosave, server restart, reload/new-window tabs and draft")
         finally:
             browser.stop()
 

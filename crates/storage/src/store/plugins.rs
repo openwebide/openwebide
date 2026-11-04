@@ -1576,10 +1576,137 @@ mod bundled_tests {
                     pkg.prepared.manifest.contributions.skills.clear();
                     pkg.skills.clear();
                 }
+                if !["web", "memory", "scheduling", "skill-authoring"].contains(&pkg.prepared.manifest.name.as_str()) {
+                    pkg.prepared.manifest.compatibility.plugin_api = 5;
+                    pkg.prepared.manifest.contributions.tools.clear();
+                    pkg.prepared.manifest.executable.as_mut().unwrap().capabilities.clear();
+                    pkg.prepared.manifest.contributions.languages = serde_json::from_value(serde_json::json!([{
+                        "id":format!("fixture-{}", pkg.prepared.manifest.name),"name":"Fixture language","extensions":["fixture"],"features":{"syntax":true}
+                    }])).unwrap();
+                }
                 pkg
             })
             .collect()
     }
+    #[test]
+    fn adding_language_defaults_preserves_existing_installations_and_project_opt_outs() {
+        futures::executor::block_on(async {
+            for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+                let store = Store::new(RusqliteDb::open_in_memory().unwrap());
+                store.migrate().await.unwrap();
+                let user = store
+                    .insert_user("owner", "hash", UserRole::Admin, 0)
+                    .await
+                    .unwrap()
+                    .id;
+                let project = store
+                    .create_project(
+                        &NewProject {
+                            name: "existing".into(),
+                            mode,
+                            path: None,
+                        },
+                        user,
+                        0,
+                    )
+                    .await
+                    .unwrap();
+                let packages = packages();
+                assert_eq!(packages.len(), 23);
+                let languages: Vec<_> = packages
+                    .iter()
+                    .filter(|package| !package.prepared.manifest.contributions.languages.is_empty())
+                    .cloned()
+                    .collect();
+                assert_eq!(languages.len(), 19);
+                for mut previous in packages
+                    .iter()
+                    .filter(|package| package.prepared.manifest.contributions.languages.is_empty())
+                    .cloned()
+                {
+                    previous.prepared.source.commit = "d".repeat(40);
+                    previous.prepared.manifest.version = "0.0.9".into();
+                    store
+                        .record_plugin(
+                            user,
+                            &RecordPlugin {
+                                approved_capabilities: vec![],
+                                prepared: previous.prepared.clone(),
+                                package: Some(Box::new(previous)),
+                                revision: None,
+                                update_policy: Some(PluginUpdatePolicy::Off),
+                            },
+                            1,
+                        )
+                        .await
+                        .unwrap();
+                }
+                let previous = store.project_plugins(user, project.id).await.unwrap()[0].clone();
+                store
+                    .project_plugin_command(
+                        user,
+                        project.id,
+                        &ProjectPluginCommand::Disable {
+                            id: previous.id,
+                            revision: previous.revision,
+                        },
+                        2,
+                    )
+                    .await
+                    .unwrap();
+                assert_eq!(
+                    store.pending_bundled_plugins(user).await.unwrap(),
+                    languages
+                        .iter()
+                        .map(|package| package.prepared.source.clone())
+                        .collect::<Vec<_>>()
+                );
+                store
+                    .initialize_bundled_plugins(user, &languages, 3)
+                    .await
+                    .unwrap();
+                let installed = store.plugin_installations(user).await.unwrap();
+                assert_eq!(installed.len(), packages.len());
+                for entry in installed
+                    .iter()
+                    .filter(|entry| entry.prepared.manifest.contributions.languages.is_empty())
+                {
+                    assert_eq!(entry.prepared.source.commit, "d".repeat(40));
+                    assert_eq!(entry.prepared.manifest.version, "0.0.9");
+                    assert_eq!(entry.update_policy, PluginUpdatePolicy::Off);
+                }
+                let bindings = store.project_plugins(user, project.id).await.unwrap();
+                assert!(
+                    !bindings
+                        .iter()
+                        .find(|entry| entry.id == previous.id)
+                        .unwrap()
+                        .enabled
+                );
+                assert_eq!(
+                    bindings
+                        .iter()
+                        .filter(|entry| !entry.prepared.manifest.contributions.languages.is_empty())
+                        .count(),
+                    19
+                );
+                assert!(
+                    bindings
+                        .iter()
+                        .filter(|entry| !entry.prepared.manifest.contributions.languages.is_empty())
+                        .all(|entry| entry.enabled)
+                );
+                assert!(
+                    store
+                        .pending_bundled_plugins(user)
+                        .await
+                        .unwrap()
+                        .is_empty()
+                );
+            }
+        });
+    }
+
     #[test]
     fn bundled_defaults_are_once_per_account_and_preserve_removals_versions_and_project_opt_outs() {
         futures::executor::block_on(async {
@@ -1617,13 +1744,16 @@ mod bundled_tests {
                         .is_err()
                 );
                 assert!(store.plugin_installations(owner).await.unwrap().is_empty());
-                assert_eq!(store.pending_bundled_plugins(owner).await.unwrap().len(), 4);
+                assert_eq!(
+                    store.pending_bundled_plugins(owner).await.unwrap().len(),
+                    packages.len()
+                );
                 store
                     .initialize_bundled_plugins(owner, &packages, 1)
                     .await
                     .unwrap();
                 let entries = store.plugin_installations(owner).await.unwrap();
-                assert_eq!(entries.len(), 4);
+                assert_eq!(entries.len(), packages.len());
                 assert!(entries.iter().all(|entry| entry.default_enabled
                     && entry.update_policy == PluginUpdatePolicy::Notify));
                 assert!(
@@ -1633,14 +1763,17 @@ mod bundled_tests {
                         .unwrap()
                         .is_empty()
                 );
-                assert_eq!(store.pending_bundled_plugins(other).await.unwrap().len(), 4);
+                assert_eq!(
+                    store.pending_bundled_plugins(other).await.unwrap().len(),
+                    packages.len()
+                );
                 assert_eq!(
                     store
                         .project_plugins(owner, project.id)
                         .await
                         .unwrap()
                         .len(),
-                    4
+                    packages.len()
                 );
                 let binding = store
                     .project_plugins(owner, project.id)
@@ -1676,7 +1809,10 @@ mod bundled_tests {
                     .initialize_bundled_plugins(owner, &[], 3)
                     .await
                     .unwrap();
-                assert_eq!(store.plugin_installations(owner).await.unwrap().len(), 3);
+                assert_eq!(
+                    store.plugin_installations(owner).await.unwrap().len(),
+                    packages.len() - 1
+                );
                 assert!(
                     store
                         .pending_bundled_plugins(owner)
@@ -1716,7 +1852,7 @@ mod bundled_tests {
                     .unwrap();
                 assert_eq!(
                     store.project_plugins(owner, future.id).await.unwrap().len(),
-                    3
+                    packages.len() - 1
                 );
                 // An explicit newer installation is never replaced by the bundled baseline.
                 let mut newer = packages[0].clone();
@@ -1741,7 +1877,7 @@ mod bundled_tests {
                     .await
                     .unwrap();
                 let installed = store.plugin_installations(other).await.unwrap();
-                assert_eq!(installed.len(), 4);
+                assert_eq!(installed.len(), packages.len());
                 let preserved = installed
                     .iter()
                     .find(|entry| entry.prepared.source.path == "plugins/web")

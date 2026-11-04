@@ -162,7 +162,7 @@ pub(super) fn cycle_focus() {
 }
 
 pub(super) fn capture_active_editor(
-    workspace: crate::state::workspace::WorkspaceState,
+    actions: super::editor::EditorActions,
     open_file: Option<String>,
     content: &str,
 ) -> Option<EditorContext> {
@@ -173,7 +173,6 @@ pub(super) fn capture_active_editor(
     let textarea = textarea.dyn_into::<web_sys::HtmlTextAreaElement>().ok()?;
     let selection_start = textarea.selection_start().ok().flatten().unwrap_or(0) as usize;
     let selection_end = textarea.selection_end().ok().flatten().unwrap_or(0) as usize;
-    let actions = super::editor::EditorActions::new(workspace);
     if !crate::viewport::current_editor_target(actions, &textarea)
         || !actions.native_input_current(
             textarea
@@ -277,7 +276,7 @@ pub fn install_project_effects(context: ProjectEffectContext) {
                 prompts_result,
                 model_setup_result,
             ) = futures::join!(
-                backend.get_settings(),
+                settings.load_values(api, generation),
                 backend.list_projects(),
                 backend.list_connections(),
                 backend.list_sessions(),

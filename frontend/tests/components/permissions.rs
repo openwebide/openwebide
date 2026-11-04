@@ -399,7 +399,8 @@ async fn approval_picker_and_shift_tab_share_database_state_in_both_modes() {
 async fn approval_diff_paint_uses_complete_source_context_in_both_modes() {
     use openwebide_core::{FileDiff, RunEvent, WorkspaceMode};
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        let mounted = mount_test(move |state| {
+        let host = super::language_support::LanguageHost::new().await;
+        let mounted = host.mount(move |state| {
             state.seed_project();
             state.seed_session();
             state
@@ -426,7 +427,19 @@ async fn approval_diff_paint_uses_complete_source_context_in_both_modes() {
             }),
             note: None,
         });
-        settle().await;
+        super::support::wait_until("approval diff host syntax", || {
+            mounted
+                .root
+                .query_selector(".add .tok-comment.diff-word-add")
+                .unwrap()
+                .is_some()
+                && mounted
+                    .root
+                    .query_selector(".del .tok-comment.diff-word-del")
+                    .unwrap()
+                    .is_some()
+        })
+        .await;
         let lines = mounted.element(".tui-diff-lines");
         assert_eq!(lines.child_element_count(), 2);
         assert!(
@@ -442,5 +455,7 @@ async fn approval_diff_paint_uses_complete_source_context_in_both_modes() {
                 .is_some()
         );
         assert!(lines.text_content().unwrap().contains("new 😀"));
+        drop(mounted);
+        host.close().await;
     }
 }

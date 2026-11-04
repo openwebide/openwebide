@@ -30,6 +30,12 @@ pub(super) async fn write_setting_body(
 ) -> Result<JsonResp, ApiError> {
     let user_id = user.id;
     validate_setting_key(&setting.key)?;
+    if setting.key == "language_settings" {
+        let preferences: openwebide_core::plugins::languages::LanguageSettings =
+            serde_json::from_str(&setting.value)
+                .map_err(|_| ApiError::bad_request("Invalid language preferences"))?;
+        preferences.validate().map_err(ApiError::bad_request)?;
+    }
     if setting.key == "default_prompt" && !setting.value.is_empty() {
         let id = setting
             .value

@@ -304,6 +304,8 @@ fn same_measurement_environment(old: &EditorRowPaint, paint: &EditorRowPaint) ->
         && old.epoch == paint.epoch
         && old.read_revision == paint.read_revision
         && old.account_generation == paint.account_generation
+        && old.session == paint.session
+        && old.language_generation == paint.language_generation
         && old.metrics == paint.metrics
         && old.indentation == paint.indentation
         && old.whitespace == paint.whitespace
@@ -329,6 +331,8 @@ fn trace_paragraph_candidate(
         let record = serde_json::json!({
             "cachePresent": old.is_some(),
             "environment": old.map(|old| measurement_environment_matches(old, paint)),
+            "languageScope": old.map(|old| old.language_generation == paint.language_generation),
+            "sessionScope": old.map(|old| old.session == paint.session),
             "rowRetained": row_retained,
             "sameTextOwner": old.map(|old| old.projection.shares_text_version(&paint.projection)),
             "oldPrepared": old.map(|old| old.prepared_source), "newPrepared": paint.prepared_source,
@@ -878,6 +882,8 @@ impl EditorActions {
             && self.workspace.editor_read_revision.get_untracked() == paint.read_revision
             && self.auth.map_or(0, |auth| auth.generation.get_untracked())
                 == paint.account_generation
+            && self.workspace.active_session.get_untracked() == paint.session
+            && self.language_generation() == paint.language_generation
     }
     /// Guide queries reuse the shared source document's indexed logical rows.
     pub fn indent_guides(self, indentation: Indentation) -> Arc<[usize]> {
@@ -914,6 +920,8 @@ impl EditorActions {
             epoch: self.workspace.pending_epoch.get_untracked(),
             read_revision: self.workspace.editor_read_revision.get_untracked(),
             account_generation: self.auth.map_or(0, |auth| auth.generation.get_untracked()),
+            session: self.workspace.active_session.get_untracked(),
+            language_generation: self.language_generation(),
             metrics,
             projection,
             tokens: tokens.1,
@@ -1208,6 +1216,8 @@ impl EditorActions {
                 && paint.epoch == self.workspace.pending_epoch.get_untracked()
                 && paint.read_revision == self.workspace.editor_read_revision.get_untracked()
                 && paint.account_generation == self.account_generation()
+                && paint.session == self.workspace.active_session.get_untracked()
+                && paint.language_generation == self.language_generation()
                 && Some(paint.metrics.as_str()) == metrics
         };
         let retained_font = self
@@ -2378,6 +2388,8 @@ mod tests {
             epoch: 4,
             read_revision: 5,
             account_generation: 6,
+            session: Some(7),
+            language_generation: 8,
             metrics: "font and width".into(),
             projection: FoldProjection::new("let value = 1;", &Default::default()),
             tokens: Arc::new(Vec::new()),
@@ -2479,7 +2491,7 @@ mod tests {
         let mut fresh = old.clone();
         fresh.layout_epoch += 1;
         assert!(same_paint_runs(&old, &fresh));
-        for change in 0..15 {
+        for change in 0..17 {
             let mut stale = fresh.clone();
             match change {
                 0 => stale.view_revision += 1,
@@ -2499,6 +2511,8 @@ mod tests {
                 11 => stale.guides = Arc::from([0]),
                 12 => stale.indentation.width += 1,
                 13 => stale.whitespace = true,
+                14 => stale.session = None,
+                15 => stale.language_generation += 1,
                 _ => stale.word_wrap = true,
             }
             assert!(!same_paint_runs(&old, &stale), "change {change}");

@@ -15,8 +15,8 @@ fn main() -> Result<()> {
     let manifest = PathBuf::from(args.next().context("Provide a plugin.json path")?);
     let sample = args
         .next()
-        .context("Provide a sample source path or --matrix")?;
-    let source = if sample == "--matrix" {
+        .context("Provide a sample source path, --matrix or --family-matrix")?;
+    let source = if matches!(sample.as_str(), "--matrix" | "--family-matrix") {
         String::new()
     } else {
         std::fs::read_to_string(&sample)?
@@ -29,16 +29,20 @@ fn main() -> Result<()> {
         .contributions
         .languages
         .iter()
-        .find(|definition| definition.features.syntax)
-        .context("Package must declare a syntax provider")?
+        .find(|definition| {
+            definition.features.syntax
+                || definition.features.folding
+                || definition.features.structure
+        })
+        .context("Package must declare a language analysis provider")?
         .id
         .clone();
     let prepared: PreparedPlugin = serde_json::from_value(serde_json::json!({
         "source":{"repository":"https://example.test/language-plugin.git","commit":"a".repeat(40),"path":"."},
         "manifest":manifest,"digest":"b".repeat(64),"host_id":"authoring-check"
     }))?;
-    if sample == "--matrix" {
-        return matrix(&bytes, &prepared);
+    if matches!(sample.as_str(), "--matrix" | "--family-matrix") {
+        return matrix(&bytes, &prepared, sample == "--family-matrix");
     }
     let mut runtime = LanguageRuntime::new()?;
     let cancelled = Arc::new(AtomicBool::new(false));
@@ -165,7 +169,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn matrix(bytes: &[u8], prepared: &PreparedPlugin) -> Result<()> {
+fn matrix(bytes: &[u8], prepared: &PreparedPlugin, family: bool) -> Result<()> {
     use openwebide_core::plugins::ProjectPlugin;
     let registry = LanguageRegistry::from_bindings(&[ProjectPlugin {
         id: 1,
@@ -181,6 +185,11 @@ fn matrix(bytes: &[u8], prepared: &PreparedPlugin) -> Result<()> {
     let mut runtime = LanguageRuntime::new()?;
     let cancelled = Arc::new(AtomicBool::new(false));
     let mut count = 0;
+    let mut covered = std::collections::BTreeSet::new();
+    let large_markdown = (0..1_000)
+        .map(|index| format!("Paragraph {index}: **文😀** and `code`.\n\n"))
+        .collect::<String>();
+    let large_rust = "fn example() { let value = 42; }\n".repeat(10_000);
     let cases = syntax_contracts::LANGUAGE_CASES
         .iter()
         .map(|&(path, source, fold)| (path, source, Some(fold), None))
@@ -193,14 +202,82 @@ fn matrix(bytes: &[u8], prepared: &PreparedPlugin) -> Result<()> {
             syntax_contracts::LITERAL_CASES
                 .iter()
                 .map(|&(path, source, literal, code)| (path, source, None, Some((literal, code)))),
-        );
-    for (path, source, fold, literal) in cases {
+        )
+        .chain([
+            (
+                "fallback.txt",
+                "#region group\n文😀\n#endregion\nafter\n",
+                Some(FoldRange {
+                    start_line: 0,
+                    end_line: 2,
+                }),
+                None,
+            ),
+            (
+                "unknown.custom-extension",
+                "#region group\n文😀\n#endregion\nafter\n",
+                Some(FoldRange {
+                    start_line: 0,
+                    end_line: 2,
+                }),
+                None,
+            ),
+        ]);
+    let extra = [
+        ("query.sql", "SELECT '文😀';\n", None, None),
+        ("body.markdown-inline", "**文😀** and `code`", None, None),
+        (
+            "style.scss",
+            ".main {\n    $color: #fff;\n    color: $color;\n}\n",
+            Some(FoldRange {
+                start_line: 0,
+                end_line: 3,
+            }),
+            None,
+        ),
+        (
+            "embedded.html",
+            "<script>const text = \"文😀\";</script>\n<style>a { color: red; }</style>\n",
+            None,
+            None,
+        ),
+        ("custom-fences.md", "```notes\n文😀\n```\n", None, None),
+        ("large.md", large_markdown.as_str(), None, None),
+        ("large.rs", large_rust.as_str(), None, None),
+    ];
+    for (path, source, fold, literal) in cases.chain(extra.into_iter().filter(|_| family)) {
+        let id = if path == "body.markdown-inline" {
+            "markdown-inline".into()
+        } else {
+            format!("{:?}", openwebide_core::highlight::language_from_path(path))
+                .to_ascii_lowercase()
+        };
+        if family
+            && !prepared
+                .manifest
+                .contributions
+                .languages
+                .iter()
+                .any(|definition| definition.id == id)
+        {
+            continue;
+        }
         for source in [source.to_string(), source.replace('\n', "\r\n")] {
-            let LanguageSelection::Selected(provider) =
-                registry.select(path, &source, None, &LanguagePreferences::default())
-            else {
+            let LanguageSelection::Selected(provider) = registry.select(
+                path,
+                &source,
+                (path == "body.markdown-inline").then_some("markdown-inline"),
+                &LanguagePreferences::default(),
+            ) else {
                 anyhow::bail!("No unambiguous provider for {path}")
             };
+            if family {
+                ensure!(
+                    provider.definition.id == id,
+                    "{path}: another language claimed this fixture"
+                );
+            }
+            covered.insert(provider.definition.id.clone());
             let request = AnalysisRequest {
                 version: VERSION,
                 document: format!("fixture-{count}"),
@@ -232,6 +309,37 @@ fn matrix(bytes: &[u8], prepared: &PreparedPlugin) -> Result<()> {
                 response.status
             );
             let data = response.analysis.context("Missing analysis")?;
+            if path == "large.md" {
+                ensure!(data.highlights.is_some(), "Missing Markdown highlights");
+                ensure!(
+                    data.structure
+                        .as_ref()
+                        .context("Missing Markdown structure")?
+                        .scopes
+                        .is_empty(),
+                    "Inline Markdown must stay inside its family"
+                );
+            }
+            if family && matches!(path, "embedded.html" | "custom-fences.md") {
+                let scopes = &data
+                    .structure
+                    .as_ref()
+                    .context("Missing delegated scopes")?
+                    .scopes;
+                let expected = if path == "embedded.html" {
+                    vec!["javascript", "css"]
+                } else {
+                    vec!["notes"]
+                };
+                ensure!(
+                    scopes
+                        .iter()
+                        .map(|scope| scope.language.as_str())
+                        .collect::<Vec<_>>()
+                        == expected,
+                    "{path}: embedded providers were not delegated"
+                );
+            }
             if let Some(fold) = fold {
                 ensure!(
                     data.folds.contains(&fold),
@@ -259,6 +367,19 @@ fn matrix(bytes: &[u8], prepared: &PreparedPlugin) -> Result<()> {
                 }
             }
             if let Some(rows) = analysis.highlights() {
+                if path == "large.md" {
+                    ensure!(
+                        rows.iter()
+                            .step_by(2)
+                            .take(1_000)
+                            .filter(|row| row.iter().any(|token| token.kind
+                                == openwebide_core::highlight::TokenKind::String
+                                && token.text.contains("code")))
+                            .count()
+                            == 1_000,
+                        "Every Markdown paragraph must receive inline syntax"
+                    );
+                }
                 for (row, source) in rows.iter().zip(source.split('\n')) {
                     ensure!(
                         row.iter()
@@ -271,6 +392,25 @@ fn matrix(bytes: &[u8], prepared: &PreparedPlugin) -> Result<()> {
             }
             count += 1;
         }
+    }
+    ensure!(count > 0, "No language fixtures were exercised");
+    if family {
+        let declared: std::collections::BTreeSet<_> = prepared
+            .manifest
+            .contributions
+            .languages
+            .iter()
+            .filter(|definition| {
+                definition.features.syntax
+                    || definition.features.folding
+                    || definition.features.structure
+            })
+            .map(|definition| definition.id.clone())
+            .collect();
+        ensure!(
+            covered == declared,
+            "Some language IDs lack real component coverage: declared {declared:?}, covered {covered:?}"
+        );
     }
     println!(
         "Validated {count} real component cases: recognition, syntax, folds, embedded regions, Unicode/CRLF and core reconstruction"

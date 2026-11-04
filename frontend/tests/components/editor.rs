@@ -96,7 +96,7 @@ async fn cross_row_word_motion_preserves_source_and_queue_ownership_in_both_mode
         WorkspaceMode,
         editor::{Selection, SelectionMotion},
     };
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let whitespace = "                                        \r\n".repeat(19_000);
         let source = format!("word{whitespace}next");
@@ -111,7 +111,7 @@ async fn cross_row_word_motion_preserves_source_and_queue_ownership_in_both_mode
             state.workspace.content.set(initial.clone().into());
             view! { <div/> }
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         let project = mounted
             .state
             .workspace
@@ -155,7 +155,7 @@ async fn cross_row_word_motion_preserves_source_and_queue_ownership_in_both_mode
 #[wasm_bindgen_test]
 async fn indexed_word_pointer_units_and_drag_reject_stale_edits_in_both_modes() {
     use openwebide_core::{WorkspaceMode, editor::Selection};
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let word = "word_".repeat(16_000);
         let source = format!("{word}  ++ end\r\n");
@@ -170,7 +170,7 @@ async fn indexed_word_pointer_units_and_drag_reject_stale_edits_in_both_modes() 
             state.workspace.content.set(initial.clone().into());
             view! { <div/> }
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         let project = mounted
             .state
             .workspace
@@ -219,7 +219,7 @@ async fn long_word_motion_retains_exact_source_after_edits_and_undo_in_both_mode
         WorkspaceMode,
         editor::{Indentation, Selection, SelectionMotion},
     };
-    use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
+    use openwebide_frontend::state_actions::editor::EditorCommand;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let body = "word_".repeat(16_000);
         let source = format!("prefix\n{body}  ++ tail\n");
@@ -234,7 +234,7 @@ async fn long_word_motion_retains_exact_source_after_edits_and_undo_in_both_mode
             state.workspace.content.set(initial.clone().into());
             view! { <div/> }
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         let project = mounted
             .state
             .workspace
@@ -307,8 +307,9 @@ async fn changed_markdown_section_end_opens_retained_collapse_in_both_modes() {
     };
     use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
     let source = "prefix\n# First\none\ntwo\n# Next\nlast\n";
+    let language_host = super::language_support::LanguageHost::new().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        let mounted = mount_test(move |state| {
+        let mounted = language_host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -318,8 +319,10 @@ async fn changed_markdown_section_end_opens_retained_collapse_in_both_modes() {
             state.workspace.content.set(source.into());
             editor_view(state)
         });
-        let actions =
-            EditorActions::with_input_clock(mounted.state.workspace, std::rc::Rc::new(|| 0.0));
+        super::language_support::ready(&mounted.state).await;
+        let actions = mounted.state.owner.with(|| {
+            EditorActions::with_input_clock(mounted.state.workspace, std::rc::Rc::new(|| 0.0))
+        });
         actions.refresh_fold_ranges(|| true);
         actions.fold_command(FoldCommand::Toggle(1)).unwrap();
         assert!(actions.fold_state().unwrap().collapsed_at(1).is_some());
@@ -339,6 +342,7 @@ async fn changed_markdown_section_end_opens_retained_collapse_in_both_modes() {
             Some(SyntaxStatus::Cancelled)
         );
         assert!(actions.fold_state().unwrap().ranges().is_empty());
+        super::language_support::ready(&mounted.state).await;
         actions.refresh_fold_ranges(|| true);
         assert!(actions.fold_state().unwrap().collapsed_at(1).is_none());
         assert_eq!(actions.projection().unwrap().text(), expected);
@@ -354,6 +358,7 @@ async fn changed_markdown_section_end_opens_retained_collapse_in_both_modes() {
             .unwrap();
         assert_eq!(actions.source().as_str(), source);
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -537,7 +542,7 @@ fn editor_key(
 async fn document_boundary_navigation_reveals_unpainted_rows_and_preserves_selection_in_both_modes()
 {
     use openwebide_core::{WorkspaceMode, editor::Selection};
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     let row = format!("文😀 café {}\r\n", "words ".repeat(32));
     let original = row.repeat(2 * 1024 * 1024 / row.len() + 1000);
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
@@ -557,7 +562,7 @@ async fn document_boundary_navigation_reveals_unpainted_rows_and_preserves_selec
                 state.workspace.content.set(source.into());
                 view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:420px;height:320px">{editor_view(state)}</div> }
             });
-            let actions = EditorActions::new(mounted.state.workspace);
+            let actions = mounted.state.editor_actions();
             let input: web_sys::HtmlTextAreaElement =
                 mounted.element(".editor-textarea").unchecked_into();
             let scroll = mounted.element(".editor-scroll-surface");
@@ -642,11 +647,12 @@ async fn document_boundary_navigation_reveals_unpainted_rows_and_preserves_selec
 
 #[wasm_bindgen_test]
 async fn parser_reindent_preserves_literals_and_embedded_boundaries_in_both_modes() {
+    let host = super::language_support::LanguageHost::new().await;
     use openwebide_core::{
         WorkspaceMode,
         editor::{Indentation, Selection},
     };
-    use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
+    use openwebide_frontend::state_actions::editor::EditorCommand;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         for (path, source, expected) in [
             (
@@ -670,8 +676,10 @@ async fn parser_reindent_preserves_literals_and_embedded_boundaries_in_both_mode
                 "values = [\n    f\"\"\"first\n  {call()}\nlast\"\"\"\n]",
             ),
         ] {
+            let seed = host.seed();
             let mounted = mount_test(move |state| {
                 state.seed_project();
+                seed(&state);
                 state
                     .projects
                     .projects
@@ -680,7 +688,8 @@ async fn parser_reindent_preserves_literals_and_embedded_boundaries_in_both_mode
                 state.workspace.content.set(source.into());
                 editor_view(state)
             });
-            let actions = EditorActions::new(mounted.state.workspace);
+            super::language_support::ready(&mounted.state).await;
+            let actions = mounted.state.editor_actions();
             let selection = Selection {
                 anchor: source.len(),
                 head: 0,
@@ -697,7 +706,7 @@ async fn parser_reindent_preserves_literals_and_embedded_boundaries_in_both_mode
                 .unwrap()
                 .unwrap();
             assert_eq!(mounted.state.workspace.content.get_untracked(), source);
-            // Reusing the parser cache after undo must revalidate its source.
+            // Reusing the host service after undo must revalidate its source.
             actions
                 .reindent_when_ready(selection, Indentation::default())
                 .await
@@ -708,6 +717,7 @@ async fn parser_reindent_preserves_literals_and_embedded_boundaries_in_both_mode
             settle().await;
         }
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -717,6 +727,8 @@ async fn cold_structural_commands_reject_superseded_requests_in_both_modes() {
         editor::{Indentation, Selection},
     };
     use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
+    let host = super::language_support::LanguageHost::new().await;
+    host.pause();
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         for command in [
             EditorCommand::Reindent,
@@ -753,7 +765,7 @@ async fn cold_structural_commands_reject_superseded_requests_in_both_modes() {
                 let original = source.clone();
                 let slot = std::rc::Rc::new(std::cell::Cell::new(None::<EditorActions>));
                 let capture = slot.clone();
-                let mounted = mount_test(move |state| {
+                let mounted = host.mount(move |state| {
                     state.seed_project();
                     state
                         .projects
@@ -772,11 +784,15 @@ async fn cold_structural_commands_reject_superseded_requests_in_both_modes() {
                             now
                         }),
                     );
-                    actions.install_syntax_transport(std::rc::Rc::new(DeferredSyntax::default()));
+                    actions.install_syntax_worker();
                     capture.set(Some(actions));
                     view! { <div/> }
                 });
                 let actions = slot.get().unwrap();
+                wait_until("held host structure before cancellation", || {
+                    host.pending() > 0
+                })
+                .await;
                 let mut request = Box::pin(actions.command_when_ready(
                     command,
                     if change == "secondary" {
@@ -843,6 +859,7 @@ async fn cold_structural_commands_reject_superseded_requests_in_both_modes() {
                     "composition" => actions.begin_composition(),
                     "dispose" => {
                         drop(mounted);
+                        host.cancel_pending();
                         assert_eq!(request.await.unwrap(), None);
                         continue;
                     }
@@ -858,9 +875,13 @@ async fn cold_structural_commands_reject_superseded_requests_in_both_modes() {
                     }
                 );
                 assert!(!mounted.state.workspace.dirty.get_untracked());
+                drop(mounted);
+                host.cancel_pending();
+                settle().await;
             }
         }
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -870,6 +891,8 @@ async fn cold_single_language_comments_keep_immediate_fallbacks_in_both_modes() 
         editor::{Indentation, MAX_STRUCTURE_BYTES, Selection},
     };
     use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
+    let language_host = super::language_support::LanguageHost::new().await;
+    language_host.pause();
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let row = format!("{}\n", "x".repeat(127));
         for (path, source, marker) in [
@@ -881,7 +904,7 @@ async fn cold_single_language_comments_keep_immediate_fallbacks_in_both_modes() 
             ),
         ] {
             let expected = format!("{marker}{source}");
-            let mounted = mount_test(move |state| {
+            let mounted = language_host.mount(move |state| {
                 state.seed_project();
                 state
                     .projects
@@ -890,11 +913,21 @@ async fn cold_single_language_comments_keep_immediate_fallbacks_in_both_modes() 
                 state.workspace.open_file.set(Some(path.into()));
                 state.workspace.content.set(source.into());
                 let actions = EditorActions::new(state.workspace);
-                actions.install_syntax_transport(std::rc::Rc::new(DeferredSyntax::default()));
+                actions.install_syntax_worker();
                 view! { <div/> }
             });
-            let actions = EditorActions::new(mounted.state.workspace);
+            let actions = mounted.state.editor_actions();
+            wait_until("installed comment declarations without syntax", || {
+                mounted.state.languages.settings_loaded.get_untracked()
+                    && mounted
+                        .state
+                        .languages
+                        .selected
+                        .with_untracked(Option::is_some)
+            })
+            .await;
             assert!(!actions.command_requires_structure(EditorCommand::LineComment));
+            assert!(actions.command_supported(EditorCommand::LineComment));
             let mut request = Box::pin(actions.command_when_ready(
                 EditorCommand::LineComment,
                 Selection::caret(0),
@@ -904,9 +937,13 @@ async fn cold_single_language_comments_keep_immediate_fallbacks_in_both_modes() 
                 panic!("Single-language comments must not wait for syntax");
             };
             result.unwrap().unwrap();
-            assert_eq!(actions.source(), expected);
+            assert!(
+                actions.source() == expected,
+                "{mode:?} {path}: immediate comments must preserve the complete expected source"
+            );
         }
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -917,9 +954,11 @@ async fn cold_structural_navigation_prepares_context_and_rejects_superseded_acti
         editor::{Indentation, Selection, SelectionCommand},
     };
     use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
+    let language_host = super::language_support::LanguageHost::new().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        language_host.pause();
         let source = "def f():\n    value = call(foo)\n    return value\noutside()";
-        let mounted = mount_test(move |state| {
+        let mounted = language_host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -927,24 +966,27 @@ async fn cold_structural_navigation_prepares_context_and_rejects_superseded_acti
                 .update(|projects| projects[0].mode = mode);
             state.workspace.open_file.set(Some("cold.py".into()));
             state.workspace.content.set(source.into());
-            EditorActions::new(state.workspace)
-                .install_syntax_transport(std::rc::Rc::new(DeferredSyntax::default()));
+            EditorActions::new(state.workspace).install_syntax_worker();
             view! { <div/> }
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         let start = source.find("value =").unwrap();
         let end = source.find("\n    return").unwrap();
-        let selections = actions
-            .selection_command_when_ready(
-                SelectionCommand::Expand,
-                Selection {
-                    anchor: end,
-                    head: start,
-                },
-            )
-            .await
-            .unwrap()
-            .unwrap();
+        wait_until("cold navigation is waiting for host analysis", || {
+            language_host.pending() > 0
+        })
+        .await;
+        let mut expansion = Box::pin(actions.selection_command_when_ready(
+            SelectionCommand::Expand,
+            Selection {
+                anchor: end,
+                head: start,
+            },
+        ));
+        assert!(futures::poll!(expansion.as_mut()).is_pending());
+        language_host.resume();
+        language_host.respond().await;
+        let selections = expansion.await.unwrap().unwrap();
         assert_eq!(
             &source[selections[0].range()],
             "value = call(foo)\n    return value"
@@ -962,6 +1004,8 @@ async fn cold_structural_navigation_prepares_context_and_rejects_superseded_acti
         );
         assert_eq!(actions.source(), source);
         drop(mounted);
+        language_host.cancel_pending();
+        language_host.pause();
 
         for bracket in [false, true] {
             for change in [
@@ -984,7 +1028,7 @@ async fn cold_structural_navigation_prepares_context_and_rejects_superseded_acti
                 let original = source.clone();
                 let slot = std::rc::Rc::new(std::cell::Cell::new(None::<EditorActions>));
                 let capture = slot.clone();
-                let mounted = mount_test(move |state| {
+                let mounted = language_host.mount(move |state| {
                     state.seed_project();
                     state
                         .projects
@@ -993,11 +1037,15 @@ async fn cold_structural_navigation_prepares_context_and_rejects_superseded_acti
                     state.workspace.open_file.set(Some("cold.py".into()));
                     state.workspace.content.set(source.into());
                     let actions = EditorActions::new(state.workspace);
-                    actions.install_syntax_transport(std::rc::Rc::new(DeferredSyntax::default()));
+                    actions.install_syntax_worker();
                     capture.set(Some(actions));
                     view! { <div/> }
                 });
                 let actions = slot.get().unwrap();
+                wait_until("cold navigation cancellation holds a host request", || {
+                    language_host.pending() > 0
+                })
+                .await;
                 use futures::FutureExt;
                 let position = if bracket {
                     original.find("(foo)").unwrap()
@@ -1078,6 +1126,8 @@ async fn cold_structural_navigation_prepares_context_and_rejects_superseded_acti
                     "dispose" => {
                         drop(mounted);
                         assert_eq!(request.await.unwrap(), None);
+                        language_host.cancel_pending();
+                        openwebide_frontend::util::yield_task().await;
                         continue;
                     }
                     _ => unreachable!(),
@@ -1092,19 +1142,25 @@ async fn cold_structural_navigation_prepares_context_and_rejects_superseded_acti
                     }
                 );
                 assert!(!mounted.state.workspace.dirty.get_untracked());
+                drop(mounted);
+                language_host.cancel_pending();
+                openwebide_frontend::util::yield_task().await;
             }
         }
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
 async fn cold_structural_navigation_keyboard_and_menu_share_preparation_in_both_modes() {
     use openwebide_core::WorkspaceMode;
     use openwebide_frontend::state_actions::editor::EditorActions;
+    let language_host = super::language_support::LanguageHost::new().await;
+    language_host.pause();
     let source = "def f():\n    value = call(foo)\n    return value\noutside()";
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         for keyboard in [true, false] {
-            let mounted = mount_test(move |state| {
+            let mounted = language_host.mount(move |state| {
                 state.seed_project();
                 state
                     .projects
@@ -1112,17 +1168,20 @@ async fn cold_structural_navigation_keyboard_and_menu_share_preparation_in_both_
                     .update(|projects| projects[0].mode = mode);
                 state.workspace.open_file.set(Some("expand.py".into()));
                 state.workspace.content.set(source.into());
-                EditorActions::new(state.workspace)
-                    .install_syntax_transport(std::rc::Rc::new(DeferredSyntax::default()));
+                EditorActions::new(state.workspace).install_syntax_worker();
                 editor_view(state)
             });
-            let actions = EditorActions::new(mounted.state.workspace);
+            let actions = mounted.state.editor_actions();
             let input: web_sys::HtmlTextAreaElement =
                 mounted.element(".editor-textarea").unchecked_into();
             wait_until("expansion source is installed", || input.value() == source).await;
             let start = u32::try_from(source.find("value =").unwrap()).unwrap();
             let end = u32::try_from(source.find("\n    return").unwrap()).unwrap();
             input.set_selection_range(start, end).unwrap();
+            wait_until("cold navigation holds host analysis", || {
+                language_host.pending() > 0
+            })
+            .await;
             assert!(actions.syntax_is_pending());
             if keyboard {
                 let init = web_sys::KeyboardEventInit::new();
@@ -1150,6 +1209,11 @@ async fn cold_structural_navigation_keyboard_and_menu_share_preparation_in_both_
                     .unwrap();
                 item.click();
             }
+            settle().await;
+            assert!(actions.syntax_is_pending());
+            assert_eq!(actions.source(), source);
+            assert!(!mounted.state.workspace.dirty.get_untracked());
+            language_host.respond().await;
             wait_until("cold expansion applies parsed suite", || {
                 actions
                     .current_selections()
@@ -1185,12 +1249,13 @@ async fn cold_structural_navigation_keyboard_and_menu_share_preparation_in_both_
             .await;
             assert_eq!(actions.source(), source);
             assert!(!mounted.state.workspace.dirty.get_untracked());
-            assert!(
-                actions.syntax_is_pending(),
-                "Expansion does not require the held background worker reply"
-            );
+            assert!(!actions.syntax_is_pending());
+            drop(mounted);
+            language_host.cancel_pending();
+            openwebide_frontend::util::yield_task().await;
         }
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -1217,7 +1282,7 @@ async fn unsupported_structural_navigation_keeps_immediate_lexical_fallback_in_b
                     .install_syntax_transport(std::rc::Rc::new(DeferredSyntax::default()));
                 view! { <div/> }
             });
-            let actions = EditorActions::new(mounted.state.workspace);
+            let actions = mounted.state.editor_actions();
             let mut request =
                 Box::pin(actions.selection_command_when_ready(
                     SelectionCommand::Expand,
@@ -1245,11 +1310,10 @@ async fn unsupported_structural_navigation_keeps_immediate_lexical_fallback_in_b
 async fn embedded_comment_menu_follows_selection_languages_without_reparsing_in_both_modes() {
     use openwebide_core::{WorkspaceMode, editor::Selection};
     use openwebide_frontend::state_actions::editor::EditorActions;
+    let language_host = super::language_support::LanguageHost::new().await;
     let source = "# Guide\n\n```python\npython_call()\n```\n\n```rust\nrust_call();\n```\n\n```json\n{\"value\": 1}\n```\n";
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        let transport = std::rc::Rc::new(DeferredSyntax::default());
-        let installed = transport.clone();
-        let mounted = mount_test(move |state| {
+        let mounted = language_host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -1260,15 +1324,11 @@ async fn embedded_comment_menu_follows_selection_languages_without_reparsing_in_
                 .open_file
                 .set(Some("capabilities.md".into()));
             state.workspace.content.set(source.into());
-            EditorActions::new(state.workspace).install_syntax_transport(installed);
+            EditorActions::new(state.workspace).install_syntax_worker();
             editor_view(state)
         });
-        let actions = EditorActions::new(mounted.state.workspace);
-        wait_until("capability grammar request", || {
-            !transport.pending.borrow().is_empty()
-        })
-        .await;
-        transport.respond(true);
+        let actions = mounted.state.editor_actions();
+        super::language_support::ready(&mounted.state).await;
         wait_until("capability grammar ready", || {
             actions.syntax_structure(|| true).is_some()
         })
@@ -1286,7 +1346,7 @@ async fn embedded_comment_menu_follows_selection_languages_without_reparsing_in_
                 .find(|node| node.text_content().as_deref() == Some(label))
                 .unwrap()
         };
-        let calls = transport.calls.get();
+        let calls = language_host.calls.get();
         let python = source.find("python_call").unwrap();
         let rust = source.find("rust_call").unwrap();
         let json = source.find("{\"value").unwrap();
@@ -1331,7 +1391,7 @@ async fn embedded_comment_menu_follows_selection_languages_without_reparsing_in_
             })
             .await;
             assert_eq!(
-                transport.calls.get(),
+                language_host.calls.get(),
                 calls,
                 "Selection/menu queries must not request parsing"
             );
@@ -1342,17 +1402,23 @@ async fn embedded_comment_menu_follows_selection_languages_without_reparsing_in_
             .auth
             .generation
             .update(|generation| *generation += 1);
+        language_host.pause();
         wait_until("stale account capability is discarded", || {
             !button("Toggle block comment").disabled()
         })
         .await;
+        drop(mounted);
+        language_host.cancel_pending();
+        language_host.resume();
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
 async fn embedded_comment_actions_wait_for_scopes_and_commit_once_in_both_modes() {
     use openwebide_core::WorkspaceMode;
     use openwebide_frontend::state_actions::editor::EditorActions;
+    let language_host = super::language_support::LanguageHost::new().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         for (path, source, expected, keyboard) in [
             (
@@ -1368,7 +1434,8 @@ async fn embedded_comment_actions_wait_for_scopes_and_commit_once_in_both_modes(
                 false,
             ),
         ] {
-            let mounted = mount_test(move |state| {
+            language_host.pause();
+            let mounted = language_host.mount(move |state| {
                 state.seed_project();
                 state
                     .projects
@@ -1376,13 +1443,16 @@ async fn embedded_comment_actions_wait_for_scopes_and_commit_once_in_both_modes(
                     .update(|projects| projects[0].mode = mode);
                 state.workspace.open_file.set(Some(path.into()));
                 state.workspace.content.set(source.into());
-                EditorActions::new(state.workspace)
-                    .install_syntax_transport(std::rc::Rc::new(DeferredSyntax::default()));
+                EditorActions::new(state.workspace).install_syntax_worker();
                 editor_view(state)
             });
             let input: web_sys::HtmlTextAreaElement =
                 mounted.element(".editor-textarea").unchecked_into();
             wait_until("comment source is ready", || input.value() == source).await;
+            wait_until("embedded comment holds host scopes", || {
+                language_host.pending() > 0
+            })
+            .await;
             let caret = u32::try_from(source.find("call").unwrap()).unwrap();
             input.set_selection_range(caret, caret).unwrap();
             if keyboard {
@@ -1402,6 +1472,13 @@ async fn embedded_comment_actions_wait_for_scopes_and_commit_once_in_both_modes(
                 assert!(!item.disabled());
                 item.click();
             }
+            settle().await;
+            assert_eq!(mounted.state.workspace.content.get_untracked(), source);
+            assert!(!mounted.state.workspace.dirty.get_untracked());
+            // Releasing the root also permits the selected embedded providers
+            // to finish; comments must still wait for the complete composition.
+            language_host.resume();
+            language_host.respond().await;
             wait_until("embedded comment commits", || {
                 mounted.state.workspace.content.get_untracked() == expected
             })
@@ -1410,17 +1487,22 @@ async fn embedded_comment_actions_wait_for_scopes_and_commit_once_in_both_modes(
             assert_eq!(mounted.state.workspace.content.get_untracked(), source);
             editor_key(&input, "z", true, false);
             assert_eq!(mounted.state.workspace.content.get_untracked(), source);
+            drop(mounted);
+            language_host.cancel_pending();
+            openwebide_frontend::util::yield_task().await;
         }
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
 async fn embedded_html_reindent_menu_prepares_and_commits_once_in_both_modes() {
+    let language_host = super::language_support::LanguageHost::new().await;
     use openwebide_core::WorkspaceMode;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let source = "<script>\nfunction f() {\ncall();\n}\n</script>\n<style>\na {\ncolor: red;\n}\n</style>";
         let expected = "<script>\nfunction f() {\n    call();\n}\n</script>\n<style>\na {\n    color: red;\n}\n</style>";
-        let mounted = mount_test(move |state| {
+        let mounted = language_host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -1430,6 +1512,7 @@ async fn embedded_html_reindent_menu_prepares_and_commits_once_in_both_modes() {
             state.workspace.content.set(source.into());
             editor_view(state)
         });
+        super::language_support::ready(&mounted.state).await;
         let input: web_sys::HtmlTextAreaElement =
             mounted.element(".editor-textarea").unchecked_into();
         wait_until("HTML native source is ready", || input.value() == source).await;
@@ -1457,7 +1540,10 @@ async fn embedded_html_reindent_menu_prepares_and_commits_once_in_both_modes() {
         assert_eq!(mounted.state.workspace.content.get_untracked(), source);
         editor_key(&input, "z", true, false);
         assert_eq!(mounted.state.workspace.content.get_untracked(), source);
+        drop(mounted);
+        settle().await;
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -1466,12 +1552,13 @@ async fn cold_reindent_rejects_structure_limits_without_changing_source_in_both_
         WorkspaceMode,
         editor::{EditError, Indentation, MAX_STRUCTURE_BYTES, Selection},
     };
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
+    let host = super::language_support::LanguageHost::new().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let row = format!("{}\n", "x".repeat(127));
         let source = row.repeat(MAX_STRUCTURE_BYTES / row.len() + 1);
         let original = source.clone();
-        let mounted = mount_test(move |state| {
+        let mounted = host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -1479,9 +1566,15 @@ async fn cold_reindent_rejects_structure_limits_without_changing_source_in_both_
                 .update(|projects| projects[0].mode = mode);
             state.workspace.open_file.set(Some("large.rs".into()));
             state.workspace.content.set(source.into());
+            state.editor_actions().install_syntax_worker();
             view! { <div/> }
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
+        wait_until("oversized host language result", || {
+            mounted.state.languages.status.get_untracked()
+                == openwebide_frontend::state::languages::LanguageStatus::TooLarge
+        })
+        .await;
         assert_eq!(
             actions
                 .reindent_when_ready(Selection::caret(0), Indentation::default())
@@ -1490,19 +1583,24 @@ async fn cold_reindent_rejects_structure_limits_without_changing_source_in_both_
         );
         assert_eq!(actions.source(), original);
         assert!(!mounted.state.workspace.dirty.get_untracked());
+        drop(mounted);
+        host.cancel_pending();
+        settle().await;
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
 async fn parser_block_comments_share_modes_embedded_cursors_and_atomic_undo() {
+    let language_host = super::language_support::LanguageHost::new().await;
     use openwebide_core::{
         WorkspaceMode,
         editor::{Document, Indentation, Selection},
     };
-    use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
+    use openwebide_frontend::state_actions::editor::EditorCommand;
     let source = "<script>call();</script><style>a { color: red; }</style>";
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        let mounted = mount_test(move |state| {
+        let mounted = language_host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -1512,7 +1610,8 @@ async fn parser_block_comments_share_modes_embedded_cursors_and_atomic_undo() {
             state.workspace.content.set(source.into());
             editor_view(state)
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        super::language_support::ready(&mounted.state).await;
+        let actions = mounted.state.editor_actions();
         let primary = Selection::caret(source.find("call").unwrap());
         mounted
             .state
@@ -1561,18 +1660,20 @@ async fn parser_block_comments_share_modes_embedded_cursors_and_atomic_undo() {
         drop(mounted);
         settle().await;
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
 async fn parser_line_comments_share_modes_mixed_syntax_and_one_undo_step() {
+    let language_host = super::language_support::LanguageHost::new().await;
     use openwebide_core::{
         WorkspaceMode,
         editor::{Document, Indentation, Selection},
     };
-    use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
+    use openwebide_frontend::state_actions::editor::EditorCommand;
     let source = "<script>\r\ncall();\r\n</script><style>a { color: red; }</style>";
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        let mounted = mount_test(move |state| {
+        let mounted = language_host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -1582,7 +1683,8 @@ async fn parser_line_comments_share_modes_mixed_syntax_and_one_undo_step() {
             state.workspace.content.set(source.into());
             editor_view(state)
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        super::language_support::ready(&mounted.state).await;
+        let actions = mounted.state.editor_actions();
         let primary = Selection::caret(source.find("call").unwrap());
         mounted
             .state
@@ -1639,18 +1741,20 @@ async fn parser_line_comments_share_modes_mixed_syntax_and_one_undo_step() {
         drop(mounted);
         settle().await;
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
 async fn parser_selection_and_navigation_share_modes_and_reject_old_file_events() {
+    let language_host = super::language_support::LanguageHost::new().await;
     use openwebide_core::{
         WorkspaceMode,
         editor::{Selection, SelectionCommand},
     };
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let source = "def f():\r\n    value = call(foo)\r\n    return value\r\noutside()";
-        let mounted = mount_test(move |state| {
+        let mounted = language_host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -1660,7 +1764,8 @@ async fn parser_selection_and_navigation_share_modes_and_reject_old_file_events(
             state.workspace.content.set(source.into());
             editor_view(state)
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        super::language_support::ready(&mounted.state).await;
+        let actions = mounted.state.editor_actions();
         let start = source.find("foo").unwrap();
         actions
             .record_selection(Selection {
@@ -1699,6 +1804,7 @@ async fn parser_selection_and_navigation_share_modes_and_reject_old_file_events(
             .open_file
             .set(Some("fixture.html".into()));
         mounted.state.workspace.content.set(embedded.into());
+        super::language_support::ready(&mounted.state).await;
         let open = embedded.find("(foo)").unwrap();
         assert_eq!(actions.matching_bracket(open), Some((open, open + 4)));
         assert!(
@@ -1721,15 +1827,19 @@ async fn parser_selection_and_navigation_share_modes_and_reject_old_file_events(
         drop(mounted);
         settle().await;
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
 async fn grammar_highlights_paint_embedded_code_and_preserve_crlf_overlay_in_both_modes() {
+    let host = super::language_support::LanguageHost::new().await;
     use openwebide_core::WorkspaceMode;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let source = "<script>\r\nconst t = `文 ${call(42)} tail`;\r\n</script><style>a { color: red; }</style>";
+        let seed = host.seed();
         let mounted = mount_test(move |state| {
             state.seed_project();
+            seed(&state);
             state
                 .projects
                 .projects
@@ -1797,19 +1907,20 @@ async fn grammar_highlights_paint_embedded_code_and_preserve_crlf_overlay_in_bot
         drop(mounted);
         settle().await;
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
 async fn large_markdown_worker_publications_color_all_paragraphs_in_both_modes() {
     use openwebide_core::WorkspaceMode;
+    let host = super::language_support::LanguageHost::new().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        host.pause();
         let prose = (0..1_000)
             .map(|index| format!("Paragraph {index}: **文😀** and `code`.\r\n\r\n"))
             .collect::<String>();
-        let transport = std::rc::Rc::new(DeferredSyntax::default());
-        let installed = transport.clone();
         let initial = prose.clone();
-        let mounted = mount_test(move |state| {
+        let mounted = host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -1817,24 +1928,36 @@ async fn large_markdown_worker_publications_color_all_paragraphs_in_both_modes()
                 .update(|projects| projects[0].mode = mode);
             state.workspace.open_file.set(Some("large.md".into()));
             state.workspace.content.set(initial.into());
-            openwebide_frontend::state_actions::editor::EditorActions::new(state.workspace)
-                .install_syntax_transport(installed);
             editor_view(state)
         });
-        let actions =
-            openwebide_frontend::state_actions::editor::EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         for text in [
             prose.clone(),
             prose.replacen("Paragraph 500", "Changed 500", 1),
         ] {
+            host.pause();
             mounted.state.workspace.content.set(text.clone().into());
-            wait_until("large Markdown worker request", || {
-                !transport.pending.borrow().is_empty()
-            })
-            .await;
-            assert_eq!(transport.source(), text);
-            transport.respond(true);
+            wait_until("large Markdown worker request", || host.pending() > 0).await;
+            assert_eq!(
+                host.next_request().source_digest,
+                openwebide_core::plugins::languages::source_digest(&text)
+            );
+            // A complete Markdown family publishes its inline syntax in the
+            // root response without separate host requests per paragraph.
+            host.resume();
+            host.respond_now(true);
+            let calls = host.calls.get();
             wait_until("large Markdown grammar colors", || {
+                let status = mounted.state.languages.status.get_untracked();
+                assert!(
+                    !matches!(
+                        status,
+                        openwebide_frontend::state::languages::LanguageStatus::Unavailable(_)
+                            | openwebide_frontend::state::languages::LanguageStatus::TooLarge
+                    ),
+                    "{mode:?}: {status:?}; analysis calls={}",
+                    host.calls.get()
+                );
                 let (ready, rows) = actions.syntax_paint();
                 ready
                     && rows.len() == 2_001
@@ -1845,6 +1968,7 @@ async fn large_markdown_worker_publications_color_all_paragraphs_in_both_modes()
                         == text.split('\n').nth(1_000).unwrap()
             })
             .await;
+            assert_eq!(host.calls.get(), calls, "inline syntax stays in its family");
             let (_, rows) = actions.syntax_paint();
             for row in rows.iter().step_by(2).take(1_000) {
                 assert!(
@@ -1857,8 +1981,10 @@ async fn large_markdown_worker_publications_color_all_paragraphs_in_both_modes()
             assert_eq!(mounted.state.workspace.content.get_untracked(), text);
         }
         drop(mounted);
+        host.cancel_pending();
         settle().await;
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -1867,10 +1993,11 @@ async fn selection_policy_and_multi_commands_share_both_modes_and_reject_stale_t
         WorkspaceMode,
         editor::{Indentation, Selection, SelectionCommand},
     };
-    use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
+    use openwebide_frontend::state_actions::editor::EditorCommand;
+    let language_host = super::language_support::LanguageHost::new().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let source = "文 foo\r\nfoo";
-        let mounted = mount_test(move |state| {
+        let mounted = language_host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -1880,7 +2007,8 @@ async fn selection_policy_and_multi_commands_share_both_modes_and_reject_stale_t
             state.workspace.content.set(source.into());
             editor_view(state)
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        super::language_support::ready(&mounted.state).await;
+        let actions = mounted.state.editor_actions();
         let project = mounted
             .state
             .workspace
@@ -1960,7 +2088,9 @@ async fn selection_policy_and_multi_commands_share_both_modes_and_reject_stale_t
         );
         assert!(actions.selections(source).is_empty());
         assert_eq!(mounted.state.workspace.content.get_untracked(), source);
+        drop(mounted);
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -1969,7 +2099,7 @@ async fn multiline_clipboard_fragments_round_trip_in_both_modes_and_reject_bad_m
         WorkspaceMode,
         editor::{CLIPBOARD_SELECTIONS_MIME, Selection, byte_to_textarea},
     };
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let source = "文\r\na\n---\n😀\nb";
         let mounted = mount_test(move |state| {
@@ -1984,7 +2114,7 @@ async fn multiline_clipboard_fragments_round_trip_in_both_modes_and_reject_bad_m
         });
         settle().await;
         frame().await;
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         let textarea: web_sys::HtmlTextAreaElement =
             mounted.element(".editor-textarea").unchecked_into();
         actions
@@ -2166,7 +2296,6 @@ async fn column_gestures_reject_source_scope_and_document_replacements_in_both_m
 #[wasm_bindgen_test]
 async fn multi_cursor_pointer_and_column_gestures_share_both_modes() {
     use openwebide_core::{WorkspaceMode, editor::Selection};
-    use openwebide_frontend::state_actions::editor::EditorActions;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let mounted = mount_test(move |state| {
             state.seed_project();
@@ -2180,7 +2309,7 @@ async fn multi_cursor_pointer_and_column_gestures_share_both_modes() {
         });
         settle().await;
         frame().await;
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         let textarea: web_sys::HtmlTextAreaElement =
             mounted.element(".editor-textarea").unchecked_into();
         textarea.set_selection_range(0, 0).unwrap();
@@ -2467,16 +2596,15 @@ async fn prepared_source_extents_ignore_native_dimensions_and_reject_stale_scope
 #[wasm_bindgen_test]
 async fn highlighted_token_clicks_preserve_columns_and_line_ends_in_both_modes() {
     use openwebide_core::{WorkspaceMode, editor::Selection};
-    use openwebide_frontend::state_actions::editor::EditorActions;
+    let host = super::language_support::LanguageHost::new().await;
+    host.pause();
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         for repeat in [1, 1000] {
             let source =
                 "fn main() {\r\n    let message = \"文😀\";\r\n    println!(\"hello\");\r\n}\r\n";
             let source = source.repeat(repeat);
             let fixture = source.clone();
-            let transport = std::rc::Rc::new(DeferredSyntax::default());
-            let installed = transport.clone();
-            let mounted = mount_test(move |state| {
+            let mounted = host.mount(move |state| {
                 state.seed_project();
                 state
                     .projects
@@ -2484,15 +2612,14 @@ async fn highlighted_token_clicks_preserve_columns_and_line_ends_in_both_modes()
                     .update(|projects| projects[0].mode = mode);
                 state.workspace.open_file.set(Some("click.rs".into()));
                 state.workspace.content.set(fixture.into());
-                EditorActions::new(state.workspace).install_syntax_transport(installed);
                 view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:640px;height:280px">{editor_view(state)}</div> }
             });
-            wait_until("highlighted click worker request", || {
-                !transport.pending.borrow().is_empty()
-            })
-            .await;
-            transport.respond(true);
+            wait_until("highlighted click worker request", || host.pending() > 0).await;
+            host.respond_now(true);
             wait_until("styled token frame before highlighted clicks", || {
+                if host.pending() > 0 {
+                    host.respond_now(true);
+                }
                 mounted
                     .element(".editor-code")
                     .class_list()
@@ -2504,7 +2631,7 @@ async fn highlighted_token_clicks_preserve_columns_and_line_ends_in_both_modes()
                         .is_some()
             })
             .await;
-            let actions = EditorActions::new(mounted.state.workspace);
+            let actions = mounted.state.editor_actions();
             let input: web_sys::HtmlTextAreaElement =
                 mounted.element(".editor-textarea").unchecked_into();
             let pointer_ready = || {
@@ -2572,14 +2699,18 @@ async fn highlighted_token_clicks_preserve_columns_and_line_ends_in_both_modes()
                 );
                 editorPrimaryGesture(&input, 2, 16, 1, false, "mouseup");
             }
+            drop(mounted);
+            host.cancel_pending();
+            settle().await;
         }
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
 async fn primary_pointer_units_and_drag_use_source_in_both_modes() {
     use openwebide_core::{WorkspaceMode, editor::Selection};
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         for wrap in [false, true] {
             let source = "one 文_foo\r\nnext\r\nlast";
@@ -2598,7 +2729,7 @@ async fn primary_pointer_units_and_drag_use_source_in_both_modes() {
                 view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:420px;height:240px">{editor_view(state)}</div> }
             });
             frame().await;
-            let actions = EditorActions::new(mounted.state.workspace);
+            let actions = mounted.state.editor_actions();
             let textarea: web_sys::HtmlTextAreaElement =
                 mounted.element(".editor-textarea").unchecked_into();
             textarea.set_selection_range(0, 3).unwrap();
@@ -2717,7 +2848,7 @@ async fn primary_pointer_units_and_drag_use_source_in_both_modes() {
 #[wasm_bindgen_test]
 async fn stationary_selection_drag_scrolls_and_stops_in_both_modes() {
     use openwebide_core::WorkspaceMode;
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let source = (0..100)
             .map(|line| format!("row {line} {}\n", "abcdef ".repeat(100)))
@@ -2738,7 +2869,7 @@ async fn stationary_selection_drag_scrolls_and_stops_in_both_modes() {
             view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:420px;height:260px">{editor_view(state)}</div> }
         });
         frame().await;
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         let input: web_sys::HtmlTextAreaElement =
             mounted.element(".editor-textarea").unchecked_into();
         let scroll = openwebide_frontend::viewport::editor_scroll(&input);
@@ -2820,7 +2951,7 @@ async fn stationary_selection_drag_scrolls_and_stops_in_both_modes() {
 #[wasm_bindgen_test]
 async fn primary_caret_and_selection_follow_source_motion_and_scroll_in_both_modes() {
     use openwebide_core::{WorkspaceMode, editor::Selection};
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         for wrap in [false, true] {
             let source = format!("a\u{301}文😀\tvalue\r\n{}last", "row\r\n".repeat(80));
@@ -2840,7 +2971,7 @@ async fn primary_caret_and_selection_follow_source_motion_and_scroll_in_both_mod
                 view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:420px;height:240px">{editor_view(state)}</div> }
             });
             frame().await;
-            let actions = EditorActions::new(mounted.state.workspace);
+            let actions = mounted.state.editor_actions();
             let textarea: web_sys::HtmlTextAreaElement =
                 mounted.element(".editor-textarea").unchecked_into();
             textarea.focus().unwrap();
@@ -2940,7 +3071,7 @@ async fn primary_caret_and_selection_follow_source_motion_and_scroll_in_both_mod
 #[wasm_bindgen_test]
 async fn multi_cursor_shortcuts_motion_and_paint_share_both_modes() {
     use openwebide_core::WorkspaceMode;
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let source = format!("foo {}\r\nfoo", "x".repeat(500));
         let mounted = mount_test(move |state| {
@@ -2955,7 +3086,7 @@ async fn multi_cursor_shortcuts_motion_and_paint_share_both_modes() {
         });
         settle().await;
         frame().await;
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         let textarea: web_sys::HtmlTextAreaElement =
             mounted.element(".editor-textarea").unchecked_into();
         textarea.set_selection_range(0, 0).unwrap();
@@ -3112,7 +3243,7 @@ async fn multi_selection_clipboard_uses_source_ranges_and_atomic_history_in_both
         WorkspaceMode,
         editor::{Selection, SelectionCommand},
     };
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let mounted = mount_test(move |state| {
             state.seed_project();
@@ -3126,7 +3257,7 @@ async fn multi_selection_clipboard_uses_source_ranges_and_atomic_history_in_both
         });
         settle().await;
         frame().await;
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         let textarea: web_sys::HtmlTextAreaElement =
             mounted.element(".editor-textarea").unchecked_into();
         textarea.set_selection_range(0, 3).unwrap();
@@ -3192,7 +3323,7 @@ async fn multi_selection_clipboard_uses_source_ranges_and_atomic_history_in_both
 #[wasm_bindgen_test]
 async fn composition_scope_changes_and_failed_frames_preserve_documents_in_both_modes() {
     use openwebide_core::editor::{EditError, Selection};
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     for mode in [
         openwebide_core::WorkspaceMode::Local,
         openwebide_core::WorkspaceMode::Remote,
@@ -3207,7 +3338,7 @@ async fn composition_scope_changes_and_failed_frames_preserve_documents_in_both_
             state.workspace.content.set("before".into());
             editor_view(state)
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         actions.record_selection(Selection::caret(0)).unwrap();
         actions.begin_composition();
         actions.begin_composition();
@@ -3366,7 +3497,7 @@ async fn composition_scope_changes_and_failed_frames_preserve_documents_in_both_
 #[wasm_bindgen_test]
 async fn multi_native_input_and_composition_preserve_secondary_selections_in_both_modes() {
     use openwebide_core::editor::{Selection, SelectionCommand};
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     for mode in [
         openwebide_core::WorkspaceMode::Local,
         openwebide_core::WorkspaceMode::Remote,
@@ -3385,7 +3516,7 @@ async fn multi_native_input_and_composition_preserve_secondary_selections_in_bot
         frame().await;
         let textarea: web_sys::HtmlTextAreaElement =
             mounted.element(".editor-textarea").unchecked_into();
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         let project = mounted
             .state
             .workspace
@@ -3459,7 +3590,7 @@ async fn multi_native_input_and_composition_preserve_secondary_selections_in_bot
 #[wasm_bindgen_test]
 async fn native_typing_composition_and_invalid_edits_preserve_document_contract() {
     use openwebide_core::editor::{Indentation, Selection};
-    use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
+    use openwebide_frontend::state_actions::editor::EditorCommand;
     for mode in [
         openwebide_core::WorkspaceMode::Local,
         openwebide_core::WorkspaceMode::Remote,
@@ -3474,7 +3605,7 @@ async fn native_typing_composition_and_invalid_edits_preserve_document_contract(
             state.workspace.content.set("😀\r\ntext\nlast".into());
             editor_view(state)
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         actions.record_selection(Selection::caret(10)).unwrap();
         actions
             .native_input(
@@ -3561,9 +3692,10 @@ async fn folded_document_commands_projection_and_history_share_both_modes() {
         editor::{FoldCommand, ProjectionError, Selection},
     };
     use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
+    let language_host = super::language_support::LanguageHost::new().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let source = "// 😀\r\nfn main() {\r\n    let value = \"文\";\r\n}\r\nnext();\r\n";
-        let mounted = mount_test(move |state| {
+        let mounted = language_host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -3575,8 +3707,10 @@ async fn folded_document_commands_projection_and_history_share_both_modes() {
         });
         // This contract checks exact history/projection state. Deadline behavior
         // is covered separately; host load must not cancel its provider setup.
-        let actions =
-            EditorActions::with_input_clock(mounted.state.workspace, std::rc::Rc::new(|| 0.0));
+        super::language_support::ready(&mounted.state).await;
+        let actions = mounted.state.owner.with(|| {
+            EditorActions::with_input_clock(mounted.state.workspace, std::rc::Rc::new(|| 0.0))
+        });
         actions
             .record_selection(Selection::caret(source.find('文').unwrap()))
             .unwrap();
@@ -3599,6 +3733,10 @@ async fn folded_document_commands_projection_and_history_share_both_modes() {
             .open_file
             .set(Some("other.rs".into()));
         actions.refresh_fold_ranges(|| true);
+        wait_until("new file document model is open", || {
+            actions.projection().is_some()
+        })
+        .await;
         assert!(!actions.projection().unwrap().is_folded());
         mounted
             .state
@@ -3621,6 +3759,7 @@ async fn folded_document_commands_projection_and_history_share_both_modes() {
             !actions.projection().unwrap().is_folded(),
             "stale ranges stay invalid until refreshed"
         );
+        super::language_support::ready(&mounted.state).await;
         actions.refresh_fold_ranges(|| true);
         assert!(
             actions.projection().unwrap().is_folded(),
@@ -3633,11 +3772,16 @@ async fn folded_document_commands_projection_and_history_share_both_modes() {
                 actions.rules_untracked().indentation,
             )
             .unwrap();
+        super::language_support::ready(&mounted.state).await;
         actions.refresh_fold_ranges(|| true);
         assert_eq!(mounted.state.workspace.content.get_untracked(), original);
         assert!(actions.projection().unwrap().is_folded());
         mounted.state.workspace.active_project.set(Some(2));
         actions.refresh_fold_ranges(|| true);
+        wait_until("other project document model is open", || {
+            actions.projection().is_some()
+        })
+        .await;
         assert!(!actions.projection().unwrap().is_folded());
         mounted.state.workspace.active_project.set(Some(1));
         assert!(actions.projection().unwrap().is_folded());
@@ -3666,6 +3810,7 @@ async fn folded_document_commands_projection_and_history_share_both_modes() {
         mounted.state.workspace.reset();
         assert!(actions.projection().is_none());
     }
+    language_host.close().await;
 }
 
 // Scope the browser clock override to one synchronous facade call. Restore it
@@ -3691,9 +3836,10 @@ async fn built_in_language_parser_folds_share_local_remote_and_wasm_contracts() 
         editor::{SyntaxDocument, SyntaxStatus, syntax_contracts::LANGUAGE_CASES},
         highlight::language_from_path,
     };
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
+    let language_host = super::language_support::LanguageHost::new().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        let mounted = mount_test(move |state| {
+        let mounted = language_host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -3701,16 +3847,18 @@ async fn built_in_language_parser_folds_share_local_remote_and_wasm_contracts() 
                 .update(|projects| projects[0].mode = mode);
             editor_view(state)
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         let oversized = "x".repeat(openwebide_core::editor::MAX_STRUCTURE_BYTES + 1);
         for &(path, source, expected) in LANGUAGE_CASES {
             mounted.state.workspace.open_file.set(Some(path.into()));
             mounted.state.workspace.content.set(source.into());
+            super::language_support::ready(&mounted.state).await;
             let (status, folds) = with_syntax_clock(0.0, || actions.syntax_folds(|| true)).unwrap();
             assert_eq!(status, SyntaxStatus::Ready { incremental: false }, "{path}");
             assert!(folds.contains(&expected), "{mode:?} {path}: {folds:?}");
             let revised = source.replace("文😀", "😀文 changed").replace('\n', "\r\n");
             mounted.state.workspace.content.set(revised.clone().into());
+            super::language_support::ready(&mounted.state).await;
             let (status, folds) = with_syntax_clock(0.0, || actions.syntax_folds(|| true)).unwrap();
             assert_eq!(status, SyntaxStatus::Ready { incremental: true }, "{path}");
             let mut fresh = SyntaxDocument::new(language_from_path(path)).unwrap();
@@ -3732,14 +3880,34 @@ async fn built_in_language_parser_folds_share_local_remote_and_wasm_contracts() 
                 .content
                 .set(oversized.clone().into());
             assert_eq!(
+                actions.limit(),
+                Some(openwebide_core::editor::EditorLimit::LineBytes)
+            );
+            assert_eq!(
                 with_syntax_clock(0.0, || actions.syntax_folds(|| true)).unwrap(),
                 (SyntaxStatus::TooLarge, vec![])
             );
+            wait_until(
+                "read-only viewer releases the editor's language activation",
+                || {
+                    mounted.state.languages.status.get_untracked()
+                        == openwebide_frontend::state::languages::LanguageStatus::Plain
+                        && !mounted.state.workspace.editor_worker_active.get_untracked()
+                        && mounted
+                            .state
+                            .workspace
+                            .editor_preparation
+                            .with_untracked(Option::is_none)
+                },
+            )
+            .await;
             mounted.state.workspace.content.set(source.into());
+            super::language_support::ready(&mounted.state).await;
             assert_eq!(
                 with_syntax_clock(0.0, || actions.syntax_folds(|| true))
                     .unwrap()
                     .0,
+                // The read-only viewer released the previous editor activation.
                 SyntaxStatus::Ready { incremental: false }
             );
         }
@@ -3752,6 +3920,7 @@ async fn built_in_language_parser_folds_share_local_remote_and_wasm_contracts() 
                 .with_untracked(|cache| cache.is_empty())
         );
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -3879,6 +4048,7 @@ async fn expired_input_budget_preserves_literal_input_history_and_stale_guards_i
         editor::{Indentation, Selection},
     };
     use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
+    let host = super::language_support::LanguageHost::new().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         for (path, source) in [
             ("budget.html", "<script>function run() {}</script>"),
@@ -3897,9 +4067,8 @@ async fn expired_input_budget_preserves_literal_input_history_and_stale_guards_i
             });
             let saved = std::rc::Rc::new(std::cell::Cell::new(None::<EditorActions>));
             let capture = saved.clone();
-            let transport = std::rc::Rc::new(DeferredSyntax::default());
-            let installed = transport.clone();
-            let mounted = mount_test(move |state| {
+            host.resume();
+            let mounted = host.mount(move |state| {
                 state.seed_project();
                 state
                     .projects
@@ -3908,15 +4077,15 @@ async fn expired_input_budget_preserves_literal_input_history_and_stale_guards_i
                 state.workspace.open_file.set(Some(path.into()));
                 state.workspace.content.set(source.into());
                 let actions = EditorActions::with_input_clock(state.workspace, clock);
-                actions.install_syntax_transport(installed);
+                state.editor_actions().install_syntax_worker();
                 capture.set(Some(actions));
                 view! { <div/> }
             });
             let actions = saved.get().unwrap();
-            wait_until("held budget syntax request", || {
-                !transport.pending.borrow().is_empty()
-            })
-            .await;
+            // Expiry must reject even a source-exact prepared host result.
+            // Hold the changed-source reply to check the subsequent stale guard.
+            super::language_support::ready(&mounted.state).await;
+            host.pause();
             let inside = source.find("{}").unwrap() + 1;
             let selection = actions
                 .command(
@@ -3933,6 +4102,7 @@ async fn expired_input_budget_preserves_literal_input_history_and_stale_guards_i
             );
             assert_eq!(selection, Selection::caret(inside + 1));
             assert!(mounted.state.workspace.dirty.get_untracked());
+            wait_until("held changed-source budget request", || host.pending() > 0).await;
             let selection = actions
                 .command(EditorCommand::Undo, selection, Indentation::default())
                 .unwrap()
@@ -3954,7 +4124,7 @@ async fn expired_input_budget_preserves_literal_input_history_and_stale_guards_i
                 expected,
                 "{mode:?} {path}: available context restores pairing"
             );
-            transport.respond(true);
+            host.respond_now(true);
             settle().await;
             assert_eq!(
                 actions.source(),
@@ -3971,8 +4141,12 @@ async fn expired_input_budget_preserves_literal_input_history_and_stale_guards_i
                 .unwrap()
                 .unwrap();
             assert_eq!(actions.source(), expected);
+            drop(mounted);
+            host.cancel_pending();
+            settle().await;
         }
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -3982,6 +4156,7 @@ async fn held_syntax_keeps_embedded_typing_and_post_edit_context_in_both_modes()
         editor::{Indentation, Selection},
     };
     use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
+    let language_host = super::language_support::LanguageHost::new().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         for (path, source) in [
             ("pending.html", "<script>\nfunction run() {}\n</script>"),
@@ -3997,9 +4172,8 @@ async fn held_syntax_keeps_embedded_typing_and_post_edit_context_in_both_modes()
         ] {
             let slot = std::rc::Rc::new(std::cell::Cell::new(None::<EditorActions>));
             let capture = slot.clone();
-            let transport = std::rc::Rc::new(DeferredSyntax::default());
-            let installed = transport.clone();
-            let mounted = mount_test(move |state| {
+            language_host.pause();
+            let mounted = language_host.mount(move |state| {
                 state.seed_project();
                 state
                     .projects
@@ -4011,13 +4185,13 @@ async fn held_syntax_keeps_embedded_typing_and_post_edit_context_in_both_modes()
                 // expiring-budget contract below covers the fallback separately.
                 let actions =
                     EditorActions::with_input_clock(state.workspace, std::rc::Rc::new(|| 0.0));
-                actions.install_syntax_transport(installed);
+                actions.install_syntax_worker();
                 capture.set(Some(actions));
                 view! { <div/> }
             });
             let actions = slot.get().unwrap();
             wait_until("held initial embedded syntax request", || {
-                !transport.pending.borrow().is_empty()
+                language_host.pending() != 0
             })
             .await;
             assert!(actions.syntax_is_pending());
@@ -4035,6 +4209,29 @@ async fn held_syntax_keeps_embedded_typing_and_post_edit_context_in_both_modes()
                     document.set_selections(selections).unwrap();
                     documents.insert((1, path.into()), document);
                 });
+            // Until the host has supplied embedded/protected regions, input
+            // stays literal rather than guessing a language from the filename.
+            let cold = actions
+                .command(
+                    EditorCommand::TypeCharacter('('),
+                    Selection::caret(inside),
+                    Indentation::default(),
+                )
+                .unwrap()
+                .unwrap();
+            assert_eq!(
+                actions.source(),
+                source.replace("{}", "{(}"),
+                "{mode:?} {path}: cold plain input"
+            );
+            actions
+                .command(EditorCommand::Undo, cold, Indentation::default())
+                .unwrap();
+            assert_eq!(actions.source(), source);
+            language_host.resume();
+            language_host.respond().await;
+            super::language_support::ready(&mounted.state).await;
+            language_host.pause();
             let selection = actions
                 .command(
                     EditorCommand::TypeCharacter('('),
@@ -4048,6 +4245,12 @@ async fn held_syntax_keeps_embedded_typing_and_post_edit_context_in_both_modes()
                 source.replace("{}", "{()}"),
                 "{mode:?} {path}: pairing while syntax is held"
             );
+            // Hold a real request for the paired source, then edit again. The
+            // editor remembers its pair without accepting that stale result.
+            wait_until("held paired-source host request", || {
+                language_host.pending() != 0
+            })
+            .await;
             let selection = actions
                 .command(EditorCommand::DeletePair, selection, Indentation::default())
                 .unwrap()
@@ -4068,15 +4271,17 @@ async fn held_syntax_keeps_embedded_typing_and_post_edit_context_in_both_modes()
             );
             assert!(mounted.state.workspace.dirty.get_untracked());
             let edited = actions.source();
-            transport.respond(true);
-            settle().await;
+            language_host.resume();
+            language_host.respond().await;
+            super::language_support::ready(&mounted.state).await;
             assert_eq!(
                 actions.source(),
                 edited,
-                "{mode:?} {path}: old worker reply preserves typed edits"
+                "{mode:?} {path}: old host reply preserves typed edits"
             );
         }
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -4085,10 +4290,11 @@ async fn parsed_typing_contexts_share_modes_mixed_cursors_and_stale_guards() {
         WorkspaceMode,
         editor::{Indentation, Selection},
     };
-    use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
+    use openwebide_frontend::state_actions::editor::EditorCommand;
+    let language_host = super::language_support::LanguageHost::new().await;
     let source = "<script>const s = `text ${call()} tail`;</script><style>a { color: ; }</style>";
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        let mounted = mount_test(move |state| {
+        let mounted = language_host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -4102,7 +4308,8 @@ async fn parsed_typing_contexts_share_modes_mixed_cursors_and_stale_guards() {
             .open_file
             .set(Some("context.html".into()));
         mounted.state.workspace.content.set(source.into());
-        let actions = EditorActions::new(mounted.state.workspace);
+        super::language_support::ready(&mounted.state).await;
+        let actions = mounted.state.editor_actions();
         let primary = Selection::caret(source.find("call()").unwrap() + "call(".len());
         mounted
             .state
@@ -4150,6 +4357,7 @@ async fn parsed_typing_contexts_share_modes_mixed_cursors_and_stale_guards() {
             .open_file
             .set(Some("blocks.html".into()));
         mounted.state.workspace.content.set(blocks.into());
+        super::language_support::ready(&mounted.state).await;
         let primary = Selection::caret(blocks.find("{}").unwrap() + 1);
         mounted
             .state
@@ -4184,6 +4392,7 @@ async fn parsed_typing_contexts_share_modes_mixed_cursors_and_stale_guards() {
         mounted.state.workspace.reset();
         assert!(actions.syntax_structure(|| true).is_none());
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -4193,10 +4402,11 @@ async fn html_embedded_folds_share_workspace_modes_and_discard_stale_bodies() {
         editor::{FoldRange, MAX_STRUCTURE_BYTES, SyntaxDocument, SyntaxStatus},
         highlight::Language,
     };
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
+    let language_host = super::language_support::LanguageHost::new().await;
     let original = "<p>文😀</p>\n<script type=module>\nfunction run() {\n  return '}';\n}\n</script>\n<style>\na {\n  color: red;\n}\n</style>";
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        let mounted = mount_test(move |state| {
+        let mounted = language_host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -4204,13 +4414,14 @@ async fn html_embedded_folds_share_workspace_modes_and_discard_stale_bodies() {
                 .update(|projects| projects[0].mode = mode);
             editor_view(state)
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         mounted
             .state
             .workspace
             .open_file
             .set(Some("embedded.html".into()));
         mounted.state.workspace.content.set(original.into());
+        super::language_support::ready(&mounted.state).await;
         let (status, folds) = actions.syntax_folds(|| true).unwrap();
         assert_eq!(status, SyntaxStatus::Ready { incremental: false });
         assert!(folds.contains(&FoldRange {
@@ -4229,6 +4440,7 @@ async fn html_embedded_folds_share_workspace_modes_and_discard_stale_bodies() {
             format!("<script>function unfinished() {{</script>\n{original}"),
         ] {
             mounted.state.workspace.content.set(revised.clone().into());
+            super::language_support::ready(&mounted.state).await;
             let (status, folds) = actions.syntax_folds(|| true).unwrap();
             assert_eq!(status, SyntaxStatus::Ready { incremental: true });
             let mut fresh = SyntaxDocument::new(Language::Html).unwrap();
@@ -4244,9 +4456,10 @@ async fn html_embedded_folds_share_workspace_modes_and_discard_stale_bodies() {
             .workspace
             .content
             .set("<script></script>\n".repeat(65).into());
+        super::language_support::ready(&mounted.state).await;
         assert_eq!(
             actions.syntax_folds(|| true).unwrap(),
-            (SyntaxStatus::Ready { incremental: false }, vec![])
+            (SyntaxStatus::Ready { incremental: true }, vec![])
         );
         mounted
             .state
@@ -4254,10 +4467,29 @@ async fn html_embedded_folds_share_workspace_modes_and_discard_stale_bodies() {
             .content
             .set("x".repeat(MAX_STRUCTURE_BYTES + 1).into());
         assert_eq!(
+            actions.limit(),
+            Some(openwebide_core::editor::EditorLimit::LineBytes)
+        );
+        assert_eq!(
             actions.syntax_folds(|| true).unwrap(),
             (SyntaxStatus::TooLarge, vec![])
         );
+        wait_until(
+            "read-only viewer releases the editor's language activation",
+            || {
+                mounted.state.languages.status.get_untracked()
+                    == openwebide_frontend::state::languages::LanguageStatus::Plain
+                    && !mounted.state.workspace.editor_worker_active.get_untracked()
+                    && mounted
+                        .state
+                        .workspace
+                        .editor_preparation
+                        .with_untracked(Option::is_none)
+            },
+        )
+        .await;
         mounted.state.workspace.content.set(original.into());
+        super::language_support::ready(&mounted.state).await;
         assert_eq!(
             actions.syntax_folds(|| true).unwrap().0,
             SyntaxStatus::Ready { incremental: false }
@@ -4272,6 +4504,7 @@ async fn html_embedded_folds_share_workspace_modes_and_discard_stale_bodies() {
         );
         assert!(actions.syntax_folds(|| true).is_none());
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -4280,20 +4513,28 @@ async fn incremental_syntax_and_fold_provider_share_both_modes_and_account_reset
         WorkspaceMode,
         editor::{FoldRange, SyntaxDocument, SyntaxStatus},
     };
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
+    let language_host = super::language_support::LanguageHost::new().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let source = "// 😀\r\nfn main() {\r\n    let text = r###\" { } \"###;\r\n    /* outer\r\n       /* nested */\r\n    */\r\n}\r\n";
-        let mounted = mount_test(move |state| {
+        let mounted = language_host.mount(move |state| {
             state.seed_project();
             state
                 .projects
                 .projects
                 .update(|projects| projects[0].mode = mode);
+            state.projects.projects.update(|projects| {
+                let mut other = projects[0].clone();
+                other.id = 2;
+                other.name = "other".into();
+                projects.push(other);
+            });
             state.workspace.open_file.set(Some("syntax.rs".into()));
             state.workspace.content.set(source.into());
             editor_view(state)
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        super::language_support::ready(&mounted.state).await;
+        let actions = mounted.state.editor_actions();
         let (status, folds) = actions.syntax_folds(|| true).unwrap();
         assert_eq!(status, SyntaxStatus::Ready { incremental: false });
         assert_eq!(
@@ -4313,20 +4554,25 @@ async fn incremental_syntax_and_fold_provider_share_both_modes_and_account_reset
             .replace("    let text", "    if true {\r\n        let text")
             .replace("    /* outer", "    }\r\n    /* outer");
         mounted.state.workspace.content.set(revised.clone().into());
+        super::language_support::ready(&mounted.state).await;
         let (status, folds) = actions.syntax_folds(|| true).unwrap();
         assert_eq!(status, SyntaxStatus::Ready { incremental: true });
         let mut fresh = SyntaxDocument::new(openwebide_core::highlight::Language::Rust).unwrap();
         fresh.update(&revised, || true);
         assert_eq!(folds, fresh.folds());
         mounted.state.workspace.active_project.set(Some(2));
+        super::language_support::ready(&mounted.state).await;
         assert_eq!(
             actions.syntax_folds(|| true).unwrap().0,
             SyntaxStatus::Ready { incremental: false }
         );
         mounted.state.workspace.active_project.set(Some(1));
+        super::language_support::ready(&mounted.state).await;
+        // A project transition starts a new synchronized host document instead
+        // of reusing another activation's request sequence or analysis cache.
         assert_eq!(
             actions.syntax_folds(|| true).unwrap().0,
-            SyntaxStatus::Ready { incremental: true }
+            SyntaxStatus::Ready { incremental: false }
         );
         assert_eq!(
             actions.syntax_folds(|| false).unwrap(),
@@ -4341,6 +4587,10 @@ async fn incremental_syntax_and_fold_provider_share_both_modes_and_account_reset
                 .into(),
         );
         assert_eq!(
+            actions.limit(),
+            Some(openwebide_core::editor::EditorLimit::LineBytes)
+        );
+        assert_eq!(
             actions.syntax_folds(|| true).unwrap(),
             (SyntaxStatus::TooLarge, vec![])
         );
@@ -4349,6 +4599,10 @@ async fn incremental_syntax_and_fold_provider_share_both_modes_and_account_reset
             .workspace
             .open_file
             .set(Some("syntax.py".into()));
+        assert_eq!(
+            actions.limit(),
+            Some(openwebide_core::editor::EditorLimit::LineBytes)
+        );
         assert_eq!(
             actions.syntax_folds(|| true).unwrap(),
             (SyntaxStatus::TooLarge, vec![])
@@ -4363,6 +4617,7 @@ async fn incremental_syntax_and_fold_provider_share_both_modes_and_account_reset
             0
         );
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -4383,8 +4638,7 @@ async fn caret_and_scroll_restore_across_files_projects_and_views_in_both_modes(
         });
         settle().await;
         frame().await;
-        let actions =
-            openwebide_frontend::state_actions::editor::EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         let extent_ready = || {
             !actions.native_geometry_pending()
                 && mounted
@@ -4926,31 +5180,28 @@ fn now() -> f64 {
 
 #[wasm_bindgen_test]
 async fn measure_highlight_bursts() {
+    let host = super::language_support::LanguageHost::new().await;
+    host.pause();
     for lines in [1_000, 10_000] {
         let source = "fn example() { let value = 42; }\n".repeat(lines);
         let initial = source.clone();
-        let transport = std::rc::Rc::new(DeferredSyntax::default());
-        let installed = transport.clone();
-        let mounted = mount_test(move |state| {
+        let mounted = host.mount(move |state| {
             state.seed_project();
             state.workspace.open_file.set(Some("fixture.rs".into()));
             state.workspace.content.set(initial.into());
-            openwebide_frontend::state_actions::editor::EditorActions::new(state.workspace)
-                .install_syntax_transport(installed);
             view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:700px;height:400px">{editor_view(state)}</div> }
         });
         settle().await;
         frame().await;
-        let actions =
-            openwebide_frontend::state_actions::editor::EditorActions::new(mounted.state.workspace);
-        wait_until("initial Rust syntax request", || {
-            !transport.pending.borrow().is_empty()
-        })
-        .await;
-        transport.respond(true);
+        let actions = mounted.state.editor_actions();
+        wait_until("initial Rust syntax request", || host.pending() > 0).await;
+        host.respond_now(true);
         wait_until(
             "warm source dimension cache for current syntax paint",
             || {
+                if host.pending() > 0 {
+                    host.respond_now(true);
+                }
                 if actions.syntax_is_pending() {
                     return false;
                 }
@@ -5014,14 +5265,14 @@ async fn measure_highlight_bursts() {
             // Resolve obsolete requests as canceled, then publish real parsed
             // syntax for the coalesced source through the production facade.
             let (final_before, all_before) = loop {
-                wait_until("coalesced Rust syntax request", || {
-                    !transport.pending.borrow().is_empty()
-                })
-                .await;
-                let current = transport.source() == format!("{source}// burst {run} input 9\n");
+                wait_until("coalesced Rust syntax request", || host.pending() > 0).await;
+                let current = host.next_request().source_digest
+                    == openwebide_core::plugins::languages::source_digest(&format!(
+                        "{source}// burst {run} input 9\n"
+                    ));
                 let final_before = openwebide_frontend::components::viewport_highlight_count();
                 let all_before = highlight_count();
-                transport.respond(current);
+                host.respond_now(current);
                 if current {
                     break (final_before, all_before);
                 }
@@ -5062,7 +5313,11 @@ async fn measure_highlight_bursts() {
             frames[2],
             frames[4]
         );
+        drop(mounted);
+        host.cancel_pending();
+        settle().await;
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -5142,14 +5397,17 @@ async fn file_switch_reads_latest_path_and_mode_exit_cancels() {
             .inner_html(),
         "fn plain &lt;&gt;&amp;\n"
     );
-    let before = highlight_count();
-    input(&mounted, "new text");
-    settle().await;
     mounted
         .state
         .workspace
         .open_file
         .set(Some("README.md".into()));
+    settle().await;
+    frame().await;
+    // Opening a new file may paint its initial plain source immediately. The
+    // following edit queues a repaint that leaving Code must still cancel.
+    let before = highlight_count();
+    input(&mounted, "new text");
     settle().await;
     mounted.click_text("Preview");
     settle().await;
@@ -5241,7 +5499,13 @@ async fn growing_paste_preserves_scroll_after_frame() {
 
 #[wasm_bindgen_test]
 async fn overlay_preserves_empty_unicode_long_lines_and_scroll_mirror() {
-    let mounted = mount_editor(String::new());
+    let host = super::language_support::LanguageHost::new().await;
+    let mounted = host.mount(move |state| {
+        state.seed_project();
+        state.workspace.open_file.set(Some("fixture.rs".into()));
+        state.workspace.content.set(String::new().into());
+        editor_view(state)
+    });
     settle().await;
     frame().await;
     assert_eq!(
@@ -5250,6 +5514,7 @@ async fn overlay_preserves_empty_unicode_long_lines_and_scroll_mirror() {
     );
     let text = format!("/*\n café <>&\n*/\n\t{}\n", "a".repeat(10_001));
     let textarea = input(&mounted, &text);
+    super::language_support::ready(&mounted.state).await;
     settle().await;
     frame().await;
     assert_eq!(
@@ -5280,6 +5545,8 @@ async fn overlay_preserves_empty_unicode_long_lines_and_scroll_mirror() {
         .dispatch_event(&web_sys::Event::new("scroll").unwrap())
         .unwrap();
     assert_scroll_aligned(&mounted, &textarea);
+    drop(mounted);
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -5880,7 +6147,7 @@ extern "C" {
 #[wasm_bindgen_test]
 async fn editor_scroll_surface_preserves_wheel_native_navigation_and_scope_in_both_modes() {
     use openwebide_core::editor::EditorPreferences;
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     for mode in [
         openwebide_core::WorkspaceMode::Local,
         openwebide_core::WorkspaceMode::Remote,
@@ -5916,7 +6183,7 @@ async fn editor_scroll_surface_preserves_wheel_native_navigation_and_scope_in_bo
             let input: web_sys::HtmlTextAreaElement =
                 mounted.element(".editor-textarea").unchecked_into();
             let scroll = mounted.element(".editor-scroll-surface");
-            let actions = EditorActions::new(mounted.state.workspace);
+            let actions = mounted.state.editor_actions();
             assert!(!editorTouch(&input, "touchstart", 150.0, 200.0, 1));
             assert!(!editorTouch(&input, "touchmove", 148.0, 198.0, 1));
             assert!(editorTouch(&input, "touchmove", 125.0, 160.0, 1));
@@ -6170,6 +6437,7 @@ async fn editorconfig_indentation_conversion_and_save_use_both_real_workspace_ad
 
 #[wasm_bindgen_test]
 async fn block_indentation_pairs_and_mobile_input_share_both_workspace_modes() {
+    let host = super::language_support::LanguageHost::new().await;
     for mode in [
         openwebide_core::WorkspaceMode::Remote,
         openwebide_core::WorkspaceMode::Local,
@@ -6180,7 +6448,7 @@ async fn block_indentation_pairs_and_mobile_input_share_both_workspace_modes() {
             None
         };
         let handle = folder.as_ref().map(editorConfigHandle);
-        let mounted = mount_test(move |state| {
+        let mounted = host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -6214,6 +6482,7 @@ async fn block_indentation_pairs_and_mobile_input_share_both_workspace_modes() {
                 })
         })
         .await;
+        super::language_support::ready(&mounted.state).await;
         let textarea = mounted
             .element(".editor-textarea")
             .unchecked_into::<web_sys::HtmlTextAreaElement>();
@@ -6297,10 +6566,13 @@ async fn block_indentation_pairs_and_mobile_input_share_both_workspace_modes() {
         editor_key(&textarea, "z", true, false);
         assert_eq!(mounted.state.workspace.content.get_untracked(), "foobar");
         drop(mounted);
+        host.cancel_pending();
+        settle().await;
         if let Some(folder) = folder {
             editorConfigCleanup(&folder).await.unwrap();
         }
     }
+    host.close().await;
 }
 
 #[wasm_bindgen::prelude::wasm_bindgen(inline_js = r#"
@@ -6509,6 +6781,7 @@ fn editor_alt_key(
 
 #[wasm_bindgen_test]
 async fn line_comment_reindent_and_explicit_paste_commands_share_both_modes() {
+    let language_host = super::language_support::LanguageHost::new().await;
     for mode in [
         openwebide_core::WorkspaceMode::Remote,
         openwebide_core::WorkspaceMode::Local,
@@ -6519,7 +6792,7 @@ async fn line_comment_reindent_and_explicit_paste_commands_share_both_modes() {
             None
         };
         let handle = folder.as_ref().map(editorConfigHandle);
-        let mounted = mount_test(move |state| {
+        let mounted = language_host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -6553,6 +6826,7 @@ async fn line_comment_reindent_and_explicit_paste_commands_share_both_modes() {
                 })
         })
         .await;
+        super::language_support::ready(&mounted.state).await;
         let textarea = mounted
             .element(".editor-textarea")
             .unchecked_into::<web_sys::HtmlTextAreaElement>();
@@ -6698,11 +6972,12 @@ async fn line_comment_reindent_and_explicit_paste_commands_share_both_modes() {
             editorConfigCleanup(&folder).await.unwrap();
         }
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
 async fn fold_controls_preserve_scrolled_viewport_with_a_distant_caret_in_both_modes() {
-    use openwebide_frontend::state_actions::editor::EditorActions;
+    let language_host = super::language_support::LanguageHost::new().await;
     for mode in [
         openwebide_core::WorkspaceMode::Local,
         openwebide_core::WorkspaceMode::Remote,
@@ -6713,7 +6988,7 @@ async fn fold_controls_preserve_scrolled_viewport_with_a_distant_caret_in_both_m
             "const END: u8 = 0;\n".repeat(200)
         );
         let expected = source.clone();
-        let mounted = mount_test(move |state| {
+        let mounted = language_host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -6723,6 +6998,7 @@ async fn fold_controls_preserve_scrolled_viewport_with_a_distant_caret_in_both_m
             state.workspace.content.set(source.clone().into());
             view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:420px;height:280px">{editor_view(state)}</div> }
         });
+        super::language_support::ready(&mounted.state).await;
         wait_until("initial fold paint", || {
             mounted
                 .root
@@ -6757,7 +7033,7 @@ async fn fold_controls_preserve_scrolled_viewport_with_a_distant_caret_in_both_m
             openwebide_frontend::viewport::editor_scroll(&textarea).scroll_left(),
         );
         assert!(scroll.0 > 1000.0 && scroll.1 > 50.0);
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         for label in ["Collapse block at line 101", "Expand block at line 101"] {
             mounted.click(&format!("button[aria-label='{label}']"));
             settle().await;
@@ -6844,17 +7120,20 @@ async fn fold_controls_preserve_scrolled_viewport_with_a_distant_caret_in_both_m
                     < 1.0
             );
         }
+        drop(mounted);
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
 async fn visible_folding_preserves_source_and_replays_input_in_both_modes() {
     let source = "fn main() {\r\n    /* hidden {\r\n       comment\r\n    */\r\n    let text = \"文😀\";\r\n}\r\n// after\r\n";
+    let language_host = super::language_support::LanguageHost::new().await;
     for mode in [
         openwebide_core::WorkspaceMode::Local,
         openwebide_core::WorkspaceMode::Remote,
     ] {
-        let mounted = mount_test(move |state| {
+        let mounted = language_host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -6931,10 +7210,21 @@ async fn visible_folding_preserves_source_and_replays_input_in_both_modes() {
             mounted.state.workspace.content.get_untracked(),
             source.replace("// after", "Z// after")
         );
+        super::language_support::ready(&mounted.state).await;
+        wait_until("validated folds restore the edited projection", || {
+            textarea.value() == "fn main() {\nZ// after\n"
+        })
+        .await;
         assert_eq!(textarea.value(), "fn main() {\nZ// after\n");
         editor_key(&textarea, "z", true, false);
         settle().await;
         assert_eq!(mounted.state.workspace.content.get_untracked(), source);
+        super::language_support::ready(&mounted.state).await;
+        wait_until(
+            "validated first undo restores the folded projection",
+            || textarea.value() == "fn main() {\n// after\n",
+        )
+        .await;
         wait_until("fold retained after undo", || {
             mounted
                 .root
@@ -6956,10 +7246,20 @@ async fn visible_folding_preserves_source_and_replays_input_in_both_modes() {
             mounted.state.workspace.content.get_untracked(),
             source.replace("// after", "🦀\r\n// after")
         );
+        super::language_support::ready(&mounted.state).await;
+        wait_until("validated folds retain Unicode projected input", || {
+            textarea.value() == "fn main() {\n🦀\n// after\n"
+        })
+        .await;
         assert_eq!(textarea.selection_start().unwrap(), Some(15));
         editor_key(&textarea, "z", true, false);
         settle().await;
         assert_eq!(mounted.state.workspace.content.get_untracked(), source);
+        super::language_support::ready(&mounted.state).await;
+        wait_until("validated undo restores the folded native input", || {
+            textarea.value() == "fn main() {\n// after\n"
+        })
+        .await;
         textarea.set_selection_range(12, 12).unwrap();
         let before = web_sys::InputEvent::new_with_event_init_dict("beforeinput", &init).unwrap();
         textarea.dispatch_event(&before).unwrap();
@@ -6988,12 +7288,14 @@ async fn visible_folding_preserves_source_and_replays_input_in_both_modes() {
         assert_eq!(textarea.selection_end().unwrap(), Some(offset + 1));
         assert_eq!(mounted.state.workspace.content.get_untracked(), source);
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
 async fn fallback_and_region_folds_render_and_reveal_in_both_modes() {
     use openwebide_core::editor::{FoldCommand, SyntaxStatus};
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
+    let language_host = super::language_support::LanguageHost::new().await;
     for mode in [
         openwebide_core::WorkspaceMode::Local,
         openwebide_core::WorkspaceMode::Remote,
@@ -7030,7 +7332,7 @@ async fn fallback_and_region_folds_render_and_reveal_in_both_modes() {
                 2,
             ),
         ] {
-            let mounted = mount_test(move |state| {
+            let mounted = language_host.mount(move |state| {
                 state.seed_project();
                 state
                     .projects
@@ -7040,6 +7342,7 @@ async fn fallback_and_region_folds_render_and_reveal_in_both_modes() {
                 state.workspace.content.set(source.into());
                 editor_view(state)
             });
+            super::language_support::ready(&mounted.state).await;
             wait_until("fallback fold control", || {
                 mounted
                     .root
@@ -7048,7 +7351,7 @@ async fn fallback_and_region_folds_render_and_reveal_in_both_modes() {
                     .is_some()
             })
             .await;
-            let actions = EditorActions::new(mounted.state.workspace);
+            let actions = mounted.state.editor_actions();
             let textarea: web_sys::HtmlTextAreaElement =
                 mounted.element(".editor-textarea").unchecked_into();
             mounted.click("button[aria-label='Collapse block at line 1']");
@@ -7089,20 +7392,23 @@ async fn fallback_and_region_folds_render_and_reveal_in_both_modes() {
                     .contains(source.lines().nth(end_line).unwrap())
             );
             assert_eq!(mounted.state.workspace.content.get_untracked(), source);
+            drop(mounted);
         }
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
 async fn native_edits_clipboard_commands_and_composition_keep_disjoint_folds_in_both_modes() {
     use openwebide_core::editor::{FoldCommand, byte_to_textarea};
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     let source = "fn first() {\r\n    one();\r\n}\r\nlet middle = 1;\r\nfn second() {\r\n    two();\r\n}\r\n";
+    let host = super::language_support::LanguageHost::new().await;
     for mode in [
         openwebide_core::WorkspaceMode::Local,
         openwebide_core::WorkspaceMode::Remote,
     ] {
-        let mounted = mount_test(move |state| {
+        let mounted = host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -7113,15 +7419,18 @@ async fn native_edits_clipboard_commands_and_composition_keep_disjoint_folds_in_
             editor_view(state)
         });
         wait_until("sibling fold ranges", || {
-            EditorActions::new(mounted.state.workspace)
+            mounted
+                .state
+                .editor_actions()
                 .fold_state()
                 .is_some_and(|folds| folds.ranges().iter().any(|range| range.start_line == 4))
         })
         .await;
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         let textarea: web_sys::HtmlTextAreaElement =
             mounted.element(".editor-textarea").unchecked_into();
         actions.fold_command(FoldCommand::CollapseAll);
+        super::language_support::ready(&mounted.state).await;
         settle().await;
         let select = |needle: &str| {
             let view = textarea.value();
@@ -7143,6 +7452,7 @@ async fn native_edits_clipboard_commands_and_composition_keep_disjoint_folds_in_
         textarea.dispatch_event(&before).unwrap();
         assert!(!before.default_prevented());
         editorNativeInput(&textarea, "0", "insertText", false);
+        super::language_support::ready(&mounted.state).await;
         settle().await;
         assert_eq!(
             mounted.state.workspace.content.get_untracked(),
@@ -7154,15 +7464,18 @@ async fn native_edits_clipboard_commands_and_composition_keep_disjoint_folds_in_
         assert!(actions.fold_state().unwrap().collapsed_at(4).is_some());
         select(";\nfn second");
         assert!(editor_key(&textarea, "Enter", false, false).default_prevented());
+        super::language_support::ready(&mounted.state).await;
         settle().await;
         assert!(actions.fold_state().unwrap().collapsed_at(5).is_some());
         assert!(!textarea.value().contains("two();"));
         editor_key(&textarea, "z", true, false);
+        super::language_support::ready(&mounted.state).await;
         settle().await;
         assert!(actions.fold_state().unwrap().collapsed_at(4).is_some());
         select(";\nfn second");
         assert!(!editorClipboardPaste(&textarea, "pasted").default_prevented());
         editorNativeInput(&textarea, "pasted", "insertFromPaste", false);
+        super::language_support::ready(&mounted.state).await;
         settle().await;
         assert!(
             mounted
@@ -7186,6 +7499,7 @@ async fn native_edits_clipboard_commands_and_composition_keep_disjoint_folds_in_
         textarea
             .dispatch_event(&web_sys::CompositionEvent::new("compositionend").unwrap())
             .unwrap();
+        super::language_support::ready(&mounted.state).await;
         settle().await;
         assert!(
             mounted
@@ -7198,6 +7512,7 @@ async fn native_edits_clipboard_commands_and_composition_keep_disjoint_folds_in_
         assert!(!textarea.value().contains("one();"));
         assert!(!textarea.value().contains("two();"));
         editor_key(&textarea, "z", true, false);
+        super::language_support::ready(&mounted.state).await;
         settle().await;
         assert_eq!(
             mounted.state.workspace.content.get_untracked(),
@@ -7213,6 +7528,7 @@ async fn native_edits_clipboard_commands_and_composition_keep_disjoint_folds_in_
         assert!(textarea.value().contains("one();"));
         assert!(!textarea.value().contains("two();"));
         editorNativeInput(&textarea, "x", "insertText", false);
+        super::language_support::ready(&mounted.state).await;
         settle().await;
         assert!(
             mounted
@@ -7226,6 +7542,7 @@ async fn native_edits_clipboard_commands_and_composition_keep_disjoint_folds_in_
         assert!(actions.fold_state().unwrap().collapsed_at(4).is_some());
         select("fn second");
         editor_key(&textarea, "z", true, false);
+        super::language_support::ready(&mounted.state).await;
         settle().await;
         assert!(
             mounted
@@ -7237,6 +7554,7 @@ async fn native_edits_clipboard_commands_and_composition_keep_disjoint_folds_in_
         );
         assert!(actions.fold_state().unwrap().collapsed_at(4).is_some());
         editor_key(&textarea, "z", true, true);
+        super::language_support::ready(&mounted.state).await;
         settle().await;
         assert!(
             mounted
@@ -7248,6 +7566,7 @@ async fn native_edits_clipboard_commands_and_composition_keep_disjoint_folds_in_
         );
         assert!(actions.fold_state().unwrap().collapsed_at(4).is_some());
         actions.fold_command(FoldCommand::CollapseAll);
+        super::language_support::ready(&mounted.state).await;
         settle().await;
         let before_cut = mounted.state.workspace.content.get_untracked();
         let view = textarea.value();
@@ -7264,25 +7583,34 @@ async fn native_edits_clipboard_commands_and_composition_keep_disjoint_folds_in_
                 .unwrap(),
             before_cut[..before_cut.find("let middle").unwrap()]
         );
+        // Current host validation restores retained folds after the cut;
+        // pending ranges cannot hide source they have not yet validated.
+        super::language_support::ready(&mounted.state).await;
+        settle().await;
         assert!(!textarea.value().contains("one();"));
         assert!(!textarea.value().contains("two();"));
-        settle().await;
         assert_eq!(
             mounted.state.workspace.content.get_untracked(),
             before_cut[before_cut.find("let middle").unwrap()..]
         );
         assert!(actions.fold_state().unwrap().collapsed_at(1).is_some());
         editor_key(&textarea, "z", true, false);
+        super::language_support::ready(&mounted.state).await;
         settle().await;
         assert_eq!(mounted.state.workspace.content.get_untracked(), before_cut);
         assert!(actions.fold_state().unwrap().collapsed_at(4).is_some());
+        drop(mounted);
+        host.cancel_pending();
+        settle().await;
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
 async fn deferred_decorations_reject_replaced_source_selection_and_scope_in_both_modes() {
     use openwebide_core::editor::Selection;
     use openwebide_frontend::state_actions::editor::EditorActions;
+    let language_host = super::language_support::LanguageHost::new().await;
     let source = "fn main() {\r\n let 文 = \"😀\"; if true { call(); }\r\n}\r\n";
     let at = source.find("if true {").unwrap() + "if true ".len();
     let column = source[source.find('\n').unwrap() + 1..at]
@@ -7295,7 +7623,7 @@ async fn deferred_decorations_reject_replaced_source_selection_and_scope_in_both
         for change in 0..9 {
             let saved = std::rc::Rc::new(std::cell::Cell::new(None));
             let slot = saved.clone();
-            let mounted = mount_test(move |state| {
+            let mounted = language_host.mount(move |state| {
                 state.seed_project();
                 state
                     .projects
@@ -7306,7 +7634,7 @@ async fn deferred_decorations_reject_replaced_source_selection_and_scope_in_both
                 slot.set(Some(EditorActions::new(state.workspace)));
                 editor_view(state)
             });
-            settle().await;
+            super::language_support::ready(&mounted.state).await;
             let actions = saved.get().unwrap();
             actions.record_selection(Selection::caret(at)).unwrap();
             let decorations = actions.decorations(true).unwrap();
@@ -7357,8 +7685,10 @@ async fn deferred_decorations_reject_replaced_source_selection_and_scope_in_both
                 !actions.decorations_current(&decorations),
                 "{mode:?}, change {change}"
             );
+            drop(mounted);
         }
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -7476,13 +7806,14 @@ async fn indexed_indent_guides_preserve_paint_config_and_source_in_both_modes() 
 #[wasm_bindgen_test]
 async fn editor_navigation_status_and_decorations_share_source_coordinates_in_both_modes() {
     use openwebide_core::editor::{FoldCommand, byte_to_textarea};
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     let source = "fn main() {\r\n    let text = \"文😀\";\r\n}\r\nafter();\r\n";
+    let language_host = super::language_support::LanguageHost::new().await;
     for mode in [
         openwebide_core::WorkspaceMode::Local,
         openwebide_core::WorkspaceMode::Remote,
     ] {
-        let mounted = mount_test(move |state| {
+        let mounted = language_host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -7494,7 +7825,8 @@ async fn editor_navigation_status_and_decorations_share_source_coordinates_in_bo
         });
         settle().await;
         frame().await;
-        let actions = EditorActions::new(mounted.state.workspace);
+        super::language_support::ready(&mounted.state).await;
+        let actions = mounted.state.editor_actions();
         let textarea: web_sys::HtmlTextAreaElement =
             mounted.element(".editor-textarea").unchecked_into();
         wait_until("navigation source paint ready", || {
@@ -7692,13 +8024,15 @@ async fn editor_navigation_status_and_decorations_share_source_coordinates_in_bo
         })
         .await;
         assert_eq!(textarea.selection_start().unwrap(), Some(1007));
+        drop(mounted);
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
 async fn search_replace_options_scope_captures_and_failures_share_both_modes() {
     use openwebide_core::editor::{SearchOptions, Selection};
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     let source = "😀 café caféine CAFÉ\r\ncafé\r\n";
     for mode in [
         openwebide_core::WorkspaceMode::Local,
@@ -7715,7 +8049,7 @@ async fn search_replace_options_scope_captures_and_failures_share_both_modes() {
             editor_view(state)
         });
         settle().await;
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         let textarea: web_sys::HtmlTextAreaElement =
             mounted.element(".editor-textarea").unchecked_into();
         textarea.set_selection_range(3, 7).unwrap();
@@ -7867,18 +8201,19 @@ async fn search_replace_options_scope_captures_and_failures_share_both_modes() {
 #[wasm_bindgen_test]
 async fn wrapping_whitespace_fold_geometry_and_navigation_share_both_modes() {
     use openwebide_core::editor::{FoldCommand, line_column};
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     let source = format!(
         "fn first() {{\r\n\tlet text = \"{}end\";\r\n}}\r\nfn second() {{\r\n    after();\r\n}}\r\n",
         "文😀 words ".repeat(45)
     );
+    let host = super::language_support::LanguageHost::new().await;
     for mode in [
         openwebide_core::WorkspaceMode::Local,
         openwebide_core::WorkspaceMode::Remote,
     ] {
         let source = source.clone();
         let expected = source.clone();
-        let mounted = mount_test(move |state| {
+        let mounted = host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -7892,9 +8227,10 @@ async fn wrapping_whitespace_fold_geometry_and_navigation_share_both_modes() {
             });
             view! { <style>{include_str!("../../styles.css")}</style><div class="wrap-fixture" style="display:flex;width:340px;height:340px">{editor_view(state)}</div> }
         });
+        super::language_support::ready(&mounted.state).await;
         let textarea: web_sys::HtmlTextAreaElement =
             mounted.element(".editor-textarea").unchecked_into();
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         wait_until("wrapped line and fold row measurement", || {
             let row = mounted
                 .root
@@ -7990,9 +8326,12 @@ async fn wrapping_whitespace_fold_geometry_and_navigation_share_both_modes() {
         })
         .await;
         wait_until("resized source dimensions prepared", || {
-            mounted
-                .element(".editor-scroll-extent")
-                .has_attribute("data-source-width")
+            !actions.syntax_is_pending()
+                && !actions.native_geometry_pending()
+                && actions.measured_rows().is_some()
+                && mounted
+                    .element(".editor-scroll-extent")
+                    .has_attribute("data-source-width")
         })
         .await;
         frame().await;
@@ -8012,7 +8351,11 @@ async fn wrapping_whitespace_fold_geometry_and_navigation_share_both_modes() {
         frame().await;
         assert_eq!(
             openwebide_frontend::components::viewport_highlight_count(),
-            before
+            before,
+            "{mode:?}: wrapping must retain current source paint; pending={} geometry={} language={:?}",
+            actions.syntax_is_pending(),
+            actions.native_geometry_pending(),
+            mounted.state.languages.status.get_untracked()
         );
         assert_eq!(actions.source(), expected);
         mounted
@@ -8063,7 +8406,11 @@ async fn wrapping_whitespace_fold_geometry_and_navigation_share_both_modes() {
             actions.navigation_target("2:220"),
             openwebide_core::editor::navigation_target(&expected, "2:220")
         );
+        drop(mounted);
+        host.cancel_pending();
+        settle().await;
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -8350,8 +8697,7 @@ async fn recovery_hydration_and_disk_reconciliation_use_both_real_workspace_adap
             .workspace
             .editor_recovery_guard(&project, false)
             .unwrap();
-        let actions =
-            openwebide_frontend::state_actions::editor::EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         let changed = format!("{}!", draft.text);
         let projected = changed.replace("\r\n", "\n");
         actions
@@ -8514,7 +8860,7 @@ async fn automatic_editor_recovery_restores_and_saves_drafts_in_both_modes() {
     };
     use openwebide_frontend::{
         state::editor_recovery::{EditorRecoveryState, RecoveryPhase},
-        state_actions::{editor::EditorActions, workspace::WorkspaceActions},
+        state_actions::workspace::WorkspaceActions,
     };
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let folder = if mode == WorkspaceMode::Local {
@@ -8589,7 +8935,7 @@ async fn automatic_editor_recovery_restores_and_saves_drafts_in_both_modes() {
             "draft 😀\r\n  tail  "
         );
         assert!(mounted.state.workspace.dirty.get_untracked());
-        let editor = EditorActions::new(mounted.state.workspace);
+        let editor = mounted.state.editor_actions();
         let projected = "latest draft 😀\n  tail  ";
         editor
             .native_input(
@@ -8689,7 +9035,6 @@ async fn editor_recovery_coalesces_slow_writes_and_preserves_errors_and_revision
     use openwebide_frontend::{
         backend::RecoveryError,
         state::editor_recovery::{EditorRecoveryState, RecoveryPhase},
-        state_actions::editor::EditorActions,
     };
     let slot = std::rc::Rc::new(std::cell::Cell::new(None));
     let capture = slot.clone();
@@ -8711,7 +9056,7 @@ async fn editor_recovery_coalesces_slow_writes_and_preserves_errors_and_revision
         })
     })
     .await;
-    let editor = EditorActions::new(mounted.state.workspace);
+    let editor = mounted.state.editor_actions();
     let (send, receive) = futures::channel::oneshot::channel();
     mounted
         .state
@@ -9298,9 +9643,7 @@ async fn recovered_file_review_reload_and_overwrite_share_both_real_adapters() {
         WorkspaceMode,
         editor::{Document, Selection},
     };
-    use openwebide_frontend::state_actions::{
-        editor::EditorActions, editor_recovery::RecoveryActions,
-    };
+    use openwebide_frontend::state_actions::editor_recovery::RecoveryActions;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let folder = if mode == WorkspaceMode::Local {
             Some(editorConfigFolder().await.unwrap())
@@ -9412,7 +9755,7 @@ async fn recovered_file_review_reload_and_overwrite_share_both_real_adapters() {
                     });
                 assert!(!document.can_undo());
             });
-        let editor = EditorActions::new(mounted.state.workspace);
+        let editor = mounted.state.editor_actions();
         editor
             .native_input(
                 "replacement  ".into(),
@@ -9517,9 +9860,7 @@ async fn recovered_file_review_reload_and_overwrite_share_both_real_adapters() {
 #[wasm_bindgen_test]
 async fn recovered_file_review_rejects_changed_disk_and_editor_and_cancelled_actions() {
     use openwebide_core::{WorkspaceMode, editor::Selection};
-    use openwebide_frontend::state_actions::{
-        editor::EditorActions, editor_recovery::RecoveryActions,
-    };
+    use openwebide_frontend::state_actions::editor_recovery::RecoveryActions;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let folder = if mode == WorkspaceMode::Local {
             Some(editorConfigFolder().await.unwrap())
@@ -9594,7 +9935,9 @@ async fn recovered_file_review_rejects_changed_disk_and_editor_and_cancelled_act
             mounted.root.query_selector(".modal").unwrap().is_some()
         })
         .await;
-        EditorActions::new(mounted.state.workspace)
+        mounted
+            .state
+            .editor_actions()
             .native_input(
                 "newer draft".into(),
                 Selection::caret(11),
@@ -9720,13 +10063,16 @@ async fn recovered_file_review_recreates_a_missing_clean_empty_file_in_both_mode
 
 #[wasm_bindgen_test]
 async fn diff_syntax_paint_keeps_word_changes_and_embedded_context_in_both_modes() {
+    let host = super::language_support::LanguageHost::new().await;
     use openwebide_core::WorkspaceMode;
     use openwebide_frontend::state::git::HeadContent;
     let old = "<script>\r\n/*\r\nold café\r\n*/\r\nconst value = call(41);\r\n</script>\r\n<style>p { color: red; }</style>\r\n";
     let new = "<script>\r\n/*\r\nnew 😀\r\n*/\r\nconst value = call(42);\r\n</script>\r\n<style>p { color: blue; }</style>\r\n";
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let seed = host.seed();
         let mounted = mount_test(move |state| {
             state.seed_project();
+            seed(&state);
             state
                 .projects
                 .projects
@@ -9742,7 +10088,10 @@ async fn diff_syntax_paint_keeps_word_changes_and_embedded_context_in_both_modes
         });
         settle().await;
         mounted.click_text("Changes");
-        settle().await;
+        wait_until("host diff colors", || {
+            mounted.has_element(".diff-line.add[data-line='3'] .tok-comment")
+        })
+        .await;
         assert_eq!(
             mounted
                 .element(".diff-line.add[data-line='3'] .editor-line-text")
@@ -9787,7 +10136,10 @@ async fn diff_syntax_paint_keeps_word_changes_and_embedded_context_in_both_modes
                 .is_none()
         );
         mounted.click_text("Split");
-        settle().await;
+        wait_until("host split colors", || {
+            mounted.has_element(".sbs-cell[data-line='3'] .tok-comment")
+        })
+        .await;
         let panes = mounted.root.query_selector_all(".sbs-pane").unwrap();
         for (index, word) in [(0, "old café"), (1, "new 😀")] {
             let pane: web_sys::Element = panes.item(index).unwrap().unchecked_into();
@@ -9814,7 +10166,10 @@ async fn diff_syntax_paint_keeps_word_changes_and_embedded_context_in_both_modes
             );
         }
         assert_eq!(mounted.state.workspace.content.get_untracked(), new);
+        drop(mounted);
+        settle().await;
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -9823,7 +10178,7 @@ async fn wrapped_multi_cursor_arrows_follow_measured_rows_in_both_modes() {
         WorkspaceMode,
         editor::{Selection, byte_to_textarea, line_column},
     };
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let line = format!("\tlet café = \"{}\";", "文😀 words ".repeat(12));
         let source = format!("{line}\r\nx\r\n{line}\r\n");
@@ -9853,7 +10208,7 @@ async fn wrapped_multi_cursor_arrows_follow_measured_rows_in_both_modes() {
         .await;
         editorFontsReady().await.unwrap();
         frame().await;
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         let textarea: web_sys::HtmlTextAreaElement =
             mounted.element(".editor-textarea").unchecked_into();
         actions.record_selection(Selection::caret(5)).unwrap();
@@ -9906,11 +10261,11 @@ async fn measured_multi_cursor_motion_skips_folded_rows_in_both_modes() {
         WorkspaceMode,
         editor::{FoldCommand, Selection, byte_to_textarea, line_column},
     };
-    use openwebide_frontend::state_actions::editor::EditorActions;
     let source = "fn first() {\r\n    first();\r\n}\r\nfn second() {\r\n    second();\r\n}\r\n";
     let second = source.find("fn second").unwrap();
+    let host = super::language_support::LanguageHost::new().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        let mounted = mount_test(move |state| {
+        let mounted = host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -9932,7 +10287,7 @@ async fn measured_multi_cursor_motion_skips_folded_rows_in_both_modes() {
                 .is_some()
         })
         .await;
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         let textarea: web_sys::HtmlTextAreaElement =
             mounted.element(".editor-textarea").unchecked_into();
         actions.record_selection(Selection::caret(5)).unwrap();
@@ -9977,13 +10332,16 @@ async fn measured_multi_cursor_motion_skips_folded_rows_in_both_modes() {
         assert_eq!(actions.selections(source), before);
         assert_eq!(actions.source(), source);
         assert!(!mounted.state.workspace.dirty.get_untracked());
+        drop(mounted);
+        host.cancel_pending();
+        settle().await;
     }
+    host.close().await;
 }
 
 fn seed_wrapped_carets(mounted: &Mounted, source: &str, second: usize) {
     use openwebide_core::editor::{Selection, byte_to_textarea};
-    use openwebide_frontend::state_actions::editor::EditorActions;
-    let actions = EditorActions::new(mounted.state.workspace);
+    let actions = mounted.state.editor_actions();
     let input: web_sys::HtmlTextAreaElement = mounted.element(".editor-textarea").unchecked_into();
     actions.record_selection(Selection::caret(5)).unwrap();
     actions
@@ -10002,7 +10360,7 @@ fn seed_wrapped_carets(mounted: &Mounted, source: &str, second: usize) {
 #[wasm_bindgen_test]
 async fn pending_paint_motion_preserves_key_order_and_flushes_before_edits_in_both_modes() {
     use openwebide_core::WorkspaceMode;
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let line = format!("\tlet café = \"{}\";", "文😀 words ".repeat(12));
         let source = format!("{line}\r\nx\r\n{line}\r\n");
@@ -10030,7 +10388,7 @@ async fn pending_paint_motion_preserves_key_order_and_flushes_before_edits_in_bo
                 .is_some()
         })
         .await;
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         let input: web_sys::HtmlTextAreaElement =
             mounted.element(".editor-textarea").unchecked_into();
         seed_wrapped_carets(&mounted, &expected, second);
@@ -10262,9 +10620,10 @@ async fn queued_motion_cannot_cross_accounts_files_or_newer_tickets_in_both_mode
 #[wasm_bindgen_test]
 async fn literal_contexts_and_paint_preserve_heredocs_and_nested_interpolation_in_both_modes() {
     use openwebide_core::{WorkspaceMode, editor::syntax_contracts::LITERAL_CASES};
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
+    let host = super::language_support::LanguageHost::new().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        let mounted = mount_test(move |state| {
+        let mounted = host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -10272,11 +10631,12 @@ async fn literal_contexts_and_paint_preserve_heredocs_and_nested_interpolation_i
                 .update(|projects| projects[0].mode = mode);
             editor_view(state)
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         for &(path, source, literal, code) in LITERAL_CASES {
             let source = source.replace('\n', "\r\n");
             mounted.state.workspace.open_file.set(Some(path.into()));
             mounted.state.workspace.content.set(source.clone().into());
+            super::language_support::ready(&mounted.state).await;
             let structure = std::cell::RefCell::new(None);
             wait_until("literal source structure", || {
                 let prepared = actions.syntax_structure(|| true);
@@ -10307,6 +10667,16 @@ async fn literal_contexts_and_paint_preserve_heredocs_and_nested_interpolation_i
                 paint
                     .text_content()
                     .is_some_and(|text| text == source.replace("\r\n", "\n"))
+                    && {
+                        let tokens = mounted.root.query_selector_all(".tok-string").unwrap();
+                        (0..tokens.length()).any(|index| {
+                            tokens
+                                .item(index)
+                                .unwrap()
+                                .text_content()
+                                .is_some_and(|text| text.contains(literal))
+                        })
+                    }
             })
             .await;
             let tokens = mounted.root.query_selector_all(".tok-string").unwrap();
@@ -10319,7 +10689,11 @@ async fn literal_contexts_and_paint_preserve_heredocs_and_nested_interpolation_i
                 "literal paint: {mode:?} {path} {source}"
             );
         }
+        drop(mounted);
+        host.cancel_pending();
+        settle().await;
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -10328,7 +10702,7 @@ async fn long_wrapped_lines_move_cursors_without_measuring_the_entire_line_in_bo
         WorkspaceMode,
         editor::{Selection, byte_to_textarea},
     };
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let source = format!("{}\r\nshort\r\n", "文😀e\u{301} words ".repeat(20_000));
         let expected = source.clone();
@@ -10382,7 +10756,7 @@ async fn long_wrapped_lines_move_cursors_without_measuring_the_entire_line_in_bo
         for index in 0..runs.length() {
             assert!(runs.item(index).unwrap().text_content().unwrap().len() <= 516);
         }
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         // Early viewport paint can precede complete long-row geometry. This
         // contract measures cursor work after cold setup; otherwise its global
         // Range counter also charges unrelated continuation probes to the key.
@@ -10525,6 +10899,8 @@ async fn cooperative_terminal_plain_paint_preserves_source_and_rejects_stale_sco
                         state.workspace.editor_preparation.set(Some(
                             openwebide_frontend::state::workspace::PreparedEditorSyntax {
                                 scope: openwebide_frontend::state::workspace::EditorSyntaxScope {
+                                    session: None,
+                                    language_generation: 0,
                                     key: (1, "fallback.rs".into()),
                                     source_revision: state
                                         .workspace
@@ -10893,10 +11269,11 @@ async fn syntax_consumers_share_immutable_preparation_and_invalidate_it_in_both_
         WorkspaceMode,
         editor::{Indentation, SyntaxStatus},
     };
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
+    let language_host = super::language_support::LanguageHost::new().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let source = "fn main() {\r\n    call(\"文😀\");\r\n}\r\n";
-        let mounted = mount_test(move |state| {
+        let mounted = language_host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -10906,7 +11283,8 @@ async fn syntax_consumers_share_immutable_preparation_and_invalidate_it_in_both_
             state.workspace.content.set(source.into());
             editor_view(state)
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        super::language_support::ready(&mounted.state).await;
+        let actions = mounted.state.editor_actions();
         let first = actions.syntax_structure(|| true).unwrap();
         let first_paint = actions.syntax_highlights().unwrap();
         actions.syntax_folds(|| true).unwrap();
@@ -10923,31 +11301,51 @@ async fn syntax_consumers_share_immutable_preparation_and_invalidate_it_in_both_
                 tab_width,
                 ..Indentation::default()
             });
+            assert!(
+                actions.syntax_highlights().is_none(),
+                "old configuration is revoked synchronously"
+            );
+            super::language_support::ready(&mounted.state).await;
+            let structure = actions.syntax_structure(|| true).unwrap();
+            let paint = actions.syntax_highlights().unwrap();
+            assert!(structure.matches_source(source));
             assert!(std::sync::Arc::ptr_eq(
-                &first,
+                &structure,
                 &actions.syntax_structure(|| true).unwrap()
             ));
             assert!(std::sync::Arc::ptr_eq(
-                &first_paint,
+                &paint,
                 &actions.syntax_highlights().unwrap()
             ));
+            assert_eq!(
+                paint, first_paint,
+                "tab configuration preserves token content"
+            );
             assert_eq!(actions.source(), source);
         }
         let revised = source.replace("文😀", "😀 changed");
         mounted.state.workspace.content.set(revised.clone().into());
+        assert!(actions.syntax_highlights().is_none());
+        super::language_support::ready(&mounted.state).await;
         let next = actions.syntax_structure(|| true).unwrap();
         assert!(!std::sync::Arc::ptr_eq(&first, &next));
         assert!(first.matches_source(source));
         assert!(!first.matches_source(&revised));
         assert!(next.matches_source(&revised));
+        let calls = language_host.calls.get();
         assert_eq!(
             actions.syntax_folds(|| false).unwrap(),
             (SyntaxStatus::Cancelled, vec![])
         );
-        assert!(!std::sync::Arc::ptr_eq(
+        assert!(std::sync::Arc::ptr_eq(
             &next,
             &actions.syntax_structure(|| true).unwrap()
         ));
+        assert_eq!(
+            language_host.calls.get(),
+            calls,
+            "a cancelled consumer does not restart host analysis"
+        );
         mounted
             .state
             .workspace
@@ -10959,16 +11357,18 @@ async fn syntax_consumers_share_immutable_preparation_and_invalidate_it_in_both_
         mounted.state.workspace.reset();
         assert!(actions.syntax_highlights().is_none());
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
 async fn syntax_preparation_cannot_publish_after_scope_changes_in_both_modes() {
     use openwebide_core::{WorkspaceMode, editor::Indentation};
     use openwebide_frontend::state_actions::editor::EditorActions;
+    let language_host = super::language_support::LanguageHost::new().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let facade = std::rc::Rc::new(std::cell::RefCell::new(None::<EditorActions>));
         let captured = facade.clone();
-        let mounted = mount_test(move |state| {
+        let mounted = language_host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -10983,12 +11383,19 @@ async fn syntax_preparation_cannot_publish_after_scope_changes_in_both_modes() {
             editor_view(state)
         });
         let actions = facade.borrow().unwrap();
-        for mutation in 0..4 {
+        for mutation in 0..6 {
             mounted.state.workspace.editor_indentation.update(|values| {
                 values.remove(&(1, "scope.rs".into()));
             });
+            super::language_support::ready(&mounted.state).await;
             actions.refresh_fold_ranges(|| true).unwrap();
             let before = actions.fold_state();
+            assert!(
+                before
+                    .as_ref()
+                    .is_some_and(|folds| !folds.ranges().is_empty()),
+                "the ownership guard protects actual host folds"
+            );
             let mut mutated = false;
             let result = actions.refresh_fold_ranges(|| {
                 if !mutated {
@@ -11009,7 +11416,7 @@ async fn syntax_preparation_cannot_publish_after_scope_changes_in_both_modes() {
                             .workspace
                             .pending_epoch
                             .update(|epoch| *epoch += 1),
-                        _ => mounted.state.workspace.editor_indentation.update(|values| {
+                        3 => mounted.state.workspace.editor_indentation.update(|values| {
                             values.insert(
                                 (1, "scope.rs".into()),
                                 Indentation {
@@ -11018,6 +11425,12 @@ async fn syntax_preparation_cannot_publish_after_scope_changes_in_both_modes() {
                                 },
                             );
                         }),
+                        4 => mounted.state.workspace.active_session.set(Some(99)),
+                        _ => mounted
+                            .state
+                            .languages
+                            .generation
+                            .update(|value| *value += 1),
                     }
                 }
                 true
@@ -11026,6 +11439,7 @@ async fn syntax_preparation_cannot_publish_after_scope_changes_in_both_modes() {
             assert_eq!(actions.fold_state(), before);
         }
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -11055,7 +11469,7 @@ async fn cooperative_worker_admission_yields_before_transport_and_rejects_stale_
                 view! { <span>{move || actions.syntax_is_pending().to_string()}</span> }
             });
             settle().await;
-            assert!(EditorActions::new(mounted.state.workspace).syntax_is_pending());
+            assert!(mounted.state.editor_actions().syntax_is_pending());
             assert_eq!(
                 transport.calls.get(),
                 0,
@@ -11141,11 +11555,7 @@ async fn cooperative_worker_admission_rejects_limits_without_transport_in_both_m
                 view! { <span>{move || actions.syntax_is_pending().to_string()}</span> }
             });
             if editor_limit {
-                assert!(
-                    EditorActions::new(mounted.state.workspace)
-                        .limit()
-                        .is_some()
-                );
+                assert!(mounted.state.editor_actions().limit().is_some());
                 assert!(
                     mounted
                         .state
@@ -11220,7 +11630,7 @@ async fn cooperative_worker_row_index_preserves_dense_rows_in_both_modes() {
                 let DeferredSyntaxReply { message, sender } =
                     transport.pending.borrow_mut().pop_front().unwrap();
                 assert!(worker.enqueue(&message).is_none());
-                let actions = EditorActions::new(mounted.state.workspace);
+                let actions = mounted.state.editor_actions();
                 let mut batches = 0;
                 let reply = loop {
                     batches += 1;
@@ -11309,7 +11719,7 @@ async fn cooperative_worker_brackets_publish_complete_embedded_scopes_in_both_mo
                 actions.install_syntax_transport(installed);
                 view! { <span>{move || actions.syntax_is_pending().to_string()}</span> }
             });
-            let actions = EditorActions::new(mounted.state.workspace);
+            let actions = mounted.state.editor_actions();
             let mut worker = SyntaxWorker::default();
             for (index, expected) in [&source, &revised].into_iter().enumerate() {
                 if index > 0 {
@@ -11450,7 +11860,7 @@ async fn many_embedded_code_bodies_publish_complete_scopes_and_warm_edits_in_bot
                     actions.install_syntax_transport(installed);
                     view! { <span>{move || actions.syntax_is_pending().to_string()}</span> }
                 });
-                let actions = EditorActions::new(mounted.state.workspace);
+                let actions = mounted.state.editor_actions();
                 let mut worker = SyntaxWorker::default();
                 for (revision, expected) in [&source, &changed].into_iter().enumerate() {
                     if revision > 0 {
@@ -11543,8 +11953,15 @@ async fn many_embedded_code_bodies_publish_complete_scopes_and_warm_edits_in_bot
 
 #[wasm_bindgen_test]
 async fn cooperative_worker_plain_rows_publish_complete_sql_in_both_modes() {
-    use openwebide_core::{WorkspaceMode, editor::SyntaxWorker, highlight::TokenKind};
-    use openwebide_frontend::state_actions::editor::EditorActions;
+    use openwebide_core::{
+        WorkspaceMode,
+        editor::{SyntaxAnalysis, SyntaxReply, SyntaxRequest, SyntaxStatus, SyntaxWorker},
+        highlight::{Language, TokenKind},
+        plugins::languages::source_digest,
+    };
+    use std::sync::Arc;
+    let host = super::language_support::LanguageHost::new().await;
+    host.pause();
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         for ending in ["\n", "\r\n"] {
             let source = format!(
@@ -11553,10 +11970,8 @@ async fn cooperative_worker_plain_rows_publish_complete_sql_in_both_modes() {
                 format!("SELECT '文😀';{ending}").repeat(1_000)
             );
             assert!(source.len() > 8 * openwebide_core::highlight::LEXICAL_BATCH_BYTES);
-            let transport = std::rc::Rc::new(DeferredSyntax::default());
-            let installed = transport.clone();
             let initial = source.clone();
-            let mounted = mount_test(move |state| {
+            let mounted = host.mount(move |state| {
                 state.seed_project();
                 state
                     .projects
@@ -11564,124 +11979,150 @@ async fn cooperative_worker_plain_rows_publish_complete_sql_in_both_modes() {
                     .update(|projects| projects[0].mode = mode);
                 state.workspace.open_file.set(Some("query.sql".into()));
                 state.workspace.content.set(initial.into());
-                EditorActions::new(state.workspace).install_syntax_transport(installed);
                 editor_view(state)
             });
-            let actions = EditorActions::new(mounted.state.workspace);
-            wait_until("SQL worker request", || {
-                !transport.pending.borrow().is_empty()
-            })
-            .await;
-            let DeferredSyntaxReply { message, sender } =
-                transport.pending.borrow_mut().pop_front().unwrap();
+            let actions = mounted.state.editor_actions();
             let mut worker = SyntaxWorker::default();
-            assert!(worker.enqueue(&message).is_none());
-            let mut batches = 0;
-            let reply = loop {
-                batches += 1;
-                assert!(batches < 2_000);
-                let mut checks = 0;
-                if let Some(reply) = worker.advance(
-                    || true,
-                    || {
-                        checks += 1;
-                        checks >= 4
-                    },
-                ) {
-                    break reply;
+            let mut previous: Option<(u32, Arc<SyntaxAnalysis>)> = None;
+            for (stage, text) in [
+                source.clone(),
+                source.replacen("SELECT value", "SELECT changed", 1),
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                if stage != 0 {
+                    mounted.state.workspace.content.set(text.clone().into());
                 }
-                assert!(worker.has_work());
-                assert!(
-                    actions.syntax_is_pending(),
-                    "{mode:?}: unfinished rows must remain pending"
+                wait_until("SQL host request", || host.pending() > 0).await;
+                let request = host.next_request();
+                assert_eq!(request.source_digest, source_digest(&text));
+                // Keep the standalone worker's cooperative engine contract. Its
+                // reply is never injected into the production editor service.
+                let ticket = u32::try_from(stage + 1).unwrap();
+                let request = SyntaxRequest::new(
+                    ticket,
+                    request.document,
+                    Language::Sql,
+                    &text,
+                    4,
+                    previous
+                        .as_ref()
+                        .map(|(ticket, analysis)| (*ticket, analysis.as_ref())),
                 );
                 assert!(
-                    mounted
-                        .state
-                        .workspace
-                        .editor_preparation
-                        .get_untracked()
+                    worker
+                        .enqueue(&serde_json::to_string(&request).unwrap())
                         .is_none()
                 );
-                if batches % 32 == 0 {
-                    openwebide_frontend::util::yield_task().await;
+                let mut batches = 0;
+                let reply = loop {
+                    batches += 1;
+                    assert!(batches < 2_000);
+                    let mut checks = 0;
+                    if let Some(reply) = worker.advance(
+                        || true,
+                        || {
+                            checks += 1;
+                            checks >= 4
+                        },
+                    ) {
+                        break reply;
+                    }
+                    assert!(worker.has_work());
+                    assert!(
+                        actions.syntax_is_pending(),
+                        "{mode:?}: unfinished host work remains pending"
+                    );
+                    if stage == 0 {
+                        assert!(
+                            mounted
+                                .state
+                                .workspace
+                                .editor_preparation
+                                .get_untracked()
+                                .is_none()
+                        );
+                    }
+                    if batches % 32 == 0 {
+                        openwebide_frontend::util::yield_task().await;
+                    }
+                };
+                assert!(
+                    batches > if stage == 0 { 100 } else { 2 },
+                    "{mode:?}: stage {stage} plain rows must yield"
+                );
+                let (status, analysis) = SyntaxReply::receive_reusing(
+                    &reply,
+                    ticket,
+                    &text,
+                    previous
+                        .as_ref()
+                        .map(|(ticket, analysis)| (*ticket, analysis.as_ref())),
+                )
+                .unwrap();
+                assert!(matches!(status, SyntaxStatus::Ready { .. }));
+                let analysis = analysis.unwrap();
+                let rows = analysis.highlights().unwrap();
+                assert!(
+                    rows.iter()
+                        .flat_map(|row| row.iter())
+                        .all(|token| token.kind == TokenKind::Plain)
+                );
+                assert!(
+                    rows.iter()
+                        .map(|row| row
+                            .iter()
+                            .map(|token| token.text.as_str())
+                            .collect::<String>())
+                        .eq(text.split('\n').map(str::to_owned)),
+                    "{mode:?}: complete standalone SQL rows"
+                );
+                previous = Some((ticket, analysis));
+                // Publish only the real public SDK engine's result, keeping the
+                // client independent of worker framing and parser execution.
+                host.respond_now(true);
+                wait_until("complete SQL host publication", || {
+                    if host.pending() > 0 {
+                        host.respond_now(true);
+                    }
+                    !actions.syntax_is_pending()
+                })
+                .await;
+                assert_eq!(actions.source(), text);
+                assert_eq!(actions.source_line_count(), Some(text.split('\n').count()));
+                let (prepared, rows) = actions.syntax_paint();
+                if rows.is_empty() {
+                    assert!(
+                        !prepared,
+                        "a provider without highlights uses indexed plain source"
+                    );
+                } else {
+                    assert!(prepared);
+                    assert!(
+                        rows.iter()
+                            .flat_map(|row| row.iter())
+                            .all(|token| token.kind == TokenKind::Plain)
+                    );
+                    assert!(
+                        rows.iter()
+                            .map(|row| row
+                                .iter()
+                                .map(|token| token.text.as_str())
+                                .collect::<String>())
+                            .eq(text.split('\n').map(str::to_owned)),
+                        "{mode:?}: complete SDK SQL rows"
+                    );
                 }
-            };
-            assert!(batches > 100, "{mode:?}: plain SQL rows must yield");
-            sender.send(Ok(reply)).unwrap();
-            wait_until("complete SQL rows published", || {
-                !actions.syntax_is_pending()
-            })
-            .await;
-            let (prepared, rows) = actions.syntax_paint();
-            assert!(prepared);
-            assert!(
-                rows.iter()
-                    .flat_map(|row| row.iter())
-                    .all(|token| token.kind == TokenKind::Plain)
-            );
-            assert_eq!(
-                rows.iter()
-                    .map(|row| row
-                        .iter()
-                        .map(|token| token.text.as_str())
-                        .collect::<String>())
-                    .collect::<Vec<_>>(),
-                source.split('\n').map(str::to_owned).collect::<Vec<_>>()
-            );
-            let input: web_sys::HtmlTextAreaElement =
-                mounted.element(".editor-textarea").unchecked_into();
-            assert_editor_native_source(&input, mounted.state.workspace, &source);
-            let revised = source.replacen("SELECT value", "SELECT changed", 1);
-            mounted.state.workspace.content.set(revised.clone().into());
-            wait_until("warm SQL worker request", || {
-                !transport.pending.borrow().is_empty()
-            })
-            .await;
-            let DeferredSyntaxReply { message, sender } =
-                transport.pending.borrow_mut().pop_front().unwrap();
-            assert!(worker.enqueue(&message).is_none());
-            let mut batches = 0;
-            let reply = loop {
-                batches += 1;
-                assert!(batches < 2_000);
-                let mut checks = 0;
-                if let Some(reply) = worker.advance(
-                    || true,
-                    || {
-                        checks += 1;
-                        checks >= 4
-                    },
-                ) {
-                    break reply;
-                }
-                assert!(worker.has_work());
-                assert!(actions.syntax_is_pending());
-                if batches % 32 == 0 {
-                    openwebide_frontend::util::yield_task().await;
-                }
-            };
-            assert!(
-                batches > 2,
-                "{mode:?}: warm plain-source preparation must yield"
-            );
-            sender.send(Ok(reply)).unwrap();
-            wait_until("warm SQL rows published", || !actions.syntax_is_pending()).await;
-            let (prepared, next_rows) = actions.syntax_paint();
-            assert!(prepared);
-            assert_eq!(
-                next_rows
-                    .iter()
-                    .map(|row| row
-                        .iter()
-                        .map(|token| token.text.as_str())
-                        .collect::<String>())
-                    .collect::<Vec<_>>(),
-                revised.split('\n').map(str::to_owned).collect::<Vec<_>>()
-            );
-            assert_editor_native_source(&input, mounted.state.workspace, &revised);
+                let input = mounted.element(".editor-textarea").unchecked_into();
+                assert_editor_native_source(&input, mounted.state.workspace, &text);
+            }
+            drop(mounted);
+            host.cancel_pending();
+            settle().await;
         }
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -11711,7 +12152,7 @@ async fn cooperative_worker_parser_source_comparison_preserves_warm_paint_in_bot
                 actions.install_syntax_transport(installed);
                 view! { <span>{move || actions.syntax_is_pending().to_string()}</span> }
             });
-            let actions = EditorActions::new(mounted.state.workspace);
+            let actions = mounted.state.editor_actions();
             let mut worker = SyntaxWorker::default();
             for (index, expected) in [&source, &revised].into_iter().enumerate() {
                 if index > 0 {
@@ -11790,14 +12231,13 @@ async fn cooperative_worker_parser_source_comparison_preserves_warm_paint_in_bot
 #[wasm_bindgen_test]
 async fn neutral_edits_paint_before_pending_worker_reply_in_both_modes() {
     use openwebide_core::{WorkspaceMode, editor::Selection};
-    use openwebide_frontend::state_actions::editor::EditorActions;
+    let host = super::language_support::LanguageHost::new().await;
+    host.pause();
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         for wrapped in [false, true] {
-            let transport = std::rc::Rc::new(DeferredSyntax::default());
-            let installed = transport.clone();
             let source = "文😀 words ".repeat(5000);
             let initial = source.clone();
-            let mounted = mount_test(move |state| {
+            let mounted = host.mount(move |state| {
                 state.seed_project();
                 state
                     .projects
@@ -11809,15 +12249,11 @@ async fn neutral_edits_paint_before_pending_worker_reply_in_both_modes() {
                     .settings
                     .editor_preferences
                     .update(|preferences| preferences.word_wrap = wrapped);
-                EditorActions::new(state.workspace).install_syntax_transport(installed);
                 view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:420px;height:320px">{editor_view(state)}</div> }
             });
-            let actions = EditorActions::new(mounted.state.workspace);
-            wait_until("initial neutral worker request", || {
-                !transport.pending.borrow().is_empty()
-            })
-            .await;
-            transport.respond(true);
+            let actions = mounted.state.editor_actions();
+            wait_until("initial neutral worker request", || host.pending() > 0).await;
+            host.respond_now(true);
             wait_until("completed neutral source paint", || {
                 let (prepared, tokens) = actions.syntax_paint();
                 !actions.syntax_is_pending()
@@ -11835,7 +12271,7 @@ async fn neutral_edits_paint_before_pending_worker_reply_in_both_modes() {
             let expected = format!("changed {source}");
             wait_until("changed neutral paint before worker reply", || {
                 actions.syntax_is_pending()
-                    && !transport.pending.borrow().is_empty()
+                    && host.pending() > 0
                     && mounted
                         .root
                         .query_selector(".editor-source-line[data-line='1']")
@@ -11858,24 +12294,27 @@ async fn neutral_edits_paint_before_pending_worker_reply_in_both_modes() {
                     .unwrap()
                     .is_none()
             );
-            transport.respond(true);
+            host.respond_now(true);
             wait_until("neutral analysis settles", || !actions.syntax_is_pending()).await;
             assert_eq!(actions.source(), expected);
+            drop(mounted);
+            host.cancel_pending();
+            settle().await;
         }
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
 async fn parser_budget_rejection_preserves_source_and_recovers_in_both_modes() {
     use openwebide_core::{WorkspaceMode, editor::SyntaxStatus};
-    use openwebide_frontend::state_actions::editor::EditorActions;
+    let language_host = super::language_support::LanguageHost::new().await;
+    language_host.pause();
     let unit = "文😀 words ";
     let source = unit.repeat(1_048_576 / unit.len());
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        let transport = std::rc::Rc::new(DeferredSyntax::default());
-        let installed = transport.clone();
         let initial = source.clone();
-        let mounted = mount_test(move |state| {
+        let mounted = language_host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -11883,18 +12322,17 @@ async fn parser_budget_rejection_preserves_source_and_recovers_in_both_modes() {
                 .update(|projects| projects[0].mode = mode);
             state.workspace.open_file.set(Some("budget.rs".into()));
             state.workspace.content.set(initial.into());
-            EditorActions::new(state.workspace).install_syntax_transport(installed);
             view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:420px;height:320px">{editor_view(state)}</div> }
         });
-        let actions = EditorActions::new(mounted.state.workspace);
-        wait_until("budget fixture worker request", || {
-            !transport.pending.borrow().is_empty()
+        let actions = mounted.state.editor_actions();
+        wait_until("budget fixture host request", || {
+            language_host.pending() != 0
         })
         .await;
-        transport.respond(true);
+        language_host.respond().await;
         let fallback_started = js_sys::Date::now();
         let reported_fallback = std::cell::Cell::new(false);
-        wait_until("typed parser budget fallback", || {
+        wait_until("typed plugin budget fallback", || {
             let status = mounted
                 .state
                 .workspace
@@ -11908,7 +12346,7 @@ async fn parser_budget_rejection_preserves_source_and_recovers_in_both_modes() {
             {
                 wasm_bindgen_test::console_log!(
                     "parser fallback timeout: mode={mode:?} status={status:?} pending={pending} painted={painted} requests={} queued={} native_bound={:?} editor_roots={}",
-                    transport.calls.get(), transport.pending.borrow().len(),
+                    language_host.calls.get(), language_host.pending(),
                     mounted.element(".editor-textarea").get_attribute("data-editor-native-bound"),
                     web_sys::window().unwrap().document().unwrap().query_selector_all(".editor-code").unwrap().length()
                 );
@@ -11940,10 +12378,10 @@ async fn parser_budget_rejection_preserves_source_and_recovers_in_both_modes() {
             .unwrap();
         let changed = format!("x {source}");
         wait_until(
-            "rejected source edit paints before another worker reply",
+            "rejected source edit paints before another host reply",
             || {
                 actions.syntax_is_pending()
-                    && !transport.pending.borrow().is_empty()
+                    && language_host.pending() != 0
                     && mounted
                         .root
                         .query_selector(".editor-source-line[data-line='1']")
@@ -11966,7 +12404,7 @@ async fn parser_budget_rejection_preserves_source_and_recovers_in_both_modes() {
             .editor_preparation
             .get_untracked()
             .unwrap();
-        for boundary in 0..7 {
+        for boundary in 0..9 {
             let mut stale = rejected.clone();
             match boundary {
                 0 => stale.scope.key.0 += 1,
@@ -11975,6 +12413,8 @@ async fn parser_budget_rejection_preserves_source_and_recovers_in_both_modes() {
                 3 => stale.scope.read_revision += 1,
                 4 => stale.scope.account_generation += 1,
                 5 => stale.scope.tab_width += 1,
+                6 => stale.scope.session = Some(999),
+                7 => stale.scope.language_generation += 1,
                 _ => stale.status = SyntaxStatus::Cancelled,
             }
             mounted.state.workspace.editor_preparation.set(Some(stale));
@@ -11988,7 +12428,7 @@ async fn parser_budget_rejection_preserves_source_and_recovers_in_both_modes() {
             .workspace
             .editor_preparation
             .set(Some(rejected));
-        transport.respond(true);
+        language_host.respond().await;
         wait_until("repeated rejection settles", || {
             !actions.syntax_is_pending()
         })
@@ -11999,10 +12439,10 @@ async fn parser_budget_rejection_preserves_source_and_recovers_in_both_modes() {
             .content
             .set("fn recovered() {}".into());
         wait_until("replacement grammar request", || {
-            !transport.pending.borrow().is_empty()
+            language_host.pending() != 0
         })
         .await;
-        transport.respond(true);
+        language_host.respond().await;
         wait_until("grammar recovers after budget rejection", || {
             actions.syntax_highlights().is_some()
         })
@@ -12019,24 +12459,21 @@ async fn parser_budget_rejection_preserves_source_and_recovers_in_both_modes() {
             SyntaxStatus::Ready { .. }
         ));
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
 async fn rejected_wrapped_geometry_restarts_when_syntax_completes_in_both_modes() {
-    use openwebide_core::{
-        WorkspaceMode,
-        editor::{SYNTAX_PROTOCOL_VERSION, Selection, SyntaxReply, SyntaxStatus},
-    };
-    use openwebide_frontend::state_actions::editor::EditorActions;
+    use openwebide_core::{WorkspaceMode, editor::Selection, plugins::languages::AnalysisStatus};
     let loaded = load_all_editor_fonts().await;
+    let host = super::language_support::LanguageHost::new().await;
+    host.pause();
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        let transport = std::rc::Rc::new(DeferredSyntax::default());
-        let installed = transport.clone();
         let source = (0..1200)
             .map(|row| format!("row {row} words for wrapping and reuse\n"))
             .collect::<String>();
         let initial = source.clone();
-        let mounted = mount_test(move |state| {
+        let mounted = host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -12051,28 +12488,11 @@ async fn rejected_wrapped_geometry_restarts_when_syntax_completes_in_both_modes(
                 .settings
                 .editor_preferences
                 .update(|preferences| preferences.word_wrap = true);
-            EditorActions::new(state.workspace).install_syntax_transport(installed);
             view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:420px;height:320px">{editor_view(state)}</div> }
         });
-        let actions = EditorActions::new(mounted.state.workspace);
-        let reject = || {
-            let DeferredSyntaxReply { message, sender } =
-                transport.pending.borrow_mut().pop_front().unwrap();
-            let request: serde_json::Value = serde_json::from_str(&message).unwrap();
-            let reply = SyntaxReply {
-                version: SYNTAX_PROTOCOL_VERSION,
-                ticket: u32::try_from(request["ticket"].as_u64().unwrap()).unwrap(),
-                status: SyntaxStatus::TooLarge,
-                analysis: None,
-            };
-            sender
-                .send(Ok(serde_json::to_string(&reply).unwrap()))
-                .unwrap();
-        };
-        wait_until("initial rejected geometry request", || {
-            !transport.pending.borrow().is_empty()
-        })
-        .await;
+        let actions = mounted.state.editor_actions();
+        let reject = || host.respond_status(AnalysisStatus::TooLarge);
+        wait_until("initial rejected geometry request", || host.pending() > 0).await;
         reject();
         wait_until("initial rejected wrapped geometry", || {
             !actions.syntax_is_pending() && actions.measured_rows().is_some()
@@ -12086,11 +12506,11 @@ async fn rejected_wrapped_geometry_restarts_when_syntax_completes_in_both_modes(
         // Publication yields in bounded batches. Wait for the observable wire
         // request under the ordinary 3 s deadline, keeping geometry suspended.
         let deadline = js_sys::Date::now() + 3_000.0;
-        while transport.pending.borrow().is_empty() && js_sys::Date::now() < deadline {
+        while host.pending() == 0 && js_sys::Date::now() < deadline {
             openwebide_frontend::util::sleep_ms(10).await;
             settle().await;
         }
-        let request_ready = !transport.pending.borrow().is_empty();
+        let request_ready = host.pending() > 0;
         let geometry_pending = actions.row_geometry_is_pending();
         if request_ready {
             reject();
@@ -12127,10 +12547,14 @@ async fn rejected_wrapped_geometry_restarts_when_syntax_completes_in_both_modes(
             mounted.state.workspace,
             &format!("changed {source}"),
         );
+        drop(mounted);
+        host.cancel_pending();
+        settle().await;
     }
     for font in loaded {
         removeEditorFont(&font);
     }
+    host.close().await;
 }
 
 struct DeferredSyntaxReply {
@@ -12142,11 +12566,7 @@ struct DeferredSyntaxReply {
 #[derive(Default)]
 struct DeferredSyntax {
     pending: std::cell::RefCell<std::collections::VecDeque<DeferredSyntaxReply>>,
-    service: std::cell::RefCell<openwebide_core::editor::SyntaxPreparations<String>>,
     calls: std::cell::Cell<usize>,
-    stopped: std::cell::Cell<bool>,
-    source_delta: std::cell::Cell<bool>,
-    sources: std::cell::RefCell<std::collections::HashMap<String, String>>,
 }
 impl openwebide_frontend::editor_worker::SyntaxTransport for DeferredSyntax {
     fn request(
@@ -12186,7 +12606,6 @@ impl openwebide_frontend::editor_worker::SyntaxTransport for DeferredSyntax {
         })
     }
     fn stop(&self) {
-        self.stopped.set(true);
         for reply in self.pending.borrow_mut().drain(..) {
             let _ = reply.sender.send(Err(
                 openwebide_frontend::editor_worker::WorkerError::Unavailable,
@@ -12194,69 +12613,16 @@ impl openwebide_frontend::editor_worker::SyntaxTransport for DeferredSyntax {
         }
     }
 }
-impl DeferredSyntax {
-    fn respond(&self, valid: bool) {
-        let DeferredSyntaxReply { message, sender } =
-            self.pending.borrow_mut().pop_front().unwrap();
-        let output = if valid {
-            Ok(self
-                .service
-                .borrow_mut()
-                .handle_message(&message, || true)
-                .unwrap())
-        } else {
-            Err(openwebide_frontend::editor_worker::WorkerError::Transport)
-        };
-        if output.as_ref().is_ok_and(|message| {
-            let value: serde_json::Value = serde_json::from_str(message).unwrap();
-            !value["analysis"].is_null()
-        }) {
-            let request: openwebide_core::editor::SyntaxRequest =
-                serde_json::from_str(&message).unwrap();
-            let source = request
-                .source
-                .resolve(
-                    self.sources
-                        .borrow()
-                        .get(&request.document)
-                        .map(String::as_str),
-                )
-                .unwrap();
-            self.sources.borrow_mut().insert(request.document, source);
-        }
-        self.source_delta.set(output.as_ref().is_ok_and(|message| {
-            let value: serde_json::Value = serde_json::from_str(message).unwrap();
-            value["analysis"]["source"].is_object()
-        }));
-        sender.send(output).unwrap();
-    }
-    fn source(&self) -> String {
-        let request = serde_json::from_str::<openwebide_core::editor::SyntaxRequest>(
-            &self.pending.borrow()[0].message,
-        )
-        .unwrap();
-        request
-            .source
-            .resolve(
-                self.sources
-                    .borrow()
-                    .get(&request.document)
-                    .map(String::as_str),
-            )
-            .unwrap()
-    }
-}
 
 #[wasm_bindgen_test]
 async fn pending_worker_paints_requested_source_rows_without_full_file_lexical_tokens_in_both_modes()
  {
     use openwebide_core::WorkspaceMode;
-    use openwebide_frontend::state_actions::editor::EditorActions;
+    let host = super::language_support::LanguageHost::new().await;
+    host.pause();
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        let transport = std::rc::Rc::new(DeferredSyntax::default());
-        let installed = transport.clone();
         let source = "fn hello() { call(\"文🦀\"); }\r\n".repeat(1000);
-        let mounted = mount_test(move |state| {
+        let mounted = host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -12264,12 +12630,11 @@ async fn pending_worker_paints_requested_source_rows_without_full_file_lexical_t
                 .update(|projects| projects[0].mode = mode);
             state.workspace.open_file.set(Some("cold-paint.rs".into()));
             state.workspace.content.set(source.into());
-            EditorActions::new(state.workspace).install_syntax_transport(installed);
             view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:500px;height:300px">{editor_view(state)}</div> }
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         wait_until("pending source rows visible", || {
-            !transport.pending.borrow().is_empty()
+            host.pending() > 0
                 && mounted
                     .root
                     .query_selector(".editor-source-line[data-line='1']")
@@ -12303,11 +12668,11 @@ async fn pending_worker_paints_requested_source_rows_without_full_file_lexical_t
                 .length()
                 < 100
         );
-        transport.respond(true);
+        host.respond_now(true);
         wait_until("prepared source styles", || {
             // Startup configuration can supersede the first scoped request.
-            if !transport.pending.borrow().is_empty() {
-                transport.respond(true);
+            if host.pending() > 0 {
+                host.respond_now(true);
             }
             !actions.syntax_is_pending()
                 && mounted
@@ -12321,8 +12686,8 @@ async fn pending_worker_paints_requested_source_rows_without_full_file_lexical_t
         // real parser results. Terminal failures have a separate plain-paint contract.
         assert!(!actions.syntax_paint().1.is_empty());
         wait_until("styled source measurements ready", || {
-            if !transport.pending.borrow().is_empty() {
-                transport.respond(true);
+            if host.pending() > 0 {
+                host.respond_now(true);
             }
             !actions.syntax_is_pending()
                 && mounted
@@ -12346,10 +12711,7 @@ async fn pending_worker_paints_requested_source_rows_without_full_file_lexical_t
                 actions.rules().indentation,
             )
             .unwrap();
-        wait_until("changed source pending", || {
-            !transport.pending.borrow().is_empty()
-        })
-        .await;
+        wait_until("changed source pending", || host.pending() > 0).await;
         for _ in 0..3 {
             frame().await;
         }
@@ -12384,8 +12746,8 @@ async fn pending_worker_paints_requested_source_rows_without_full_file_lexical_t
             "\n"
         );
         wait_until("changed styled source restored", || {
-            if !transport.pending.borrow().is_empty() {
-                transport.respond(true);
+            if host.pending() > 0 {
+                host.respond_now(true);
             }
             !actions.syntax_is_pending()
                 && mounted
@@ -12395,19 +12757,23 @@ async fn pending_worker_paints_requested_source_rows_without_full_file_lexical_t
                     .is_some()
         })
         .await;
+        drop(mounted);
+        host.cancel_pending();
+        settle().await;
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
 async fn entering_newlines_keeps_fold_gutter_fixed_while_syntax_is_pending_in_both_modes() {
     use openwebide_core::WorkspaceMode;
     use openwebide_frontend::state_actions::editor::EditorActions;
+    let host = super::language_support::LanguageHost::new().await;
+    host.pause();
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        let transport = std::rc::Rc::new(DeferredSyntax::default());
-        let installed = transport.clone();
         let captured = std::rc::Rc::new(std::cell::Cell::new(None::<EditorActions>));
         let capture = captured.clone();
-        let mounted = mount_test(move |state| {
+        let mounted = host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -12422,15 +12788,11 @@ async fn entering_newlines_keeps_fold_gutter_fixed_while_syntax_is_pending_in_bo
                 .content
                 .set("fn main() {\n    call();\n}".into());
             let actions = EditorActions::new(state.workspace);
-            actions.install_syntax_transport(installed);
             capture.set(Some(actions));
             view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:700px;height:400px">{editor_view(state)}</div> }
         });
         let actions = captured.get().unwrap();
-        wait_until("initial folding request", || {
-            !transport.pending.borrow().is_empty()
-        })
-        .await;
+        wait_until("initial folding request", || host.pending() > 0).await;
         let code: web_sys::HtmlElement = mounted.element(".editor-code").unchecked_into();
         let input: web_sys::HtmlTextAreaElement =
             mounted.element(".editor-textarea").unchecked_into();
@@ -12440,8 +12802,8 @@ async fn entering_newlines_keeps_fold_gutter_fixed_while_syntax_is_pending_in_bo
             .unwrap();
         assert!(gutter.contains("42px"));
         wait_until("folding controls", || {
-            if !transport.pending.borrow().is_empty() {
-                transport.respond(true);
+            if host.pending() > 0 {
+                host.respond_now(true);
             }
             mounted
                 .root
@@ -12469,11 +12831,12 @@ async fn entering_newlines_keeps_fold_gutter_fixed_while_syntax_is_pending_in_bo
         input.focus().unwrap();
         input.set_selection_range(12, 12).unwrap();
         assert!(editor_key(&input, "Enter", false, false).default_prevented());
-        wait_until("new folding request", || {
-            !transport.pending.borrow().is_empty()
-        })
-        .await;
-        assert!(actions.syntax_structure(|| true).is_none());
+        wait_until("new folding request", || host.pending() > 0).await;
+        assert!(
+            actions
+                .syntax_structure(|| true)
+                .is_none_or(|structure| !structure.available())
+        );
         assert_eq!(actions.source().split('\n').count(), 4);
         assert_eq!(
             code.style()
@@ -12506,9 +12869,11 @@ async fn entering_newlines_keeps_fold_gutter_fixed_while_syntax_is_pending_in_bo
             styled_count,
             "pending source must retain its styled frame"
         );
-        transport.respond(true);
+        host.respond_now(true);
         wait_until("updated folding controls", || {
-            actions.syntax_structure(|| true).is_some()
+            actions
+                .syntax_structure(|| true)
+                .is_some_and(|structure| structure.available())
         })
         .await;
         settle().await;
@@ -12526,21 +12891,23 @@ async fn entering_newlines_keeps_fold_gutter_fixed_while_syntax_is_pending_in_bo
         assert_eq!(editorPresentationLosses(&presentation), 0);
         editorStopPresentationWatch(&presentation);
         drop(mounted);
+        host.cancel_pending();
         settle().await;
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
 async fn retained_paint_releases_document_and_account_scopes_in_both_modes() {
     use openwebide_core::WorkspaceMode;
     use openwebide_frontend::state_actions::editor::EditorActions;
+    let language_host = super::language_support::LanguageHost::new().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         for boundary in 0..5 {
-            let transport = std::rc::Rc::new(DeferredSyntax::default());
-            let installed = transport.clone();
+            language_host.resume();
             let captured = std::rc::Rc::new(std::cell::Cell::new(None::<EditorActions>));
             let capture = captured.clone();
-            let mounted = mount_test(move |state| {
+            let mounted = language_host.mount(move |state| {
                 state.seed_project();
                 state
                     .projects
@@ -12552,14 +12919,12 @@ async fn retained_paint_releases_document_and_account_scopes_in_both_modes() {
                     .content
                     .set("fn old() {\n    call();\n}".into());
                 let actions = EditorActions::new(state.workspace);
-                actions.install_syntax_transport(installed);
+                actions.install_syntax_worker();
                 capture.set(Some(actions));
                 view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:700px;height:400px">{editor_view(state)}</div> }
             });
+            super::language_support::ready(&mounted.state).await;
             wait_until("published retained frame", || {
-                if !transport.pending.borrow().is_empty() {
-                    transport.respond(true);
-                }
                 mounted
                     .root
                     .query_selector(".editor-code.highlight-ready .tok-keyword")
@@ -12570,6 +12935,7 @@ async fn retained_paint_releases_document_and_account_scopes_in_both_modes() {
             frame().await;
             let actions = captured.get().unwrap();
             let original = untrack(|| actions.presentation_scope());
+            language_host.pause();
             match boundary {
                 0 => mounted
                     .state
@@ -12618,21 +12984,25 @@ async fn retained_paint_releases_document_and_account_scopes_in_both_modes() {
                 ));
             }
             drop(mounted);
+            language_host.cancel_pending();
             settle().await;
         }
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
 async fn worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_in_both_modes() {
     use openwebide_core::WorkspaceMode;
     use openwebide_frontend::state_actions::editor::EditorActions;
+    let host = super::language_support::LanguageHost::new().await;
+    host.pause();
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        let transport = std::rc::Rc::new(DeferredSyntax::default());
-        let installed = transport.clone();
+        host.pause();
+        let first_call = host.calls.get();
         let captured = std::rc::Rc::new(std::cell::Cell::new(None::<EditorActions>));
         let capture = captured.clone();
-        let mounted = mount_test(move |state| {
+        let mounted = host.mount(move |state| {
             state.seed_project();
             state.projects.projects.update(|projects| {
                 projects[0].mode = mode;
@@ -12646,16 +13016,16 @@ async fn worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_
                 .content
                 .set("fn main() {\r\n call(\"文😀\");\r\n}".into());
             let actions = EditorActions::new(state.workspace);
-            actions.install_syntax_transport(installed);
             capture.set(Some(actions));
             editor_view(state)
         });
         let actions = captured.get().unwrap();
-        wait_until("first deferred worker request", || {
-            !transport.pending.borrow().is_empty()
-        })
-        .await;
-        assert!(actions.syntax_structure(|| true).is_none());
+        wait_until("first deferred worker request", || host.pending() > 0).await;
+        assert!(
+            actions
+                .syntax_structure(|| true)
+                .is_none_or(|structure| !structure.available())
+        );
         assert!(
             mounted
                 .state
@@ -12671,19 +13041,27 @@ async fn worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_
                 .set(format!("fn latest_{update}() {{\r\n call(\"文😀\");\r\n}}").into());
             settle().await;
         }
-        assert_eq!(transport.calls.get(), 1);
-        assert_eq!(transport.pending.borrow().len(), 1);
-        transport.respond(true);
-        wait_until("latest coalesced request", || {
-            !transport.pending.borrow().is_empty()
-        })
-        .await;
-        assert!(transport.source().contains("latest_49"));
-        assert_eq!(transport.calls.get(), 2);
-        assert!(actions.syntax_structure(|| true).is_none());
-        transport.respond(true);
+        assert_eq!(host.calls.get() - first_call, 1);
+        assert_eq!(host.pending(), 1);
+        host.respond_now(true);
+        wait_until("latest coalesced request", || host.pending() > 0).await;
+        assert_eq!(
+            host.next_request().source_digest,
+            openwebide_core::plugins::languages::source_digest(
+                "fn latest_49() {\r\n call(\"文😀\");\r\n}"
+            )
+        );
+        assert_eq!(host.calls.get() - first_call, 2);
+        assert!(
+            actions
+                .syntax_structure(|| true)
+                .is_none_or(|structure| !structure.available())
+        );
+        host.respond_now(true);
         wait_until("worker contexts published", || {
-            actions.syntax_structure(|| true).is_some()
+            actions
+                .syntax_structure(|| true)
+                .is_some_and(|structure| structure.available())
         })
         .await;
         wait_until("worker syntax paint", || {
@@ -12714,10 +13092,7 @@ async fn worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_
                 .workspace
                 .content
                 .set(format!("fn changed_{change}() {{\n call();\n}}").into());
-            wait_until("request before scope change", || {
-                !transport.pending.borrow().is_empty()
-            })
-            .await;
+            wait_until("request before scope change", || host.pending() > 0).await;
             match change {
                 0 => mounted.state.auth.generation.update(|value| *value += 1),
                 1 => mounted
@@ -12747,18 +13122,22 @@ async fn worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_
                 _ => mounted.state.workspace.active_project.set(Some(2)),
             }
             settle().await;
-            transport.respond(true);
+            host.respond_now(true);
             wait_until("new scope request replaces stale reply", || {
-                !transport.pending.borrow().is_empty()
+                host.pending() > 0
             })
             .await;
             assert!(
-                actions.syntax_structure(|| true).is_none(),
+                actions
+                    .syntax_structure(|| true)
+                    .is_none_or(|structure| !structure.available()),
                 "{mode:?} scope {change}"
             );
-            transport.respond(true);
+            host.respond_now(true);
             wait_until("current scope published", || {
-                actions.syntax_structure(|| true).is_some()
+                actions
+                    .syntax_structure(|| true)
+                    .is_some_and(|structure| structure.available())
             })
             .await;
         }
@@ -12767,43 +13146,67 @@ async fn worker_preparation_coalesces_edits_rejects_stale_scopes_and_falls_back_
             .workspace
             .content
             .set("fn fallback() {}".into());
-        wait_until("request for failure", || {
-            !transport.pending.borrow().is_empty()
-        })
-        .await;
-        transport.respond(false);
-        wait_until("shared synchronous fallback", || {
+        wait_until("request for failure", || host.pending() > 0).await;
+        host.respond_now(false);
+        wait_until("failed host leaves plain editing", || {
             !mounted.state.workspace.editor_worker_active.get_untracked()
+                && matches!(
+                    mounted.state.languages.status.get_untracked(),
+                    openwebide_frontend::state::languages::LanguageStatus::Unavailable(_)
+                )
         })
         .await;
+        assert_eq!(actions.source(), "fn fallback() {}");
         assert!(
             actions
                 .syntax_structure(|| true)
-                .unwrap()
-                .matches_source("fn fallback() {}")
+                .is_none_or(|structure| !structure.available())
         );
         assert!(
-            !mounted
+            mounted
                 .state
                 .workspace
                 .editor_syntax
                 .with_untracked(|cache| cache.is_empty())
         );
-        assert!(transport.stopped.get());
+        assert!(
+            mounted
+                .root
+                .query_selector(".tok-keyword,.tok-function")
+                .unwrap()
+                .is_none()
+        );
+        host.resume();
+        let failed_generation = mounted.state.languages.generation.get_untracked();
+        mounted.state.languages.retry.update(|value| *value += 1);
+        wait_until("retry owns a new language activation", || {
+            mounted.state.languages.generation.get_untracked() > failed_generation
+        })
+        .await;
+        super::language_support::ready(&mounted.state).await;
+        assert!(actions.syntax_structure(|| true).unwrap().available());
+        assert_eq!(actions.source(), "fn fallback() {}");
+        drop(mounted);
+        host.cancel_pending();
+        settle().await;
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
 async fn config_worker_paint_is_cached_lossless_and_source_guarded_in_both_modes() {
-    use openwebide_core::WorkspaceMode;
+    use openwebide_core::{
+        WorkspaceMode,
+        plugins::languages::{SourceChange, source_digest},
+    };
     use openwebide_frontend::state_actions::editor::EditorActions;
+    let host = super::language_support::LanguageHost::new().await;
+    host.pause();
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let source = "{\r\n  \"name\": \"文😀 unchanged source text keeps the publication large enough to benefit from a source replacement span while testing raw CRLF preservation\", \"value\": 42\r\n}\r\n";
-        let transport = std::rc::Rc::new(DeferredSyntax::default());
-        let installed = transport.clone();
         let captured = std::rc::Rc::new(std::cell::Cell::new(None::<EditorActions>));
         let capture = captured.clone();
-        let mounted = mount_test(move |state| {
+        let mounted = host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -12812,29 +13215,25 @@ async fn config_worker_paint_is_cached_lossless_and_source_guarded_in_both_modes
             state.workspace.open_file.set(Some("worker.json".into()));
             state.workspace.content.set(source.into());
             let actions = EditorActions::new(state.workspace);
-            actions.install_syntax_transport(installed);
             capture.set(Some(actions));
             editor_view(state)
         });
         let actions = captured.get().unwrap();
-        wait_until("lexical worker request", || {
-            !transport.pending.borrow().is_empty()
-        })
-        .await;
+        wait_until("lexical worker request", || host.pending() > 0).await;
         assert!(actions.syntax_highlights().is_none());
-        transport.respond(true);
+        host.respond_now(true);
         // Configuration can resolve before or after the first worker reply. Drive
         // the bounded replacement request, still checking exact source coverage.
         for _ in 0..2 {
             wait_until("config paint or replacement scope", || {
-                actions.syntax_highlights().is_some() || !transport.pending.borrow().is_empty()
+                actions.syntax_highlights().is_some() || host.pending() > 0
             })
             .await;
             if actions.syntax_highlights().is_some() {
                 break;
             }
-            assert_eq!(transport.source(), source);
-            transport.respond(true);
+            assert_eq!(host.next_request().source_digest, source_digest(source));
+            host.respond_now(true);
         }
         wait_until("lexical worker paint published", || {
             actions.syntax_highlights().is_some()
@@ -12879,25 +13278,14 @@ async fn config_worker_paint_is_cached_lossless_and_source_guarded_in_both_modes
         let revised = source.replace("42", "7");
         mounted.state.workspace.content.set(revised.clone().into());
         assert!(actions.syntax_highlights().is_none());
-        wait_until("revised config request", || {
-            !transport.pending.borrow().is_empty()
-        })
-        .await;
-        let request: serde_json::Value =
-            serde_json::from_str(&transport.pending.borrow().front().unwrap().message).unwrap();
+        wait_until("revised config request", || host.pending() > 0).await;
+        let request = host.next_request();
         assert!(
-            request["base_ticket"].is_u64(),
-            "updates advertise a scoped published base"
+            matches!(request.source, SourceChange::Replace { base_revision, .. } if base_revision < request.revision),
+            "updates advertise an acknowledged source revision and send the changed span"
         );
-        assert!(
-            request["source"].is_object(),
-            "updates send only the changed source span"
-        );
-        transport.respond(true);
-        assert!(
-            transport.source_delta.get(),
-            "updates publish only the changed source span"
-        );
+        assert_eq!(request.source_digest, source_digest(&revised));
+        host.respond_now(true);
         wait_until("revised config paint", || {
             actions.syntax_highlights().is_some()
         })
@@ -12928,23 +13316,26 @@ async fn config_worker_paint_is_cached_lossless_and_source_guarded_in_both_modes
             .generation
             .update(|generation| *generation += 1);
         wait_until("new account requests a standalone result", || {
-            !transport.pending.borrow().is_empty()
+            host.pending() > 0
         })
         .await;
-        let request: serde_json::Value =
-            serde_json::from_str(&transport.pending.borrow().front().unwrap().message).unwrap();
+        let request = host.next_request();
         assert!(
-            request.get("base_ticket").is_none(),
-            "publication bases must not cross accounts"
+            matches!(request.source, SourceChange::Full { ref text } if text == &revised),
+            "source bases must not cross accounts"
         );
-        transport.respond(true);
+        host.respond_now(true);
         wait_until("new account publishes standalone paint", || {
-            if !transport.pending.borrow().is_empty() {
-                transport.respond(true);
+            if host.pending() > 0 {
+                host.respond_now(true);
             }
             actions.syntax_highlights().is_some()
         })
         .await;
+        assert!(
+            !std::sync::Arc::ptr_eq(&updated[0], &actions.syntax_highlights().unwrap()[0]),
+            "row allocations must not cross account ownership"
+        );
         wait_until("revised number painted", || {
             mounted
                 .root
@@ -12973,16 +13364,22 @@ async fn config_worker_paint_is_cached_lossless_and_source_guarded_in_both_modes
                 .is_none(),
             "cancellation callbacks cannot publish after changing the source"
         );
+        drop(mounted);
+        host.cancel_pending();
+        settle().await;
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
 async fn worker_source_resync_is_bounded_and_rejects_superseded_ownership_in_both_modes() {
     use openwebide_core::{
         WorkspaceMode,
-        editor::{SYNTAX_PROTOCOL_VERSION, SyntaxReply, SyntaxStatus},
+        plugins::languages::{AnalysisStatus, SourceChange},
     };
     use openwebide_frontend::state_actions::editor::EditorActions;
+    let host = super::language_support::LanguageHost::new().await;
+    host.pause();
     for (mode, changed_scope) in [
         (WorkspaceMode::Local, 0),
         (WorkspaceMode::Remote, 0),
@@ -12992,52 +13389,43 @@ async fn worker_source_resync_is_bounded_and_rejects_superseded_ownership_in_bot
         (WorkspaceMode::Remote, 2),
     ] {
         let source = "{\r\n  \"name\": \"文😀 unchanged source text keeps the publication large enough to test replacement spans and full-source retries without changing the raw CRLF document\", \"value\": 42\r\n}\r\n";
-        let transport = std::rc::Rc::new(DeferredSyntax::default());
-        let installed = transport.clone();
         let captured = std::rc::Rc::new(std::cell::Cell::new(None::<EditorActions>));
         let capture = captured.clone();
-        let mounted = mount_test(move |state| {
+        let mounted = host.mount(move |state| {
             state.seed_project();
-            state
-                .projects
-                .projects
-                .update(|projects| projects[0].mode = mode);
+            state.projects.projects.update(|projects| {
+                projects[0].mode = mode;
+                let mut other = projects[0].clone();
+                other.id = 2;
+                projects.push(other);
+            });
             state.workspace.open_file.set(Some("resync.json".into()));
             state.workspace.content.set(source.into());
             let actions = EditorActions::new(state.workspace);
-            actions.install_syntax_transport(installed);
             capture.set(Some(actions));
             editor_view(state)
         });
         let actions = captured.get().unwrap();
         wait_until("initial resync document published", || {
-            if !transport.pending.borrow().is_empty() {
-                transport.respond(true);
+            if host.pending() > 0 {
+                host.respond_now(true);
             }
             actions.syntax_highlights().is_some()
         })
         .await;
         let revised = source.replace("42", "7");
         mounted.state.workspace.content.set(revised.clone().into());
-        wait_until("delta after worker eviction", || {
-            !transport.pending.borrow().is_empty()
-        })
-        .await;
-        transport.service.borrow_mut().clear();
-        transport.respond(true);
-        wait_until("one full-source retry", || {
-            !transport.pending.borrow().is_empty()
-        })
-        .await;
-        let retry: serde_json::Value =
-            serde_json::from_str(&transport.pending.borrow().front().unwrap().message).unwrap();
-        assert_eq!(retry["source"], revised);
-        assert!(retry.get("base_ticket").is_none());
+        wait_until("delta after worker eviction", || host.pending() > 0).await;
+        host.forget_document();
+        host.respond_now(true);
+        wait_until("one full-source retry", || host.pending() > 0).await;
+        let retry = host.next_request();
+        assert!(matches!(retry.source, SourceChange::Full { ref text } if text == &revised));
         assert!(
             actions.syntax_highlights().is_none(),
             "resync is never published as preparation"
         );
-        transport.respond(true);
+        host.respond_now(true);
         wait_until("resync preparation accepted", || {
             actions.syntax_highlights().is_some()
         })
@@ -13045,13 +13433,10 @@ async fn worker_source_resync_is_bounded_and_rejects_superseded_ownership_in_bot
         assert!(mounted.state.workspace.editor_worker_active.get_untracked());
         let second = revised.replace("7", "8");
         mounted.state.workspace.content.set(second.clone().into());
-        wait_until("second delta", || !transport.pending.borrow().is_empty()).await;
-        transport.service.borrow_mut().clear();
-        transport.respond(true);
-        wait_until("retry awaiting changed ownership", || {
-            !transport.pending.borrow().is_empty()
-        })
-        .await;
+        wait_until("second delta", || host.pending() > 0).await;
+        host.forget_document();
+        host.respond_now(true);
+        wait_until("retry awaiting changed ownership", || host.pending() > 0).await;
         let newest = second.replace("8", "9");
         mounted.state.workspace.content.set(newest.clone().into());
         match changed_scope {
@@ -13075,12 +13460,12 @@ async fn worker_source_resync_is_bounded_and_rejects_superseded_ownership_in_bot
             .get_untracked()
             .unwrap();
         let read_revision = mounted.state.workspace.editor_read_revision.get_untracked();
-        transport.respond(true);
+        host.respond_now(true);
         wait_until(
             "superseded retry ignored and latest source published",
             || {
-                if !transport.pending.borrow().is_empty() {
-                    transport.respond(true);
+                if host.pending() > 0 {
+                    host.respond_now(true);
                 }
                 mounted
                     .state
@@ -13108,39 +13493,65 @@ async fn worker_source_resync_is_bounded_and_rejects_superseded_ownership_in_bot
             .workspace
             .content
             .set(newest.replace("9", "10").into());
-        wait_until("last delta", || !transport.pending.borrow().is_empty()).await;
-        transport.service.borrow_mut().clear();
-        transport.respond(true);
-        wait_until("last full retry", || !transport.pending.borrow().is_empty()).await;
-        let DeferredSyntaxReply { message, sender } =
-            transport.pending.borrow_mut().pop_front().unwrap();
-        let request: openwebide_core::editor::SyntaxRequest =
-            serde_json::from_str(&message).unwrap();
-        let reply = SyntaxReply {
-            version: SYNTAX_PROTOCOL_VERSION,
-            ticket: request.ticket,
-            status: SyntaxStatus::NeedsSource,
-            analysis: None,
-        };
-        sender
-            .send(Ok(serde_json::to_string(&reply).unwrap()))
-            .unwrap();
-        wait_until("repeated resync stops transport", || {
-            transport.stopped.get()
+        wait_until("last delta", || host.pending() > 0).await;
+        host.forget_document();
+        host.respond_now(true);
+        wait_until("last full retry", || host.pending() > 0).await;
+        let final_source = newest.replace("9", "10");
+        let final_calls = host.calls.get();
+        host.respond_status(AnalysisStatus::NeedsSource);
+        wait_until("repeated resync leaves host unavailable", || {
+            !mounted.state.workspace.editor_worker_active.get_untracked()
+                && matches!(
+                    mounted.state.languages.status.get_untracked(),
+                    openwebide_frontend::state::languages::LanguageStatus::Unavailable(_)
+                )
         })
         .await;
-        assert!(!mounted.state.workspace.editor_worker_active.get_untracked());
-        assert!(transport.pending.borrow().is_empty());
-        wait_until("shared fallback prepares current text", || {
-            actions
-                .syntax_paint()
-                .1
-                .iter()
-                .flat_map(|row| row.iter())
-                .any(|token| token.text.as_str() == "10")
+        assert_eq!(host.pending(), 0);
+        assert_eq!(
+            host.calls.get(),
+            final_calls,
+            "one full retry must not become an unbounded loop"
+        );
+        assert_eq!(actions.source(), final_source);
+        let input: web_sys::HtmlTextAreaElement =
+            mounted.element(".editor-textarea").unchecked_into();
+        assert_eq!(
+            input
+                .parent_element()
+                .unwrap()
+                .get_attribute("data-editor-account"),
+            Some(generation.to_string()),
+            "native editor ownership must follow the current account"
+        );
+        wait_until("terminal resync paints the current plain source", || {
+            input.value() == final_source.replace("\r\n", "\n")
+                && mounted
+                    .element(".editor-highlight-content")
+                    .text_content()
+                    .as_deref()
+                    == Some(final_source.replace("\r\n", "\n").as_str())
+                && mounted
+                    .root
+                    .query_selector(".tok-keyword,.tok-string,.tok-number")
+                    .unwrap()
+                    .is_none()
         })
         .await;
+        assert_editor_native_source(&input, mounted.state.workspace, &final_source);
+        assert!(
+            mounted
+                .root
+                .query_selector(".tok-keyword,.tok-string,.tok-number")
+                .unwrap()
+                .is_none()
+        );
+        drop(mounted);
+        host.cancel_pending();
+        settle().await;
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -13475,7 +13886,7 @@ async fn editor_capacity_rejection_preserves_native_document_in_both_modes() {
         WorkspaceMode,
         editor::{EditError, EditorLimit, MAX_EDITOR_LINE_BYTES, Selection},
     };
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let mounted = mount_test(move |state| {
             state.seed_project();
@@ -13495,7 +13906,7 @@ async fn editor_capacity_rejection_preserves_native_document_in_both_modes() {
                 .is_some()
         })
         .await;
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         actions.record_selection(Selection::caret(4)).unwrap();
         let before = mounted.state.workspace.editor_documents.get_untracked();
         assert_eq!(
@@ -13522,7 +13933,7 @@ async fn composition_replicas_obey_editor_admission_before_preview_in_both_modes
         WorkspaceMode,
         editor::{EditError, EditorLimit, MAX_EDITOR_LINE_BYTES, Selection},
     };
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let source = "x".repeat(MAX_EDITOR_LINE_BYTES - 1);
         let initial = source.clone();
@@ -13537,7 +13948,7 @@ async fn composition_replicas_obey_editor_admission_before_preview_in_both_modes
             // Exercise facade input policy without measuring a 1 MiB DOM row.
             view! { <div>"Composition admission"</div> }
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         actions.record_selection(Selection::caret(0)).unwrap();
         mounted
             .state
@@ -13680,7 +14091,7 @@ async fn wrapped_row_windows_keep_exact_heights_carets_and_offscreen_cursors_in_
         WorkspaceMode,
         editor::{Selection, byte_to_textarea, line_column},
     };
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     let source = (0..1200)
         .map(|line| {
             format!(
@@ -13711,7 +14122,7 @@ async fn wrapped_row_windows_keep_exact_heights_carets_and_offscreen_cursors_in_
             }
         });
         frame().await;
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         let input: web_sys::HtmlTextAreaElement =
             mounted.element(".editor-textarea").unchecked_into();
         wait_until("exact wrapped height table and paint", || {
@@ -14201,11 +14612,12 @@ fn empty_geometry_wait_retains_edited_native_mapping_and_rejects_invalid_proofs_
 #[wasm_bindgen_test]
 async fn pending_wheel_intent_reaches_complete_measured_width_in_both_modes() {
     use openwebide_core::WorkspaceMode;
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     let source = "short 文😀\r\n".repeat(12_000) + &"wide ".repeat(200);
+    let host = super::language_support::LanguageHost::new().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        let paused = ResumeTasks(pause_initial_fallback_tasks());
-        let mounted = mount_test({
+        let frames = ResumeTasks(pause_initial_editor_frames());
+        let mounted = host.mount({
             let source = source.clone();
             move |state| {
                 state.seed_project();
@@ -14221,7 +14633,10 @@ async fn pending_wheel_intent_reaches_complete_measured_width_in_both_modes() {
                 view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:500px;height:320px">{editor_view(state)}</div><openwebide_frontend::components::StatusBar health=RwSignal::new(None).read_only() on_toggle_terminal=|| {} /> }
             }
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        super::language_support::ready(&mounted.state).await;
+        let paused = ResumeTasks(pause_initial_fallback_tasks());
+        drop(frames);
+        let actions = mounted.state.editor_actions();
         wait_until("pending bounded source height", || {
             actions.native_geometry_pending()
                 && mounted
@@ -14304,7 +14719,11 @@ async fn pending_wheel_intent_reaches_complete_measured_width_in_both_modes() {
             complete[1]
         );
         assert_editor_native_source(&input, mounted.state.workspace, &source);
+        drop(mounted);
+        host.cancel_pending();
+        settle().await;
     }
+    host.close().await;
 }
 
 #[wasm_bindgen::prelude::wasm_bindgen(inline_js = r#"
@@ -14689,7 +15108,7 @@ async fn cold_wrapped_preparation_keeps_input_visible_and_rejects_superseded_bat
         }
     }
     use openwebide_core::WorkspaceMode;
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     let source = (0..12_000)
         .map(|row| format!("row {row} 文😀 café\t words for wrapping more words\n"))
         .collect::<String>();
@@ -14720,7 +15139,7 @@ async fn cold_wrapped_preparation_keeps_input_visible_and_rejects_superseded_bat
                 view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:420px;height:320px">{editor_view(state)}</div> }
             }
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         wait_until("cold row preparation advances", || {
             mounted
                 .state
@@ -14885,7 +15304,7 @@ async fn cold_repeated_wrapped_rows_share_layout_and_preserve_far_edits_in_both_
         fn count_cold_repeated_layout() -> js_sys::Function;
     }
     use openwebide_core::WorkspaceMode;
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     let body = "row 文😀 café\t words for wrapping more words\r\n";
     let source = body.repeat(12_000);
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
@@ -14910,7 +15329,7 @@ async fn cold_repeated_wrapped_rows_share_layout_and_preserve_far_edits_in_both_
                 view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:420px;height:320px">{editor_view(state)}</div> }
             }
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         wait_until("complete repeated wrapped layout", || {
             !actions.syntax_is_pending() && actions.measured_rows().is_some()
         })
@@ -14982,12 +15401,13 @@ async fn localized_wrapped_edits_reuse_exact_row_heights_in_both_modes() {
         fn watch_row_measurements() -> js_sys::Function;
     }
     use openwebide_core::WorkspaceMode;
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     let source = (0..1200)
         .map(|row| format!("row {row} 文😀 café\t words for wrapping\r\n"))
         .collect::<String>();
+    let host = super::language_support::LanguageHost::new().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        let mounted = mount_test({
+        let mounted = host.mount({
             let source = source.clone();
             move |state| {
                 state.seed_project();
@@ -15005,7 +15425,7 @@ async fn localized_wrapped_edits_reuse_exact_row_heights_in_both_modes() {
             }
         });
         frame().await;
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         wait_until("initial reusable wrapped rows", || {
             !actions.syntax_is_pending() && actions.measured_rows().is_some()
         })
@@ -15207,7 +15627,11 @@ async fn localized_wrapped_edits_reuse_exact_row_heights_in_both_modes() {
             count > 0.0 && count < 10.0,
             "measured {count} rows between disjoint edits"
         );
+        drop(mounted);
+        host.cancel_pending();
+        settle().await;
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -15294,7 +15718,7 @@ async fn measured_neighborhoods_move_queued_cursors_through_the_shared_facade_in
 async fn cold_neighborhoods_flush_arrows_before_native_edits_composition_and_clipboard_in_both_modes()
  {
     use openwebide_core::WorkspaceMode;
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     let row = "line row 文😀 café\t words for wrapping more words ";
     let source = (0..12_000)
         .map(|index| format!("{row}{index:05}\r\n"))
@@ -15324,7 +15748,7 @@ async fn cold_neighborhoods_flush_arrows_before_native_edits_composition_and_cli
                         view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:420px;height:320px">{editor_view(state)}</div> }
                     }
                 });
-                let actions = EditorActions::new(mounted.state.workspace);
+                let actions = mounted.state.editor_actions();
                 if cold {
                     wait_until("cold layout is still preparing", || {
                         mounted
@@ -15525,8 +15949,7 @@ async fn wrapped_fragment_scroll_and_find_preserve_source_coordinates_in_both_mo
             paint > 0.0 && paint <= 65_536.0,
             "first wrapped paint must reuse cold anchors: {paint}"
         );
-        let actions =
-            openwebide_frontend::state_actions::editor::EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         let old_epoch = actions.layout_epoch();
         js_sys::Function::new_no_args("document.fonts.dispatchEvent(new Event('loadingdone'))")
             .call0(&wasm_bindgen::JsValue::NULL)
@@ -16489,18 +16912,18 @@ async fn wrapped_origin_paint_precedes_complete_geometry_in_both_modes() {
     use std::{cell::Cell, rc::Rc};
 
     let loaded = load_all_editor_fonts().await;
+    let host = super::language_support::LanguageHost::new().await;
+    host.pause();
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         for body in [
             "word != -> ".repeat(16_000),
             "word 文😀e\u{301} != -> café ".repeat(8_000),
         ] {
             let original = format!("let value = \"{body}\";");
-            let transport = Rc::new(DeferredSyntax::default());
-            let installed = transport.clone();
             let slot = Rc::new(Cell::new(None));
             let capture = slot.clone();
             let restore = holdPreparedWrappedContinuation(false);
-            let mounted = mount_test({
+            let mounted = host.mount({
                 let source = original.clone();
                 move |state| {
                     state.seed_project();
@@ -16515,7 +16938,6 @@ async fn wrapped_origin_paint_precedes_complete_geometry_in_both_modes() {
                     state.workspace.open_file.set(Some("coverage.rs".into()));
                     state.workspace.content.set(source.into());
                     let actions = EditorActions::new(state.workspace);
-                    actions.install_syntax_transport(installed);
                     capture.set(Some(actions));
                     view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:420px;height:320px">{editor_view(state)}</div> }
                 }
@@ -16557,8 +16979,8 @@ async fn wrapped_origin_paint_precedes_complete_geometry_in_both_modes() {
                 // Timers and real frames remain active. Hold browser task yielding
                 // after the first committed styled probe.
                 for _ in 0..300 {
-                    if !transport.pending.borrow().is_empty() {
-                        transport.respond(true);
+                    if host.pending() > 0 {
+                        host.respond_now(true);
                     }
                     let failed = js_sys::Reflect::get(restore.as_ref(), &"failed".into())
                         .ok()
@@ -16664,8 +17086,8 @@ async fn wrapped_origin_paint_precedes_complete_geometry_in_both_modes() {
                 }
                 assert_eq!(current_source, expected);
                 wait_until("complete geometry after held origin publication", || {
-                    if !transport.pending.borrow().is_empty() {
-                        transport.respond(true);
+                    if host.pending() > 0 {
+                        host.respond_now(true);
                     }
                     actions.measured_rows().is_some() && !actions.native_geometry_pending()
                 })
@@ -16702,11 +17124,15 @@ async fn wrapped_origin_paint_precedes_complete_geometry_in_both_modes() {
                 assert!(actions.paragraph_coverage().is_none());
                 assert_eq!(actions.source(), expected);
             }
+            drop(mounted);
+            host.cancel_pending();
+            settle().await;
         }
     }
     for font in loaded {
         removeEditorFont(&font);
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -16928,9 +17354,9 @@ async fn styled_horizontal_slices_resume_original_runs_without_scanning_token_pr
     )
     .await
     .unwrap();
+    let host = super::language_support::LanguageHost::new().await;
+    host.pause();
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        let transport = std::rc::Rc::new(DeferredSyntax::default());
-        let installed = transport.clone();
         let unit = "word 文😀e\u{301} -> == tail ";
         let source = format!(
             "let value = \"{}\";\r\n",
@@ -16940,7 +17366,7 @@ async fn styled_horizontal_slices_resume_original_runs_without_scanning_token_pr
         let original = source.clone();
         let native: Vec<_> = source.replace("\r\n", "\n").encode_utf16().collect();
         let started = web_sys::window().unwrap().performance().unwrap().now();
-        let mounted = mount_test(move |state| {
+        let mounted = host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -16951,16 +17377,14 @@ async fn styled_horizontal_slices_resume_original_runs_without_scanning_token_pr
                 .open_file
                 .set(Some("styled-slice.rs".into()));
             state.workspace.content.set(source.into());
-            openwebide_frontend::state_actions::editor::EditorActions::new(state.workspace)
-                .install_syntax_transport(installed);
             view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:340px;height:380px">{editor_view(state)}</div> }
         });
         super::support::wait_until_with_timeout(
             "styled paragraph source boundaries",
             30_000,
             || {
-                if !transport.pending.borrow().is_empty() {
-                    transport.respond(true);
+                if host.pending() > 0 {
+                    host.respond_now(true);
                 }
                 mounted
                     .state
@@ -17126,8 +17550,7 @@ async fn styled_horizontal_slices_resume_original_runs_without_scanning_token_pr
             .editor_paint_runs
             .get_untracked()
             .unwrap();
-        let actions =
-            openwebide_frontend::state_actions::editor::EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         for case in 0..8 {
             let mut stale = cache.paint.clone();
             match case {
@@ -17176,8 +17599,8 @@ async fn styled_horizontal_slices_resume_original_runs_without_scanning_token_pr
         let expected = " ".to_string() + &original;
         assert_eq!(actions.source(), expected);
         super::support::wait_until_with_timeout("near-limit styled beginning edit", 30_000, || {
-            if !transport.pending.borrow().is_empty() {
-                transport.respond(true);
+            if host.pending() > 0 {
+                host.respond_now(true);
             }
             mounted
                 .state
@@ -17219,8 +17642,12 @@ async fn styled_horizontal_slices_resume_original_runs_without_scanning_token_pr
             "{mode:?} near-limit styled edited geometry"
         );
         assert_editor_native_source(&input, mounted.state.workspace, &expected);
+        drop(mounted);
+        host.cancel_pending();
+        settle().await;
     }
     removeEditorFont(&font);
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -17250,7 +17677,7 @@ async fn paragraph_changed_prefix_reuse_matches_complete_geometry_and_rejects_st
                 .with_untracked(|cache| cache.as_ref().is_some_and(|cache| !cache.rows.is_empty()))
         })
         .await;
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         let old_paint = mounted
             .state
             .workspace
@@ -17324,7 +17751,7 @@ async fn unavailable_styled_runs_skip_capped_rescans_but_prepare_paragraphs_in_b
         WorkspaceMode,
         highlight::{Token, TokenKind},
     };
-    use openwebide_frontend::state_actions::editor::{EditorActions, take_paint_run_segment_bytes};
+    use openwebide_frontend::state_actions::editor::take_paint_run_segment_bytes;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let mut tokens = vec![
             Token {
@@ -17354,7 +17781,7 @@ async fn unavailable_styled_runs_skip_capped_rescans_but_prepare_paragraphs_in_b
             state.workspace.content.set(source.into());
             view! { <div /> }
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         actions
             .prepare_edit(openwebide_core::editor::Selection::caret(0))
             .unwrap();
@@ -17500,12 +17927,11 @@ async fn paragraph_overlap_failure_uses_complete_measurement_in_both_modes() {
 async fn bounded_paragraph_geometry_preserves_fonts_features_and_whitespace_in_both_modes() {
     use openwebide_core::{WorkspaceMode, editor::EditorFont};
     let loaded = load_all_editor_fonts().await;
+    let language_host = super::language_support::LanguageHost::new().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        let transport = std::rc::Rc::new(DeferredSyntax::default());
-        let installed = transport.clone();
         let body = "alpha_beta_long_name -> != 文😀  ".repeat(2000);
         let source = format!("let value = \"{body}\";\r\n// {body}\r\n");
-        let mounted = mount_test(move |state| {
+        let mounted = language_host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -17513,8 +17939,6 @@ async fn bounded_paragraph_geometry_preserves_fonts_features_and_whitespace_in_b
                 .update(|projects| projects[0].mode = mode);
             state.workspace.open_file.set(Some("paragraph.rs".into()));
             state.workspace.content.set(source.into());
-            openwebide_frontend::state_actions::editor::EditorActions::new(state.workspace)
-                .install_syntax_transport(installed);
             view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:340px;height:380px">{editor_view(state)}</div> }
         });
         for font in EditorFont::ALL {
@@ -17540,9 +17964,6 @@ async fn bounded_paragraph_geometry_preserves_fonts_features_and_whitespace_in_b
                     &format!("font-owned paragraph measurements {mode:?} {font:?} healing={healing} ligatures={ligatures} whitespace={whitespace}"),
                     30_000,
                     || {
-                        if !transport.pending.borrow().is_empty() {
-                            transport.respond(true);
-                        }
                         mounted
                             .state
                             .workspace
@@ -17592,6 +18013,7 @@ async fn bounded_paragraph_geometry_preserves_fonts_features_and_whitespace_in_b
     for font in loaded {
         removeEditorFont(&font);
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -17661,8 +18083,7 @@ async fn horizontal_fragments_preserve_tabs_scroll_extent_and_native_hits_in_bot
                 .is_some()
         })
         .await;
-        let actions =
-            openwebide_frontend::state_actions::editor::EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         wait_until("horizontal fallback syntax ready", || {
             !actions.syntax_is_pending()
         })
@@ -19035,7 +19456,7 @@ async fn cancellable_text_groups_unicode_multi_cursor_edits_and_keeps_native_fal
 #[wasm_bindgen_test]
 async fn bounded_native_declarations_keep_global_offsets_and_full_selection_edits_in_both_modes() {
     use openwebide_core::editor::{Document, Indentation, Selection, byte_to_textarea};
-    use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
+    use openwebide_frontend::state_actions::editor::EditorCommand;
     let row = "row 文😀\r\n";
     let source = row.repeat(4000);
     let start = row.len() * 1200;
@@ -19080,7 +19501,7 @@ async fn bounded_native_declarations_keep_global_offsets_and_full_selection_edit
                 settle().await;
                 let input: web_sys::HtmlTextAreaElement =
                     mounted.element(".editor-textarea").unchecked_into();
-                let actions = EditorActions::new(mounted.state.workspace);
+                let actions = mounted.state.editor_actions();
                 let native = if native_window {
                     wait_until("native window installs complete source selection", || {
                         input.get_attribute("data-editor-native-bound").as_deref() == Some("true")
@@ -19156,7 +19577,7 @@ async fn bounded_native_declarations_keep_global_offsets_and_full_selection_edit
                 if !native_window {
                     assert_eq!(input.value(), expected.replace("\r\n", "\n"));
                 }
-                let actions = EditorActions::new(mounted.state.workspace);
+                let actions = mounted.state.editor_actions();
                 let caret = actions.selections(&expected)[0];
                 assert_eq!(caret, Selection::caret(start + "文😀".len()));
                 actions
@@ -19174,7 +19595,7 @@ async fn bounded_native_declarations_keep_global_offsets_and_full_selection_edit
 async fn bounded_native_declarations_validate_fold_origins_and_full_input_retention_in_both_modes()
 {
     use openwebide_core::editor::{Document, EditError, FoldRange, Selection};
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     let row = "row 文😀\r\n";
     let source = row.repeat(4000);
     let at = row.len() * 2000;
@@ -19214,7 +19635,7 @@ async fn bounded_native_declarations_validate_fold_origins_and_full_input_retent
                 });
                 view! { <div /> }
             });
-            let actions = EditorActions::new(mounted.state.workspace);
+            let actions = mounted.state.editor_actions();
             actions.begin_native_text("X".into());
             let insertion = mounted
                 .state
@@ -20377,7 +20798,7 @@ async fn bounded_native_context_keeps_composition_values_through_clipped_replace
 #[wasm_bindgen_test]
 async fn prepared_editor_binds_native_windows_and_edits_full_source_in_both_modes() {
     use openwebide_core::{WorkspaceMode, editor::Selection};
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         for wrap in [false, true] {
             let source = format!(
@@ -20416,7 +20837,7 @@ async fn prepared_editor_binds_native_windows_and_edits_full_source_in_both_mode
             assert_eq!(mounted.state.workspace.content.get_untracked(), original);
             assert_eq!(input.value(), native);
             assert!(!mounted.state.workspace.dirty.get_untracked());
-            let actions = EditorActions::new(mounted.state.workspace);
+            let actions = mounted.state.editor_actions();
             assert!(editor_key(&input, "PageDown", false, false).default_prevented());
             wait_until("source page movement", || {
                 actions
@@ -20504,7 +20925,7 @@ async fn bound_editor_composition_keeps_native_ownership_across_provider_metadat
         WorkspaceMode,
         editor::{FoldRange, Selection},
     };
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let source = "a source row with 文🦀\r\n".repeat(900);
         let original = source.clone();
@@ -20524,7 +20945,7 @@ async fn bound_editor_composition_keeps_native_ownership_across_provider_metadat
             input.get_attribute("data-editor-native-bound").as_deref() == Some("true")
         })
         .await;
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         editor_key(&input, "a", true, false);
         input
             .dispatch_event(&web_sys::CompositionEvent::new("compositionstart").unwrap())
@@ -20639,11 +21060,12 @@ async fn source_gutter_digits_and_native_restoration_use_current_index_and_proje
         WorkspaceMode,
         editor::{FoldCommand, Selection},
     };
-    use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
+    use openwebide_frontend::state_actions::editor::EditorCommand;
+    let language_host = super::language_support::LanguageHost::new().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let source = format!("fn main() {{\r\n{}}}\r\n", "    x();\r\n".repeat(6));
         let fixture = source.clone();
-        let mounted = mount_test(move |state| {
+        let mounted = language_host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -20653,7 +21075,7 @@ async fn source_gutter_digits_and_native_restoration_use_current_index_and_proje
             state.workspace.content.set(fixture.clone().into());
             view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:700px;height:400px">{editor_view(state)}</div> }
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         let code: web_sys::HtmlElement = mounted.element(".editor-code").unchecked_into();
         let input: web_sys::HtmlTextAreaElement =
             mounted.element(".editor-textarea").unchecked_into();
@@ -20680,6 +21102,7 @@ async fn source_gutter_digits_and_native_restoration_use_current_index_and_proje
             actions.source_line_count() == Some(10) && gutter().contains("2ch")
         })
         .await;
+        super::language_support::ready(&mounted.state).await;
         actions.refresh_fold_ranges(|| true);
         actions.fold_command(FoldCommand::CollapseAll).unwrap();
         settle().await;
@@ -20715,15 +21138,13 @@ async fn source_gutter_digits_and_native_restoration_use_current_index_and_proje
         .await;
         assert_eq!(actions.source(), "a\r\n文😀\rb\r\n");
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
 async fn editor_save_completion_retains_root_and_account_ownership_in_both_modes() {
     use openwebide_core::{WorkspaceMode, editor::Selection};
-    use openwebide_frontend::{
-        state_actions::{editor::EditorActions, workspace::WorkspaceActions},
-        workspace::Workspace,
-    };
+    use openwebide_frontend::{state_actions::workspace::WorkspaceActions, workspace::Workspace};
     const BASE: &str = "base 😀\r\n";
     const DRAFT: &str = "draft 😀\r\n";
     const RELOADED: &str = "reloaded 😀\r\n";
@@ -20774,7 +21195,7 @@ async fn editor_save_completion_retains_root_and_account_ownership_in_both_modes
                 capture.set(Some(expect_context::<WorkspaceActions>()));
                 view
             });
-            let editor = EditorActions::new(mounted.state.workspace);
+            let editor = mounted.state.editor_actions();
             editor
                 .native_input(
                     DRAFT.replace("\r\n", "\n"),
@@ -21032,13 +21453,12 @@ async fn editor_save_completion_retains_root_and_account_ownership_in_both_modes
 #[wasm_bindgen_test]
 async fn paragraph_global_origin_preserves_exact_overflow_rounding_in_both_modes() {
     use openwebide_core::WorkspaceMode;
-    use openwebide_frontend::state_actions::editor::EditorActions;
+    let host = super::language_support::LanguageHost::new().await;
+    host.pause();
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        let transport = std::rc::Rc::new(DeferredSyntax::default());
-        let installed = transport.clone();
         let source = format!("const VALUE: &str = \"a{}\";", "word 文😀  ".repeat(12000));
         let original = source.clone();
-        let mounted = mount_test(move |state| {
+        let mounted = host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -21046,7 +21466,6 @@ async fn paragraph_global_origin_preserves_exact_overflow_rounding_in_both_modes
                 .update(|projects| projects[0].mode = mode);
             state.workspace.open_file.set(Some("origin.rs".into()));
             state.workspace.content.set(source.into());
-            EditorActions::new(state.workspace).install_syntax_transport(installed);
             view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:340px;height:380px">{editor_view(state)}</div> }
         });
         let scope = std::cell::RefCell::new(None);
@@ -21054,8 +21473,8 @@ async fn paragraph_global_origin_preserves_exact_overflow_rounding_in_both_modes
             "styled global-origin measurements",
             30_000,
             || {
-                if !transport.pending.borrow().is_empty() {
-                    transport.respond(true);
+                if host.pending() > 0 {
+                    host.respond_now(true);
                 }
                 mounted
                     .state
@@ -21092,7 +21511,11 @@ async fn paragraph_global_origin_preserves_exact_overflow_rounding_in_both_modes
                 .await,
             "{mode:?} exact complete scroll extent and every glyph anchor"
         );
+        drop(mounted);
+        host.cancel_pending();
+        settle().await;
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -21102,10 +21525,9 @@ async fn paragraph_unchanged_suffix_reuses_exact_browser_geometry_in_both_modes(
         components::{retained_paragraph_matches_complete, take_paragraph_suffix_probes},
         state_actions::editor::EditorActions,
     };
+    let language_host = super::language_support::LanguageHost::new().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         for styled in [false, true] {
-            let transport = std::rc::Rc::new(DeferredSyntax::default());
-            let installed = transport.clone();
             let body = format!("a{}", "word 文😀  ".repeat(12000));
             let source = if styled {
                 format!("const VALUE: &str = \"{body}\";")
@@ -21115,7 +21537,7 @@ async fn paragraph_unchanged_suffix_reuses_exact_browser_geometry_in_both_modes(
             let original = source.clone();
             let actions_slot = std::rc::Rc::new(std::cell::Cell::new(None));
             let capture = actions_slot.clone();
-            let mounted = mount_test(move |state| {
+            let mounted = language_host.mount(move |state| {
                 state.seed_project();
                 state
                     .projects
@@ -21128,15 +21550,12 @@ async fn paragraph_unchanged_suffix_reuses_exact_browser_geometry_in_both_modes(
                 let actions = EditorActions::new(state.workspace);
                 capture.set(Some(actions));
                 if styled {
-                    actions.install_syntax_transport(installed);
+                    actions.install_syntax_worker();
                 }
                 state.workspace.content.set(source.into());
                 view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:340px;height:380px">{editor_view(state)}</div> }
             });
             super::support::wait_until_with_timeout("original suffix measurements", 30_000, || {
-                if styled && !transport.pending.borrow().is_empty() {
-                    transport.respond(true);
-                }
                 mounted
                     .state
                     .workspace
@@ -21189,9 +21608,6 @@ async fn paragraph_unchanged_suffix_reuses_exact_browser_geometry_in_both_modes(
                 "changed source suffix measurements",
                 30_000,
                 || {
-                    if styled && !transport.pending.borrow().is_empty() {
-                        transport.respond(true);
-                    }
                     mounted
                         .state
                         .workspace
@@ -21273,8 +21689,10 @@ async fn paragraph_unchanged_suffix_reuses_exact_browser_geometry_in_both_modes(
             }
             assert_eq!(actions.source(), changed);
             assert!(mounted.state.workspace.dirty.get_untracked());
+            drop(mounted);
         }
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -21282,11 +21700,23 @@ async fn config_and_documentation_grammars_share_both_workspace_modes_without_pr
     use openwebide_core::{
         WorkspaceMode,
         editor::{SyntaxDocument, syntax_contracts::CONFIG_CASES},
-        highlight::language_from_path,
+        highlight::{TokenRows, language_from_path},
     };
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
+    // The public protocol may combine adjacent runs with the same style. Check
+    // every source byte's style, independently of those transport boundaries.
+    let styled_bytes = |rows: &TokenRows| {
+        rows.iter()
+            .map(|row| {
+                row.iter()
+                    .flat_map(|token| token.text.bytes().map(move |byte| (token.kind, byte)))
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>()
+    };
+    let language_host = super::language_support::LanguageHost::new().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        let mounted = mount_test(move |state| {
+        let mounted = language_host.mount(move |state| {
             state.seed_project();
             state
                 .projects
@@ -21294,11 +21724,12 @@ async fn config_and_documentation_grammars_share_both_workspace_modes_without_pr
                 .update(|projects| projects[0].mode = mode);
             view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:700px;height:400px">{editor_view(state)}</div> }
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         for &(path, fixture) in CONFIG_CASES {
             let source = fixture.replace('\n', "\r\n");
             mounted.state.workspace.open_file.set(Some(path.into()));
             mounted.state.workspace.content.set(source.clone().into());
+            super::language_support::ready(&mounted.state).await;
             let (_, folds) = with_syntax_clock(0.0, || actions.syntax_folds(|| true)).unwrap();
             assert!(!folds.is_empty(), "{mode:?}: {path}");
             wait_until("prepared config styles", || {
@@ -21327,6 +21758,7 @@ async fn config_and_documentation_grammars_share_both_workspace_modes_without_pr
             assert_eq!(mounted.state.workspace.content.get_untracked(), source);
             let changed = source.replace("文😀", "😀 revised");
             mounted.state.workspace.content.set(changed.clone().into());
+            super::language_support::ready(&mounted.state).await;
             let (_, folds) = with_syntax_clock(0.0, || actions.syntax_folds(|| true)).unwrap();
             let mut fresh = SyntaxDocument::new(language_from_path(path)).unwrap();
             let expected = fresh.prepare(&changed, 4, || true).1.unwrap();
@@ -21336,8 +21768,9 @@ async fn config_and_documentation_grammars_share_both_workspace_modes_without_pr
             })
             .await;
             assert_eq!(
-                actions.syntax_highlights().unwrap(),
-                expected.highlights().unwrap().clone()
+                styled_bytes(&actions.syntax_highlights().unwrap()),
+                styled_bytes(expected.highlights().unwrap()),
+                "{mode:?}: {path} exact styled source bytes"
             );
         }
         for path in ["LICENSE", "LICENSE.txt", "NOTICE"] {
@@ -21365,6 +21798,7 @@ async fn config_and_documentation_grammars_share_both_workspace_modes_without_pr
             );
         }
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -21606,12 +22040,12 @@ extern "C" {
 async fn painted_caret_movement_avoids_complete_row_probes_in_both_modes() {
     use openwebide_core::{WorkspaceMode, editor::Selection};
     use openwebide_frontend::state_actions::editor::EditorActions;
+    let host = super::language_support::LanguageHost::new().await;
+    host.pause();
     for (mode, wrapped) in [WorkspaceMode::Local, WorkspaceMode::Remote]
         .into_iter()
         .flat_map(|mode| [false, true].map(move |wrapped| (mode, wrapped)))
     {
-        let transport = std::rc::Rc::new(DeferredSyntax::default());
-        let installed = transport.clone();
         let source = format!(
             "const VALUE: &str = \"{}\";",
             "e\u{301}😀 xyz ".repeat(10_000)
@@ -21619,9 +22053,8 @@ async fn painted_caret_movement_avoids_complete_row_probes_in_both_modes() {
         let original = source.clone();
         let slot = std::rc::Rc::new(std::cell::Cell::new(None::<EditorActions>));
         let capture_actions = slot.clone();
-        let mounted = mount_test(move |state| {
+        let mounted = host.mount(move |state| {
             let actions = EditorActions::new(state.workspace);
-            actions.install_syntax_transport(installed);
             capture_actions.set(Some(actions));
             state.seed_project();
             state
@@ -21648,8 +22081,8 @@ async fn painted_caret_movement_avoids_complete_row_probes_in_both_modes() {
             "prepared native paint for caret navigation",
             30_000,
             || {
-                if !transport.pending.borrow().is_empty() {
-                    transport.respond(true);
+                if host.pending() > 0 {
+                    host.respond_now(true);
                 }
                 if js_sys::Date::now() - started > 5000.0 && !reported.replace(true) {
                     wasm_bindgen_test::console_log!("caret paint readiness {mode:?}: strings={} rows={} class={} pending={} native={:?}",
@@ -21790,7 +22223,11 @@ async fn painted_caret_movement_avoids_complete_row_probes_in_both_modes() {
             Some(0.0),
             "{mode:?}: current painted carets must not allocate hidden full-row probes"
         );
+        drop(mounted);
+        host.cancel_pending();
+        settle().await;
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -21800,15 +22237,15 @@ async fn shifted_styled_suffix_matches_complete_browser_geometry_in_both_modes()
         components::{retained_paragraph_matches_complete, take_paragraph_suffix_probes},
         state_actions::editor::EditorActions,
     };
+    let host = super::language_support::LanguageHost::new().await;
+    host.pause();
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         for inserted in ["z", "😀", "e\u{301}", ""] {
-            let transport = std::rc::Rc::new(DeferredSyntax::default());
-            let installed = transport.clone();
             let source = format!("const VALUE: &str = \"{}\";", "word 文😀 ".repeat(8000));
             let original = source.clone();
             let slot = std::rc::Rc::new(std::cell::Cell::new(None::<EditorActions>));
             let captured = slot.clone();
-            let mounted = mount_test(move |state| {
+            let mounted = host.mount(move |state| {
                 state.seed_project();
                 state
                     .projects
@@ -21816,14 +22253,13 @@ async fn shifted_styled_suffix_matches_complete_browser_geometry_in_both_modes()
                     .update(|projects| projects[0].mode = mode);
                 state.workspace.open_file.set(Some("shifted.rs".into()));
                 let actions = EditorActions::new(state.workspace);
-                actions.install_syntax_transport(installed);
                 captured.set(Some(actions));
                 state.workspace.content.set(source.into());
                 view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:340px;height:380px">{editor_view(state)}</div> }
             });
             let ready = |source: &str| {
-                if !transport.pending.borrow().is_empty() {
-                    transport.respond(true);
+                if host.pending() > 0 {
+                    host.respond_now(true);
                 }
                 mounted
                     .state
@@ -21919,8 +22355,12 @@ async fn shifted_styled_suffix_matches_complete_browser_geometry_in_both_modes()
             );
             assert_eq!(actions.source(), changed);
             assert!(mounted.state.workspace.dirty.get_untracked());
+            drop(mounted);
+            host.cancel_pending();
+            settle().await;
         }
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -22045,7 +22485,7 @@ async fn cooperative_cold_glyph_geometry_matches_complete_and_cancels_in_both_mo
 #[wasm_bindgen_test]
 async fn bounded_wrapped_paragraphs_preserve_complete_styled_geometry_in_both_modes() {
     use openwebide_core::{WorkspaceMode, editor::EditorFont};
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     let loaded = load_all_editor_fonts().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         for font in EditorFont::ALL {
@@ -22080,7 +22520,7 @@ async fn bounded_wrapped_paragraphs_preserve_complete_styled_geometry_in_both_mo
                                 view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:420px;height:320px">{editor_view(state)}</div> }
                             }
                         });
-                        let actions = EditorActions::new(mounted.state.workspace);
+                        let actions = mounted.state.editor_actions();
                         wait_until("wrapped exact row cache", || {
                             mounted
                                 .state
@@ -22132,6 +22572,7 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes
         },
         state_actions::editor::EditorActions,
     };
+    let language_host = super::language_support::LanguageHost::new().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         for (styled, reconnect, width) in [
             (false, false, 420),
@@ -22140,8 +22581,6 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes
             (true, true, 420),
             (true, true, 264),
         ] {
-            let transport = std::rc::Rc::new(DeferredSyntax::default());
-            let installed = transport.clone();
             let body = if reconnect {
                 // Include the production near-limit String before any prior
                 // edit changes its wrapping phase or retained probe origins.
@@ -22166,7 +22605,7 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes
             let original = source.clone();
             let slot = std::rc::Rc::new(std::cell::Cell::new(None));
             let capture = slot.clone();
-            let mounted = mount_test(move |state| {
+            let mounted = language_host.mount(move |state| {
                 state.seed_project();
                 state
                     .projects
@@ -22183,7 +22622,7 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes
                 let actions = EditorActions::new(state.workspace);
                 capture.set(Some(actions));
                 if styled {
-                    actions.install_syntax_transport(installed);
+                    actions.install_syntax_worker();
                 }
                 state
                     .settings
@@ -22192,11 +22631,11 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes
                 state.workspace.content.set(source.into());
                 view! { <style>{include_str!("../../styles.css")}</style><div style=format!("display:flex;width:{width}px;height:320px")>{editor_view(state)}</div> }
             });
+            // Establish the installed provider before measuring cross-edit reuse.
+            // A provider generation change correctly invalidates older geometry.
+            super::language_support::ready(&mounted.state).await;
             let actions = slot.get().unwrap();
             let ready = |expected: &str| {
-                if styled && !transport.pending.borrow().is_empty() {
-                    transport.respond(true);
-                }
                 mounted
                     .state
                     .workspace
@@ -22234,6 +22673,21 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes
                 } else {
                     changed.insert(at, 'z');
                 }
+                let measured_owner = mounted
+                    .state
+                    .workspace
+                    .editor_paragraph_cache
+                    .with_untracked(|cache| {
+                        cache.as_ref().map(|cache| {
+                            (
+                                cache.paint.language_generation,
+                                cache.paint.account_generation,
+                                cache.paint.font_epoch,
+                                cache.paint.prepared_source,
+                                cache.paint.tokens.len(),
+                            )
+                        })
+                    });
                 take_paragraph_suffix_probes();
                 take_paragraph_current_probes();
                 actions
@@ -22259,7 +22713,8 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes
                         } else {
                             reused + current_reused > 2
                         },
-                        "{mode:?} styled={styled} reconnect={reconnect} width={width} change={change} reused={reused} current={current_reused}"
+                        "{mode:?} styled={styled} reconnect={reconnect} width={width} change={change} reused={reused} current={current_reused} measured_owner={measured_owner:?} current_language_generation={}",
+                        mounted.state.languages.generation.get_untracked()
                     );
                 }
                 let scope = mounted
@@ -22292,16 +22747,30 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry_in_both_modes
                 assert_eq!(actions.resume_paragraph_suffix(&suffix, &mut plan), 0);
                 assert_eq!(actions.resume_paragraph_prefix_batch(&prefix, &mut plan), 0);
                 assert!(plan.probe().is_some());
+                // Let the host observe revocation before restoring the owner;
+                // otherwise a delayed lifecycle transition races the next edit.
+                openwebide_frontend::util::yield_task().await;
                 mounted
                     .state
                     .auth
                     .generation
                     .update(|generation| *generation -= 1);
                 assert_eq!(actions.source(), changed);
+                // The stale-account probe also invalidates host preparation.
+                // Settle that lifecycle and its current measurements before
+                // testing reuse across the next source edit.
+                openwebide_frontend::util::yield_task().await;
+                super::language_support::ready(&mounted.state).await;
+                super::support::wait_until_with_timeout("restored owner geometry", 30_000, || {
+                    ready(&changed)
+                })
+                .await;
                 previous = changed;
             }
+            drop(mounted);
         }
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -22311,6 +22780,8 @@ async fn literal_embedded_commands_skip_parser_preparation_in_both_modes() {
         editor::{Indentation, Selection},
     };
     use openwebide_frontend::state_actions::editor::{EditorActions, EditorCommand};
+    let host = super::language_support::LanguageHost::new().await;
+    host.pause();
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         for (path, prefix, suffix) in [
             ("literal.html", "<script>\n", "</script>\n"),
@@ -22330,9 +22801,7 @@ async fn literal_embedded_commands_skip_parser_preparation_in_both_modes() {
             });
             let slot = std::rc::Rc::new(std::cell::Cell::new(None));
             let capture = slot.clone();
-            let transport = std::rc::Rc::new(DeferredSyntax::default());
-            let installed = transport.clone();
-            let _mounted = mount_test(move |state| {
+            let mounted = host.mount(move |state| {
                 state.seed_project();
                 state
                     .projects
@@ -22341,15 +22810,12 @@ async fn literal_embedded_commands_skip_parser_preparation_in_both_modes() {
                 state.workspace.open_file.set(Some(path.into()));
                 state.workspace.content.set(source.into());
                 let actions = EditorActions::with_input_clock(state.workspace, clock);
-                actions.install_syntax_transport(installed);
+                state.editor_actions().install_syntax_worker();
                 capture.set(Some(actions));
                 view! { <div/> }
             });
             let actions = slot.get().unwrap();
-            wait_until("held embedded syntax request", || {
-                !transport.pending.borrow().is_empty()
-            })
-            .await;
+            wait_until("held embedded syntax request", || host.pending() > 0).await;
             assert_eq!(calls.get(), 0);
             let selection = actions
                 .command(
@@ -22373,8 +22839,12 @@ async fn literal_embedded_commands_skip_parser_preparation_in_both_modes() {
                 .unwrap();
             assert_eq!(actions.source(), original);
             assert_eq!(calls.get(), 0);
+            drop(mounted);
+            host.cancel_pending();
+            settle().await;
         }
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -22384,6 +22854,7 @@ async fn current_unwrapped_replay_preserves_complete_unicode_geometry_in_both_mo
         components::{retained_paragraph_matches_complete, take_paragraph_current_probes},
         state_actions::editor::EditorActions,
     };
+    let language_host = super::language_support::LanguageHost::new().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         for styled in [false, true] {
             let source = if styled {
@@ -22392,12 +22863,10 @@ async fn current_unwrapped_replay_preserves_complete_unicode_geometry_in_both_mo
                 "x".repeat(200_000)
             };
             let original = source.clone();
-            let transport = std::rc::Rc::new(DeferredSyntax::default());
-            let installed = transport.clone();
             let slot = std::rc::Rc::new(std::cell::Cell::new(None));
             let capture = slot.clone();
             take_paragraph_current_probes();
-            let mounted = mount_test(move |state| {
+            let mounted = language_host.mount(move |state| {
                 state.seed_project();
                 state
                     .projects
@@ -22414,7 +22883,7 @@ async fn current_unwrapped_replay_preserves_complete_unicode_geometry_in_both_mo
                 let actions = EditorActions::new(state.workspace);
                 capture.set(Some(actions));
                 if styled {
-                    actions.install_syntax_transport(installed);
+                    actions.install_syntax_worker();
                 }
                 state
                     .settings
@@ -22425,9 +22894,6 @@ async fn current_unwrapped_replay_preserves_complete_unicode_geometry_in_both_mo
             });
             let actions = slot.get().unwrap();
             let ready = |source: &str| {
-                if styled && !transport.pending.borrow().is_empty() {
-                    transport.respond(true);
-                }
                 actions.measured_rows().is_some()
                     && mounted
                         .state
@@ -22515,8 +22981,10 @@ async fn current_unwrapped_replay_preserves_complete_unicode_geometry_in_both_mo
                 assert_eq!(actions.source(), changed);
                 previous = changed;
             }
+            drop(mounted);
         }
     }
+    language_host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -22710,7 +23178,7 @@ async fn wrapped_chunk_cancellation_discards_old_geometry_in_both_modes() {
         }
     }
     use openwebide_core::WorkspaceMode;
-    use openwebide_frontend::state_actions::editor::EditorActions;
+
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let source = format!(
             "let value = \"{}\";",
@@ -22737,7 +23205,7 @@ async fn wrapped_chunk_cancellation_discards_old_geometry_in_both_modes() {
                 view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:420px;height:320px">{editor_view(state)}</div> }
             }
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         let input: web_sys::HtmlTextAreaElement =
             mounted.element(".editor-textarea").unchecked_into();
         let audit = Audit(interruptWrappedChunk(&input, "z"));
@@ -22802,7 +23270,6 @@ async fn wrapped_chunk_cancellation_discards_old_geometry_in_both_modes() {
 #[wasm_bindgen_test]
 async fn wrapped_startup_keeps_near_limit_native_input_bounded_in_both_modes() {
     use openwebide_core::{WorkspaceMode, editor::MAX_EDITOR_LINE_BYTES};
-    use openwebide_frontend::state_actions::editor::EditorActions;
     let loaded = load_all_editor_fonts().await;
     let prefix = "const VALUE: &str = \"";
     let suffix = "\";";
@@ -22812,9 +23279,9 @@ async fn wrapped_startup_keeps_near_limit_native_input_bounded_in_both_modes() {
         unit.repeat((MAX_EDITOR_LINE_BYTES - prefix.len() - suffix.len()) / unit.len())
     );
     assert!(source.len() > 1_000_000);
+    let host = super::language_support::LanguageHost::new().await;
+    host.pause();
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
-        let transport = std::rc::Rc::new(DeferredSyntax::default());
-        let installed = transport.clone();
         let audit = js_sys::Function::new_no_args(r"
             const descriptor = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');
             const state = {bytes: 0, writes: 0};
@@ -22839,7 +23306,7 @@ async fn wrapped_startup_keeps_near_limit_native_input_bounded_in_both_modes() {
             }
         }
         let audit = Audit(audit);
-        let mounted = mount_test({
+        let mounted = host.mount({
             let source = source.clone();
             move |state| {
                 state.seed_project();
@@ -22852,7 +23319,6 @@ async fn wrapped_startup_keeps_near_limit_native_input_bounded_in_both_modes() {
                     .open_file
                     .set(Some("wrapped-startup.rs".into()));
                 state.workspace.content.set(source.into());
-                EditorActions::new(state.workspace).install_syntax_transport(installed);
                 state
                     .settings
                     .editor_preferences
@@ -22860,7 +23326,7 @@ async fn wrapped_startup_keeps_near_limit_native_input_bounded_in_both_modes() {
                 view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:420px;height:320px">{editor_view(state)}</div> }
             }
         });
-        let actions = EditorActions::new(mounted.state.workspace);
+        let actions = mounted.state.editor_actions();
         let input: web_sys::HtmlTextAreaElement =
             mounted.element(".editor-textarea").unchecked_into();
         let startup_started = js_sys::Date::now();
@@ -22879,7 +23345,7 @@ async fn wrapped_startup_keeps_near_limit_native_input_bounded_in_both_modes() {
                 });
                 wasm_bindgen_test::console_log!(
                     "{mode:?} startup: document={document}, pending={pending}, bound={bound}, measured={measured}, native_bytes={}, worker_requests={}",
-                    input.value().len(), transport.pending.borrow().len()
+                    input.value().len(), host.pending()
                 );
             }
             pending && bound && !measured
@@ -22890,8 +23356,8 @@ async fn wrapped_startup_keeps_near_limit_native_input_bounded_in_both_modes() {
             "near-limit wrapped styled readiness",
             30_000,
             || {
-                if !transport.pending.borrow().is_empty() {
-                    transport.respond(true);
+                if host.pending() > 0 {
+                    host.respond_now(true);
                 }
                 actions.measured_rows().is_some()
                     && !actions.native_geometry_pending()
@@ -22927,10 +23393,14 @@ async fn wrapped_startup_keeps_near_limit_native_input_bounded_in_both_modes() {
         );
         assert_eq!(actions.source(), source);
         assert_editor_native_source(&input, mounted.state.workspace, &source);
+        drop(mounted);
+        host.cancel_pending();
+        settle().await;
     }
     for font in loaded {
         removeEditorFont(&font);
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]
@@ -22941,11 +23411,10 @@ async fn measured_wrapped_prefix_reconnection_matches_complete_geometry_in_both_
         state_actions::editor::EditorActions,
     };
     let loaded = load_all_editor_fonts().await;
+    let language_host = super::language_support::LanguageHost::new().await;
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let mut reconciled = 0;
         for width in [300, 320, 340, 360, 380, 400, 420] {
-            let transport = std::rc::Rc::new(DeferredSyntax::default());
-            let installed = transport.clone();
             let original = format!(
                 "const VALUE: &str = concat! (\"{}\", ident(\"{}antidisestablishmentarianism antidisestablishmentarianism {}\"));",
                 "word 文😀e\u{301} != -> café ".repeat(546),
@@ -22955,7 +23424,7 @@ async fn measured_wrapped_prefix_reconnection_matches_complete_geometry_in_both_
             let source = original.clone();
             let slot = std::rc::Rc::new(std::cell::Cell::new(None));
             let capture = slot.clone();
-            let mounted = mount_test(move |state| {
+            let mounted = language_host.mount(move |state| {
                 state.seed_project();
                 state
                     .projects
@@ -22967,7 +23436,7 @@ async fn measured_wrapped_prefix_reconnection_matches_complete_geometry_in_both_
                     .set(Some("measured-prefix.rs".into()));
                 let actions = EditorActions::new(state.workspace);
                 capture.set(Some(actions));
-                actions.install_syntax_transport(installed);
+                actions.install_syntax_worker();
                 state
                     .settings
                     .editor_preferences
@@ -22977,9 +23446,6 @@ async fn measured_wrapped_prefix_reconnection_matches_complete_geometry_in_both_
             });
             let actions = slot.get().unwrap();
             let ready = |expected: &str| {
-                if !transport.pending.borrow().is_empty() {
-                    transport.respond(true);
-                }
                 mounted
                     .state
                     .workspace
@@ -23031,12 +23497,14 @@ async fn measured_wrapped_prefix_reconnection_matches_complete_geometry_in_both_
                 "{mode:?} width={width}: exact measured prefix, suffix anchors and complete extents"
             );
             assert_eq!(actions.source(), changed);
+            drop(mounted);
         }
         assert!(
             reconciled > 0,
             "{mode:?}: measured prefix path must execute"
         );
     }
+    language_host.close().await;
     for font in loaded {
         removeEditorFont(&font);
     }
@@ -23394,6 +23862,8 @@ async fn pending_grammar_paints_current_text_and_retains_matching_colors_in_both
         editor::{Selection, byte_to_textarea},
     };
     use openwebide_frontend::state_actions::editor::EditorActions;
+    let host = super::language_support::LanguageHost::new().await;
+    host.pause();
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         for (path, source) in [
             (
@@ -23405,11 +23875,9 @@ async fn pending_grammar_paints_current_text_and_retains_matching_colors_in_both
                 "```javascript\nconst value = \"文😀\";\n```\n",
             ),
         ] {
-            let transport = std::rc::Rc::new(DeferredSyntax::default());
-            let installed = transport.clone();
             let slot = std::rc::Rc::new(std::cell::Cell::new(None));
             let capture = slot.clone();
-            let mounted = mount_test(move |state| {
+            let mounted = host.mount(move |state| {
                 state.seed_project();
                 state
                     .projects
@@ -23418,17 +23886,16 @@ async fn pending_grammar_paints_current_text_and_retains_matching_colors_in_both
                 state.workspace.open_file.set(Some(path.into()));
                 state.workspace.content.set(source.into());
                 let actions = EditorActions::new(state.workspace);
-                actions.install_syntax_transport(installed);
                 capture.set(Some(actions));
                 view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:420px;height:320px">{editor_view(state)}</div> }
             });
             let actions = slot.get().unwrap();
-            wait_until("initial retained grammar request", || {
-                !transport.pending.borrow().is_empty()
-            })
-            .await;
-            transport.respond(true);
+            wait_until("initial retained grammar request", || host.pending() > 0).await;
+            host.respond_now(true);
             wait_until("prepared initial grammar paint", || {
+                if host.pending() > 0 {
+                    host.respond_now(true);
+                }
                 !actions.syntax_is_pending()
                     && mounted
                         .root
@@ -23458,10 +23925,7 @@ async fn pending_grammar_paints_current_text_and_retains_matching_colors_in_both
                 updated,
                 "{mode:?} {path}: browser input source"
             );
-            wait_until("held changed grammar request", || {
-                !transport.pending.borrow().is_empty()
-            })
-            .await;
+            wait_until("held changed grammar request", || host.pending() > 0).await;
             let started = js_sys::Date::now();
             let reported = std::cell::Cell::new(false);
             wait_until("current source before grammar reply", || {
@@ -23568,8 +24032,12 @@ async fn pending_grammar_paints_current_text_and_retains_matching_colors_in_both
                 "{mode:?} {path}: reject stale read colors"
             );
             assert!(!actions.pending_viewport_paint_ready(&[0, 1, 2], &pending_paint));
+            drop(mounted);
+            host.cancel_pending();
+            settle().await;
         }
     }
+    host.close().await;
 }
 
 #[wasm_bindgen_test]

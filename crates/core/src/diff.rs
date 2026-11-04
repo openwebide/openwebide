@@ -13,7 +13,9 @@ mod render;
 pub use render::*;
 mod paint;
 pub use paint::{
-    DiffChange, DiffPaint, DiffPaintLine, DiffPaintToken, paint_inline_diff, paint_unified_diff,
+    DiffChange, DiffPaint, DiffPaintLine, DiffPaintToken, paint_inline_diff,
+    paint_inline_diff_with_tokens, paint_unified_diff, paint_unified_diff_with_tokens,
+    unified_diff_sources,
 };
 
 /// How a line ends: `\n`, `\r\n`, or nothing (the file's last line, if it

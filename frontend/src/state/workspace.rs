@@ -220,6 +220,8 @@ pub struct EditorSyntaxScope {
     pub epoch: u64,
     pub read_revision: u64,
     pub account_generation: u64,
+    pub session: Option<i64>,
+    pub language_generation: u64,
     pub tab_width: usize,
 }
 #[derive(Clone, Debug)]
@@ -244,6 +246,8 @@ pub struct EditorRowMeasurements {
     pub syntax: Option<(bool, std::sync::Arc<openwebide_core::highlight::TokenRows>)>,
     pub revision: u64,
     pub account_generation: u64,
+    pub session: Option<i64>,
+    pub language_generation: u64,
     pub metrics: String,
     pub rows: openwebide_core::editor::MeasuredRows,
 }
@@ -257,6 +261,8 @@ pub struct EditorRowPaint {
     pub epoch: u64,
     pub read_revision: u64,
     pub account_generation: u64,
+    pub session: Option<i64>,
+    pub language_generation: u64,
     pub metrics: String,
     pub projection: openwebide_core::editor::FoldProjection,
     pub tokens: std::sync::Arc<openwebide_core::highlight::TokenRows>,
@@ -533,6 +539,7 @@ pub struct WorkspaceState {
     pub editor_preparation_revision: RwSignal<u64>,
     pub editor_documents: RwSignal<HashMap<(i64, String), openwebide_core::editor::Document>>,
     // Browser parser allocation is thread-local; the wrapper enforces owner-thread access.
+    #[cfg(feature = "test-support")]
     pub editor_syntax: RwSignal<
         send_wrapper::SendWrapper<openwebide_core::editor::SyntaxPreparations<(i64, String)>>,
     >,
@@ -638,6 +645,7 @@ impl WorkspaceState {
             editor_preparation: RwSignal::new(None),
             editor_syntax_scope: RwSignal::new(None),
             editor_preparation_revision: RwSignal::new(0),
+            #[cfg(feature = "test-support")]
             editor_syntax: RwSignal::new(send_wrapper::SendWrapper::new(Default::default())),
             editor_scroll: RwSignal::new(HashMap::new()),
             editor_native_binding: RwSignal::new(None),
@@ -1247,6 +1255,7 @@ impl WorkspaceState {
                 values.retain(|(id, _), _| *id != project.id);
                 values.extend(scroll);
             });
+            #[cfg(feature = "test-support")]
             self.editor_syntax.update(|values| {
                 values.retain(|(id, _)| *id != project.id);
             });
@@ -1316,6 +1325,7 @@ impl WorkspaceState {
         self.editor_documents.update(|documents| {
             documents.remove(&key);
         });
+        #[cfg(feature = "test-support")]
         self.editor_syntax.update(|syntax| {
             syntax.remove(&key);
         });
@@ -1398,6 +1408,7 @@ impl WorkspaceState {
         self.editor_fallback_paint.set(None);
         self.editor_preparation_revision
             .update(|value| *value = value.wrapping_add(1));
+        #[cfg(feature = "test-support")]
         self.editor_syntax
             .set(send_wrapper::SendWrapper::new(Default::default()));
         self.editor_scroll.set(HashMap::new());
@@ -1989,6 +2000,8 @@ mod tests {
                 syntax: None,
                 revision,
                 account_generation: 0,
+                session: None,
+                language_generation: 0,
                 metrics: "font".into(),
                 rows: MeasuredRows::new([19.5, 39.0]).unwrap(),
             }));

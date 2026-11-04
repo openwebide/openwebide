@@ -14,6 +14,7 @@ impl Document {
             .unwrap_or_else(|| super::super::LineEnding::detect(&self.text))
             .text();
         let mut changes = Vec::new();
+        let mut indentations = Vec::new();
         for selection in &self.selections {
             let range = selection.range();
             let configuration = syntax
@@ -96,6 +97,11 @@ impl Document {
                                     })
                             })
                         });
+            let closing = (syntax.available() && increase)
+                .then(|| syntax.last_code(&self.text, start..range.start))
+                .flatten()
+                .and_then(|(position, ch)| syntax.closing_at(position, ch));
+            indentations.push(closing.map(|closing| (closing, base.clone())));
             let text = if split {
                 format!("{ending}{inner}{ending}{base}")
             } else {
@@ -106,6 +112,22 @@ impl Document {
                 Selection::caret(ending.len() + inner.len()),
             ));
         }
-        self.apply_caret_edits(changes)
+        let changed = self.apply_caret_edits(changes)?;
+        if changed {
+            self.newline_indentation = self
+                .selections
+                .iter()
+                .zip(indentations)
+                .filter_map(|(selection, indentation)| {
+                    indentation.map(|(closing, base)| NewlineIndentation {
+                        revision: self.revision,
+                        position: selection.head,
+                        closing,
+                        base,
+                    })
+                })
+                .collect();
+        }
+        Ok(changed)
     }
 }

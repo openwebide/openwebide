@@ -175,6 +175,9 @@ jobs:
           BUILD_COMMIT: ${{ github.sha }}
         run: |
           if [ "$ROLLING" = true ]; then python3 tools/release.py stamp-nightly --commit "$BUILD_COMMIT"; fi
+          wasi_sdk_path=$(python3 tools/install_wasi_sdk.py "$RUNNER_TEMP/openwebide-wasi-sdk")
+          export WASI_SDK_PATH="$wasi_sdk_path"
+          export WASI_SYSROOT="$wasi_sdk_path/share/wasi-sysroot"
           cargo run -p openwebide-plugin-runtime --bin openwebide-bundle-plugins --release --locked -- bridge/bundled/plugins.json "$OPENWEBIDE_BUNDLED_ARTIFACTS"
           cargo build -p openwebide-bridge --features bundled-defaults --release --locked
           "target/release/openwebide-bridge" --help

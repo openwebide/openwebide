@@ -1494,7 +1494,8 @@ fn HighlightOverlay(
     });
     let fragment_cache =
         StoredValue::new(crate::state_actions::editor::EditorFragmentCache::default());
-    let batch_key = StoredValue::new(None::<(u64, u64, u64, String, usize, bool)>);
+    let batch_key =
+        StoredValue::new(None::<(u64, u64, u64, String, usize, bool, Option<i64>, u64)>);
     let batch_ticket = StoredValue::new(None::<u64>);
     Effect::new(move || {
         layout_revision.track();
@@ -1548,6 +1549,8 @@ fn HighlightOverlay(
             metrics.clone(),
             std::sync::Arc::as_ptr(&prepared_tokens.1) as usize,
             whitespace,
+            actions.active_session(),
+            actions.language_generation(),
         );
         if let Some(measured) = actions.measured_rows() {
             if measured.metrics == metrics
@@ -2200,28 +2203,62 @@ pub(super) fn render_inline_diff(diff: FileDiff) -> impl IntoView {
         .max(1)
         .to_string()
         .len();
-    render_diff_lines(openwebide_core::diff::paint_inline_diff(&diff), digits)
+    let diff = StoredValue::new(diff);
+    let snapshot = Memo::new(move |_| diff.get_value());
+    let paint = crate::project_languages::preview_diff(snapshot);
+    let lines = Memo::new(move |_| snapshot.with(|diff| paint.with(|paint| paint.inline(diff))));
+    render_diff_lines(lines, digits)
 }
 
 pub(super) fn render_commit_diff(patch: &str, path: &str) -> impl IntoView + use<> {
-    let lines = openwebide_core::diff::paint_unified_diff(patch, path);
-    let digits = lines
-        .iter()
-        .filter_map(|line| line.old_number.into_iter().chain(line.new_number).max())
-        .max()
-        .unwrap_or(1)
-        .to_string()
-        .len();
+    let input = StoredValue::new((patch.to_string(), path.to_string()));
+    let path = Memo::new(move |_| input.with_value(|input| input.1.clone()));
+    let sources = Memo::new(move |_| {
+        input.with_value(|input| {
+            let (old, new) = openwebide_core::diff::unified_diff_sources(&input.0);
+            (std::sync::Arc::new(old), std::sync::Arc::new(new))
+        })
+    });
+    let old = Memo::new(move |_| sources.with(|sources| sources.0.clone()));
+    let new = Memo::new(move |_| sources.with(|sources| sources.1.clone()));
+    let old = crate::project_languages::preview_patch_syntax(path.into(), old.into());
+    let new = crate::project_languages::preview_patch_syntax(path.into(), new.into());
+    let lines = Memo::new(move |_| {
+        input.with_value(|input| {
+            old.with(|old| {
+                new.with(|new| {
+                    openwebide_core::diff::paint_unified_diff_with_tokens(
+                        &input.0,
+                        old.as_ref()
+                            .and_then(|analysis| analysis.highlights())
+                            .map(AsRef::as_ref),
+                        new.as_ref()
+                            .and_then(|analysis| analysis.highlights())
+                            .map(AsRef::as_ref),
+                    )
+                })
+            })
+        })
+    });
+    let digits = lines.with_untracked(|lines| {
+        lines
+            .iter()
+            .filter_map(|line| line.old_number.into_iter().chain(line.new_number).max())
+            .max()
+            .unwrap_or(1)
+            .to_string()
+            .len()
+    });
     render_diff_lines(lines, digits)
 }
 
 fn render_diff_lines(
-    lines: Vec<openwebide_core::diff::DiffPaintLine>,
+    lines: Memo<Vec<openwebide_core::diff::DiffPaintLine>>,
     digits: usize,
 ) -> impl IntoView {
-    let body = lines
-        .into_iter()
-        .map(|dl| {
+    let body = lines.get_untracked()
+        .into_iter().enumerate()
+        .map(|(index, dl)| {
             let mark = dl.marker;
             let old_number = dl.old_number;
             let new_number = dl.new_number;
@@ -2237,7 +2274,7 @@ fn render_diff_lines(
                         <span class="editor-line-number">{new_number}</span>
                         <span class="diff-line-marker">{mark}</span>
                     </span>
-                    <span class="editor-line-text">{render_painted_diff(dl.tokens)}
+                    <span class="editor-line-text">{move || lines.with(|lines| lines.get(index).map(|line| render_painted_diff(line.tokens.clone())))}
                         {dl.ending_note.map(|note| view! { <span class="form-hint">{note}</span> })}
                     </span>
                 </div>
@@ -2265,7 +2302,9 @@ fn sync_split_scroll(source: NodeRef<leptos::html::Div>, target: NodeRef<leptos:
 
 /// Full aligned rows with a shared scroll extent and compact, pinned gutters.
 fn render_side_by_side(diff: FileDiff) -> impl IntoView {
-    let paint = openwebide_core::diff::DiffPaint::new(&diff);
+    let snapshot = StoredValue::new(diff.clone());
+    let snapshot = Memo::new(move |_| snapshot.get_value());
+    let paint = crate::project_languages::preview_diff(snapshot);
     let digits = diff
         .old
         .as_deref()
@@ -2282,6 +2321,7 @@ fn render_side_by_side(diff: FileDiff) -> impl IntoView {
     let left_track = NodeRef::<leptos::html::Div>::new();
     let right_track = NodeRef::<leptos::html::Div>::new();
     Effect::new(move || {
+        paint.track();
         let (Some(left), Some(right)) = (left_track.get(), right_track.get()) else {
             return;
         };
@@ -2324,9 +2364,12 @@ fn render_side_by_side(diff: FileDiff) -> impl IntoView {
         let cell = |class, number: Option<usize>, line: Option<openwebide_core::DiffLine>, old| view! {
             <div class=class data-line=number>
                 <span class="editor-line-gutter"><span class="editor-line-number">{number}</span></span>
-                <span class="editor-line-text">{line.map(|line| view! {
-                    {render_painted_diff(paint.line(old, number.unwrap(), line.chunks))}
-                    {line.ending_note.map(|note| view! { <span class="form-hint">{note}</span> })}
+                <span class="editor-line-text">{line.map(|line| {
+                    let chunks = StoredValue::new(line.chunks);
+                    view! {
+                        {move || paint.with(|paint| render_painted_diff(paint.line(old, number.unwrap(), chunks.get_value())))}
+                        {line.ending_note.map(|note| view! { <span class="form-hint">{note}</span> })}
+                    }
                 })}</span>
             </div>
         };
@@ -2479,10 +2522,10 @@ fn render_markdown_diff(diff: &FileDiff) -> impl IntoView {
 ///
 /// Automatically defaults to Preview mode for non-text files (images, binaries)
 /// with informative placeholders for non-previewable files.
-fn pair_character(text: &str) -> Option<char> {
+fn pair_character(actions: EditorActions, text: &str) -> Option<char> {
     let mut chars = text.chars();
     let ch = chars.next()?;
-    (chars.next().is_none() && openwebide_core::editor::is_pair_character(ch)).then_some(ch)
+    (chars.next().is_none() && actions.is_pair_character(ch)).then_some(ch)
 }
 
 fn apply_editor_command(
@@ -2537,6 +2580,7 @@ pub fn Editor(
     on_reject: Callback<()>,
 ) -> impl IntoView {
     let workspace = expect_context::<WorkspaceState>();
+    let auth = use_context::<crate::state::auth::AuthState>();
     let file_actions = use_context::<crate::state_actions::file_tree::FileTreeActions>();
     let panel_actions = use_context::<crate::state_actions::layout::LayoutActions>();
     let editor_actions = EditorActions::new(workspace);
@@ -3715,7 +3759,9 @@ pub fn Editor(
             >
                 {move || {
                     let editor_project = workspace.active_project.get();
-                    let editor_account_generation = editor_actions.account_generation();
+                    // Refresh account-bound attributes and handlers together.
+                    // Previously captured callbacks still reject their old owner.
+                    let editor_account_generation = auth.map_or(0, |auth| auth.generation.get());
                     let touch_scroll = Callback::new(move |event: web_sys::TouchEvent| {
                         if let Some(textarea) = event
                             .current_target()
@@ -3969,7 +4015,7 @@ pub fn Editor(
                                                     let command = match event.input_type().as_str() {
                                                         "insertLineBreak" | "insertParagraph" => Some(EditorCommand::Newline),
                                                         "deleteContentBackward" => Some(EditorCommand::DeletePair),
-                                                        "insertText" => event.data().and_then(|text| pair_character(&text)).map(EditorCommand::TypeCharacter),
+                                                        "insertText" => event.data().and_then(|text| pair_character(editor_actions, &text)).map(EditorCommand::TypeCharacter),
                                                         _ => None,
                                                     };
                                                     if let Some(command) = command && apply_editor_command(editor_actions, command, &textarea, action_error) { event.prevent_default(); return; }
@@ -4028,7 +4074,7 @@ pub fn Editor(
                                                     key if modified && key.eq_ignore_ascii_case("z") => Some(if event.shift_key() { EditorCommand::Redo } else { EditorCommand::Undo }),
                                                     key if modified && key.eq_ignore_ascii_case("y") => Some(EditorCommand::Redo),
                                                     "Backspace" if !modified && !event.alt_key() => Some(EditorCommand::DeletePair),
-                                                    key if !modified && !event.alt_key() => pair_character(key).map(EditorCommand::TypeCharacter),
+                                                    key if !modified && !event.alt_key() => pair_character(editor_actions, key).map(EditorCommand::TypeCharacter),
                                                     _ => None,
                                                 };
                                                 if let Some(command) = command && apply_editor_command(editor_actions, command, &textarea, action_error) {

@@ -26,6 +26,8 @@ use wasm_bindgen_futures::JsFuture;
 
 #[derive(Clone)]
 pub struct TestState {
+    pub owner: Owner,
+    pub languages: openwebide_frontend::state::languages::LanguagesState,
     pub auth: AuthState,
     pub monitors: openwebide_frontend::state::monitors::MonitorsState,
     pub monitor_actions: openwebide_frontend::monitors::MonitorActions,
@@ -98,6 +100,13 @@ impl TestState {
         provide_context(memory_actions);
         let plugins = openwebide_frontend::state::plugins::PluginsState::default();
         provide_context(plugins);
+        let languages = openwebide_frontend::state::languages::LanguagesState::default();
+        provide_context(languages);
+        provide_context(
+            openwebide_frontend::project_languages::ProjectLanguageActions::new(
+                api, languages, auth, projects, plugins,
+            ),
+        );
         provide_context(
             openwebide_frontend::project_plugins::ProjectPluginActions::new(
                 api,
@@ -120,6 +129,8 @@ impl TestState {
             openwebide_frontend::scheduled::TaskActions::new(api, scheduled, auth, projects, chat);
         provide_context(task_actions);
         Self {
+            owner: Owner::current().expect("mounted test owner"),
+            languages,
             monitors,
             monitor_actions,
             scheduled,
@@ -154,6 +165,11 @@ impl TestState {
         self.fake.projects.borrow_mut().push(project.clone());
         self.projects.projects.set(vec![project]);
         self.projects.active_project.set(Some(1));
+    }
+
+    pub fn editor_actions(&self) -> openwebide_frontend::state_actions::editor::EditorActions {
+        self.owner
+            .with(|| openwebide_frontend::state_actions::editor::EditorActions::new(self.workspace))
     }
 
     pub fn seed_skill_plugin(&self) -> openwebide_core::plugins::PreparedPlugin {

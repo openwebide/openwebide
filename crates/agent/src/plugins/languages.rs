@@ -148,8 +148,11 @@ impl<H: PluginActionHost> LanguageService<H> {
         if output.is_ok() {
             state.failures = 0;
             state.retry_after = 0;
-        } else {
+        } else if self.host.is_current() {
             state.failed(self.host.host.now_ms().unwrap_or(now_ms), true);
+        } else {
+            // Superseded document work is cancellation, not a host outage.
+            state.documents.clear();
         }
         output
     }

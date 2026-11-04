@@ -241,6 +241,7 @@ impl ProjectPluginActions {
             });
         });
         let refresh = Callback::new(move |()| perform.run(Operation::Refresh));
+        let binding_scope = StoredValue::new_local(None);
         Effect::new(move |_| {
             auth.generation.track();
             projects.active_project.track();
@@ -252,7 +253,16 @@ impl ProjectPluginActions {
             state.installations.set(Vec::new());
             state.pending_updates.set(Vec::new());
             state.review_current.set(None);
-            state.project_plugins.set(Vec::new());
+            // Chat switches invalidate action/review callbacks, but the same
+            // project's installed editor providers remain valid during refresh.
+            let identity = scope();
+            let identity = (
+                identity.0, identity.1, identity.3, identity.4, identity.5, identity.6,
+            );
+            if binding_scope.with_value(|previous| previous.as_ref() != Some(&identity)) {
+                state.project_plugins.set(Vec::new());
+            }
+            binding_scope.set_value(Some(identity));
             state.marketplaces.set(MarketplaceSettings::default());
             state.failures.set(Vec::new());
             state.loaded.set(false);

@@ -107,7 +107,8 @@ pub(crate) async fn login(req: Request, state: &AppState) -> Result<JsonResp, Ap
 
 /// The authenticated account (set by the router from the bearer token).
 pub(crate) async fn me(state: &AppState, user: AuthedUser) -> Result<JsonResp, ApiError> {
-    super::plugins::ensure_bundled_plugins(state, user.id).await;
+    // Plugin list/binding requests initialize defaults independently. Account
+    // access must not wait for a cold compiler/runtime or an unavailable host.
     let user = state.store.get_user(user.id).await?.map(|u| {
         let mut account = u.public();
         account.role = user.role;

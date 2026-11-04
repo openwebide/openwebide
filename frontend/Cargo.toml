@@ -18,7 +18,8 @@ js-sys = { workspace = true }
 leptos = { workspace = true }
 lepticons = { version = "0.13.1", default-features = false, features = ["social", "account", "navigation", "arrows", "files", "layout", "tools", "development", "communication", "security", "text", "multimedia", "people", "notifications", "time"] }
 openwebide-agent = { workspace = true }
-openwebide-core = { workspace = true, features = ["editor-parser", "private-input"] }
+openwebide-core = { workspace = true, features = ["editor-analysis", "private-input"] }
+openwebide-language-syntax = { path = "../crates/language-syntax", optional = true }
 openwebide-llm = { workspace = true }
 pulldown-cmark = { workspace = true }
 send_wrapper = { workspace = true }
@@ -29,7 +30,7 @@ wasm-bindgen-futures = { workspace = true }
 web-sys = { workspace = true, features = ["Crypto", "css", "CustomEvent", "Performance", "WheelEvent", "TouchEvent", "DocumentFragment", "Worker", "WorkerOptions", "WorkerType", "DedicatedWorkerGlobalScope", "MessageEvent", "ErrorEvent", "FocusOptions", "CompositionEvent", "InputEvent", "InputEventInit", "Range", "DomRect", "DomRectList", "VisualViewport", "NodeList", "CssStyleDeclaration", "BlobPropertyBag", "HtmlAnchorElement", "HtmlDocument", "RequestCredentials", "RequestCache", "MutationObserver", "MutationObserverInit", "Notification", "NotificationPermission", "NotificationOptions"] }
 
 [features]
-test-support = ["openwebide-core/test-support"]
+test-support = ["openwebide-core/test-support", "openwebide-core/editor-parser", "dep:openwebide-language-syntax"]
 
 [dev-dependencies]
 web-sys = { workspace = true, features = ["DomRect", "NodeList", "PointerEventInit", "DataTransferItemList", "DataTransferItem"] }

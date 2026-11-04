@@ -77,7 +77,7 @@ pub fn matching_bracket_with_context(
     context: &Structure,
     offset: usize,
 ) -> Option<(usize, usize)> {
-    if !has_adjacent_bracket(text, offset) || !context.matches_source(text) {
+    if offset > text.len() || !text.is_char_boundary(offset) || !context.matches_source(text) {
         return None;
     }
     matching_bracket_in(text, context, offset)

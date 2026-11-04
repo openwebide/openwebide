@@ -26,6 +26,7 @@ pub struct ProjectHost {
     auth: AuthState,
     local: StoredValue<HashMap<i64, LocalRepository>, LocalStorage>,
     epoch: StoredValue<Rc<Cell<u64>>, LocalStorage>,
+    revision: RwSignal<u64>,
 }
 
 impl ProjectHost {
@@ -37,6 +38,7 @@ impl ProjectHost {
     ) -> Self {
         let local = StoredValue::new_local(HashMap::new());
         let epoch = StoredValue::new_local(Rc::new(Cell::new(0u64)));
+        let revision = RwSignal::new(0_u64);
         let previous = StoredValue::new_local(None);
         Effect::new(move |_| {
             let identity = (
@@ -58,6 +60,7 @@ impl ProjectHost {
             if previous.with_value(|previous| previous.as_ref() != Some(&identity)) {
                 local.update_value(HashMap::clear);
                 epoch.with_value(|epoch| epoch.set(epoch.get().wrapping_add(1)));
+                revision.set(epoch.with_value(|epoch| epoch.get()));
             }
             previous.set_value(Some(identity));
         });
@@ -68,6 +71,7 @@ impl ProjectHost {
             auth,
             local,
             epoch,
+            revision,
         }
     }
 
@@ -214,7 +218,11 @@ impl ProjectHost {
     }
 
     pub fn revision(self) -> Option<u64> {
-        self.epoch.try_with_value(|epoch| epoch.get())
+        self.revision.try_get_untracked()
+    }
+
+    pub fn track_revision(self) {
+        self.revision.track();
     }
 
     /// Hosts with no browser verification can resolve synchronously.

@@ -267,3 +267,75 @@ fn a_formatter_only_package_does_not_displace_syntax_or_editing_rules() {
     };
     assert_eq!(provider.plugin_label, "formatter");
 }
+
+#[test]
+fn wildcard_only_matches_preserve_specific_providers_and_missing_preferences() {
+    for host in ["server-host", "paired-host"] {
+        let mut bindings = vec![
+            binding(
+                "fallback",
+                host,
+                json!({"id":"generic","name":"Generic","filenamePatterns":["*"],"configuration":{"lineComment":"#"}}),
+            ),
+            binding("rust", host, rust()),
+            binding(
+                "special",
+                host,
+                json!({"id":"special","name":"Special","filenames":["special.rs"]}),
+            ),
+            binding(
+                "pattern",
+                host,
+                json!({"id":"pattern","name":"Pattern","filenamePatterns":[".notes.*"]}),
+            ),
+            binding(
+                "script",
+                host,
+                json!({"id":"script","name":"Script","firstLine":"^#!.*python"}),
+            ),
+        ];
+        for reverse in [false, true] {
+            if reverse {
+                bindings.reverse();
+            }
+            let registry = LanguageRegistry::from_bindings(&bindings);
+            for (path, line, expected) in [
+                ("unknown.文😀", "", "generic"),
+                ("src/main.rs", "", "rust"),
+                ("special.rs", "", "special"),
+                (".notes.local", "", "pattern"),
+                ("script", "#!/usr/bin/python3", "script"),
+            ] {
+                let LanguageSelection::Selected(provider) =
+                    registry.select(path, line, None, &LanguagePreferences::default())
+                else {
+                    panic!("{path}: selected provider required")
+                };
+                assert_eq!(provider.definition.id, expected, "{host}: {path}");
+            }
+            let mut preferences = LanguagePreferences::default();
+            preferences.providers.insert(
+                "rust".into(),
+                ProviderPreference::Provider {
+                    namespace: "plugin:missing/rust".into(),
+                },
+            );
+            assert_eq!(
+                registry.select("src/main.rs", "", None, &preferences),
+                LanguageSelection::Unavailable("plugin:missing/rust".into())
+            );
+            preferences
+                .providers
+                .insert("generic".into(), ProviderPreference::Disabled);
+            assert_eq!(
+                registry.select("unknown.file", "", None, &preferences),
+                LanguageSelection::Plain
+            );
+        }
+        bindings.push(binding("other-fallback", host, json!({"id":"other","name":"Other","filenamePatterns":["?*"],"configuration":{"lineComment":";"}})));
+        let registry = LanguageRegistry::from_bindings(&bindings);
+        assert!(
+            matches!(registry.select("unknown.file", "", None, &LanguagePreferences::default()), LanguageSelection::Ambiguous(values) if values.len()==2)
+        );
+    }
+}

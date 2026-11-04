@@ -13,7 +13,7 @@ pub mod commands;
 #[cfg(target_arch = "wasm32")]
 pub mod components;
 pub mod conversation;
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", feature = "test-support"))]
 pub mod editor_worker;
 pub mod git_status;
 pub mod git_timeline;
@@ -48,6 +48,8 @@ pub mod project_git;
 #[cfg(target_arch = "wasm32")]
 pub mod project_host;
 #[cfg(target_arch = "wasm32")]
+pub mod project_languages;
+#[cfg(target_arch = "wasm32")]
 pub mod project_memory;
 #[cfg(target_arch = "wasm32")]
 pub mod project_plugins;
@@ -81,10 +83,13 @@ pub fn mount() {
     std::panic::set_hook(Box::new(|info| {
         web_sys::console::error_1(&info.to_string().into());
     }));
-    if editor_worker::mount_worker() {
-        return;
+    #[cfg(feature = "test-support")]
+    {
+        if editor_worker::mount_worker() {
+            return;
+        }
+        editor_worker::enable();
     }
-    editor_worker::enable();
     leptos::mount::mount_to_body(app::App);
 }
 

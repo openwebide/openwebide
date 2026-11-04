@@ -7,7 +7,7 @@ use crate::state::{
 };
 use leptos::prelude::*;
 use openwebide_core::{
-    Connection, FileDiff, ModelInfo, Role, paint_inline_diff,
+    Connection, FileDiff, ModelInfo, Role,
     tui::{SessionTelemetry, SlashCommand, extract_editor_context_prelude, parse_thinking},
 };
 use web_sys::wasm_bindgen::JsCast;
@@ -18,16 +18,22 @@ pub(crate) use crate::markdown::render as render_markdown;
 
 /// Render the diff for a file edit: the changed path and the removed/added lines.
 fn render_diff_view(diff: FileDiff) -> impl IntoView {
-    let lines = paint_inline_diff(&diff)
-        .into_iter()
-        .filter(|line| line.marker != ' ')
-        .collect::<Vec<_>>();
     let path = diff.path.clone();
+    let diff = StoredValue::new(diff);
+    let snapshot = Memo::new(move |_| diff.get_value());
+    let paint = crate::project_languages::preview_diff(snapshot);
+    let lines = Memo::new(move |_| {
+        snapshot
+            .with(|diff| paint.with(|paint| paint.inline(diff)))
+            .into_iter()
+            .filter(|line| line.marker != ' ')
+            .collect::<Vec<_>>()
+    });
     view! {
         <div class="tui-diff-box">
             <div class="tui-diff-path">"diff: " {path}</div>
             <div class="tui-diff-lines">
-                {lines.into_iter().map(|line| {
+                {move || lines.get().into_iter().map(|line| {
                     let mark = line.marker;
                     let line_class = if mark == '+' {
                         "tui-diff-line add"
@@ -45,15 +51,22 @@ fn render_diff_view(diff: FileDiff) -> impl IntoView {
 
 fn render_approval_diff(diff: Memo<Option<FileDiff>>) -> impl IntoView {
     let expanded = RwSignal::new(false);
-    let lines = Memo::new(move |_| {
-        diff.with(|diff| {
-            diff.as_ref()
-                .map(paint_inline_diff)
-                .unwrap_or_default()
-                .into_iter()
-                .filter(|line| line.marker != ' ')
-                .collect::<Vec<_>>()
+    let snapshot = Memo::new(move |_| {
+        diff.get().unwrap_or_else(|| FileDiff {
+            path: String::new(),
+            old: None,
+            new: String::new(),
+            old_unavailable: false,
+            backup_path: None,
         })
+    });
+    let paint = crate::project_languages::preview_diff(snapshot);
+    let lines = Memo::new(move |_| {
+        snapshot
+            .with(|diff| paint.with(|paint| paint.inline(diff)))
+            .into_iter()
+            .filter(|line| line.marker != ' ')
+            .collect::<Vec<_>>()
     });
     let has_more = move || lines.with(|lines| lines.len() > 40);
     view! {

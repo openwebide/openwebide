@@ -4,6 +4,16 @@ use std::collections::BTreeSet;
 use super::{Document, Edit, EditError, Selection};
 mod configured;
 
+/// Enter can retain its own indentation decision until the next source edit.
+/// This records a validated editing transaction, never inferred syntax.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct NewlineIndentation {
+    pub(super) revision: u64,
+    pub(super) position: usize,
+    pub(super) closing: char,
+    pub(super) base: String,
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum IndentStyle {
     #[default]

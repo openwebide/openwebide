@@ -19,6 +19,7 @@ pub mod editor_recovery;
 
 pub mod editor_motion;
 
+pub mod languages;
 pub mod memories;
 pub mod plugins;
 pub mod skills;

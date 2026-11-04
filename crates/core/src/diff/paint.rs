@@ -1,6 +1,6 @@
 //! Full-document syntax colors intersected with word-level change boundaries.
 use super::{DiffChunk, FileDiff};
-use crate::highlight::{Token, TokenKind, highlight_lines, language_from_path};
+use crate::highlight::{Token, TokenKind, TokenRows};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DiffChange {
@@ -26,7 +26,21 @@ pub struct DiffPaintLine {
 
 /// Full context keeps source numbering accurate even for compact change previews.
 pub fn paint_inline_diff(diff: &FileDiff) -> Vec<DiffPaintLine> {
-    let paint = DiffPaint::new(diff);
+    paint_inline_diff_with_tokens(diff, None, None)
+}
+
+/// Intersect complete, source-validated provider colors with word changes.
+/// Missing or stale provider rows remain plain.
+pub fn paint_inline_diff_with_tokens(
+    diff: &FileDiff,
+    old: Option<&TokenRows>,
+    new: Option<&TokenRows>,
+) -> Vec<DiffPaintLine> {
+    let paint = DiffPaint::from_tokens(diff, old, new);
+    paint.inline(diff)
+}
+
+fn inline_lines(diff: &FileDiff, paint: &DiffPaint) -> Vec<DiffPaintLine> {
     let mut old_number = 0;
     let mut new_number = 0;
     super::diff_inline_full(diff)
@@ -59,17 +73,25 @@ pub fn paint_inline_diff(diff: &FileDiff) -> Vec<DiffPaintLine> {
         .collect()
 }
 
-/// Parse each side once; displayed rows select colors by original line number.
+/// Source-bound presentation data; displayed rows select colors by original line number.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DiffPaint {
     old: Vec<Vec<Token>>,
     new: Vec<Vec<Token>>,
 }
 
 impl DiffPaint {
+    pub fn inline(&self, diff: &FileDiff) -> Vec<DiffPaintLine> {
+        inline_lines(diff, self)
+    }
     pub fn new(diff: &FileDiff) -> Self {
+        Self::from_tokens(diff, None, None)
+    }
+
+    pub fn from_tokens(diff: &FileDiff, old: Option<&TokenRows>, new: Option<&TokenRows>) -> Self {
         Self {
-            old: paint_source(diff.old.as_deref().unwrap_or_default(), &diff.path),
-            new: paint_source(&diff.new, &diff.path),
+            old: paint_source(diff.old.as_deref().unwrap_or_default(), old),
+            new: paint_source(&diff.new, new),
         }
     }
 
@@ -82,17 +104,31 @@ impl DiffPaint {
     }
 }
 
-fn paint_source(source: &str, path: &str) -> Vec<Vec<Token>> {
-    let language = language_from_path(path);
-    #[cfg(feature = "editor-parser")]
-    let mut lines = crate::editor::SyntaxDocument::new(language)
-        .and_then(|mut document| {
-            document.update(source, || true);
-            document.highlight_lines()
+fn paint_source(source: &str, supplied: Option<&TokenRows>) -> Vec<Vec<Token>> {
+    let mut lines = source
+        .split('\n')
+        .enumerate()
+        .map(|(index, row)| {
+            supplied
+                .and_then(|rows| rows.get(index))
+                .filter(|tokens| {
+                    tokens
+                        .iter()
+                        .map(|token| token.text.as_str())
+                        .collect::<String>()
+                        == row
+                })
+                .map_or_else(
+                    || {
+                        vec![Token {
+                            kind: TokenKind::Plain,
+                            text: std::sync::Arc::new(row.into()),
+                        }]
+                    },
+                    |tokens| tokens.to_vec(),
+                )
         })
-        .unwrap_or_else(|| highlight_lines(source, language));
-    #[cfg(not(feature = "editor-parser"))]
-    let mut lines = highlight_lines(source, language);
+        .collect::<Vec<_>>();
     // DiffLine excludes CRLF terminators. A final bare CR is source content.
     for (line, source) in lines.iter_mut().zip(source.split_inclusive('\n')) {
         if source.ends_with("\r\n")
@@ -261,12 +297,23 @@ mod tests {
             old_unavailable: false,
             backup_path: None,
         };
-        let paint = DiffPaint::new(&diff);
-        let expected_kind = if cfg!(feature = "editor-parser") {
-            TokenKind::Comment
-        } else {
-            TokenKind::Plain
+        let supplied = |source: &str| {
+            crate::highlight::share_token_rows(
+                source
+                    .split('\n')
+                    .map(|text| {
+                        vec![Token {
+                            text: std::sync::Arc::new(text.into()),
+                            kind: TokenKind::Comment,
+                        }]
+                    })
+                    .collect(),
+            )
         };
+        let old = supplied(diff.old.as_deref().unwrap());
+        let new = supplied(&diff.new);
+        let paint = DiffPaint::from_tokens(&diff, Some(&old), Some(&new));
+        let expected_kind = TokenKind::Comment;
         let rows = super::super::diff_side_by_side_detailed(&diff);
         let mut old_number = 0;
         let mut new_number = 0;
@@ -294,11 +341,58 @@ mod tests {
         let tokens = paint.line(false, 1, vec![DiffChunk::Unchanged("/*".into())]);
         assert_eq!(tokens[0].token.kind, expected_kind);
     }
+
+    #[test]
+    fn unavailable_and_mismatched_language_rows_are_plain_without_losing_word_changes() {
+        let diff = FileDiff {
+            path: "file.rs".into(),
+            old: Some("let café = 1;\r\n".into()),
+            new: "let café = 2;\r\n".into(),
+            old_unavailable: false,
+            backup_path: None,
+        };
+        let stale = crate::highlight::share_token_rows(vec![vec![Token {
+            text: std::sync::Arc::new("another source".into()),
+            kind: TokenKind::Keyword,
+        }]]);
+        for lines in [
+            paint_inline_diff(&diff),
+            paint_inline_diff_with_tokens(&diff, Some(&stale), Some(&stale)),
+        ] {
+            assert!(
+                lines
+                    .iter()
+                    .flat_map(|line| &line.tokens)
+                    .all(|token| token.token.kind == TokenKind::Plain)
+            );
+            assert!(
+                lines
+                    .iter()
+                    .flat_map(|line| &line.tokens)
+                    .any(|token| token.change == DiffChange::Inserted)
+            );
+            assert!(
+                lines
+                    .iter()
+                    .flat_map(|line| &line.tokens)
+                    .any(|token| token.change == DiffChange::Deleted)
+            );
+            assert!(lines.iter().any(|line| {
+                line.tokens
+                    .iter()
+                    .map(|token| token.token.text.as_str())
+                    .collect::<String>()
+                    == "let café = 2;"
+            }));
+        }
+    }
 }
 
 /// Paint a bounded Git patch using the same tokens and gutters as editor diffs.
 /// Hunk headers supply original line numbers; metadata never consumes source rows.
-pub fn paint_unified_diff(patch: &str, path: &str) -> Vec<DiffPaintLine> {
+type PatchRow<'a> = (char, Option<usize>, Option<usize>, &'a str);
+
+fn patch_rows(patch: &str) -> Vec<PatchRow<'_>> {
     let mut rows = Vec::new();
     let (mut old, mut new) = (0, 0);
     let mut hunk = false;
@@ -352,20 +446,20 @@ pub fn paint_unified_diff(patch: &str, path: &str) -> Vec<DiffPaintLine> {
         let (old_number, new_number, text) = match marker {
             '+' => {
                 let number = new;
-                new += 1;
+                new = new.saturating_add(1);
                 remaining.1 = remaining.1.saturating_sub(1);
                 (None, Some(number), &line[1..])
             }
             '-' => {
                 let number = old;
-                old += 1;
+                old = old.saturating_add(1);
                 remaining.0 = remaining.0.saturating_sub(1);
                 (Some(number), None, &line[1..])
             }
             ' ' => {
                 let numbers = (old, new);
-                old += 1;
-                new += 1;
+                old = old.saturating_add(1);
+                new = new.saturating_add(1);
                 remaining.0 = remaining.0.saturating_sub(1);
                 remaining.1 = remaining.1.saturating_sub(1);
                 (Some(numbers.0), Some(numbers.1), &line[1..])
@@ -382,6 +476,10 @@ pub fn paint_unified_diff(patch: &str, path: &str) -> Vec<DiffPaintLine> {
             "No textual hunks (binary, rename, copy or mode change).",
         ));
     }
+    rows
+}
+
+fn patch_sources(rows: &[PatchRow<'_>]) -> (String, String) {
     let old_source = rows
         .iter()
         .filter(|(_, old, _, _)| old.is_some())
@@ -394,9 +492,29 @@ pub fn paint_unified_diff(patch: &str, path: &str) -> Vec<DiffPaintLine> {
         .map(|(_, _, _, text)| *text)
         .collect::<Vec<_>>()
         .join("\n");
+    (old_source, new_source)
+}
+
+/// The exact old/new source reconstructed for a bounded unified patch.
+/// Hunk rows stay mapped to their original source numbers when colors arrive.
+pub fn unified_diff_sources(patch: &str) -> (String, String) {
+    patch_sources(&patch_rows(patch))
+}
+
+pub fn paint_unified_diff(patch: &str, _path: &str) -> Vec<DiffPaintLine> {
+    paint_unified_diff_with_tokens(patch, None, None)
+}
+
+pub fn paint_unified_diff_with_tokens(
+    patch: &str,
+    old: Option<&TokenRows>,
+    new: Option<&TokenRows>,
+) -> Vec<DiffPaintLine> {
+    let rows = patch_rows(patch);
+    let (old_source, new_source) = patch_sources(&rows);
     let (old_paint, new_paint) = (
-        paint_source(&old_source, path),
-        paint_source(&new_source, path),
+        paint_source(&old_source, old),
+        paint_source(&new_source, new),
     );
     let (mut old_index, mut new_index) = (0, 0);
     rows.into_iter()
@@ -453,6 +571,45 @@ pub fn paint_unified_diff(patch: &str, path: &str) -> Vec<DiffPaintLine> {
 #[cfg(test)]
 mod patch_tests {
     use super::*;
+    #[test]
+    fn provider_rows_map_to_patch_hunks_without_coloring_headers_or_allocating_missing_lines() {
+        let patch = format!(
+            "@@ -40,2 +50,2 @@ function\n-old café\n+new 😀\n context\n@@ -{} +{} @@\n-last\n+next",
+            usize::MAX,
+            usize::MAX
+        );
+        let (old, new) = unified_diff_sources(&patch);
+        assert_eq!(old, "old café\ncontext\nlast");
+        assert_eq!(new, "new 😀\ncontext\nnext");
+        let rows = |source: &str| {
+            crate::highlight::share_token_rows(
+                source
+                    .split('\n')
+                    .map(|row| {
+                        vec![Token {
+                            kind: TokenKind::String,
+                            text: std::sync::Arc::new(row.into()),
+                        }]
+                    })
+                    .collect(),
+            )
+        };
+        let old = rows(&old);
+        let new = rows(&new);
+        let lines = paint_unified_diff_with_tokens(&patch, Some(&old), Some(&new));
+        for line in &lines {
+            let expected = if line.old_number.is_some() || line.new_number.is_some() {
+                TokenKind::String
+            } else {
+                TokenKind::Plain
+            };
+            assert!(line.tokens.iter().all(|token| token.token.kind == expected));
+        }
+        assert_eq!(lines[1].old_number, Some(40));
+        assert_eq!(lines[2].new_number, Some(50));
+        assert_eq!(lines[5].old_number, Some(usize::MAX));
+        assert_eq!(lines[6].new_number, Some(usize::MAX));
+    }
     #[test]
     fn patch_headers_and_multiple_hunks_preserve_source_numbers_and_text() {
         let patch = "diff --git a/a.rs b/a.rs\n--- a/a.rs\n+++ b/a.rs\n@@ -40,2 +50,2 @@\n-old\n+new\n context\n@@ -100 +120 @@\n-last\n+next\n\\ No newline at end of file";

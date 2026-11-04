@@ -11,11 +11,13 @@ the Installed gear menu. Uninstalling returns a plugin to Available. Listings sh
 source named Open WebIDE. Click a row’s name to inspect plugin details
 and use the gear menu to choose a release. Install it on the open project's
 execution host, or on the server host when no project is open. Plugins currently
-contribute agent skills, host-executed Rust tools and [declarative workspace panels](plugin-panels.md) through the public SDK.
+contribute agent skills, host-executed Rust tools, [language support](#language-support)
+and [declarative workspace panels](plugin-panels.md) through the public SDK.
 Older platform tool-group installations require an update to executable handlers.
 
 Execution hosts bundle a commit-pinned subset of the official marketplace: Web,
-Project Memory, Scheduling and Skill Authoring. Account initialization installs
+Project Memory, Scheduling and Skill Authoring, plus 19 independent language-family
+packages covering 24 language IDs. Loading plugins installs
 missing defaults once through the normal validated host installation flow, with
 Notify updates. Existing accounts receive this baseline too. PR Review stays optional.
 The database remembers installation/removal by plugin identity; later sign-ins,
@@ -27,8 +29,7 @@ The selection is locked in `plugins/bundled.json`. `tools/bundle_plugins.py`
 materializes only those package directories from the pinned public Git commit,
 along with its MIT license. Docker builds regenerate the host snapshots; CI
 checks the committed snapshots against upstream. Distribution builds compile each
-selected Rust plugin in the installation compiler sandbox, check its exported tools
-and events against its manifest, and embed the resulting WASM in the execution host.
+selected Rust plugin in the installation compiler sandbox, check its exported tools, events, panels and language definitions against its manifest, and embed the resulting WASM in the execution host.
 First installation of these defaults needs no network or compiler. Development
 builds without a compiled bundle embed source and compile it on installation. Browsers
 receive manifests and managed skills through the existing APIs; plugin files are
@@ -180,8 +181,31 @@ updates, disablement or removal cannot replace those instructions mid-run. This
 generic loader excludes personal skills and provides no authoring operations.
 Executable skill handlers continue to use their own SDK implementation.
 
-Tool-group manifests are retired feature switches. The pinned default subset is Web, Project
-Memory, Scheduling and Skill Authoring; PR Review remains optional.
+Tool-group manifests are retired feature switches. PR Review remains optional.
+
+## Language support
+
+The 19 first-party language-family packages are grouped by the intended LSP
+coverage, with related dialects together: JavaScript, TypeScript, JSX and TSX
+share one package; C and C++ share another. Each family can be installed,
+updated, disabled and removed independently. The aggregate Languages prototype is
+excluded from the defaults and official catalog.
+Installed language components execute on the selected project's server or paired
+host. The editor, Inline/Split diffs and change previews consume source-bound
+results; core components render them and apply declared editing rules. Missing,
+disabled or unavailable providers preserve plain editing, saving and recovery.
+
+Settings → Editor → Language providers stores account defaults and project
+choices in the database. Competing providers require a choice; updates, removal,
+re-enablement and **Retry language support** use the normal plugin lifecycle.
+Source, document and ownership checks reject superseded results.
+
+The independent [Notes example catalog](https://github.com/openwebide/plugins/blob/ce994a55d04e28ce34877642f1da1dad8123d966/examples/language-marketplace.json)
+uses the same package format, SDK and installation controls. Add that repository
+with catalog path `examples/language-marketplace.json` to try its custom language.
+See [language authoring](plugin-authoring.md#language-plugin-build-toolchain)
+for protocol and toolchain requirements. Formatting, diagnostics, snippets and
+LSP have metadata extension points; their editor services remain roadmap work.
 
 ## Executable plugin requirements
 
@@ -397,8 +421,10 @@ the network during compilation.
 Web, Project Memory, Scheduling and Skill Authoring ship as API 3 source
 plugins in the official marketplace and compiled default bundle. They own their
 behavior through the same public SDK as community plugins. Remaining lifecycle
-verification, registry SDK publication and future MCP, language, UI and editor
-contribution contracts are tracked in [the roadmap](roadmap.md).
+verification and registry SDK publication are tracked in [the roadmap](roadmap.md).
+API 4 supports declarative panels; API 5 language contributions and editor
+integration are described in [plugin authoring](plugin-authoring.md#language-plugin-build-toolchain).
+MCP, LSP services, editor annotations and hooks remain future contribution work.
 
 Configured host [MCP servers](mcp.md) are supported independently of plugins.
 Declaring an MCP server in a plugin manifest remains future contribution work.

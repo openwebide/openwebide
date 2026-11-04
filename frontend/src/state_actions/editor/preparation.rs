@@ -1,14 +1,19 @@
 //! Shared publication/coalescing policy above the thin worker transport.
 use super::EditorActions;
-use crate::state::workspace::{EditorFallbackPaint, EditorSyntaxScope, PreparedEditorSyntax};
+#[cfg(feature = "test-support")]
+use crate::state::workspace::PreparedEditorSyntax;
+use crate::state::workspace::{EditorFallbackPaint, EditorSyntaxScope};
 use leptos::prelude::*;
 #[cfg(test)]
 use openwebide_core::editor::SyntaxReply;
+#[cfg(feature = "test-support")]
 use openwebide_core::editor::{
     SyntaxAnalysis, SyntaxReplyReception, SyntaxRequest, SyntaxRequestPublication, SyntaxStatus,
 };
+#[cfg(feature = "test-support")]
 use std::{cell::Cell, rc::Rc};
 
+#[cfg(feature = "test-support")]
 pub(super) async fn publish_syntax_request(
     mut publication: SyntaxRequestPublication,
     mut current: impl FnMut() -> bool,
@@ -24,6 +29,7 @@ pub(super) async fn publish_syntax_request(
     }
 }
 
+#[cfg(feature = "test-support")]
 async fn receive_syntax_reply(
     mut reception: SyntaxReplyReception<'_>,
     mut current: impl FnMut() -> bool,
@@ -39,6 +45,7 @@ async fn receive_syntax_reply(
     }
 }
 
+#[cfg(feature = "test-support")]
 #[derive(Clone)]
 struct PublishedSyntax {
     scope: EditorSyntaxScope,
@@ -48,6 +55,9 @@ struct PublishedSyntax {
 
 impl EditorActions {
     pub(super) fn syntax_scope(self) -> Option<EditorSyntaxScope> {
+        if self.input_clock.is_disposed() {
+            return None;
+        }
         let Some(key) = self.key() else {
             self.workspace.editor_syntax_scope.set(None);
             return None;
@@ -55,6 +65,8 @@ impl EditorActions {
         let epoch = self.workspace.pending_epoch.get_untracked();
         let read_revision = self.workspace.editor_read_revision.get_untracked();
         let account_generation = self.auth.map_or(0, |auth| auth.generation.get_untracked());
+        let session = self.workspace.active_session.get_untracked();
+        let language_generation = self.language_generation();
         let tab_width = self.rules_untracked().indentation.tab_width();
         let source_revision = self.workspace.editor_source_revision.get_untracked();
         let source = self.workspace.content.with_untracked(|source| {
@@ -79,18 +91,24 @@ impl EditorActions {
             epoch,
             read_revision,
             account_generation,
+            session,
+            language_generation,
             tab_width,
         };
         self.workspace.editor_syntax_scope.set(Some(scope.clone()));
         Some(scope)
     }
     pub(super) fn syntax_scope_current(self, scope: &EditorSyntaxScope) -> bool {
-        !self.workspace.content.is_disposed()
+        !self.input_clock.is_disposed()
+            && !self.workspace.content.is_disposed()
             && self.key().as_ref() == Some(&scope.key)
             && self.workspace.pending_epoch.get_untracked() == scope.epoch
             && self.workspace.editor_read_revision.get_untracked() == scope.read_revision
             && self.auth.map_or(0, |auth| auth.generation.get_untracked())
                 == scope.account_generation
+            && self.workspace.active_session.get_untracked() == scope.session
+            && self.language_generation() == scope.language_generation
+            && self.language_provider_current(scope)
             && self.rules_untracked().indentation.tab_width() == scope.tab_width
             && self.workspace.editor_source_revision.get_untracked() == scope.source_revision
             && (self.syntax_source_retained(scope)
@@ -108,6 +126,8 @@ impl EditorActions {
                     && cached.epoch == scope.epoch
                     && cached.read_revision == scope.read_revision
                     && cached.account_generation == scope.account_generation
+                    && cached.session == scope.session
+                    && cached.language_generation == scope.language_generation
                     && cached.source_revision == scope.source_revision
                     && std::sync::Arc::ptr_eq(&cached.source, &scope.source)
             })
@@ -115,7 +135,7 @@ impl EditorActions {
     }
 
     /// Pending worker results do not require a second full-file lexical pass.
-    fn worker_syntax_pending(self) -> bool {
+    pub(super) fn worker_syntax_pending(self) -> bool {
         self.workspace.editor_worker_active.get_untracked()
             && self.key().is_some()
             && self
@@ -188,10 +208,15 @@ impl EditorActions {
             && (prepared_source
                 || (has_rows
                     && (!self.full_row_paint_ready()
-                        || (self.key().is_some_and(|key| {
-                            openwebide_core::highlight::language_from_path(&key.1)
-                                != openwebide_core::highlight::Language::Plain
-                        }) && !self.pending_plain_after_rejection()))))
+                        || (self.key().is_some()
+                            && self.languages.is_some_and(|state| {
+                                state.selected.with_untracked(|provider| {
+                                    provider
+                                        .as_ref()
+                                        .is_some_and(|provider| provider.definition.features.syntax)
+                                })
+                            })
+                            && !self.pending_plain_after_rejection()))))
     }
 
     /// A rejected parser result establishes neutral paint for subsequent edits in
@@ -212,6 +237,8 @@ impl EditorActions {
                         && self.workspace.editor_read_revision.get_untracked()
                             == scope.read_revision
                         && self.account_generation() == scope.account_generation
+                        && self.workspace.active_session.get_untracked() == scope.session
+                        && self.language_generation() == scope.language_generation
                         && self.rules_untracked().indentation.tab_width() == scope.tab_width
                         && self.workspace.editor_source_revision.get_untracked()
                             > scope.source_revision
@@ -398,6 +425,9 @@ impl EditorActions {
                     && self.workspace.pending_epoch.get_untracked() == scope.epoch
                     && self.workspace.editor_read_revision.get_untracked() == scope.read_revision
                     && self.account_generation() == scope.account_generation
+                    && self.workspace.active_session.get_untracked() == scope.session
+                    && self.language_generation() == scope.language_generation
+                    && self.language_provider_current(scope)
                     && self.rules_untracked().indentation.tab_width() == scope.tab_width)
                     .then(|| prepared.analysis.as_ref()?.highlights().cloned())
                     .flatten()
@@ -429,13 +459,7 @@ impl EditorActions {
 
     pub fn install_syntax_worker(self) {
         self.install_fallback_paint();
-        if !crate::editor_worker::enabled() {
-            return;
-        }
-        let Ok(client) = crate::editor_worker::WorkerClient::new() else {
-            return;
-        };
-        self.install_syntax_transport(Rc::new(client));
+        self.install_language_services();
     }
 
     /// Shared cooperative fallback policy above browser task/frame primitives.
@@ -520,6 +544,8 @@ impl EditorActions {
                         .filter(|paint| {
                             paint.scope.key == scope.key
                                 && paint.scope.account_generation == scope.account_generation
+                                && paint.scope.session == scope.session
+                                && paint.scope.language_generation == scope.language_generation
                                 && paint.scope.read_revision == scope.read_revision
                                 && paint.scope.tab_width == scope.tab_width
                         })
@@ -603,6 +629,7 @@ impl EditorActions {
     }
 
     /// Transport boundary; browser contracts inject deferred replies into the same policy.
+    #[cfg(feature = "test-support")]
     pub fn install_syntax_transport(self, client: Rc<dyn crate::editor_worker::SyntaxTransport>) {
         self.workspace.editor_worker_active.set(true);
         let pending = StoredValue::new(None::<(u32, EditorSyntaxScope)>);

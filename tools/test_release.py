@@ -219,7 +219,7 @@ if os.environ.get('GH_MISSING') == 'true' and (args[:2] == ['api', 'repos/openwe
         workflow = (release.ROOT / '.github/workflows/release.yml').read_text()
 
         def job(name):
-            return re.split(r'\n  [a-z-]+:\n', workflow.split(f'\n  {name}:\n', 1)[1], 1)[0]
+            return re.split(r'\n  [a-z-]+:\n', workflow.split(f'\n  {name}:\n', 1)[1], maxsplit=1)[0]
 
         bridges = job('macos-bridges')
         self.assertIn('ROLLING: ${{ needs.validate.outputs.rolling }}', bridges)

@@ -12,6 +12,7 @@ use openwebide_core::{
 use std::{
     cell::RefCell,
     collections::{BTreeMap, BTreeSet, VecDeque},
+    rc::Rc,
 };
 use web_sys::AbortSignal;
 
@@ -52,10 +53,23 @@ pub enum Call {
 
 pub type Deferred<T> = futures::channel::oneshot::Receiver<Result<T, String>>;
 
+/// A test host supplies component results through the ordinary invocation path.
+/// The production frontend never owns this handler or executes language code.
+pub type LanguageHandler = Rc<
+    dyn Fn(
+        openwebide_core::plugins::execution::InvokePlugin,
+    ) -> LocalBoxFuture<
+        'static,
+        Result<openwebide_core::plugins::languages::LanguageOutput, String>,
+    >,
+>;
+
 type SettingsLoad = futures::channel::oneshot::Receiver<Result<BTreeMap<String, String>, String>>;
 
 #[derive(Default)]
 pub struct FakeBackend {
+    pub language_handler: RefCell<Option<LanguageHandler>>,
+    pub language_inputs: RefCell<Vec<openwebide_core::plugins::languages::LanguageInput>>,
     pub bridge_credential: RefCell<Option<(String, i64)>>,
     pub marketplaces: RefCell<openwebide_core::plugins::marketplace::MarketplaceSettings>,
     pub marketplace_results:
@@ -250,6 +264,7 @@ pub struct FakeBackend {
     pub panel_save_results:
         RefCell<VecDeque<futures::channel::oneshot::Receiver<Result<(), String>>>>,
     pub settings: RefCell<BTreeMap<String, String>>,
+    pub language_save_results: RefCell<VecDeque<Deferred<()>>>,
     pub editor_save_results: RefCell<VecDeque<Deferred<()>>>,
     pub settings_load_error: RefCell<Option<String>>,
     pub settings_load_started: RefCell<Option<futures::channel::oneshot::Sender<()>>>,
@@ -621,6 +636,27 @@ impl Backend for FakeBackend {
                 .get(&request.id)
                 .cloned()
                 .ok_or("Missing actor")?;
+            if matches!(call.operation, PluginOperation::Language) {
+                let input =
+                    serde_json::from_str(&call.arguments).map_err(|error| error.to_string())?;
+                self.language_inputs.borrow_mut().push(input);
+                let handler = self
+                    .language_handler
+                    .borrow()
+                    .clone()
+                    .ok_or("Missing language component fixture")?;
+                let output = handler(call).await?;
+                self.plugin_actors.borrow_mut().remove(&request.id);
+                self.plugin_actor_contexts.borrow_mut().remove(&request.id);
+                return Ok(PluginInvocation {
+                    id: request.id.clone(),
+                    step: PluginStep::Complete {
+                        ok: true,
+                        content: serde_json::to_string(&output).unwrap(),
+                        summary: "Fixture language component result".into(),
+                    },
+                });
+            }
             if matches!(call.operation, PluginOperation::Panel) {
                 let pending = self.panel_document_results.borrow_mut().pop_front();
                 let document = if let Some(pending) = pending {
@@ -1906,6 +1942,12 @@ impl Backend for FakeBackend {
             });
             if key == "editor_preferences" {
                 let pending = self.editor_save_results.borrow_mut().pop_front();
+                if let Some(pending) = pending {
+                    pending.await.map_err(|error| error.to_string())??;
+                }
+            }
+            if key == "language_settings" {
+                let pending = self.language_save_results.borrow_mut().pop_front();
                 if let Some(pending) = pending {
                     pending.await.map_err(|error| error.to_string())??;
                 }

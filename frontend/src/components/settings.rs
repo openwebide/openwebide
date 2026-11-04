@@ -89,6 +89,7 @@ pub fn Settings(
                 </FormSection>
                 </div>
                 <div id="settings-panel-editor" class="ui-tab-panel" role="tabpanel" aria-labelledby="settings-tab-editor" tabindex="0" hidden=move || tab.get() != 1>
+                <super::language_settings::LanguageProviderSettings />
                 <FormSection title="Typography" description="Changes apply immediately.">
                     <FormField label="Font family">
                         <super::dropdown::DropdownSelect label="Editor font" value=Signal::derive(move || settings.editor_preferences.get().font.name().to_string()) options=Signal::derive(|| openwebide_core::editor::EditorFont::ALL.into_iter().map(|font| super::dropdown::SelectOption::new(font.name(), format!("Monaspace {}", font.name()))).collect()) disabled=Signal::derive(move || on_set_editor_preferences.is_none()) on_change=Callback::new(move |name: String| {

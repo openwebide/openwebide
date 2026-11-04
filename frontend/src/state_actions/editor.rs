@@ -24,6 +24,7 @@ pub enum EditorCommand {
 }
 
 mod columns;
+mod languages;
 mod structural_actions;
 pub use columns::EditorColumnSelection;
 mod decorations;
@@ -111,6 +112,8 @@ pub struct EditorActions {
     workspace: WorkspaceState,
     auth: Option<crate::state::auth::AuthState>,
     preferences: Option<crate::state::settings::SettingsState>,
+    languages: Option<crate::state::languages::LanguagesState>,
+    language_actions: Option<crate::project_languages::ProjectLanguageActions>,
     capacity: Memo<Option<openwebide_core::editor::EditorLimit>>,
     rules: Memo<openwebide_core::editor::EditorRules>,
     group: RwSignal<u64>,
@@ -139,6 +142,9 @@ impl EditorActions {
     pub fn account_generation(self) -> u64 {
         self.auth.map_or(0, |auth| auth.generation.get_untracked())
     }
+    pub fn active_session(self) -> Option<i64> {
+        self.workspace.active_session.get()
+    }
 
     pub fn new(workspace: WorkspaceState) -> Self {
         Self::with_input_clock(workspace, std::rc::Rc::new(js_sys::Date::now))
@@ -156,6 +162,8 @@ impl EditorActions {
             workspace,
             auth: use_context::<crate::state::auth::AuthState>(),
             preferences,
+            languages: use_context(),
+            language_actions: use_context(),
             rules: Memo::new(move |_| resolve_current_rules(workspace, preferences)),
             capacity: Memo::new(move |_| {
                 workspace.content.with(|source| {
@@ -402,9 +410,16 @@ impl EditorActions {
     pub fn measured_rows(self) -> Option<crate::state::workspace::EditorRowMeasurements> {
         let revision = self.view_revision();
         let account = self.auth.map_or(0, |auth| auth.generation.get());
+        let session = self.active_session();
+        let language = self.languages.map_or(0, |state| state.generation.get());
         self.workspace.editor_rows.with(|rows| {
             rows.as_ref()
-                .filter(|rows| rows.revision == revision && rows.account_generation == account)
+                .filter(|rows| {
+                    rows.revision == revision
+                        && rows.account_generation == account
+                        && rows.session == session
+                        && rows.language_generation == language
+                })
                 .cloned()
         })
     }
@@ -520,6 +535,8 @@ impl EditorActions {
                 whitespace,
                 revision,
                 account_generation: self.account_generation(),
+                session: self.workspace.active_session.get_untracked(),
+                language_generation: self.language_generation(),
                 metrics,
                 rows,
             }));
@@ -810,7 +827,7 @@ impl EditorActions {
         command: openwebide_core::editor::SelectionCommand,
     ) -> Result<Option<Vec<Selection>>, openwebide_core::editor::SelectionError> {
         let rules = self.rules_untracked();
-        let language = openwebide_core::highlight::language_from_path(path);
+        let language = openwebide_core::highlight::Language::Plain;
         if !self.is_current(project, path) || !self.source_matches(source) {
             return Ok(None);
         }
@@ -1014,14 +1031,8 @@ impl EditorActions {
         Vec<openwebide_core::editor::FoldRange>,
     )> {
         if self.capacity.get_untracked().is_some() {
-            let key = self
-                .workspace
-                .active_project
-                .get_untracked()
-                .zip(self.workspace.open_file.get_untracked())?;
-            self.workspace
-                .editor_syntax
-                .update(|cache| cache.remove(&key));
+            self.workspace.active_project.get_untracked()?;
+            self.workspace.open_file.get_untracked()?;
             return Some((openwebide_core::editor::SyntaxStatus::TooLarge, Vec::new()));
         }
         self.analyze_syntax(false, should_continue, |document, status| {
@@ -1070,86 +1081,55 @@ impl EditorActions {
 
     fn analyze_syntax<T>(
         self,
-        pending_input: bool,
+        _pending_input: bool,
         mut should_continue: impl FnMut() -> bool,
         result_for: impl FnOnce(
             Option<&openwebide_core::editor::SyntaxAnalysis>,
             openwebide_core::editor::SyntaxStatus,
         ) -> T,
     ) -> Option<T> {
-        let key = self.key()?;
-        let epoch = self.workspace.pending_epoch.get_untracked();
-        let read_revision = self.workspace.editor_read_revision.get_untracked();
-        let account_generation = self.auth.map_or(0, |auth| auth.generation.get_untracked());
-        let language = openwebide_core::highlight::language_from_path(&key.1);
-        let worker_active = self.workspace.editor_worker_active.get_untracked();
-        let worker_prepared = worker_active
-            .then(|| self.workspace.editor_preparation.get_untracked())
-            .flatten()
-            .filter(|prepared| self.syntax_scope_current(&prepared.scope));
-        let shared_source = worker_prepared
-            .as_ref()
-            .map(|prepared| prepared.scope.source.clone());
-        let source =
-            shared_source.unwrap_or_else(|| self.workspace.content.get_untracked().shared());
-        let text = source.as_str();
-        let tab_width = self.rules_untracked().indentation.tab_width();
-        // Embedded bodies need their parsed language even before a background
-        // reply arrives. Ordinary typing stays synchronous and uses the same
-        // bounded preparation/cache as the inactive-worker path; passive views
-        // and single-language lexical fallbacks do not trigger this work.
-        let prepare = !worker_active
-            || (pending_input
-                && worker_prepared.is_none()
-                && openwebide_core::editor::syntax_provider(language)
-                    .is_some_and(|provider| provider.injection.is_some()));
-        let result = if prepare {
-            let clock = self.input_clock.get_value();
-            let deadline = clock() + f64::from(openwebide_core::editor::SYNTAX_INPUT_BUDGET_MS);
-            self.workspace
-                .editor_syntax
-                .try_update(|documents| {
-                    let continuation = || clock() <= deadline && should_continue();
-                    let (status, prepared) = if pending_input {
-                        documents.prepare_input_shared(
-                            key.clone(),
-                            language,
-                            source.clone(),
-                            continuation,
-                        )
-                    } else {
-                        documents.prepare_shared(
-                            key.clone(),
-                            language,
-                            source.clone(),
-                            tab_width,
-                            continuation,
-                        )
-                    };
-                    Some(result_for(prepared.as_deref(), status))
-                })
-                .flatten()
-        } else if !should_continue() {
-            Some(result_for(
-                None,
-                openwebide_core::editor::SyntaxStatus::Cancelled,
-            ))
+        let scope = self.syntax_scope()?;
+        let clock = self.input_clock.get_value();
+        let deadline = clock() + f64::from(openwebide_core::editor::SYNTAX_INPUT_BUDGET_MS);
+        if !should_continue() {
+            return self
+                .syntax_scope_current(&scope)
+                .then(|| result_for(None, openwebide_core::editor::SyntaxStatus::Cancelled));
+        }
+        let prepared = self
+            .workspace
+            .editor_preparation
+            .get_untracked()
+            .filter(|prepared| {
+                // An inverse edit can restore the analyzed bytes before the
+                // host replies. Reuse only after all ownership/configuration
+                // guards and complete source equality pass for this revision.
+                let mut scope = prepared.scope.clone();
+                scope.source_revision = self.workspace.editor_source_revision.get_untracked();
+                self.syntax_scope_current(&scope)
+            });
+        let configured = prepared
+            .is_none()
+            .then(|| self.configured_analysis(scope.source.clone()))
+            .flatten();
+        if clock() > deadline || !should_continue() {
+            return self
+                .syntax_scope_current(&scope)
+                .then(|| result_for(None, openwebide_core::editor::SyntaxStatus::Cancelled));
+        }
+        let result = if let Some(prepared) = &prepared {
+            result_for(prepared.analysis.as_deref(), prepared.status)
         } else {
-            worker_prepared
-                .as_ref()
-                .map(|prepared| result_for(prepared.analysis.as_deref(), prepared.status))
+            let status = if self.workspace.editor_worker_active.get_untracked() {
+                openwebide_core::editor::SyntaxStatus::Cancelled
+            } else {
+                // A disabled or unavailable provider has a complete plain
+                // result; clear its old folds instead of retaining hidden text.
+                openwebide_core::editor::SyntaxStatus::Ready { incremental: false }
+            };
+            result_for(configured.as_deref(), status)
         };
-        (self.key() == Some(key)
-            && self.workspace.pending_epoch.get_untracked() == epoch
-            && self.workspace.editor_read_revision.get_untracked() == read_revision
-            && self.auth.map_or(0, |auth| auth.generation.get_untracked()) == account_generation
-            && self.rules_untracked().indentation.tab_width() == tab_width
-            && self
-                .workspace
-                .content
-                .with_untracked(|current| current == text))
-        .then_some(result)
-        .flatten()
+        self.syntax_scope_current(&scope).then_some(result)
     }
 
     pub fn refresh_fold_ranges(
@@ -1273,11 +1253,11 @@ impl EditorActions {
     }
 
     pub fn matching_bracket(self, offset: usize) -> Option<(usize, usize)> {
-        let key = self.key()?;
+        self.key()?;
         if !self
             .workspace
             .content
-            .with_untracked(|source| openwebide_core::editor::has_adjacent_bracket(source, offset))
+            .with_untracked(|source| self.has_adjacent_bracket(source, offset))
         {
             return None;
         }
@@ -1295,7 +1275,7 @@ impl EditorActions {
             } else {
                 openwebide_core::editor::matching_bracket(
                     source,
-                    openwebide_core::highlight::language_from_path(&key.1),
+                    openwebide_core::highlight::Language::Plain,
                     offset,
                 )
             }
@@ -1313,13 +1293,10 @@ impl EditorActions {
             let Some(action) = request? else {
                 return Ok(None);
             };
-            if !action.current(self)
-                || !openwebide_core::editor::has_adjacent_bracket(&action.source, selection.head)
-            {
+            if !action.current(self) || !self.has_adjacent_bracket(&action.source, selection.head) {
                 return Ok(None);
             }
-            let language = openwebide_core::highlight::language_from_path(&action.scope.key.1);
-            if openwebide_core::editor::syntax_provider(language).is_none() {
+            if !self.has_structural_provider() {
                 return Ok(self.matching_bracket(selection.head));
             }
             let Some(syntax) = action.prepare(self, action.rules).await? else {
@@ -1795,7 +1772,7 @@ impl EditorActions {
             return Ok(None);
         };
         let context_required = match command {
-            EditorCommand::TypeCharacter(ch) => openwebide_core::editor::is_pair_character(ch),
+            EditorCommand::TypeCharacter(ch) => self.is_pair_character(ch),
             EditorCommand::DeletePair
             | EditorCommand::Newline
             | EditorCommand::Reindent
@@ -1803,19 +1780,26 @@ impl EditorActions {
             | EditorCommand::LineComment => true,
             _ => false,
         };
-        let syntax = if context_required {
-            self.structure_for_input(
-                matches!(
-                    command,
-                    EditorCommand::TypeCharacter(_)
-                        | EditorCommand::DeletePair
-                        | EditorCommand::Newline
-                ),
-                || true,
-            )
-        } else {
-            None
-        };
+        let syntax =
+            if command == EditorCommand::LineComment && !self.line_comments_require_structure() {
+                // Uniform comments use declared rules even when host analysis
+                // is pending or too large to produce structural context.
+                self.syntax_scope()
+                    .and_then(|scope| self.configured_analysis(scope.source))
+                    .and_then(|analysis| analysis.structure().cloned())
+            } else if context_required {
+                self.structure_for_input(
+                    matches!(
+                        command,
+                        EditorCommand::TypeCharacter(_)
+                            | EditorCommand::DeletePair
+                            | EditorCommand::Newline
+                    ),
+                    || true,
+                )
+            } else {
+                None
+            };
         if self.key() != Some(key.clone()) {
             return Ok(None);
         }
@@ -1863,7 +1847,7 @@ impl EditorActions {
                             document.newline_with_structure(
                                 indentation,
                                 self.rules_untracked().line_ending,
-                                openwebide_core::highlight::language_from_path(&key.1),
+                                openwebide_core::highlight::Language::Plain,
                             )?;
                         }
                     }
@@ -1871,19 +1855,16 @@ impl EditorActions {
                         if let Some(syntax) = &syntax {
                             document.type_character_with_context(ch, syntax)?;
                         } else {
-                            document.type_character(
-                                ch,
-                                openwebide_core::highlight::language_from_path(&key.1),
-                            )?;
+                            document
+                                .type_character(ch, openwebide_core::highlight::Language::Plain)?;
                         }
                     }
                     EditorCommand::DeletePair => {
                         let changed = if let Some(syntax) = &syntax {
                             document.delete_pairs_with_context(syntax)?
                         } else {
-                            document.delete_empty_pairs(
-                                openwebide_core::highlight::language_from_path(&key.1),
-                            )?
+                            document
+                                .delete_empty_pairs(openwebide_core::highlight::Language::Plain)?
                         };
                         if !changed {
                             return Ok(None);
@@ -1900,7 +1881,7 @@ impl EditorActions {
                             document.toggle_line_comments_with_context(syntax)?;
                         } else {
                             document.toggle_line_comments(
-                                openwebide_core::highlight::language_from_path(&key.1),
+                                openwebide_core::highlight::Language::Plain,
                             )?;
                         }
                     }
@@ -1909,7 +1890,7 @@ impl EditorActions {
                             document.toggle_block_comments_with_context(syntax)?;
                         } else {
                             document.toggle_block_comments(
-                                openwebide_core::highlight::language_from_path(&key.1),
+                                openwebide_core::highlight::Language::Plain,
                             )?;
                         }
                     }
@@ -1919,7 +1900,7 @@ impl EditorActions {
                         } else {
                             document.reindent(
                                 indentation,
-                                openwebide_core::highlight::language_from_path(&key.1),
+                                openwebide_core::highlight::Language::Plain,
                             )?;
                         }
                     }
@@ -1951,96 +1932,68 @@ impl EditorActions {
     /// depends on parsed language bodies. Single-language comments retain their
     /// immediate fallback, including admitted files above the structure budget.
     pub fn command_requires_structure(self, command: EditorCommand) -> bool {
-        let language = self
-            .key()
-            .map_or(openwebide_core::highlight::Language::Plain, |key| {
-                openwebide_core::highlight::language_from_path(&key.1)
-            });
-        command == EditorCommand::Reindent
-            || (matches!(
-                command,
-                EditorCommand::LineComment | EditorCommand::BlockComment
-            ) && openwebide_core::editor::syntax_provider(language)
-                .is_some_and(|provider| provider.injection.is_some()))
+        match command {
+            EditorCommand::LineComment => self.line_comments_require_structure(),
+            EditorCommand::Reindent | EditorCommand::BlockComment => self.has_structural_provider(),
+            _ => false,
+        }
     }
 
-    /// Reactive eligibility query. Reuse complete syntax only; opening a menu or
-    /// moving a selection must not start grammar work on the UI thread.
+    /// Eligibility comes from the installed provider's declared editing rules.
     pub fn command_supported(self, command: EditorCommand) -> bool {
         self.workspace.active_project.track();
         self.workspace.open_file.track();
         self.workspace.content.track();
         self.workspace.editor_documents.track();
         self.workspace.editor_preparation.track();
-        self.workspace.editor_syntax.track();
         self.workspace.editor_source_revision.track();
         self.workspace.editor_read_revision.track();
         self.workspace.pending_epoch.track();
-        self.workspace.editor_rules.track();
-        self.workspace.editor_indentation.track();
         self.preparation_revision();
+        if let Some(state) = self.languages {
+            state.selected.track();
+            state.generation.track();
+        }
         if let Some(auth) = self.auth {
             auth.generation.track();
         }
-        let Some(key) = self.key() else {
-            return false;
-        };
-        let language = openwebide_core::highlight::language_from_path(&key.1);
-        let supported: fn(openwebide_core::highlight::Language) -> bool = match command {
-            EditorCommand::LineComment => openwebide_core::editor::supports_line_comment,
-            EditorCommand::BlockComment => openwebide_core::editor::supports_block_comment,
-            EditorCommand::Reindent => return openwebide_core::editor::supports_reindent(language),
-            _ => return true,
-        };
-        if !self.command_requires_structure(command) {
-            return supported(language);
-        }
-        let prepared = self
-            .workspace
-            .editor_preparation
-            .get_untracked()
-            .filter(|prepared| self.syntax_scope_current(&prepared.scope));
-        if prepared.as_ref().is_some_and(|prepared| {
-            matches!(
-                prepared.status,
-                openwebide_core::editor::SyntaxStatus::TooLarge
-            )
-        }) {
+        if self.key().is_none() {
             return false;
         }
-        let structure = prepared
-            .as_ref()
-            .and_then(|prepared| prepared.analysis.as_ref())
-            .and_then(|analysis| analysis.structure().cloned())
-            .or_else(|| {
-                let source = self
-                    .workspace
-                    .editor_syntax_scope
-                    .get_untracked()
-                    .filter(|scope| self.syntax_scope_current(scope))
-                    .map_or_else(|| self.source().shared(), |scope| scope.source);
-                self.workspace.editor_syntax.with_untracked(|cache| {
-                    cache
-                        .cached_analysis(
-                            &key,
-                            language,
-                            &source,
-                            self.rules_untracked().indentation.tab_width(),
-                        )
-                        .and_then(|analysis| analysis.structure().cloned())
-                })
+        if !matches!(
+            command,
+            EditorCommand::LineComment | EditorCommand::BlockComment | EditorCommand::Reindent
+        ) {
+            return true;
+        }
+        if command == EditorCommand::LineComment && !self.line_comments_require_structure() {
+            return self.current_language_provider().is_some_and(|provider| {
+                let configuration = &provider.definition.configuration;
+                configuration.line_comment.is_some() || configuration.block_comment.is_some()
             });
-        let Some(structure) = structure else {
-            // Pending container actions can prepare their context on demand.
-            return supported(language);
-        };
-        let selections = self.current_selections();
-        if selections.is_empty() {
-            return supported(structure.language_at(0));
         }
-        selections
-            .iter()
-            .all(|selection| supported(structure.language_at(selection.range().start)))
+        let Some(structure) = self.syntax_structure(|| true) else {
+            return false;
+        };
+        if command == EditorCommand::Reindent {
+            return self.has_structural_provider() && structure.supports_indentation();
+        }
+        let mut selections = self.current_selections();
+        if selections.is_empty() {
+            selections.push(Selection::caret(0));
+        }
+        selections.iter().all(|selection| {
+            let Some(configuration) = structure.configuration_at(selection.range().start) else {
+                return false;
+            };
+            match command {
+                EditorCommand::LineComment => {
+                    configuration.line_comment.is_some() || configuration.block_comment.is_some()
+                }
+                EditorCommand::BlockComment => configuration.block_comment.is_some(),
+                _ => true,
+            }
+        })
     }
 
     pub fn command_when_ready(
@@ -2091,9 +2044,8 @@ impl EditorActions {
             if !action.current(self) {
                 return Ok(None);
             }
-            let language = openwebide_core::highlight::language_from_path(&action.scope.key.1);
             if command != openwebide_core::editor::SelectionCommand::Expand
-                || openwebide_core::editor::syntax_provider(language).is_none()
+                || !self.has_structural_provider()
             {
                 return self.selection_command(
                     action.scope.key.0,
@@ -2256,6 +2208,44 @@ mod source_tests {
 
     thread_local! {
         pub(super) static RULE_DETECTIONS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    }
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    fn completed_measurements_require_the_current_session_and_provider_generation() {
+        crate::testing::initialize_runtime();
+        let owner = Owner::new();
+        owner.with(|| {
+            let workspace = WorkspaceState::new();
+            let languages = crate::state::languages::LanguagesState::default();
+            provide_context(languages);
+            workspace.active_project.set(Some(1));
+            workspace.open_file.set(Some("owned.txt".into()));
+            workspace.content.set("text".into());
+            workspace.active_session.set(Some(7));
+            let actions = EditorActions::new(workspace);
+            actions.prepare_edit(Selection::caret(0)).unwrap();
+            let revision = actions.view_revision();
+            let measure = || {
+                actions.publish_measured_rows(
+                    revision,
+                    "font".into(),
+                    openwebide_core::editor::MeasuredRows::new([20.0]).unwrap(),
+                )
+            };
+            assert!(measure());
+            assert!(actions.measured_rows().is_some());
+            languages.generation.update(|generation| *generation += 1);
+            assert_eq!(actions.view_revision(), revision);
+            assert!(actions.measured_rows().is_none());
+            assert!(measure());
+            assert!(actions.measured_rows().is_some());
+            workspace.active_session.set(Some(8));
+            assert!(actions.measured_rows().is_none());
+            assert!(measure());
+            assert!(actions.measured_rows().is_some());
+            assert_eq!(actions.source(), "text");
+        });
+        owner.cleanup();
     }
 
     #[wasm_bindgen_test::wasm_bindgen_test]

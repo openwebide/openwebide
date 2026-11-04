@@ -6,7 +6,7 @@ API 4 adds [declarative workspace panels](plugin-panels.md) and scoped view/acti
 The [panel playground](panel-playground.md) previews the production components
 and exports validated documents and Rust SDK examples without running host code.
 The SDK is version 0.1.0, independently of the app. API 2 tool groups are retired.
-First-party Web, Project Memory, Scheduling and Skill Authoring implement their
+First-party Web, Project Memory, Scheduling, Skill Authoring and language families implement their
 behavior through the same public SDK and grants as community plugins.
 
 An agent in an open project can use `plugin_create` to create a package from
@@ -41,8 +41,9 @@ Host capabilities currently cover HTTP, clock, model completion, plugin-private
 records, documented shared collections, durable jobs and raw agent runs. Grants
 are scoped and capability checked. Components have bounded memory, fuel and host
 calls, and no ambient filesystem, environment or network access. `workspace` is
-reserved, with no adapter yet. Arbitrary shell execution, MCP servers, language
-services and editor contributions are not current SDK APIs. Declarative workspace
+reserved, with no adapter yet. Arbitrary shell execution, MCP servers, LSP
+services and editor hooks remain future SDK APIs. API 5 language declarations
+and pure host analysis are described below. Declarative workspace
 panels use API 4 and the independent version-1 UI schema.
 Core file editing, shell and Git tools remain built in.
 
@@ -57,8 +58,9 @@ of those plans does not make them supported contributions.
 ## Language plugin build toolchain
 
 API 5 introduces versioned language definitions and pure host syntax handlers.
-The editor migration and bundled language packages remain tracked in the
-[roadmap](roadmap.md#language-support-as-plugins). Host analysis uses the same
+Language packages use the [shared editor integration](plugins.md#language-support).
+First-party packages are separated by intended language-server coverage;
+related dialects share a package. Community packages use the same contract. Host analysis uses the same
 component installation and export checks as tools and panels; it receives no
 filesystem, process, HTTP or model grants.
 
@@ -88,24 +90,58 @@ the host; eviction, restart and close discard that state. Cancellation, traps
 and invalid results discard the affected component session. Clients retain plain
 editing when analysis is unavailable.
 
-The public syntax toolkit has independent family features; use
-`default-features = false` and `LanguageSyntax::new_delegated` when packaging a
-family. Related dialects share a component according to intended LSP coverage.
-See the [toolkit guide](../crates/language-syntax/README.md) for feature names.
-
 `Structure.scopes` delegates embedded source bodies by language ID or alias.
-The shared host service resolves installed providers using the same preferences
-as standalone files. Missing, disabled, ambiguous or failed providers leave the
-body plain. Child tokens, folds, selections and bracket partners are validated
-and translated into the original source coordinates. Nested delegation has
-shared depth/source/work limits; removed bodies and closed documents release
-component sessions. Markdown fence labels can name community languages without
-linking their parsers into the Markdown component. Production editor integration
-and the independent default packages remain on the roadmap.
+The shared document service resolves each body using installed providers and the
+same account/project preferences as standalone files. Disabled, missing,
+ambiguous or failed providers leave that body plain; the outer language keeps
+its own results. Source offsets, child tokens, folds, selections and bracket
+partners are validated and translated before publication. Nested delegation is
+bounded to eight levels and a shared source/work budget. Removed bodies and
+closed documents release their component sessions.
 
-`configuration.uniformLineComments: true` promises that the declared line marker
-or block-comment fallback applies throughout the document. Omit it when embedded
-scopes can change that strategy. Structural results whose embedded scopes
-contradict this declaration are rejected. The editor migration can use this
-contract to preserve immediate line-comment commands without guessing language
-identities or running a browser parser.
+Packages using the public syntax toolkit select their own family with
+`default-features = false` and construct `LanguageSyntax::new_delegated`.
+HTML and Markdown request installed providers instead of bundling other families'
+parsers. Markdown's block and inline grammars run inside the same family component;
+fence labels can name community languages. See the
+[toolkit guide](https://github.com/openwebide/openwebide/blob/main/crates/language-syntax/README.md) for family feature names.
+LSP execution remains the following roadmap item.
+
+To check a family's actual WASI component against its declared languages, run:
+
+```bash
+cargo run -p openwebide-plugin-runtime --example check_language --release -- \
+  path/to/component.wasm path/to/plugin.json --family-matrix
+```
+
+The fixtures cover each declared ID, dialects, Unicode/CRLF source reconstruction,
+folds and embedded delegation. CI also runs this matrix against every language
+component in the compiled offline default bundle with
+`tools/check-language-components.py`.
+The family matrix contains fixtures for the first-party language IDs. Pass a
+sample source file instead of `--family-matrix` to check other custom IDs.
+
+A filename pattern made only of wildcards, such as `*`, acts as a last-resort
+match. Exact filenames, specific patterns, extensions and first-line signatures
+win over it. A missing explicitly preferred provider remains unavailable rather
+than silently switching to this general contribution.
+
+`configuration.uniformLineComments: true` declares one line-comment strategy
+throughout a document, using its line marker or block-comment fallback. Such
+commands stay immediate without host analysis. The default is false; structural
+providers wait for current context. Results whose embedded scopes contradict a
+uniform declaration are rejected. This is an explicit public contribution rule,
+not a filename or first-party package exception.
+
+Before a document's analysis arrives, the editor applies declared rules that do
+not require syntax context and preserves literal input for context-dependent
+operations. It does not infer embedded languages or protected regions from a
+built-in browser parser. An automatic pair already inserted by the editor can
+still be deleted or stepped over while the next host response is pending; that
+is an editor-owned text transaction, not a new language analysis. Enter also
+retains its validated closing indentation until another source edit or undo.
+`surroundingPairs` apply to explicit selections without requiring analysis;
+`autoClosingPairs.notIn` still guards automatic insertion at a caret. Reusing an
+analysis after inverse edits requires identical source bytes and the same
+document ownership, provider generation and configuration. Cancelling a consumer
+does not invalidate an otherwise current immutable host result.

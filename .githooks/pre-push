@@ -48,6 +48,8 @@ if [[ -z "${WASI_SDK_PATH:-}" ]]; then
   export WASI_SDK_PATH
 fi
 
+export WASI_SYSROOT="${WASI_SYSROOT:-$WASI_SDK_PATH/share/wasi-sysroot}"
+
 echo "[pre-push] 1/4 Checking formatting (cargo fmt --all --check)..."
 cargo fmt --all --check
 python3 -m unittest discover -s tools -p test_wasi_sdk.py
@@ -57,6 +59,7 @@ cargo clippy -p openwebide-storage -p openwebide-core -p openwebide-auth -p open
 cargo check -p openwebide-language-syntax --target wasm32-wasip2 --locked
 cargo clippy -p openwebide-backend --target wasm32-wasip2 -- -D warnings
 cargo clippy -p openwebide-frontend --target wasm32-unknown-unknown -- -D warnings
+python3 tools/check-language-client.py --dependencies-only
 python3 tools/check-language-isolation.py --clippy --tests
 cargo clippy -p openwebide-bridge --all-targets -- -D warnings
 

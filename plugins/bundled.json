@@ -1,10 +1,29 @@
 {
   "repository": "https://github.com/openwebide/plugins.git",
-  "commit": "11c38f13460159dd2de294628adb6231aa6e6aef",
+  "commit": "2e0f33b026aec9e2c74350b4c603c0a167834d64",
   "paths": [
     "plugins/web",
     "plugins/memory",
     "plugins/scheduling",
-    "plugins/skill-authoring"
+    "plugins/skill-authoring",
+    "plugins/rust",
+    "plugins/python",
+    "plugins/javascript-typescript",
+    "plugins/java",
+    "plugins/csharp",
+    "plugins/c-cpp",
+    "plugins/php",
+    "plugins/shell",
+    "plugins/go",
+    "plugins/html",
+    "plugins/css",
+    "plugins/json",
+    "plugins/yaml",
+    "plugins/toml",
+    "plugins/ini",
+    "plugins/xml",
+    "plugins/markdown",
+    "plugins/sql",
+    "plugins/plain-text"
   ]
 }

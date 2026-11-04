@@ -3020,6 +3020,7 @@ dependencies = [
  "openwebide-agent",
  "openwebide-core",
  "openwebide-frontend",
+ "openwebide-language-syntax",
  "openwebide-llm",
  "pulldown-cmark",
  "send_wrapper",

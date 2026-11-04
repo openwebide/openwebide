@@ -1,5 +1,10 @@
 # Editor performance measurements
 
+Parser and browser-worker measurements below describe their recorded artifacts.
+The current [editor implementation](editor.md#preparation-and-viewport-rendering)
+uses host language components; its production client does not load syntax engines. Historical
+worker timings do not measure this migration or establish its performance gates.
+
 Run the same Rust workloads on the native host and in Chrome/WASM:
 
 ```sh

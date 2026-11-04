@@ -177,6 +177,15 @@ pub fn App() -> impl IntoView {
     ));
     let plugins = crate::state::plugins::PluginsState::default();
     provide_context(plugins);
+    let languages = crate::state::languages::LanguagesState::default();
+    provide_context(languages);
+    provide_context(crate::project_languages::ProjectLanguageActions::new(
+        api,
+        languages,
+        auth,
+        projects_state,
+        plugins,
+    ));
     provide_context(crate::state::plugin_panels::PluginPanelsState::new(
         plugins,
         projects_state,

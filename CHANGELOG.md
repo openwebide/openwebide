@@ -15,11 +15,29 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 - Keep Markdown block and inline parsing inside its language component while delegating fenced bodies to installed providers. Large documents no longer require a separate host request per paragraph.
 
-- Add independent language-family grammar features and installed-provider composition for embedded language scopes. The public syntax toolkit supports custom Markdown fenced-code IDs without bundling their parsers; selected definitions, source coordinates, provider preferences, cancellation and child-document cleanup share one host-service contract. Fix empty trailing-row token export for SQL. Editor integration and independent default packages remain in progress.
+- Add independent language-family grammar features and installed-provider composition for embedded language scopes. The public syntax toolkit supports custom Markdown fenced-code IDs without bundling their parsers; selected definitions, source coordinates, provider preferences, cancellation and child-document cleanup share one host-service contract. Fix empty trailing-row token export for SQL. Each default artifact contains only its own family’s grammar engines.
+
+- Move all 24 existing language IDs into 19 independently installable language-family plugins, grouped by intended language-server coverage. Editors, diffs and change previews use the same host-backed services, database provider preferences and plain fallback. Bundled offline defaults, updates, disablement, removal, recovery and custom marketplaces work through the public plugin lifecycle on both execution hosts. LSP execution remains the next roadmap item.
+
+- Refresh native editor ownership after account changes, preserving current plain text after language-provider failure and rejecting stale account work.
+
+- Reuse validated host token rows across edits and shifted source lines while keeping new styles and ownership changes isolated.
+
+- Keep ordinary character input and neutral viewport paint independent of pending host analysis, including providers that contribute folding without syntax colors.
+
+- Preserve Enter's validated closing-bracket indentation while host analysis is pending, discarding that editing affordance after another source edit or undo.
+
+- Apply declared surrounding pairs to explicit selections before host analysis is ready, preserving selected text, selection direction and undo.
+
+- Scope completed editor measurements to the current language provider and session, so ownership changes refresh geometry without reusing stale caches.
+
+- Keep generic region folding in the bundled language package for unrecognized files. Catch-all contribution patterns rank below specific matches, while missing explicitly preferred providers remain unavailable.
 
 - Add an explicit uniform line-comment declaration to the language SDK and reject conflicting embedded comment strategies. Existing declarations retain their wire format unless they opt in.
 
-- Add the language plugin foundation: versioned SDK declarations and source/result contracts, shared provider selection and document synchronization, bounded host component sessions, and parser-free editor result validation and editing rules. Provide a public syntax toolkit and pinned WASI C toolchain for plugin authors. The editor's migration to default language packages remains in progress.
+- Keep account checks independent of bundled plugin preparation. Cold or unavailable execution hosts no longer hold the app on its sign-in loading screen; plugin loading still initializes the defaults through the normal host lifecycle.
+
+- Add the language plugin foundation: versioned SDK declarations and source/result contracts, shared provider selection and document synchronization, bounded host component sessions, and parser-free editor result validation and editing rules. Provide a public syntax toolkit and pinned WASI C toolchain for plugin authors. The editor consumes bundled and community language packages through these same contracts.
 
 - Keep chats usable after a model returns malformed tool-call JSON. Replay failed arguments as diagnostic data for both model protocols while preserving the original call, tool results and execution validation.
 

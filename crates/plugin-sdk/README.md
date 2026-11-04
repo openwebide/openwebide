@@ -31,8 +31,8 @@ See the app's [panel contract](../../docs/plugin-panels.md).
 
 ## Language contributions (API 5)
 
-The language contract and editor migration are tracked in the
-[roadmap](../../docs/roadmap.md#language-support-as-plugins). Implement
+Language components serve editors and previews through the app's shared host
+services; see [plugin authoring](../../docs/plugin-authoring.md#language-plugin-build-toolchain). Implement
 `languages()` with the manifest's exact `LanguageDefinition` values and
 `language(LanguageInput)` with version-1 `LanguageOutput` data. `export!` supplies
 the reserved metadata/service dispatchers; do not declare them as model tools.

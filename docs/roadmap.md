@@ -62,11 +62,15 @@ tracks the remaining work rather than every optimization already shipped.
 | Area | Available now |
 | --- | --- |
 | Editing and history | Tab/space and indent/outdent; block-aware Enter; paired typing/deletion; grouped undo/redo; line move/duplicate/delete; comments; selected-line reindent; indentation-matching paste; EditorConfig save policies. |
-| Structure and languages | Syntax highlighting, parser-backed folding, bracket matching and structural navigation; extensible Rust/WASM language support including Rust, TypeScript/TSX, Python, JavaScript/JSX, Java, C#, C++, PHP, Shell, C, Go, HTML, CSS, JSON/JSONC, YAML/YML, TOML, INI/EditorConfig, XML ecosystem configs and Markdown with inline/fenced code. Pending text uses current source and valid retained spans; unsupported source stays plain. |
+| Structure and languages | Syntax highlighting, parser-backed folding, bracket matching and structural navigation; bundled host language components for Rust, TypeScript/TSX, Python, JavaScript/JSX, Java, C#, C++, PHP, Shell, C, Go, HTML, CSS, JSON/JSONC, YAML/YML, TOML, INI/EditorConfig, XML ecosystem configs and Markdown with inline/fenced code. Pending text uses current source and valid retained spans; unsupported source stays plain. |
 | Navigation and review | Find/Replace; line numbers; horizontal scrolling and linked split scrolling; Edit/Inline/Split diffs; supported previews and Markdown change gutters/word differences; pending-edit review and agent context. |
 | Tabs, appearance and recovery | Tab context actions; consistent editor action-menu icons and labels; five Monaspace families; texture healing and ligature toggles enabled by default; retained caret/selection/scroll and database-backed editor recovery. Real folder-permission recovery still needs device verification. |
 | Selection and browser input | Multiple/rectangular selections and clipboard transactions; scoped native windows with bounded desktop startup for unwrapped, wrapped and nonuniform views, including long tabbed/bidirectional rows; automated Chromium composition and pointer checks. The recorded line-end caret bug is fixed and user-verified in the localhost PWA. |
-| Preparation and ownership | Rust/WASM worker and cooperative fallback; retained source/token/structure allocations; bounded worker delta reconstruction/reply-source publication and final structure metadata, parsed/lexical region reconciliation and retained fallback collection; bounded eligible unwrapped and wrapped paragraph probes, retained paint-run clipping and cooperative sampled cold-row glyph measurements, exact overlap validation, exact carets from retained anchors/current painted coverage and conservative complete-layout fallback. Current-file progress is shown during preparation. Matching trusted font notifications retain current in-flight work and ordinary-row replay after edits. |
+| Preparation and ownership | Shared host language services and cooperative plain-text fallback; full/delta synchronization with one full-source resync, validated source/token/structure results and retained fallback collection; bounded eligible unwrapped and wrapped paragraph probes, retained paint-run clipping and cooperative sampled cold-row glyph measurements, exact overlap validation, exact carets from retained anchors/current painted coverage and conservative complete-layout fallback. Current-file progress is shown during preparation. Matching trusted font notifications retain current in-flight work and ordinary-row replay after edits. |
+
+Language analysis now executes in host plugins. Earlier browser-worker
+measurements describe their recorded builds, rather than the current
+host-component implementation.
 
 The latest integrated production matrix at `e3b2ee59` preserves complete source
 after verified beginning edits in all twelve local/remote cases: the 8 MiB byte
@@ -1100,41 +1104,12 @@ Research references: [VS Code editing](https://code.visualstudio.com/docs/editin
 [Monaco support/architecture](https://github.com/microsoft/monaco-editor),
 and [EditorConfig](https://editorconfig.org/).
 
-### Language support as plugins
+### Code intelligence: host language services, LSP and caching
 
-With editor performance and device verification tracked separately, complete the
-migration into independent language-family plugins, grouped by the intended
-LSP's language coverage. JavaScript/TypeScript/JSX/TSX share a package, as do C/C++.
-Other families remain independently installable, replaceable and removable. This
-is a **blocking prerequisite for Code intelligence and LSP**; LSP execution is the
-following item.
-
-The foundation includes versioned declarations and source/result contracts,
-shared provider selection and document synchronization, bounded component
-sessions, declarative editing rules, optional family grammars and cross-provider
-embedded scopes. The production editor still uses its existing parser path.
-Remaining work:
-
-- Publish independent default family packages using the same public SDK,
-  immutable sources, artifact format and lifecycle as community packages. Each
-  component carries its own family's engines, with shared implementation in
-  public libraries.
-- Connect the editor, diffs and previews to the shared host-language facade.
-  Preserve source, selection, folding, editing, recovery and database preferences
-  in both project modes, with core plain editing when a provider is unavailable.
-- Integrate installed-provider resolution for HTML/Markdown bodies, including
-  custom languages, preferences, conflicts, disablement and failure fallback.
-  Guard results and dependency changes by document and account/project/session.
-- Verify independent install/update/disable/remove, custom marketplaces and
-  offline defaults on both execution hosts, with all existing language and full
-  native/WASI/WASM/browser/font/build gates before marking the migration complete.
-
-### Code intelligence: host language services, LSP & caching
-
-**Blocked by [Language support as plugins](#language-support-as-plugins).** The
-shared contribution/runtime contracts and migration of existing language support
-must be complete and verified in both modes before implementing host diagnostics,
-LSP features or their caching. New language features use those plugin contracts.
+Extend the installed language-family plugins with diagnostics, LSP features and
+caching through the same public contracts and shared host facade. Keep each
+server integration in the package covering its languages: JavaScript/TypeScript/
+JSX/TSX for vtsls and C/C++ for clangd, for example.
 
 Treat the homelab server and paired native bridges as persistent development
 hosts. Language services belong to a project on its execution host, rather than
@@ -1143,7 +1118,7 @@ Remote projects use the server bridge; local projects use a paired bridge with
 access to the selected folder. Language plugins and their runtimes install and
 execute on those hosts, never on browser clients.
 
-Build on the Full code editor component and its document/selection/extension APIs.
+Build on the existing editor document, selection and extension APIs.
 Bring real-time code intelligence (syntax errors, lint squiggles, tooltips,
 autocomplete) into the editor while keeping the core diagnostics engine
 100% shared between Remote and Local mode:
@@ -1196,7 +1171,7 @@ autocomplete) into the editor while keeping the core diagnostics engine
   resource use on a small homelab before claiming prefetching improves performance.
 
 Expose language features through the contribution contracts established by
-[Language support as plugins](#language-support-as-plugins), using the same
+[language plugins](plugins.md#language-support), using the same
 validation, permissions and lifecycle for bundled and community packages. Extend
 those contracts for code intelligence without adding a separate built-in language
 implementation.
@@ -1312,9 +1287,8 @@ Extend agent and editor capabilities through versioned plugin packages that user
 and the agent can manage, without requiring changes to the app for each new
 capability.
 
-The language contribution contracts and migration of existing language support are
-tracked separately under [Next](#language-support-as-plugins), as a prerequisite
-for Code intelligence and LSP.
+Language-family packages are implemented. Extend their host services with
+[Code intelligence and LSP](#code-intelligence-host-language-services-lsp-and-caching).
 
 - Finish manual PWA lifecycle checks on server and paired hosts: asynchronous
   install/cancel and failure recovery, cold action caches, compiled-default
@@ -1376,10 +1350,10 @@ for Code intelligence and LSP.
   authentication, MCP tools and review/issue skills, extending the existing
   skills-only PR Review plugin; and browser testing with host dependencies
   and artifacts. Add Terraform after
-  language contributions are available to demonstrate file recognition, syntax,
+  host LSP support is available to demonstrate file recognition, syntax,
   formatting and an existing LSP server. Keep upstream runtime/server versions
   pinned and distinguish OpenWebIDE-maintained packaging from upstream ownership.
-  Include the bundled Git annotations package as the reference for editor hooks,
+  Include the planned bundled Git annotations package as the reference for editor hooks,
   declarative annotations and navigation through existing Git actions.
 - Make language packages discoverable when an unsupported file opens. Publish
   searchable language metadata (file extensions, exact filenames and optional

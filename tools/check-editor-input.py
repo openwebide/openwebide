@@ -12,8 +12,11 @@ import json
 from pathlib import Path
 import runpy
 import secrets
+import shutil
 import tempfile
 import time
+
+from language_host_support import ExecutionHost
 
 ROOT = Path(__file__).resolve().parent.parent
 SUPPORT = runpy.run_path(str(ROOT / 'tools/check-editor-recovery.py'))
@@ -91,12 +94,15 @@ def check(mode, ending, windowed, ascii_row=False):
     with tempfile.TemporaryDirectory(prefix='openwebide-input-') as state, \
             tempfile.TemporaryDirectory(prefix='editor-input-probe-', dir=ROOT) as folder:
         runtime, browser = Runtime(state, frontend=True), None
+        host = ExecutionHost(runtime)
         try:
+            host.start()
             runtime.start()
             runtime.request('POST', '/api/auth/register', {
                 'username': 'input-' + secrets.token_hex(8), 'password': secrets.token_urlsafe(32),
             }, expected=201)
             runtime.acknowledge_release()
+            host.initialize_defaults()
             path = Path(folder).relative_to(ROOT.parent.parent).as_posix() if mode == 'remote' else 'input-folder'
             project = runtime.request('POST', '/api/projects', {'name': 'Input verification', 'mode': mode, 'path': path}, expected=201)
             (Path(folder) / 'input.rs').write_bytes(source.encode())
@@ -108,36 +114,17 @@ def check(mode, ending, windowed, ascii_row=False):
             endpoint = f"/api/projects/{project['id']}/editor-recovery"
             runtime.request('PUT', endpoint, {'revision': 0, 'state': recovery})
             for key, value in {'open_tabs': json.dumps([project['id']]), 'active_project': str(project['id']),
-                    'bridge_url': 'http://127.0.0.1:1', 'editor_preferences': json.dumps({'word_wrap': False})}.items():
+                    'editor_preferences': json.dumps({'word_wrap': False})}.items():
                 runtime.request('PUT', '/api/settings', {'key': key, 'value': value})
             browser = Browser(state)
             browser.call('POST', '/url', {'url': runtime.url + '/offline.html'})
             for cookie in runtime.cookies:
                 browser.call('POST', '/cookie', {'cookie': {'name': cookie.name, 'value': cookie.value,
                     'domain': '127.0.0.1', 'path': cookie.path, 'httpOnly': True}})
+            host.pair_browser(browser)
+            browser.observe_languages(hold=not windowed)
             cdp(browser, 'Page.addScriptToEvaluateOnNewDocument', {'source': r"""
                 window.editorInputEvents = [];
-                window.editorInputWorker = {hold: __HOLD__, queued: [], held: 0};
-                const NativeWorker = window.Worker;
-                window.Worker = class extends NativeWorker {
-                    constructor(url, options) {
-                        super(url, options);
-                        this.editorInputWorker = /\/editor-worker(?:-[a-f0-9]+)?\.js$/.test(new URL(url, location.href).pathname);
-                    }
-                    set onmessage(listener) {
-                        super.onmessage = event => {
-                            if (this.editorInputWorker && editorInputWorker.hold &&
-                                typeof event.data === 'string' && event.data.startsWith('{')) {
-                                editorInputWorker.held++;
-                                editorInputWorker.queued.push(() => listener.call(this, event));
-                            } else listener.call(this, event);
-                        };
-                    }
-                };
-                window.releaseEditorInputWorker = () => {
-                    editorInputWorker.hold = false;
-                    for (const deliver of editorInputWorker.queued.splice(0)) deliver();
-                };
                 for (const type of ['compositionstart','compositionupdate','compositionend','beforeinput','input','keydown']) {
                     document.addEventListener(type, event => {
                         if (event.target.matches('textarea[data-editor-path]')) {
@@ -146,7 +133,7 @@ def check(mode, ending, windowed, ascii_row=False):
                         }
                     }, true);
                 }
-            """.replace('__HOLD__', json.dumps(not windowed))})
+            """})
             browser.call('POST', '/url', {'url': runtime.url + '/'})
             wait('editor hydration', lambda: snapshot(browser))
             if windowed:
@@ -155,7 +142,7 @@ def check(mode, ending, windowed, ascii_row=False):
             else:
                 wait('initial native text', lambda: snapshot(browser)['value'] == source.replace('\r\n', '\n'))
             if not windowed:
-                wait('worker result held during cold composition', lambda: browser.script('return editorInputWorker.held > 0;'))
+                wait('host result held during cold composition', lambda: browser.script('return editorLanguageEvidence.held > 0;'))
             browser.script("document.querySelector('textarea[data-editor-path]').focus();")
             assert snapshot(browser)['start'] == snapshot(browser)['end'] == 0
             check_tab_accessibility(browser)
@@ -181,7 +168,7 @@ def check(mode, ending, windowed, ascii_row=False):
             compose(browser, '日本語😀')
             wait('updated native candidate', lambda: snapshot(browser)['value'].startswith('日本語😀//'))
             cdp(browser, 'Input.insertText', {'text': '日本語😀'})
-            browser.script('releaseEditorInputWorker();')
+            browser.script('releaseEditorLanguage();')
             expected = '日本語😀' + source
 
             wait('committed source with original line endings', lambda: saved_is(expected))
@@ -199,6 +186,7 @@ def check(mode, ending, windowed, ascii_row=False):
             wait('cancel adds no undo step', lambda: saved_is(source))
             history_key(browser, redo=True)
             wait('history after cancellation remains lossless', lambda: saved_is(expected))
+            browser.wait_language(expected.replace('\r\n', '\n'))
             events = snapshot(browser)['events']
             # Chromium's CDP commit/cancel emits an untrusted compositionend.
             # Starts, candidate updates, input events and keyboard shortcuts must
@@ -209,10 +197,23 @@ def check(mode, ending, windowed, ascii_row=False):
             assert any(event['type'] == 'input' and event['composing'] for event in events)
             print(json.dumps({'mode': mode, 'ending': 'CRLF' if ending == '\r\n' else 'LF',
                 'windowed': windowed, 'ascii_row': ascii_row, 'ascii_insert_split_undo_redo': ascii_row, 'pending_syntax': not windowed, 'trusted_events': sum(event['trusted'] for event in events), 'commit_undo_redo_cancel': True, 'tab_focus_escape_and_accessible_name': True}), flush=True)
+        except BaseException:
+            # Preserve bounded host diagnostics before disposing the isolated
+            # account. Do not copy cookies, pairing data or source payloads.
+            ending_name = 'crlf' if ending == '\r\n' else 'lf'
+            directory = Path(tempfile.gettempdir()) / 'openwebide-editor-input-diagnostics' / (
+                f'{mode}-{ending_name}-{windowed}-{ascii_row}')
+            directory.mkdir(parents=True, exist_ok=True)
+            for name, original in [('bridge.log', host.state / 'bridge.log'),
+                                   ('runtime.log', runtime.state / 'runtime.log')]:
+                if original.exists():
+                    shutil.copyfile(original, directory / name)
+            raise
         finally:
             if browser:
                 browser.stop()
             runtime.stop()
+            host.stop()
 
 
 if __name__ == '__main__':

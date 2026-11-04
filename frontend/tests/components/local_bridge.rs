@@ -73,12 +73,24 @@ export function fakeBridgeHttp() {
         }
         if (path === '/plugins/prepare' || path === '/plugins/package') { const plugin = JSON.parse(mock.plugin); return mock.invalid ? new Response(JSON.stringify({error:'preparation failed'}), {status:400}) : new Response(JSON.stringify(path === '/plugins/prepare' ? (plugin.prepared || plugin) : plugin)); }
         if (path === '/plugins/invoke') {
+            if (body.call.operation === 'language') {
+                const id = `language-${mock.calls.length}`;
+                (mock.languageActors ||= new Map()).set(id, body.call);
+                return new Response(JSON.stringify({id, step:{status:'ready'}}));
+            }
             mock.actor = body.call;
             const plugin = JSON.parse(mock.plugin);
             mock.collection = (plugin.prepared || plugin).manifest.executable.library === 'skills_fixture' ? 'skills' : 'memories';
             return new Response(JSON.stringify({id:'plugin-ui', step:{status:'ready'}}));
         }
         if (path === '/plugins/continue') {
+            if (mock.languageActors?.has(body.continuation.id)) {
+                const id = body.continuation.id;
+                const call = mock.languageActors.get(id);
+                mock.languageActors.delete(id);
+                const content = await mock.languageHandler(JSON.stringify(call));
+                return new Response(JSON.stringify({id, step:{status:'complete', ok:true, content, summary:'Fixture language component result'}}));
+            }
             const continuation = body.continuation;
             if (mock.actor.operation === 'panel') {
                 const document = mock.waitPanel ? await mock.waitPanel : mock.panelDocuments.shift();
@@ -107,7 +119,7 @@ export function fakeBridgeHttp() {
             }
             return new Response(JSON.stringify({id:'plugin-ui', step:{status:'complete', ok, content:ok ? continuation.response.Ok : continuation.response.Err, summary:ok ? 'Stored' : 'Failed'}}));
         }
-        if (path === '/plugins/cancel') { mock.actor = null; return new Response('{}'); }
+        if (path === '/plugins/cancel') { mock.languageActors?.delete(body.id); mock.actor = null; return new Response('{}'); }
         if (path === '/scheduler/host') return new Response(JSON.stringify({id:'paired-host', name:'Test host', last_seen:0}));
         if (path === '/host/info' && !mock.hanging) return new Response(JSON.stringify({host_name:'bridge-host', os:'linux', scope:'bridge host', cpu:'Test CPU', logical_cores:8, ram_total_bytes:32000000000, ram_available_bytes:16000000000, disks:[], temperatures:[], gpus:[], fans:[], notes:[]}));
         if (path === '/environment' && !mock.hanging) return new Response(JSON.stringify({os: 'linux', shell: 'sh'}));
@@ -132,6 +144,7 @@ export function deferBridgePanel(mock) { mock.waitPanel = new Promise(resolve =>
 export function releaseBridgePanel(mock, document) { mock.resolvePanel(JSON.parse(document)); }
 export function setBridgePanelDocuments(mock, documents) { mock.panelDocuments = JSON.parse(documents); }
 export function setBridgePlugin(mock, plugin) { mock.plugin = plugin; }
+export function setBridgeLanguageHandler(mock, handler) { mock.languageHandler = handler; }
 export function setBridgeDiff(mock, diff) { mock.diff = diff; }
 export function restoreBridgeHttp(mock) { mock.restore(); }
 export function bridgeCalls(mock) { return JSON.stringify(mock.calls); }
@@ -158,6 +171,8 @@ extern "C" {
     pub(crate) fn set_bridge_panel_documents(mock: &JsValue, documents: &str);
     #[wasm_bindgen(js_name = setBridgePlugin)]
     pub(crate) fn set_bridge_plugin(mock: &JsValue, plugin: &str);
+    #[wasm_bindgen(js_name = setBridgeLanguageHandler)]
+    pub(crate) fn set_bridge_language_handler(mock: &JsValue, handler: &js_sys::Function);
     #[wasm_bindgen(js_name = setBridgeDiff)]
     fn set_bridge_diff(mock: &JsValue, diff: &str);
     #[wasm_bindgen(js_name = restoreBridgeHttp)]

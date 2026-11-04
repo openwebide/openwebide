@@ -77,27 +77,30 @@ impl StructuralAction {
         if !current() {
             return Ok(None);
         }
-        let mut syntax = actions.syntax_structure(|| true);
-        if syntax.is_none() {
-            let clock = actions.input_clock.get_value();
-            let (_, analysis) = crate::editor_worker::CooperativeClient::default()
-                .analyze_shared_while_with_clock(
-                    openwebide_core::highlight::language_from_path(&self.scope.key.1),
-                    self.scope.source.clone(),
-                    indentation.tab_width(),
-                    current,
-                    || clock(),
-                )
-                .await
-                .map_err(|_| EditError::StructureUnavailable)?;
+        let _ = indentation;
+        let deadline = js_sys::Date::now() + 15_000.0;
+        loop {
             if !current() {
                 return Ok(None);
             }
-            syntax = analysis.and_then(|analysis| analysis.structure().cloned());
+            if let Some(syntax) = actions.syntax_structure(|| true)
+                && (syntax.available() || !actions.has_structural_provider())
+            {
+                return Ok(Some(syntax));
+            }
+            // A source transaction can invalidate the prepared result before
+            // the activation effect has changed the previous Ready status.
+            let preparing = actions.worker_syntax_pending()
+                || actions.languages.is_some_and(|state| {
+                    matches!(
+                        state.status.get_untracked(),
+                        crate::state::languages::LanguageStatus::Preparing
+                    )
+                });
+            if !preparing || js_sys::Date::now() >= deadline {
+                return Err(EditError::StructureUnavailable);
+            }
+            crate::util::sleep_ms(16).await;
         }
-        if !current() {
-            return Ok(None);
-        }
-        syntax.map(Some).ok_or(EditError::StructureUnavailable)
     }
 }

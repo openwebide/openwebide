@@ -214,6 +214,19 @@ impl Structure {
         )
     }
 
+    /// Reindent can operate on embedded bodies even when the surrounding
+    /// document has no indentation rules of its own.
+    pub fn supports_indentation(&self) -> bool {
+        self.language_rules.as_ref().is_some_and(|rules| {
+            std::iter::once(&rules.root)
+                .chain(&rules.scopes)
+                .any(|configuration| {
+                    !configuration.brackets.is_empty()
+                        || configuration.indentation != protocol::IndentationRules::default()
+                })
+        })
+    }
+
     pub(in crate::editor) fn declarative_indentation_at(&self, position: usize) -> bool {
         self.language_rules.as_ref().is_some_and(|rules| {
             !self

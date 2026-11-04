@@ -1105,7 +1105,10 @@ mod bundled_tests {
             let manifest = openwebide_core::plugins::validate_files(&files).unwrap();
             assert!(manifest.executable.is_some());
             assert!(manifest.contributions.tool_groups.is_empty());
-            assert!(!manifest.contributions.tools.is_empty());
+            assert!(
+                !manifest.contributions.tools.is_empty()
+                    || !manifest.contributions.languages.is_empty()
+            );
             assert!(files.iter().any(|file| file.path == "Cargo.lock"));
             assert!(files.iter().any(|file| file.path == "src/lib.rs"));
         }
@@ -1114,7 +1117,7 @@ mod bundled_tests {
     #[tokio::test]
     async fn bundled_core_plugins_prepare_offline_on_both_hosts_using_normal_validation() {
         let sources = openwebide_core::plugins::bundled_plugin_sources();
-        assert_eq!(sources.len(), 4);
+        assert_eq!(sources.len(), 23);
         for host in ["server-host", "paired-local-host"] {
             let root = tempfile::tempdir().unwrap();
             let installer = NativePluginInstaller::new(Some(root.path().to_path_buf()));

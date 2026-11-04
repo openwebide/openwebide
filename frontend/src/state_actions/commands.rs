@@ -64,6 +64,7 @@ impl CommandActions {
                 && chat.streaming_session.get() == chat.active_session.get(),
         });
         let auth = expect_context::<AuthState>();
+        let editor = super::editor::EditorActions::new(workspace);
         let scope = Memo::new(move |_| {
             (
                 auth.generation.get(),
@@ -109,7 +110,7 @@ impl CommandActions {
                 Command::Stop => slash.run(SlashCommand::Stop),
                 Command::CaptureEditor => {
                     if let Some(context) = super::lifecycle::capture_active_editor(
-                        workspace,
+                        editor,
                         workspace.open_file.get_untracked(),
                         &workspace.content.get_untracked(),
                     ) {

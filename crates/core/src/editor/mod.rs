@@ -92,7 +92,7 @@ pub use projection::{FoldProjection, ProjectionError, VisibleLine};
 #[cfg(feature = "editor-analysis")]
 mod analysis;
 #[cfg(feature = "editor-analysis")]
-pub use analysis::{SyntaxAnalysis, SyntaxStatus};
+pub use analysis::{SYNTAX_INPUT_BUDGET_MS, SyntaxAnalysis, SyntaxStatus};
 #[cfg(feature = "syntax-engine")]
 mod syntax;
 #[cfg(all(feature = "syntax-engine", any(test, feature = "test-support")))]
@@ -106,11 +106,10 @@ pub use openwebide_language_grammars::{
 pub use syntax::{
     MAX_ANALYSIS_MESSAGE_BYTES, MAX_SYNTAX_DOCUMENTS, MAX_SYNTAX_FRAME_BYTES,
     MAX_SYNTAX_REQUEST_BYTES, MAX_SYNTAX_SOURCE_BYTES, SYNTAX_BATCH_MS, SYNTAX_FRAME_VERSION,
-    SYNTAX_INPUT_BUDGET_MS, SYNTAX_PROTOCOL_VERSION, SYNTAX_REQUEST_BATCH_BYTES, SyntaxAdmission,
-    SyntaxAdmissionStatus, SyntaxAnalysisData, SyntaxDocument, SyntaxFrameProgress,
-    SyntaxPreparations, SyntaxReply, SyntaxReplyFrameDecoding, SyntaxReplyFrames,
-    SyntaxReplyReception, SyntaxRequest, SyntaxRequestPublication, SyntaxSource, SyntaxWorker,
-    preparation_exceeds_limits,
+    SYNTAX_PROTOCOL_VERSION, SYNTAX_REQUEST_BATCH_BYTES, SyntaxAdmission, SyntaxAdmissionStatus,
+    SyntaxAnalysisData, SyntaxDocument, SyntaxFrameProgress, SyntaxPreparations, SyntaxReply,
+    SyntaxReplyFrameDecoding, SyntaxReplyFrames, SyntaxReplyReception, SyntaxRequest,
+    SyntaxRequestPublication, SyntaxSource, SyntaxWorker, preparation_exceeds_limits,
 };
 mod comments;
 pub use comments::{block_comment, line_comment, supports_block_comment, supports_line_comment};
@@ -345,6 +344,8 @@ pub struct Document {
     selection_history: Vec<Vec<Selection>>,
     composition: Option<Box<native::Composition>>,
     motion_columns: Option<visual_motion::MotionColumns>,
+    automatic_pairs: Vec<pairs::AutomaticPair>,
+    newline_indentation: Vec<indent::NewlineIndentation>,
 }
 
 // Derived presentation allocations are outside document identity/history. Clones
@@ -426,6 +427,8 @@ impl Document {
             selection_history: Vec::new(),
             composition: None,
             motion_columns: None,
+            automatic_pairs: Vec::new(),
+            newline_indentation: Vec::new(),
         }
     }
 
@@ -754,6 +757,8 @@ impl Document {
         };
         let edits = retain(edits);
         let inverse = retain(inverse);
+        self.rebase_automatic_pairs(&edits);
+        self.newline_indentation.clear();
         let bytes = edits
             .iter()
             .chain(&inverse)
@@ -827,6 +832,8 @@ impl Document {
             self.selections.clone_from(&transaction.before);
         }
         self.history_cursor -= 1;
+        self.automatic_pairs.clear();
+        self.newline_indentation.clear();
         self.selection_history.clear();
         self.motion_columns = None;
         self.identity = std::sync::Arc::new(());
@@ -861,6 +868,8 @@ impl Document {
             self.selections.clone_from(&transaction.after);
         }
         self.history_cursor += 1;
+        self.automatic_pairs.clear();
+        self.newline_indentation.clear();
         self.selection_history.clear();
         self.motion_columns = None;
         self.identity = std::sync::Arc::new(());

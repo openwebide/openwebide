@@ -130,3 +130,9 @@ mod mcp;
 
 #[path = "components/plugin_panels.rs"]
 mod plugin_panels;
+
+#[path = "components/language_plugins.rs"]
+mod language_plugins;
+
+#[path = "components/language_support.rs"]
+mod language_support;

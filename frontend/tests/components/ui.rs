@@ -2,11 +2,7 @@ use leptos::prelude::*;
 use openwebide_core::{User, UserId, UserRole};
 use openwebide_frontend::{
     components::ui::{Button, ButtonSize, ButtonVariant},
-    state::{
-        auth::AuthState,
-        layout::LayoutState,
-        settings::{SettingsState, Theme},
-    },
+    state::{auth::AuthState, layout::LayoutState, settings::Theme},
     state_actions::{
         lifecycle::{ProjectEffectContext, install_project_effects},
         settings::{SettingsActionContext, build_settings_actions},
@@ -88,7 +84,8 @@ async fn startup_retains_prepaint_theme_until_database_settings_arrive() {
     let (request_started, started) = futures::channel::oneshot::channel();
     let notifications = RwSignal::new(false);
     let mounted = mount_test(move |mut state| {
-        state.settings = SettingsState::new(Theme::from_root(), "ws://localhost:3001".into());
+        // Keep the app's shared settings store, including its startup request.
+        state.settings.theme.set(Theme::from_root());
         state.settings.browser_notifications = notifications;
         build_settings_actions(SettingsActionContext {
             api: state.api,

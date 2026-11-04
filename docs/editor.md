@@ -5,7 +5,7 @@ local and remote projects. The full editor roadmap is still in progress.
 
 ## Appearance and tabs
 
-Settings → Editor defaults offers all five bundled Monaspace families: Neon (the
+Settings → Editor offers all five bundled Monaspace families: Neon (the
 default), Argon, Xenon, Radon, and Krypton. Texture healing and coding ligatures
 are independent toggles, both enabled by default. These preferences sync through
 your account and apply to Edit and diff views; fonts are available offline in the PWA. Font family and OpenType changes invalidate source geometry even when the browser cannot serialize the font shorthand.
@@ -187,6 +187,28 @@ a project, folder, bridge or account change.
 
 ## Syntax and language behavior
 
+The editor gets language definitions and source-bound analysis from installed
+[host plugins](plugins.md#language-support).
+Remote projects use the server execution host; local projects use the paired
+host. Browsers render results and apply declared editing rules without loading
+grammars or executing plugin components.
+
+Settings → Plugins manages package installation and project enablement. Settings
+→ Editor → Language providers stores account defaults and project-specific provider choices in the
+database. Competing providers require an explicit choice; disabling a provider
+or uninstalling its package restores plain editing. Unavailable analysis preserves
+typing, saving and recovery; **Retry language support** requests fresh host
+preparation. Re-enabling or reinstalling a provider analyzes the current draft.
+The contribution contract keeps formatter preferences separate and rejects
+substitution for a missing pinned formatter. Formatting and LSP services remain
+a following roadmap item.
+
+Packages can declare `uniformLineComments` when one line marker or block-comment
+fallback applies throughout the file. Those explicit line-comment commands stay
+available before analysis and above its source limit. Providers with context-
+dependent rules wait for current host structure instead; the editor does not
+guess which languages are containers from their names.
+
 Paired typing/deletion, Enter, selected-line reindent, line/block comments,
 structural selection expansion and bracket navigation use validated parser
 contexts when available, including JavaScript template interpolation and HTML
@@ -203,7 +225,8 @@ before whole-line fallbacks, with validated source ranges and reversible shrink
 history. Bracket navigation and its decorations use the same contexts, including
 interpolation code and separate embedded bodies.
 
-Editing retains bounded structural fallbacks when a parser is unavailable.
+Host components can supply bounded structural fallbacks when a grammar is
+unavailable; clients consume those results or retain core plain editing.
 A compact spinner occupies a reserved final slot in the status bar while the
 current file is being prepared. Its “Preparing syntax…” tooltip and accessible
 label disappear with the spinner when colors or terminal plain fallback are ready;
@@ -217,8 +240,8 @@ Highlight selectors receive the node and its cursor-provided immediate parent
 (`None` for a tree root), preserving declared node/parent/document dependencies
 without searching backward through wide sibling lists. Retained syntax parts
 use that same parent context for identity and dependency checks.
-Inline/Split diffs, recovery reviews, Git previews and chat diff previews parse
-each complete source version with the shared providers, then intersect syntax
+Inline/Split diffs, recovery reviews, Git previews and chat diff previews request
+analysis of each complete source version through the same host service, then intersect syntax
 colors with word-change boundaries.
 
 Source line numbers remain independent of
@@ -235,7 +258,7 @@ scroll position within its project while the app is open, including when switchi
 to a diff view and back. New files start at the beginning; changing accounts clears
 these positions. Database recovery also restores these positions on reload, subject to the current file’s scroll bounds.
 
-The syntax/folding foundation uses shared incremental grammar providers for Rust,
+The bundled language-family components use shared incremental grammar providers for Rust,
 TypeScript/TSX, JavaScript/JSX, Python, Java, C#, C++, PHP, Shell, C, Go, HTML and
 CSS. Trees update with Unicode-safe byte edits. Fold descriptors cover blocks,
 declarations and multiline comments/literals, with Python suite headers retained.
@@ -243,17 +266,20 @@ Cancellation and oversized files discard stale trees; unsupported languages use
 lexical/indentation folding. Custom `SyntaxProvider` descriptors use the same
 update and fold policy through `SyntaxDocument::with_provider`.
 
-Frontend builds enable the core `editor-parser` feature. Backend WASI builds do not
-need the parser or a WASI C SDK. A shared browser compiler adapter supplies portable
-C headers; see `vendor/tree-sitter-language/PATCH.md`. The existing Rust grammar
-patch remains compatible with that adapter.
+Production frontend builds exclude `editor-parser`, syntax grammars and plugin
+runtimes. Each language-family component contains its own engines and uses the public syntax
+toolkit through the same SDK as community packages. Compiled defaults install
+offline on execution hosts. Source builds containing C grammars use the pinned
+[WASI SDK](plugin-authoring.md#language-plugin-build-toolchain). The browser C
+adapter is retained only for isolated legacy protocol tests.
 
-HTML script/style bodies use independent JavaScript/CSS parsers and full-file
+HTML script/style bodies resolve installed JavaScript/CSS providers and full-file
 fold coordinates, including after Unicode/CRLF edits. Declared types select
 supported bodies; JSON data scripts and unsupported style types stay in HTML.
 Each provider can supply an injection selector returning validated source ranges.
-The shared engine limits a document to 64 embedded bodies and discards every tree
-on cancellation or an exceeded limit.
+The shared host service bounds embedded work, source bytes and nesting depth;
+disabled, missing or failed child providers leave their bodies plain while
+preserving outer-language results.
 
 Editing commands, structural selection expansion and bracket navigation use
 immutable parser contexts from the shared per-document cache. `SyntaxDocument::prepare`
@@ -288,60 +314,53 @@ same traversal, limits and fallback policy.
 
 ## Preparation and viewport rendering
 
-The production editor runs preparation in a dedicated module worker using the
-same Rust/WASM build. The browser adapter handles messages, startup readiness,
-timeouts and termination; the shared Rust engine owns analysis, validation and
-cache policy. One request runs at a time and one latest source waits, so repeated
-typing replaces queued work. Replies must match the exact source, file/project,
-account generation, read revision, epoch and tab width before publication.
+The production editor uses one shared language-service facade above thin server
+and paired-host transports. Installed components own syntax analysis; host APIs
+provide generic component execution rather than language-specific built-ins.
+One analysis runs per active service while repeated edits replace queued source.
+Full snapshots and UTF-8 byte replacements carry revision and SHA-256 identity;
+a lost base retries once with a full snapshot. Close, eviction and host restart
+release component document state.
 
-UTF-8 ranges, folds, token coverage and bracket links are validated without parsing
-the document again on the UI thread. Transport/startup failures use the same
-preparation engine synchronously with a 12 ms parser budget; unavailable contexts
-retain ordinary lexical editing. Main-thread asynchronous fallback also yields
-at the shared 12 ms input deadline, preserving the source-bound job between
-slices; dedicated-worker parsing keeps its 100 ms allowance. These deadlines
-are checked at cooperative checkpoints, not a proven bound on every allocation
-or complete browser task.
-When background syntax is pending, paired typing/deletion and Enter in registered
-embedded-language containers can reuse the same immediate preparation/cache
-path. Only current-source context is used; unavailable immediate analysis keeps
-ordinary lexical editing. Passive syntax consumers still wait for background
-publication rather than starting this input work. Ordinary-input preparation
-requests editing structure without generating highlights and folds; completed
-full analysis reuses that same structure. Characters with unconditional literal
-behavior reuse the existing caret transaction without scanning lexical context.
-Input preparation also uses the background engine's bounded source admission,
-comparison and row-index phases, checking cancellation between batches before
-parsing and structure extraction.
-Background, resync and structural-action requests compare/copy their retained
-source and escape its JSON text in bounded Rust batches. The shared facade yields
-between batches and rechecks source/file/project/account ownership before transport.
-Request encoding borrows the selected range from the retained source rather than
-copying it into a second plaintext string. Requests and worker replies share the
-same bounded full/delta selection policy.
+The client validates result identity, UTF-8 ranges, token coverage, folds and
+bracket links before publication, without parsing source again. Replies must
+still match the account, project, session, document, provider and configuration.
+Changing these scopes cancels obsolete work. Disabled, unavailable or failed
+providers leave source and ordinary editing intact through core plain-text
+rendering; there is no browser parser fallback.
+
+While syntax is pending, context-independent declared rules remain available.
+Commands requiring current structure wait for that source or report unavailable
+structure without editing. Previously inserted automatic pairs retain their
+editor-owned transaction behavior while the next analysis is pending. Enter's
+validated closing indentation remains available until another edit or undo.
+Declared surrounding pairs wrap explicit selections without waiting for analysis;
+automatic insertion at a caret still respects the provider's context exclusions.
+Reusing
+an immutable result after inverse edits requires exact source equality and all
+original ownership, provider and configuration guards.
 The facade accepts a runtime input clock while retaining the browser clock and
 12 ms budget by default. Readiness/history and explicit budget-expiry contracts
 use controlled clocks; they do not establish physical readiness within 12 ms.
 Cold input latency remains tracked in the roadmap and performance evidence.
-Explicit Reindent requests and comments in registered embedded-language containers
-use a yielding browser task adapter for the same Rust syntax service when no
-current structure is ready, then apply through the shared editor command facade.
+Explicit Reindent requests and comments in declared embedded-language containers
+wait for current host structure, then apply through the shared editor command facade.
 Ownership is captured before queuing the action, so an unpolled task cannot acquire
 another file or newer source. Single-language comments retain immediate behavior,
 including SQL and admitted files above the structure budget. Explicit selection
 expansion and bracket jumps share this ownership/preparation path, while
-unsupported grammars retain immediate lexical selection expansion and their
-existing bracket-navigation rules. Navigation and selection
+plain source retains basic word/line selection without inventing language structure.
+Navigation and selection
 commands supersede pending structural actions even when their selections remain
-unchanged. Passive bracket decoration retains its nonblocking fallback.
+unchanged. Passive bracket decoration uses current source-bound results and clears
+when those results are unavailable.
 Comment menu eligibility uses completed embedded-language structure and requires
 support at every selection's start. Mixed selections therefore disable actions
 that cannot apply atomically. Reading eligibility never starts parsing; pending
-container actions can prepare their context when invoked, while capacity-rejected
+container actions can await their host context when invoked, while capacity-rejected
 containers disable those actions.
 JSON/JSONC, TOML, YAML/YML, INI/EditorConfig, XML build configuration and Markdown
-use registered Rust/WASM grammars through the same preparation cache and worker.
+use registered grammars inside their respective language-family host components.
 Markdown has separate block/inline parsing and declared fenced-code languages;
 ordinary prose stays plain. File detection recognizes common manifest/settings
 names including MSBuild projects/solutions, NuGet.Config, pom.xml, setup.cfg,
@@ -451,15 +470,15 @@ not prove physical touch selection or installed-PWA behavior. The verifier await
 editable, source-owned paint, completed recovery checks and loaded fonts before measuring gesture coordinates;
 failure diagnostics retain row/input rectangles and event cancellation state.
 
-While worker syntax is pending, cold views borrow plain row bodies from the existing
+While host syntax is pending, cold views borrow plain row bodies from the existing
 projection instead of normalizing and tokenizing another complete file on the UI
 thread. Requested rows and source slices feed the same paint and measurement paths.
 An existing styled frame stays visible within its document/read/account scope;
 replacement batch measurements wait for syntax, and source pointer controls remain
 disabled while its paint is stale. Forced caret probes can still reconcile current
-source. Terminal and unavailable-worker fallback preserves plain source in
+source. Unavailable-host fallback preserves plain source in
 cooperative whole-row batches, publishing only complete current-source tokens.
-Plain-row updates reuse matching raw source in both the worker and fallback paths. Fallback preparation reuses a current published worker
+Plain-row updates reuse matching raw source in analyzed and fallback paths. Fallback preparation reuses a current published syntax
 scope. Syntax queries still copy source in some paths.
 Cold source geometry, long-row shaping and touch input remain unfinished.
 
@@ -549,8 +568,8 @@ prefix and oversized-row flag per logical row; suffix updates still shift those
 prefixes. Embedded-language range validation shares the parser edit path’s indexed point
 mapping, including Unicode, CRLF and EOF after row insertions/deletions.
 Syntax scopes, lexical jobs and shared parser preparation retain the immutable
-editor source; validated worker replies retain the same snapshot. Workers retain
-resolved request strings directly. Borrowed external parser calls, Git diff shaping,
+editor source; validated host results retain the same snapshot. Components retain
+their synchronized source. Host toolkit calls, Git diff shaping,
 serialization and normalized native text still materialize source Strings. The native textarea still owns
 the complete projected source during initial cold preparation and on touch devices;
 prepared fine-pointer editors retain surrounding text instead. Remaining source
@@ -604,7 +623,7 @@ before scroll reconciliation, preserving the complete file's viewport. This
 transition rejects wrapping and active composition. Before a ready frame, and for
 cold wrapped or touch input, the full native surface remains the fallback.
 
-Lexical scanning returns source-independent structural metadata. Parser fallback
+Inside the host toolkit, lexical scanning returns source-independent structural metadata. Parser fallback
 and lexical folding consume this borrowed scan without copying complete files or
 embedded-language bodies into temporary structures. Owned editing contexts use
 the same scanner and region queries, including the byte/bracket limits and
@@ -732,7 +751,8 @@ These primitives and the folding view use the shared editor facade in both modes
 Supported code files show fold controls beside the logical line numbers for declarations,
 blocks and multiline comments/literals. Existing indicators follow line edits
 while analysis is pending; their controls remain disabled until fresh ranges
-arrive. The editor retains its last styled frame during same-document repaints
+arrive. Collapsed anchors survive edits, but pending ranges cannot hide source
+until current host analysis validates them. The editor retains its last styled frame during same-document repaints
 and replaces it with the new paint, avoiding flashes of plain text.
 
 Replacing
@@ -746,15 +766,16 @@ and file switches during the current app lifetime.
 Hidden lines remain in the source and copied selections. Syntax highlighting
 retains the full file's context, and Find reveals a hidden match. Native editing,
 paste, cut and composition reveal the selected source lines before the browser
-changes them; disjoint folds remain collapsed. Commands and undo/redo rebase the
+changes them; disjoint folds return after current host validation. Commands and undo/redo rebase the
 remaining anchors and restore the source caret through the updated projection.
 
 Input-only browser events replay their change against the complete source.
 Unchanged projected values and selections stay under the native input method's
 control during composition.
-Languages without a grammar use the shared language-aware lexer for bracket blocks and multiline
-comments/literals, with indentation fallback when no parser is available. Adjacent
-full-line comments can fold as a group.
+Language components can supply lexical folds for bracket blocks and multiline
+comments/literals when no grammar is available. Adjacent full-line comments can
+fold as a group. This runs on the host; unavailable providers retain core plain
+editing rather than invoking a browser lexer.
 
 Indentation uses the configured tab width;
 blank rows do not create blocks, and multiline literal contents do not contribute
@@ -766,8 +787,8 @@ Balanced, nested `region` / `endregion` markers in language comments also fold
 `#pragma region` / `#pragma endregion`. Unmatched markers remain ordinary text.
 Parser ranges take precedence over indentation; all ranges retain one
 control per header and cannot cross one another. Synchronous fallback work is
-limited to 2 MiB, 100,000 lines and the lexer's bracket limit. Worker rendering
-and real-device input verification remain roadmap work.
+limited to 2 MiB, 100,000 lines and the lexer's bracket limit within the host toolkit.
+Real-device input and viewport performance verification remain roadmap work.
 
 ## Reading and navigation
 
@@ -821,7 +842,7 @@ leave text and history intact.
 Search is bounded to 2 MiB source files, 64 KiB patterns and 100,000 matches;
 replacement output is limited to 32 MiB. Empty search input has no matches.
 Zero-width regex matches advance at Unicode boundaries and replacement is one
-finite transaction. Large-file worker/viewport support remains roadmap work.
+finite transaction. Large-file host/viewport support remains roadmap work.
 
 ## File buffers
 
@@ -898,12 +919,25 @@ remain pending.
 
 ### Live recovery verification
 
-After building the current app, run the disposable WASI/SQLite check:
+After building the current app, run the disposable WASI/SQLite API check:
 
 ```sh
 NO_COLOR=true spin build
 python3 tools/check-editor-recovery.py
+```
+
+Browser and production-host checks also need a release execution host containing
+the compiled default bundle. From the repository root, build it once:
+
+```sh
+export WASI_SDK_PATH="$(python3 tools/install_wasi_sdk.py ~/.cache/openwebide/wasi-sdk)"
+export WASI_SYSROOT="$WASI_SDK_PATH/share/wasi-sysroot"
+export OPENWEBIDE_BUNDLED_ARTIFACTS="$PWD/target/language-checks-defaults.json"
+cargo run -p openwebide-plugin-runtime --bin openwebide-bundle-plugins --release --locked -- bridge/bundled/plugins.json "$OPENWEBIDE_BUNDLED_ARTIFACTS"
+cargo build -p openwebide-bridge --release --features bundled-defaults
 CHROMEDRIVER=<compatible-driver> python3 tools/check-editor-recovery.py --browser
+CHROMEDRIVER=<compatible-driver> python3 tools/check-language-host.py
+python3 tools/check-language-client.py
 ```
 
 The check creates its own account, database, host files and browser profile, then
@@ -911,7 +945,7 @@ removes them. It preserves the existing development services and database. The
 API check covers both project modes, UTF-8/CRLF drafts and saved baselines, ordered
 selected/hidden tabs, invalid/root/stale revisions, actual Spin restarts and durable
 close-all tombstones. The browser check types into the built WASM editor, verifies
-worker preparation for the current source, observes
+real host analysis and the digest of the current source, observes
 its debounced database save, restarts Spin, reloads and opens a fresh window, and
 checks the selected tab and draft in both modes.
 
@@ -928,23 +962,24 @@ CI gives the expanded frontend browser test binary 300 seconds via
 UI readiness assertion’s short deadline. Set the same environment variable locally
 when running the full suite on a slower host.
 
-Check the production worker independently with a compatible ChromeDriver:
+Retained parser/framing checks use a separate, temporary test-support bundle:
 
 ```sh
-CHROMEDRIVER=<compatible-driver> python3 tools/check-editor-worker.py
+CHROMEDRIVER=<compatible-driver> python3 tools/check-editor-worker.py --fixture
 ```
 
-This serves the built assets from a disposable local HTTP server and verifies
+This builds and serves isolated test assets from a disposable local HTTP server and verifies
 all grammar variants, startup readiness, incremental Unicode/CRLF, a UI event
-during preparation and oversized-source fallback. It checks worker inclusion in
-the PWA shell; it does not establish offline editing or real-device behavior.
+during preparation and oversized-source fallback. Its worker and PWA cache exist
+only in that fixture. Production artifacts must exclude them. This does not
+establish offline editing or real-device behavior.
 
 See [editor performance measurements](editor-performance.md) for native/WASM
 text-storage comparisons and the remaining viewport/performance verification.
 
 ### Browser-engine composition verification
 
-After building both release components, run:
+After building the frontend, WASI backend and release host above, run:
 
 ```bash
 CHROMEDRIVER=<compatible-driver> python3 tools/check-editor-input.py
@@ -953,7 +988,7 @@ CHROMEDRIVER=<compatible-driver> python3 tools/check-editor-input.py --windowed
 
 The disposable release-app checks exercise Chromium's candidate updates, commit,
 cancel, and keyboard undo/redo through the actual Rust/WASM event handlers. The
-first command holds production-worker results until the first composition commits,
+first command holds real host results until the first composition commits,
 so syntax is pending during input. The second requires bounded native surrounding
 text. Both run local and remote drafts with LF and CRLF, compare the full recovered
 source with the expected bytes, and verify cancellation adds no undo step.
@@ -1006,7 +1041,7 @@ remain immutable across document clones and undo.
 
 ### Cooperative plain-source paint
 
-Worker and fallback requests share the facade's retained source snapshot for the
+Host analysis and fallback paint share the facade's retained source snapshot for the
 current file, project, account, reload and review generation. Repeated requests and
 tab-width changes share that allocation, including while analysis is pending. New
 snapshots copy directly from borrowed editor content, without an intermediate full
@@ -1015,10 +1050,10 @@ without an open file clear it. Facade-owned scopes use the shared source revisio
 and retained immutable allocation to validate current source without scanning bytes.
 Content replacement invalidates older scopes even when the new bytes match; the
 new request may reuse the same source allocation after checking those bytes.
-External snapshots still require complete-byte validation, and worker transport
+External snapshots still require complete-byte validation, and host transport
 still serializes the requested source.
 
-When a worker is unavailable or finishes without usable syntax paint, the editor
+When a host is unavailable or finishes without usable syntax paint, the editor
 facade prepares fallback rows through a resumable Rust plain-source job. The same
 lossless row preparation serves synchronous core callers and cooperative browser
 jobs. Each batch admits at most 128 rows and 64 KiB of source, allowing one
@@ -1031,7 +1066,7 @@ retained rows to finish without nearly a hundred frame waits. No partial token t
 published, and pending paint borrows projected source bodies or retains an
 already scoped styled frame. Full-row probes wait for cooperative fallback tokens
 instead of measuring a neutral table that will be discarded. Pending background
-workers retain their borrowed source preview. Both decisions use the same editor
+requests retain their borrowed source preview. Both decisions use the same editor
 facade, and native input stays visible during cold preparation.
 
 Rules resolution is memoized above workspace adapters, including detected/default
@@ -1049,7 +1084,7 @@ native text releases the old binding so its retained scroll extents cannot survi
 Browser contracts hold both frame callbacks and lexical
 jobs while checking native binding and source-column/line-end clicks in both modes.
 
-The job owns immutable source and reuses a terminal worker's source Arc when
+The job owns immutable source and reuses a completed syntax source allocation when
 available. CRLF normalization happens per row, preserving standalone CR and
 avoiding a normalized full-file copy. Source, read, pending-edit, account, path
 and tab-width changes cancel obsolete work; completed tokens are shared by
@@ -1062,17 +1097,44 @@ terminal rows must still terminate the new source. Intersecting rows scan their
 boundaries and validate complete raw text against original/shifted offsets.
 Comment delimiters do not affect fallback colors or following rows. Row
 insertions/deletions and disjoint edits cannot reuse mismatching raw text. Language and newline-normalization changes
-invalidate reuse. The shared worker preparation uses the same job with per-row
+invalidate reuse. The shared plain-row preparation uses the same job with per-row
 cancellation. Published rows use immutable shared token slices, so plain-row reuse
 retains existing token strings without copying their text or token arrays. Parser
 paint streams the ordered protected/embedded/semantic span boundaries without
 building a complete boundary set or vector. Duplicate edges merge before paint.
-Parser paint and validated worker replies use the same row representation; the painter
+Component analysis and validated host results use the same row representation; the painter
 reads those rows without materializing a second token table. Row metadata and
 handle tables still visit changed source, and source-change comparison still scans
 unchanged prefix/suffix text. Shared change comparison uses byte chunks and
 adjusts only differing edges to UTF-8 boundaries, retaining minimal character
-spans without decoding complete unchanged text. Worker protocol v6 replies reference
+spans without decoding complete unchanged text. The host toolkit and explicit test-support builds retain parser APIs. Production
+browser fallback uses the plain-source job and never runs those engines.
+
+This makes terminal plain-row work cooperative; it does not make full-source
+snapshot ownership, parsing, geometry or long-row initial shaping incremental. Those
+remaining limits are tracked in the roadmap and performance guide.
+
+Pointer gestures flush pending source paint when analysis has temporarily marked
+hit-testing unavailable. The current input target, source scope and glyph geometry
+are revalidated before translating to source coordinates; bounded native windows
+never supply whole-file pointer offsets.
+
+Gutter digits query the active document’s source-row index, including hidden fold
+rows and a trailing empty row; folds do not shrink source-number width. Native
+restoration compares the input against the projection’s already-normalized value
+without creating another normalized source copy.
+
+
+### Retained parser protocol (test support only)
+
+The following describes the historical version-6 browser-worker transport,
+retained by `check-editor-worker.py --fixture` for framing and parser regression
+coverage. It does not describe the production host language protocol. That
+protocol uses the versioned SDK's Analyze/Close requests and source-bound analysis
+results; no worker bootstrap, row-reference framing or structural patch receiver
+is shipped in the browser bundle.
+
+Worker protocol v6 replies reference
 unchanged token rows from the last published base ticket. Consecutive references
 transfer as runs, so one edit does not serialize a reference record for every
 unchanged row. The receiver checks the ticket, count, old row range, exact new row
@@ -1095,14 +1157,6 @@ source snapshot, and warm syntax queries use it without cloning the full buffer;
 source/read/account guards still run around callbacks. Initial preparation and
 changed rows still allocate token text.
 
-Parser fallback keeps its existing 12 ms budget and
-can supply ready paint before plain-row preparation is needed. Core callers that
-have not installed browser preparation retain their synchronous API.
-
-This makes terminal plain-row work cooperative; it does not make full-source
-snapshot ownership, parsing, geometry or long-row initial shaping incremental. Those
-remaining limits are tracked in the roadmap and performance guide.
-
 Worker structural publication compares retained record lists and sends their changed
 spans when that avoids a complete list copy. Source byte coordinates remain distinct
 from record indices. A patch requires the acknowledged ticket and matching language;
@@ -1110,13 +1164,3 @@ small lists and language changes retain standalone data. Reconstruction checks e
 list range and the aggregate expanded record budget before allocating, then applies
 the existing source/coordinate/bracket validation. Structural extraction and receiver
 reconstruction/validation still visit the full lists.
-
-Pointer gestures flush pending source paint when analysis has temporarily marked
-hit-testing unavailable. The current input target, source scope and glyph geometry
-are revalidated before translating to source coordinates; bounded native windows
-never supply whole-file pointer offsets.
-
-Gutter digits query the active document’s source-row index, including hidden fold
-rows and a trailing empty row; folds do not shrink source-number width. Native
-restoration compares the input against the projection’s already-normalized value
-without creating another normalized source copy.

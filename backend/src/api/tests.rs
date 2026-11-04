@@ -17,6 +17,110 @@ fn settings_body_limit_accepts_maximum_prompt_history() {
     }
 }
 
+#[test]
+fn language_preferences_are_user_scoped_and_invalid_changes_preserve_saved_choices() {
+    futures::executor::block_on(async {
+        use openwebide_core::plugins::languages::{LanguageSettings, ProviderPreference};
+        let store = openwebide_storage::Store::new(crate::state::AppDb::open_in_memory().unwrap());
+        store.migrate().await.unwrap();
+        let alice = store
+            .insert_user("alice", "hash", openwebide_core::UserRole::Admin, 0)
+            .await
+            .unwrap();
+        let bob = store
+            .insert_user("bob", "hash", openwebide_core::UserRole::User, 0)
+            .await
+            .unwrap();
+        let state = AppState { store };
+        let setting = |value: String| {
+            serde_json::from_value::<super::settings::SettingBody>(
+                json!({"key":"language_settings","value":value}),
+            )
+            .unwrap()
+        };
+        let alice_user = AuthedUser {
+            id: alice.id,
+            role: alice.role,
+        };
+        let bob_user = AuthedUser {
+            id: bob.id,
+            role: bob.role,
+        };
+        let mut preferences = LanguageSettings::default();
+        for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+            let project = state
+                .store
+                .create_project(
+                    &NewProject {
+                        name: "Project".into(),
+                        mode,
+                        path: Some("project".into()),
+                    },
+                    alice.id,
+                    0,
+                )
+                .await
+                .unwrap();
+            preferences
+                .projects
+                .entry(project.id)
+                .or_default()
+                .providers
+                .insert("notes".into(), ProviderPreference::Disabled);
+        }
+        let value = serde_json::to_string(&preferences).unwrap();
+        assert_eq!(
+            super::settings::write_setting_body(&state, alice_user, setting(value.clone()))
+                .await
+                .unwrap()
+                .status()
+                .as_u16(),
+            200
+        );
+        assert_eq!(
+            state
+                .store
+                .get_user_setting(bob.id, "language_settings")
+                .await
+                .unwrap(),
+            None
+        );
+        super::settings::write_setting_body(&state, bob_user, setting("{}".into()))
+            .await
+            .unwrap();
+        for invalid in [
+            "not json",
+            r#"{"projects":{"0":{}}}"#,
+            r#"{"defaults":{"providers":{"notes":{"mode":"provider","namespace":"not-a-provider"}}}}"#,
+            r#"{"defaults":{"unknown":true}}"#,
+        ] {
+            let error =
+                super::settings::write_setting_body(&state, alice_user, setting(invalid.into()))
+                    .await
+                    .unwrap_err();
+            assert_eq!(error.into_response().status().as_u16(), 400);
+            assert_eq!(
+                state
+                    .store
+                    .get_user_setting(alice.id, "language_settings")
+                    .await
+                    .unwrap()
+                    .as_deref(),
+                Some(value.as_str())
+            );
+        }
+        assert_eq!(
+            state
+                .store
+                .get_user_setting(bob.id, "language_settings")
+                .await
+                .unwrap()
+                .as_deref(),
+            Some("{}")
+        );
+    });
+}
+
 use super::auth::*;
 use super::bridge::*;
 use super::files::*;
@@ -2448,14 +2552,9 @@ fn unavailable_bundle_host_preserves_account_access_existing_plugins_and_pending
                 .len(),
             1
         );
-        assert_eq!(
-            state
-                .store
-                .pending_bundled_plugins(user.id)
-                .await
-                .unwrap()
-                .len(),
-            4
-        );
+        let pending = state.store.pending_bundled_plugins(user.id).await.unwrap();
+        let expected = openwebide_core::plugins::bundled_plugin_sources();
+        assert_eq!(pending.len(), expected.len());
+        assert!(expected.iter().all(|source| pending.contains(source)));
     });
 }

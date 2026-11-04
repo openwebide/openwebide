@@ -1,5 +1,17 @@
+#[cfg(target_arch = "wasm32")]
+use futures::{
+    FutureExt,
+    future::{LocalBoxFuture, Shared},
+};
 use leptos::prelude::*;
 use openwebide_core::{Connection, ProviderKind, SystemPrompt};
+#[cfg(target_arch = "wasm32")]
+use std::collections::BTreeMap;
+
+#[cfg(target_arch = "wasm32")]
+type SettingsResult = Result<BTreeMap<String, String>, String>;
+#[cfg(target_arch = "wasm32")]
+type SettingsRequest = Shared<LocalBoxFuture<'static, SettingsResult>>;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum Theme {
@@ -47,6 +59,8 @@ pub enum ConfigurationSection {
 /// User preferences and editable connection and prompt configuration.
 #[derive(Clone, Copy)]
 pub struct SettingsState {
+    #[cfg(target_arch = "wasm32")]
+    startup_request: StoredValue<Option<(u64, SettingsRequest)>, LocalStorage>,
     pub show_settings: RwSignal<bool>,
     /// Initial category requested when opening the settings dialog.
     pub requested_tab: RwSignal<usize>,
@@ -76,6 +90,31 @@ pub struct SettingsState {
 }
 
 impl SettingsState {
+    /// Share the login snapshot across feature loaders. Old-account readers keep
+    /// their own future; their callers still check ownership before publishing.
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn load_values(self, api: crate::backend::Api, account: u64) -> SettingsRequest {
+        self.startup_request.update_value(|current| {
+            if current
+                .as_ref()
+                .is_none_or(|(generation, _)| *generation != account)
+            {
+                let backend = api.with_value(Clone::clone);
+                let request = async move { backend.get_settings().await }
+                    .boxed_local()
+                    .shared();
+                *current = Some((account, request));
+            }
+        });
+        self.startup_request
+            .with_value(|current| current.as_ref().unwrap().1.clone())
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn refresh_values(self) {
+        self.startup_request.set_value(None);
+    }
+
     pub fn begin_model_setup(self, server: Option<i64>) {
         let connection = self.connections.with_untracked(|connections| {
             connections
@@ -97,6 +136,8 @@ impl SettingsState {
 
     pub fn new(theme: Theme, bridge_url: String) -> Self {
         Self {
+            #[cfg(target_arch = "wasm32")]
+            startup_request: StoredValue::new_local(None),
             show_settings: RwSignal::new(false),
             requested_tab: RwSignal::new(0),
             configuration: RwSignal::new(None),

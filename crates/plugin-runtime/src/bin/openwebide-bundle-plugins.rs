@@ -70,48 +70,37 @@ fn main() -> Result<()> {
             .collect();
         prepared.push((source, files));
     }
-    let artifacts = std::thread::scope(|scope| -> Result<Vec<BundledArtifact>> {
-        let handles: Vec<_> = prepared
-            .into_iter()
-            .map(|(source, files)| {
-                let runtime = &runtime;
-                scope.spawn(move || -> Result<BundledArtifact> {
-                    let manifest = validate_files(&files)?;
-                    let executable = manifest
-                        .executable
-                        .as_ref()
-                        .context("Bundled defaults must provide executable behavior")?;
-                    let workspace = tempfile::tempdir()?;
-                    let directory = workspace.path().join("source");
-                    std::fs::create_dir(&directory)?;
-                    for file in &files {
-                        let target = directory.join(&file.path);
-                        std::fs::create_dir_all(target.parent().context("Source file parent")?)?;
-                        std::fs::write(target, &file.content)?;
-                    }
-                    let staging = workspace.path().join("build");
-                    std::fs::create_dir(&staging)?;
-                    let bytes = build::compile(&directory, &executable.library, &staging)?;
-                    runtime.validate_exports(&bytes, &manifest)?;
-                    eprintln!(
-                        "Compiled {} {} ({} bytes)",
-                        manifest.display_name,
-                        manifest.version,
-                        bytes.len()
-                    );
-                    Ok(BundledArtifact::new(source, package_digest(&files), &bytes))
-                })
-            })
-            .collect();
-        handles
-            .into_iter()
-            .map(|handle| {
-                handle
-                    .join()
-                    .map_err(|_| anyhow::anyhow!("Plugin bundle worker panicked"))?
-            })
-            .collect()
-    })?;
+    // Each compiler already applies Cargo's job budget. Compile one package at
+    // a time so adding language families does not spawn a compiler per default.
+    let artifacts = prepared
+        .into_iter()
+        .map(|(source, files)| -> Result<BundledArtifact> {
+            let manifest = validate_files(&files)?;
+            let executable = manifest
+                .executable
+                .as_ref()
+                .context("Bundled defaults must provide executable behavior")?;
+            let workspace = tempfile::tempdir()?;
+            let directory = workspace.path().join("source");
+            std::fs::create_dir(&directory)?;
+            for file in &files {
+                let target = directory.join(&file.path);
+                std::fs::create_dir_all(target.parent().context("Source file parent")?)?;
+                std::fs::write(target, &file.content)?;
+            }
+            let staging = workspace.path().join("build");
+            std::fs::create_dir(&staging)?;
+            let bytes = build::compile(&directory, &executable.library, &staging)?;
+            runtime.validate_exports(&bytes, &manifest)?;
+            eprintln!(
+                "Compiled {} {} ({} bytes)",
+                manifest.display_name,
+                manifest.version,
+                bytes.len()
+            );
+            Ok(BundledArtifact::new(source, package_digest(&files), &bytes))
+        })
+        .collect::<Result<Vec<_>>>()?;
     let bundle = CompiledBundle { artifacts };
     publish(&bundle, Path::new(&args[1]))?;
     Ok(())

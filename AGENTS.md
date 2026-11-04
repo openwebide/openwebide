@@ -22,7 +22,7 @@ Instructions, conventions, and architectural principles for AI agents working on
 - Do not implement a plugin by selecting a built-in feature through its identity, a tool-group flag, a privileged endpoint or a plugin-specific host handler. Do not provide built-in fallbacks for missing, disabled or failed plugin implementations.
 - Host APIs may supply general capabilities such as workspace access, namespaced persistence, HTTP, approved process execution and durable job dispatch. Feature-specific policy, orchestration and result shaping belong in the plugin. A host API that simply performs a particular plugin's feature violates this rule.
 - Bundling and default installation may differ; execution privileges and available interfaces may not. Skill-only plugins may contribute instructions/resources without executable code.
-- The current platform tool-group manifests are transitional feature switches, not completed behavior migrations. Do not claim migration complete until the plugin artifact owns the implementation and the same contract passes in local and remote modes, including disablement, failure and updates.
+- Legacy platform tool-group declarations are retired feature switches. Do not claim migration complete until the plugin artifact owns the implementation and the same contract passes in local and remote modes, including disablement, failure and updates.
 
 ### Always Use the Component System for UI Elements
 - **Consistency First**: Always use unified UI component patterns and shared styling classes across the frontend. Never introduce ad-hoc, isolated button/input styles that clash with the rest of the application.

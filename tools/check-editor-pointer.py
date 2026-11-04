@@ -12,6 +12,7 @@ import runpy
 import secrets
 import tempfile
 import time
+from language_host_support import ExecutionHost
 
 ROOT = Path(__file__).resolve().parent.parent
 SUPPORT = runpy.run_path(str(ROOT / 'tools/check-editor-input.py'))
@@ -34,12 +35,15 @@ def check(mode, repeat, language, ending, wrap, source_path=None, target_line=2)
     with tempfile.TemporaryDirectory(prefix='openwebide-pointer-') as state, \
             tempfile.TemporaryDirectory(prefix='editor-pointer-probe-', dir=ROOT) as folder:
         runtime, browser = Runtime(state, frontend=True), None
+        host = ExecutionHost(runtime)
         try:
+            host.start()
             runtime.start()
             runtime.request('POST', '/api/auth/register', {
                 'username': 'pointer-' + secrets.token_hex(8), 'password': secrets.token_urlsafe(32),
             }, expected=201)
             runtime.acknowledge_release()
+            host.initialize_defaults()
             path = Path(folder).relative_to(ROOT.parent.parent).as_posix() if mode == 'remote' else 'pointer-folder'
             project = runtime.request('POST', '/api/projects', {'name': 'Pointer verification', 'mode': mode, 'path': path}, expected=201)
             (Path(folder) / name).write_bytes(source.encode())
@@ -51,13 +55,15 @@ def check(mode, repeat, language, ending, wrap, source_path=None, target_line=2)
                     'selections': [{'anchor': 0, 'head': 0}], 'collapsed': []},
                     'scroll': {'top': 0, 'left': 0}, 'read_only': False}]}})
             for key, value in {'open_tabs': json.dumps([project['id']]), 'active_project': str(project['id']),
-                    'bridge_url': 'http://127.0.0.1:1', 'editor_preferences': json.dumps({'word_wrap': wrap})}.items():
+                    'editor_preferences': json.dumps({'word_wrap': wrap})}.items():
                 runtime.request('PUT', '/api/settings', {'key': key, 'value': value})
             browser = Browser(state)
             browser.call('POST', '/url', {'url': runtime.url + '/offline.html'})
             for cookie in runtime.cookies:
                 browser.call('POST', '/cookie', {'cookie': {'name': cookie.name, 'value': cookie.value,
                     'domain': '127.0.0.1', 'path': cookie.path, 'httpOnly': True}})
+            host.pair_browser(browser)
+            browser.observe_languages()
             browser.call('POST', '/url', {'url': runtime.url + '/'})
             wait('editable source-owned syntax paint', lambda: browser.script("""
                 const input=document.querySelector('textarea[data-editor-path]');
@@ -67,6 +73,7 @@ def check(mode, repeat, language, ending, wrap, source_path=None, target_line=2)
                     input.dataset.editorScope===paint.dataset.editorScope &&
                     !!document.querySelector('.highlight-ready .tok-string');
             """))
+            browser.wait_language(source.replace('\r\n', '\n'))
             # Font loading and recovery can move rows after their first paint.
             # Measure the interactive layout, rather than a transient startup frame.
             browser.call('POST', '/execute/async', {'args': [], 'script': """
@@ -159,6 +166,7 @@ def check(mode, repeat, language, ending, wrap, source_path=None, target_line=2)
         finally:
             if browser: browser.stop()
             runtime.stop()
+            host.stop()
 
 
 if __name__ == '__main__':

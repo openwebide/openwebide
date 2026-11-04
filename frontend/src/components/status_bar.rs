@@ -25,6 +25,20 @@ pub fn StatusBar(
     let git = expect_context::<GitState>();
     let show_terminal = chat.show_terminal.read_only();
     let plugins = use_context::<crate::state::plugins::PluginsState>();
+    let languages = use_context::<crate::state::languages::LanguagesState>();
+    let language_actions = use_context::<crate::project_languages::ProjectLanguageActions>();
+    let settings = use_context::<crate::state::settings::SettingsState>();
+    let language_notice = Signal::derive(move || {
+        languages.and_then(|state| {
+        use crate::state::languages::LanguageStatus;
+        match state.status.get() {
+            LanguageStatus::Unavailable(error) => Some(error),
+            LanguageStatus::Conflicting(_) => Some("Several enabled plugins support this file. Choose a language provider in Editor settings.".into()),
+            LanguageStatus::TooLarge => Some("This file exceeds the language analysis limit. Plain editing and saving remain available.".into()),
+            _ => None,
+        }
+    })
+    });
     let updates = Signal::derive(move || plugins.map_or(0, |plugins| plugins.updates().len()));
     let ui = expect_context::<crate::state::ui::UiState>();
     let layout = expect_context::<crate::state::layout::LayoutState>();
@@ -89,6 +103,19 @@ pub fn StatusBar(
                     <super::ui::LoadingStatus label="Preparing syntax…" compact=true />
                 </Show>
             </span>
+            <Show when=move || language_notice.with(Option::is_some)>
+                <button type="button" class="status-btn" title=move || language_notice.get().unwrap_or_default()
+                    on:click=move |_| { if let Some(settings) = settings { settings.requested_tab.set(1); settings.show_settings.set(true); } }>
+                    "Language support"
+                </button>
+                <button type="button" class="status-btn" title="Retry language support" aria-label="Retry language support"
+                    on:click=move |_| {
+                        if let Some(state) = languages {
+                            if state.settings_loaded.get_untracked() { state.retry.update(|value| *value = value.wrapping_add(1)); }
+                            else if let Some(actions) = language_actions { actions.reload.run(()); }
+                        }
+                    }>"Retry"</button>
+            </Show>
             <button
                 class=move || if show_terminal.get() { "status-btn active" } else { "status-btn" }
                 aria-label="Toggle Output"

@@ -102,12 +102,16 @@ impl ProjectLanguageService {
         host: ProjectHost,
         project: i64,
         provider: openwebide_core::plugins::languages::RegisteredLanguage,
+        preferences: openwebide_core::plugins::languages::LanguagePreferences,
         current: impl Fn() -> bool + Clone + 'static,
     ) -> Result<Self, String> {
         let (adapter, bindings) = scoped_action_host(api, host, Some(project), current).await?;
         Ok(Self {
-            service: openwebide_agent::plugins::languages::LanguageService::new(
-                adapter, bindings, provider,
+            service: openwebide_agent::plugins::languages::LanguageService::new_with_preferences(
+                adapter,
+                bindings,
+                provider,
+                preferences,
             )?,
         })
     }

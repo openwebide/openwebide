@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
-"""Exercise the actual production Rust/WASM worker in Chrome, without an account."""
+"""Exercise the retained parser/framing protocol in a test-support-only bundle.
+
+Use --fixture to build an isolated fixture; no worker is added to production dist.
+The production client/host path is checked by check-language-client.py and
+check-language-host.py. Keep these low-level protocol cases as independent tests.
+"""
 import argparse
+from contextlib import contextmanager
 import functools
 import http.server
 import json
 import os
 from pathlib import Path
 import runpy
+import subprocess
 import tempfile
 import threading
 
@@ -14,10 +21,39 @@ ROOT = Path(__file__).resolve().parent.parent
 Browser = runpy.run_path(str(ROOT / 'tools/check-editor-recovery.py'))['Browser']
 
 
-def check(compiled_module=False):
+@contextmanager
+def worker_fixture():
+    with tempfile.TemporaryDirectory(prefix='openwebide-worker-fixture-') as directory:
+        dist = Path(directory) / 'dist'
+        subprocess.run(['trunk', 'build', '--release', '--features', 'test-support', '--dist', str(dist)],
+                       cwd=ROOT / 'frontend', check=True)
+        modules = list(dist.glob('openwebide-frontend-*.js'))
+        assert len(modules) == 1, 'Expected one fixture frontend module'
+        module = modules[0]
+        binary = module.with_name(module.stem + '_bg.wasm')
+        assert binary.is_file()
+        assert b'openwebide-editor-ready:6:frames:1' in binary.read_bytes(), 'Fixture must enable test-support'
+        bootstrap = (ROOT / 'frontend/pwa/editor-worker.js').read_text().replace(
+            '__EDITOR_MODULE__', module.name).replace('__EDITOR_WASM__', binary.name)
+        versioned = 'editor-worker-' + module.stem.removeprefix('openwebide-frontend-') + '.js'
+        (dist / 'editor-worker.js').write_text(bootstrap)
+        (dist / versioned).write_text(bootstrap)
+        # This cache belongs only to the disposable historical protocol fixture.
+        # The normal PWA build deliberately never emits these worker assets.
+        shell = dist / 'service-worker.js'
+        text = shell.read_text()
+        assert 'const SHELL_FILES = [' in text
+        shell.write_text(text.replace('const SHELL_FILES = [',
+            'const SHELL_FILES = ["/editor-worker.js",' + json.dumps('/' + versioned) + ',', 1))
+        (dist / '.editor-worker-test-support').write_text('test-support\n')
+        yield dist
+
+
+def check(compiled_module=False, dist=None):
     assert os.environ.get('CHROMEDRIVER'), 'Set CHROMEDRIVER to a compatible driver'
-    dist = ROOT / 'frontend/dist'
-    assert (dist / 'editor-worker.js').is_file(), 'Build the frontend first'
+    dist = Path(dist or ROOT / 'frontend/dist').resolve()
+    assert (dist / '.editor-worker-test-support').is_file(), 'Use --fixture or an explicit test-support --dist'
+    assert (dist / 'editor-worker.js').is_file(), 'Build the test-support fixture first'
     assert '"/editor-worker.js"' in (dist / 'service-worker.js').read_text(), 'Worker missing from PWA shell'
     module = next(dist.glob('openwebide-frontend-*.js'))
     binary = module.with_name(module.stem + '_bg.wasm')
@@ -396,4 +432,12 @@ def check(compiled_module=False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--compiled-module', action='store_true')
-    check(parser.parse_args().compiled_module)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument('--fixture', action='store_true', help='Build a disposable test-support worker bundle')
+    source.add_argument('--dist', type=Path, help='Use an existing marked test-support bundle')
+    args = parser.parse_args()
+    if args.fixture:
+        with worker_fixture() as dist:
+            check(args.compiled_module, dist)
+    else:
+        check(args.compiled_module, args.dist)

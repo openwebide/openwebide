@@ -123,6 +123,13 @@ test('bundled editor fonts are cached offline and font updates change the PWA bu
   const dist = fs.mkdtempSync(path.join(os.tmpdir(), 'openwebide-font-cache-'));
   try {
     for (const file of ['index.html', 'styles-test.css', 'openwebide-frontend-test.js', 'openwebide-frontend-test_bg.wasm']) fs.writeFileSync(path.join(dist, file), 'fixture');
+    const snippets = path.join(dist, 'snippets', 'bindings');
+    fs.mkdirSync(snippets, {recursive:true});
+    fs.writeFileSync(path.join(dist, 'openwebide-frontend-test.js'), "import './snippets/bindings/used.js';");
+    fs.writeFileSync(path.join(snippets, 'used.js'), "export {value} from './nested.js';");
+    fs.writeFileSync(path.join(snippets, 'nested.js'), 'export const value = 1;');
+    fs.writeFileSync(path.join(snippets, 'stale.js'), 'export const unusedTestAsset = true;');
+    fs.writeFileSync(path.join(dist, 'index.html'), '<!doctype html>文😀\n<link href="/snippets/bindings/stale.js?old" rel="modulepreload" crossorigin>\n<link rel="modulepreload" href="/snippets/bindings/used.js">\n');
     fs.cpSync(path.join(__dirname, '../fonts'), path.join(dist, 'fonts'), {recursive:true});
     const build = () => {
       execFileSync('sh', ['pwa/build.sh'], {cwd:path.join(__dirname, '..'), env:{...process.env, TRUNK_STAGING_DIR:dist}});
@@ -131,6 +138,23 @@ test('bundled editor fonts are cached offline and font updates change the PWA bu
       return context;
     };
     const before = build();
+    assert.equal(before.files.some(file => file.includes('editor-worker')), false);
+    assert.equal(fs.readdirSync(dist).some(file => file.startsWith('editor-worker')), false);
+    assert.ok(before.files.includes('/snippets/bindings/used.js'));
+    assert.ok(before.files.includes('/snippets/bindings/nested.js'));
+    assert.equal(before.files.includes('/snippets/bindings/stale.js'), false);
+    assert.equal(fs.existsSync(path.join(snippets, 'stale.js')), false);
+    const currentIndex = fs.readFileSync(path.join(dist, 'index.html'), 'utf8');
+    assert.doesNotMatch(currentIndex, /stale\.js/);
+    assert.match(currentIndex, /used\.js/);
+    assert.match(currentIndex, /<!doctype html>文😀/);
+    // A previous generated cache must not keep a snippet alive after its
+    // entry module stops importing it on a subsequent build.
+    fs.writeFileSync(path.join(dist, 'openwebide-frontend-test.js'), 'export const currentBuild = true;');
+    const refreshed = build();
+    assert.equal(refreshed.files.includes('/snippets/bindings/used.js'), false);
+    assert.equal(refreshed.files.includes('/snippets/bindings/nested.js'), false);
+    assert.doesNotMatch(fs.readFileSync(path.join(dist, 'index.html'), 'utf8'), /used\.js/);
     assert.ok(before.files.includes("/about.html"));
     const about = fs.readFileSync(path.join(dist, "about.html"), "utf8");
     assert.doesNotMatch(about, /SIL OPEN FONT LICENSE/);
@@ -141,7 +165,7 @@ test('bundled editor fonts are cached offline and font updates change the PWA bu
     assert.match(about, /styles-test.css/);
     for (const family of ['Neon', 'Argon', 'Xenon', 'Radon', 'Krypton']) assert.ok(before.files.includes(`/fonts/Monaspace${family}-v1.400.woff2`));
     fs.appendFileSync(path.join(dist, 'fonts/MonaspaceNeon-v1.400.woff2'), 'changed');
-    assert.notEqual(build().build, before.build);
+    assert.notEqual(build().build, refreshed.build);
   } finally { fs.rmSync(dist, {recursive:true, force:true}); }
 });
 
