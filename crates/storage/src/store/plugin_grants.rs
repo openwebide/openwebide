@@ -198,6 +198,47 @@ impl<D: Db> Store<D> {
                 .await
         })
     }
+    /// Native language services use the same installed snapshot and fresh
+    /// project authority as component invocations, including server-only packages.
+    pub fn authorize_language_server<'a>(
+        &'a self,
+        user: UserId,
+        call: &'a openwebide_core::plugins::languages::intelligence::Call,
+        now: i64,
+    ) -> ContextAuthorityFuture<'a> {
+        Box::pin(async move {
+            call.input
+                .validate()
+                .map_err(StorageError::InvalidRequest)?;
+            openwebide_core::plugins::languages::intelligence::declared_server(
+                &call.prepared,
+                &call.input.language,
+            )
+            .map_err(StorageError::InvalidRequest)?;
+            self.db
+                .transaction(|tx| async move {
+                    let store = Store::new(tx);
+                    let (plugin, context) = store
+                        .plugin_grant_in_transaction(user, call.session_id, &call.grant, now)
+                        .await?;
+                    if context.project_id.is_none()
+                        || plugin.source != call.prepared.source
+                        || plugin.manifest != call.prepared.manifest
+                        || plugin.digest != call.prepared.digest
+                        || plugin.host_id != call.prepared.host_id
+                    {
+                        return Err(StorageError::Conflict(
+                            "Language-server project or provider changed".into(),
+                        ));
+                    }
+                    store
+                        .validate_enabled_plugin(user, context.project_id, &plugin)
+                        .await?;
+                    Ok((plugin, context))
+                })
+                .await
+        })
+    }
     pub(super) async fn validate_plugin_context(
         &self,
         user: UserId,
@@ -294,7 +335,14 @@ impl<D: Db> Store<D> {
             Some(project) => self.project_plugins(user, project).await?,
             None => default_bindings(&self.plugin_installations(user).await?),
         };
-        if plugin.manifest.executable.is_none()
+        let has_server = plugin.manifest.compatibility.plugin_api >= 6
+            && plugin
+                .manifest
+                .contributions
+                .languages
+                .iter()
+                .any(|language| language.features.language_server.is_some());
+        if (plugin.manifest.executable.is_none() && !has_server)
             || !bindings.iter().any(|binding| {
                 binding.enabled
                     && binding.prepared.source == plugin.source
@@ -453,6 +501,150 @@ mod tests {
             })),
         }
     }
+    #[test]
+    fn server_only_language_grants_are_project_owned_current_and_revocable() {
+        block_on(async {
+            use openwebide_core::plugins::{ProjectPluginCommand, languages::intelligence};
+            for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+                let store = Store::new(RusqliteDb::open_in_memory().unwrap());
+                store.migrate().await.unwrap();
+                let user = store
+                    .insert_user("owner", "hash", UserRole::Admin, 0)
+                    .await
+                    .unwrap()
+                    .id;
+                let other = store
+                    .insert_user("other", "hash", UserRole::User, 0)
+                    .await
+                    .unwrap()
+                    .id;
+                let project = store
+                    .create_project(
+                        &NewProject {
+                            name: "project".into(),
+                            mode,
+                            path: Some("project".into()),
+                        },
+                        user,
+                        0,
+                    )
+                    .await
+                    .unwrap()
+                    .id;
+                let mut plugin = receipt();
+                plugin.manifest.compatibility.plugin_api = 6;
+                plugin.manifest.executable = None;
+                plugin.manifest.contributions.tools.clear();
+                plugin.manifest.contributions.languages = serde_json::from_value(json!([{
+                    "id":"custom","name":"Custom","extensions":["custom"],
+                    "features":{"languageServer":{"command":"custom-lsp"}}
+                }]))
+                .unwrap();
+                store
+                    .record_plugin(user, &installation(&plugin, None), 1)
+                    .await
+                    .unwrap();
+                let token = "a".repeat(32);
+                store
+                    .issue_plugin_context_grant(
+                        user,
+                        &PluginExecutionContext {
+                            project_id: Some(project),
+                            user_action: true,
+                            ..Default::default()
+                        },
+                        &plugin,
+                        &token,
+                        2,
+                    )
+                    .await
+                    .unwrap();
+                let call = intelligence::Call {
+                    grant: token,
+                    session_id: None,
+                    prepared: plugin,
+                    input: intelligence::Request {
+                        version: intelligence::VERSION,
+                        client: "window-a".into(),
+                        document: "tab-a".into(),
+                        request: 1,
+                        revision: 1,
+                        language: "custom".into(),
+                        path: "src/file.custom".into(),
+                        source: "text".into(),
+                        source_digest: openwebide_core::plugins::languages::source_digest("text"),
+                        query: intelligence::Query::Synchronize,
+                    },
+                };
+                let (_, context) = store
+                    .authorize_language_server(user, &call, 3)
+                    .await
+                    .unwrap();
+                assert_eq!(context.project_id, Some(project));
+                assert!(
+                    store
+                        .authorize_language_server(other, &call, 3)
+                        .await
+                        .is_err()
+                );
+                assert!(
+                    store
+                        .authorize_language_server(user, &call, 86_403)
+                        .await
+                        .is_err()
+                );
+                for field in ["source", "digest", "command", "host", "session"] {
+                    let mut forged = call.clone();
+                    match field {
+                        "source" => forged.prepared.source.commit = "f".repeat(40),
+                        "digest" => forged.prepared.digest = "f".repeat(64),
+                        "command" => {
+                            forged.prepared.manifest.contributions.languages[0]
+                                .features
+                                .language_server
+                                .as_mut()
+                                .unwrap()
+                                .command = "another-command".into();
+                        }
+                        "host" => forged.prepared.host_id = "another-host".into(),
+                        "session" => forged.session_id = Some(1),
+                        _ => unreachable!(),
+                    }
+                    assert!(
+                        store
+                            .authorize_language_server(user, &forged, 3)
+                            .await
+                            .is_err(),
+                        "{field}"
+                    );
+                }
+                let binding = store
+                    .project_plugins(user, project)
+                    .await
+                    .unwrap()
+                    .remove(0);
+                store
+                    .project_plugin_command(
+                        user,
+                        project,
+                        &ProjectPluginCommand::Disable {
+                            id: binding.id,
+                            revision: binding.revision,
+                        },
+                        4,
+                    )
+                    .await
+                    .unwrap();
+                assert!(
+                    store
+                        .authorize_language_server(user, &call, 5)
+                        .await
+                        .is_err()
+                );
+            }
+        });
+    }
+
     #[test]
     fn language_authority_requires_current_project_enablement_in_both_modes() {
         block_on(async {

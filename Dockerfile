@@ -19,7 +19,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 ENV RUSTUP_HOME=/opt/openwebide-toolchain/rustup
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
         | sh -s -- -y --profile minimal --default-toolchain 1.98.1
-RUN rustup component add llvm-tools
+RUN rustup component add llvm-tools rust-analyzer rust-src rustfmt
 
 # Trunk (version must match .github/workflows/ci.yml)
 ARG TARGETARCH
@@ -76,7 +76,9 @@ ENV RUSTUP_HOME=/opt/openwebide-toolchain/rustup
 ENV WASI_SDK_PATH=/opt/openwebide-wasi-sdk/current
 ENV PATH="/opt/openwebide-toolchain/bin:${PATH}"
 RUN ln -s rustup /opt/openwebide-toolchain/bin/cargo && \
-    ln -s rustup /opt/openwebide-toolchain/bin/rustc
+    ln -s rustup /opt/openwebide-toolchain/bin/rustc && \
+    ln -s rustup /opt/openwebide-toolchain/bin/rust-analyzer && \
+    ln -s rustup /opt/openwebide-toolchain/bin/rustfmt
 COPY --chmod=755 docker/entrypoint.sh ./entrypoint.sh
 COPY --chmod=755 docker/ssh-init.sh /usr/local/bin/openwebide-ssh-init
 COPY --chmod=755 docker/git.sh /usr/local/bin/git

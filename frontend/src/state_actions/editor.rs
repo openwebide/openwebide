@@ -24,7 +24,9 @@ pub enum EditorCommand {
 }
 
 mod columns;
+mod intelligence;
 mod languages;
+pub use intelligence::{EditorIntelligence, IntelligenceCommand};
 mod structural_actions;
 pub use columns::EditorColumnSelection;
 mod decorations;

@@ -9,6 +9,8 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Add native language servers through plugin API 6, beginning with Rust and `rust-analyzer`. Both execution hosts share source-checked diagnostics, hover, completion, cross-file navigation, symbols, rename, formatting and text-edit code actions. Review edits before staging them as unsaved tabs with existing undo and recovery. Services start on demand, retain warm state and isolate unsaved clients; provider changes revoke old services. API 5 server metadata remains inert, and upgrades adding native execution require capability review.
+
 - Reuse bounded language-rule validation results so embedded preparation does not repeatedly compile unchanged provider expressions.
 - Language packages can opt out of unused chat-context hooks through the public manifest, avoiding per-language compilation during chat startup while preserving custom context contributions.
 - Reuse bounded compiled plugin code between preparation and host execution while keeping document stores, capabilities and invocation limits isolated.
@@ -21,7 +23,7 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 - Add independent language-family grammar features and installed-provider composition for embedded language scopes. The public syntax toolkit supports custom Markdown fenced-code IDs without bundling their parsers; selected definitions, source coordinates, provider preferences, cancellation and child-document cleanup share one host-service contract. Fix empty trailing-row token export for SQL. Each default artifact contains only its own family’s grammar engines.
 
-- Move all 24 existing language IDs into 19 independently installable language-family plugins, grouped by intended language-server coverage. Editors, diffs and change previews use the same host-backed services, database provider preferences and plain fallback. Bundled offline defaults, updates, disablement, removal, recovery and custom marketplaces work through the public plugin lifecycle on both execution hosts. LSP execution remains the next roadmap item.
+- Move all 24 existing language IDs into 19 independently installable language-family plugins, grouped by intended language-server coverage. Editors, diffs and change previews use the same host-backed services, database provider preferences and plain fallback. Bundled offline defaults, updates, disablement, removal, recovery and custom marketplaces work through the public plugin lifecycle on both execution hosts. Native LSP execution is added separately above.
 
 - Refresh native editor ownership after account changes, preserving current plain text after language-provider failure and rejecting stale account work.
 

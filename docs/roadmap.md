@@ -1106,75 +1106,50 @@ and [EditorConfig](https://editorconfig.org/).
 
 ### Code intelligence: host language services, LSP and caching
 
-Extend the installed language-family plugins with diagnostics, LSP features and
-caching through the same public contracts and shared host facade. Keep each
-server integration in the package covering its languages: JavaScript/TypeScript/
-JSX/TSX for vtsls and C/C++ for clangd, for example.
+Rust is the first native LSP integration. Its API 6 language plugin declares
+`rust-analyzer`; the shared host facade supports diagnostics, manual hover and
+completion, definitions, references, document symbols, rename, document formatting
+and text-edit code actions in both project modes. Clients validate source-bound
+results, review edits and stage changes through existing editor history and
+recovery. Native services retain warm state with bounded service counts,
+source buffers, requests and idle lifetime; unsaved clients stay isolated.
 
-Treat the homelab server and paired native bridges as persistent development
-hosts. Language services belong to a project on its execution host, rather than
-to an editor tab; browsers, phones and agent runs are clients of those services.
-Remote projects use the server bridge; local projects use a paired bridge with
-access to the selected folder. Language plugins and their runtimes install and
-execute on those hosts, never on browser clients.
+Remaining work:
 
-Build on the existing editor document, selection and extension APIs.
-Bring real-time code intelligence (syntax errors, lint squiggles, tooltips,
-autocomplete) into the editor while keeping the core diagnostics engine
-100% shared between Remote and Local mode:
+- Add further server integrations through independently installable language
+  packages, grouped by server coverage: JavaScript/TypeScript/JSX/TSX for vtsls,
+  C/C++ for clangd, and Python for pyright, for example. Keep server selection,
+  configuration, validation and lifecycle above the thin host adapters.
+- Add mouse-hover presentation, completion popups while typing, snippets,
+  selection formatting and richer symbol/diagnostic navigation. Support separate
+  host lint/analysis providers through the same diagnostics UI. Keep ordinary
+  editing available when providers or toolchains are unavailable.
+- Extend reviewed workspace edits to file creation, movement and deletion, and
+  define an approval and recovery contract for server commands. Keep unsupported
+  operations explicit and reject partial application.
+- Expose diagnostics, symbols, definitions and references to agent tools through
+  the existing shared language-service facade. Reuse account/project authority,
+  installed versions and normal approval rules for mutations.
+- Reuse suitable project services across browser reloads and device handoff while
+  preserving independent unsaved overlays. Measure and bound native process RSS,
+  not just retained protocol data; verify pressure-based eviction and recovery.
+- Put server-supported persistent derived caches outside user workspaces. Measure
+  cold/warm latency, cache hits and resource cost before adding OpenWebIDE result
+  caches. Installation settings and user preferences remain in the database.
+- Add bounded, cancellable prefetching for open tabs, recent edits and dependencies.
+  Prefer interactive requests, limit speculative concurrency and begin with
+  reusable diagnostics and symbols rather than context-sensitive completion.
+- Key reusable results by account/project/host, source, effective configuration,
+  dependencies and plugin/server version. Verify external edits, branch changes,
+  dependency/configuration changes, updates and host restarts invalidate affected
+  results. Cross-file analysis needs a project-generation contract as well as
+  document revisions.
+- Run the same service/cache contracts against both adapters, including reconnect,
+  concurrent overlays, cancellation, eviction, folder-access recovery and updates.
+  Benchmark resource use on a small homelab before claiming prefetch improvements.
 
-- Host lint/analysis providers, including lightweight WASM providers where useful,
-  producing a shared `Diagnostic` struct for the editor's squiggle overlay.
-  Browser code renders results and implements core editing; it does not execute
-  plugin analyzers. Preserve core editing when no suitable host is available.
-- Host LSP multiplexed over the Phase 11 bridge
-  (`rust-analyzer`, `pyright`, `vtsls`) for cross-file go-to-definition,
-  hover, autocomplete, document symbols/outline, references, rename, code actions
-  and document/selection formatting when a host toolchain is available.
-- One diagnostics UI regardless of whether a diagnostic came from a host linter
-  or language server, with matching local/remote feature and failure contracts.
-- Manage language-server lifetimes independently of client connections. Keep
-  useful servers and project indexes warm across tab closure, device changes and
-  brief disconnects, with bounded idle time, memory, process counts and eviction.
-  Start services on demand; do not keep every installed language or project
-  running indefinitely. Reconnect clients to current project services, recover
-  from host/server restarts, and allow plugin updates at controlled service
-  boundaries without changing providers beneath in-flight requests.
-- Expose diagnostics, symbols, definitions and references through one shared
-  language-service facade to editor features and agent tools. Reuse the same
-  project configuration, toolchain and pinned plugin versions across clients;
-  project/account access and normal approval rules still apply to agent actions.
-- Begin caching with server-owned indexing and supported persistent caches,
-  rather than duplicating language-server internals. Measure cold/warm latency,
-  cache hits and resource cost before adding OpenWebIDE result caches. Preserve
-  host artifacts outside user workspaces in persistent host storage; cache
-  contents are disposable derived data, not the source of installation settings
-  or user preferences, which remain in the database.
-- Add bounded, cancellable prefetching for likely files: open tabs, recent edits
-  and dependencies identified by providers. Prefer interactive requests over
-  speculative work, avoid eagerly opening every project file, and limit indexing
-  and prefetch concurrency/resource use. Initially target reusable diagnostics
-  and document symbols; only cache context-sensitive features such as completion
-  when their complete request identity and invalidation contract are known.
-- Reuse validated results across clients for identical project/document state.
-  Key results by user/project/host, document content or revision, project and
-  dependency state, effective configuration, and plugin/server version. Isolate
-  unsaved buffers by client/session identity unless explicitly shared. Invalidate
-  after edits, external file changes, branch/dependency/configuration changes or
-  provider updates; never publish stale results after ownership or document
-  changes. Expensive cross-file analysis should identify the project generation
-  it analyzed, not just the active file revision.
-- Verify the same service/cache contracts against both host adapters: cold/warm
-  use, device reconnect, concurrent clients with different unsaved buffers,
-  external edits and branch switches, cancellation, eviction, provider updates,
-  host outages and restart recovery. Benchmark interactive latency and bounded
-  resource use on a small homelab before claiming prefetching improves performance.
-
-Expose language features through the contribution contracts established by
-[language plugins](plugins.md#language-support), using the same
-validation, permissions and lifecycle for bundled and community packages. Extend
-those contracts for code intelligence without adding a separate built-in language
-implementation.
+Extend the public [language contribution contract](plugins.md#language-support),
+with the same permissions and lifecycle for bundled and community packages.
 
 ### Editor Git annotations
 

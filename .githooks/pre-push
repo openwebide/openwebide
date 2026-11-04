@@ -6,6 +6,7 @@ export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 required_tools=(
   cargo
   rustfmt
+  rust-analyzer
   cargo-clippy
   clang
   trunk
@@ -66,6 +67,7 @@ cargo clippy -p openwebide-bridge --all-targets -- -D warnings
 echo "[pre-push] 3/4 Running native unit & integration tests..."
 cargo test -p openwebide-storage -p openwebide-core -p openwebide-auth -p openwebide-agent -p openwebide-llm -p openwebide-bridge -p openwebide-backend -p openwebide-plugin-sdk -p openwebide-plugin-runtime -p openwebide-language-syntax --features openwebide-core/editor-parser -- --skip source_compilation_validates_tools_caches_offline_and_rejects_artifact_corruption
 cargo test -p openwebide-frontend --lib
+cargo run -p openwebide-bridge --example check_language_server --locked
 
 if [[ -z "$changed_files" ]] || echo "$changed_files" | grep -qE '^(frontend/|crates/core/|crates/agent/|Cargo\.)'; then
   echo "[pre-push] 4/4 Running headless Chrome WASM UI tests..."

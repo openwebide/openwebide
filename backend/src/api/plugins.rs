@@ -245,6 +245,87 @@ pub(crate) async fn start_invocation(
     .map_err(ApiError::bad_request)?;
     Ok(json_response(200, &result))
 }
+
+pub(crate) async fn language_server(
+    req: Request,
+    state: &AppState,
+    user: AuthedUser,
+    authorize_only: bool,
+) -> Result<JsonResp, ApiError> {
+    use openwebide_core::plugins::languages::{MAX_REQUEST_ENVELOPE_BYTES, intelligence};
+    let call: intelligence::Call = parse_json(read_body(req, MAX_REQUEST_ENVELOPE_BYTES).await?)?;
+    let (prepared, context) = state
+        .store
+        .authorize_language_server(user.id, &call, now())
+        .await?;
+    let project = context
+        .project_id
+        .ok_or_else(|| ApiError::bad_request("Language services require a project"))?;
+    let selection = intelligence::Selection {
+        user: user.id.get(),
+        project,
+        prepared,
+        input: call.input,
+    };
+    if authorize_only {
+        return Ok(json_response(200, &selection));
+    }
+    let project = state.store.get_project(project, user.id).await?;
+    let root = openwebide_core::run::execution_root(&project).ok_or_else(|| {
+        ApiError::bad_request("Use the paired execution host for this local project")
+    })?;
+    let response: intelligence::Response = send_plugin_rpc(
+        &state.store,
+        user.id,
+        "/plugins/languages/query",
+        serde_json::to_value(intelligence::HostRequest {
+            user: None,
+            selection,
+            root,
+        })
+        .map_err(|error| ApiError::bad_request(error.to_string()))?,
+    )
+    .await
+    .map_err(ApiError::bad_request)?;
+    Ok(json_response(200, &response))
+}
+pub(crate) async fn revoke_language_servers(
+    req: Request,
+    state: &AppState,
+    user: AuthedUser,
+) -> Result<JsonResp, ApiError> {
+    let mut revoke: openwebide_core::plugins::languages::intelligence::Revoke =
+        parse_json(read_body(req, 4096).await?)?;
+    if let Some(project) = revoke.project {
+        state.store.get_project(project, user.id).await?;
+    }
+    revoke.user = Some(user.id.get());
+    let result: serde_json::Value = send_plugin_rpc(
+        &state.store,
+        user.id,
+        "/plugins/languages/revoke",
+        serde_json::to_value(revoke).map_err(|error| ApiError::bad_request(error.to_string()))?,
+    )
+    .await
+    .map_err(ApiError::bad_request)?;
+    Ok(json_response(200, &result))
+}
+async fn stop_language_servers(
+    state: &AppState,
+    user: UserId,
+    project: Option<i64>,
+    provider: Option<String>,
+) {
+    // Database changes remain authoritative if a host is disconnected. Fresh
+    // grants already reject the old selection; reachable hosts cancel it now.
+    let _ = send_plugin_rpc::<serde_json::Value>(
+        &state.store,
+        user,
+        "/plugins/languages/revoke",
+        json!({"project":project,"provider":provider}),
+    )
+    .await;
+}
 pub(crate) async fn continue_invocation(
     req: Request,
     state: &AppState,
@@ -411,10 +492,15 @@ pub(crate) async fn record(
         )
         .await?,
     )?;
-    Ok(json_response(
-        200,
-        &state.store.record_plugin(user.id, &request, now()).await?,
-    ))
+    let entries = state.store.record_plugin(user.id, &request, now()).await?;
+    stop_language_servers(
+        state,
+        user.id,
+        None,
+        Some(request.prepared.storage_namespace()),
+    )
+    .await;
+    Ok(json_response(200, &entries))
 }
 pub(crate) async fn prepare(
     req: Request,
@@ -606,13 +692,23 @@ pub(crate) async fn project_command(
 ) -> Result<JsonResp, ApiError> {
     let command: ProjectPluginCommand =
         parse_json(read_body(req, openwebide_core::plugins::MAX_PACKAGE_BYTES).await?)?;
-    Ok(json_response(
-        200,
-        &state
+    let project = project_id(path, "/plugins")?;
+    let provider = match &command {
+        ProjectPluginCommand::Enable { package, .. } => Some(package.prepared.storage_namespace()),
+        ProjectPluginCommand::Disable { id, .. } => state
             .store
-            .project_plugin_command(user.id, project_id(path, "/plugins")?, &command, now())
-            .await?,
-    ))
+            .project_plugins(user.id, project)
+            .await?
+            .into_iter()
+            .find(|binding| binding.id == *id)
+            .map(|binding| binding.prepared.storage_namespace()),
+    };
+    let bindings = state
+        .store
+        .project_plugin_command(user.id, project, &command, now())
+        .await?;
+    stop_language_servers(state, user.id, Some(project), provider).await;
+    Ok(json_response(200, &bindings))
 }
 pub(crate) async fn remove(
     req: Request,
@@ -620,10 +716,16 @@ pub(crate) async fn remove(
     user: AuthedUser,
 ) -> Result<JsonResp, ApiError> {
     let request: RemovePlugin = parse_json(read_body(req, 16 * 1024).await?)?;
-    Ok(json_response(
-        200,
-        &state.store.remove_plugin(user.id, &request).await?,
-    ))
+    let provider = state
+        .store
+        .plugin_installations(user.id)
+        .await?
+        .into_iter()
+        .find(|entry| entry.prepared.source == request.source)
+        .map(|entry| entry.prepared.storage_namespace());
+    let entries = state.store.remove_plugin(user.id, &request).await?;
+    stop_language_servers(state, user.id, None, provider).await;
+    Ok(json_response(200, &entries))
 }
 pub(crate) async fn package(
     req: Request,

@@ -8,6 +8,7 @@ mod confirm_dialog;
 mod cron;
 mod editor;
 mod editor_geometry;
+pub(crate) mod editor_intelligence;
 mod editor_motion;
 mod editor_options;
 pub(crate) mod editor_paint;

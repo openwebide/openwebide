@@ -2620,6 +2620,7 @@ pub fn Editor(
             || workspace.is_resolving()
             || file_tree_actions.is_some_and(|actions| actions.busy.get())
     });
+    let intelligence = editor_actions.install_intelligence(read_only);
     let recovery_blocks_save = Memo::new(move |_| {
         workspace
             .active_project
@@ -3082,6 +3083,15 @@ pub fn Editor(
             }
         });
     });
+    Effect::new(move |_| {
+        if let Some(intelligence) = intelligence
+            && let Some(textarea) = ta.get()
+            && let Some(offset) = intelligence.take_navigation()
+            && current_editor_target(editor_actions, &textarea)
+        {
+            navigate_editor(editor_actions, &textarea, offset, paint_request);
+        }
+    });
     let open_go = Callback::new(move |()| {
         let (line, column, _) = cursor_status.get_untracked();
         go_query.set(format!("{line}:{column}"));
@@ -3522,6 +3532,28 @@ pub fn Editor(
     view! {
         <div class="editor" node_ref=root style=move || format!("{}; --editor-tab-width: {}", editor_actions.preferences().font_style(), editor_actions.rules().indentation.tab_width()) on:keydown=move |event: web_sys::KeyboardEvent| {
             if event.is_composing() { return; }
+            if let Some(intelligence) = intelligence.filter(|actions| actions.available.get_untracked())
+                && view_mode.get_untracked() == ViewMode::Code
+                && let Some(textarea) = ta.get_untracked().filter(|textarea| current_editor_target(editor_actions, textarea))
+                && event.target().and_then(|target| target.dyn_into::<web_sys::HtmlElement>().ok()).is_some_and(|target| target == *textarea)
+            {
+                use crate::state_actions::editor::IntelligenceCommand;
+                let command = match event.key().as_str() {
+                    "F12" if event.shift_key() => Some(IntelligenceCommand::References),
+                    "F12" => Some(IntelligenceCommand::Definition),
+                    " " if event.ctrl_key() && !event.alt_key() => Some(IntelligenceCommand::Completion),
+                    "." if event.ctrl_key() && !event.alt_key() => Some(IntelligenceCommand::CodeActions),
+                    "F" | "f" if event.shift_key() && event.alt_key() => Some(IntelligenceCommand::Formatting),
+                    _ => None,
+                };
+                if command.is_some() || event.key() == "F2" {
+                    event.prevent_default(); event.stop_propagation();
+                    let _ = editor_actions.record_native_selection(projected_selection(editor_actions, &textarea));
+                    if let Some(command) = command { intelligence.request.run(command); }
+                    else if !read_only.get_untracked() { intelligence.rename_open.set(true); }
+                    return;
+                }
+            }
             if (event.ctrl_key() || event.meta_key()) && !event.alt_key() && view_mode.get_untracked() == ViewMode::Code && ta.get_untracked().is_some() && event.key().eq_ignore_ascii_case("g") {
                 event.prevent_default(); event.stop_propagation(); open_go.run(());
             } else if (event.ctrl_key() || event.meta_key()) && event.shift_key() && !event.alt_key() && view_mode.get_untracked() == ViewMode::Code && (matches!(event.key().as_str(), "\\" | "|") || event.code() == "Backslash") {
@@ -3631,6 +3663,7 @@ pub fn Editor(
                                         </Show>
 </super::dropdown::ActionMenu>
                                 </Show>
+                                {intelligence.map(|actions| view! { <super::editor_intelligence::EditorIntelligenceToolbar actions read_only /> })}
                                 <Show
                                     when=move || view_mode.get() == ViewMode::InlineDiff || view_mode.get() == ViewMode::SideBySide
                                     fallback={
@@ -3884,6 +3917,7 @@ pub fn Editor(
                                         <HighlightOverlay actions=editor_actions paint_request=paint_request paint_epoch=paint_epoch content=content open_file=open_file node_ref=hl textarea_ref=ta ready=highlight_ready presentation=highlight_visible error=action_error visible=visible_rows viewport=viewport textarea_start=textarea_start indentation=Signal::from(paint_indentation) show_whitespace=Signal::from(paint_whitespace) layout_revision=layout_revision native_install_revision=native_install_revision />
                                         <super::editor_selections::SelectionOverlay textarea=ta ready=highlight_ready layout_revision=layout_revision />
                                         <div class="editor-bracket-layer" aria-hidden="true">{move || bracket_marks.get().into_iter().map(|(left, top, width, height)| view! { <span class="editor-bracket-match" style=format!("left:{left}px;top:{top}px;width:{width}px;height:{height}px")/> }).collect_view()}</div>
+                                        {intelligence.map(|actions| view! { <super::editor_intelligence::DiagnosticOverlay actions textarea=ta ready=highlight_ready layout_revision /> })}
                                         <div class="editor-fold-column"><div class="editor-fold-track" style=move || format!("padding-top:{}px", viewport.get().top)>{move || {
                                             let state = fold_state.get();
                                             let headers: std::collections::HashSet<_> = state.indicator_headers().collect();

@@ -2,6 +2,7 @@
 """Materialize the pinned core plugins from Git; never follow a moving branch."""
 import argparse
 import json
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -18,18 +19,26 @@ def git(repo, *args):
 
 def materialize(repo, lock):
     commit = lock['commit']
-    assert git(repo, 'rev-parse', '--verify', commit + '^{commit}').decode().strip() == commit
+    commits = lock.get('commits', {})
+    assert set(commits).issubset(lock['paths']), 'Commit overrides must name selected packages'
+    for reference in {commit, *commits.values()}:
+        assert re.fullmatch(r'[0-9a-f]{40}', reference), 'Pin immutable Git commits'
+        assert git(repo, 'rev-parse', '--verify', reference + '^{commit}').decode().strip() == reference
     plugins = []
     for directory in lock['paths']:
+        reference = commits.get(directory, commit)
         files = []
-        for entry in git(repo, 'ls-tree', '-r', '-z', f'{commit}:{directory}').split(b'\0'):
+        for entry in git(repo, 'ls-tree', '-r', '-z', f'{reference}:{directory}').split(b'\0'):
             if not entry:
                 continue
             metadata, name = entry.split(b'\t', 1)
             mode, kind, object_id = metadata.split()
             assert mode in (b'100644', b'100755') and kind == b'blob', 'Unsupported bundled file'
             files.append({'path': name.decode(), 'content': git(repo, 'cat-file', 'blob', object_id.decode()).decode(), 'executable': mode == b'100755'})
-        plugins.append({'path': directory, 'files': files})
+        package = {'path': directory, 'files': files}
+        if reference != commit:
+            package['commit'] = reference
+        plugins.append(package)
     return json.dumps({'repository': lock['repository'], 'commit': commit, 'plugins': plugins}, indent=2) + '\n', git(repo, 'show', f'{commit}:LICENSE').decode()
 
 
@@ -43,7 +52,8 @@ def main():
         repo = args.repository or Path(temp)
         if args.repository is None:
             git(repo, 'init', '--bare', '--quiet')
-            git(repo, 'fetch', '--quiet', '--depth=1', '--no-tags', '--', lock['repository'], lock['commit'])
+            for reference in sorted({lock['commit'], *lock.get('commits', {}).values()}):
+                git(repo, 'fetch', '--quiet', '--depth=1', '--no-tags', '--', lock['repository'], reference)
         snapshot, license_text = materialize(repo, lock)
         if args.check:
             assert OUTPUT.read_text() == snapshot, 'Bundled plugins differ; run tools/bundle_plugins.py'

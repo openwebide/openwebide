@@ -33,7 +33,7 @@ def check(bundle):
             definitions = manifest.get('contributions', {}).get('languages', [])
             if not definitions:
                 continue
-            source = {'repository': snapshot['repository'], 'commit': snapshot['commit'],
+            source = {'repository': snapshot['repository'], 'commit': package.get('commit', snapshot['commit']),
                       'path': package['path']}
             matches = [artifact for artifact in artifacts if artifact['source'] == source]
             assert len(matches) == 1, f'Expected one compiled component for {package["path"]}'

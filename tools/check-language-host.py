@@ -268,7 +268,7 @@ def check(marketplace_reference=None):
             print(json.dumps({'custom_source_installed': custom_source}), flush=True)
             cases = [
                 {'name': 'rust', 'file': 'fixture.rs', 'keyword': 'fn', 'literal': '// plain fallback',
-                 'source': {'repository': DEFAULTS['repository'], 'commit': DEFAULTS['commit'], 'path': 'plugins/rust'}},
+                 'source': {'repository': DEFAULTS['repository'], 'commit': DEFAULTS.get('commits', {}).get('plugins/rust', DEFAULTS['commit']), 'path': 'plugins/rust'}},
                 {'name': 'notes-language', 'file': 'fixture.notes', 'keyword': 'note', 'literal': '# plain fallback', 'source': custom_source,
                  'version_history': [(PREVIOUS_LANGUAGE_COMMIT, '0.1.0'), (NOTES_LANGUAGE_COMMIT, '0.1.1')]},
             ]

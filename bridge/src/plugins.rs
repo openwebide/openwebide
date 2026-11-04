@@ -45,6 +45,8 @@ fn bundled_files(source: &PluginSource) -> Option<Vec<PackageFile>> {
     #[derive(serde::Deserialize)]
     struct Package {
         path: String,
+        #[serde(default)]
+        commit: Option<String>,
         files: Vec<File>,
     }
     #[derive(serde::Deserialize)]
@@ -55,13 +57,16 @@ fn bundled_files(source: &PluginSource) -> Option<Vec<PackageFile>> {
     }
     let bundle: Bundle = serde_json::from_str(include_str!("../bundled/plugins.json"))
         .expect("valid bundled host plugins");
-    if source.repository != bundle.repository || source.commit != bundle.commit {
+    if source.repository != bundle.repository {
         return None;
     }
     bundle
         .plugins
         .into_iter()
-        .find(|package| package.path == source.path)
+        .find(|package| {
+            package.path == source.path
+                && package.commit.as_ref().unwrap_or(&bundle.commit) == &source.commit
+        })
         .map(|package| {
             package
                 .files

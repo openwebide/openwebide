@@ -213,3 +213,48 @@ mod tests {
         assert!(!status.success());
     }
 }
+
+#[cfg(windows)]
+pub(crate) fn windows_job(
+    child: &tokio::process::Child,
+) -> Result<std::os::windows::io::OwnedHandle, String> {
+    use std::os::windows::io::{AsRawHandle, FromRawHandle};
+    use windows_sys::Win32::{
+        Foundation::HANDLE,
+        System::JobObjects::{
+            AssignProcessToJobObject, CreateJobObjectW, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+            JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JobObjectExtendedLimitInformation,
+            SetInformationJobObject,
+        },
+    };
+    // SAFETY: null arguments request an unnamed job with default security. Wrap
+    // its unique handle immediately so every subsequent error closes it.
+    let handle = unsafe { CreateJobObjectW(std::ptr::null(), std::ptr::null()) };
+    if handle.is_null() {
+        return Err(std::io::Error::last_os_error().to_string());
+    }
+    let job = unsafe { std::os::windows::io::OwnedHandle::from_raw_handle(handle) };
+    // SAFETY: this Windows structure is valid with all-zero fields; the only
+    // configured limit kills descendants when this owning job handle closes.
+    let mut info: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = unsafe { std::mem::zeroed() };
+    info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+    let length = u32::try_from(std::mem::size_of_val(&info)).map_err(|error| error.to_string())?;
+    let process = child
+        .raw_handle()
+        .ok_or("Child process has no process handle")?;
+    // SAFETY: job/process handles are alive and the pointer/size describe info.
+    if unsafe {
+        SetInformationJobObject(
+            job.as_raw_handle() as HANDLE,
+            JobObjectExtendedLimitInformation,
+            std::ptr::from_ref(&info).cast(),
+            length,
+        )
+    } == 0
+        || unsafe { AssignProcessToJobObject(job.as_raw_handle() as HANDLE, process as HANDLE) }
+            == 0
+    {
+        return Err(std::io::Error::last_os_error().to_string());
+    }
+    Ok(job)
+}

@@ -1,6 +1,7 @@
 use super::*;
 use crate::plugins::execution::{GrantedHost, PluginTransport};
 use openwebide_core::plugins::execution::*;
+use openwebide_core::plugins::languages::intelligence as server_protocol;
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicBool, AtomicUsize, Ordering},
@@ -23,8 +24,34 @@ struct Host {
     cancel_on_yield: bool,
     analyses: Arc<Mutex<std::collections::BTreeMap<String, SyntaxAnalysis>>>,
     rejected_packages: Arc<Mutex<std::collections::BTreeSet<String>>>,
+    server_calls: Arc<Mutex<Vec<openwebide_core::plugins::languages::intelligence::Call>>>,
+    stale_server_result: bool,
 }
 impl PluginActionHost for Host {
+    async fn language_server(
+        &self,
+        call: &openwebide_core::plugins::languages::intelligence::Call,
+    ) -> Result<openwebide_core::plugins::languages::intelligence::Response, String> {
+        use openwebide_core::plugins::languages::intelligence;
+        assert_eq!(call.grant, "authority");
+        self.server_calls.lock().unwrap().push(call.clone());
+        if self.change_on_resume {
+            self.current.store(false, Ordering::Relaxed);
+        }
+        Ok(intelligence::Response {
+            version: intelligence::VERSION,
+            client: call.input.client.clone(),
+            document: call.input.document.clone(),
+            request: call.input.request,
+            revision: call.input.revision + u64::from(self.stale_server_result),
+            source_digest: call.input.source_digest.clone(),
+            server: "test-native-service".into(),
+            capabilities: serde_json::json!({"hoverProvider":true}),
+            result: serde_json::json!({"contents":"a type"}),
+            diagnostics: vec![],
+            diagnostics_ready: false,
+        })
+    }
     async fn yield_task(&self) {
         if self.cancel_on_yield {
             self.current.store(false, Ordering::Relaxed);
@@ -206,8 +233,199 @@ fn setup(profile: &str) -> (Host, Vec<ProjectPlugin>, RegisteredLanguage, Langua
         cancel_on_yield: false,
         analyses: Arc::default(),
         rejected_packages: Arc::default(),
+        server_calls: Arc::default(),
+        stale_server_result: false,
     };
     (host, bindings, provider, LanguageInput::Analyze(request))
+}
+
+#[test]
+fn native_formatting_honors_disabled_and_explicit_formatter_preferences() {
+    futures::executor::block_on(async {
+        for disabled in [false, true] {
+            let (host, mut bindings, _, _) = setup("server");
+            bindings[0].prepared.manifest.compatibility.plugin_api = 6;
+            bindings[0].prepared.manifest.contributions.languages[0]
+                .features
+                .language_server =
+                Some(serde_json::from_value(serde_json::json!({"command":"custom-lsp"})).unwrap());
+            let mut formatter = bindings[0].clone();
+            formatter.id = 2;
+            formatter.prepared.source.path = "plugins/formatter".into();
+            formatter.prepared.manifest.name = "formatter".into();
+            formatter.prepared.digest = "b".repeat(64);
+            formatter.prepared.manifest.executable = None;
+            formatter.prepared.manifest.contributions.languages[0]
+                .features
+                .syntax = false;
+            let formatter_namespace = formatter.prepared.storage_namespace();
+            bindings.push(formatter);
+            let registry = LanguageRegistry::from_bindings(&bindings);
+            let provider = registry
+                .providers
+                .iter()
+                .find(|provider| provider.plugin_namespace != formatter_namespace)
+                .unwrap()
+                .clone();
+            let formatter = registry
+                .providers
+                .iter()
+                .find(|provider| provider.plugin_namespace == formatter_namespace)
+                .unwrap();
+            let mut preferences = LanguagePreferences::default();
+            preferences.providers.insert(
+                "custom".into(),
+                ProviderPreference::Provider {
+                    namespace: provider.namespace.clone(),
+                },
+            );
+            preferences.formatters.insert(
+                "custom".into(),
+                if disabled {
+                    ProviderPreference::Disabled
+                } else {
+                    ProviderPreference::Provider {
+                        namespace: formatter.namespace.clone(),
+                    }
+                },
+            );
+            let service = LanguageService::new_with_preferences(
+                host.clone(),
+                bindings,
+                provider,
+                preferences,
+            )
+            .unwrap();
+            let response = service
+                .query_intelligence(
+                    "client",
+                    LanguageDocumentRequest {
+                        document: "file".into(),
+                        path: "file.custom".into(),
+                        revision: 1,
+                        source: Arc::new("source".into()),
+                        tab_width: 4,
+                    },
+                    server_protocol::Query::Formatting {
+                        tab_width: 4,
+                        insert_spaces: true,
+                    },
+                )
+                .await;
+            if disabled {
+                assert!(response.unwrap_err().contains("disabled"));
+                assert!(host.server_calls.lock().unwrap().is_empty());
+                assert_eq!(host.grants.load(Ordering::Relaxed), 0);
+            } else {
+                response.unwrap();
+                let calls = host.server_calls.lock().unwrap();
+                assert_eq!(calls.len(), 1);
+                assert_eq!(calls[0].prepared.storage_namespace(), formatter_namespace);
+                assert_eq!(host.starts.load(Ordering::Relaxed), 0);
+            }
+        }
+    });
+}
+
+#[test]
+fn shared_code_intelligence_checks_fresh_authority_without_component_execution() {
+    futures::executor::block_on(async {
+        for profile in ["server", "paired"] {
+            let (host, mut bindings, _, _) = setup(profile);
+            let manifest = &mut bindings[0].prepared.manifest;
+            manifest.compatibility.plugin_api = 6;
+            manifest.executable = None;
+            manifest.contributions.languages[0].features.syntax = false;
+            manifest.contributions.languages[0].features.language_server =
+                Some(serde_json::from_value(serde_json::json!({"command":"custom-lsp"})).unwrap());
+            let provider = LanguageRegistry::from_bindings(&bindings)
+                .providers
+                .remove(0);
+            let service = LanguageService::new(host.clone(), bindings, provider).unwrap();
+            for revision in 1..=2 {
+                let response = service
+                    .query_intelligence(
+                        "client-a",
+                        LanguageDocumentRequest {
+                            document: "document-a".into(),
+                            path: "file.custom".into(),
+                            revision,
+                            source: Arc::new("文😀\r\n".into()),
+                            tab_width: 4,
+                        },
+                        server_protocol::Query::Hover {
+                            position: server_protocol::Position {
+                                line: 0,
+                                character: 1,
+                            },
+                        },
+                    )
+                    .await
+                    .unwrap();
+                assert_eq!(response.revision, revision);
+            }
+            assert_eq!(host.preparations.load(Ordering::Relaxed), 1);
+            assert_eq!(host.grants.load(Ordering::Relaxed), 2);
+            assert_eq!(host.starts.load(Ordering::Relaxed), 0);
+            let calls = host.server_calls.lock().unwrap().clone();
+            assert_eq!(calls.len(), 2);
+            assert!(calls[0].input.request < calls[1].input.request);
+            assert_eq!(calls[0].prepared.host_id, profile);
+            host.deny_grant.store(true, Ordering::Relaxed);
+            assert!(
+                service
+                    .query_intelligence(
+                        "client-a",
+                        LanguageDocumentRequest {
+                            document: "document-a".into(),
+                            path: "file.custom".into(),
+                            revision: 3,
+                            source: Arc::new("changed".into()),
+                            tab_width: 4,
+                        },
+                        server_protocol::Query::Synchronize
+                    )
+                    .await
+                    .is_err()
+            );
+            assert_eq!(host.server_calls.lock().unwrap().len(), 2);
+        }
+    });
+}
+
+#[test]
+fn stale_native_response_and_changed_client_scope_are_rejected() {
+    futures::executor::block_on(async {
+        for change_scope in [false, true] {
+            let (mut host, mut bindings, _, _) = setup("server");
+            host.stale_server_result = !change_scope;
+            host.change_on_resume = change_scope;
+            let manifest = &mut bindings[0].prepared.manifest;
+            manifest.compatibility.plugin_api = 6;
+            manifest.contributions.languages[0].features.language_server =
+                Some(serde_json::from_value(serde_json::json!({"command":"custom-lsp"})).unwrap());
+            let provider = LanguageRegistry::from_bindings(&bindings)
+                .providers
+                .remove(0);
+            let service = LanguageService::new(host.clone(), bindings, provider).unwrap();
+            assert!(
+                service
+                    .query_intelligence(
+                        "client-a",
+                        LanguageDocumentRequest {
+                            document: "document-a".into(),
+                            path: "file.custom".into(),
+                            revision: 1,
+                            source: Arc::new("source".into()),
+                            tab_width: 4,
+                        },
+                        server_protocol::Query::Synchronize
+                    )
+                    .await
+                    .is_err()
+            );
+        }
+    });
 }
 
 #[test]

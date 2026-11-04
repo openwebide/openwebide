@@ -394,11 +394,33 @@ impl ProjectExecution {
 }
 
 /// Native plugin transport selection; workspace access is a separate capability.
+#[derive(Clone)]
 pub enum PluginExecutionHost {
     Remote { api: Api, project_id: Option<i64> },
     Local(crate::plugin_bridge::PluginBridgeClient),
 }
 impl PluginExecutionHost {
+    pub async fn revoke_language_servers(
+        &self,
+        request: &openwebide_core::plugins::languages::intelligence::Revoke,
+    ) -> Result<(), String> {
+        match self {
+            Self::Remote { api, .. } => {
+                api.with_value(Clone::clone)
+                    .revoke_language_servers(request)
+                    .await
+            }
+            Self::Local(client) => {
+                let _: serde_json::Value = client
+                    .plugin_request(
+                        "languages/revoke",
+                        serde_json::to_value(request).map_err(|error| error.to_string())?,
+                    )
+                    .await?;
+                Ok(())
+            }
+        }
+    }
     pub fn local_bridge(self) -> Option<crate::plugin_bridge::PluginBridgeClient> {
         match self {
             Self::Local(client) => Some(client),

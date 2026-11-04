@@ -28,6 +28,7 @@ pub struct ServerConfig {
     pub mcp: crate::mcp::host::Host,
     pub plugins: crate::plugins::NativePluginInstaller,
     pub plugin_invocations: crate::plugins::invocations::Invocations,
+    pub language_servers: crate::languages::host::Host,
     pub allowed_origins: Vec<String>,
     pub allowed_hosts: Vec<String>,
     pub limits: Limits,
@@ -49,6 +50,7 @@ impl ServerConfig {
             mcp: Default::default(),
             plugins: crate::plugins::NativePluginInstaller::new(crate::plugins::default_root()),
             plugin_invocations: Default::default(),
+            language_servers: Default::default(),
             allowed_origins: default_origins(),
             allowed_hosts: default_hosts(),
             limits: Limits::default(),
@@ -270,6 +272,7 @@ pub async fn run_server_until(
     let plugin_runs = tokio::spawn(crate::plugins::runs::serve(config.clone()));
     let host_operations = tokio::spawn(crate::host_admin::serve(config.clone()));
     let runs = config.runs.clone();
+    let language_servers = config.language_servers.clone();
     let (stop, stopped) = tokio::sync::oneshot::channel();
     let accept = tokio::spawn(run_accept_loop(
         listener,
@@ -291,6 +294,7 @@ pub async fn run_server_until(
     let _ = accept.await;
     runs.shutdown().await;
     shutdown_mcp.shutdown().await;
+    language_servers.shutdown();
     session_manager.kill_all().await;
 }
 

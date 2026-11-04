@@ -36,6 +36,7 @@ hyper-rustls = { version = "0.27.10", default-features = false, features = ["rin
 portable-pty = "0.9"
 serde = { workspace = true }
 serde_json = { workspace = true }
+url = "2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "io-util", "process", "signal", "sync", "time", "fs"] }
 tokio-tungstenite = "0.30"
 rand = { workspace = true }

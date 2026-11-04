@@ -118,6 +118,9 @@ Actions runs.
    - `google-chrome` and `chromedriver` (matching versions, e.g. Chrome for Testing in
      `~/.local/bin`)
    - `trunk` and `spin`
+   - `rust-analyzer`, `rust-src` and `rustfmt` from the pinned Rust toolchain for
+     the required real language-server service check:
+     `rustup component add rust-analyzer rust-src rustfmt`
 
    Quick check:
    ```bash

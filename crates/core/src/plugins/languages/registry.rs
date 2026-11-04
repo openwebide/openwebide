@@ -24,6 +24,7 @@ pub struct RegisteredLanguage {
     pub digest: String,
     pub installation_revision: i64,
     pub host_id: String,
+    pub plugin_api: u32,
     pub definition: LanguageDefinition,
 }
 impl RegisteredLanguage {
@@ -245,6 +246,7 @@ impl LanguageRegistry {
                     digest: plugin.digest.clone(),
                     installation_revision: binding.revision,
                     host_id: plugin.host_id.clone(),
+                    plugin_api: plugin.manifest.compatibility.plugin_api,
                     definition: definition.clone(),
                 };
                 if providers.insert(key.clone(), provider).is_some() {
@@ -283,13 +285,43 @@ impl LanguageRegistry {
         language: Option<&str>,
         preferences: &LanguagePreferences,
     ) -> LanguageSelection<'a> {
+        self.select_matching(
+            path,
+            first_line,
+            language,
+            preferences,
+            RegisteredLanguage::supports_editor,
+        )
+    }
+
+    pub fn select_server<'a>(
+        &'a self,
+        path: &str,
+        first_line: &str,
+        language: Option<&str>,
+        preferences: &LanguagePreferences,
+    ) -> LanguageSelection<'a> {
+        self.select_matching(path, first_line, language, preferences, |provider| {
+            provider.plugin_api >= super::intelligence::MIN_PLUGIN_API
+                && provider.definition.features.language_server.is_some()
+        })
+    }
+
+    fn select_matching<'a>(
+        &'a self,
+        path: &str,
+        first_line: &str,
+        language: Option<&str>,
+        preferences: &LanguagePreferences,
+        supports: impl Fn(&RegisteredLanguage) -> bool,
+    ) -> LanguageSelection<'a> {
         let mut candidates = Vec::new();
         let mut best = 0;
         let mut unavailable = None;
         for provider in &self.providers {
             // Formatting, diagnostics and server-only contributions route by
             // feature; they do not replace an installed editor language provider.
-            if !provider.supports_editor() {
+            if !supports(provider) {
                 continue;
             }
             let Some(score) = recognition(&provider.definition, path, first_line, language) else {
@@ -343,7 +375,9 @@ impl LanguageRegistry {
             .iter()
             .filter(|provider| {
                 provider.definition.id == language
-                    && provider.definition.features.formatting.is_some()
+                    && (provider.definition.features.formatting.is_some()
+                        || (provider.plugin_api >= super::intelligence::MIN_PLUGIN_API
+                            && provider.definition.features.language_server.is_some()))
             })
             .collect::<Vec<_>>();
         match preferences.formatters.get(language) {
@@ -361,6 +395,16 @@ impl LanguageRegistry {
                 _ => LanguageSelection::Ambiguous(candidates),
             },
         }
+    }
+
+    /// Native servers are explicitly opted in by API 6. Older declarations
+    /// remain inert and cannot shadow an executable provider.
+    pub fn server<'a>(
+        &'a self,
+        language: &str,
+        preferences: &LanguagePreferences,
+    ) -> LanguageSelection<'a> {
+        self.select_server("", "", Some(language), preferences)
     }
 }
 

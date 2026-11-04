@@ -654,6 +654,30 @@ pub trait Backend {
     ) -> LocalBoxFuture<'a, Result<(), String>> {
         Box::pin(async { Err("Panel coordination unavailable".into()) })
     }
+    fn language_server<'a>(
+        &'a self,
+        _request: &'a openwebide_core::plugins::languages::intelligence::Call,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<openwebide_core::plugins::languages::intelligence::Response, String>,
+    > {
+        Box::pin(async { Err("Language server host unavailable".into()) })
+    }
+    fn revoke_language_servers<'a>(
+        &'a self,
+        _request: &'a openwebide_core::plugins::languages::intelligence::Revoke,
+    ) -> LocalBoxFuture<'a, Result<(), String>> {
+        Box::pin(async { Err("Language server control unavailable".into()) })
+    }
+    fn authorize_language_server<'a>(
+        &'a self,
+        _request: &'a openwebide_core::plugins::languages::intelligence::Call,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<openwebide_core::plugins::languages::intelligence::Selection, String>,
+    > {
+        Box::pin(async { Err("Language server authority unavailable".into()) })
+    }
     fn start_plugin_invocation<'a>(
         &'a self,
         _request: &'a openwebide_core::plugins::execution::PluginStartRequest,
@@ -1695,6 +1719,30 @@ impl Backend for BackendApi {
         instance: &'a str,
     ) -> LocalBoxFuture<'a, Result<(), String>> {
         Box::pin(BackendApi::close_plugin_panel(self, instance))
+    }
+    fn language_server<'a>(
+        &'a self,
+        request: &'a openwebide_core::plugins::languages::intelligence::Call,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<openwebide_core::plugins::languages::intelligence::Response, String>,
+    > {
+        Box::pin(BackendApi::language_server(self, request))
+    }
+    fn revoke_language_servers<'a>(
+        &'a self,
+        request: &'a openwebide_core::plugins::languages::intelligence::Revoke,
+    ) -> LocalBoxFuture<'a, Result<(), String>> {
+        Box::pin(BackendApi::revoke_language_servers(self, request))
+    }
+    fn authorize_language_server<'a>(
+        &'a self,
+        request: &'a openwebide_core::plugins::languages::intelligence::Call,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<openwebide_core::plugins::languages::intelligence::Selection, String>,
+    > {
+        Box::pin(BackendApi::authorize_language_server(self, request))
     }
     fn start_plugin_invocation<'a>(
         &'a self,

@@ -79,6 +79,9 @@ enum Route {
     PluginPanelClose,
     PluginContextHostRequest,
     PluginStartInvocation,
+    LanguageServerQuery,
+    LanguageServerAuthorize,
+    LanguageServerRevoke,
     PluginContinueInvocation,
     PluginCancelInvocation,
     ListProjects,
@@ -268,6 +271,9 @@ fn resolve(method: &str, segments: &[&str]) -> Option<Route> {
         ("POST", ["plugins", "panels", "close"]) => Some(Route::PluginPanelClose),
         ("POST", ["plugins", "host"]) => Some(Route::PluginContextHostRequest),
         ("POST", ["plugins", "invoke"]) => Some(Route::PluginStartInvocation),
+        ("POST", ["plugins", "languages", "query"]) => Some(Route::LanguageServerQuery),
+        ("POST", ["plugins", "languages", "authorize"]) => Some(Route::LanguageServerAuthorize),
+        ("POST", ["plugins", "languages", "revoke"]) => Some(Route::LanguageServerRevoke),
         ("POST", ["plugins", "continue"]) => Some(Route::PluginContinueInvocation),
         ("POST", ["plugins", "cancel"]) => Some(Route::PluginCancelInvocation),
         ("POST", ["sessions", id, "plugin-host"]) if numeric_id(id) => {
@@ -565,6 +571,15 @@ pub async fn route(req: Request) -> JsonResp {
         }
         (Some(Route::PluginStartInvocation), Some(user)) => {
             api::plugins::start_invocation(req, &state, user).await
+        }
+        (Some(Route::LanguageServerQuery), Some(user)) => {
+            api::plugins::language_server(req, &state, user, false).await
+        }
+        (Some(Route::LanguageServerAuthorize), Some(user)) => {
+            api::plugins::language_server(req, &state, user, true).await
+        }
+        (Some(Route::LanguageServerRevoke), Some(user)) => {
+            api::plugins::revoke_language_servers(req, &state, user).await
         }
         (Some(Route::PluginContinueInvocation), Some(user)) => {
             api::plugins::continue_invocation(req, &state, user).await
@@ -1122,6 +1137,9 @@ mod tests {
                 Route::PluginPanelClose,
                 Route::PluginContextHostRequest,
                 Route::PluginStartInvocation,
+                Route::LanguageServerQuery,
+                Route::LanguageServerAuthorize,
+                Route::LanguageServerRevoke,
                 Route::PluginContinueInvocation,
                 Route::PluginCancelInvocation,
                 Route::GetProjectSkills,
@@ -1209,6 +1227,21 @@ mod tests {
             ("POST", "plugins/panels/finish", Route::PluginPanelFinish),
             ("POST", "plugins/panels/close", Route::PluginPanelClose),
             ("POST", "plugins/invoke", Route::PluginStartInvocation),
+            (
+                "POST",
+                "plugins/languages/query",
+                Route::LanguageServerQuery,
+            ),
+            (
+                "POST",
+                "plugins/languages/authorize",
+                Route::LanguageServerAuthorize,
+            ),
+            (
+                "POST",
+                "plugins/languages/revoke",
+                Route::LanguageServerRevoke,
+            ),
             ("POST", "plugins/jobs/service", Route::PluginJobService),
             ("POST", "plugins/jobs/rebind", Route::PluginJobRebind),
             (

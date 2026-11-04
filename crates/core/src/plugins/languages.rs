@@ -7,6 +7,7 @@ use std::{
 };
 mod composition;
 pub use composition::LanguageComposition;
+pub mod intelligence;
 mod registry;
 pub use registry::*;
 mod service;

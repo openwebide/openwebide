@@ -183,8 +183,9 @@ pub struct LanguageHandler {
     pub title: String,
 }
 
-/// Configuration for later host LSP support. Declaring a server does not launch
-/// a process, install a runtime or grant process execution authority.
+/// Native host LSP configuration. API 6 opts in to running this exact installed
+/// declaration on the project's execution host. API 5 treats it as metadata.
+/// The declaration does not install a runtime or execute code in browser clients.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct LanguageServer {

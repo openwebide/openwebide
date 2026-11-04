@@ -14,6 +14,16 @@ use std::{collections::BTreeMap, future::Future, sync::Arc};
 
 /// Adapters provide preparation, authority and transport, never feature behavior.
 pub trait PluginActionHost: PluginTransport + GrantedHost {
+    /// Native RPC primitive. Provider selection, authority and result ownership
+    /// stay in the shared language facade above the server and paired adapters.
+    fn language_server(
+        &self,
+        _call: &openwebide_core::plugins::languages::intelligence::Call,
+    ) -> impl Future<
+        Output = Result<openwebide_core::plugins::languages::intelligence::Response, String>,
+    > + Send {
+        async { Err("This execution host does not support language servers".into()) }
+    }
     fn yield_task(&self) -> impl Future<Output = ()> + Send {
         async {}
     }

@@ -94,6 +94,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.98.1
+          components: rust-analyzer, rust-src, rustfmt
           targets: wasm32-wasip2
 
       - uses: Swatinem/rust-cache@v2
@@ -127,6 +128,9 @@ jobs:
 
       - name: Tests (bridge, plugin runtime, and isolated compiler)
         run: cargo test -p openwebide-bridge -p openwebide-plugin-runtime -p openwebide-plugin-build
+
+      - name: Check real Rust language-server services
+        run: cargo run -p openwebide-bridge --example check_language_server --locked
 
   plugin-panels:
     runs-on: ubuntu-latest
@@ -185,7 +189,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.98.1
-          components: llvm-tools
+          components: llvm-tools, rust-analyzer, rust-src, rustfmt
           targets: wasm32-unknown-unknown, wasm32-wasip2
 
       - name: Prepare browser parser C compiler
@@ -248,6 +252,13 @@ jobs:
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
           OPENWEBIDE_LANGUAGE_DIAGNOSTICS: ${{ runner.temp }}/language-host-diagnostics
         run: python3 tools/check-language-host.py --marketplace-ref ce994a55d04e28ce34877642f1da1dad8123d966
+
+      - name: Check production Rust language-server features in both modes
+        timeout-minutes: 10
+        env:
+          CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: python3 tools/check-language-server-client.py
 
       - name: Check production editor input, history and pointer selection
         env:

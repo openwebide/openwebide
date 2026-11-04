@@ -21,6 +21,8 @@ struct Snapshot {
 #[serde(deny_unknown_fields)]
 struct Package {
     path: String,
+    #[serde(default)]
+    commit: Option<String>,
     files: Vec<File>,
 }
 #[derive(Deserialize)]
@@ -48,7 +50,7 @@ fn main() -> Result<()> {
     for package in snapshot.plugins {
         let source = PluginSource {
             repository: snapshot.repository.clone(),
-            commit: snapshot.commit.clone(),
+            commit: package.commit.unwrap_or_else(|| snapshot.commit.clone()),
             path: package.path,
         };
         source.validate()?;

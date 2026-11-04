@@ -41,9 +41,9 @@ Host capabilities currently cover HTTP, clock, model completion, plugin-private
 records, documented shared collections, durable jobs and raw agent runs. Grants
 are scoped and capability checked. Components have bounded memory, fuel and host
 calls, and no ambient filesystem, environment or network access. `workspace` is
-reserved, with no adapter yet. Arbitrary shell execution, MCP servers, LSP
-services and editor hooks remain future SDK APIs. API 5 language declarations
-and pure host analysis are described below. Declarative workspace
+reserved, with no adapter yet. Arbitrary shell execution, plugin MCP servers
+and editor hooks remain future SDK APIs. API 5 pure language analysis and API 6
+native language-server declarations are described below. Declarative workspace
 panels use API 4 and the independent version-1 UI schema.
 Core file editing, shell and Git tools remain built in.
 
@@ -63,6 +63,25 @@ verification and future contracts live in [the roadmap](roadmap.md); documentati
 of those plans does not make them supported contributions.
 
 ## Language plugin build toolchain
+
+API 6 permits a language definition to declare `languageServer` with a native
+`command`, `args`, `rootMarkers`, `initializationOptions` and `settings`. The host
+runs the exact installed declaration, directly without a shell, in its detected
+project workspace. Install the declared server and required project toolchain on
+the execution host. Server-only packages need no executable component; syntax,
+folding and structural handlers still use the component contract. A package can
+combine both. Package languages by their server's coverage and keep unrelated
+servers independently installable.
+
+Native execution is a reviewed capability addition when upgrading older packages.
+Declarations on API 5 remain inert. Requests use project-relative paths,
+source digests, document/client identities, monotonic requests and revisions.
+The native host negotiates UTF-16 positions and validates all edits before the
+editor uses them. Navigation exposes project paths or opaque, source-bound
+read-only external resources; it never gives a client arbitrary filesystem reads.
+The shared language facade selects providers, prepares the exact package and
+obtains fresh account/project authority above both host adapters. Providers cannot
+substitute commands through query arguments or bypass installation review.
 
 API 5 introduces versioned language definitions and pure host syntax handlers.
 Language packages use the [shared editor integration](plugins.md#language-support).

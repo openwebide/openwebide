@@ -3763,3 +3763,6 @@ button.browser-item {
 .plugin-panel-host { width: 100%; min-width: 0; }
 .plugin-panel-feedback { min-height: var(--control-height); padding: var(--space-2) var(--space-3); justify-content: flex-end; }
 .plugin-panel-host > .ui-notice { margin: var(--space-3); }
+
+.editor-diagnostic { position:absolute; height:3px; border-bottom:2px dotted var(--warn); transform:translate(var(--editor-scroll-x, 0px), var(--editor-scroll-y, 0px)); }
+.editor-diagnostic-error { border-color:var(--offline); }

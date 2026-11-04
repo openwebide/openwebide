@@ -11,6 +11,7 @@ use openwebide_core::plugins::languages::{
 };
 
 const SETTINGS_KEY: &str = "language_settings";
+mod lifecycle;
 mod previews;
 pub(crate) use previews::{preview_diff, preview_patch_syntax};
 
@@ -195,13 +196,17 @@ impl ProjectLanguageActions {
                 reload_revision.update(|revision| *revision = revision.wrapping_add(1));
             }
         });
-        Self {
+        let actions = Self {
             ready,
             registry,
             preferences,
             save,
             reload,
+        };
+        if let Some(host) = use_context::<crate::project_host::ProjectHost>() {
+            lifecycle::install(actions, auth, projects, host);
         }
+        actions
     }
 }
 

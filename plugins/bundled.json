@@ -25,5 +25,8 @@
     "plugins/markdown",
     "plugins/sql",
     "plugins/plain-text"
-  ]
+  ],
+  "commits": {
+    "plugins/rust": "27dd0936cf5f9e043090455fe348c368c6149009"
+  }
 }

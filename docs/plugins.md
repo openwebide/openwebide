@@ -34,6 +34,8 @@ First installation of these defaults needs no network or compiler. Development
 builds without a compiled bundle embed source and compile it on installation. Browsers
 receive manifests and managed skills through the existing APIs; plugin files are
 prepared and published on execution hosts. Updates still use the marketplace.
+The lock's optional `commits` map can pin individual package paths independently
+of its default commit, preserving the exact releases of unchanged packages.
 To change the baseline, edit the lock, run `python3 tools/bundle_plugins.py`, and
 commit the regenerated host snapshots. Use `--repository <upstream-clone>` to
 regenerate or check without network access.
@@ -204,8 +206,32 @@ The independent [Notes example catalog](https://github.com/openwebide/plugins/bl
 uses the same package format, SDK and installation controls. Add that repository
 with catalog path `examples/language-marketplace.json` to try its custom language.
 See [language authoring](plugin-authoring.md#language-plugin-build-toolchain)
-for protocol and toolchain requirements. Formatting, diagnostics, snippets and
-LSP have metadata extension points; their editor services remain roadmap work.
+for protocol and toolchain requirements.
+
+API 6 opts in to native language servers through a language's `languageServer`
+declaration. API 5 declarations remain metadata and do not launch processes.
+Rust is the first bundled integration, using `rust-analyzer`, `rust-src` and
+`rustfmt` from the project's Rust toolchain. On a paired host, install those
+components with `rustup component add rust-analyzer rust-src rustfmt`. The server
+image includes them. Upgrading an existing package to add native server execution
+requires the ordinary capability review, including under Automatic updates.
+
+The editor's **Code intelligence** menu offers symbol information, completion at
+the cursor, definitions, references, document symbols, rename, document formatting,
+code actions and the current document's Problems list. Shortcuts include F12,
+Shift+F12, Ctrl+Space, F2, Ctrl+Period and Shift+Alt+F. External definitions open
+read-only. Formatting is reviewed before application. Rename and code-action text
+edits are reviewed together and staged as unsaved tabs, preserving per-file undo
+and recovery; save those tabs when ready. Source changes invalidate a preview.
+Server commands and file creation, movement or deletion in workspace edits are
+not applied. Snippet insertion, automatic completion popups and mouse-hover
+presentation remain separate work.
+
+Both execution hosts use the same authenticated service and result contract.
+Servers start on demand and remain warm across tab changes and brief disconnects.
+Different editing clients keep separate unsaved buffers. Service counts, retained
+source and response sizes, request time and idle lifetime are bounded. Missing
+toolchains and unavailable hosts leave ordinary editing available.
 
 ## Executable plugin requirements
 
@@ -424,7 +450,8 @@ behavior through the same public SDK as community plugins. Remaining lifecycle
 verification and registry SDK publication are tracked in [the roadmap](roadmap.md).
 API 4 supports declarative panels; API 5 language contributions and editor
 integration are described in [plugin authoring](plugin-authoring.md#language-plugin-build-toolchain).
-MCP, LSP services, editor annotations and hooks remain future contribution work.
+API 6 adds native LSP services through those same declarations. Plugin MCP
+contributions, editor annotations and hooks remain future contribution work.
 
 Configured host [MCP servers](mcp.md) are supported independently of plugins.
 Declaring an MCP server in a plugin manifest remains future contribution work.

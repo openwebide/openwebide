@@ -108,6 +108,8 @@ pub(super) async fn route(
                 | "/plugins/invoke"
                 | "/plugins/continue"
                 | "/plugins/cancel"
+                | "/plugins/languages/query"
+                | "/plugins/languages/revoke"
         )
         || path.starts_with("/git/")
         || path == "/models/discover";
@@ -183,6 +185,82 @@ pub(super) async fn route(
                 };
                 value.map(|value| value.to_string()).map_err(|error| BridgeError::Execution(error.to_string()))
             }.await;
+            Ok(execution_response(result, allowed_origin))
+        }
+        ("POST", "/plugins/languages/query") => {
+            let result = async {
+                use openwebide_core::plugins::languages::{
+                    MAX_REQUEST_ENVELOPE_BYTES, intelligence,
+                };
+                let request: intelligence::HostRequest =
+                    read_json(req.into_body(), MAX_REQUEST_ENVELOPE_BYTES).await?;
+                let (cache_owner, owner) =
+                    language_owner(principal, request.user, request.selection.user)?;
+                if request.selection.project <= 0 {
+                    return Err(BridgeError::Validation(
+                        "A language project is required".into(),
+                    ));
+                }
+                let prepared = &request.selection.prepared;
+                let server =
+                    intelligence::declared_server(prepared, &request.selection.input.language)
+                        .map_err(BridgeError::Validation)?
+                        .clone();
+                config
+                    .plugins
+                    .package(&cache_owner, crate::scheduled::host(&config).id, prepared)
+                    .await
+                    .map_err(|error| BridgeError::Validation(error.to_string()))?;
+                let root =
+                    crate::paths::resolve_in_root(&config.workspace_root, Some(&request.root))
+                        .map_err(BridgeError::Validation)?;
+                let output = config
+                    .language_servers
+                    .query(
+                        crate::languages::host::Scope {
+                            owner,
+                            project: request.selection.project,
+                            root,
+                            provider: prepared.storage_namespace(),
+                            digest: prepared.digest.clone(),
+                            server,
+                        },
+                        &request.selection.input,
+                    )
+                    .await
+                    .map_err(BridgeError::Validation)?;
+                serde_json::to_string(&output)
+                    .map_err(|error| BridgeError::Execution(error.to_string()))
+            }
+            .await;
+            Ok(execution_response(result, allowed_origin))
+        }
+        ("POST", "/plugins/languages/revoke") => {
+            let result = async {
+                let request: openwebide_core::plugins::languages::intelligence::Revoke =
+                    read_json(req.into_body(), 4096).await?;
+                let user = request.user.ok_or_else(|| {
+                    BridgeError::Validation("A language service account is required".into())
+                })?;
+                let (_, owner) = language_owner(principal, request.user, user)?;
+                if request.project.is_some_and(|id| id <= 0)
+                    || request
+                        .provider
+                        .as_ref()
+                        .is_some_and(|provider| provider.is_empty() || provider.len() > 1024)
+                {
+                    return Err(BridgeError::Validation(
+                        "Invalid language service scope".into(),
+                    ));
+                }
+                config.language_servers.revoke(
+                    &owner,
+                    request.project,
+                    request.provider.as_deref(),
+                );
+                Ok("{}".to_string())
+            }
+            .await;
             Ok(execution_response(result, allowed_origin))
         }
         (
@@ -605,6 +683,34 @@ pub(super) async fn route(
 
 /// Map a `check_request` rejection to a response. These never carry CORS headers: the request
 /// failed the Host/Origin baseline, so there is no origin to trust.
+fn language_owner(
+    principal: Option<crate::auth::Principal>,
+    backend_user: Option<i64>,
+    selected_user: i64,
+) -> Result<(String, String), BridgeError> {
+    if selected_user <= 0 {
+        return Err(BridgeError::Validation(
+            "A language service account is required".into(),
+        ));
+    }
+    match principal {
+        Some(crate::auth::Principal::Paired) => {
+            Ok(("paired".into(), format!("paired/user:{selected_user}")))
+        }
+        Some(crate::auth::Principal::User { user_id }) if user_id == selected_user => {
+            let owner = format!("user:{user_id}");
+            Ok((owner.clone(), owner))
+        }
+        None if backend_user == Some(selected_user) => {
+            let owner = format!("user:{selected_user}");
+            Ok((owner.clone(), owner))
+        }
+        _ => Err(BridgeError::Unauthorized(
+            "Language service belongs to another account".into(),
+        )),
+    }
+}
+
 fn rejection_response(code: u16) -> Response<Full<Bytes>> {
     let error = match code {
         403 => BridgeError::Forbidden("forbidden".into()),

@@ -27,6 +27,8 @@ pub fn bundled_plugin_sources() -> Vec<PluginSource> {
         repository: String,
         commit: String,
         paths: Vec<String>,
+        #[serde(default)]
+        commits: BTreeMap<String, String>,
     }
     let selection: Selection = serde_json::from_str(include_str!("../../../plugins/bundled.json"))
         .expect("valid bundled plugin selection");
@@ -35,7 +37,11 @@ pub fn bundled_plugin_sources() -> Vec<PluginSource> {
         .into_iter()
         .map(|path| PluginSource {
             repository: selection.repository.clone(),
-            commit: selection.commit.clone(),
+            commit: selection
+                .commits
+                .get(&path)
+                .unwrap_or(&selection.commit)
+                .clone(),
             path,
         })
         .collect()
@@ -192,7 +198,7 @@ impl PluginManifest {
         ).expect("static SemVer pattern")
         });
         if self.schema_version != 1
-            || !matches!(self.compatibility.plugin_api, 1..=5)
+            || !matches!(self.compatibility.plugin_api, 1..=6)
             || self
                 .schema
                 .as_deref()
@@ -257,7 +263,7 @@ impl PluginManifest {
         let executable = self.executable.as_ref();
         if self.contributions.panels.len() > 16
             || (!self.contributions.panels.is_empty()
-                && (executable.is_none() || !matches!(self.compatibility.plugin_api, 4 | 5)))
+                && (executable.is_none() || !matches!(self.compatibility.plugin_api, 4..=6)))
             || self
                 .contributions
                 .panels
@@ -306,8 +312,8 @@ impl PluginManifest {
             ));
         }
         if !self.contributions.languages.is_empty() {
-            if self.compatibility.plugin_api != 5 {
-                return Err(invalid("Language contributions require plugin API 5."));
+            if !matches!(self.compatibility.plugin_api, 5 | 6) {
+                return Err(invalid("Language contributions require plugin API 5 or 6."));
             }
             languages::validate_definitions(&self.contributions.languages).map_err(invalid)?;
             if executable.is_none()
@@ -320,15 +326,16 @@ impl PluginManifest {
                 return Err(invalid("Language analysis requires a Rust executable."));
             }
         }
-        if (executable.is_some() && !matches!(self.compatibility.plugin_api, 3..=5))
+        if (executable.is_some() && !matches!(self.compatibility.plugin_api, 3..=6))
             || (executable.is_none() && self.contributions.context.is_some())
             || (executable.is_none() && matches!(self.compatibility.plugin_api, 3 | 4))
-            || (self.compatibility.plugin_api == 5 && self.contributions.languages.is_empty())
+            || (matches!(self.compatibility.plugin_api, 5 | 6)
+                && self.contributions.languages.is_empty())
             || (executable.is_none() && !self.contributions.tools.is_empty())
             || self.contributions.tools.len() > 100
         {
             return Err(invalid(
-                "Executable contributions require a Rust plugin using API 3, 4 or 5.",
+                "Executable contributions require a Rust plugin using API 3, 4, 5 or 6.",
             ));
         }
         if let Some(rust) = executable
@@ -1488,20 +1495,28 @@ pub enum PluginUpdatePolicy {
 /// Runtime authority additions are compared after preparing the actual source,
 /// regardless of catalog claims or SemVer compatibility.
 pub fn added_capabilities(previous: &PreparedPlugin, next: &PreparedPlugin) -> Vec<String> {
-    let previous: std::collections::BTreeSet<_> = previous
-        .manifest
-        .executable
-        .iter()
-        .flat_map(|rust| rust.capabilities.iter())
-        .collect();
-    next.manifest
-        .executable
-        .iter()
-        .flat_map(|rust| rust.capabilities.iter())
-        .filter(|capability| !previous.contains(capability))
+    fn authority(plugin: &PreparedPlugin) -> std::collections::BTreeSet<String> {
+        let mut capabilities = plugin
+            .manifest
+            .executable
+            .iter()
+            .flat_map(|rust| rust.capabilities.iter().cloned())
+            .collect::<std::collections::BTreeSet<_>>();
+        if plugin.manifest.compatibility.plugin_api >= languages::intelligence::MIN_PLUGIN_API
+            && plugin
+                .manifest
+                .contributions
+                .languages
+                .iter()
+                .any(|language| language.features.language_server.is_some())
+        {
+            capabilities.insert("language_server".into());
+        }
+        capabilities
+    }
+    authority(next)
+        .difference(&authority(previous))
         .cloned()
-        .collect::<std::collections::BTreeSet<_>>()
-        .into_iter()
         .collect()
 }
 #[derive(Clone, Debug)]
@@ -1607,6 +1622,46 @@ pub fn default_bindings(installations: &[PluginInstallation]) -> Vec<ProjectPlug
 mod update_tests {
     use super::*;
     use testing::{catalog, receipt};
+
+    #[test]
+    fn inert_metadata_cannot_silently_acquire_native_process_authority_on_update() {
+        let mut prepared = receipt();
+        prepared.manifest.compatibility.plugin_api = 5;
+        prepared.manifest.contributions.languages = serde_json::from_value(serde_json::json!([{
+            "id":"notes","name":"Notes","features":{"languageServer":{"command":"notes-lsp"}}
+        }]))
+        .unwrap();
+        let install = RecordPlugin {
+            prepared: prepared.clone(),
+            approved_capabilities: vec![],
+            revision: None,
+            package: None,
+            update_policy: Some(PluginUpdatePolicy::Automatic),
+        };
+        let installed = record_installation(vec![], &install, 1).unwrap();
+        let mut next = prepared.clone();
+        next.source.commit = "b".repeat(40);
+        next.digest = "b".repeat(64);
+        next.manifest.compatibility.plugin_api = 6;
+        assert_eq!(
+            added_capabilities(&prepared, &next),
+            vec!["language_server"]
+        );
+        let mut update = RecordPlugin {
+            prepared: next.clone(),
+            revision: Some(installed[0].revision),
+            ..install
+        };
+        assert!(matches!(
+            record_installation(installed.clone(), &update, 2),
+            Err(PluginError::Conflict(_))
+        ));
+        update.approved_capabilities = vec!["language_server".into()];
+        let updated = record_installation(installed, &update, 2).unwrap();
+        assert_eq!(updated[0].prepared, next);
+        assert_eq!(updated[0].update_policy, PluginUpdatePolicy::Automatic);
+        assert!(added_capabilities(&next, &prepared).is_empty());
+    }
     #[test]
     fn capability_expansion_requires_exact_review_even_for_compatible_updates() {
         let mut prepared = receipt();

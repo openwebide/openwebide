@@ -1307,6 +1307,25 @@ impl BackendApi {
     ) -> Result<openwebide_core::plugins::execution::PluginInvocation, String> {
         self.post("/plugins/invoke", request).await
     }
+    pub async fn language_server(
+        &self,
+        request: &openwebide_core::plugins::languages::intelligence::Call,
+    ) -> Result<openwebide_core::plugins::languages::intelligence::Response, String> {
+        self.post("/plugins/languages/query", request).await
+    }
+    pub async fn authorize_language_server(
+        &self,
+        request: &openwebide_core::plugins::languages::intelligence::Call,
+    ) -> Result<openwebide_core::plugins::languages::intelligence::Selection, String> {
+        self.post("/plugins/languages/authorize", request).await
+    }
+    pub async fn revoke_language_servers(
+        &self,
+        request: &openwebide_core::plugins::languages::intelligence::Revoke,
+    ) -> Result<(), String> {
+        let _: serde_json::Value = self.post("/plugins/languages/revoke", request).await?;
+        Ok(())
+    }
     pub async fn continue_plugin_invocation(
         &self,
         request: &openwebide_core::plugins::execution::ContinuePlugin,

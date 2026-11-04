@@ -42,6 +42,173 @@ fn git(root: &Path, args: &[&str]) -> String {
 }
 
 #[tokio::test]
+async fn native_language_routes_check_account_package_and_path_before_launch() {
+    use openwebide_core::plugins::languages::{intelligence, source_digest};
+    let cache = tempfile::tempdir().unwrap();
+    let fixture = tempfile::tempdir().unwrap();
+    let workspace = tempfile::tempdir().unwrap();
+    std::fs::write(workspace.path().join("file.notes"), "notes").unwrap();
+    for mut file in review_files() {
+        if file.path == "plugin.json" {
+            let mut manifest: serde_json::Value = serde_json::from_slice(&file.content).unwrap();
+            manifest["compatibility"]["pluginApi"] = serde_json::json!(6);
+            manifest["contributions"] = serde_json::json!({"skills":[],"languages":[{
+                "id":"notes","name":"Notes","extensions":["notes"],"features":{"languageServer":{"command":"openwebide-test-language-server-not-installed"}}
+            }]});
+            file.content = serde_json::to_vec(&manifest).unwrap();
+        }
+        let path = fixture.path().join("plugins/pr-review").join(file.path);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, file.content).unwrap();
+    }
+    git(fixture.path(), &["init", "-q"]);
+    git(fixture.path(), &["add", "."]);
+    git(
+        fixture.path(),
+        &[
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@example.org",
+            "commit",
+            "-qm",
+            "fixture",
+        ],
+    );
+    let mut source = source();
+    source.commit = git(fixture.path(), &["rev-parse", "HEAD"]);
+    for owner in ["paired", "user:42"] {
+        let repo = cache
+            .path()
+            .join(content_digest(owner.as_bytes()))
+            .join("repositories")
+            .join(content_digest(source.repository.as_bytes()));
+        std::fs::create_dir_all(repo.parent().unwrap()).unwrap();
+        git(
+            cache.path(),
+            &[
+                "clone",
+                "--bare",
+                fixture.path().to_str().unwrap(),
+                repo.to_str().unwrap(),
+            ],
+        );
+    }
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let mut config = ServerConfig::new(
+        workspace.path().into(),
+        "dummy_secret".into(),
+        Some("paired-token".into()),
+    );
+    config.plugins = NativePluginInstaller::new(Some(cache.path().into()));
+    let server = tokio::spawn(run_server(listener, config));
+    for paired in [false, true] {
+        let prepared = preparation_request(
+            port,
+            paired,
+            "/plugins/prepare",
+            serde_json::json!({"source":source,"user":42}),
+        )
+        .await;
+        assert_eq!(prepared.status, 200, "{}", prepared.body);
+        let prepared: PreparedPlugin = serde_json::from_str(&prepared.body).unwrap();
+        assert!(prepared.manifest.executable.is_none());
+        let request = intelligence::HostRequest {
+            user: Some(42),
+            root: workspace.path().to_string_lossy().into(),
+            selection: intelligence::Selection {
+                user: 42,
+                project: 1,
+                prepared,
+                input: intelligence::Request {
+                    version: intelligence::VERSION,
+                    client: "client-a".into(),
+                    document: "file".into(),
+                    request: 1,
+                    revision: 1,
+                    language: "notes".into(),
+                    path: "file.notes".into(),
+                    source: "notes".into(),
+                    source_digest: source_digest("notes"),
+                    query: intelligence::Query::Synchronize,
+                },
+            },
+        };
+        let valid = preparation_request(
+            port,
+            paired,
+            "/plugins/languages/query",
+            serde_json::to_value(&request).unwrap(),
+        )
+        .await;
+        assert_eq!(valid.status, 400, "{}", valid.body);
+        assert!(
+            valid.body.contains("Cannot start language server"),
+            "{}",
+            valid.body
+        );
+        let mut forged = request.clone();
+        forged.selection.prepared.manifest.contributions.languages[0]
+            .features
+            .language_server
+            .as_mut()
+            .unwrap()
+            .command = "forged-command-must-not-start".into();
+        let rejected = preparation_request(
+            port,
+            paired,
+            "/plugins/languages/query",
+            serde_json::to_value(&forged).unwrap(),
+        )
+        .await;
+        assert_eq!(rejected.status, 400, "{}", rejected.body);
+        assert!(
+            !rejected.body.contains("Cannot start language server"),
+            "{}",
+            rejected.body
+        );
+        let mut outside = request.clone();
+        outside.selection.input.request = 2;
+        outside.selection.input.path = "../outside.notes".into();
+        let rejected = preparation_request(
+            port,
+            paired,
+            "/plugins/languages/query",
+            serde_json::to_value(&outside).unwrap(),
+        )
+        .await;
+        assert_eq!(rejected.status, 400, "{}", rejected.body);
+        assert!(
+            !rejected.body.contains("Cannot start language server"),
+            "{}",
+            rejected.body
+        );
+        let revoked=preparation_request(port,paired,"/plugins/languages/revoke",serde_json::json!({"user":42,"project":1,"provider":request.selection.prepared.storage_namespace()})).await;
+        assert_eq!(revoked.status, 200, "{}", revoked.body);
+        if !paired {
+            let mut other = request.clone();
+            other.selection.user = 43;
+            let rejected = preparation_request(
+                port,
+                false,
+                "/plugins/languages/query",
+                serde_json::to_value(other).unwrap(),
+            )
+            .await;
+            assert_eq!(rejected.status, 401);
+        }
+    }
+    for path in ["/plugins/languages/query", "/plugins/languages/revoke"] {
+        let raw = format!(
+            "POST {path} HTTP/1.1\r\nHost: localhost:{port}\r\nContent-Type: application/json\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{{}}"
+        );
+        assert_eq!(HttpResponse::parse(&http(port, &raw).await).status, 401);
+    }
+    server.abort();
+}
+
+#[tokio::test]
 async fn local_pairing_and_remote_backend_install_the_same_package_without_workspace_writes() {
     let cache = tempfile::tempdir().unwrap();
     let fixture = tempfile::tempdir().unwrap();

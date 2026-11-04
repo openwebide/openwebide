@@ -13,7 +13,9 @@ use std::sync::{
 };
 mod composition;
 mod documents;
+mod intelligence;
 pub use documents::LanguageDocumentRequest;
+pub use intelligence::initialization_params;
 #[cfg(test)]
 mod tests;
 
@@ -62,6 +64,11 @@ struct CachedHost<H> {
     state: Arc<Mutex<ServiceState>>,
 }
 impl<H: PluginActionHost> LanguageService<H> {
+    /// Retain request identities when a client recreates its service adapter.
+    pub fn with_sequence(mut self, sequence: Arc<AtomicU64>) -> Self {
+        self.sequence = sequence;
+        self
+    }
     pub fn new(
         host: H,
         bindings: Vec<ProjectPlugin>,
@@ -159,6 +166,12 @@ impl<H: PluginActionHost> LanguageService<H> {
 }
 
 impl<H: PluginActionHost> PluginActionHost for CachedHost<H> {
+    async fn language_server(
+        &self,
+        call: &openwebide_core::plugins::languages::intelligence::Call,
+    ) -> Result<openwebide_core::plugins::languages::intelligence::Response, String> {
+        self.host.language_server(call).await
+    }
     async fn prepare(&self, plugin: &PreparedPlugin) -> Result<PreparedPlugin, String> {
         if let Some(prepared) = self.state.lock().unwrap().prepared.clone() {
             super::execution::validate_prepared_selection(plugin, &prepared)?;
@@ -236,10 +249,9 @@ pub fn select_language_provider<'a>(
                 && binding.prepared.digest == selected.digest
                 && binding.revision == selected.installation_revision
                 && binding.prepared.host_id == selected.host_id
-                && binding.prepared.manifest.executable.is_some()
         })
         .map(|binding| &binding.prepared)
-        .ok_or_else(|| "Language provider has no executable service".into())
+        .ok_or_else(|| "Language provider is unavailable".into())
 }
 
 pub async fn invoke_language<H: PluginActionHost>(
@@ -261,6 +273,9 @@ pub async fn invoke_language<H: PluginActionHost>(
         }
     }
     let prepared = select_language_provider(bindings, expected)?;
+    if prepared.manifest.executable.is_none() {
+        return Err("Language analysis requires an executable component".into());
+    }
     let arguments = serde_json::to_string(input).map_err(|error| error.to_string())?;
     let outcome = invoke_selected_action(
         host,

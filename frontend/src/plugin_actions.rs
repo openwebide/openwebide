@@ -97,6 +97,20 @@ pub struct ProjectLanguageService {
     service: openwebide_agent::plugins::languages::LanguageService<ActionHost>,
 }
 impl ProjectLanguageService {
+    pub fn with_sequence(mut self, sequence: Arc<std::sync::atomic::AtomicU64>) -> Self {
+        self.service = self.service.with_sequence(sequence);
+        self
+    }
+    pub async fn intelligence(
+        &self,
+        client: &str,
+        document: openwebide_agent::plugins::languages::LanguageDocumentRequest,
+        query: openwebide_core::plugins::languages::intelligence::Query,
+    ) -> Result<openwebide_core::plugins::languages::intelligence::Response, String> {
+        self.service
+            .query_intelligence(client, document, query)
+            .await
+    }
     pub async fn new(
         api: Api,
         host: ProjectHost,
@@ -161,6 +175,7 @@ async fn scoped_action_host(
         PluginExecutionHost::Local(client) => Transport::Local(client),
     };
     let adapter = ActionHost {
+        project_host: SendWrapper::new(host),
         api: SendWrapper::new(api),
         transport: SendWrapper::new(transport),
         context: PluginExecutionContext {
@@ -182,6 +197,7 @@ enum Transport {
 }
 #[derive(Clone)]
 struct ActionHost {
+    project_host: SendWrapper<ProjectHost>,
     api: SendWrapper<Api>,
     transport: SendWrapper<Transport>,
     context: PluginExecutionContext,
@@ -196,6 +212,50 @@ impl ActionHost {
     }
 }
 impl PluginActionHost for ActionHost {
+    async fn language_server(
+        &self,
+        call: &openwebide_core::plugins::languages::intelligence::Call,
+    ) -> Result<openwebide_core::plugins::languages::intelligence::Response, String> {
+        SendWrapper::new(async move {
+            let mut call = call.clone();
+            call.session_id = self.context.session_id;
+            let backend = self.backend()?;
+            match &*self.transport {
+                Transport::Remote(..) => backend.language_server(&call).await,
+                Transport::Local(client) => {
+                    let selection = backend.authorize_language_server(&call).await?;
+                    if !(self.current)() {
+                        return Err("Language service context changed".into());
+                    }
+                    let current = Rc::clone(&self.current);
+                    let host = self
+                        .project_host
+                        .resolve_guarded(Some(selection.project), false, move || current())
+                        .await?;
+                    let root = host
+                        .cwd()
+                        .ok_or("Connect this project folder to the paired execution host first")?;
+                    if !(self.current)() {
+                        return Err("Language service context changed".into());
+                    }
+                    client
+                        .plugin_request(
+                            "languages/query",
+                            serde_json::to_value(
+                                openwebide_core::plugins::languages::intelligence::HostRequest {
+                                    user: None,
+                                    selection,
+                                    root: root.to_string(),
+                                },
+                            )
+                            .map_err(|error| error.to_string())?,
+                        )
+                        .await
+                }
+            }
+        })
+        .await
+    }
     fn now_ms(&self) -> Option<u64> {
         Some(language_time())
     }
