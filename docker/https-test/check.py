@@ -116,7 +116,10 @@ try:
         assert {
             (entry["prepared"]["source"]["repository"], entry["prepared"]["source"]["commit"], entry["prepared"]["source"]["path"])
             for entry in installed
-        } == {(baseline["repository"], baseline["commit"], path) for path in baseline["paths"]}, "Default packages did not initialize"
+        } == {
+            (baseline["repository"], baseline.get("commits", {}).get(path, baseline["commit"]), path)
+            for path in baseline["paths"]
+        }, "Default packages did not initialize"
         # This fixture verifies transport, including unbuffered SSE. Give the
         # registered tools room so compaction cannot preempt the first delta.
         connection = api("/connections", {"name": "HTTPS fixture", "kind": "llamacpp", "base_url": "http://127.0.0.1:5005", "model": "proxy-test", "context_limit": 32768})

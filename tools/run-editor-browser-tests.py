@@ -19,6 +19,7 @@ MATRICES = {
     "paragraph_limit_geometry_matches_complete_rows_in_both_modes",
 }
 LONG_REPLAYS = {
+    "localized_wrapped_edits_reuse_exact_row_heights_in_both_modes",
     "wrapped_paragraph_edits_reuse_exact_source_owned_geometry_local",
     "wrapped_paragraph_edits_reuse_exact_source_owned_geometry_remote",
     "current_unwrapped_replay_preserves_complete_unicode_geometry_in_both_modes",
