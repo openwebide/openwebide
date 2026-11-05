@@ -1,12 +1,12 @@
 //! Language configuration and host readiness, scoped separately from chat tools.
 use leptos::prelude::*;
 use openwebide_core::plugins::languages::{LanguageSettings, RegisteredLanguage};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 #[derive(Clone, Default)]
 pub struct IntelligenceDocuments {
     pub digest: String,
-    pub paths: BTreeSet<String>,
+    pub paths: BTreeMap<String, String>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -33,7 +33,7 @@ pub struct LanguagesState {
     pub generation: RwSignal<u64>,
     pub intelligence_client: StoredValue<Option<(u64, String)>>,
     pub intelligence_sequence: StoredValue<std::sync::Arc<std::sync::atomic::AtomicU64>>,
-    pub intelligence_documents: StoredValue<BTreeMap<(i64, String), IntelligenceDocuments>>,
+    pub intelligence_documents: StoredValue<BTreeMap<(i64, String, String), IntelligenceDocuments>>,
 }
 impl Default for LanguagesState {
     fn default() -> Self {

@@ -190,6 +190,10 @@ pub struct LanguageHandler {
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct LanguageServer {
     pub command: String,
+    /// API 7: LSP document language ID when it differs from the contribution ID.
+    /// It identifies a document's dialect, not a separate server instance.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language_id: Option<String>,
     #[serde(default)]
     pub args: Vec<String>,
     #[serde(default)]
@@ -198,6 +202,16 @@ pub struct LanguageServer {
     pub initialization_options: serde_json::Value,
     #[serde(default)]
     pub settings: serde_json::Value,
+}
+
+impl LanguageServer {
+    /// Related dialects share the same server configuration and retain their
+    /// individual language IDs only when opening documents.
+    pub fn shared_configuration(&self) -> Self {
+        let mut configuration = self.clone();
+        configuration.language_id = None;
+        configuration
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

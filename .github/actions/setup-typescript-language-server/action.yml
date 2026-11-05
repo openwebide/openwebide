@@ -1,0 +1,12 @@
+name: Set up the TypeScript language server
+description: Install the locked server and TypeScript runtime for real host checks.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+    - shell: bash
+      run: |
+        bash tools/setup-typescript-language-server.sh
+        echo "$GITHUB_WORKSPACE/tools/typescript-language-server/node_modules/.bin" >> "$GITHUB_PATH"

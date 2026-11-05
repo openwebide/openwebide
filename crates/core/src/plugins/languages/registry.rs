@@ -28,6 +28,26 @@ pub struct RegisteredLanguage {
     pub definition: LanguageDefinition,
 }
 impl RegisteredLanguage {
+    /// Documents can share a native server only within the same installed
+    /// package, execution host and complete server configuration.
+    pub fn shares_server(&self, other: &Self) -> bool {
+        self.plugin_api >= super::intelligence::MIN_PLUGIN_API
+            && other.plugin_api >= super::intelligence::MIN_PLUGIN_API
+            && self.plugin_namespace == other.plugin_namespace
+            && self.digest == other.digest
+            && self.installation_revision == other.installation_revision
+            && self.host_id == other.host_id
+            && self
+                .definition
+                .features
+                .language_server
+                .as_ref()
+                .zip(other.definition.features.language_server.as_ref())
+                .is_some_and(|(left, right)| {
+                    left.shared_configuration() == right.shared_configuration()
+                })
+    }
+
     pub fn supports_editor(&self) -> bool {
         let definition = &self.definition;
         let features = &definition.features;

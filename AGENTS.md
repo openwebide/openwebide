@@ -121,6 +121,12 @@ Actions runs.
    - `rust-analyzer`, `rust-src` and `rustfmt` from the pinned Rust toolchain for
      the required real language-server service check:
      `rustup component add rust-analyzer rust-src rustfmt`
+   - Node.js 22.22.2 or newer and npm. Install the locked TypeScript language-server
+     verification tools with `bash tools/setup-typescript-language-server.sh`;
+     prepend `tools/typescript-language-server/node_modules/.bin` to `PATH`.
+     Both real-server examples are required: `check_language_server` and
+     `check_typescript_server`. The latter verifies all four related dialects,
+     unsaved cross-file edits, diagnostics, completion imports and isolation.
 
    Quick check:
    ```bash

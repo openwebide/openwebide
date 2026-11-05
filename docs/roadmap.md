@@ -1117,7 +1117,7 @@ source buffers, requests and idle lifetime; unsaved clients stay isolated.
 Remaining work:
 
 - Add further server integrations through independently installable language
-  packages, grouped by server coverage: JavaScript/TypeScript/JSX/TSX for vtsls,
+  packages, grouped by server coverage: JavaScript/TypeScript/JSX/TSX for typescript-language-server,
   C/C++ for clangd, and Python for pyright, for example. Keep server selection,
   configuration, validation and lifecycle above the thin host adapters.
 - Add mouse-hover presentation, completion popups while typing, snippets,

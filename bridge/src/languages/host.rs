@@ -136,6 +136,11 @@ impl Host {
         if scope.project <= 0 || scope.owner.is_empty() {
             return Err("Language services require project ownership".into());
         }
+        let language = scope
+            .server
+            .language_id
+            .take()
+            .unwrap_or_else(|| input.language.clone());
         scope.root = tokio::fs::canonicalize(&scope.root)
             .await
             .map_err(|error| format!("Project folder is unavailable: {error}"))?;
@@ -215,7 +220,7 @@ impl Host {
                     }
                 }).await?;
                 let mut documents = session.documents.lock().await;
-                documents.query(session,input,&path).await
+                documents.query(session,input,&path,&language).await
             } => result,
         };
         if *stopped.borrow() || *cancelled.borrow() {

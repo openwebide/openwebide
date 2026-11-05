@@ -216,6 +216,11 @@ components with `rustup component add rust-analyzer rust-src rustfmt`. The serve
 image includes them. Upgrading an existing package to add native server execution
 requires the ordinary capability review, including under Automatic updates.
 
+API 7 additionally supports server document language IDs that differ from the
+installed language IDs. Related dialects share a native service and synchronize
+their open unsaved files together; each retains its own provider preferences and
+document identity. Different packages or server configurations remain isolated.
+
 The editor's **Code intelligence** menu offers symbol information, completion at
 the cursor, definitions, references, document symbols, rename, document formatting,
 code actions and the current document's Problems list. Shortcuts include F12,
@@ -450,7 +455,8 @@ behavior through the same public SDK as community plugins. Remaining lifecycle
 verification and registry SDK publication are tracked in [the roadmap](roadmap.md).
 API 4 supports declarative panels; API 5 language contributions and editor
 integration are described in [plugin authoring](plugin-authoring.md#language-plugin-build-toolchain).
-API 6 adds native LSP services through those same declarations. Plugin MCP
+API 6 adds native LSP services; API 7 adds per-document server language IDs and
+shared dialect synchronization through those same declarations. Plugin MCP
 contributions, editor annotations and hooks remain future contribution work.
 
 Configured host [MCP servers](mcp.md) are supported independently of plugins.

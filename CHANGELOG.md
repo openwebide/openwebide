@@ -9,6 +9,9 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Add plugin API 7 document language IDs and shared native services for related dialects. Preserve published contribution IDs, synchronize unsaved files through their own selected languages, and retain fresh authority and request ordering across both host adapters. Accept standard versionless push diagnostics while rejecting explicit stale versions and preserving source-bound client publication.
+- Include locked TypeScript language-server and TypeScript tools with Node.js in execution-host images, and verify the real shared-server contract across JS, JSX, TS and TSX. Package activation follows the normal public plugin lifecycle.
+
 - Add native language servers through plugin API 6, beginning with Rust and `rust-analyzer`. Both execution hosts share source-checked diagnostics, hover, completion, cross-file navigation, symbols, rename, formatting and text-edit code actions. Review edits before staging them as unsaved tabs with existing undo and recovery. Services start on demand, retain warm state and isolate unsaved clients; provider changes revoke old services. API 5 server metadata remains inert, and upgrades adding native execution require capability review.
 
 - Reuse bounded language-rule validation results so embedded preparation does not repeatedly compile unchanged provider expressions.

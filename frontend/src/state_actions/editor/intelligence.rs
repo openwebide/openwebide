@@ -286,22 +286,67 @@ impl EditorActions {
                     };
                     // Every open buffer using this provider participates in
                     // cross-file queries, including unsaved inactive tabs.
-                    let other_sources = self.workspace.editor_tabs.with_untracked(|tabs| tabs.get(&scope.project).cloned().unwrap_or_default())
-                        .into_iter().filter(|path| path != &captured.presentation.path)
+                    let other_sources = self
+                        .workspace
+                        .editor_tabs
+                        .with_untracked(|tabs| {
+                            tabs.get(&scope.project).cloned().unwrap_or_default()
+                        })
+                        .into_iter()
+                        .filter(|path| path != &captured.presentation.path)
                         .filter_map(|path| {
                             let key = (scope.project, path.clone());
-                            let source = self.workspace.editor_buffers.with_untracked(|buffers| buffers.get(&key).map(|buffer| buffer.content.shared()))
-                                .or_else(|| self.workspace.editor_documents.with_untracked(|documents| documents.get(&key).map(openwebide_core::editor::Document::shared_text)))?;
-                            if source.len() > openwebide_core::plugins::languages::MAX_SOURCE_BYTES { return None; }
-                            matches!(scope.registry.select_server(&path, &source, None, &scope.preferences), LanguageSelection::Selected(provider) if provider == &scope.provider)
-                                .then_some((path, source))
-                        }).collect::<Vec<_>>();
-                    let document_key = (scope.project, scope.provider.plugin_namespace.clone());
+                            let source = self
+                                .workspace
+                                .editor_buffers
+                                .with_untracked(|buffers| {
+                                    buffers.get(&key).map(|buffer| buffer.content.shared())
+                                })
+                                .or_else(|| {
+                                    self.workspace.editor_documents.with_untracked(|documents| {
+                                        documents
+                                            .get(&key)
+                                            .map(openwebide_core::editor::Document::shared_text)
+                                    })
+                                })?;
+                            if source.len() > openwebide_core::plugins::languages::MAX_SOURCE_BYTES
+                            {
+                                return None;
+                            }
+                            let LanguageSelection::Selected(provider) = scope
+                                .registry
+                                .select_server(&path, &source, None, &scope.preferences)
+                            else {
+                                return None;
+                            };
+                            scope.provider.shares_server(provider).then_some((
+                                path,
+                                source,
+                                provider.clone(),
+                            ))
+                        })
+                        .collect::<Vec<_>>();
+                    let configuration = scope
+                        .provider
+                        .definition
+                        .features
+                        .language_server
+                        .as_ref()
+                        .ok_or("The language server is unavailable")?
+                        .shared_configuration();
+                    let document_key = (
+                        scope.project,
+                        scope.provider.plugin_namespace.clone(),
+                        serde_json::to_string(&configuration).map_err(|error| error.to_string())?,
+                    );
                     let mut paths = other_sources
                         .iter()
-                        .map(|(path, _)| path.clone())
-                        .collect::<std::collections::BTreeSet<_>>();
-                    paths.insert(captured.presentation.path.clone());
+                        .map(|(path, _, provider)| (path.clone(), provider.definition.id.clone()))
+                        .collect::<std::collections::BTreeMap<_, _>>();
+                    paths.insert(
+                        captured.presentation.path.clone(),
+                        scope.provider.definition.id.clone(),
+                    );
                     let closed = state.intelligence_documents.with_value(|documents| {
                         documents
                             .get(&document_key)
@@ -309,14 +354,25 @@ impl EditorActions {
                             .map(|documents| {
                                 documents
                                     .paths
-                                    .difference(&paths)
-                                    .cloned()
+                                    .iter()
+                                    .filter(|(path, _)| !paths.contains_key(*path))
+                                    .map(|(path, provider)| (path.clone(), provider.clone()))
                                     .collect::<Vec<_>>()
                             })
                             .unwrap_or_default()
                     });
-                    for path in closed {
+                    for (path, language) in closed {
+                        let provider = scope
+                            .registry
+                            .providers
+                            .iter()
+                            .find(|provider| {
+                                provider.definition.id == language
+                                    && scope.provider.shares_server(provider)
+                            })
+                            .ok_or("The previous document language is no longer available")?;
                         client_service
+                            .for_server_language(provider.clone())?
                             .intelligence(
                                 &client,
                                 LanguageDocumentRequest {
@@ -336,6 +392,11 @@ impl EditorActions {
                         }
                     }
                     state.intelligence_documents.update_value(|documents| {
+                        documents.retain(|(project, provider, _), previous| {
+                            *project != scope.project
+                                || provider != &scope.provider.plugin_namespace
+                                || previous.digest == scope.provider.digest
+                        });
                         documents.insert(
                             document_key,
                             crate::state::languages::IntelligenceDocuments {
@@ -344,8 +405,9 @@ impl EditorActions {
                             },
                         );
                     });
-                    for (path, source) in other_sources {
+                    for (path, source, provider) in other_sources {
                         client_service
+                            .for_server_language(provider)?
                             .intelligence(
                                 &client,
                                 LanguageDocumentRequest {

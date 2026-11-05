@@ -13,3 +13,4 @@ tools/editor-bench/webdriver.json
 **/*.pyc
 output
 site/.venv
+**/node_modules

@@ -1,5 +1,10 @@
 # syntax=docker/dockerfile:1
 
+FROM node:24-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c AS language-server-tools
+WORKDIR /opt/openwebide-language-servers
+COPY tools/typescript-language-server/package.json tools/typescript-language-server/package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts --registry=https://registry.npmjs.org --no-audit --no-fund
+
 # --- builder: Spin runtime + Rust + Trunk; builds both components via `spin build` ---
 FROM ghcr.io/spinframework/spin:v4.1.0 AS builder
 
@@ -56,8 +61,8 @@ RUN cargo build -p openwebide-plugin-build -p openwebide-plugin-runtime --bin op
     OPENWEBIDE_BUNDLED_ARTIFACTS=/src/target/bundled-plugins.json \
     cargo build -p openwebide-bridge --features bundled-defaults --release --locked
 
-# --- runtime: Spin + prebuilt components ---
-FROM ghcr.io/spinframework/spin:v4.1.0
+# --- public execution tools, independently smoke-testable ---
+FROM ghcr.io/spinframework/spin:v4.1.0 AS runtime-tools
 
 # SSH client is included for Git and app-configured host administration.
 RUN apt-get update && \
@@ -65,6 +70,14 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+COPY --from=language-server-tools /usr/local/bin/node /usr/local/bin/node
+COPY --from=language-server-tools /usr/local/LICENSE ./licenses/node-LICENSE
+COPY --from=language-server-tools /opt/openwebide-language-servers/node_modules /opt/openwebide-language-servers/node_modules
+ENV PATH="/opt/openwebide-language-servers/node_modules/.bin:${PATH}"
+RUN node --version && typescript-language-server --version && tsc --version
+
+# --- runtime: Spin + prebuilt components ---
+FROM runtime-tools
 COPY --from=builder /src/target/release/openwebide-bridge /usr/local/bin/
 COPY --from=builder /src/target/release/openwebide-plugin-build /usr/local/bin/
 # The source compiler uses the pinned toolchain without relying on /root traversal

@@ -176,6 +176,9 @@ fn validate_definition_limits(
         }
         if let Some(server) = &features.language_server
             && (!text(&server.command, 1024)
+                || server.language_id.as_ref().is_some_and(|language| {
+                    !text(language, 64) || language.chars().any(char::is_whitespace)
+                })
                 || server.args.len() > 64
                 || server
                     .args

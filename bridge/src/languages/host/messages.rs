@@ -14,11 +14,7 @@ pub(super) fn pump(
     tokio::spawn(async move {
         while let Some(message)=events.recv().await {
             if message.method=="textDocument/publishDiagnostics" {
-                let Some(uri)=message.params["uri"].as_str() else {continue;};
-                let Some(version)=message.params["version"].as_i64().and_then(|version|i32::try_from(version).ok()) else {continue;};
-                let Some(items)=message.params["diagnostics"].as_array().filter(|items|items.len()<=protocol::MAX_DIAGNOSTICS) else {continue;};
-                let mut snapshots=diagnostics.lock().unwrap();
-                if let Some(snapshot)=snapshots.get_mut(uri).filter(|snapshot|snapshot.version==version) {snapshot.raw=items.clone();snapshot.ready=true;}
+                publish_diagnostics(&mut diagnostics.lock().unwrap(), &message.params);
                 continue;
             }
             let Some(id)=message.id else {continue;};
@@ -33,6 +29,33 @@ pub(super) fn pump(
         }
     }).abort_handle()
 }
+
+fn publish_diagnostics(snapshots: &mut BTreeMap<String, Diagnostics>, params: &Value) {
+    let Some(uri) = params["uri"].as_str() else {
+        return;
+    };
+    let Some(snapshot) = snapshots.get_mut(uri) else {
+        return;
+    };
+    // LSP permits an omitted version. Such notifications describe the currently
+    // open document; explicit versions must match exactly. Source changes clear
+    // this slot before synchronization, and editor publication remains bound to
+    // the request's source, revision and editing-client identity.
+    if let Some(version) = params.get("version").filter(|value| !value.is_null())
+        && version.as_i64() != Some(i64::from(snapshot.version))
+    {
+        return;
+    }
+    let Some(items) = params["diagnostics"]
+        .as_array()
+        .filter(|items| items.len() <= protocol::MAX_DIAGNOSTICS)
+    else {
+        return;
+    };
+    snapshot.raw = items.clone();
+    snapshot.ready = true;
+}
+
 fn configuration(settings: &Value, section: Option<&str>) -> Value {
     let Some(section) = section.filter(|section| !section.is_empty()) else {
         return settings.clone();
@@ -48,4 +71,43 @@ fn configuration(settings: &Value, section: Option<&str>) -> Value {
         value = next;
     }
     value.clone()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn versionless_diagnostics_use_only_open_documents_and_explicit_versions_reject_stale_results()
+    {
+        let uri = "file:///project/file.ts";
+        let mut snapshots = BTreeMap::from([(
+            uri.into(),
+            Diagnostics {
+                version: 4,
+                raw: vec![],
+                ready: false,
+            },
+        )]);
+        let current = json!({"uri":uri,"diagnostics":[{"message":"current"}]});
+        publish_diagnostics(&mut snapshots, &current);
+        assert!(snapshots[uri].ready);
+        assert_eq!(snapshots[uri].raw[0]["message"], "current");
+        for version in [json!(3), json!(5), json!("4"), json!(4.5)] {
+            publish_diagnostics(
+                &mut snapshots,
+                &json!({"uri":uri,"version":version,"diagnostics":[]}),
+            );
+            assert_eq!(snapshots[uri].raw.len(), 1);
+        }
+        publish_diagnostics(
+            &mut snapshots,
+            &json!({"uri":uri,"version":4,"diagnostics":[]}),
+        );
+        assert!(snapshots[uri].ready);
+        assert!(snapshots[uri].raw.is_empty());
+        snapshots.remove(uri);
+        publish_diagnostics(&mut snapshots, &current);
+        assert!(snapshots.is_empty());
+    }
 }

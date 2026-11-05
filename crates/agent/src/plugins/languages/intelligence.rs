@@ -40,6 +40,16 @@ pub fn initialization_params(
 }
 
 impl<H: PluginActionHost> LanguageService<H> {
+    /// Retain shared transport, authority checks and request ordering while
+    /// synchronizing another dialect served by this same installed server.
+    pub fn for_server_language(&self, provider: RegisteredLanguage) -> Result<Self, String> {
+        if !self.provider.shares_server(&provider) {
+            return Err("The language belongs to a different server".into());
+        }
+        select_language_provider(&self.bindings, &provider)?;
+        Ok(self.for_provider(provider))
+    }
+
     pub async fn query_intelligence(
         &self,
         client: &str,

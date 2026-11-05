@@ -1,6 +1,68 @@
 use super::*;
 
 #[test]
+fn dialect_language_ids_require_api_seven_and_share_only_the_same_installed_server() {
+    use crate::plugins::{ProjectPlugin, languages::*};
+    let mut prepared = crate::plugins::testing::receipt();
+    prepared.manifest.executable = None;
+    prepared.manifest.compatibility.plugin_api = 7;
+    prepared.manifest.contributions.languages = serde_json::from_value(serde_json::json!([
+        {"id":"js", "name":"Script", "extensions":["js"], "features":{"languageServer":{"command":"community-server","languageId":"javascript"}}},
+        {"id":"jsx", "name":"Script JSX", "extensions":["jsx"], "features":{"languageServer":{"command":"community-server","languageId":"javascriptreact"}}}
+    ])).unwrap();
+    prepared.validate().unwrap();
+    for api in [5, 6] {
+        let mut old = prepared.clone();
+        old.manifest.compatibility.plugin_api = api;
+        assert!(old.validate().is_err());
+    }
+    for value in ["", "javascript react", "javascript\nreact", &"x".repeat(65)] {
+        let mut invalid = prepared.clone();
+        invalid.manifest.contributions.languages[0]
+            .features
+            .language_server
+            .as_mut()
+            .unwrap()
+            .language_id = Some(value.into());
+        assert!(invalid.validate().is_err());
+    }
+    let registry = LanguageRegistry::from_bindings(&[ProjectPlugin {
+        id: 1,
+        revision: 1,
+        enabled: true,
+        prepared,
+    }]);
+    let (left, right) = (&registry.providers[0], &registry.providers[1]);
+    assert!(left.shares_server(right));
+    assert!(right.shares_server(left));
+    for field in [
+        "package", "digest", "revision", "host", "command", "settings", "root", "options", "api",
+    ] {
+        let mut other = right.clone();
+        match field {
+            "package" => other.plugin_namespace.push_str("-other"),
+            "digest" => other.digest = "b".repeat(64),
+            "revision" => other.installation_revision += 1,
+            "host" => other.host_id.push_str("-other"),
+            "api" => other.plugin_api = 5,
+            field => {
+                let server = other.definition.features.language_server.as_mut().unwrap();
+                match field {
+                    "command" => server.command.push_str("-other"),
+                    "settings" => server.settings = serde_json::json!({"different":true}),
+                    "root" => server.root_markers.push("other.json".into()),
+                    "options" => {
+                        server.initialization_options = serde_json::json!({"different":true});
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        }
+        assert!(!left.shares_server(&other), "{field}");
+    }
+}
+
+#[test]
 fn utf16_positions_preserve_unicode_crlf_and_empty_final_row() {
     let source = "a😀é\r\n水\n";
     for byte in [0, 1, 5, 7, 9, 12, 13] {

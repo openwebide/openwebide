@@ -83,6 +83,20 @@ The shared language facade selects providers, prepares the exact package and
 obtains fresh account/project authority above both host adapters. Providers cannot
 substitute commands through query arguments or bypass installation review.
 
+API 7 adds optional `languageServer.languageId` for a server's document language
+ID, preserving the package's published contribution ID. For example, a `jsx`
+contribution can send `javascriptreact` to its server. Use API 7 when declaring
+this field. Related dialects in one installed package share a service when their
+command, arguments, root markers, initialization options and settings match;
+the document language ID does not create another process. Open unsaved dialects
+are synchronized with their own declarations and share request ordering. Closing
+one dialect does not close the other documents or authorize another provider.
+
+Push diagnostics may omit their LSP version. Those notifications describe the
+currently open document; explicit versions are accepted only when they match.
+Source changes clear prior diagnostics, unknown/closed documents are ignored,
+and client publication still checks source, revision, project and account.
+
 API 5 introduces versioned language definitions and pure host syntax handlers.
 Language packages use the [shared editor integration](plugins.md#language-support).
 First-party packages are separated by intended language-server coverage;

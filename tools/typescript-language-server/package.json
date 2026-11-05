@@ -1,0 +1,12 @@
+{
+  "name": "openwebide-typescript-language-server",
+  "private": true,
+  "version": "0.0.0",
+  "engines": {
+    "node": ">=22.22.2"
+  },
+  "dependencies": {
+    "typescript": "6.0.3",
+    "typescript-language-server": "6.0.3"
+  }
+}

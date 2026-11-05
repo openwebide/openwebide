@@ -328,6 +328,89 @@ fn native_formatting_honors_disabled_and_explicit_formatter_preferences() {
 }
 
 #[test]
+fn related_server_languages_keep_per_document_identity_and_fresh_authority_on_both_hosts() {
+    futures::executor::block_on(async {
+        for profile in ["server", "paired"] {
+            let (host, mut bindings, _, _) = setup(profile);
+            let manifest = &mut bindings[0].prepared.manifest;
+            manifest.compatibility.plugin_api = 7;
+            manifest.executable = None;
+            manifest.contributions.languages = serde_json::from_value(serde_json::json!([
+                {"id":"javascript","name":"Script","features":{"languageServer":{"command":"community-lsp","languageId":"javascript"}}},
+                {"id":"jsx","name":"Script JSX","features":{"languageServer":{"command":"community-lsp","languageId":"javascriptreact"}}},
+                {"id":"typescript","name":"Typed script","features":{"languageServer":{"command":"community-lsp","languageId":"typescript"}}},
+                {"id":"tsx","name":"Typed JSX","features":{"languageServer":{"command":"community-lsp","languageId":"typescriptreact"}}}
+            ])).unwrap();
+            let providers = LanguageRegistry::from_bindings(&bindings).providers;
+            assert_eq!(providers.len(), 4);
+            let service =
+                LanguageService::new(host.clone(), bindings, providers[0].clone()).unwrap();
+            for provider in &providers {
+                service
+                    .for_server_language(provider.clone())
+                    .unwrap()
+                    .query_intelligence(
+                        "client-a",
+                        LanguageDocumentRequest {
+                            document: provider.definition.id.clone(),
+                            path: format!("file.{}", provider.definition.id),
+                            revision: 1,
+                            source: Arc::new("// 文😀\r\n".into()),
+                            tab_width: 4,
+                        },
+                        server_protocol::Query::Synchronize,
+                    )
+                    .await
+                    .unwrap();
+            }
+            let calls = host.server_calls.lock().unwrap().clone();
+            assert_eq!(calls.len(), 4);
+            for (call, provider) in calls.iter().zip(&providers) {
+                assert_eq!(call.input.language, provider.definition.id);
+                assert_eq!(call.prepared.host_id, profile);
+            }
+            assert!(
+                calls
+                    .windows(2)
+                    .all(|calls| calls[0].input.request < calls[1].input.request)
+            );
+            assert_eq!(host.preparations.load(Ordering::Relaxed), 1);
+            assert_eq!(host.grants.load(Ordering::Relaxed), 4);
+            assert_eq!(host.starts.load(Ordering::Relaxed), 0);
+            let mut different = providers[1].clone();
+            different
+                .definition
+                .features
+                .language_server
+                .as_mut()
+                .unwrap()
+                .command = "other-server".into();
+            assert!(service.for_server_language(different).is_err());
+            host.deny_grant.store(true, Ordering::Relaxed);
+            assert!(
+                service
+                    .for_server_language(providers[1].clone())
+                    .unwrap()
+                    .query_intelligence(
+                        "client-a",
+                        LanguageDocumentRequest {
+                            document: providers[1].definition.id.clone(),
+                            path: "file.jsx".into(),
+                            revision: 2,
+                            source: Arc::new("changed".into()),
+                            tab_width: 4,
+                        },
+                        server_protocol::Query::Synchronize
+                    )
+                    .await
+                    .is_err()
+            );
+            assert_eq!(host.server_calls.lock().unwrap().len(), 4);
+        }
+    });
+}
+
+#[test]
 fn shared_code_intelligence_checks_fresh_authority_without_component_execution() {
     futures::executor::block_on(async {
         for profile in ["server", "paired"] {

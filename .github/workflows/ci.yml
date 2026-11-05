@@ -99,6 +99,8 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      - uses: ./.github/actions/setup-typescript-language-server
+
       - name: Prepare isolated plugin builds
         run: |
           sudo apt-get update
@@ -131,6 +133,9 @@ jobs:
 
       - name: Check real Rust language-server services
         run: cargo run -p openwebide-bridge --example check_language_server --locked
+
+      - name: Check shared TypeScript language-server dialects
+        run: cargo run -p openwebide-bridge --example check_typescript_server --locked
 
   plugin-panels:
     runs-on: ubuntu-latest
@@ -197,6 +202,8 @@ jobs:
         run: bash tools/setup-wasm-compiler.sh
 
       - uses: Swatinem/rust-cache@v2
+
+      - uses: ./.github/actions/setup-typescript-language-server
 
       - name: Install Trunk
         run: |

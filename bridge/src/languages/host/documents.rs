@@ -37,6 +37,7 @@ impl Documents {
         session: &Session,
         input: &Request,
         path: &Path,
+        language: &str,
     ) -> Result<Response, String> {
         if matches!(input.query, Query::Close) {
             if self.documents.get(&input.document).is_some_and(|document| {
@@ -67,7 +68,7 @@ impl Documents {
             {
                 return Err("Language document revision or request is stale".into());
             }
-            if previous.uri != uri || previous.language != input.language {
+            if previous.uri != uri || previous.language != language {
                 let previous = self
                     .documents
                     .remove(&input.document)
@@ -117,7 +118,7 @@ impl Documents {
             .or_insert_with(|| Document {
                 path: path.to_path_buf(),
                 uri: uri.clone(),
-                language: input.language.clone(),
+                language: language.to_owned(),
                 revision: input.revision,
                 request: 0,
                 digest: String::new(),
@@ -147,7 +148,7 @@ impl Documents {
                 },
             );
             if is_new {
-                session.client.notify("textDocument/didOpen",json!({"textDocument":{"uri":uri,"languageId":input.language,"version":document.version,"text":input.source}})).await.map_err(|error|error.to_string())?;
+                session.client.notify("textDocument/didOpen",json!({"textDocument":{"uri":uri,"languageId":language,"version":document.version,"text":input.source}})).await.map_err(|error|error.to_string())?;
             } else {
                 session.client.notify("textDocument/didChange",json!({"textDocument":{"uri":uri,"version":document.version},"contentChanges":[{"text":input.source}]})).await.map_err(|error|error.to_string())?;
             }

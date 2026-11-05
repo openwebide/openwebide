@@ -97,6 +97,15 @@ pub struct ProjectLanguageService {
     service: openwebide_agent::plugins::languages::LanguageService<ActionHost>,
 }
 impl ProjectLanguageService {
+    pub fn for_server_language(
+        &self,
+        provider: openwebide_core::plugins::languages::RegisteredLanguage,
+    ) -> Result<Self, String> {
+        Ok(Self {
+            service: self.service.for_server_language(provider)?,
+        })
+    }
+
     pub fn with_sequence(mut self, sequence: Arc<std::sync::atomic::AtomicU64>) -> Self {
         self.service = self.service.with_sequence(sequence);
         self

@@ -15,6 +15,8 @@ required_tools=(
   google-chrome
   chromedriver
   python3
+  node
+  npm
 )
 
 for tool in "${required_tools[@]}"; do
@@ -49,6 +51,9 @@ if [[ -z "${WASI_SDK_PATH:-}" ]]; then
   export WASI_SDK_PATH
 fi
 
+bash tools/setup-typescript-language-server.sh
+export PATH="$repo_root/tools/typescript-language-server/node_modules/.bin:$PATH"
+
 export WASI_SYSROOT="${WASI_SYSROOT:-$WASI_SDK_PATH/share/wasi-sysroot}"
 
 echo "[pre-push] 1/4 Checking formatting (cargo fmt --all --check)..."
@@ -68,6 +73,7 @@ echo "[pre-push] 3/4 Running native unit & integration tests..."
 cargo test -p openwebide-storage -p openwebide-core -p openwebide-auth -p openwebide-agent -p openwebide-llm -p openwebide-bridge -p openwebide-backend -p openwebide-plugin-sdk -p openwebide-plugin-runtime -p openwebide-language-syntax --features openwebide-core/editor-parser -- --skip source_compilation_validates_tools_caches_offline_and_rejects_artifact_corruption
 cargo test -p openwebide-frontend --lib
 cargo run -p openwebide-bridge --example check_language_server --locked
+cargo run -p openwebide-bridge --example check_typescript_server --locked
 
 if [[ -z "$changed_files" ]] || echo "$changed_files" | grep -qE '^(frontend/|crates/core/|crates/agent/|Cargo\.)'; then
   echo "[pre-push] 4/4 Running headless Chrome WASM UI tests..."
