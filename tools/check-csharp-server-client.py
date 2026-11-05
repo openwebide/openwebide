@@ -137,6 +137,7 @@ def check():
                 for key,value in {'open_tabs':json.dumps([project['id']]),'active_project':str(project['id'])}.items():runtime.request('PUT','/api/settings',{'key':key,'value':value})
                 browser.call('POST','/url',{'url':runtime.url+'/'})
                 wait(mode+' C# editor',lambda:script(browser,"return document.querySelector('textarea[data-editor-path]')?.value.includes('GetAnswer');"))
+                wait(mode+' C# server',lambda:script(browser,'return lspEvidence.requests.some(request=>request.server);'),90)
                 hover(browser,CLIENT,'int')
                 warm=script(browser,'return lspEvidence.requests.filter(request=>request.server).at(-1).server;')
                 select(browser,LIB)
