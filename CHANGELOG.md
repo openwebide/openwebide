@@ -9,6 +9,8 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Add plugin API 8 declarations for read-only virtual documents returned by language servers. Bind opaque resource IDs to the originating document and installed service, validate declared URI schemes and source requests, bound retained metadata and text, and preserve command and workspace-edit restrictions. Support deferred edit resolution from older servers advertising boolean code-action capabilities.
+
 - Enable typescript-language-server through JavaScript/TypeScript 0.2.0. JS, JSX, TS and TSX share a warm service and unsaved cross-file buffers in both project modes, with completion imports, diagnostics, navigation, symbols, reviewed rename, formatting and text-edit code actions. Keep multi-file previews readable in scrolling review dialogs. Package disablement and host restart preserve editor recovery; Save remains explicit.
 - Add plugin API 7 document language IDs and shared native services for related dialects. Preserve published contribution IDs, synchronize unsaved files through their own selected languages, and retain fresh authority and request ordering across both host adapters. Accept standard versionless push diagnostics while rejecting explicit stale versions and preserving source-bound client publication.
 - Include locked TypeScript language-server and TypeScript tools with Node.js and npm in execution-host images, and verify the real shared-server contract across JS, JSX, TS and TSX. Package activation follows the normal public plugin lifecycle.

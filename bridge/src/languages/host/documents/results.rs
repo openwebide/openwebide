@@ -33,8 +33,7 @@ impl Documents {
                 let mut targets = Vec::new();
                 for value in values {
                     targets.push(
-                        target(&session.root, &mut document.resources, &mut sources, &value)
-                            .await?,
+                        target(session, &mut document.resources, &mut sources, &value).await?,
                     );
                 }
                 serde_json::to_value(targets).map_err(|error| error.to_string())
@@ -69,7 +68,7 @@ impl Documents {
                         .ok_or("Invalid symbol kind")?;
                     let target = if value.get("location").is_some() {
                         target(
-                            &session.root,
+                            session,
                             &mut document.resources,
                             &mut sources,
                             &value["location"],
@@ -188,8 +187,8 @@ impl Documents {
 }
 
 async fn target(
-    root: &Path,
-    resources: &mut BTreeMap<String, PathBuf>,
+    session: &Session,
+    resources: &mut BTreeMap<String, Resource>,
     sources: &mut BTreeMap<PathBuf, Arc<str>>,
     value: &Value,
 ) -> Result<Target, String> {
@@ -206,6 +205,43 @@ async fn target(
             .clone(),
     )
     .map_err(|_| "Invalid navigation range")?;
+    let parsed = url::Url::parse(uri).map_err(|_| "Invalid language-server URI")?;
+    if parsed.scheme() != "file" {
+        if uri.len() > 4096
+            || !session
+                .virtual_documents
+                .iter()
+                .any(|declaration| declaration.scheme == parsed.scheme())
+        {
+            return Err(
+                "This language-server resource scheme is not declared or its URI is too large"
+                    .into(),
+            );
+        }
+        let name = parsed
+            .path()
+            .rsplit('/')
+            .next()
+            .filter(|name| {
+                !name.is_empty()
+                    && name.len() <= 256
+                    && !matches!(*name, "." | "..")
+                    && !name.contains(['\\'])
+                    && !name.chars().any(char::is_control)
+            })
+            .unwrap_or("definition.txt")
+            .to_owned();
+        return resource_target(
+            resources,
+            Resource::Virtual {
+                uri: uri.to_owned(),
+                name: name.clone(),
+            },
+            name,
+            range,
+        );
+    }
+    let root = &session.root;
     let path = file_path(uri)?;
     let target = if let Some(path) = relative(root, &path) {
         let canonical = source_path(root, &path).await?;
@@ -231,25 +267,38 @@ async fn target(
             range,
         }
     } else {
-        if resources.len() >= 4096 {
-            return Err("Language resource limit reached".into());
-        }
-        let id = format!("{:032x}", rand::random::<u128>());
         let label = path
             .file_name()
             .unwrap_or_default()
             .to_string_lossy()
             .to_string();
-        resources.insert(id.clone(), path);
-        Target {
-            path: None,
-            resource: Some(id),
-            source_digest: None,
-            label,
-            range,
-        }
+        resource_target(resources, Resource::File(path), label, range)?
     };
     target.validate()?;
+    Ok(target)
+}
+fn resource_target(
+    resources: &mut BTreeMap<String, Resource>,
+    resource: Resource,
+    label: String,
+    range: protocol::Range,
+) -> Result<Target, String> {
+    if resources.len() >= 4096
+        || resources.values().map(Resource::bytes).sum::<usize>() + resource.bytes()
+            > MAX_RESOURCE_BYTES
+    {
+        return Err("Language resource limit reached".into());
+    }
+    let id = format!("{:032x}", rand::random::<u128>());
+    let target = Target {
+        path: None,
+        resource: Some(id.clone()),
+        source_digest: None,
+        label,
+        range,
+    };
+    target.validate()?;
+    resources.insert(id, resource);
     Ok(target)
 }
 fn file_path(uri: &str) -> Result<PathBuf, String> {

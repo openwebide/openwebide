@@ -202,6 +202,35 @@ pub struct LanguageServer {
     pub initialization_options: serde_json::Value,
     #[serde(default)]
     pub settings: serde_json::Value,
+    /// API 8: read-only source returned by this server for declared URI schemes.
+    /// Only URIs received in navigation results can be read, through opaque IDs.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub virtual_documents: Vec<VirtualDocument>,
+}
+
+/// Declarative mapping from a virtual navigation URI to a server text request.
+/// This cannot execute commands or apply edits. The host bounds the response and
+/// exposes the extracted text in a read-only view.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct VirtualDocument {
+    pub scheme: String,
+    pub method: String,
+    #[serde(default)]
+    pub parameters: VirtualDocumentParameters,
+    /// RFC 6901 JSON pointer to a string in the response; empty means the root.
+    #[serde(default)]
+    pub text_pointer: String,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum VirtualDocumentParameters {
+    /// `{ "textDocument": { "uri": "…" } }`
+    #[default]
+    TextDocument,
+    /// `{ "uri": "…" }`
+    Uri,
 }
 
 impl LanguageServer {

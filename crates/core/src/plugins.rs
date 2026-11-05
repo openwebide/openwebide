@@ -198,7 +198,7 @@ impl PluginManifest {
         ).expect("static SemVer pattern")
         });
         if self.schema_version != 1
-            || !matches!(self.compatibility.plugin_api, 1..=7)
+            || !matches!(self.compatibility.plugin_api, 1..=8)
             || self
                 .schema
                 .as_deref()
@@ -263,7 +263,7 @@ impl PluginManifest {
         let executable = self.executable.as_ref();
         if self.contributions.panels.len() > 16
             || (!self.contributions.panels.is_empty()
-                && (executable.is_none() || !matches!(self.compatibility.plugin_api, 4..=7)))
+                && (executable.is_none() || !matches!(self.compatibility.plugin_api, 4..=8)))
             || self
                 .contributions
                 .panels
@@ -312,9 +312,9 @@ impl PluginManifest {
             ));
         }
         if !self.contributions.languages.is_empty() {
-            if !matches!(self.compatibility.plugin_api, 5..=7) {
+            if !matches!(self.compatibility.plugin_api, 5..=8) {
                 return Err(invalid(
-                    "Language contributions require plugin API 5, 6 or 7.",
+                    "Language contributions require plugin API 5 through 8.",
                 ));
             }
             languages::validate_definitions(&self.contributions.languages).map_err(invalid)?;
@@ -331,6 +331,17 @@ impl PluginManifest {
                     "Language-server document language IDs require plugin API 7.",
                 ));
             }
+            if self.compatibility.plugin_api < 8
+                && self.contributions.languages.iter().any(|definition| {
+                    definition
+                        .features
+                        .language_server
+                        .as_ref()
+                        .is_some_and(|server| !server.virtual_documents.is_empty())
+                })
+            {
+                return Err(invalid("Virtual language documents require plugin API 8."));
+            }
             if executable.is_none()
                 && self.contributions.languages.iter().any(|definition| {
                     definition.features.syntax
@@ -341,16 +352,16 @@ impl PluginManifest {
                 return Err(invalid("Language analysis requires a Rust executable."));
             }
         }
-        if (executable.is_some() && !matches!(self.compatibility.plugin_api, 3..=7))
+        if (executable.is_some() && !matches!(self.compatibility.plugin_api, 3..=8))
             || (executable.is_none() && self.contributions.context.is_some())
             || (executable.is_none() && matches!(self.compatibility.plugin_api, 3 | 4))
-            || (matches!(self.compatibility.plugin_api, 5..=7)
+            || (matches!(self.compatibility.plugin_api, 5..=8)
                 && self.contributions.languages.is_empty())
             || (executable.is_none() && !self.contributions.tools.is_empty())
             || self.contributions.tools.len() > 100
         {
             return Err(invalid(
-                "Executable contributions require a Rust plugin using API 3 through 7.",
+                "Executable contributions require a Rust plugin using API 3 through 8.",
             ));
         }
         if let Some(rust) = executable

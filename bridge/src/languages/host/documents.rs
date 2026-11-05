@@ -6,6 +6,7 @@ const MAX_DOCUMENTS: usize = 64;
 const MAX_SOURCES: usize = 32 * 1024 * 1024;
 const MAX_ACTIONS: usize = 128;
 const MAX_ACTION_BYTES: usize = 256 * 1024;
+const MAX_RESOURCE_BYTES: usize = 256 * 1024;
 mod results;
 
 #[derive(Default)]
@@ -24,7 +25,19 @@ struct Document {
     version: i32,
     actions: BTreeMap<String, Value>,
     completions: BTreeMap<String, Value>,
-    resources: BTreeMap<String, PathBuf>,
+    resources: BTreeMap<String, Resource>,
+}
+enum Resource {
+    File(PathBuf),
+    Virtual { uri: String, name: String },
+}
+impl Resource {
+    fn bytes(&self) -> usize {
+        match self {
+            Self::File(path) => path.as_os_str().len(),
+            Self::Virtual { uri, name } => uri.len() + name.len(),
+        }
+    }
 }
 pub(super) struct Diagnostics {
     pub version: i32,
@@ -198,12 +211,41 @@ impl Documents {
         }
         let mut result = Value::Null;
         if let Query::ReadResource { id } = &input.query {
-            let path = document
+            let resource = document
                 .resources
                 .get(id)
                 .ok_or("Language resource is stale or belongs to another document")?;
-            let source = results::read_source(path).await?;
-            result = json!({"name":path.file_name().unwrap_or_default().to_string_lossy(),"source":source,"readOnly":true});
+            let (name, source) = match resource {
+                Resource::File(path) => (
+                    path.file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .to_string(),
+                    results::read_source(path).await?,
+                ),
+                Resource::Virtual { uri, name } => {
+                    let parsed =
+                        url::Url::parse(uri).map_err(|_| "Invalid virtual document URI")?;
+                    let declaration = session
+                        .virtual_documents
+                        .iter()
+                        .find(|declaration| declaration.scheme == parsed.scheme())
+                        .ok_or("This virtual document scheme is not declared")?;
+                    let params = match declaration.parameters {
+                        VirtualDocumentParameters::TextDocument => {
+                            json!({"textDocument":{"uri":uri}})
+                        }
+                        VirtualDocumentParameters::Uri => json!({"uri":uri}),
+                    };
+                    let value =
+                        request_current(&session.client, &declaration.method, params).await?;
+                    let source = value.pointer(&declaration.text_pointer).and_then(Value::as_str)
+                        .filter(|source| source.len() <= openwebide_core::plugins::languages::MAX_SOURCE_BYTES)
+                        .ok_or("Virtual document response must contain source text within the source limit")?;
+                    (name.clone(), source.to_owned())
+                }
+            };
+            result = json!({"name":name,"source":source,"readOnly":true});
         }
         if let Some(method) = input.query.method() {
             let capability = match &input.query {
@@ -254,13 +296,20 @@ impl Documents {
                         .get(id)
                         .cloned()
                         .ok_or("Code action is stale or belongs to another document")?;
-                    if action.get("edit").is_some()
-                        || !session
-                            .capabilities
-                            .pointer("/codeActionProvider/resolveProvider")
-                            .and_then(Value::as_bool)
-                            .unwrap_or(false)
-                    {
+                    let can_resolve = session
+                        .capabilities
+                        .pointer("/codeActionProvider/resolveProvider")
+                        .and_then(Value::as_bool)
+                        == Some(true)
+                        // Older servers advertise a boolean provider while
+                        // returning deferred actions after we advertise edit
+                        // resolution support. Preserve their opaque data and
+                        // resolve through the same source-bound review path.
+                        || (session.capabilities.get("codeActionProvider")
+                            == Some(&Value::Bool(true))
+                            && action.get("data").is_some_and(|data| !data.is_null())
+                            && action.get("command").is_none_or(Value::is_null));
+                    if action.get("edit").is_some_and(|edit| !edit.is_null()) || !can_resolve {
                         result = action;
                     } else {
                         params = action;

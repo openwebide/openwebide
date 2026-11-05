@@ -86,11 +86,36 @@ substitute commands through query arguments or bypass installation review.
 API 7 adds optional `languageServer.languageId` for a server's document language
 ID, preserving the package's published contribution ID. For example, a `jsx`
 contribution can send `javascriptreact` to its server. Use API 7 when declaring
-this field. Related dialects in one installed package share a service when their
-command, arguments, root markers, initialization options and settings match;
+this field (or a newer API). Related dialects in one installed package share a service when their
+command, arguments, root markers, initialization options, settings and virtual document declarations match;
 the document language ID does not create another process. Open unsaved dialects
 are synchronized with their own declarations and share request ordering. Closing
 one dialect does not close the other documents or authorize another provider.
+
+API 8 adds `languageServer.virtualDocuments`, an optional array of at most 16
+read-only URI mappings. Each entry declares a unique lowercase URI `scheme`, a
+custom namespaced request `method`, `parameters` (`text_document`, the default,
+or `uri`) and a `textPointer` (RFC 6901, empty for a root string). For example:
+
+```json
+"virtualDocuments": [{
+  "scheme": "csharp",
+  "method": "csharp/metadata",
+  "parameters": "text_document",
+  "textPointer": "/source"
+}]
+```
+
+The host sends either `{"textDocument":{"uri":"…"}}` or `{"uri":"…"}`
+to the same installed server and extracts bounded source text from its response.
+Only URIs returned in navigation results receive opaque resource IDs. IDs belong
+to the originating source snapshot, document, editing client, project and installed
+service; changing source, closing or revoking the service invalidates them. The
+client cannot supply arbitrary URIs. Views remain read-only, and workspace edits
+cannot target virtual documents. Standard workspace, document, window and client
+methods (including command execution and applying edits) cannot be declared as
+resource methods. No shell invocation, executable template or network fetch is
+part of this mapping. Undeclared URI schemes fail explicitly.
 
 Push diagnostics may omit their LSP version. Those notifications describe the
 currently open document; explicit versions are accepted only when they match.

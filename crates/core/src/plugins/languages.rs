@@ -174,6 +174,9 @@ fn validate_definition_limits(
         {
             return Err("Invalid language feature declaration".into());
         }
+        if let Some(server) = &features.language_server {
+            validate_virtual_documents(&server.virtual_documents)?;
+        }
         if let Some(server) = &features.language_server
             && (!text(&server.command, 1024)
                 || server.language_id.as_ref().is_some_and(|language| {
@@ -188,6 +191,55 @@ fn validate_definition_limits(
                 || server.root_markers.iter().any(|name| !filename(name)))
         {
             return Err("Invalid language server configuration".into());
+        }
+    }
+    Ok(())
+}
+
+/// Validate the public, read-only virtual-document declarations before use.
+pub fn validate_virtual_documents(documents: &[VirtualDocument]) -> Result<(), String> {
+    let mut schemes = BTreeSet::new();
+    if documents.len() > 16 {
+        return Err("Too many virtual document declarations".into());
+    }
+    for document in documents {
+        let scheme = &document.scheme;
+        let method = &document.method;
+        let pointer = &document.text_pointer;
+        let namespace = method.split('/').next().unwrap_or_default();
+        if scheme.is_empty()
+            || scheme.len() > 64
+            || !scheme.as_bytes()[0].is_ascii_lowercase()
+            || !scheme.bytes().all(|ch| {
+                ch.is_ascii_lowercase() || ch.is_ascii_digit() || matches!(ch, b'+' | b'-' | b'.')
+            })
+            || scheme == "file"
+            || !schemes.insert(scheme)
+            || method.len() > 128
+            || !method.contains('/')
+            || method.split('/').any(|part| {
+                part.is_empty()
+                    || !part
+                        .bytes()
+                        .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, b'_' | b'-' | b'.'))
+            })
+            || matches!(
+                namespace,
+                "workspace"
+                    | "textDocument"
+                    | "notebookDocument"
+                    | "window"
+                    | "client"
+                    | "telemetry"
+            )
+            || pointer.len() > 256
+            || (!pointer.is_empty() && !pointer.starts_with('/'))
+            || pointer.chars().any(char::is_control)
+            || pointer.as_bytes().iter().enumerate().any(|(index, ch)| {
+                *ch == b'~' && !matches!(pointer.as_bytes().get(index + 1), Some(b'0' | b'1'))
+            })
+        {
+            return Err("Invalid or duplicate virtual document declaration".into());
         }
     }
     Ok(())

@@ -36,7 +36,16 @@ fn dialect_language_ids_require_api_seven_and_share_only_the_same_installed_serv
     assert!(left.shares_server(right));
     assert!(right.shares_server(left));
     for field in [
-        "package", "digest", "revision", "host", "command", "settings", "root", "options", "api",
+        "package",
+        "digest",
+        "revision",
+        "host",
+        "command",
+        "settings",
+        "root",
+        "options",
+        "resources",
+        "api",
     ] {
         let mut other = right.clone();
         match field {
@@ -51,6 +60,12 @@ fn dialect_language_ids_require_api_seven_and_share_only_the_same_installed_serv
                     "command" => server.command.push_str("-other"),
                     "settings" => server.settings = serde_json::json!({"different":true}),
                     "root" => server.root_markers.push("other.json".into()),
+                    "resources" => server.virtual_documents.push(
+                        serde_json::from_value(
+                            serde_json::json!({"scheme":"notes", "method":"notes/source"}),
+                        )
+                        .unwrap(),
+                    ),
                     "options" => {
                         server.initialization_options = serde_json::json!({"different":true});
                     }
@@ -247,4 +262,92 @@ fn server_only_packages_require_opt_in_and_obey_provider_disablement() {
         registry.server("notes", &preferences),
         LanguageSelection::Plain
     ));
+}
+
+#[test]
+fn virtual_documents_require_api_eight_and_validate_the_public_resource_contract() {
+    use crate::plugins::languages::*;
+    let mut prepared = crate::plugins::testing::receipt();
+    prepared.manifest.executable = None;
+    prepared.manifest.compatibility.plugin_api = 8;
+    prepared.manifest.contributions.languages = serde_json::from_value(serde_json::json!([
+        {"id":"notes", "name":"Notes", "extensions":["notes"], "features":{"languageServer":{
+            "command":"community-server", "virtualDocuments":[{"scheme":"notes", "method":"notes/source", "textPointer":"/body~1text/~0value"}]
+        }}}
+    ])).unwrap();
+    prepared.validate().unwrap();
+    for api in [5, 6, 7] {
+        let mut old = prepared.clone();
+        old.manifest.compatibility.plugin_api = api;
+        assert!(old.validate().unwrap_err().to_string().contains("API 8"));
+    }
+    let server = prepared.manifest.contributions.languages[0]
+        .features
+        .language_server
+        .as_ref()
+        .unwrap();
+    let declaration = server.virtual_documents[0].clone();
+    assert_eq!(
+        server.shared_configuration().virtual_documents,
+        server.virtual_documents
+    );
+    for scheme in ["", "file", "Notes", "notes:", "1notes", &"x".repeat(65)] {
+        let mut invalid = declaration.clone();
+        invalid.scheme = scheme.into();
+        assert!(validate_virtual_documents(&[invalid]).is_err(), "{scheme}");
+    }
+    for method in [
+        "",
+        "shutdown",
+        "workspace/executeCommand",
+        "workspace/applyEdit",
+        "textDocument/rename",
+        "$/source",
+        "notes//source",
+        "notes/source\n",
+        &"x/".repeat(65),
+    ] {
+        let mut invalid = declaration.clone();
+        invalid.method = method.into();
+        assert!(validate_virtual_documents(&[invalid]).is_err(), "{method}");
+    }
+    for pointer in [
+        "source",
+        "/~",
+        "/~2",
+        "/source\n",
+        &format!("/{}", "x".repeat(256)),
+    ] {
+        let mut invalid = declaration.clone();
+        invalid.text_pointer = pointer.into();
+        assert!(validate_virtual_documents(&[invalid]).is_err(), "{pointer}");
+    }
+    assert!(validate_virtual_documents(&[declaration.clone(), declaration.clone()]).is_err());
+    assert!(validate_virtual_documents(&vec![declaration.clone(); 17]).is_err());
+    for scheme in ["notes+source", "notes-source", "notes.source"] {
+        for pointer in ["", "/source", "/body~1text/~0value"] {
+            let mut valid = declaration.clone();
+            valid.scheme = scheme.into();
+            valid.text_pointer = pointer.into();
+            validate_virtual_documents(&[valid]).unwrap();
+        }
+    }
+    let encoded = serde_json::to_value(server).unwrap();
+    for invalid in [
+        serde_json::json!({"scheme":"notes", "method":"notes/source", "parameters":"command"}),
+        serde_json::json!({"scheme":"notes", "method":"notes/source", "command":"run"}),
+    ] {
+        let mut invalid_server = encoded.clone();
+        invalid_server["virtualDocuments"] = serde_json::json!([invalid]);
+        assert!(serde_json::from_value::<LanguageServer>(invalid_server).is_err());
+    }
+    let without = serde_json::json!({"command":"old-server"});
+    let old: LanguageServer = serde_json::from_value(without).unwrap();
+    assert!(old.virtual_documents.is_empty());
+    assert!(
+        serde_json::to_value(old)
+            .unwrap()
+            .get("virtualDocuments")
+            .is_none()
+    );
 }

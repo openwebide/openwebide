@@ -2,7 +2,7 @@
 //! implementation; connection loss does not close a project's native service.
 use super::{process::Process, rpc::Client};
 use openwebide_core::plugins::languages::{
-    LanguageServer,
+    LanguageServer, VirtualDocument, VirtualDocumentParameters,
     intelligence::{self as protocol, Query, Request, Response},
 };
 use serde_json::{Value, json};
@@ -97,6 +97,7 @@ struct Session {
     process: Mutex<Process>,
     client: Client,
     capabilities: Value,
+    virtual_documents: Vec<VirtualDocument>,
     documents: tokio::sync::Mutex<documents::Documents>,
     diagnostics: Arc<Mutex<BTreeMap<String, documents::Diagnostics>>>,
     pump: tokio::task::AbortHandle,
@@ -345,6 +346,9 @@ impl Drop for ActiveRequest {
 
 impl Session {
     async fn start(scope: &Scope, workspace: &std::path::Path) -> Result<Self, String> {
+        openwebide_core::plugins::languages::validate_virtual_documents(
+            &scope.server.virtual_documents,
+        )?;
         let uri =
             url::Url::from_directory_path(workspace).map_err(|()| "Invalid project folder URI")?;
         let (mut process, events) = Process::spawn(&scope.server, workspace)?;
@@ -417,6 +421,7 @@ impl Session {
             process: Mutex::new(process),
             client,
             capabilities,
+            virtual_documents: scope.server.virtual_documents.clone(),
             documents: tokio::sync::Mutex::new(documents::Documents::default()),
             diagnostics,
             pump,
