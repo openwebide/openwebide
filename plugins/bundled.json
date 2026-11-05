@@ -28,6 +28,7 @@
   ],
   "commits": {
     "plugins/rust": "27dd0936cf5f9e043090455fe348c368c6149009",
-    "plugins/javascript-typescript": "4d7e7c656579485d69aea556368a8b290b08f8bf"
+    "plugins/javascript-typescript": "4d7e7c656579485d69aea556368a8b290b08f8bf",
+    "plugins/csharp": "53292ce1d6ca77295d397ee7516c4cb5d3f41947"
   }
 }

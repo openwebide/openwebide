@@ -1,0 +1,16 @@
+name: Set up the C# language server
+description: Install the pinned .NET SDK and verified server for real host checks.
+runs:
+  using: composite
+  steps:
+    - id: versions
+      shell: bash
+      run: |
+        python3 -c 'import json; print("sdk=" + json.load(open("tools/csharp-language-server/versions.json"))["sdk"])' >> "$GITHUB_OUTPUT"
+    - uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ steps.versions.outputs.sdk }}
+    - shell: bash
+      run: |
+        python3 tools/setup-csharp-language-server.py
+        echo "$GITHUB_WORKSPACE/tools/csharp-language-server/installed" >> "$GITHUB_PATH"

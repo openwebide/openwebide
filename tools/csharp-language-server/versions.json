@@ -1,0 +1,6 @@
+{
+  "sdk": "10.0.403",
+  "server": "0.28.0",
+  "package": "https://api.nuget.org/v3-flatcontainer/csharp-ls/0.28.0/csharp-ls.0.28.0.nupkg",
+  "sha512": "a138b9c8f9de9dd6343e9b0d0c8f4d51637bba7e38606b7c2b08b1d91e8eefa39f12123057f6625f425812b4361e52841bd2856704ec127ff50144ce05170a99"
+}

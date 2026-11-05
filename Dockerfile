@@ -5,6 +5,14 @@ WORKDIR /opt/openwebide-language-servers
 COPY tools/typescript-language-server/package.json tools/typescript-language-server/package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts --registry=https://registry.npmjs.org --no-audit --no-fund
 
+FROM mcr.microsoft.com/dotnet/sdk:10.0.403-noble@sha256:de4fe90a98845d75910b9769662465c84de1a934665c431279d1382b2bddc02b AS csharp-language-server-tools
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends python3 && \
+    rm -rf /var/lib/apt/lists/*
+COPY tools/setup-csharp-language-server.py /opt/openwebide-setup/
+COPY tools/csharp-language-server/versions.json tools/csharp-language-server/LICENSE /opt/openwebide-setup/csharp-language-server/
+RUN python3 /opt/openwebide-setup/setup-csharp-language-server.py --tool-path /opt/openwebide-csharp-language-server
+
 # --- builder: Spin runtime + Rust + Trunk; builds both components via `spin build` ---
 FROM ghcr.io/spinframework/spin:v4.1.0 AS builder
 
@@ -66,7 +74,7 @@ FROM ghcr.io/spinframework/spin:v4.1.0 AS runtime-tools
 
 # SSH client is included for Git and app-configured host administration.
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends openssh-client build-essential ca-certificates && \
+    apt-get install -y --no-install-recommends openssh-client build-essential ca-certificates libicu72 libssl3 zlib1g && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -78,6 +86,15 @@ ENV PATH="/opt/openwebide-language-servers/node_modules/.bin:${PATH}"
 RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
     ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx && \
     node --version && npm --version && typescript-language-server --version && tsc --version
+COPY --from=csharp-language-server-tools /usr/share/dotnet /usr/share/dotnet
+COPY --from=csharp-language-server-tools /opt/openwebide-csharp-language-server /opt/openwebide-csharp-language-server
+COPY tools/csharp-language-server/LICENSE ./licenses/csharp-ls-MIT.txt
+ENV DOTNET_ROOT=/usr/share/dotnet
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
+ENV DOTNET_GENERATE_ASPNET_CERTIFICATE=false
+ENV DOTNET_NOLOGO=1
+ENV PATH="/opt/openwebide-csharp-language-server:/usr/share/dotnet:${PATH}"
+RUN dotnet --list-sdks && csharp-ls --version
 
 # --- runtime: Spin + prebuilt components ---
 FROM runtime-tools

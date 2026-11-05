@@ -127,6 +127,12 @@ Actions runs.
      Both real-server examples are required: `check_language_server` and
      `check_typescript_server`. The latter verifies all four related dialects,
      unsaved cross-file edits, diagnostics, completion imports and isolation.
+   - The .NET 10 SDK. CI pins its version in `tools/csharp-language-server/versions.json`.
+     Run `python3 tools/setup-csharp-language-server.py` and prepend
+     `tools/csharp-language-server/installed` to `PATH`. The required real C#
+     example is `check_csharp_server`: it verifies multi-project `.slnx` and
+     standalone `.csproj` discovery, unsaved references, diagnostics, code actions
+     and isolation. New solution fixtures must use `.slnx`.
 
    Quick check:
    ```bash

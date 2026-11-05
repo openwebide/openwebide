@@ -225,6 +225,17 @@ JavaScript/TypeScript 0.2.0 uses this contract for JS, JSX, TS and TSX through
 locked server/TypeScript tools. Paired hosts need Node.js 22.22.2 or newer and
 `typescript-language-server@6.0.3` plus `typescript@6.0.3` on their PATH.
 
+C# 0.2.0 uses API 8 with `csharp-ls` 0.28.0 and the .NET 10 SDK. Images
+include both tools; paired hosts need `dotnet` and `csharp-ls` on PATH.
+Install the tool with `dotnet tool install --global csharp-ls --version 0.28.0`,
+or update it with `dotnet tool update --global csharp-ls --version 0.28.0`.
+Restore the dependencies and SDKs required by the project. The server discovers
+`.slnx`, existing `.sln` and `.csproj` workspaces; create new solutions as
+`.slnx`. C# member completions are resolved before insertion; missing namespace
+imports use reviewed code actions. Framework and generated definitions use the
+plugin's API 8 virtual document declaration to retrieve read-only source from
+`csharp/metadata`; project definitions use ordinary file URIs.
+
 The editor's **Code intelligence** menu offers symbol information, completion at
 the cursor, definitions, references, document symbols, rename, document formatting,
 code actions and the current document's Problems list. Shortcuts include F12,
@@ -460,7 +471,8 @@ verification and registry SDK publication are tracked in [the roadmap](roadmap.m
 API 4 supports declarative panels; API 5 language contributions and editor
 integration are described in [plugin authoring](plugin-authoring.md#language-plugin-build-toolchain).
 API 6 adds native LSP services; API 7 adds per-document server language IDs and
-shared dialect synchronization through those same declarations. Plugin MCP
+shared dialect synchronization through those same declarations. API 8 adds
+declared read-only virtual documents for external definitions. Plugin MCP
 contributions, editor annotations and hooks remain future contribution work.
 
 Configured host [MCP servers](mcp.md) are supported independently of plugins.

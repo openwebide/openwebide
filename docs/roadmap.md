@@ -1109,6 +1109,9 @@ and [EditorConfig](https://editorconfig.org/).
 Rust's API 6 language plugin declares `rust-analyzer`. The API 7
 JavaScript/TypeScript plugin declares `typescript-language-server` for JS, JSX,
 TS and TSX; its dialects share one service and synchronize unsaved open buffers.
+C# 0.2.0 declares `csharp-ls` through API 8, with the .NET 10 SDK and
+multi-project `.slnx` or standalone `.csproj` workspaces. Its public virtual-document
+declaration supplies read-only framework definitions.
 The shared host facade supports diagnostics, manual hover and
 completion, definitions, references, document symbols, rename, document formatting
 and text-edit code actions in both project modes. Clients validate source-bound
