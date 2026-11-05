@@ -1106,8 +1106,10 @@ and [EditorConfig](https://editorconfig.org/).
 
 ### Code intelligence: host language services, LSP and caching
 
-Rust is the first native LSP integration. Its API 6 language plugin declares
-`rust-analyzer`; the shared host facade supports diagnostics, manual hover and
+Rust's API 6 language plugin declares `rust-analyzer`. The API 7
+JavaScript/TypeScript plugin declares `typescript-language-server` for JS, JSX,
+TS and TSX; its dialects share one service and synchronize unsaved open buffers.
+The shared host facade supports diagnostics, manual hover and
 completion, definitions, references, document symbols, rename, document formatting
 and text-edit code actions in both project modes. Clients validate source-bound
 results, review edits and stage changes through existing editor history and
@@ -1117,8 +1119,8 @@ source buffers, requests and idle lifetime; unsaved clients stay isolated.
 Remaining work:
 
 - Add further server integrations through independently installable language
-  packages, grouped by server coverage: JavaScript/TypeScript/JSX/TSX for typescript-language-server,
-  C/C++ for clangd, and Python for pyright, for example. Keep server selection,
+  packages, grouped by server coverage: C/C++ for clangd and Python for pyright,
+  for example. Keep server selection,
   configuration, validation and lifecycle above the thin host adapters.
 - Add mouse-hover presentation, completion popups while typing, snippets,
   selection formatting and richer symbol/diagnostic navigation. Support separate

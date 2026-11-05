@@ -220,6 +220,10 @@ API 7 additionally supports server document language IDs that differ from the
 installed language IDs. Related dialects share a native service and synchronize
 their open unsaved files together; each retains its own provider preferences and
 document identity. Different packages or server configurations remain isolated.
+JavaScript/TypeScript 0.2.0 uses this contract for JS, JSX, TS and TSX through
+`typescript-language-server`. Execution-host images include Node.js, npm and
+locked server/TypeScript tools. Paired hosts need Node.js 22.22.2 or newer and
+`typescript-language-server@6.0.3` plus `typescript@6.0.3` on their PATH.
 
 The editor's **Code intelligence** menu offers symbol information, completion at
 the cursor, definitions, references, document symbols, rename, document formatting,

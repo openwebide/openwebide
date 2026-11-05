@@ -1,46 +1,76 @@
-"""Production recovery evidence follows the framed syntax-worker protocol."""
-import ast
+"""Recovery evidence follows complete, source-checked host language responses."""
 from pathlib import Path
 import shutil
 import subprocess
 import unittest
 
 
-class WorkerObserverTests(unittest.TestCase):
-    @unittest.skipUnless(shutil.which("node"), "Node is needed for the worker protocol fixture")
-    def test_complete_full_and_delta_sources_reject_partial_or_cancelled_frames(self):
-        tree = ast.parse(Path(__file__).with_name("check-editor-recovery.py").read_text())
-        observer = next(node.value for node in ast.walk(tree)
-                        if isinstance(node, ast.Constant) and isinstance(node.value, str)
-                        and "window.editorWorkerEvidence =" in node.value)
+class LanguageObserverTests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which("node"), "Node is needed for the language protocol fixture")
+    def test_complete_full_and_delta_sources_reject_failed_cancelled_and_mismatched_results(self):
+        tools = Path(__file__).parent
+        self.assertIn("tools/editor-language-observer.js", (tools / "check-editor-recovery.py").read_text())
+        observer = (tools / "editor-language-observer.js").read_text().replace("__HOLD_LANGUAGE__", "false")
         fixture = r"""
 const assert = require('node:assert/strict');
+const {createHash} = require('node:crypto');
 global.window=global;
-global.Worker=class {
-    constructor(){this.listeners=[];}
-    addEventListener(_type,fn){this.listeners.push(fn);}
-    send(data){for(const fn of this.listeners)fn({data});}
-};
+const responses=[];
+global.fetch=async()=>new Response(JSON.stringify(responses.shift()),{headers:{'content-type':'application/json'}});
 """
         checks = r"""
-const worker=new Worker('blob:fixture');
-worker.send('openwebide-editor-ready:6:frames:1');
-const encode=s=>new TextEncoder().encode(s);
-const frame=(ticket,sequence,part)=>worker.send(JSON.stringify({version:6,framing:1,ticket,sequence,part}));
-frame(1,0,{Begin:{status:{Ready:{reused:false}},analysis:{source:{Full:{bytes:encode('文😀\r\n').length}},base_ticket:null}}});
-frame(1,1,{Source:'文😀\r\n'});
-assert.equal(editorWorkerEvidence.sources.length,0);
-frame(1,2,'End');
-assert.equal(editorWorkerEvidence.sources.at(-1),'文😀\n');
-frame(2,0,{Begin:{status:{Ready:{reused:true}},analysis:{source:{Replace:{start:3,end:7,bytes:3}},base_ticket:1}}});
-frame(2,1,{Source:'猫'});frame(2,2,'End');
-assert.equal(editorWorkerEvidence.sources.at(-1),'文猫\n');
-frame(3,0,{Begin:{status:{Ready:{}},analysis:{source:{Full:{bytes:1}}}}});
-frame(3,2,{Source:'x'});frame(3,3,'End');
-assert.equal(editorWorkerEvidence.sources.length,2);
-frame(4,0,{Begin:{status:'Cancelled',analysis:null}});frame(4,1,'End');
-assert.equal(editorWorkerEvidence.sources.length,2);
-assert.equal(editorWorkerEvidence.instances,1);
+(async()=>{
+const digest=text=>createHash('sha256').update(text).digest('hex');
+const input=(request,revision,source,text)=>({version:1,operation:'analyze',document:'document',
+    language:'fixture',request,revision,sourceDigest:digest(text),source});
+const output=(value,status='ready')=>({version:1,operation:'analyzed',document:value.document,
+    language:value.language,request:value.request,revision:value.revision,
+    sourceDigest:value.sourceDigest,status:{type:status}});
+async function post(path,body,response){
+    responses.push(response);
+    await fetch('http://localhost/plugins/'+path,{method:'POST',body:JSON.stringify(body)});
+}
+async function begin(id,value){
+    await post('invoke',{call:{name:'@openwebide/language',arguments:JSON.stringify(value)}},
+        {id,step:{status:'pending'}});
+}
+async function complete(id,value){
+    await post('continue',{continuation:{id}},
+        {id,step:{status:'complete',ok:true,content:JSON.stringify(value)}});
+}
+const full=input(1,1,{type:'full',text:'文😀\r\n'},'文😀\r\n');
+await begin('full',full);
+assert.equal(editorLanguageEvidence.sources.length,0);
+await complete('full',output(full));
+assert.deepEqual(editorLanguageEvidence.sources,['文😀\n']);
+const delta=input(2,2,{type:'replace',baseRevision:1,start:3,end:7,text:'猫'},'文猫\r\n');
+await begin('delta',delta);
+assert.equal(editorLanguageEvidence.sources.length,1);
+await complete('delta',output(delta));
+assert.deepEqual(editorLanguageEvidence.sources,['文😀\n','文猫\n']);
+const later=input(3,3,{type:'full',text:'later'},'later');
+await begin('failed',later);
+await post('continue',{continuation:{id:'failed'}},{id:'failed',step:{status:'failed'}});
+await begin('cancelled',later);
+await complete('cancelled',output(later,'cancelled'));
+assert.equal(editorLanguageEvidence.sources.length,2);
+assert.equal(editorLanguageEvidence.errors.length,0);
+await begin('wrong-identity',later);
+await complete('wrong-identity',{...output(later),request:999});
+const badDigest={...later,sourceDigest:digest('different')};
+await begin('bad-digest',badDigest);
+await complete('bad-digest',output(badDigest));
+const missingBase=input(4,4,{type:'replace',baseRevision:99,start:0,end:0,text:'x'},'x');
+await begin('missing-base',missingBase);
+await complete('missing-base',output(missingBase));
+assert.equal(editorLanguageEvidence.sources.length,2);
+assert.equal(editorLanguageEvidence.errors.length,3);
+// A malformed UTF-8 replacement must not produce evidence either.
+const splitScalar=input(5,5,{type:'replace',baseRevision:2,start:1,end:3,text:'x'},'x');
+await begin('split-scalar',splitScalar);
+assert.equal(editorLanguageEvidence.sources.length,2);
+assert.equal(editorLanguageEvidence.errors.length,4);
+})().catch(error=>{console.error(error);process.exitCode=1;});
 """
         subprocess.run(["node", "-e", fixture + observer + checks], check=True, capture_output=True, text=True)
 

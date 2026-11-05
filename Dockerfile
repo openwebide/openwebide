@@ -71,10 +71,13 @@ RUN apt-get update && \
 
 WORKDIR /app
 COPY --from=language-server-tools /usr/local/bin/node /usr/local/bin/node
+COPY --from=language-server-tools /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
 COPY --from=language-server-tools /usr/local/LICENSE ./licenses/node-LICENSE
 COPY --from=language-server-tools /opt/openwebide-language-servers/node_modules /opt/openwebide-language-servers/node_modules
 ENV PATH="/opt/openwebide-language-servers/node_modules/.bin:${PATH}"
-RUN node --version && typescript-language-server --version && tsc --version
+RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
+    ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx && \
+    node --version && npm --version && typescript-language-server --version && tsc --version
 
 # --- runtime: Spin + prebuilt components ---
 FROM runtime-tools

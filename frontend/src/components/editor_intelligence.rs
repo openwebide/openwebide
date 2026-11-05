@@ -87,7 +87,7 @@ pub fn EditorIntelligenceToolbar(
         </Show>
         <Show when=move || actions.result.with(Option::is_some)>
             <Modal title=Signal::derive(move || actions.result.with(|result| result.as_ref().map_or("Language service", |(query, _)| title(query)).to_string())) on_close=close size=super::ui::DialogSize::Wide>
-                <DialogBody>
+                <DialogBody class="editor-intelligence-result">
                     {move || actions.result.get().map(|(query, response)| result_view(actions, query, response.result, read_only))}
                     <Show when=move || actions.error.with(Option::is_some)><p class="form-hint" role="alert">{move || actions.error.get()}</p></Show>
                 </DialogBody>

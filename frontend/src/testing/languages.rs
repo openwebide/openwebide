@@ -48,7 +48,11 @@ pub fn standard_binding() -> ProjectPlugin {
                         },
                     })
                     .collect();
-                for definition in validate_files(&files).unwrap().contributions.languages {
+                for mut definition in validate_files(&files).unwrap().contributions.languages {
+                    // This API 5 fixture implements pure analysis, not native
+                    // processes. Real host checks retain and execute the actual
+                    // API 6/7 server declarations and document language IDs.
+                    definition.features.language_server = None;
                     assert!(
                         definitions
                             .insert(definition.id.clone(), definition)

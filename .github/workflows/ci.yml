@@ -224,6 +224,7 @@ jobs:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
         run: |
+          python3 -m unittest discover -s tools -p 'test_editor_recovery_observer.py'
           python3 tools/check-language-client.py
           python3 tools/check-editor-worker.py --fixture
           python3 tools/check-about.py
@@ -266,6 +267,13 @@ jobs:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
         run: python3 tools/check-language-server-client.py
+
+      - name: Check production TypeScript language-server features in both modes
+        timeout-minutes: 10
+        env:
+          CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: python3 tools/check-typescript-server-client.py
 
       - name: Check production editor input, history and pointer selection
         env:

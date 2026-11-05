@@ -27,6 +27,7 @@
     "plugins/plain-text"
   ],
   "commits": {
-    "plugins/rust": "27dd0936cf5f9e043090455fe348c368c6149009"
+    "plugins/rust": "27dd0936cf5f9e043090455fe348c368c6149009",
+    "plugins/javascript-typescript": "4d7e7c656579485d69aea556368a8b290b08f8bf"
   }
 }

@@ -1494,6 +1494,8 @@ body {
   line-height: 1.5;
 }
 
+.editor-intelligence-result > .editor-diff { flex: none; }
+
 .diff-line {
   padding: 0 16px;
   white-space: pre-wrap;
