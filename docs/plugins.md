@@ -237,6 +237,17 @@ completion, navigation and reviewed rename use the same editor controls as other
 servers. Pyright does not supply document formatting; unsupported operations
 remain explicit, and server commands are not executed automatically.
 
+Go 0.2.0 uses API 6 with `gopls serve`. Images include Go 1.27.3 and gopls
+v0.24.0. Paired hosts need both `go` and `gopls` on PATH; install the server with
+`go install golang.org/x/tools/gopls@v0.24.0`. The server discovers `go.mod` and
+`go.work`; open the folder containing `go.work` to edit its modules together.
+Dependencies, private-module settings and writable Go build/module caches belong
+to the execution host. Open buffers share the client's service across packages
+and modules without saving. Diagnostics, hover, completion imports, navigation,
+symbols, reviewed rename and document formatting use the shared editor controls.
+Standard-library definitions remain read-only. Server commands and workspace file
+creation, movement or deletion remain explicit unsupported operations.
+
 C# 0.2.0 uses API 8 with `csharp-ls` 0.28.0 and the .NET 10 SDK. Images
 include both tools; paired hosts need `dotnet` and `csharp-ls` on PATH.
 Install the tool with `dotnet tool install --global csharp-ls --version 0.28.0`,

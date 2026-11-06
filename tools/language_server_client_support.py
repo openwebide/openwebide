@@ -111,6 +111,7 @@ class ProbeMirror:
     """
     def __init__(self, origin):
         self.origin, self.token, self.folders = origin, secrets.token_urlsafe(32), {}
+        self.script_id = None
         mirror = self
         class Handler(BaseHTTPRequestHandler):
             def log_message(self, *args):
@@ -162,6 +163,9 @@ class ProbeMirror:
                 if(this.name===mirror.root&&name.startsWith('.openwebide-probe-')) await marker(name,'DELETE');
             };
         '''
-        browser.call('POST','/goog/cdp/execute',{'cmd':'Page.addScriptToEvaluateOnNewDocument','params':{'source':source}})
+        if self.script_id is not None:
+            browser.call('POST','/goog/cdp/execute',{'cmd':'Page.removeScriptToEvaluateOnNewDocument','params':{'identifier':self.script_id}})
+        added=browser.call('POST','/goog/cdp/execute',{'cmd':'Page.addScriptToEvaluateOnNewDocument','params':{'source':source}})
+        self.script_id=added['identifier']
     def stop(self):
         self.server.shutdown(); self.server.server_close(); self.thread.join(timeout=5)

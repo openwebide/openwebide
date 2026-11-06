@@ -14,3 +14,4 @@ tools/editor-bench/webdriver.json
 output
 site/.venv
 **/node_modules
+**/installed

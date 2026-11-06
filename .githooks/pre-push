@@ -58,6 +58,8 @@ bash tools/setup-python-language-server.sh
 export PATH="$repo_root/tools/python-language-server/node_modules/.bin:$PATH"
 python3 tools/setup-csharp-language-server.py
 export PATH="$repo_root/tools/csharp-language-server/installed:$PATH"
+python3 tools/setup-go-language-server.py
+export PATH="$repo_root/tools/go-language-server/installed/bin:$repo_root/tools/go-language-server/installed/go/bin:$PATH"
 
 export WASI_SYSROOT="${WASI_SYSROOT:-$WASI_SDK_PATH/share/wasi-sysroot}"
 
@@ -80,6 +82,7 @@ cargo test -p openwebide-frontend --lib
 cargo run -p openwebide-bridge --example check_language_server --locked
 cargo run -p openwebide-bridge --example check_typescript_server --locked
 cargo run -p openwebide-bridge --example check_python_server --locked
+cargo run -p openwebide-bridge --example check_go_server --locked
 cargo run -p openwebide-bridge --example check_csharp_server --locked
 
 if [[ -z "$changed_files" ]] || echo "$changed_files" | grep -qE '^(frontend/|crates/core/|crates/agent/|Cargo\.)'; then

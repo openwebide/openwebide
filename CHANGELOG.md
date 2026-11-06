@@ -9,6 +9,8 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Enable gopls through the independent Go 0.2.0 plugin in both project modes. Support `go.mod` and multi-module `go.work` projects, unsaved cross-module types, diagnostics, completion imports, navigation, read-only standard-library source, reviewed rename and document formatting. Include checksum-pinned Go 1.27.3 and module-locked gopls v0.24.0 in execution-host images; ordinary editing remains available without the server.
+
 - Enable Pyright through the independent Python 0.2.0 plugin in both project modes, including unsaved cross-file types, virtual-environment imports, diagnostics, completion, navigation and reviewed rename edits. Include the pinned Pyright tools and a Python interpreter in execution-host images. Python project configuration stays in `pyproject.toml` or `pyrightconfig.json`; ordinary editing remains available without a language server.
 
 - Add plugin API 8 declarations for read-only virtual documents returned by language servers. Bind opaque resource IDs to the originating document and installed service, validate declared URI schemes and source requests, bound retained metadata and text, and preserve command and workspace-edit restrictions. Support deferred edit resolution from older servers advertising boolean code-action capabilities.

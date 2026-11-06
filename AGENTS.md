@@ -133,6 +133,13 @@ Actions runs.
      `check_python_server` example verifies project configuration, virtual-environment
      imports, unsaved buffers, diagnostics, completion and isolation. The production
      browser check is `python3 tools/check-python-server-client.py` in both modes.
+   - Go 1.27.3 and gopls v0.24.0, installed with
+     `python3 tools/setup-go-language-server.py`. Prepend
+     `tools/go-language-server/installed/bin` and
+     `tools/go-language-server/installed/go/bin` to `PATH`. The required
+     `check_go_server` example verifies modules, multi-module workspaces,
+     unsaved overlays, diagnostics, completion and isolation. The production
+     browser check is `python3 tools/check-go-server-client.py` in both modes.
    - The .NET 10 SDK. CI pins its version in `tools/csharp-language-server/versions.json`.
      Run `python3 tools/setup-csharp-language-server.py` and prepend
      `tools/csharp-language-server/installed` to `PATH`. The required real C#

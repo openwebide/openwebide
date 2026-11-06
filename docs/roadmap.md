@@ -1116,6 +1116,9 @@ Python 0.2.0 declares Pyright through API 6, with project configuration and
 virtual-environment import resolution on the execution host. Unsaved cross-file
 types, diagnostics, completion, navigation and reviewed rename use the shared
 service; Pyright does not provide formatting.
+Go 0.2.0 declares gopls through API 6, with single-module `go.mod` and
+multi-module `go.work` projects, unsaved cross-module analysis, completion imports,
+read-only standard-library definitions and reviewed rename/formatting in both modes.
 The shared host facade supports diagnostics, manual hover and
 completion, definitions, references, document symbols, rename, document formatting
 and text-edit code actions in both project modes. Clients validate source-bound
@@ -1126,8 +1129,8 @@ source buffers, requests and idle lifetime; unsaved clients stay isolated.
 Remaining work:
 
 - Add further server integrations through independently installable language
-  packages, grouped by server coverage: C/C++ for clangd and Go for gopls,
-  for example. Keep server selection,
+  packages, grouped by server coverage: C/C++ for clangd, for example.
+  Keep server selection,
   configuration, validation and lifecycle above the thin host adapters.
 - Add mouse-hover presentation, completion popups while typing, snippets,
   selection formatting and richer symbol/diagnostic navigation. Support separate

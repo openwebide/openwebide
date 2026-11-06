@@ -175,7 +175,10 @@ language-service facade in both project modes, with ordinary capability review.
 The independent [Python package](https://github.com/openwebide/plugins/tree/main/plugins/python)
 declares Pyright; its project configuration and virtual environments resolve on
 the execution host. See [language support](plugins.md#language-support) for the
-server contract and the Rust, JavaScript/TypeScript and C# integrations.
+server contract and the Rust, JavaScript/TypeScript, C# and Go integrations.
+The independent [Go package](https://github.com/openwebide/plugins/tree/main/plugins/go)
+declares gopls through the same API 6 contract; the server discovers Go modules
+and workspaces and shares unsaved buffers across their packages.
 
 To check a family's actual WASI component against its declared languages, run:
 

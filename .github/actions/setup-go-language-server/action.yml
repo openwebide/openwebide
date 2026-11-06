@@ -1,0 +1,10 @@
+name: Set up the Go language server
+description: Install checksum-pinned Go and the module-locked gopls server.
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        python3 tools/setup-go-language-server.py
+        echo "$GITHUB_WORKSPACE/tools/go-language-server/installed/bin" >> "$GITHUB_PATH"
+        echo "$GITHUB_WORKSPACE/tools/go-language-server/installed/go/bin" >> "$GITHUB_PATH"

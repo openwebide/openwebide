@@ -16,6 +16,15 @@ COPY tools/setup-csharp-language-server.py /opt/openwebide-setup/
 COPY tools/csharp-language-server/versions.json tools/csharp-language-server/LICENSE /opt/openwebide-setup/csharp-language-server/
 RUN python3 /opt/openwebide-setup/setup-csharp-language-server.py --tool-path /opt/openwebide-csharp-language-server
 
+FROM ghcr.io/spinframework/spin:v4.1.0 AS go-language-server-tools
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends python3 ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+COPY tools/setup-go-language-server.py tools/install_wasi_sdk.py /opt/openwebide-setup/
+COPY tools/go-language-server/versions.json /opt/openwebide-setup/go-language-server/
+COPY tools/go-language-server/dependencies /opt/openwebide-setup/go-language-server/dependencies
+RUN python3 /opt/openwebide-setup/setup-go-language-server.py --tool-path /opt/openwebide-go-language-server
+
 # --- builder: Spin runtime + Rust + Trunk; builds both components via `spin build` ---
 FROM ghcr.io/spinframework/spin:v4.1.0 AS builder
 
@@ -101,6 +110,11 @@ ENV DOTNET_GENERATE_ASPNET_CERTIFICATE=false
 ENV DOTNET_NOLOGO=1
 ENV PATH="/opt/openwebide-csharp-language-server:/usr/share/dotnet:${PATH}"
 RUN dotnet --list-sdks && csharp-ls --version
+COPY --from=go-language-server-tools /opt/openwebide-go-language-server /opt/openwebide-go-language-server
+COPY --from=go-language-server-tools /opt/openwebide-go-language-server/go/LICENSE ./licenses/go-BSD.txt
+COPY tools/go-language-server/LICENSE ./licenses/gopls-BSD.txt
+ENV PATH="/opt/openwebide-go-language-server/bin:/opt/openwebide-go-language-server/go/bin:${PATH}"
+RUN go version && gopls version
 
 # --- runtime: Spin + prebuilt components ---
 FROM runtime-tools
