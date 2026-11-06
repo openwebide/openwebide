@@ -3417,6 +3417,17 @@ button.browser-item {
 .editor-header .ui-action-menu, .editor-header .ui-action-menu-context { order: 5; }
 .editor-header .changes-display { order: 2; }
 .editor-header .changes-baseline { order: 2; font-size: var(--font-caption); color: var(--text-muted); }
+/* Background language feedback must not move the source during a pointer gesture. */
+.editor-header .editor-language-feedback {
+  order: 7;
+  flex: 0 0 100%;
+  min-width: 0;
+  height: 1.4em;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 /* Reserve the full three-choice width even when this file has no preview.
    Labels and availability must not resize the neighboring file tab strip. */
 .editor-view-selector { flex: none; }

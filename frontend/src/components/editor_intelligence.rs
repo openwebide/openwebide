@@ -26,6 +26,20 @@ fn title(query: &Query) -> &'static str {
 }
 
 #[component]
+fn LanguageServiceFeedback(
+    busy: ReadSignal<bool>,
+    error: ReadSignal<Option<String>>,
+) -> impl IntoView {
+    view! {
+        <span class="form-hint editor-language-feedback"
+            role=move || if error.with(Option::is_some) { "alert" } else { "status" }
+            title=move || error.get().unwrap_or_default()>
+            {move || error.get().unwrap_or_else(|| if busy.get() { "Analyzing…".into() } else { String::new() })}
+        </span>
+    }
+}
+
+#[component]
 pub fn EditorIntelligenceToolbar(
     actions: EditorIntelligence,
     read_only: Signal<bool>,
@@ -37,6 +51,9 @@ pub fn EditorIntelligenceToolbar(
     view! {
         <Show when=move || actions.available.get()>
             <super::dropdown::ActionMenu aria_label="Code intelligence" icon=super::ui::IconName::Brackets>
+                <Show when=move || actions.error.with(Option::is_some)>
+                    <p class="form-hint" role="alert">{move || actions.error.get()}</p>
+                </Show>
                 {[
                     ("Symbol information", IntelligenceCommand::Hover, false),
                     ("Complete at cursor", IntelligenceCommand::Completion, true),
@@ -46,20 +63,17 @@ pub fn EditorIntelligenceToolbar(
                     ("Format document", IntelligenceCommand::Formatting, true),
                     ("Code actions", IntelligenceCommand::CodeActions, true),
                 ].into_iter().map(move |(label, command, writes)| view! {
-                    <button type="button" role="menuitem" class="ui-dropdown-item"
+                    <button type="button" role="menuitem" class="ui-dropdown-item recent-item"
                         disabled=move || actions.busy.get() || (writes && read_only.get())
                         on:click=move |_| actions.request.run(command.clone())>{label}</button>
                 }).collect_view()}
-                <button type="button" role="menuitem" class="ui-dropdown-item"
+                <button type="button" role="menuitem" class="ui-dropdown-item recent-item"
                     disabled=move || read_only.get() || actions.busy.get()
                     on:click=move |_| { name.set(String::new()); rename.set(true); }>"Rename symbol…"</button>
-                <button type="button" role="menuitem" class="ui-dropdown-item"
+                <button type="button" role="menuitem" class="ui-dropdown-item recent-item"
                     on:click=move |_| problems.set(true)>"Problems ("{move || actions.diagnostics.with(Vec::len)}")"</button>
             </super::dropdown::ActionMenu>
-        </Show>
-        <Show when=move || actions.busy.get()><span class="form-hint" role="status">"Analyzing…"</span></Show>
-        <Show when=move || actions.error.with(Option::is_some)>
-            <span class="form-hint" role="alert">{move || actions.error.get()}</span>
+            <LanguageServiceFeedback busy=actions.busy.read_only() error=actions.error.read_only() />
         </Show>
         <Show when=move || rename.get()>
             <Modal title=Signal::derive(|| "Rename symbol".to_string()) on_close=Callback::new(move |()| rename.set(false))>
@@ -341,5 +355,85 @@ pub fn DiagnosticOverlay(
                 }).collect_view()}
             </Show>
         </div>
+    }
+}
+
+#[cfg(test)]
+mod feedback_tests {
+    use super::*;
+    use wasm_bindgen::JsCast;
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    async fn background_language_feedback_preserves_editor_geometry_at_narrow_and_wide_widths() {
+        let document = web_sys::window().unwrap().document().unwrap();
+        let owner = Owner::new();
+        let (busy, error) = owner.with(|| (RwSignal::new(false), RwSignal::new(None::<String>)));
+        let root: web_sys::HtmlElement = document.create_element("div").unwrap().unchecked_into();
+        document.body().unwrap().append_child(&root).unwrap();
+        let handle = owner.with(|| leptos::mount::mount_to(root.clone(), move || view! {
+            <style>{include_str!("../../styles.css")}</style>
+            <div class="editor" style="height:320px">
+                <div class="editor-header">
+                    <div class="editor-file-tabs">"example.cs"</div>
+                    <div class="editor-header-actions"><button class="btn">"Save"</button></div>
+                    <LanguageServiceFeedback busy=busy.read_only() error=error.read_only() />
+                </div>
+                <textarea aria-label="Source" style="flex:1;min-height:0">"class Example {}"</textarea>
+            </div>
+        }));
+        let input = root.query_selector("textarea").unwrap().unwrap();
+        let feedback = root
+            .query_selector(".editor-language-feedback")
+            .unwrap()
+            .unwrap();
+        let mut stable = true;
+        let mut readable = true;
+        for width in [260, 420, 840] {
+            root.style()
+                .set_property("width", &format!("{width}px"))
+                .unwrap();
+            busy.set(false);
+            error.set(None);
+            crate::util::sleep_ms(0).await;
+            let before = input.get_bounding_client_rect();
+            for (analyzing, message) in [
+                (true, None),
+                (
+                    false,
+                    Some("The language service is unavailable.".to_string()),
+                ),
+                (
+                    false,
+                    Some(
+                        "Reconnect this folder using Grant folder access in the file tree. "
+                            .repeat(8),
+                    ),
+                ),
+                (false, None),
+            ] {
+                busy.set(analyzing);
+                error.set(message.clone());
+                crate::util::sleep_ms(0).await;
+                let after = input.get_bounding_client_rect();
+                stable &= (before.top() - after.top()).abs() < 0.5
+                    && (before.height() - after.height()).abs() < 0.5;
+                if let Some(message) = message {
+                    readable &= feedback.text_content().as_deref() == Some(message.as_str())
+                        && feedback.get_attribute("title").as_deref() == Some(message.as_str())
+                        && feedback.get_attribute("role").as_deref() == Some("alert");
+                }
+            }
+        }
+        drop(handle);
+        root.remove();
+        owner.cleanup();
+        assert!(
+            stable,
+            "Language feedback moved the editor during background updates"
+        );
+        assert!(
+            readable,
+            "Language errors must retain their complete accessible text"
+        );
     }
 }
