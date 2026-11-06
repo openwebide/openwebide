@@ -4,6 +4,9 @@ FROM node:24-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc
 WORKDIR /opt/openwebide-language-servers
 COPY tools/typescript-language-server/package.json tools/typescript-language-server/package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts --registry=https://registry.npmjs.org --no-audit --no-fund
+WORKDIR /opt/openwebide-python-language-server
+COPY tools/python-language-server/package.json tools/python-language-server/package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts --registry=https://registry.npmjs.org --no-audit --no-fund
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0.403-noble@sha256:de4fe90a98845d75910b9769662465c84de1a934665c431279d1382b2bddc02b AS csharp-language-server-tools
 RUN apt-get update && \
@@ -74,7 +77,7 @@ FROM ghcr.io/spinframework/spin:v4.1.0 AS runtime-tools
 
 # SSH client is included for Git and app-configured host administration.
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends openssh-client build-essential ca-certificates libicu72 libssl3 zlib1g && \
+    apt-get install -y --no-install-recommends openssh-client build-essential ca-certificates libicu72 libssl3 zlib1g python3 python3-venv && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -83,9 +86,12 @@ COPY --from=language-server-tools /usr/local/lib/node_modules/npm /usr/local/lib
 COPY --from=language-server-tools /usr/local/LICENSE ./licenses/node-LICENSE
 COPY --from=language-server-tools /opt/openwebide-language-servers/node_modules /opt/openwebide-language-servers/node_modules
 ENV PATH="/opt/openwebide-language-servers/node_modules/.bin:${PATH}"
+COPY --from=language-server-tools /opt/openwebide-python-language-server/node_modules /opt/openwebide-python-language-server/node_modules
+ENV PATH="/opt/openwebide-python-language-server/node_modules/.bin:${PATH}"
 RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
     ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx && \
-    node --version && npm --version && typescript-language-server --version && tsc --version
+    node --version && npm --version && typescript-language-server --version && tsc --version && \
+    pyright --version && python3 --version
 COPY --from=csharp-language-server-tools /usr/share/dotnet /usr/share/dotnet
 COPY --from=csharp-language-server-tools /opt/openwebide-csharp-language-server /opt/openwebide-csharp-language-server
 COPY tools/csharp-language-server/LICENSE ./licenses/csharp-ls-MIT.txt

@@ -225,6 +225,18 @@ JavaScript/TypeScript 0.2.0 uses this contract for JS, JSX, TS and TSX through
 locked server/TypeScript tools. Paired hosts need Node.js 22.22.2 or newer and
 `typescript-language-server@6.0.3` plus `typescript@6.0.3` on their PATH.
 
+Python 0.2.0 uses API 6 with `pyright-langserver --stdio`. Images include
+Pyright 1.1.414, Node.js and Python; paired hosts need Python 3, Node.js 22.22.2
+or newer and `pyright-langserver` on PATH (`npm install -g pyright@1.1.414`).
+Pyright discovers `pyrightconfig.json` or `[tool.pyright]` in `pyproject.toml`.
+For a project environment, configure `venvPath = "."` and `venv = ".venv"`
+there, then create that environment and install its dependencies on the execution
+host. Imports and interpreter paths resolve on that host in both project modes.
+Open unsaved Python files share their client's service. Diagnostics, hover,
+completion, navigation and reviewed rename use the same editor controls as other
+servers. Pyright does not supply document formatting; unsupported operations
+remain explicit, and server commands are not executed automatically.
+
 C# 0.2.0 uses API 8 with `csharp-ls` 0.28.0 and the .NET 10 SDK. Images
 include both tools; paired hosts need `dotnet` and `csharp-ls` on PATH.
 Install the tool with `dotnet tool install --global csharp-ls --version 0.28.0`,

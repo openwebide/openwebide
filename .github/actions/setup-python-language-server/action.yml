@@ -1,0 +1,15 @@
+name: Set up the Python language server
+description: Install the locked Pyright server and Python for real host checks.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+    - shell: bash
+      run: |
+        bash tools/setup-python-language-server.sh
+        echo "$GITHUB_WORKSPACE/tools/python-language-server/node_modules/.bin" >> "$GITHUB_PATH"

@@ -9,6 +9,8 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Enable Pyright through the independent Python 0.2.0 plugin in both project modes, including unsaved cross-file types, virtual-environment imports, diagnostics, completion, navigation and reviewed rename edits. Include the pinned Pyright tools and a Python interpreter in execution-host images. Python project configuration stays in `pyproject.toml` or `pyrightconfig.json`; ordinary editing remains available without a language server.
+
 - Add plugin API 8 declarations for read-only virtual documents returned by language servers. Bind opaque resource IDs to the originating document and installed service, validate declared URI schemes and source requests, bound retained metadata and text, and preserve command and workspace-edit restrictions. Support deferred edit resolution from older servers advertising boolean code-action capabilities.
 
 - Enable csharp-ls through C# 0.2.0 using the shared native language service, including cross-project unsaved buffers in `.slnx` solutions, member completion, compiler diagnostics, navigation, formatting and reviewed text edits. Retrieve read-only framework definitions through the plugin's public API 8 declaration. Package the pinned .NET 10 SDK and C# server in execution-host images.

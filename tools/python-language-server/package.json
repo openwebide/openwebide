@@ -1,0 +1,11 @@
+{
+  "name": "openwebide-python-language-server",
+  "private": true,
+  "version": "0.0.0",
+  "engines": {
+    "node": ">=22.22.2"
+  },
+  "dependencies": {
+    "pyright": "1.1.414"
+  }
+}

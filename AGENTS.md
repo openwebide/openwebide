@@ -127,6 +127,12 @@ Actions runs.
      Both real-server examples are required: `check_language_server` and
      `check_typescript_server`. The latter verifies all four related dialects,
      unsaved cross-file edits, diagnostics, completion imports and isolation.
+   - Python 3 with `venv` support and the locked Pyright tools installed with
+     `bash tools/setup-python-language-server.sh`; prepend
+     `tools/python-language-server/node_modules/.bin` to `PATH`. The required
+     `check_python_server` example verifies project configuration, virtual-environment
+     imports, unsaved buffers, diagnostics, completion and isolation. The production
+     browser check is `python3 tools/check-python-server-client.py` in both modes.
    - The .NET 10 SDK. CI pins its version in `tools/csharp-language-server/versions.json`.
      Run `python3 tools/setup-csharp-language-server.py` and prepend
      `tools/csharp-language-server/installed` to `PATH`. The required real C#

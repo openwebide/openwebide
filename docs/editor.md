@@ -200,8 +200,15 @@ or uninstalling its package restores plain editing. Unavailable analysis preserv
 typing, saving and recovery; **Retry language support** requests fresh host
 preparation. Re-enabling or reinstalling a provider analyzes the current draft.
 The contribution contract keeps formatter preferences separate and rejects
-substitution for a missing pinned formatter. Formatting and LSP services remain
-a following roadmap item.
+substitution for a missing pinned formatter. Formatting and LSP services are
+separate contributions: the **Code intelligence** menu uses the selected plugin's
+native language server when available. Rust, JavaScript/TypeScript, C# and Python
+provide language-server integrations in both project modes. Python uses Pyright
+for `.py` and `.pyi` files, including project virtual-environment imports,
+diagnostics, completion and reviewed rename; it does not provide formatting.
+See [language support](plugins.md#language-support) for host prerequisites and
+project configuration. Further providers and richer presentation remain on the
+roadmap.
 
 Packages can declare `uniformLineComments` when one line marker or block-comment
 fallback applies throughout the file. Those explicit line-comment commands stay

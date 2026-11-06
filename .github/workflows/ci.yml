@@ -99,6 +99,8 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      - uses: ./.github/actions/setup-python-language-server
+
       - uses: ./.github/actions/setup-typescript-language-server
 
       - uses: ./.github/actions/setup-csharp-language-server
@@ -135,6 +137,9 @@ jobs:
 
       - name: Check real Rust language-server services
         run: cargo run -p openwebide-bridge --example check_language_server --locked
+
+      - name: Check real Python language-server services
+        run: cargo run -p openwebide-bridge --example check_python_server --locked
 
       - name: Check shared TypeScript language-server dialects
         run: cargo run -p openwebide-bridge --example check_typescript_server --locked
@@ -207,6 +212,8 @@ jobs:
         run: bash tools/setup-wasm-compiler.sh
 
       - uses: Swatinem/rust-cache@v2
+
+      - uses: ./.github/actions/setup-python-language-server
 
       - uses: ./.github/actions/setup-typescript-language-server
 
@@ -282,6 +289,13 @@ jobs:
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
         run: python3 tools/check-typescript-server-client.py
 
+      - name: Check production Python language-server features in both modes
+        timeout-minutes: 10
+        env:
+          CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: python3 tools/check-python-server-client.py
+
       - name: Check production C# language-server features in both modes
         timeout-minutes: 10
         env:
@@ -311,6 +325,8 @@ jobs:
             /tmp/openwebide-editor-input-diagnostics
             /tmp/openwebide-rust-lsp-client-*.log
             /tmp/openwebide-typescript-lsp-client-*.log
+            /tmp/openwebide-python-lsp-client-*.log
+            /tmp/openwebide-python-lsp-*.png
             /tmp/openwebide-csharp-lsp-client-*.log
             /tmp/openwebide-csharp-lsp-*.png
           if-no-files-found: ignore
@@ -438,6 +454,9 @@ jobs:
 
       - name: Check packaged .NET SDK and C# tools without network or root
         run: docker run --rm --network none --user 12345:12345 -v "$PWD/docker/csharp-test/check.sh:/csharp-test.sh:ro" openwebide:ci bash /csharp-test.sh
+
+      - name: Check packaged Python and Pyright without network or root
+        run: docker run --rm --network none --user 12345:12345 -v "$PWD/docker/python-test/check.py:/python-test.py:ro" openwebide:ci python3 /python-test.py
 
       - name: Check SSH Git agent forwarding and strict host keys
         run: bash docker/ssh-test/check.sh openwebide:ci

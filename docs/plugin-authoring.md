@@ -170,7 +170,12 @@ HTML and Markdown request installed providers instead of bundling other families
 parsers. Markdown's block and inline grammars run inside the same family component;
 fence labels can name community languages. See the
 [toolkit guide](https://github.com/openwebide/openwebide/blob/main/crates/language-syntax/README.md) for family feature names.
-LSP execution remains the following roadmap item.
+API 6 packages can declare `features.languageServer` to use the shared native
+language-service facade in both project modes, with ordinary capability review.
+The independent [Python package](https://github.com/openwebide/plugins/tree/main/plugins/python)
+declares Pyright; its project configuration and virtual environments resolve on
+the execution host. See [language support](plugins.md#language-support) for the
+server contract and the Rust, JavaScript/TypeScript and C# integrations.
 
 To check a family's actual WASI component against its declared languages, run:
 

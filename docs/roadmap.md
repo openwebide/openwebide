@@ -1112,6 +1112,10 @@ TS and TSX; its dialects share one service and synchronize unsaved open buffers.
 C# 0.2.0 declares `csharp-ls` through API 8, with the .NET 10 SDK and
 multi-project `.slnx` or standalone `.csproj` workspaces. Its public virtual-document
 declaration supplies read-only framework definitions.
+Python 0.2.0 declares Pyright through API 6, with project configuration and
+virtual-environment import resolution on the execution host. Unsaved cross-file
+types, diagnostics, completion, navigation and reviewed rename use the shared
+service; Pyright does not provide formatting.
 The shared host facade supports diagnostics, manual hover and
 completion, definitions, references, document symbols, rename, document formatting
 and text-edit code actions in both project modes. Clients validate source-bound
@@ -1122,7 +1126,7 @@ source buffers, requests and idle lifetime; unsaved clients stay isolated.
 Remaining work:
 
 - Add further server integrations through independently installable language
-  packages, grouped by server coverage: C/C++ for clangd and Python for pyright,
+  packages, grouped by server coverage: C/C++ for clangd and Go for gopls,
   for example. Keep server selection,
   configuration, validation and lifecycle above the thin host adapters.
 - Add mouse-hover presentation, completion popups while typing, snippets,

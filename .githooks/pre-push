@@ -54,6 +54,8 @@ fi
 
 bash tools/setup-typescript-language-server.sh
 export PATH="$repo_root/tools/typescript-language-server/node_modules/.bin:$PATH"
+bash tools/setup-python-language-server.sh
+export PATH="$repo_root/tools/python-language-server/node_modules/.bin:$PATH"
 python3 tools/setup-csharp-language-server.py
 export PATH="$repo_root/tools/csharp-language-server/installed:$PATH"
 
@@ -77,6 +79,7 @@ cargo test -p openwebide-storage -p openwebide-core -p openwebide-auth -p openwe
 cargo test -p openwebide-frontend --lib
 cargo run -p openwebide-bridge --example check_language_server --locked
 cargo run -p openwebide-bridge --example check_typescript_server --locked
+cargo run -p openwebide-bridge --example check_python_server --locked
 cargo run -p openwebide-bridge --example check_csharp_server --locked
 
 if [[ -z "$changed_files" ]] || echo "$changed_files" | grep -qE '^(frontend/|crates/core/|crates/agent/|Cargo\.)'; then
