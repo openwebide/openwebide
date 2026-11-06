@@ -52,6 +52,26 @@ def caret(browser, token, delta=0, select=False):
 
 
 def insert(browser, text):
+    # Restored text may be installed while the asynchronous file-read lock is
+    # still held. Preserve the intended cursor and send native input only once.
+    selection = script(browser, '''
+        const input = document.querySelector('textarea[data-editor-path]');
+        return input && {path:input.dataset.editorPath, scope:input.dataset.editorScope,
+            start:input.selectionStart, end:input.selectionEnd};
+    ''')
+    assert selection, 'Missing editor for native input'
+    wait('writable native input', lambda: script(browser, '''
+        const input = document.querySelector('textarea[data-editor-path]');
+        return input?.dataset.editorPath===arguments[0].path
+            &&input.dataset.editorScope===arguments[0].scope
+            &&input.dataset.editorNativeValueScope===input.dataset.editorScope
+            &&input.dataset.editorNativePreparing==='false'&&!input.readOnly;
+    ''', selection))
+    assert script(browser, '''
+        const input = document.querySelector('textarea[data-editor-path]');
+        input.focus();
+        return input.selectionStart===arguments[0].start&&input.selectionEnd===arguments[0].end;
+    ''', selection), 'Editor lost the intended selection while loading'
     script(browser, '''
         window.recordLspInput ??= (type, event) => {
             if (!window.lspEvidence) return;
