@@ -305,10 +305,12 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: native-language-diagnostics
+          name: native-language-diagnostics-${{ github.run_attempt }}
           path: |
             ${{ runner.temp }}/language-host-diagnostics
             /tmp/openwebide-editor-input-diagnostics
+            /tmp/openwebide-rust-lsp-client-*.log
+            /tmp/openwebide-typescript-lsp-client-*.log
             /tmp/openwebide-csharp-lsp-client-*.log
             /tmp/openwebide-csharp-lsp-*.png
           if-no-files-found: ignore

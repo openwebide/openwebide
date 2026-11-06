@@ -34,10 +34,10 @@ def close(browser):
 
 def command(browser, label):
     close(browser)
-    assert script(browser, '''
+    wait('Code intelligence control', lambda: script(browser, '''
         const button = document.querySelector('button[aria-label="Code intelligence"]');
-        if (!button) return false; button.click(); return true;
-    '''), 'Missing Code intelligence control'
+        if (!button || button.disabled) return false; button.click(); return true;
+    '''))
     assert wait(label + ' menu', lambda: click(browser, label))
 
 
@@ -52,7 +52,33 @@ def caret(browser, token, delta=0, select=False):
 
 
 def insert(browser, text):
+    script(browser, '''
+        window.recordLspInput ??= (type, event) => {
+            if (!window.lspEvidence) return;
+            const input = document.querySelector('textarea[data-editor-path]');
+            const events = lspEvidence.inputEvents ??= [];
+            events.push({type, trusted:event?.isTrusted, inputType:event?.inputType,
+                prevented:event?.defaultPrevented, data:event?.data,
+                documentFocused:document.hasFocus(), focused:input===document.activeElement,
+                connected:input?.isConnected, readOnly:input?.readOnly,
+                native:input&&{...input.dataset}, start:input?.selectionStart,
+                end:input?.selectionEnd, value:input?.value.slice(0,512)});
+            if (events.length > 32) events.shift();
+        };
+        if (!window.lspInputObserverInstalled) {
+            window.lspInputObserverInstalled = true;
+            for (const type of ['beforeinput', 'input']) {
+                document.addEventListener(type, event => {
+                    if (event.target.matches?.('textarea[data-editor-path]')) {
+                        queueMicrotask(() => recordLspInput(type, event));
+                    }
+                }, true);
+            }
+        }
+        recordLspInput('before CDP insertion');
+    ''')
     browser.call('POST', '/goog/cdp/execute', {'cmd': 'Input.insertText', 'params': {'text': text}})
+    script(browser, "recordLspInput('after CDP insertion');")
 
 
 def local_handle(browser, project, user, folder, files):
