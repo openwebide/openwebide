@@ -31,7 +31,9 @@ def select(browser, path):
             .find(button=>button.dataset.editorTab===arguments[0]);
         if(!button) return false; button.click(); return true;
     ''', path), 'Missing tab ' + path
-    wait(path+' native editor', lambda: script(browser, "const input=document.querySelector('textarea[data-editor-path]');return input?.dataset.editorPath===arguments[0]&&input.dataset.editorNativeValueScope===input.dataset.editorScope&&input.dataset.editorNativePreparing==='false';", path))
+    # Restored text can be visible before the file-read lock is released.
+    # Do not send the single native input event until this buffer is writable.
+    wait(path+' writable native editor', lambda: script(browser, "const input=document.querySelector('textarea[data-editor-path]');return input?.dataset.editorPath===arguments[0]&&input.dataset.editorNativeValueScope===input.dataset.editorScope&&input.dataset.editorNativePreparing==='false'&&!input.readOnly;", path))
 
 
 def hover(browser, path, expected, token='Answer'):
@@ -225,7 +227,7 @@ def check():
         except BaseException:
             if browser is not None:
                 try:
-                    print(json.dumps(script(browser,"return {editor:document.querySelector('textarea[data-editor-path]')?.value,evidence:window.lspEvidence&&{...lspEvidence,requestCount:lspEvidence.requests.length,requests:lspEvidence.requests.slice(-12)},dialogs:[...document.querySelectorAll('[role=dialog]')].map(dialog=>dialog.textContent.slice(0,3000)),alerts:[...document.querySelectorAll('[role=alert]')].map(alert=>alert.textContent.slice(0,2000))};")),flush=True)
+                    print(json.dumps(script(browser,"const input=document.querySelector('textarea[data-editor-path]');return {editor:input?.value,native:input&&{readOnly:input.readOnly,...input.dataset},evidence:window.lspEvidence&&{...lspEvidence,requestCount:lspEvidence.requests.length,requests:lspEvidence.requests.slice(-12)},dialogs:[...document.querySelectorAll('[role=dialog]')].map(dialog=>dialog.textContent.slice(0,3000)),alerts:[...document.querySelectorAll('[role=alert]')].map(alert=>alert.textContent.slice(0,2000))};")),flush=True)
                 except Exception:
                     pass
             for name,log in [('runtime',runtime.state/'runtime.log'),('bridge',host.state/'bridge.log')]:
