@@ -46,6 +46,14 @@
         {
           "url": "https://apt.llvm.org/bookworm/pool/main/l/llvm-toolchain-23/libllvm23_23.1.6~++20261103094256+2875c6073a7e-1~exp1~20261103214307.97_amd64.deb",
           "sha256": "76e14b68e66991c28c3a2475f2a28586ca8bd7d0170be075a4a87b8e9be6678f"
+        },
+        {
+          "url": "https://deb.debian.org/debian/pool/main/libx/libxml2/libxml2_2.9.14+dfsg-1.3~deb12u6_amd64.deb",
+          "sha256": "4460e39dda10a815881374217cde08474747cfa018358cd8612c14b390eff53b"
+        },
+        {
+          "url": "https://deb.debian.org/debian/pool/main/i/icu/libicu72_72.1-3+deb12u1_amd64.deb",
+          "sha256": "f7f6f99c6d7b025914df2447fc93e11d22c44c0c8bdd8b6f36691c9e7ddcef88"
         }
       ]
     },
@@ -67,6 +75,14 @@
         {
           "url": "https://apt.llvm.org/bookworm/pool/main/l/llvm-toolchain-23/libllvm23_23.1.6~++20261103094256+2875c6073a7e-1~exp1~20261103214307.97_arm64.deb",
           "sha256": "33bdd01519d257d54f54ef55f3c94af599ebeecb172bc322f9a12f7f5a27e667"
+        },
+        {
+          "url": "https://deb.debian.org/debian/pool/main/libx/libxml2/libxml2_2.9.14+dfsg-1.3~deb12u6_arm64.deb",
+          "sha256": "0bc00975e459387535a4bbabe98a398f0e77c9ab82474face18d01ae8ed0dae4"
+        },
+        {
+          "url": "https://deb.debian.org/debian/pool/main/i/icu/libicu72_72.1-3+deb12u1_arm64.deb",
+          "sha256": "4f5d892fd81110435e45ed0a5f1b12899d7ff989d51db283cbc043f5631646d8"
         }
       ]
     }

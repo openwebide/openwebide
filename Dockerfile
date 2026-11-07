@@ -27,7 +27,7 @@ RUN python3 /opt/openwebide-setup/setup-go-language-server.py --tool-path /opt/o
 
 FROM ghcr.io/spinframework/spin:v4.1.0 AS clangd-language-server-tools
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends python3 ca-certificates libedit2 libffi8 libxml2 libz3-4 libzstd1 && \
+    apt-get install -y --no-install-recommends python3 ca-certificates libedit2 libffi8 libz3-4 libzstd1 liblzma5 && \
     rm -rf /var/lib/apt/lists/*
 COPY tools/setup-clangd-language-server.py /opt/openwebide-setup/
 COPY tools/clangd-language-server/versions.json /opt/openwebide-setup/clangd-language-server/
@@ -94,7 +94,7 @@ FROM ghcr.io/spinframework/spin:v4.1.0 AS runtime-tools
 
 # SSH client is included for Git and app-configured host administration.
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends openssh-client build-essential ca-certificates libicu72 libssl3 zlib1g python3 python3-venv libedit2 libffi8 libxml2 libz3-4 libzstd1 && \
+    apt-get install -y --no-install-recommends openssh-client build-essential ca-certificates libicu72 libssl3 zlib1g python3 python3-venv libedit2 libffi8 libz3-4 libzstd1 liblzma5 && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
