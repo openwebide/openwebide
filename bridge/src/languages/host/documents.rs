@@ -13,6 +13,7 @@ mod results;
 pub(super) struct Documents {
     documents: BTreeMap<String, Document>,
     version: i32,
+    overlay_revision: u64,
 }
 struct Document {
     path: PathBuf,
@@ -23,6 +24,7 @@ struct Document {
     digest: String,
     source: Arc<str>,
     version: i32,
+    overlay_revision: u64,
     actions: BTreeMap<String, Value>,
     completions: BTreeMap<String, Value>,
     resources: BTreeMap<String, Resource>,
@@ -59,6 +61,10 @@ impl Documents {
                 return Err("Language close request is stale".into());
             }
             if let Some(document) = self.documents.remove(&input.document) {
+                self.overlay_revision = self
+                    .overlay_revision
+                    .checked_add(1)
+                    .ok_or("Language overlay revision exhausted")?;
                 session.diagnostics.lock().unwrap().remove(&document.uri);
                 session
                     .client
@@ -125,6 +131,16 @@ impl Documents {
             );
         }
         let is_new = !self.documents.contains_key(&input.document);
+        let source_changed = self
+            .documents
+            .get(&input.document)
+            .is_none_or(|document| document.digest != input.source_digest);
+        if is_new || source_changed {
+            self.overlay_revision = self
+                .overlay_revision
+                .checked_add(1)
+                .ok_or("Language overlay revision exhausted")?;
+        }
         let document = self
             .documents
             .entry(input.document.clone())
@@ -137,16 +153,26 @@ impl Documents {
                 digest: String::new(),
                 source: Arc::from(""),
                 version: 0,
+                overlay_revision: 0,
                 actions: BTreeMap::new(),
                 completions: BTreeMap::new(),
                 resources: BTreeMap::new(),
             });
-        if document.digest != input.source_digest || is_new {
+        // Some servers retain a translation unit until that document changes or
+        // reopens, even when another unsaved overlay changes its dependencies.
+        // Refresh once per overlay revision. A no-op didChange is insufficient
+        // for servers that deliberately skip unchanged text. Keep the service
+        // warm and the other unsaved documents open; never pretend a Save took
+        // place or alter text to force parsing.
+        let refresh =
+            !is_new && !source_changed && document.overlay_revision != self.overlay_revision;
+        if source_changed || is_new || refresh {
             self.version = self
                 .version
                 .checked_add(1)
                 .ok_or("Language document version exhausted")?;
             document.version = self.version;
+            document.overlay_revision = self.overlay_revision;
             document.source = Arc::from(input.source.as_str());
             document.digest = input.source_digest.clone();
             document.actions.clear();
@@ -160,7 +186,14 @@ impl Documents {
                     ready: false,
                 },
             );
-            if is_new {
+            if refresh {
+                session
+                    .client
+                    .notify("textDocument/didClose", json!({"textDocument":{"uri":uri}}))
+                    .await
+                    .map_err(|error| error.to_string())?;
+            }
+            if is_new || refresh {
                 session.client.notify("textDocument/didOpen",json!({"textDocument":{"uri":uri,"languageId":language,"version":document.version,"text":input.source}})).await.map_err(|error|error.to_string())?;
             } else {
                 session.client.notify("textDocument/didChange",json!({"textDocument":{"uri":uri,"version":document.version},"contentChanges":[{"text":input.source}]})).await.map_err(|error|error.to_string())?;

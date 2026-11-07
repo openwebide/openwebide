@@ -101,6 +101,7 @@ jobs:
 
       - uses: ./.github/actions/setup-python-language-server
       - uses: ./.github/actions/setup-go-language-server
+      - uses: ./.github/actions/setup-clangd-language-server
 
       - uses: ./.github/actions/setup-typescript-language-server
 
@@ -144,6 +145,8 @@ jobs:
 
       - name: Check real Go language-server services
         run: cargo run -p openwebide-bridge --example check_go_server --locked
+      - name: Check real C/C++ language-server features
+        run: cargo run -p openwebide-bridge --example check_clangd_server --locked
 
       - name: Check shared TypeScript language-server dialects
         run: cargo run -p openwebide-bridge --example check_typescript_server --locked
@@ -219,6 +222,7 @@ jobs:
 
       - uses: ./.github/actions/setup-python-language-server
       - uses: ./.github/actions/setup-go-language-server
+      - uses: ./.github/actions/setup-clangd-language-server
 
       - uses: ./.github/actions/setup-typescript-language-server
 
@@ -307,6 +311,13 @@ jobs:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
         run: python3 tools/check-go-server-client.py
+
+      - name: Check production C/C++ language-server features in both modes
+        timeout-minutes: 10
+        env:
+          CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: python3 tools/check-clangd-server-client.py
 
       - name: Check production C# language-server features in both modes
         timeout-minutes: 10
@@ -471,6 +482,9 @@ jobs:
 
       - name: Check packaged Python and Pyright without network or root
         run: docker run --rm --network none --user 12345:12345 -v "$PWD/docker/python-test/check.py:/python-test.py:ro" openwebide:ci python3 /python-test.py
+
+      - name: Check packaged C/C++ and clangd without network or root
+        run: docker run --rm --network none --user 12345:12345 -v "$PWD/docker/clangd-test/check.py:/clangd-test.py:ro" openwebide:ci python3 /clangd-test.py
 
       - name: Check packaged Go and gopls without network or root
         run: docker run --rm --network none --user 12345:12345 -v "$PWD/docker/go-test/check.py:/go-test.py:ro" openwebide:ci python3 /go-test.py

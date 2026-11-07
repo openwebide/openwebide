@@ -140,6 +140,12 @@ Actions runs.
      `check_go_server` example verifies modules, multi-module workspaces,
      unsaved overlays, diagnostics, completion and isolation. The production
      browser check is `python3 tools/check-go-server-client.py` in both modes.
+   - The pinned clangd distributions, installed with
+     `python3 tools/setup-clangd-language-server.py`. Prepend
+     `tools/clangd-language-server/installed/bin` to `PATH`. The required
+     `check_clangd_server` example verifies C/C++ compilation flags, unsaved
+     headers, diagnostics, reviewed edits and isolation. The production browser
+     check is `python3 tools/check-clangd-server-client.py` in both modes.
    - The .NET 10 SDK. CI pins its version in `tools/csharp-language-server/versions.json`.
      Run `python3 tools/setup-csharp-language-server.py` and prepend
      `tools/csharp-language-server/installed` to `PATH`. The required real C#

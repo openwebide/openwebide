@@ -202,12 +202,14 @@ preparation. Re-enabling or reinstalling a provider analyzes the current draft.
 The contribution contract keeps formatter preferences separate and rejects
 substitution for a missing pinned formatter. Formatting and LSP services are
 separate contributions: the **Code intelligence** menu uses the selected plugin's
-native language server when available. Rust, JavaScript/TypeScript, C#, Python and Go
+native language server when available. Rust, JavaScript/TypeScript, C#, Python, Go and C/C++
 provide language-server integrations in both project modes. Python uses Pyright
 for `.py` and `.pyi` files, including project virtual-environment imports,
 diagnostics, completion and reviewed rename; it does not provide formatting.
 Go uses gopls for `go.mod` projects and multi-module `go.work` workspaces,
 including unsaved cross-module changes, completion imports and reviewed formatting.
+C and C++ share clangd, including compilation flags, unsaved header changes,
+diagnostics, completion and reviewed header/source rename and formatting.
 See [language support](plugins.md#language-support) for host prerequisites and
 project configuration. Further providers and richer presentation remain on the
 roadmap.

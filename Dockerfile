@@ -25,6 +25,14 @@ COPY tools/go-language-server/versions.json /opt/openwebide-setup/go-language-se
 COPY tools/go-language-server/dependencies /opt/openwebide-setup/go-language-server/dependencies
 RUN python3 /opt/openwebide-setup/setup-go-language-server.py --tool-path /opt/openwebide-go-language-server
 
+FROM ghcr.io/spinframework/spin:v4.1.0 AS clangd-language-server-tools
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends python3 ca-certificates libedit2 libffi8 libxml2 libz3-4 libzstd1 && \
+    rm -rf /var/lib/apt/lists/*
+COPY tools/setup-clangd-language-server.py /opt/openwebide-setup/
+COPY tools/clangd-language-server/versions.json /opt/openwebide-setup/clangd-language-server/
+RUN python3 /opt/openwebide-setup/setup-clangd-language-server.py --tool-path /opt/openwebide-clangd-language-server
+
 # --- builder: Spin runtime + Rust + Trunk; builds both components via `spin build` ---
 FROM ghcr.io/spinframework/spin:v4.1.0 AS builder
 
@@ -86,7 +94,7 @@ FROM ghcr.io/spinframework/spin:v4.1.0 AS runtime-tools
 
 # SSH client is included for Git and app-configured host administration.
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends openssh-client build-essential ca-certificates libicu72 libssl3 zlib1g python3 python3-venv && \
+    apt-get install -y --no-install-recommends openssh-client build-essential ca-certificates libicu72 libssl3 zlib1g python3 python3-venv libedit2 libffi8 libxml2 libz3-4 libzstd1 && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -115,6 +123,10 @@ COPY --from=go-language-server-tools /opt/openwebide-go-language-server/go/LICEN
 COPY tools/go-language-server/LICENSE ./licenses/gopls-BSD.txt
 ENV PATH="/opt/openwebide-go-language-server/bin:/opt/openwebide-go-language-server/go/bin:${PATH}"
 RUN go version && gopls version
+COPY --from=clangd-language-server-tools /opt/openwebide-clangd-language-server /opt/openwebide-clangd-language-server
+COPY tools/clangd-language-server/LICENSE ./licenses/clangd-Apache-LLVM.txt
+ENV PATH="/opt/openwebide-clangd-language-server/bin:${PATH}"
+RUN clangd --version
 
 # --- runtime: Spin + prebuilt components ---
 FROM runtime-tools

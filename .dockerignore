@@ -15,3 +15,5 @@ output
 site/.venv
 **/node_modules
 **/installed
+
+tools/clangd-language-server/installed

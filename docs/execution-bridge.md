@@ -5,6 +5,13 @@ The native bridge daemon (`openwebide-bridge`) runs on the host to provide inter
 > [!NOTE]
 > Git operations performed by the bridge require Git ≥ 2.23 on the host machine for branch switching via `git switch`.
 
+Enabled language plugins run their native servers on this host. For C/C++, install
+clangd and the project's compiler/SDK, and make `clangd` available on the daemon's
+PATH. Native archive users install language servers and toolchains separately;
+published container images include clangd and C/C++ build tools. See the
+[language support guide](https://github.com/openwebide/openwebide/blob/main/docs/plugins.md#language-support)
+for project configuration and other language requirements.
+
 The bridge's HTTP/1 and WebSocket server (built on `hyper`) enforces request limits: a 16 KiB
 HTTP request head, a 1 MiB `/exec`/Git request body, a 16 MiB WebSocket message/frame, and 256
 concurrent connections. Idle sockets are closed after 10 s without a request head; WebSocket

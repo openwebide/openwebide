@@ -1119,6 +1119,12 @@ service; Pyright does not provide formatting.
 Go 0.2.0 declares gopls through API 6, with single-module `go.mod` and
 multi-module `go.work` projects, unsaved cross-module analysis, completion imports,
 read-only standard-library definitions and reviewed rename/formatting in both modes.
+C/C++ 0.2.0 declares clangd through API 7. C and C++ retain their language IDs
+while sharing a service, compilation-database or `.clangd` configuration and
+unsaved header overlays. Diagnostics, completion, navigation and reviewed
+header/source rename and formatting work in both modes. The shared host refreshes
+dependent documents after overlay changes without saving files or restarting
+the service.
 The shared host facade supports diagnostics, manual hover and
 completion, definitions, references, document symbols, rename, document formatting
 and text-edit code actions in both project modes. Clients validate source-bound
@@ -1129,8 +1135,7 @@ source buffers, requests and idle lifetime; unsaved clients stay isolated.
 Remaining work:
 
 - Add further server integrations through independently installable language
-  packages, grouped by server coverage: C/C++ for clangd, for example.
-  Keep server selection,
+  packages, grouped by server coverage. Keep server selection,
   configuration, validation and lifecycle above the thin host adapters.
 - Add mouse-hover presentation, completion popups while typing, snippets,
   selection formatting and richer symbol/diagnostic navigation. Support separate

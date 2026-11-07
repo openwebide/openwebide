@@ -16,6 +16,115 @@ fn key(owner: &str, project: i64) -> Key {
 }
 
 #[tokio::test]
+async fn dependent_documents_refresh_once_after_overlay_changes_and_close_without_saving() {
+    use openwebide_core::plugins::languages::source_digest;
+    let root = tempfile::tempdir().unwrap();
+    std::fs::write(root.path().join("header.notes"), "disk").unwrap();
+    std::fs::write(root.path().join("main.notes"), "use header").unwrap();
+    let script = root.path().join("server.py");
+    std::fs::write(&script, r#"import json,sys
+opened={};parsed={}
+def send(value):
+    body=json.dumps({'jsonrpc':'2.0',**value}).encode()
+    sys.stdout.buffer.write(('Content-Length: %d\r\n\r\n'%len(body)).encode()+body);sys.stdout.buffer.flush()
+while True:
+    headers={}
+    while True:
+        line=sys.stdin.buffer.readline()
+        if not line:sys.exit(0)
+        if line==b'\r\n':break
+        name,value=line.decode().split(':',1);headers[name.lower()]=value.strip()
+    message=json.loads(sys.stdin.buffer.read(int(headers['content-length'])))
+    method=message.get('method');params=message.get('params') or {};result=None
+    document=params.get('textDocument',{});uri=document.get('uri','')
+    with open('calls','a') as log:log.write(method+' '+uri+'\n')
+    if method=='initialize':result={'capabilities':{'textDocumentSync':1,'hoverProvider':True}}
+    elif method=='textDocument/didOpen':
+        opened[uri]=document['text']
+        header=uri.rsplit('/',1)[0]+'/header.notes'
+        parsed[uri]=opened.get(header,'disk')
+    elif method=='textDocument/didChange':opened[uri]=params['contentChanges'][0]['text']
+    elif method=='textDocument/didClose':opened.pop(uri,None);parsed.pop(uri,None)
+    elif method=='textDocument/hover':result={'contents':parsed[uri]}
+    if 'id' in message:send({'id':message['id'],'result':result})
+"#).unwrap();
+    let host = Host::default();
+    let scope = Scope {
+        owner: "owner".into(),
+        project: 1,
+        root: root.path().into(),
+        provider: "community/notes".into(),
+        digest: "a".repeat(64),
+        server: serde_json::from_value(json!({"command":"python3","args":[script]})).unwrap(),
+    };
+    let mut request = Request {
+        version: protocol::VERSION,
+        client: "client".into(),
+        document: "header".into(),
+        request: 1,
+        revision: 1,
+        language: "notes".into(),
+        path: "header.notes".into(),
+        source: "first".into(),
+        source_digest: source_digest("first"),
+        query: Query::Synchronize,
+    };
+    let first = host.query(scope.clone(), &request).await.unwrap();
+    let mut main = request.clone();
+    main.document = "main".into();
+    main.path = "main.notes".into();
+    main.source = "use header".into();
+    main.source_digest = source_digest(&main.source);
+    main.query = Query::Hover {
+        position: protocol::Position::default(),
+    };
+    let response = host.query(scope.clone(), &main).await.unwrap();
+    assert_eq!(response.result["contents"], "first");
+    request.request += 1;
+    request.revision += 1;
+    request.source = "second".into();
+    request.source_digest = source_digest(&request.source);
+    host.query(scope.clone(), &request).await.unwrap();
+    main.request += 1;
+    let updated = host.query(scope.clone(), &main).await.unwrap();
+    updated.validate(&main).unwrap();
+    assert_eq!(updated.result["contents"], "second");
+    assert_eq!(updated.server, first.server);
+    let calls = std::fs::read_to_string(root.path().join("calls")).unwrap();
+    assert_eq!(calls.matches("textDocument/didClose").count(), 1);
+    main.request += 1;
+    host.query(scope.clone(), &main).await.unwrap();
+    assert_eq!(
+        std::fs::read_to_string(root.path().join("calls")).unwrap(),
+        calls
+            + "textDocument/hover "
+            + url::Url::from_file_path(
+                std::fs::canonicalize(root.path().join("main.notes")).unwrap()
+            )
+            .unwrap()
+            .as_str()
+            + "\n"
+    );
+    request.request += 1;
+    request.query = Query::Close;
+    host.query(scope.clone(), &request).await.unwrap();
+    main.request += 1;
+    let closed = host.query(scope.clone(), &main).await.unwrap();
+    assert_eq!(closed.result["contents"], "disk");
+    assert_eq!(closed.server, first.server);
+    assert_eq!(
+        std::fs::read_to_string(root.path().join("header.notes")).unwrap(),
+        "disk"
+    );
+    assert!(
+        !std::fs::read_to_string(root.path().join("calls"))
+            .unwrap()
+            .contains("textDocument/didSave")
+    );
+    host.shutdown();
+}
+
+#[tokio::test]
 async fn virtual_documents_use_declared_requests_and_source_bound_read_only_resources() {
     use openwebide_core::plugins::languages::source_digest;
     for (parameters, pointer, mode) in [

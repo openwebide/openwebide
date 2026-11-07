@@ -248,6 +248,29 @@ symbols, reviewed rename and document formatting use the shared editor controls.
 Standard-library definitions remain read-only. Server commands and workspace file
 creation, movement or deletion remain explicit unsupported operations.
 
+C/C++ 0.2.0 uses API 7 with clangd. Both language IDs share one service and
+unsaved header overlays; ordinary editing remains available without the server.
+Execution-host images include pinned clangd and C/C++ build tools. Native bridge
+archives require clangd, the compiler and project headers/libraries separately
+installed on the execution host. For development checks, run
+`python3 tools/setup-clangd-language-server.py` and add
+`tools/clangd-language-server/installed/bin` to PATH. The pinned distributions
+are 23.1.0 on macOS/Windows and 23.1.6 on Linux, with archive checksums in
+`tools/clangd-language-server/versions.json`.
+
+Generate `compile_commands.json` on the execution host so its paths match the
+opened project; CMake supports `-DCMAKE_EXPORT_COMPILE_COMMANDS=ON`. clangd
+discovers databases above source files and in `build/`. Use the project's
+[`.clangd` configuration](https://clangd.llvm.org/config) for another database
+location or `CompileFlags.Add` in simpler projects. Header files borrow source
+compile commands; path conditions can supply explicit flags for ambiguous
+headers. Cross-compilation SDKs must be available on the host. The package enables
+unsaved header contents and background indexing, with in-memory precompiled
+headers; clangd can create derived `.cache/clangd` index data. Updates adding
+native execution follow the ordinary capability review. Diagnostics, manual
+completion/navigation, reviewed header/source rename and document formatting
+use the shared editor service; source files change only when explicitly saved.
+
 C# 0.2.0 uses API 8 with `csharp-ls` 0.28.0 and the .NET 10 SDK. Images
 include both tools; paired hosts need `dotnet` and `csharp-ls` on PATH.
 Install the tool with `dotnet tool install --global csharp-ls --version 0.28.0`,
