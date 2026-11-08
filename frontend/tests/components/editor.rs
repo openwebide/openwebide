@@ -1308,7 +1308,10 @@ async fn unsupported_structural_navigation_keeps_immediate_lexical_fallback_in_b
 
 #[wasm_bindgen_test]
 async fn embedded_comment_menu_follows_selection_languages_without_reparsing_in_both_modes() {
-    use openwebide_core::{WorkspaceMode, editor::Selection};
+    use openwebide_core::{
+        WorkspaceMode,
+        editor::{Selection, byte_to_textarea},
+    };
     use openwebide_frontend::state_actions::editor::EditorActions;
     let language_host = super::language_support::LanguageHost::new().await;
     let source = "# Guide\n\n```python\npython_call()\n```\n\n```rust\nrust_call();\n```\n\n```json\n{\"value\": 1}\n```\n";
@@ -1331,6 +1334,16 @@ async fn embedded_comment_menu_follows_selection_languages_without_reparsing_in_
         super::language_support::ready(&mounted.state).await;
         wait_until("capability grammar ready", || {
             actions.syntax_structure(|| true).is_some()
+        })
+        .await;
+        let textarea: web_sys::HtmlTextAreaElement =
+            mounted.element(".editor-textarea").unchecked_into();
+        wait_until("capability native input ready", || {
+            textarea.value() == source
+                && textarea
+                    .get_attribute("data-editor-native-preparing")
+                    .as_deref()
+                    == Some("false")
         })
         .await;
         mounted.click("button[aria-label='Editor actions']");
@@ -1374,6 +1387,23 @@ async fn embedded_comment_menu_follows_selection_languages_without_reparsing_in_
                 false,
             ),
         ] {
+            let expected = selections.clone();
+            // Keep the browser's primary selection aligned with the model, as
+            // real selection events do. Queued native select/scroll events read it.
+            let primary = selections[0];
+            let range = primary.range();
+            textarea
+                .set_selection_range_with_direction(
+                    u32::try_from(byte_to_textarea(source, range.start).unwrap()).unwrap(),
+                    u32::try_from(byte_to_textarea(source, range.end).unwrap()).unwrap(),
+                    if primary.anchor > primary.head {
+                        "backward"
+                    } else {
+                        "forward"
+                    },
+                )
+                .unwrap();
+            actions.record_selection(primary).unwrap();
             mounted
                 .state
                 .workspace
@@ -1385,10 +1415,18 @@ async fn embedded_comment_menu_follows_selection_languages_without_reparsing_in_
                         .set_selections(selections)
                         .unwrap();
                 });
-            wait_until("selection-specific comment eligibility", || {
-                button("Toggle line comment").disabled() != line
-                    && button("Toggle block comment").disabled() != block
-            })
+            wait_until(
+                &format!("selection-specific comment eligibility in {mode:?}: {expected:?}, line={line}, block={block}"),
+                || {
+                    assert_eq!(
+                        actions.current_selections(),
+                        expected,
+                        "Comment eligibility must preserve the requested selection"
+                    );
+                    button("Toggle line comment").disabled() != line
+                        && button("Toggle block comment").disabled() != block
+                },
+            )
             .await;
             assert_eq!(
                 language_host.calls.get(),

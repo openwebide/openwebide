@@ -3779,3 +3779,25 @@ button.browser-item {
 
 .editor-diagnostic { position:absolute; height:3px; border-bottom:2px dotted var(--warn); transform:translate(var(--editor-scroll-x, 0px), var(--editor-scroll-y, 0px)); }
 .editor-diagnostic-error { border-color:var(--offline); }
+
+.editor-completion-popup.ui-dropdown-menu.recent-menu,
+.editor-hover-popup.ui-dropdown-menu.recent-menu {
+  position: fixed;
+  min-width: 0;
+  max-width: calc(100vw - 16px);
+  box-sizing: border-box;
+  border-radius: var(--radius-md);
+  color: var(--text);
+  font-size: var(--font-control);
+}
+.editor-completion-popup { display: flex; flex-direction: column; overflow: hidden; }
+.editor-completion-list { min-height: 0; overflow: auto; }
+.editor-completion-option.recent-item { flex: none; flex-direction: column; align-items: stretch; gap: 0; cursor: pointer; }
+.editor-completion-option > span, .editor-completion-option > small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.editor-completion-option > small { color: var(--text-muted); font-size: var(--font-caption); }
+.editor-completion-option[aria-selected="true"] { background: var(--bg-hover); box-shadow: inset 2px 0 var(--accent); }
+.editor-completion-hint { flex: none; padding: var(--space-1) var(--space-2); border-top: 1px solid var(--border); color: var(--text-muted); font-size: var(--font-caption); }
+.editor-hover-popup { overflow: auto; padding: var(--space-3); overflow-wrap: anywhere; }
+.editor-hover-popup pre { white-space: pre-wrap; }
+.editor-hover-popup > :first-child { margin-top: 0; }
+.editor-hover-popup > :last-child { margin-bottom: 0; }

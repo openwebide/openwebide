@@ -1,4 +1,5 @@
 //! Shared editor controls for installed language-server providers.
+mod popups;
 use super::{
     modal::Modal,
     ui::{Button, DialogActions, DialogBody, FormField},
@@ -9,6 +10,7 @@ use openwebide_core::plugins::languages::intelligence::{
     Query,
     results::{self, Symbol, Target, TextEdit, WorkspaceEdit},
 };
+pub(super) use popups::{IntelligencePopups, PopupAdapter};
 
 fn title(query: &Query) -> &'static str {
     match query {

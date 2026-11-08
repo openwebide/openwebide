@@ -9,6 +9,8 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Add completion popups while typing and symbol information on mouse hover in both project modes. Support keyboard and pointer completion selection, undoable insertion with imports, input-method composition and Tab focus navigation. Coalesce automatic requests and reject stale replies while keeping ordinary editing available when language services fail.
+
 - Enable clangd through the independent C/C++ 0.2.0 plugin in both project modes. Share a service across C and C++, honor compilation databases and `.clangd` configuration, and support unsaved headers, diagnostics, completion, navigation and reviewed header/source rename and formatting. Include checksum-pinned clangd and C/C++ build tools in execution-host images.
 - Refresh dependent language documents after unsaved overlays change or close, preserving the warm service and source-bound edits without saving files. Keep unchanged documents stable between overlay changes.
 

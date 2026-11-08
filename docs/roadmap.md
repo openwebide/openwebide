@@ -1125,21 +1125,24 @@ unsaved header overlays. Diagnostics, completion, navigation and reviewed
 header/source rename and formatting work in both modes. The shared host refreshes
 dependent documents after overlay changes without saving files or restarting
 the service.
-The shared host facade supports diagnostics, manual hover and
-completion, definitions, references, document symbols, rename, document formatting
-and text-edit code actions in both project modes. Clients validate source-bound
+The shared host facade supports diagnostics, hover panels and pointer information,
+manual and while-typing completion, definitions, references, document symbols,
+rename, document formatting and text-edit code actions in both project modes. Clients validate source-bound
 results, review edits and stage changes through existing editor history and
 recovery. Native services retain warm state with bounded service counts,
 source buffers, requests and idle lifetime; unsaved clients stay isolated.
+Completion popups support keyboard and pointer selection, single-transaction
+insertion with imports, and normal Tab focus navigation. Automatic requests are
+debounced and coalesced; source, selection and provider changes reject stale
+results. Pointer information preserves the caret and works in read-only files.
 
 Remaining work:
 
 - Add further server integrations through independently installable language
   packages, grouped by server coverage. Keep server selection,
   configuration, validation and lifecycle above the thin host adapters.
-- Add mouse-hover presentation, completion popups while typing, snippets,
-  selection formatting and richer symbol/diagnostic navigation. Support separate
-  host lint/analysis providers through the same diagnostics UI. Keep ordinary
+- Add snippets, selection formatting and richer symbol/diagnostic navigation.
+  Support separate host lint/analysis providers through the same diagnostics UI. Keep ordinary
   editing available when providers or toolchains are unavailable.
 - Extend reviewed workspace edits to file creation, movement and deletion, and
   define an approval and recovery contract for server commands. Keep unsupported

@@ -214,6 +214,20 @@ See [language support](plugins.md#language-support) for host prerequisites and
 project configuration. Further providers and richer presentation remain on the
 roadmap.
 
+With a language server available, typing a name or member access opens completion
+suggestions near the caret. **Ctrl+Space** requests suggestions explicitly.
+Use **Up/Down** to select, **Enter** to insert, or click a suggestion. **Tab** also
+inserts when Tab is assigned to indentation; in Tab navigation mode it continues
+to move keyboard focus. **Escape** dismisses the popup. A completion and its
+additional imports form one undoable edit and remain unsaved until you save.
+Composition pauses suggestions until the input method commits its text.
+
+Pause the mouse over a symbol to see its information without moving the caret or
+taking keyboard focus. The information stays open while the pointer is over the
+symbol or popup; **Escape** dismisses it. Hover also works in read-only files.
+The **Code intelligence** menu retains explicit symbol-information and completion
+requests. Missing or unavailable language servers leave normal editing usable.
+
 Packages can declare `uniformLineComments` when one line marker or block-comment
 fallback applies throughout the file. Those explicit line-comment commands stay
 available before analysis and above its source limit. Providers with context-

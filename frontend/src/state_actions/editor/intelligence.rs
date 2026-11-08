@@ -42,6 +42,9 @@ struct Snapshot {
 pub enum IntelligenceCommand {
     Hover,
     Completion,
+    Suggest,
+    HoverAt(usize),
+    InsertSuggestion(String),
     Definition,
     References,
     Symbols,
@@ -51,10 +54,30 @@ pub enum IntelligenceCommand {
     Query(Query),
 }
 
+impl IntelligenceCommand {
+    fn background(&self) -> bool {
+        matches!(
+            self,
+            Self::Query(Query::Synchronize | Query::Saved | Query::Close)
+        )
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Presentation {
+    Dialog,
+    Suggestions,
+    Hover,
+    Insert,
+}
+
 #[derive(Clone, Copy)]
 pub struct EditorIntelligence {
     pub available: Memo<bool>,
     identity: Memo<Option<ServiceScope>>,
+    pub context_revision: Memo<u64>,
+    request_presentation: StoredValue<Presentation>,
+    queued: RwSignal<Option<(Snapshot, IntelligenceCommand)>>,
     pub review: RwSignal<Vec<IntelligenceFile>>,
     pub busy: RwSignal<bool>,
     pub rename_open: RwSignal<bool>,
@@ -62,6 +85,10 @@ pub struct EditorIntelligence {
     pub diagnostics: RwSignal<Vec<Diagnostic>>,
     diagnostics_source: StoredValue<Option<(EditorPresentationScope, u64)>>,
     pub result: RwSignal<Option<(Query, Response)>>,
+    pub popup: RwSignal<Option<(Query, Response)>>,
+    pub popup_busy: RwSignal<bool>,
+    pub popup_error: RwSignal<Option<String>>,
+    pub dismiss_popup: Callback<()>,
     pub request: Callback<IntelligenceCommand>,
     pub dismiss: Callback<()>,
     pub apply_text: Callback<Vec<TextEdit>>,
@@ -105,6 +132,10 @@ impl EditorActions {
                 preferences,
             })
         });
+        let context_revision = Memo::new(move |previous: Option<&u64>| {
+            identity.track();
+            previous.map_or(0, |value| value.wrapping_add(1))
+        });
         let available = Memo::new(move |_| {
             identity.get().is_some()
                 && !self.workspace.editor_loading.get()
@@ -121,9 +152,16 @@ impl EditorActions {
         let diagnostics = RwSignal::new(Vec::new());
         let diagnostics_source = StoredValue::new(None);
         let result = RwSignal::new(None);
+        let popup = RwSignal::new(None::<(Query, Response)>);
+        let popup_busy = RwSignal::new(false);
+        let popup_error = RwSignal::new(None);
+        let request_presentation = StoredValue::new(Presentation::Dialog);
         let snapshot = StoredValue::new(None::<Snapshot>);
         let service = StoredValue::new_local(None::<(ServiceScope, ProjectLanguageService)>);
         let pending = StoredValue::new(None::<AbortHandle>);
+        let automatic_abort = StoredValue::new(None::<AbortHandle>);
+        let automatic_running = RwSignal::new(false);
+        let queued = RwSignal::new(None::<(Snapshot, IntelligenceCommand)>);
         let ticket = StoredValue::new(0_u64);
         let settled = RwSignal::new(0_u64);
         let previous_dirty = StoredValue::new(None::<(Option<(i64, String)>, bool)>);
@@ -133,12 +171,99 @@ impl EditorActions {
                     == Some(captured.revision)
                 && identity.try_get_untracked().flatten().as_ref() == Some(&captured.service)
         };
+        let apply_text = Callback::new(move |edits: Vec<TextEdit>| {
+            let Some(captured) = snapshot.get_value().filter(current) else {
+                error.set(Some("The document changed. Request the edit again.".into()));
+                return;
+            };
+            if read_only.get_untracked()
+                || self.workspace.editor_composition.get_untracked().is_some()
+            {
+                return;
+            }
+            let applied = (|| {
+                let caret =
+                    results::caret_after(&captured.source, &edits, captured.selection.head)?;
+                let edits = results::editor_edits(&captured.source, &edits)?;
+                self.cancel_native_text();
+                self.typing.set(None);
+                let key = (
+                    captured.presentation.project,
+                    captured.presentation.path.clone(),
+                );
+                let changed = self
+                    .workspace
+                    .editor_documents
+                    .try_update(|documents| {
+                        let document = self.document(documents, key.clone());
+                        document
+                            .apply(edits, vec![Selection::caret(caret)], None)
+                            .map_err(|error| error.to_string())?;
+                        Ok::<_, String>(Some((
+                            crate::state::workspace::EditorText::from(document.shared_text()),
+                            document.selections()[0],
+                        )))
+                    })
+                    .ok_or("Editor closed")?;
+                self.publish_edit(key, changed)?;
+                Ok::<_, String>(())
+            })();
+            match applied {
+                Ok(()) => result.set(None),
+                Err(message) => error.set(Some(message)),
+            }
+        });
+        let dismiss_popup = Callback::new(move |()| {
+            queued.update(|queued| {
+                if queued
+                    .as_ref()
+                    .is_some_and(|(_, command)| !command.background())
+                {
+                    *queued = None;
+                }
+            });
+            popup.set(None);
+            popup_error.set(None);
+            if request_presentation.get_value() != Presentation::Dialog {
+                // Invalidate presentation immediately. Let the single automatic
+                // transport request finish so a slow host cannot accumulate work.
+                pending.set_value(None);
+                ticket.update_value(|value| *value = value.wrapping_add(1));
+                popup_busy.set(false);
+            }
+        });
         let dismiss = Callback::new(move |()| {
+            dismiss_popup.run(());
             result.set(None);
             rename_open.set(false);
             error.set(None);
         });
         let request = Callback::new(move |command: IntelligenceCommand| {
+            let mode = match &command {
+                IntelligenceCommand::Suggest => Presentation::Suggestions,
+                IntelligenceCommand::HoverAt(_) => Presentation::Hover,
+                IntelligenceCommand::InsertSuggestion(_) => Presentation::Insert,
+                _ => Presentation::Dialog,
+            };
+            let automatic = mode != Presentation::Dialog;
+            if automatic
+                && (busy.get_untracked()
+                    || result.with_untracked(Option::is_some)
+                    || review.with_untracked(|files: &Vec<IntelligenceFile>| !files.is_empty())
+                    || rename_open.get_untracked())
+            {
+                return;
+            }
+            if mode == Presentation::Hover
+                && (popup.with_untracked(|value| {
+                    value
+                        .as_ref()
+                        .is_some_and(|(query, _)| matches!(query, Query::Completion { .. }))
+                }) || (popup_busy.get_untracked()
+                    && request_presentation.get_value() != Presentation::Hover))
+            {
+                return;
+            }
             if !available.get_untracked() {
                 return;
             }
@@ -164,16 +289,40 @@ impl EditorActions {
                 selection: self.current_selection().unwrap_or(Selection::caret(0)),
                 service: scope.clone(),
             };
-            let position = match protocol::position(&captured.source, captured.selection.head) {
+            if automatic
+                && (captured.selection.anchor != captured.selection.head
+                    || self.selection_count() > 1)
+            {
+                return;
+            }
+            if automatic && read_only.get_untracked() && mode != Presentation::Hover {
+                return;
+            }
+            if automatic && automatic_running.get_untracked() {
+                queued.set(Some((captured, command)));
+                popup_busy.set(true);
+                return;
+            }
+            let offset = match &command {
+                IntelligenceCommand::HoverAt(offset) => *offset,
+                _ => captured.selection.head,
+            };
+            let position = match protocol::position(&captured.source, offset) {
                 Ok(position) => position,
                 Err(message) => {
-                    error.set(Some(message));
+                    if !automatic {
+                        error.set(Some(message));
+                    }
                     return;
                 }
             };
             let query = match command {
                 IntelligenceCommand::Hover => Query::Hover { position },
-                IntelligenceCommand::Completion => Query::Completion { position },
+                IntelligenceCommand::Completion | IntelligenceCommand::Suggest => {
+                    Query::Completion { position }
+                }
+                IntelligenceCommand::HoverAt(_) => Query::Hover { position },
+                IntelligenceCommand::InsertSuggestion(id) => Query::ResolveCompletion { id },
                 IntelligenceCommand::Definition => Query::Definition { position },
                 IntelligenceCommand::References => Query::References { position },
                 IntelligenceCommand::Symbols => Query::Symbols,
@@ -211,21 +360,45 @@ impl EditorActions {
             {
                 return;
             }
-            if background && busy.get_untracked() {
+            if background && automatic_running.get_untracked() && !busy.get_untracked() {
+                if queued.with_untracked(Option::is_none) {
+                    queued.set(Some((captured, IntelligenceCommand::Query(query))));
+                }
                 return;
             }
-            if let Some(previous) = pending.get_value() {
+            if background && (busy.get_untracked() || popup_busy.get_untracked()) {
+                return;
+            }
+            if request_presentation.get_value() == Presentation::Dialog
+                && let Some(previous) = pending.get_value()
+            {
                 previous.abort();
+            }
+            if !automatic {
+                queued.set(None);
             }
             ticket.update_value(|ticket| *ticket = ticket.wrapping_add(1));
             let request_ticket = ticket.get_value();
             let (abort, registration) = AbortHandle::new_pair();
+            if automatic {
+                automatic_running.set(true);
+                automatic_abort.set_value(Some(abort.clone()));
+            }
             pending.set_value(Some(abort));
+            request_presentation.set_value(mode);
             if !background {
-                busy.set(true);
-                error.set(None);
-                result.set(None);
-                review.set(Vec::new());
+                busy.set(!automatic);
+                popup_busy.set(automatic);
+                popup_error.set(None);
+                if automatic && mode != Presentation::Insert {
+                    popup.set(None);
+                }
+                if !automatic {
+                    popup.set(None);
+                    error.set(None);
+                    result.set(None);
+                    review.set(Vec::new());
+                }
             }
             spawn_local(async move {
                 let operation = async {
@@ -443,11 +616,16 @@ impl EditorActions {
                         .await
                 };
                 let response = Abortable::new(operation, registration).await;
+                if automatic {
+                    let _ = automatic_running.try_set(false);
+                    let _ = automatic_abort.try_update_value(|handle| *handle = None);
+                }
                 if ticket.try_get_value() != Some(request_ticket) || !current(&captured) {
                     return;
                 }
                 pending.set_value(None);
                 busy.set(false);
+                popup_busy.set(false);
                 settled.update(|generation| *generation = generation.wrapping_add(1));
                 match response {
                     Ok(Ok(response)) => {
@@ -462,57 +640,71 @@ impl EditorActions {
                             if self.current_selection().unwrap_or_default() != captured.selection {
                                 return;
                             }
-                            snapshot.set_value(Some(captured));
-                            result.set(Some((query, response)));
+                            if mode == Presentation::Insert {
+                                let edits = results::completion_edits(
+                                    &captured.source,
+                                    position,
+                                    &response.result,
+                                );
+                                snapshot.set_value(Some(captured));
+                                match edits {
+                                    Ok(edits) => {
+                                        apply_text.run(edits);
+                                        if let Some(message) = error.get_untracked() {
+                                            error.set(None);
+                                            popup_error.set(Some(message));
+                                        } else {
+                                            popup.set(None);
+                                        }
+                                    }
+                                    Err(message) => popup_error.set(Some(message)),
+                                }
+                            } else {
+                                snapshot.set_value(Some(captured));
+                                if automatic {
+                                    let present = match &query {
+                                        Query::Completion { .. } => response
+                                            .result
+                                            .as_array()
+                                            .is_some_and(|items| !items.is_empty()),
+                                        Query::Hover { .. } => results::hover(&response.result)
+                                            .ok()
+                                            .flatten()
+                                            .is_some(),
+                                        _ => false,
+                                    };
+                                    popup.set(present.then_some((query, response)));
+                                } else {
+                                    result.set(Some((query, response)));
+                                }
+                            }
                         }
                     }
                     Ok(Err(message)) => {
-                        error.set(Some(message));
+                        if mode == Presentation::Insert {
+                            popup_error.set(Some(message));
+                        } else if !automatic {
+                            error.set(Some(message));
+                        } else {
+                            popup.set(None);
+                        }
                     }
                     Err(_) => {}
                 }
             });
         });
-        let apply_text = Callback::new(move |edits: Vec<TextEdit>| {
-            let Some(captured) = snapshot.get_value().filter(current) else {
-                error.set(Some("The document changed. Request the edit again.".into()));
-                return;
-            };
-            if read_only.get_untracked()
-                || self.workspace.editor_composition.get_untracked().is_some()
-            {
+        Effect::new(move |_| {
+            if automatic_running.get() {
                 return;
             }
-            let applied = (|| {
-                let caret =
-                    results::caret_after(&captured.source, &edits, captured.selection.head)?;
-                let edits = results::editor_edits(&captured.source, &edits)?;
-                self.cancel_native_text();
-                self.typing.set(None);
-                let key = (
-                    captured.presentation.project,
-                    captured.presentation.path.clone(),
-                );
-                let changed = self
-                    .workspace
-                    .editor_documents
-                    .try_update(|documents| {
-                        let document = self.document(documents, key.clone());
-                        document
-                            .apply(edits, vec![Selection::caret(caret)], None)
-                            .map_err(|error| error.to_string())?;
-                        Ok::<_, String>(Some((
-                            crate::state::workspace::EditorText::from(document.shared_text()),
-                            document.selections()[0],
-                        )))
-                    })
-                    .ok_or("Editor closed")?;
-                self.publish_edit(key, changed)?;
-                Ok::<_, String>(())
-            })();
-            match applied {
-                Ok(()) => result.set(None),
-                Err(message) => error.set(Some(message)),
+            if let Some((captured, command)) = queued.get() {
+                queued.set(None);
+                if current(&captured)
+                    && (command.background()
+                        || self.current_selection() == Some(captured.selection))
+                {
+                    request.run(command);
+                }
             }
         });
         let workspace_actions = use_context::<crate::state_actions::workspace::WorkspaceActions>();
@@ -588,11 +780,17 @@ impl EditorActions {
                 })
             });
             previous_dirty.set_value(Some((key, dirty)));
-            if let Some(previous) = pending.get_value() {
+            if request_presentation.get_value() == Presentation::Dialog
+                && let Some(previous) = pending.get_value()
+            {
                 previous.abort();
             }
+            queued.set(None);
             ticket.update_value(|ticket| *ticket = ticket.wrapping_add(1));
             busy.set(false);
+            popup_busy.set(false);
+            popup.set(None);
+            popup_error.set(None);
             result.set(None);
             error.set(None);
             diagnostics.set(Vec::new());
@@ -616,6 +814,9 @@ impl EditorActions {
             });
         });
         on_cleanup(move || {
+            if let Some(Some(automatic)) = automatic_abort.try_get_value() {
+                automatic.abort();
+            }
             if let Some(Some(pending)) = pending.try_get_value() {
                 pending.abort();
             }
@@ -630,6 +831,7 @@ impl EditorActions {
                 crate::util::sleep_ms(5000).await;
                 if ticket.try_get_value() == Some(generation)
                     && !busy.try_get_untracked().unwrap_or(true)
+                    && !popup_busy.try_get_untracked().unwrap_or(true)
                 {
                     request.run(IntelligenceCommand::Query(Query::Synchronize));
                 }
@@ -638,6 +840,9 @@ impl EditorActions {
         Some(EditorIntelligence {
             available,
             identity,
+            context_revision,
+            request_presentation,
+            queued,
             review,
             busy,
             rename_open,
@@ -645,6 +850,10 @@ impl EditorActions {
             diagnostics,
             diagnostics_source,
             result,
+            popup,
+            popup_busy,
+            popup_error,
+            dismiss_popup,
             request,
             dismiss,
             apply_text,
@@ -658,6 +867,36 @@ impl EditorActions {
 }
 
 impl EditorIntelligence {
+    pub fn completion_active(self) -> bool {
+        self.queued.with_untracked(|queued| {
+            queued.as_ref().is_some_and(|(_, command)| {
+                matches!(
+                    command,
+                    IntelligenceCommand::Suggest | IntelligenceCommand::InsertSuggestion(_)
+                )
+            })
+        }) || self.popup.with_untracked(|value| {
+            value
+                .as_ref()
+                .is_some_and(|(query, _)| matches!(query, Query::Completion { .. }))
+        }) || (self.popup_busy.get_untracked()
+            && matches!(
+                self.request_presentation.get_value(),
+                Presentation::Suggestions | Presentation::Insert
+            ))
+    }
+    pub fn popup_offset(self) -> Option<usize> {
+        let captured = self.snapshot.get_value().filter(|captured| {
+            self.snapshot_current(captured)
+                && self.editor.current_selection() == Some(captured.selection)
+        })?;
+        self.popup.with_untracked(|value| match value.as_ref()?.0 {
+            Query::Completion { position } | Query::Hover { position } => {
+                protocol::offset(&captured.source, position).ok()
+            }
+            _ => None,
+        })
+    }
     pub fn document_path(self) -> Option<String> {
         self.snapshot
             .get_value()

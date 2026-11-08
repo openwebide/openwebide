@@ -326,6 +326,13 @@ jobs:
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
         run: python3 tools/check-csharp-server-client.py
 
+      - name: Check automatic completion and pointer information in both modes
+        timeout-minutes: 10
+        env:
+          CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: python3 tools/check-editor-intelligence-client.py
+
       - name: Check production editor input, history and pointer selection
         env:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
@@ -354,6 +361,9 @@ jobs:
             /tmp/openwebide-go-lsp-*.png
             /tmp/openwebide-csharp-lsp-client-*.log
             /tmp/openwebide-csharp-lsp-*.png
+            /tmp/openwebide-completion-popup-*.log
+            /tmp/openwebide-completion-popup-*.png
+            /tmp/openwebide-hover-popup-*.png
           if-no-files-found: ignore
           retention-days: 3
 

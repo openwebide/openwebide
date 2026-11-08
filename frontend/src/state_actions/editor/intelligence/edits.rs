@@ -319,7 +319,10 @@ mod tests {
             let captured = Snapshot { presentation: editor.presentation_scope().unwrap(), revision: editor.source_revision(),
                 source: Arc::new("foo".into()), selection: Selection::caret(1), service: scope };
             let intelligence = EditorIntelligence {
-                available: Memo::new(|_| true), identity, review: RwSignal::new(Vec::new()),
+                available: Memo::new(|_| true), identity, context_revision: Memo::new(|_| 0),
+                request_presentation: StoredValue::new(Presentation::Dialog), queued: RwSignal::new(None),
+                popup: RwSignal::new(None), popup_busy: RwSignal::new(false), popup_error: RwSignal::new(None),
+                dismiss_popup: Callback::new(|()| ()), review: RwSignal::new(Vec::new()),
                 busy: RwSignal::new(false), rename_open: RwSignal::new(false), error: RwSignal::new(None), diagnostics: RwSignal::new(Vec::new()),
                 diagnostics_source: StoredValue::new(None), result: RwSignal::new(None), request: Callback::new(|_| ()),
                 dismiss: Callback::new(|()| ()), apply_text: Callback::new(|_| ()), navigate: Callback::new(|_| ()),

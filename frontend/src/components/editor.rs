@@ -2995,6 +2995,17 @@ pub fn Editor(
         workspace.pending_epoch.track();
         action_error.set(None);
     });
+    let popup_adapter = intelligence.map(|actions| {
+        super::editor_intelligence::PopupAdapter::new(
+            actions,
+            workspace,
+            ta,
+            highlight_ready,
+            paint_request,
+            layout_revision,
+            read_only,
+        )
+    });
     let search_scope =
         RwSignal::new(None::<(crate::state::workspace::EditorText, std::ops::Range<usize>)>);
     let scope_candidate =
@@ -3892,7 +3903,11 @@ pub fn Editor(
                                                 let scroll = editor_actions.scroll();
                                                 editor_actions.request_scroll(editor_project.unwrap_or_default(), &input.get_attribute("data-editor-path").unwrap_or_default(), editor_actions.view_revision(), editor_actions.account_generation(), scroll.top + y, scroll.left + x);
                                             }>
-                                        <div class="editor-scroll-surface" aria-hidden="true" on:scroll=move |event: web_sys::Event| {
+                                        <div class="editor-scroll-surface" aria-hidden="true"
+                                            on:wheel=move |_| { if let Some(popup) = popup_adapter { popup.cancel(); } }
+                                            on:mousedown=move |event: web_sys::MouseEvent| { if event.target() == event.current_target() && let Some(popup) = popup_adapter { popup.cancel(); } }
+                                            on:scroll=move |event: web_sys::Event| {
+                                            if let Some(popup) = popup_adapter { popup.viewport_changed(); }
                                             let Some(textarea) = ta.get_untracked() else { return; };
                                             let Some(target) = event.current_target().and_then(|target| target.dyn_into::<web_sys::HtmlElement>().ok()) else { return; };
                                             if !target.is_connected() || target != crate::viewport::editor_scroll(&textarea)
@@ -3918,6 +3933,7 @@ pub fn Editor(
                                         <super::editor_selections::SelectionOverlay textarea=ta ready=highlight_ready layout_revision=layout_revision />
                                         <div class="editor-bracket-layer" aria-hidden="true">{move || bracket_marks.get().into_iter().map(|(left, top, width, height)| view! { <span class="editor-bracket-match" style=format!("left:{left}px;top:{top}px;width:{width}px;height:{height}px")/> }).collect_view()}</div>
                                         {intelligence.map(|actions| view! { <super::editor_intelligence::DiagnosticOverlay actions textarea=ta ready=highlight_ready layout_revision /> })}
+                                        {popup_adapter.map(|adapter| view! { <super::editor_intelligence::IntelligencePopups adapter /> })}
                                         <div class="editor-fold-column"><div class="editor-fold-track" style=move || format!("padding-top:{}px", viewport.get().top)>{move || {
                                             let state = fold_state.get();
                                             let headers: std::collections::HashSet<_> = state.indicator_headers().collect();
@@ -3937,12 +3953,18 @@ pub fn Editor(
                                                 })}</div> }
                                             }).collect_view()
                                         }}</div></div>
+                                        // Keep new event/ARIA attributes in the spread: Tachys typed tuples stop at 26.
                                         <textarea
                                             {..view! { <{..}
                                                 aria-label=move || open_file.get().map_or_else(|| "Code editor".into(), |path| format!("Code editor: {path}"))
+                                                aria-autocomplete=move || if intelligence.is_some_and(|actions| actions.available.get()) && !read_only.get() { "list" } else { "none" }
+                                                aria-describedby=move || popup_adapter.and_then(super::editor_intelligence::PopupAdapter::description)
+                                                aria-controls=move || popup_adapter.and_then(super::editor_intelligence::PopupAdapter::controls)
+                                                aria-activedescendant=move || popup_adapter.and_then(super::editor_intelligence::PopupAdapter::active_descendant)
                                                 aria-description=move || if read_only.get() || tab_moves_focus.get() { "Tab and Shift+Tab move keyboard focus. Ctrl+M toggles Tab navigation." } else { "Tab indents and Shift+Tab outdents. Press Ctrl+M to let Tab move keyboard focus." }
                                                 title=move || if read_only.get() { "Read-only editor; Tab moves focus" } else if tab_moves_focus.get() { "Tab moves focus; Ctrl+M restores indentation" } else { "Tab indents; Ctrl+M enables focus navigation" }
-                                                on:touchstart:capture=move |event| touch_scroll.run(event)
+                                                on:mouseleave=move |event: web_sys::MouseEvent| { if let Some(popup) = popup_adapter { popup.leave_input(&event); } }
+                                                on:touchstart:capture=move |event: web_sys::TouchEvent| { if let Some(popup) = popup_adapter { popup.dismiss_input(&event); } touch_scroll.run(event); }
                                                 on:touchmove:capture=move |event| touch_scroll.run(event)
                                                 on:touchend:capture=move |event| touch_scroll.run(event)
                                                 on:touchcancel:capture=move |event| touch_scroll.run(event)
@@ -3959,6 +3981,7 @@ pub fn Editor(
                                                 if let Some(textarea) = event.target().and_then(|target| target.dyn_into::<web_sys::HtmlTextAreaElement>().ok()) && current_editor_target(editor_actions, &textarea) { let _ = editor_actions.record_native_selection(projected_selection(editor_actions, &textarea)); }
                                             }
                                             on:blur=move |event: web_sys::FocusEvent| {
+                                                if let Some(popup) = popup_adapter { popup.blur(&event); }
                                                 paste_matches_indentation.set(false);
                                                 if let Some(textarea) = event.target().and_then(|target| target.dyn_into::<web_sys::HtmlTextAreaElement>().ok()) && current_editor_target(editor_actions, &textarea) { let _ = editor_actions.record_native_selection(projected_selection(editor_actions, &textarea)); }
                                             }
@@ -3966,6 +3989,7 @@ pub fn Editor(
                                                 if let Some(textarea) = event.target().and_then(|target| target.dyn_into::<web_sys::HtmlTextAreaElement>().ok()) && current_editor_target(editor_actions, &textarea) { let _ = editor_actions.record_native_selection(projected_selection(editor_actions, &textarea)); } }
                                             on:click=move |event: web_sys::MouseEvent| { if !event.alt_key() && let Some(textarea) = event.target().and_then(|target| target.dyn_into::<web_sys::HtmlTextAreaElement>().ok()) && current_editor_target(editor_actions, &textarea) { let _ = editor_actions.record_selection(projected_selection(editor_actions, &textarea)); } }
                                             on:mousedown=move |event: web_sys::MouseEvent| {
+                                                if let Some(popup) = popup_adapter { popup.dismiss_input(&event); }
                                                 column_anchor.set_value(None);
                                                 pointer_adapter.start(&event);
                                                 if !event.alt_key() { return; }
@@ -3992,6 +4016,7 @@ pub fn Editor(
                                                 }
                                             }
                                             on:mousemove=move |event: web_sys::MouseEvent| {
+                                                if let Some(popup) = popup_adapter { popup.pointer(&event); }
                                                 if event.buttons() & 1 == 0 { column_anchor.set_value(None); return; }
                                                 let Some(textarea) = event.target().and_then(|target| target.dyn_into::<web_sys::HtmlTextAreaElement>().ok()).filter(|textarea| current_editor_target(editor_actions, textarea)) else { return; };
                                                 column_anchor.with_value(|owner| {
@@ -4059,6 +4084,7 @@ pub fn Editor(
                                                 }
                                             }
                                             on:compositionstart=move |event: web_sys::CompositionEvent| {
+                                                if let Some(popup) = popup_adapter { popup.dismiss_input(&event); }
                                                 if let Some(textarea) = event.target().and_then(|target| target.dyn_into::<web_sys::HtmlTextAreaElement>().ok()) && current_editor_target(editor_actions, &textarea) {
                                                     if !motion_adapter.flush(&textarea) { editor_actions.cancel_queued_motion(None); }
                                                     prepare_editor_edit(editor_actions, &textarea);
@@ -4074,9 +4100,11 @@ pub fn Editor(
                                                     if installed && editor_actions.is_composing() { let _ = editor_actions.projected_input(textarea.value(), editor_selection(&textarea), "insertCompositionText", event.time_stamp()); }
                                                     let _ = editor_actions.end_composition(); refresh_editor_folds(editor_actions);
                                                     if let Some(selection) = editor_actions.current_selection() { render_editor_selection(editor_actions, &textarea, selection, false); }
+                                                    if event.data().is_some_and(|data| !data.is_empty()) && let Some(popup) = popup_adapter { popup.typed("insertText"); }
                                                 }
                                             }
                                             on:keydown=move |event: web_sys::KeyboardEvent| {
+                                                if popup_adapter.is_some_and(|popup| popup.key(&event, tab_moves_focus.get_untracked())) { event.prevent_default(); event.stop_propagation(); return; }
                                                 if event.is_composing() { return; }
                                                 editor_actions.cancel_native_text();
                                                 let Some(textarea) = event.target().and_then(|target| target.dyn_into::<web_sys::HtmlTextAreaElement>().ok()).filter(|textarea| current_editor_target(editor_actions, textarea)) else { return; };
@@ -4148,9 +4176,11 @@ pub fn Editor(
                                                     // native value. Fold changes still require full reconciliation.
                                                     let retain_native_value = retain_native_value && editor_actions.projection().is_some_and(|projection| !projection.is_folded());
                                                     if !retain_native_value { content.with_untracked(|source| { if let Some(selection) = editor_actions.selection(source) { render_editor_selection(editor_actions, textarea, selection, result.is_ok()); } }); }
+                                                    if result.is_ok() && let Some(popup) = popup_adapter { popup.typed(&input_type); }
                                                 }
                                             }
                                             on:scroll=move |event: web_sys::Event| {
+                                            if let Some(popup) = popup_adapter { popup.viewport_changed(); }
                                                 if let Some(textarea) = event.target().and_then(|target| target.dyn_into::<web_sys::HtmlTextAreaElement>().ok())
                                                     && editor_actions.account_generation() == editor_account_generation
                                                     && current_editor_target(editor_actions, &textarea)
@@ -4166,6 +4196,7 @@ pub fn Editor(
                                                 }
                                             }
                                             on:wheel=move |event: web_sys::WheelEvent| {
+                                                if let Some(popup) = popup_adapter { popup.dismiss_input(&event); }
                                                 if let Some(textarea) = event.current_target().and_then(|target| target.dyn_into::<web_sys::HtmlTextAreaElement>().ok())
                                                     && editor_actions.account_generation() == editor_account_generation
                                                     && current_editor_target(editor_actions, &textarea) { crate::viewport::forward_editor_wheel(&textarea, &event); }
