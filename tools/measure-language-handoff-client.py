@@ -26,13 +26,14 @@ import threading
 import time
 
 from language_host_support import ExecutionHost
+from language_process_observation import process_residency, service_tree
 from language_server_client_support import ProbeMirror, caret, close, insert, local_handle, script, wait
 
 ROOT = Path(__file__).resolve().parent.parent
 SUPPORT = runpy.run_path(str(ROOT / 'tools/check-editor-recovery.py'))
 Runtime, Browser = SUPPORT['Runtime'], SUPPORT['Browser']
 OBSERVE = r'''
-window.handoffEvidence={requests:[],errors:[]};
+window.handoffEvidence={requests:[],errors:[],hover_retries:[]};
 addEventListener('error',e=>handoffEvidence.errors.push(String(e.message)));
 addEventListener('unhandledrejection',e=>handoffEvidence.errors.push(String(e.reason)));
 const originalFetch=window.fetch;
@@ -65,17 +66,7 @@ class Residency:
             if len(fields) == 4:
                 pid, parent, kib, name = fields
                 rows[int(pid)] = (int(parent), int(kib) * 1024, name)
-        assert self.pid in rows, 'Disposable execution host exited'
-        children, frontier = set(), {self.pid}
-        while frontier:
-            discovered = {pid for pid, (parent, _, _) in rows.items() if parent in frontier} - children
-            children.update(discovered)
-            frontier = discovered
-        record = {'time': time.monotonic(), 'bridge_bytes': rows[self.pid][1],
-                  'children_bytes': sum(rows[pid][1] for pid in children),
-                  'server_pids': sorted(pid for pid in children if rows[pid][0]==self.pid and Path(rows[pid][2]).name=='node'),
-                  'children': [{'pid': pid, 'parent_pid': rows[pid][0], 'resident_bytes': rows[pid][1], 'program': rows[pid][2]}
-                               for pid in sorted(children)]}
+        record = process_residency(rows, self.pid, time.monotonic())
         self.samples.append(record)
         return record
 
@@ -116,6 +107,7 @@ def prepare_browser(runtime, host, state):
 def hover(browser, expected):
     caret(browser, 'answer'); start = time.monotonic()
     close(browser)
+    event_start = script(browser, 'return handoffEvidence.requests.length;')
     def request():
         return script(browser, '''
             const item=[...document.querySelectorAll('button')]
@@ -126,8 +118,26 @@ def hover(browser, expected):
             return false;
         ''')
     wait('stable Symbol information menu',request)
-    wait('exact draft hover ' + expected, lambda: script(browser,
-        "return document.querySelector('[role=dialog]')?.textContent.includes(arguments[0]);", expected), 90)
+    retried, retry_pending = set(), False
+    def result():
+        nonlocal retry_pending
+        state = script(browser, '''
+            return {ready:document.querySelector('[role=dialog]')?.textContent.includes(arguments[0]),
+                changed:handoffEvidence.requests.slice(arguments[1]).filter(event=>event.error===
+                    'Project files changed during language analysis; retry with the current project').at(-1)?.end};
+        ''', expected, event_start)
+        if state.get('ready'):
+            return True
+        changed = state.get('changed')
+        if changed is not None and changed not in retried:
+            retried.add(changed)
+            assert len(retried) <= 3, 'Project analysis did not settle after three hover retries'
+            script(browser, 'handoffEvidence.hover_retries.push({time:performance.now(),rejected:arguments[0]});', changed)
+            retry_pending = True
+        if retry_pending:
+            retry_pending = not request()
+        return False
+    wait('exact draft hover ' + expected, result, 90)
     elapsed = (time.monotonic() - start) * 1000
     close(browser)
     return elapsed
@@ -158,13 +168,7 @@ def pressure_recovery(browser, environment, residency, record, previous_children
     """Same production recovery contract for each mode and both live clients."""
     before = residency.sample()
     roots = set(before['server_pids']) - previous_children
-    tree = set(roots)
-    while True:
-        children = {child['pid'] for child in before['children'] if child['parent_pid'] in tree}
-        if children <= tree:
-            break
-        tree.update(children)
-    assert tree, 'No current project process tree before pressure'
+    tree = service_tree(before, roots, residency.pid)
     observed = {'before': before, 'original_tree_pids': sorted(tree), 'clients': []}
     record['pressure_recovery'] = observed
     frozen = []
@@ -191,11 +195,12 @@ def pressure_recovery(browser, environment, residency, record, previous_children
         services = {event['server'] for event in events if event.get('server')}
         assert services and not services.intersection(old_services), 'Pressure recovery retained an expired service identity'
         sample = residency.sample()
-        current = {child['pid'] for child in sample['children']}
+        current = set(environment.processes())
         assert not tree.intersection(current), 'The original process tree survived pressure recovery'
         assert set(sample['server_pids']) - previous_children, 'No replacement server was observed'
         observed['clients'].append({'client': 'first' if handle == first else 'second', 'expected': expected,
-            'hover_ms': elapsed, 'services': sorted(services), 'residency': sample})
+            'hover_ms': elapsed, 'services': sorted(services), 'residency': sample,
+            'container_process_pids': sorted(current)})
 
 
 def measure(samples, modules, output, environment_factory=None, exercise_pressure=False):
@@ -298,6 +303,7 @@ def measure(samples, modules, output, environment_factory=None, exercise_pressur
                         assert len(servers)==1,servers
                         sample=residency.sample()
                         record['reloads'].append({'index':index,'ready_ms':ready_ms,'hover_ms':hover_ms,
+                            'hover_retries':events['hover_retries'],
                             'server':servers.pop(),'residency':sample,'mode_server_pids':[pid for pid in sample['server_pids'] if pid not in previous_children],'post_gc_js_heap':memory(browser)})
                     # Two genuine page clients alternate the same server while each
                     # keeps a different unsaved overlay. Both windows remain alive.
@@ -319,12 +325,14 @@ def measure(samples, modules, output, environment_factory=None, exercise_pressur
                             print(json.dumps({'phase':'handoff','mode':mode,'index':index,'expected':expected}),flush=True)
                             browser.call('POST','/window',{'handle':handle})
                             before=script(browser,'return handoffEvidence.requests.length;')
+                            retries_before=script(browser,'return handoffEvidence.hover_retries.length;')
                             elapsed=hover(browser,expected)
                             events=script(browser,'return handoffEvidence.requests.slice(arguments[0]);',before)
                             servers={e['server'] for e in events if e.get('server')}
                             assert len(servers)==1,servers
                             record['handoffs'].append({'index':index,'client':'second' if handle==second else 'first',
                                 'expected':expected,'hover_ms':elapsed,'server':servers.pop(),
+                                'hover_retries':script(browser,'return handoffEvidence.hover_retries.slice(arguments[0]);',retries_before),
                                 'residency':residency.sample()})
                             record['handoffs'][-1]['mode_server_pids']=[pid for pid in record['handoffs'][-1]['residency']['server_pids'] if pid not in previous_children]
                     if exercise_pressure:
@@ -335,10 +343,7 @@ def measure(samples, modules, output, environment_factory=None, exercise_pressur
                     hover(browser,'string')
                     def settled():
                         sample=residency.sample()
-                        roots=[child for child in sample['children']
-                               if child['parent_pid']==host.process.pid
-                               and Path(child['program']).name=='node'
-                               and child['pid'] not in previous_children]
+                        roots=set(sample['server_pids'])-previous_children
                         return sample if len(roots)==1 else None
                     record['settled_residency']=wait('one idle server after client overlap',settled,15)
                     for path,text in files.items():assert (folder/path).read_bytes()==text.encode(),path+' written behind Save'

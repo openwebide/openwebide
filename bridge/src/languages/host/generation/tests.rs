@@ -54,6 +54,22 @@ async fn stable_sources_ignore_existing_unrelated_file_writes() {
     assert!(tracker.observe(root.path()).await.unwrap().revision > before.revision);
 }
 
+#[cfg(windows)]
+#[tokio::test]
+async fn directory_attribute_changes_still_advance_source_generations() {
+    let root = tempfile::tempdir().unwrap();
+    std::fs::write(root.path().join("a.notes"), "one").unwrap();
+    let tracker = Tracker::new(files());
+    let before = tracker.observe(root.path()).await.unwrap();
+    let original = std::fs::metadata(root.path()).unwrap().permissions();
+    let mut changed = original.clone();
+    changed.set_readonly(!original.readonly());
+    std::fs::set_permissions(root.path(), changed).unwrap();
+    let after = tracker.observe(root.path()).await;
+    std::fs::set_permissions(root.path(), original).unwrap();
+    assert!(after.unwrap().revision > before.revision);
+}
+
 #[cfg(unix)]
 #[tokio::test]
 async fn restored_contents_mtime_hardlinks_and_directory_aba_advance_generations() {

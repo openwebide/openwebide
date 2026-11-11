@@ -34,7 +34,10 @@ use windows_sys::Win32::{
 };
 
 const WORDS: usize = 4096;
-type Names = BTreeMap<Vec<u16>, usize>;
+// Directory timestamps can change when an unrelated child is written. Keep
+// object kinds so parent watches use directory names only for namespace events;
+// their own reads cover child names, while metadata scans cover attributes.
+type Names = BTreeMap<(Vec<u16>, bool), usize>;
 pub(super) type Id = u64;
 
 pub(super) fn open(path: &Path) -> Result<File, String> {
@@ -327,7 +330,7 @@ impl Kernel {
             let count = self
                 .directory(parent, None)?
                 .names
-                .entry(name.clone())
+                .entry((name.clone(), is_directory))
                 .or_default();
             *count = count
                 .checked_add(1)
@@ -357,6 +360,7 @@ impl Kernel {
             .registrations
             .remove(&id)
             .ok_or("Unknown notification registration")?;
+        let is_directory = registration.directory.is_some();
         if let Some((parent, name)) = registration.parent {
             let directory = self
                 .directories
@@ -364,13 +368,13 @@ impl Kernel {
                 .ok_or("Missing notification directory")?;
             let count = directory
                 .names
-                .get_mut(&name)
+                .get_mut(&(name.clone(), is_directory))
                 .ok_or("Missing notification name")?;
             *count = count
                 .checked_sub(1)
                 .ok_or("Notification reference count underflow")?;
             if *count == 0 {
-                directory.names.remove(&name);
+                directory.names.remove(&(name, is_directory));
             }
         }
         if let Some(path) = registration.directory {
@@ -455,7 +459,10 @@ fn records(
         };
         let mut relevant = owner && namespace;
         if !relevant {
-            for expected in names.keys() {
+            for (expected, is_directory) in names.keys() {
+                if *is_directory && !namespace {
+                    continue;
+                }
                 *comparisons = comparisons
                     .checked_sub(1)
                     .ok_or("Directory notification name budget exceeded")?;

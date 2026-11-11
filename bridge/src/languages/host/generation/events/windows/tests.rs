@@ -14,7 +14,7 @@ fn record(action: u32, name: &[u16]) -> Vec<u8> {
 #[test]
 fn notifications_preserve_unrelated_writes_and_fail_closed_for_invalid_records() {
     let name = "a.notes".encode_utf16().collect::<Vec<_>>();
-    let names = BTreeMap::from([(name.clone(), 1)]);
+    let names = BTreeMap::from([((name.clone(), false), 1)]);
     let mut budget = 100;
     assert!(
         records(
@@ -73,6 +73,42 @@ fn notifications_preserve_unrelated_writes_and_fail_closed_for_invalid_records()
         .is_err()
     );
     assert!(records(&record(FILE_ACTION_MODIFIED, &name), false, &names, &mut 0).is_err());
+}
+
+#[test]
+fn directory_parent_modifications_do_not_invalidate_unrelated_children() {
+    let name = "project".encode_utf16().collect::<Vec<_>>();
+    let names = BTreeMap::from([((name.clone(), true), 1)]);
+    let mut budget = 100;
+    assert!(
+        !records(
+            &record(FILE_ACTION_MODIFIED, &name),
+            false,
+            &names,
+            &mut budget
+        )
+        .unwrap()
+    );
+    for action in [
+        FILE_ACTION_ADDED,
+        FILE_ACTION_REMOVED,
+        FILE_ACTION_RENAMED_OLD_NAME,
+        FILE_ACTION_RENAMED_NEW_NAME,
+    ] {
+        assert!(records(&record(action, &name), false, &names, &mut budget).unwrap());
+    }
+    // A file registered under the same case-insensitive name still receives
+    // content notifications; reference kinds must not hide one another.
+    let names = BTreeMap::from([((name.clone(), true), 1), ((name.clone(), false), 1)]);
+    assert!(
+        records(
+            &record(FILE_ACTION_MODIFIED, &name),
+            false,
+            &names,
+            &mut budget
+        )
+        .unwrap()
+    );
 }
 
 fn wait_for(mut condition: impl FnMut() -> bool) {

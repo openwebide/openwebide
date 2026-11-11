@@ -86,6 +86,7 @@ cargo fmt --all --check
 python3 -m unittest discover -s tools -p test_wasi_sdk.py
 python3 -m unittest discover -s tools -p test_setup_terraform_language_server.py
 python3 -m unittest discover -s tools -p test_setup_clangd_language_server.py
+python3 -m unittest discover -s tools -p test_language_process_observation.py
 
 echo "[pre-push] 2/4 Running Clippy across native, WASI, WASM, and bridge targets..."
 clean_completed_dev_artifacts_if_needed

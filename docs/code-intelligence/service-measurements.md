@@ -25,6 +25,13 @@ settled check requires one idle native server for that project. Local browser fo
 and a controlled native proof correspondence; physical browser permissions are
 covered by the [separate PWA checks](physical-folder-checks.json).
 
+Current process observations follow the bridge's independent server owners.
+They count each outermost Node server once, retain the watcher in the measured
+child tree and include it in pressure-eviction checks. Native and container
+samplers share this policy above their process-list primitives. The focused
+contracts cover direct and watcher-owned servers, nested Node processes,
+project isolation and matching adapter observations.
+
 Ready time starts before navigation and ends after a hover confirms the restored
 cross-file draft. Handoff time includes opening the UI command and waiting for
 that client's exact result. Both include WebDriver polling and UI scheduling.
@@ -185,3 +192,60 @@ These cases verify idle pressure recovery. They freeze UI requests during
 allocation and do not establish behavior for in-flight analysis, pinned commands
 or sustained pressure during editing. Complete retained native/WASM memory,
 broader pressure behavior and other language servers/devices remain open.
+
+The recorded runs above predate the independent server-owner integration. Their
+pressure assertions checked disappearance from the bridge's descendant set;
+they did not independently establish that a reparented process exited the
+container. The corrected probe checks the original PIDs against the entire owned
+container both at eviction and after each client's recovery. Its regression
+keeps a reparented server alive after its watcher disappears and rejects early
+cleanup. The fresh production runs below use that check; the historical numbers
+above have not been relabelled as current measurements.
+
+## Current process-owner measurements
+
+The 2026-11-11 rerun uses the corrected shared process sampler and application
+commit `9f16a87d3b8648cd3bea094703f177c0db7941ef`. Each outermost Node process is
+identified beneath its independent watcher; nested Node children are counted
+once, and watcher residency remains included. The
+[complete record](owner-process-measurements.json) separates measurement source
+from the previously verified native artifacts and immutable final Linux image.
+Earlier records above remain historical observations of their original runtime.
+
+All 64 reloads and 128 alternating-client queries passed across native macOS and
+the complete Linux app, preserving both clients' unsaved overlays and original
+disk bytes. Each project settled to one idle server after client overlap.
+Every reload and alternating-query transition observed the same single root
+for its project. These counts exclude the additional settled and recovery queries.
+
+| Runtime | Modules | Mode | First ready (s) | Subsequent reload median / p95 (s) | Alternating query median / p95 (s) | Peak bridge RSS (MiB) | Peak children RSS (MiB) |
+| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| macOS | 128 | Remote | 1.91 | 0.81 / 0.82 | 0.44 / 2.16 | 457 | 347 |
+| macOS | 128 | Local | 1.97 | 0.93 / 0.93 | 0.45 / 0.77 | 379 | 625 |
+| macOS | 512 | Remote | 2.15 | 1.15 / 2.60 | 0.67 / 0.89 | 463 | 383 |
+| macOS | 512 | Local | 2.38 | 1.12 / 1.17 | 0.68 / 0.90 | 380 | 713 |
+| Linux | 128 | Remote | 4.15 | 1.17 / 1.28 | 0.44 / 0.86 | 407 | 314 |
+| Linux | 128 | Local | 1.38 | 0.95 / 0.97 | 0.44 / 0.65 | 416 | 608 |
+| Linux | 512 | Remote | 2.70 | 1.26 / 2.60 | 0.45 / 0.88 | 354 | 366 |
+| Linux | 512 | Local | 1.54 | 0.99 / 1.03 | 0.45 / 0.66 | 362 | 709 |
+
+Both Linux workloads retained verified 2 CPU / 2 GiB / no-swap limits. In all
+four mode/workload pressure phases, the original server and owning watcher PIDs
+disappeared from the whole owned container's process inventory, including checks
+after both clients recovered. The allocator exited successfully and released its
+pages. Cgroup peaks, including that deliberate allocator, were 2,047,029,248 and
+2,051,137,536 bytes for 128 and 512 modules; both recorded zero memory-limit, OOM
+and OOM-kill events. Both owned containers were removed after shutdown.
+
+Ready and handoff timings include any bounded retry of the specific
+"Project files changed during language analysis" response. Retry events remain
+in each report; this successful rerun recorded zero. An earlier attempt encountered
+that startup response and stopped before collecting a successful first sample.
+Unknown errors are not retried. The sampler's whole-container exit check also
+has a regression where a retired server remains alive after reparenting.
+
+These finite TypeScript observations do not establish complete retained native
+or WASM memory stability, active-request or command-pressure behavior, derived
+cache hit rates, editor paint targets or a prefetch performance benefit. Local
+RSS still includes any idle Remote service. Sampling can miss short process peaks;
+the cgroup peak uses different accounting and includes pressure allocation.

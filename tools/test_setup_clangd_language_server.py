@@ -4,6 +4,7 @@ import importlib.util
 import io
 import json
 from pathlib import Path
+import subprocess
 import tarfile
 import tempfile
 import unittest
@@ -12,6 +13,45 @@ from unittest.mock import patch
 SPEC = importlib.util.spec_from_file_location('clangd_setup', Path(__file__).with_name('setup-clangd-language-server.py'))
 SETUP = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(SETUP)
+
+
+class LicenseCheckout(unittest.TestCase):
+    def test_git_checkout_preserves_upstream_bytes_and_other_whitespace_checks(self):
+        source = Path(__file__).resolve().parent.parent
+        relative = 'tools/clangd-language-server/LICENSE.TXT'
+        payload = (source / relative).read_bytes()
+        pins = json.loads((source / 'tools/clangd-language-server/versions.json').read_text())
+        self.assertEqual(hashlib.sha256(payload).hexdigest(),
+                         pins['platforms']['linux-arm64']['licenseSha256'])
+        with tempfile.TemporaryDirectory(prefix='clangd-license-checkout-') as directory:
+            root = Path(directory)
+
+            def git(*arguments, check=True):
+                return subprocess.run(['git', '-C', directory, *arguments],
+                                      check=check, capture_output=True, text=True)
+
+            git('init', '--quiet', '--initial-branch=main', '--template=')
+            git('config', 'core.autocrlf', 'true')
+            (root / '.gitattributes').write_bytes((source / '.gitattributes').read_bytes())
+            license_file = root / relative
+            license_file.parent.mkdir(parents=True)
+            license_file.write_bytes(payload)
+            git('add', '.gitattributes', relative)
+            license_file.unlink()
+            git('checkout-index', '--', relative)
+            self.assertEqual(license_file.read_bytes(), payload)
+            git('diff', '--cached', '--check')
+            (root / 'ordinary.txt').write_bytes(b'bad trailing space \n')
+            git('add', 'ordinary.txt')
+            result = git('diff', '--cached', '--check', check=False)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('ordinary.txt', result.stdout)
+            git('update-index', '--force-remove', 'ordinary.txt')
+            license_file.write_bytes(payload + b'bad trailing space \n')
+            git('add', relative)
+            result = git('diff', '--cached', '--check', check=False)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(relative, result.stdout)
 
 
 class Distributions(unittest.TestCase):

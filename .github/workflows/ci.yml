@@ -39,6 +39,7 @@ jobs:
           python3 -m unittest discover -s tools -p 'test_release.py'
           python3 -m unittest discover -s tools -p 'test_wasi_sdk.py'
           python3 -m unittest discover -s tools -p 'test_setup_*_language_server.py'
+          python3 -m unittest discover -s tools -p 'test_language_process_observation.py'
           python3 -m unittest discover -s tools -p 'test_host_updates.py'
           python3 -m unittest discover -s tools -p 'test_open_source.py'
           python3 -m unittest discover -s tools -p 'test_editor_measurements.py'

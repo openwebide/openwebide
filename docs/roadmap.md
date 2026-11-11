@@ -1137,7 +1137,7 @@ API 9 package built on the public toolkit. Seven Terraform/HCL dialects share
 `terraform-ls`. Installed editor checks cover component-owned syntax, unsaved
 cross-file types, navigation, completion, reviewed formatting and undo, diagnostics,
 disable/re-enable and host restart in both modes without initializing infrastructure
-([editor contract](../tools/check-terraform-server-client.py)).
+([editor contract](https://github.com/openwebide/openwebide/blob/main/tools/check-terraform-server-client.py)).
 The shared host facade supports diagnostics, hover panels and pointer information,
 manual and while-typing completion, definitions, references, document symbols,
 rename, document formatting and text-edit code actions in both project modes. Clients validate source-bound
@@ -1260,11 +1260,16 @@ Remaining work:
   behavior, broader resource measurements and prefetch remain open. The same
   production workflow also passes in the complete Linux arm64 app under verified
   2 CPU / 2 GiB / no-swap limits, with 1.07/1.19 GiB cgroup peaks for 128/512 modules
-  and no OOM events. Additional real cgroup reserve-pressure checks now remove
-  original idle server trees and restore both clients' distinct drafts on replacement
-  processes in both modes. In-flight analysis/command pressure behavior and complete
+  and no OOM events. Additional real cgroup reserve-pressure checks observed the
+  original idle server trees leaving the bridge's descendant inventory and both
+  clients' distinct drafts returning on replacement processes in both modes.
+  In-flight analysis/command pressure behavior and complete
   retained-memory stability remain open
   ([measurements and limits](code-intelligence/service-measurements.md)).
+  The current-runtime rerun includes process owners and checks original PIDs
+  against the whole container at eviction and after both clients recover. All
+  64 reloads and 128 alternating queries passed across native macOS and the
+  constrained Linux app. Historical descendant-only observations remain separate.
 - Finish persistent derived-cache adoption, active disk-growth bounds and resource measurements.
   Public API 9 cache declarations now bind native environment, argument and settings
   paths outside the opened project through both authenticated adapters. Namespaces
@@ -1336,9 +1341,10 @@ Remaining work:
   hard-link registrations and rejects watch loss or queue overflow. Windows now
   implements nonrecursive directory notifications with owned pending I/O, unique
   completion events, one retirement worker and shared handle/buffer budgets.
-  Its production and test code passes cross-compilation. The first native Windows
-  run found unexpected invalidation during unrelated writes; finish diagnosis and
-  native verification of the generation/retirement cases
+  Native Windows runs found directory-modification notifications during unrelated
+  writes. Parent watches now distinguish file content from directory namespace
+  changes; direct child watches and metadata observations retain their coverage.
+  Finish native verification of this filtering and the generation/retirement cases
   ([checkpoint](code-intelligence/windows-source-event-checks.json)). Native intelligence
   protocol 2 now returns bounded, result-bound analysis contexts and validates them
   against the original live service through both authenticated adapters, without

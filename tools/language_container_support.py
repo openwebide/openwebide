@@ -7,6 +7,7 @@ are mounted; language policy, installation and UI behavior stay in the app.
 import json
 import os
 from pathlib import Path
+from language_process_observation import process_residency
 import queue
 import runpy
 import re
@@ -209,9 +210,14 @@ print(json.dumps({'os':platform.system(),'release':platform.release(),'machine':
                 deadline = time.monotonic() + 8
                 while time.monotonic() < deadline:
                     sample = residency.sample()
-                    current = {child['pid'] for child in sample['children']}
+                    # Reparenting can remove a live process from the bridge's
+                    # descendants. Check the entire owned container before
+                    # claiming that the original process tree has exited.
+                    current = set(self.processes())
                     if not roots.intersection(current):
-                        record.update(evicted_residency=sample, eviction_seconds=time.monotonic()-start)
+                        record.update(evicted_residency=sample,
+                                      evicted_container_process_pids=sorted(current),
+                                      eviction_seconds=time.monotonic()-start)
                         return record
                     time.sleep(.25)
             raise AssertionError('Native service survived repeated reserve pressure')
@@ -271,17 +277,8 @@ class ContainerResidency:
 
     def sample(self):
         rows = self.environment.processes()
-        assert self.pid in rows, 'Container execution host exited'
-        children, frontier = set(), {self.pid}
-        while frontier:
-            found = {pid for pid, (parent, _, _) in rows.items() if parent in frontier} - children
-            children.update(found); frontier = found
-        value = {'time': time.monotonic(), 'bridge_bytes': rows[self.pid][1],
-                 'children_bytes': sum(rows[pid][1] for pid in children),
-                 'server_pids': sorted(pid for pid in children if rows[pid][0] == self.pid and rows[pid][2] == 'node'),
-                 'children': [{'pid': pid, 'parent_pid': rows[pid][0], 'resident_bytes': rows[pid][1],
-                               'program': rows[pid][2]} for pid in sorted(children)],
-                 'container_stats': self.latest_stats}
+        value = process_residency(rows, self.pid, time.monotonic())
+        value['container_stats'] = self.latest_stats
         self.samples.append(value)
         return value
 

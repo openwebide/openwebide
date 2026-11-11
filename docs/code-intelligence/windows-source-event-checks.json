@@ -382,5 +382,32 @@
     },
     "native_windows_runtime_verified": false,
     "pending_work": "Isolate the fixture parent, flush setup writes before watch registration and retain event diagnostics. Assertions remain unchanged. Run the corrected source on native Windows before claiming this behavior verified."
+  },
+  "native_windows_filtering_followup": {
+    "checked_on": "2026-11-11",
+    "commit": "9f16a87d3b8648cd3bea094703f177c0db7941ef",
+    "workflow_run": 43065287802,
+    "job": 130678596094,
+    "url": "https://github.com/openwebide/openwebide/actions/runs/43065287802/job/130678596094",
+    "status": "failed_directory_modification_during_unrelated_write",
+    "tests": {
+      "passed": 11,
+      "failed": 1,
+      "ignored": 0
+    },
+    "log_sha256": "93acd48f9dce531e2fc9533e44bc7f09279433263d473c6dc19de3a5fb812da2",
+    "event": {
+      "action": 3,
+      "name": ".tmpJ0bdDb",
+      "directory_owner": false
+    },
+    "assertion": "!kernel.poll().unwrap()",
+    "source": "bridge/src/languages/host/generation/events/windows/tests.rs:116",
+    "native_windows_runtime_verified": false,
+    "pending_work": "Parent-watch registrations now retain object kinds. Directory modification notifications do not stand in for child content changes; direct namespace notifications, file notifications and metadata observations remain. Verify the filtering and retirement on native Windows without weakening assertions or deadlines.",
+    "references": [
+      "https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-readdirectorychangesw",
+      "https://devblogs.microsoft.com/oldnewthing/20180712-00/?p=99225"
+    ]
   }
 }

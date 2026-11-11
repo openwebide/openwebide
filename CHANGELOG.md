@@ -9,6 +9,12 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Distinguish Windows parent notifications for watched files and directories. Ignore directory timestamp notifications from unrelated child writes while retaining file writes, directory namespace changes, metadata observations and bounded I/O retirement. Native Windows verification remains pending.
+
+- Preserve the checksum-pinned clangd license bytes when Git checks out files with CRLF conversion, retaining whitespace checks for other changes.
+
+- Follow independent process owners in native and container language-service measurements. Identify each outermost Node server once and include its owning watcher through whole-container pressure-eviction checks. Record fresh 128/512-module reload, client-switch and idle-pressure results in both modes without claiming complete memory stability or a prefetch improvement.
+
 - Bundle the independently installable Terraform 0.1 language plugin, with plugin-owned HCL syntax and seven dialects sharing terraform-ls. Verify unsaved cross-file intelligence, formatting and undo, diagnostics and provider lifecycle in both project modes without initializing infrastructure.
 
 - Bundle Rust and Go 0.3 plugins with API 9 project-input declarations and external build caches. Keep Rust Cargo output outside the project and preserve unsaved editor workflows in both modes.

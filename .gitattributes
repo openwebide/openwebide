@@ -1,2 +1,2 @@
 # Keep the checksum-pinned upstream license bytes, including its final blank line.
-tools/clangd-language-server/LICENSE.TXT whitespace=-blank-at-eof
+tools/clangd-language-server/LICENSE.TXT -text whitespace=-blank-at-eof
