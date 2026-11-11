@@ -9,7 +9,9 @@ complete selection plan without executing tests; --artifact accepts built WASM.
 """
 import argparse
 import json
+import os
 from pathlib import Path
+import shlex
 import shutil
 import subprocess
 
@@ -106,6 +108,8 @@ def main():
     parser.add_argument("--max-tests", type=int, default=64)
     parser.add_argument("--shard", type=str, default=None)
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--diagnostics-dir", type=Path,
+                        help="Retain verbose driver logs for independent long replay contracts")
     args = parser.parse_args()
     assert args.max_tests > 0, "Group size must be positive"
     shard_index, shard_total = parse_shard(args.shard)
@@ -119,11 +123,23 @@ def main():
                       "shardRuns": len(selected), "shard": f"{shard_index}/{shard_total}",
                       "planOnly": args.check}), flush=True)
     failures = 0
-    for artifact, arguments, count in selected:
+    for index, (artifact, arguments, count) in enumerate(selected):
+        environment = None
+        driver_log = None
+        if (args.diagnostics_dir is not None and not args.check
+                and arguments[0].rsplit("::", 1)[-1] in LONG_REPLAYS):
+            args.diagnostics_dir.mkdir(parents=True, exist_ok=True)
+            driver_log = (args.diagnostics_dir / f"{index + 1:02d}-{arguments[0].replace('::', '-')}.log").resolve()
+            environment = dict(os.environ)
+            driver_arguments = shlex.split(environment.get("CHROMEDRIVER_ARGS", ""))
+            environment["CHROMEDRIVER_ARGS"] = shlex.join([
+                *driver_arguments, "--verbose", "--readable-timestamp", "--log-path=" + str(driver_log),
+            ])
         print(json.dumps({"artifact": str(artifact), "tests": count, "matrix": arguments[0].rsplit("::", 1)[-1] in MATRICES,
-                          "independent": "--exact" in arguments}), flush=True)
+                          "independent": "--exact" in arguments, "filter": arguments[0],
+                          "driverLog": str(driver_log) if driver_log is not None else None}), flush=True)
         if not args.check:
-            result = subprocess.run([runner, str(artifact), *arguments], cwd=FRONTEND)
+            result = subprocess.run([runner, str(artifact), *arguments], cwd=FRONTEND, env=environment)
             failures += result.returncode != 0
     if failures:
         raise SystemExit(f"{failures} editor browser runs failed")

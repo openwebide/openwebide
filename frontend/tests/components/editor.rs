@@ -22759,6 +22759,18 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry(
         },
         state_actions::editor::EditorActions,
     };
+    let trace = |phase: &str, styled, reconnect, width, change| {
+        let message = format!(
+            "wrapped replay phase={phase} mode={mode:?} styled={styled} reconnect={reconnect} width={width} change={change} now={}",
+            js_sys::Date::now()
+        );
+        wasm_bindgen_test::console_log!("{message}");
+        // The test runner captures console.log in the page. console.dir remains
+        // native, so a verbose driver log can retain the last phase even when
+        // a blocked renderer prevents the runner from scraping page output.
+        web_sys::console::dir_1(&message.into());
+    };
+    trace("host-start", false, false, 0, 0);
     let language_host = super::language_support::LanguageHost::new().await;
     for (styled, reconnect, width) in [
         (false, false, 420),
@@ -22767,6 +22779,7 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry(
         (true, true, 420),
         (true, true, 264),
     ] {
+        trace("scenario", styled, reconnect, width, 0);
         let body = if reconnect {
             // Include the production near-limit String before any prior
             // edit changes its wrapping phase or retained probe origins.
@@ -22817,9 +22830,11 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry(
                 state.workspace.content.set(source.into());
                 view! { <style>{include_str!("../../styles.css")}</style><div style=format!("display:flex;width:{width}px;height:320px")>{editor_view(state)}</div> }
             });
+        trace("mounted", styled, reconnect, width, 0);
         // Establish the installed provider before measuring cross-edit reuse.
         // A provider generation change correctly invalidates older geometry.
         super::language_support::ready(&mounted.state).await;
+        trace("provider-ready", styled, reconnect, width, 0);
         let actions = slot.get().unwrap();
         let ready = |expected: &str| {
             mounted
@@ -22842,10 +22857,12 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry(
             || ready(&original),
         )
         .await;
+        trace("initial-geometry", styled, reconnect, width, 0);
         let input: web_sys::HtmlTextAreaElement =
             mounted.element(".editor-textarea").unchecked_into();
         let mut previous = original;
         for change in 0..4 {
+            trace("edit", styled, reconnect, width, change);
             let mut changed = previous.clone();
             let at = if change == 1 {
                 previous.find("word").unwrap()
@@ -22884,12 +22901,14 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry(
                     f64::from(change + 1),
                 )
                 .unwrap();
+            trace("input-admitted", styled, reconnect, width, change);
             super::support::wait_until_with_timeout(
                 "edited wrapped replay and complete geometry",
                 30_000,
                 || ready(&changed),
             )
             .await;
+            trace("edited-geometry", styled, reconnect, width, change);
             let reused = take_paragraph_suffix_probes();
             let current_reused = take_paragraph_current_probes();
             if change == 1 || (change < 3 && styled && reconnect) {
@@ -22910,10 +22929,12 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry(
                 .get_untracked()
                 .unwrap()
                 .paint;
+            trace("complete-oracle", styled, reconnect, width, change);
             assert!(
                 bounded_wrapped_matches_complete(&input, &scope, actions).await,
                 "{mode:?} styled={styled} reconnect={reconnect} change={change}: every retained glyph and complete extent"
             );
+            trace("complete-oracle-returned", styled, reconnect, width, change);
             let suffix = actions.paragraph_suffix(&scope, 0).unwrap();
             let prefix = actions.paragraph_prefix(&scope, 0).unwrap();
             let mut plan = actions.prepare_wrapped_paragraph(&scope, 0).unwrap();
@@ -22949,9 +22970,11 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry(
                 ready(&changed)
             })
             .await;
+            trace("owner-restored", styled, reconnect, width, change);
             previous = changed;
         }
         drop(mounted);
+        trace("scenario-finished", styled, reconnect, width, 4);
     }
     language_host.close().await;
 }

@@ -9,7 +9,11 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
-- Distinguish Windows parent notifications for watched files and directories. Ignore directory timestamp notifications from unrelated child writes while retaining file writes, directory namespace changes, metadata observations and bounded I/O retirement. Native Windows verification remains pending.
+- Enable manual runs of the complete CI workflow during release packaging.
+
+- Retain driver logs and phase markers for long editor replay checks, and include native memory readings and stop reasons when the recovery reuse assertion fails. These diagnostics do not establish a fix for the remaining hosted failures.
+
+- Distinguish Windows parent notifications for watched files and directories. Ignore directory timestamp notifications from unrelated child writes while retaining file writes, directory namespace changes, metadata observations and bounded I/O retirement. Native Windows source-generation, retirement and Git metadata checks now pass.
 
 - Preserve the checksum-pinned clangd license bytes when Git checks out files with CRLF conversion, retaining whitespace checks for other changes.
 

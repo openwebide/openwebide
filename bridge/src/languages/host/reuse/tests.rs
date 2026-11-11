@@ -104,9 +104,30 @@ async fn process_memory_eviction_and_backoff_preserve_both_clients_complete_dirt
         resumed["open"],
         json!({"a.notes":"A after","b.notes":"B of A"})
     );
+    let stopped_reasons = || {
+        fixture
+            .host
+            .inner
+            .entries
+            .lock()
+            .unwrap()
+            .values()
+            .filter(|entry| *entry.stopped.borrow())
+            .map(|entry| entry.failure.lock().unwrap().reason.clone())
+            .collect::<Vec<_>>()
+    };
+    let resumed_usage = fixture.host.resource_usage();
     tokio::time::sleep(Duration::from_millis(5100)).await;
+    let before_return_usage = fixture.host.resource_usage();
+    let before_return_stopped = stopped_reasons();
     let (_, returned) = fixture.query(&input("B", "a.notes", "B after", 3)).await;
-    assert_eq!(returned["pid"], resumed["pid"]);
+    let diagnostic = format!(
+        "resumed_usage={resumed_usage:?} before_return_usage={before_return_usage:?} before_return_stopped={before_return_stopped:?} returned_usage={:?} stopped={:?}",
+        fixture.host.resource_usage(),
+        stopped_reasons()
+    );
+    eprintln!("language memory reuse: {diagnostic}");
+    assert_eq!(returned["pid"], resumed["pid"], "{diagnostic}");
     assert_eq!(returned["open"], json!({"a.notes":"B after"}));
     assert_eq!(fixture.starts(), 2);
 }

@@ -2,6 +2,7 @@ name: CI
 
 on:
   pull_request:
+  workflow_dispatch:
   workflow_call:
 
 env:
@@ -526,7 +527,16 @@ jobs:
           # editor groups of at most 64 tests. Keep expensive matrices separate;
           # per-test readiness and every browser-run deadline are unchanged.
           WASM_BINDGEN_TEST_TIMEOUT: "300"
-        run: python3 tools/run-editor-browser-tests.py --shard "${{ matrix.shard }}"
+        run: python3 tools/run-editor-browser-tests.py --shard "${{ matrix.shard }}" --diagnostics-dir "$RUNNER_TEMP/editor-browser-diagnostics"
+
+      - name: Retain long replay driver diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: editor-browser-diagnostics-${{ strategy.job-index }}
+          path: ${{ runner.temp }}/editor-browser-diagnostics
+          if-no-files-found: ignore
+          retention-days: 7
 
   docker:
     runs-on: ubuntu-latest

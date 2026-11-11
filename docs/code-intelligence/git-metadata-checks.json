@@ -1,7 +1,7 @@
 {
   "format": 1,
   "checked_on": "2026-11-09",
-  "status": "passed_macos_linux_git_metadata_checkpoint_native_windows_pending",
+  "status": "passed_selected_native_windows_contracts_with_historical_macos_linux_checkpoints",
   "source_manifest_sha256": "463ebd1306beefd632000f2e670ece09e94364edd21cbdac6d48753c05acdc85",
   "source_files": 1793,
   "base_commit": "9283345d3545ded5461ba5ca1702709954270ced",
@@ -463,14 +463,14 @@
     "The first adapter fixture reused one branch name across two modes. Separate temporary branch names fixed the fixture; no production correction was needed for that failure.",
     "Review found that a symbolic Git-directory marker would be rejected as a regular file. The final source snapshot includes its correction and a dedicated real filesystem regression."
   ],
-  "native_windows_runtime_verified": false,
+  "native_windows_runtime_verified": true,
   "primary_protocol_sources": [
     "https://git-scm.com/docs/git-rev-parse",
     "https://git-scm.com/docs/git-symbolic-ref",
     "https://git-scm.com/docs/git-init"
   ],
   "limits": [
-    "Windows production and test code passes strict cross-compilation. Its configured native generation/repository CI checks have not executed.",
+    "The latest native Windows followup passes strict all-target Clippy, 14 source-generation tests and four Git metadata tests. These selected contracts do not establish every Windows filesystem or Git layout.",
     "These observations do not establish every unobserved Git/filesystem change: transient repository creation/removal, complete alias ABA, transitive Git configuration and every reftable table content remain unfinished.",
     "Current command fixtures prove round-trip rejection before start. A targeted queued-wait round-trip test remains open beyond the existing shared after-wait and before-dispatch context hooks.",
     "Public reusable-result context binding, result caching, editor apply-time freshness and automatic prefetch scheduling remain unfinished.",
@@ -485,5 +485,30 @@
       "docs/roadmap.md"
     ],
     "scope": "Documentation and this checkpoint only; all production and test source hashes match the frozen macOS/Linux checks."
+  },
+  "historical_checkpoint_note": "Existing source manifests and platform entries retain their dated historical source. The latest native Windows followup identifies its committed source separately. Current remaining work is listed in the roadmap.",
+  "latest_native_windows_followup": {
+    "checked_on": "2026-11-11",
+    "commit": "3b25ddf9a1de2933b9b871fbcb90c0dd9ca8d34f",
+    "workflow_run": 43082717019,
+    "job": 130750407568,
+    "url": "https://github.com/openwebide/openwebide/actions/runs/43082717019/job/130750407568",
+    "status": "passed_selected_native_windows_contracts",
+    "native_windows_runtime_verified": true,
+    "strict_all_target_clippy_exit_code": 0,
+    "source_generation": {
+      "passed": 14,
+      "failed": 0,
+      "ignored": 0,
+      "command": "cargo test -p openwebide-bridge --lib languages::host::generation -- --test-threads=1"
+    },
+    "git_metadata": {
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "command": "cargo test -p openwebide-bridge --lib languages::host::repository -- --test-threads=1"
+    },
+    "log_sha256": "0091f066727cec85e0da0f95cffd5dc2a7f7d5390df19219db5c9c3e2b2504b3",
+    "scope": "Native source notifications, filtering, directory metadata, retirement and the selected Git metadata contracts. This does not establish every Windows accepted-resource identity/recovery contract, filesystem or Git layout."
   }
 }

@@ -1,7 +1,10 @@
 """A failed browser group must not suppress the remaining verified inventory."""
 import importlib.util
+import os
 from pathlib import Path
+import shlex
 import subprocess
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -14,6 +17,40 @@ SPEC.loader.exec_module(RUNNER)
 
 
 class EditorBrowserRunnerTests(unittest.TestCase):
+    def test_diagnostics_preserve_commands_and_continue_after_replay_failure(self):
+        local = "editor::wrapped_paragraph_edits_reuse_exact_source_owned_geometry_local"
+        remote = "editor::wrapped_paragraph_edits_reuse_exact_source_owned_geometry_remote"
+        groups = [(Path("tests.wasm"), ["editor::", "--skip", "second"], 1),
+                  (Path("tests.wasm"), [local, "--exact"], 1),
+                  (Path("tests.wasm"), [remote, "--exact"], 1)]
+        with tempfile.TemporaryDirectory(prefix="editor driver logs ") as directory, \
+                patch("sys.argv", ["runner", "--artifact", "tests.wasm", "--diagnostics-dir", directory]), \
+                patch.dict(os.environ, {"CHROMEDRIVER_ARGS": "--allowed-ips=127.0.0.1", "WASM_BINDGEN_TEST_TIMEOUT": "300"}), \
+                patch.object(RUNNER.shutil, "which", return_value="runner"), \
+                patch.object(RUNNER, "plan", return_value=(groups, 3)), \
+                patch.object(RUNNER.subprocess, "run", side_effect=[
+                    subprocess.CompletedProcess([], 0),
+                    subprocess.CompletedProcess([], 1),
+                    subprocess.CompletedProcess([], 0),
+                ]) as run, \
+                patch("builtins.print"):
+            with self.assertRaisesRegex(SystemExit, "1 editor browser runs failed"):
+                RUNNER.main()
+            self.assertEqual(run.call_count, 3)
+            self.assertIsNone(run.call_args_list[0].kwargs["env"])
+            paths = []
+            for call, name in zip(run.call_args_list[1:], [local, remote]):
+                self.assertEqual(call.args[0], ["runner", "tests.wasm", name, "--exact"])
+                environment = call.kwargs["env"]
+                self.assertEqual(environment["WASM_BINDGEN_TEST_TIMEOUT"], "300")
+                arguments = shlex.split(environment["CHROMEDRIVER_ARGS"])
+                self.assertIn("--allowed-ips=127.0.0.1", arguments)
+                self.assertIn("--verbose", arguments)
+                path = Path(next(arg.removeprefix("--log-path=") for arg in arguments if arg.startswith("--log-path=")))
+                self.assertEqual(path.parent, Path(directory).resolve())
+                paths.append(path)
+            self.assertEqual(len(set(paths)), 2)
+
     def test_failure_runs_remaining_groups_and_still_fails(self):
         groups = [(Path("tests.wasm"), ["editor::", "--skip", "second"], 1),
                   (Path("tests.wasm"), ["second", "--exact"], 1)]

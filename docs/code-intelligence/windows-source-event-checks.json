@@ -1,7 +1,7 @@
 {
   "format": 1,
   "checked_on": "2026-11-09",
-  "status": "passed_cross_compilation_and_macos_regressions_native_windows_execution_pending",
+  "status": "passed_selected_native_windows_contracts_with_historical_macos_linux_checkpoints",
   "source_manifest_sha256": "34a97a1ada4c7d37d445c4a981d48daf33b609d5de71a0838bead880efac78ce",
   "source_files": 1788,
   "base_commit": "9283345d3545ded5461ba5ca1702709954270ced",
@@ -126,7 +126,7 @@
       "seconds": 4.51
     }
   ],
-  "native_windows_runtime_verified": false,
+  "native_windows_runtime_verified": true,
   "implementation": "The existing generation tracker and Events manager retain shared source selection, reconciliation, cancellation and atomic publication. A Windows primitive uses explicit nonrecursive ReadDirectoryChangesW reads with a separate event for every read. Pending reads retain owned handles, OVERLAPPED memory, buffers and resource permits until GetOverlappedResult confirms completion, including cancellation retirement.",
   "bounds": {
     "notification_handles_per_process_maximum": 1024,
@@ -161,7 +161,7 @@
     ]
   },
   "limits": [
-    "Cross-compilation checks Windows production and test code but does not establish actual Windows event delivery, driver cancellation, native identity behavior or unsupported/network filesystem behavior. Native Windows execution remains required.",
+    "Cross-compilation alone did not establish native event delivery. The latest native Windows followup now passes 14 source-generation tests and four Git metadata tests, including notification filtering, directory metadata and cancellation retirement; unsupported filesystems and broader accepted-resource identity/recovery remain outside these selected checks.",
     "The initial macOS bridge library and both authenticated transport regressions passed. The Linux followup additionally ran strict bridge lint, all 16 source-generation tests and both authenticated transport contracts against the updated common code; its complete full bridge suite remains at the preceding historical checkpoint.",
     "Resource permits remain charged if cancellation does not complete. Cleanup-service failure deliberately retains pending memory and permits instead of freeing kernel-visible storage.",
     "Directory notifications may not report writes through outside-directory hard links. Metadata observations supplement notifications; complete unobserved-change guarantees remain unfinished.",
@@ -409,5 +409,30 @@
       "https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-readdirectorychangesw",
       "https://devblogs.microsoft.com/oldnewthing/20180712-00/?p=99225"
     ]
+  },
+  "historical_checkpoint_note": "Existing source manifests and platform entries retain their dated historical source. The latest native Windows followup identifies its committed source separately. Current remaining work is listed in the roadmap.",
+  "latest_native_windows_followup": {
+    "checked_on": "2026-11-11",
+    "commit": "3b25ddf9a1de2933b9b871fbcb90c0dd9ca8d34f",
+    "workflow_run": 43082717019,
+    "job": 130750407568,
+    "url": "https://github.com/openwebide/openwebide/actions/runs/43082717019/job/130750407568",
+    "status": "passed_selected_native_windows_contracts",
+    "native_windows_runtime_verified": true,
+    "strict_all_target_clippy_exit_code": 0,
+    "source_generation": {
+      "passed": 14,
+      "failed": 0,
+      "ignored": 0,
+      "command": "cargo test -p openwebide-bridge --lib languages::host::generation -- --test-threads=1"
+    },
+    "git_metadata": {
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "command": "cargo test -p openwebide-bridge --lib languages::host::repository -- --test-threads=1"
+    },
+    "log_sha256": "0091f066727cec85e0da0f95cffd5dc2a7f7d5390df19219db5c9c3e2b2504b3",
+    "scope": "Native source notifications, filtering, directory metadata, retirement and the selected Git metadata contracts. This does not establish every Windows accepted-resource identity/recovery contract, filesystem or Git layout."
   }
 }

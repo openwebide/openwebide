@@ -1317,7 +1317,8 @@ Remaining work:
   and command dispatch. Index refreshes preserve the service. Required metadata
   has reserved worker/notification capacity so optional source scans cannot
   exhaust it. The [checkpoint](code-intelligence/git-metadata-checks.json) records
-  macOS/Linux contracts and the remaining native Windows verification.
+  macOS/Linux contracts and selected native Windows Git metadata and
+  source-generation checks.
   Complete unobserved Git changes and apply-time freshness remain open.
   API 9 declared configuration/dependency inputs provide bounded disk snapshots
   checked around native requests, rejecting analysis spanning matching changes in
@@ -1341,10 +1342,8 @@ Remaining work:
   hard-link registrations and rejects watch loss or queue overflow. Windows now
   implements nonrecursive directory notifications with owned pending I/O, unique
   completion events, one retirement worker and shared handle/buffer budgets.
-  Native Windows runs found directory-modification notifications during unrelated
-  writes. Parent watches now distinguish file content from directory namespace
-  changes; direct child watches and metadata observations retain their coverage.
-  Finish native verification of this filtering and the generation/retirement cases
+  Native Windows CI now verifies parent notification filtering, directory metadata
+  changes and source-generation/retirement contracts
   ([checkpoint](code-intelligence/windows-source-event-checks.json)). Native intelligence
   protocol 2 now returns bounded, result-bound analysis contexts and validates them
   against the original live service through both authenticated adapters, without
@@ -1443,10 +1442,17 @@ Remaining work:
   and damaged/future records have separate recovery checks
   ([unwitnessed creation checkpoint](code-intelligence/unwitnessed-creation-checks.json)).
   Finish reusable-result keys, filesystem-event coverage and transitive runtime/toolchain
-  invalidation. Windows identity/change-time and notification behavior still need
-  native verification.
+  invalidation. Complete native Windows file identity/change-time and accepted-resource
+  recovery verification beyond the selected notification and Git metadata contracts.
 - Run the same service/cache contracts against both adapters, including reconnect,
   concurrent overlays, cancellation, eviction, folder-access recovery and updates.
+  Investigate the earlier hosted Linux memory-recovery reuse failure. Both native
+  Linux editor partitions, including full Local and Remote wrapped replays, now
+  pass on the committed followup; the earlier renderer stall did not recur.
+  Keep complete fixtures, assertions and existing deadlines while collecting
+  phase logs and native memory stop reasons
+  ([hosted checkpoint](code-intelligence/hosted-checks.json)). Passing reruns do not
+  establish the earlier failures' cause.
   Benchmark resource use on a small homelab before claiming prefetch improvements.
 
 Extend the public [language contribution contract](plugins.md#language-support),

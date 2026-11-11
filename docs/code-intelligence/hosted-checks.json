@@ -1,0 +1,213 @@
+{
+  "format": 1,
+  "checked_on": "2026-11-11",
+  "application_commit": "9f16a87d3b8648cd3bea094703f177c0db7941ef",
+  "release_workflow_run": 43065287802,
+  "status": "hosted_memory_reuse_failure_unresolved_selected_other_contracts_passed",
+  "cases": [
+    {
+      "name": "Native Windows source notifications",
+      "job": 130678596094,
+      "url": "https://github.com/openwebide/openwebide/actions/runs/43065287802/job/130678596094",
+      "status": "failed_unrelated_write_invalidation",
+      "passed": 11,
+      "failed": 1,
+      "log_sha256": "93acd48f9dce531e2fc9533e44bc7f09279433263d473c6dc19de3a5fb812da2",
+      "followup": "The committed native Windows followup below passes all 14 generation and four Git metadata tests plus strict all-target Clippy. Historical failures remain recorded above."
+    },
+    {
+      "name": "Native Linux memory recovery and reuse",
+      "job": 130678596018,
+      "url": "https://github.com/openwebide/openwebide/actions/runs/43065287802/job/130678596018",
+      "status": "failed_recovered_process_continuity",
+      "passed": 456,
+      "failed": 1,
+      "ignored": 1,
+      "test": "languages::host::reuse::tests::process_memory_eviction_and_backoff_preserve_both_clients_complete_dirty_sources",
+      "returned_pid": 86611,
+      "resumed_pid": 86219,
+      "log_sha256": "3c0184b0b96c31131f0048d5d6f15bf29bf6acc76c4328d33e51125df23c55bb",
+      "followup": "Capture the original 32 MiB per-service / 64 MiB total policy readings and retained stop reasons before deciding whether the fixture or lifecycle/accounting policy is wrong. Preserve the 96 MiB allocation, backoff and all source/PID assertions."
+    },
+    {
+      "name": "Native Linux Chrome editor partition 2/2",
+      "job": 130678595928,
+      "url": "https://github.com/openwebide/openwebide/actions/runs/43065287802/job/130678595928",
+      "status": "failed_renderer_poll_during_local_wrapped_replay",
+      "test": "editor::wrapped_paragraph_edits_reuse_exact_source_owned_geometry_local",
+      "selection": "Confirmed against the original compiled inventory and disjoint shard plan.",
+      "log_sha256": "fee903b1f58ebfbff514b6bd356470c80d5a7e2fcc0515f3c9581139b47ac327",
+      "observations": [
+        "ChromeDriver reported a 30-second renderer response timeout.",
+        "The official 0.2.128 runner deserialized the error object as an output chunk, masking it as missing field chunk.",
+        "The SIGKILL status reported for the driver during cleanup does not prove an OOM event."
+      ],
+      "followup": "Both native Linux editor partitions pass on the committed followup below, including the same full Local and Remote wrapped fixtures. The earlier stall did not recur; its cause is not established. Phase and driver logs remain available for a repeated failure."
+    }
+  ],
+  "limits": [
+    "Historical failures and selected passing followups are recorded separately; only explicitly passing cases establish the stated native verification.",
+    "A passing local macOS suite does not establish the native Linux or Windows contract.",
+    "The complete code-intelligence roadmap remains unfinished."
+  ],
+  "latest_committed_followups": {
+    "commit": "3b25ddf9a1de2933b9b871fbcb90c0dd9ca8d34f",
+    "workflow_run": 43082717019,
+    "native_windows": {
+      "checked_on": "2026-11-11",
+      "commit": "3b25ddf9a1de2933b9b871fbcb90c0dd9ca8d34f",
+      "workflow_run": 43082717019,
+      "job": 130750407568,
+      "url": "https://github.com/openwebide/openwebide/actions/runs/43082717019/job/130750407568",
+      "status": "passed_selected_native_windows_contracts",
+      "native_windows_runtime_verified": true,
+      "strict_all_target_clippy_exit_code": 0,
+      "source_generation": {
+        "passed": 14,
+        "failed": 0,
+        "ignored": 0,
+        "command": "cargo test -p openwebide-bridge --lib languages::host::generation -- --test-threads=1"
+      },
+      "git_metadata": {
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "command": "cargo test -p openwebide-bridge --lib languages::host::repository -- --test-threads=1"
+      },
+      "log_sha256": "0091f066727cec85e0da0f95cffd5dc2a7f7d5390df19219db5c9c3e2b2504b3",
+      "scope": "Native source notifications, filtering, directory metadata, retirement and the selected Git metadata contracts. This does not establish every Windows accepted-resource identity/recovery contract, filesystem or Git layout."
+    },
+    "native_linux_editor": {
+      "status": "both_native_linux_editor_partitions_passed",
+      "cases": [
+        {
+          "shard": 1,
+          "job": 130750407758,
+          "tests_passed": 160,
+          "nonzero_browser_runs": 6,
+          "wrapped_replay": [
+            "2026-11-11T19:48:20.3918280Z test editor::wrapped_paragraph_edits_reuse_exact_source_owned_geometry_remote ... ok"
+          ],
+          "log_sha256": "642a2dea96b2698a0a098ed45d35d5655d07972f41962a5602180ea604760994"
+        },
+        {
+          "shard": 2,
+          "job": 130750407643,
+          "tests_passed": 99,
+          "nonzero_browser_runs": 5,
+          "wrapped_replay": [
+            "2026-11-11T19:44:41.2729870Z test editor::wrapped_paragraph_edits_reuse_exact_source_owned_geometry_local ... ok"
+          ],
+          "log_sha256": "4d09219375c45dc0f01977494ea0b5a4e004ceef181cf2f4c0b581eee3e97607"
+        }
+      ],
+      "tests_passed": 259,
+      "browser_runs": 11,
+      "failed": 0,
+      "ignored": 0,
+      "limits": [
+        "The earlier renderer failure did not recur; these passing reruns do not identify its cause.",
+        "No numerical editor-performance completion claim.",
+        "These selected checks do not establish the outcome of the complete release workflow."
+      ]
+    },
+    "native_linux_memory": {
+      "commit": "3b25ddf9a1de2933b9b871fbcb90c0dd9ca8d34f",
+      "workflow_run": 43082717019,
+      "job": 130750407596,
+      "url": "https://github.com/openwebide/openwebide/actions/runs/43082717019/job/130750407596",
+      "status": "failed_recovered_process_continuity_again",
+      "passed": 456,
+      "failed": 1,
+      "ignored": 1,
+      "returned_pid": 86190,
+      "resumed_pid": 85783,
+      "log_sha256": "94de80d4c37573a40b2bda564467746742a9650714937ce845cd52c62df2162c",
+      "followup": "Retain the original memory limits and collect the new resource/stop-reason diagnostics before changing the fixture or lifecycle policy."
+    }
+  },
+  "local_diagnostic_checks": {
+    "source_manifest_sha256": "301a5666692bb2ca4b812758148e4557dc746e21db4a3b58293c335d37c7e8fb",
+    "native_linux_arm64": {
+      "python": "3.11.2",
+      "original_policy_attempts": 3,
+      "service_limit_bytes": 33554432,
+      "total_limit_bytes": 67108864,
+      "deliberate_allocation_bytes": 100663296,
+      "readings": [
+        {
+          "case": "original-policy-attempt-1",
+          "before_return_resident_bytes": 24989696,
+          "seconds": 5.24
+        },
+        {
+          "case": "original-policy-attempt-2",
+          "before_return_resident_bytes": 25001984,
+          "seconds": 5.21
+        },
+        {
+          "case": "original-policy-attempt-3",
+          "before_return_resident_bytes": 24981504,
+          "seconds": 5.23
+        }
+      ],
+      "test_binary_sha256": "3ba0eaa58cc7af27bf209b562ae364d7dd22ee1d10a83024203cd0ef42b6866d",
+      "matching_bridge_sha256": "aad2ca942014b4ec495b1cb6f73434db8a53854c2d219404e39e97fa4d32a2a3"
+    },
+    "macos_wrapped_replays": [
+      {
+        "mode": "local",
+        "native_dir_events": 146,
+        "phase_counts": {
+          "host-start": 1,
+          "scenario": 5,
+          "mounted": 5,
+          "provider-ready": 5,
+          "initial-geometry": 5,
+          "edit": 20,
+          "input-admitted": 20,
+          "edited-geometry": 20,
+          "complete-oracle": 20,
+          "complete-oracle-returned": 20,
+          "owner-restored": 20,
+          "scenario-finished": 5
+        },
+        "seconds_including_startup_cleanup": 75.14,
+        "driver_log_sha256": "fe127b525cb22ee129a327c799c91b5ef294c59f7515747fe3a15f171cd3477b",
+        "driver_log_bytes": 1431681
+      },
+      {
+        "mode": "remote",
+        "native_dir_events": 146,
+        "phase_counts": {
+          "host-start": 1,
+          "scenario": 5,
+          "mounted": 5,
+          "provider-ready": 5,
+          "initial-geometry": 5,
+          "edit": 20,
+          "input-admitted": 20,
+          "edited-geometry": 20,
+          "complete-oracle": 20,
+          "complete-oracle-returned": 20,
+          "owner-restored": 20,
+          "scenario-finished": 5
+        },
+        "seconds_including_startup_cleanup": 88.79,
+        "driver_log_sha256": "65271069dfec087f39ae2854537035bee98fda490c740592736de08969c7def6",
+        "driver_log_bytes": 1115566
+      }
+    ],
+    "limits": [
+      "Local passing diagnostics do not identify the causes of earlier hosted failures.",
+      "Each macOS mode retained all five scenarios and four edits per scenario, with all 146 native console.dir phase events decoded.",
+      "Compilation OOM and a Cargo recompilation deadline were separate harness attempts, not passing fixture observations.",
+      "No numerical editor-performance or complete code-intelligence completion claim."
+    ]
+  },
+  "diagnostic_workflow": {
+    "path": ".github/workflows/ci.yml",
+    "manual_trigger": "workflow_dispatch",
+    "scope": "Runs the complete existing CI job matrix independently of serialized release packaging. No job, assertion, fixture or deadline is removed."
+  }
+}
