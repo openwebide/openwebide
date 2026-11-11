@@ -7,6 +7,37 @@ pub async fn sleep_ms(ms: i32) {
     let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
 }
 
+/// Bound an observation, cancelling its timer when the work or its observer is
+/// dropped. Mutation transports must own accepted work independently.
+pub(crate) async fn with_deadline<T>(
+    work: impl std::future::Future<Output = T>,
+    milliseconds: u32,
+) -> Option<T> {
+    use futures::{channel::oneshot, future::Either};
+    use leptos::leptos_dom::helpers::{TimeoutHandle, set_timeout_with_handle};
+    struct Timer(Option<TimeoutHandle>);
+    impl Drop for Timer {
+        fn drop(&mut self) {
+            if let Some(timer) = self.0.take() {
+                timer.clear();
+            }
+        }
+    }
+    let (send, deadline) = oneshot::channel();
+    let timer = set_timeout_with_handle(
+        move || {
+            let _ = send.send(());
+        },
+        std::time::Duration::from_millis(u64::from(milliseconds)),
+    )
+    .ok()?;
+    let _timer = Timer(Some(timer));
+    match futures::future::select(Box::pin(work), deadline).await {
+        Either::Left((result, _)) => Some(result),
+        Either::Right(_) => None,
+    }
+}
+
 #[wasm_bindgen::prelude::wasm_bindgen(inline_js = r#"
 export function yield_browser_task() {
     if (globalThis.scheduler?.yield) return globalThis.scheduler.yield();

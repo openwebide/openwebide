@@ -1,0 +1,525 @@
+{
+  "format": 1,
+  "checked_on": "2026-11-10",
+  "status": "passed_folder_proof_cleanup_checkpoint",
+  "source_manifest_sha256": "fec7c09108675c2fcdf27dadc022cc9f34719abcfa37d17fef7f4fe882bf0871",
+  "source_files": 1822,
+  "base_commit": "9283345d3545ded5461ba5ca1702709954270ced",
+  "working_tree": true,
+  "relevant_source_sha256": {
+    "bridge/src/folder_coordination.rs": "7d1174b09d645556fde7932947fba7ca8a33edc68337a89727ec787f09eba720",
+    "bridge/src/workspace_transactions/companion.rs": "f58c8841e32d70f00422fef4243b515547b5d4094204a58b070cc95016786447",
+    "bridge/src/workspace_transactions/companion/files.rs": "bf9a588c2731d9fa9c1a55529e7c85c4205232ea7244afc19613514b53473b01",
+    "bridge/src/workspace_transactions/companion/proof.rs": "c9fc62f9b573253576f281bd1636a53fcd60cf92354edb9ab0517a095b75bfd9",
+    "bridge/src/workspace_transactions/companion/tests.rs": "d60e7304654386be4ed23e3ac0a1cf3c51f75acc36c9037004bdb0d512c2cbde",
+    "bridge/src/workspace_transactions/companion/tests/cleanup.rs": "b6c75ed84973d50cc7d1ea0c8f88e57e70548d6cefb0c96e40fd9a524596310a"
+  },
+  "shared_implementation": "The companion owns folder proofs independently of the browser orchestration. Abandoned proof cleanup uses the same bounded Coordinator and native OS folder gate as accepted workspace operations. This native primitive serves the shared folder/resource facade; feature and transaction policy remain in the existing shared interpreter.",
+  "contract": [
+    "Proof creation and explicit prove/close cleanup borrow their current native folder lease. Successful explicit cleanup disarms the destructor.",
+    "Expiry, supersession, unrelated-root sweeping and host drop transfer the original captured proof to a registered bounded native worker. The worker acquires that proof folder before checking its inode and secret and removing the file.",
+    "No deletion runs directly from Drop. A missing runtime, shutdown, exhausted worker/queue/handle capacity, changed physical folder or failed lock acquisition preserves the proof. Registration precedes spawning, so shutdown includes admitted cleanup.",
+    "Cleanup rechecks the proof after waiting. Changed contents, replacement inodes and replacement folder paths are preserved. It does not borrow an unrelated request folder gate.",
+    "The OS ancestor/root lock set excludes nested folders and physical aliases across cooperating bridge processes. A frozen owner retains its lock; proof expiry never steals ownership by age."
+  ],
+  "coverage": [
+    "Before the fix, a real HTTP folder session expired after 45 seconds and its proof was deleted while a separate Python process still held an exclusive native lock on the actual directory.",
+    "The same actual HTTP expiry contract now holds the proof unchanged across expiry, releases the foreign lock and requires cleanup to finish afterward on the matching rebuilt bridge binary.",
+    "Eight native regressions cover original-gate waiting, sweep under an unrelated gate, host drop, later contents and replacement inodes, changed folder paths, shutdown and full worker capacity, stopped runtime, and another process holding an ancestor through a symlink alias.",
+    "Existing prove/close behavior, exact proof identity/content preservation and full bridge unit, integration and documentation suites remain covered on macOS and Linux."
+  ],
+  "red_regression": {
+    "status": "failed_expected_red",
+    "contract": "expired proof must remain unchanged while another process holds the physical folder gate",
+    "preserved_while_foreign_gate_held": false,
+    "seconds": 45.05,
+    "binary_sha256": "2dad6a213721db1940ede6ba0d752b0eaa49b27d72c78ef8eb066de761e4cf4b",
+    "source_sha256": "fd074ff6ceeb1bb45765269dd8d67e1a32863ee444e7371e12ceae94dde34687"
+  },
+  "green_regression": {
+    "status": "passed",
+    "contract": "expired proof must remain unchanged while another process holds the physical folder gate",
+    "preserved_while_foreign_gate_held": true,
+    "seconds": 55.01,
+    "binary_sha256": "cd798c7502d511aa5c3933a4e27c5752ee0006abaf33309e0eb556dbc6116c94",
+    "source_sha256": "fec7c09108675c2fcdf27dadc022cc9f34719abcfa37d17fef7f4fe882bf0871",
+    "removed_after_gate_release": true
+  },
+  "matching_debug_binary": {
+    "source_sha256": "fec7c09108675c2fcdf27dadc022cc9f34719abcfa37d17fef7f4fe882bf0871",
+    "path": "/Users/BWestnes/source/repos/openwebide/openwebide/target/debug/openwebide-bridge",
+    "bytes": 190787296,
+    "sha256": "cd798c7502d511aa5c3933a4e27c5752ee0006abaf33309e0eb556dbc6116c94"
+  },
+  "macos": {
+    "architecture": "arm64",
+    "kernel": "27.2.0",
+    "checks": [
+      {
+        "case": "format",
+        "command": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--check"
+        ],
+        "returncode": 0,
+        "seconds": 2.82,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "test_results": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "binary",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--bin",
+          "openwebide-bridge",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 13.06,
+        "log_sha256": "5efc742774e1e8f1a99069bcf41a36534100ee70ffe739def84f086b948e6411",
+        "test_results": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "native-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 41.33,
+        "log_sha256": "d005df1bdf60eed529050572081455633d6ecdc462d37ecd9389408e0f94929a",
+        "test_results": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "native-tests",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 251.27,
+        "log_sha256": "1de1dc5a69bcc60c1a513e3311d2a1359eb218a4a5a4b8971167114aa1bf7a09",
+        "test_results": [
+          {
+            "passed": 381,
+            "failed": 0,
+            "ignored": 1
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 9,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 8,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 2
+          },
+          {
+            "passed": 4,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 16,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 7,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 19,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 1
+          },
+          {
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 1
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 11,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          }
+        ],
+        "ignored_tests": [
+          "test plugins::tests::official_marketplace_reference_package_installs_and_loads_on_both_host_scopes ... ignored, Smoke test against the published official marketplace; requires network access",
+          "test ssh_administration_inspects_and_changes_the_target_and_handles_interactive_sudo ... ignored, Run docker/host-admin-test/check.sh to provision an isolated SSH target and agent",
+          "test ssh_update_adapter_pins_both_deployments_and_survives_ssh_disconnect ... ignored, Run docker/host-admin-test/check.sh for the isolated SSH updater fixture",
+          "test first_party_panels_publish_once_through_real_paired_and_backend_bridge_adapters ... ignored, Requires the compiled marketplace PR Review component and manifest",
+          "test scheduling_component_uses_shared_records_events_and_raw_runs_in_both_modes ... ignored, Requires the separately built Scheduling component and source manifest paths"
+        ]
+      },
+      {
+        "case": "windows-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 50.79,
+        "log_sha256": "fbefa4f12c6b93315acfbceb8fed6b4e9f217c8642e9ce1417f9c49b4ae2b035",
+        "test_results": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "expiry-client",
+        "command": [
+          "python3",
+          "/tmp/openwebide-proof-cleanup-green.py"
+        ],
+        "returncode": 0,
+        "seconds": 55.28,
+        "log_sha256": "685b72a8f5dd58d4a0f0f7c88ecbca5a514f7b8103bd9ae41cadf4a9f2e8e450",
+        "test_results": [],
+        "ignored_tests": []
+      }
+    ]
+  },
+  "linux": {
+    "tooling_image_id": "sha256:916206a1aa179fdfeb1b73529dc6a04c84b2ccd2a12dfa4577cb6fda9019ab1a",
+    "runtime": {
+      "uid": 502,
+      "kernel": "7.0.14-linuxkit",
+      "architecture": "aarch64",
+      "rustdoc_version": "rustdoc 1.98.1 (48a229cea 2026-09-01)",
+      "filesystem": "overlayfs",
+      "cpu_max": "200000 100000",
+      "memory_max": "4294967296",
+      "memory_swap_max": "0"
+    },
+    "container_configuration": {
+      "image_id": "sha256:916206a1aa179fdfeb1b73529dc6a04c84b2ccd2a12dfa4577cb6fda9019ab1a",
+      "cpu": 2000000000,
+      "memory": 4294967296,
+      "memory_plus_swap": 4294967296
+    },
+    "oom_killed": false,
+    "checks": [
+      {
+        "case": "build",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--bin",
+          "openwebide-bridge",
+          "--locked",
+          "--offline"
+        ],
+        "returncode": 0,
+        "seconds": 44.29,
+        "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "memory_peak_bytes": 2653609984,
+        "log_sha256": "cf1de9af492c8096ebd68977c02ba477eac921aa47892a720f42be8d5f747497",
+        "test_results": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--locked",
+          "--offline",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 26.04,
+        "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "memory_peak_bytes": 2653609984,
+        "log_sha256": "1b4acc289de76ef483e284c2212605204d79449d9f61d7c8edbd112419d1a2a9",
+        "test_results": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "native",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--locked",
+          "--offline",
+          "--jobs",
+          "1"
+        ],
+        "returncode": 0,
+        "seconds": 378.47,
+        "memory_events": "low 0\nhigh 0\nmax 1531\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "memory_peak_bytes": 4294967296,
+        "log_sha256": "59eee38094025a8df88e9614e94aceb5800987ce0e6bc6a84c874b939f54d4b7",
+        "test_results": [
+          {
+            "passed": 385,
+            "failed": 0,
+            "ignored": 1
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 9,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 8,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 2
+          },
+          {
+            "passed": 4,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 16,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 7,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 19,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 1
+          },
+          {
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 1
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 11,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          }
+        ],
+        "ignored_tests": [
+          "test plugins::tests::official_marketplace_reference_package_installs_and_loads_on_both_host_scopes ... ignored, Smoke test against the published official marketplace; requires network access",
+          "test ssh_administration_inspects_and_changes_the_target_and_handles_interactive_sudo ... ignored, Run docker/host-admin-test/check.sh to provision an isolated SSH target and agent",
+          "test ssh_update_adapter_pins_both_deployments_and_survives_ssh_disconnect ... ignored, Run docker/host-admin-test/check.sh for the isolated SSH updater fixture",
+          "test first_party_panels_publish_once_through_real_paired_and_backend_bridge_adapters ... ignored, Requires the compiled marketplace PR Review component and manifest",
+          "test scheduling_component_uses_shared_records_events_and_raw_runs_in_both_modes ... ignored, Requires the separately built Scheduling component and source manifest paths"
+        ]
+      }
+    ],
+    "first_attempt": {
+      "status": "linker_killed_before_tests",
+      "cases": [
+        {
+          "case": "build",
+          "command": [
+            "cargo",
+            "build",
+            "-p",
+            "openwebide-bridge",
+            "--bin",
+            "openwebide-bridge",
+            "--locked",
+            "--offline"
+          ],
+          "returncode": 0,
+          "seconds": 98.17,
+          "log_sha256": "ee0f263e2c71e9925857419afd823802c20cf3d470ea28f18ab550f4c5b1314b"
+        },
+        {
+          "case": "clippy",
+          "command": [
+            "cargo",
+            "clippy",
+            "-p",
+            "openwebide-bridge",
+            "--all-targets",
+            "--locked",
+            "--offline",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "returncode": 0,
+          "seconds": 63.59,
+          "log_sha256": "a1dcd00fae5559cd7eb0f63dc60623b011303014a6bd5fed40cabbcd1eecc0e9"
+        },
+        {
+          "case": "native",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--locked",
+            "--offline"
+          ],
+          "returncode": 101,
+          "seconds": 78.06,
+          "log_sha256": "aab2d9e3aca2ebc8e7c5c0d572386f5ed4420c13391502daac70bda39bd47e38"
+        }
+      ],
+      "retry": "The same full suite and source ran with --jobs 1, retaining 2 CPU/4 GiB/no-swap limits and all deadlines. The first linker failure is not counted as passing."
+    }
+  },
+  "limits": [
+    "This closes private native proof cleanup coverage only. Global durable pending authority across aliases, projects, accounts/profiles and every NativeFsVfs/backend-WASI/browser-FSA writer remains unfinished.",
+    "Deferred cleanup can preserve an orphan private proof if safe admission or runtime execution is unavailable. It never removes another file to make cleanup appear successful.",
+    "Directory locks coordinate managed participants; they do not force arbitrary external editors to cooperate. This does not establish browser-FSA accepted-I/O quiescence.",
+    "The prior prepared-cancellation checkpoint retains its own source and production browser proofs. This change has a real native HTTP expiry regression and full bridge suites; it does not claim a new production browser/PWA permission run.",
+    "Windows strict cross-compilation verifies unaffected platform boundaries; the native proof adapter is supported on macOS/Linux, not Windows.",
+    "Linux uses the pinned tooling image at 2 CPU/4 GiB/no swap. The first parallel build lost its linker to signal 9 before tests; the identical full suite retries with one build job. Successful case records include cgroup peak and memory events. Outer exceptions enable the real inner bubblewrap compiler. This is not a production-image or memory-performance measurement.",
+    "Provisioned marketplace/component/SSH/performance fixture ignores are recorded by name rather than counted as passing.",
+    "Non-LSP/Git and escaped child lifetimes, broader source/apply freshness, hard cache bounds, memory/prefetch work, Terraform publication, full required local CI and exact-head release verification remain unfinished. Nothing is committed or published by this checkpoint."
+  ],
+  "post_check_updates": [
+    "CHANGELOG.md",
+    "docs/roadmap.md",
+    "docs/code-intelligence/folder-proof-cleanup-checks.json"
+  ]
+}

@@ -7,6 +7,98 @@ use wasm_bindgen_test::*;
 use super::support::{Mounted, editor_view, mount_test, settle, wait_until};
 
 #[wasm_bindgen_test]
+async fn snippet_keys_linked_input_choices_and_focus_escape_share_both_modes() {
+    use openwebide_core::{
+        WorkspaceMode,
+        editor::{Document, Edit, Selection, snippet::Snippet},
+    };
+    use std::collections::BTreeMap;
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let snippet =
+            Snippet::expand("${1:name} = $1;\n${2|one,two|}$0", &BTreeMap::new()).unwrap();
+        let mut document = Document::new("");
+        document
+            .apply(
+                vec![Edit::replace(0..0, snippet.text.clone())],
+                vec![Selection::caret(0)],
+                None,
+            )
+            .unwrap();
+        document.start_snippet(snippet).unwrap();
+        let initial = document.text().to_owned();
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            state.workspace.open_file.set(Some("snippet.txt".into()));
+            state.workspace.content.set(initial.into());
+            state.workspace.editor_documents.update(|documents| {
+                documents.insert((1, "snippet.txt".into()), document);
+            });
+            editor_view(state)
+        });
+        let textarea: web_sys::HtmlTextAreaElement =
+            mounted.element(".editor-textarea").unchecked_into();
+        let actions = mounted.state.editor_actions();
+        wait_until("snippet native input is ready", || {
+            textarea.value() == "name = name;\none"
+                && textarea
+                    .get_attribute("data-editor-native-preparing")
+                    .as_deref()
+                    == Some("false")
+        })
+        .await;
+        textarea.focus().unwrap();
+        textarea.set_selection_range(0, 4).unwrap();
+        textarea.set_value("文😀 = name;\none");
+        textarea.set_selection_range(3, 3).unwrap();
+        let init = web_sys::InputEventInit::new();
+        init.set_bubbles(true);
+        init.set_input_type("insertText");
+        init.set_data(Some("文😀"));
+        textarea
+            .dispatch_event(&web_sys::InputEvent::new_with_event_init_dict("input", &init).unwrap())
+            .unwrap();
+        wait_until("snippet linked native edit", || {
+            mounted.state.workspace.content.get_untracked() == "文😀 = 文😀;\none"
+        })
+        .await;
+        assert_eq!(actions.current_selections().len(), 2);
+        editor_key(&textarea, "m", true, false);
+        assert!(
+            !editor_key(&textarea, "Tab", false, false).default_prevented(),
+            "Tab focus mode must leave browser navigation available during a snippet"
+        );
+        assert_eq!(actions.snippet_state(), (true, false));
+        editor_key(&textarea, "m", true, false);
+        let tab = editor_key(&textarea, "Tab", false, false);
+        assert!(tab.default_prevented());
+        let source = actions.source();
+        let selection = actions.current_selection().unwrap();
+        assert_eq!(&source[selection.range()], "one");
+        editor_alt_key(&textarea, "ArrowDown", false);
+        wait_until("snippet choice is published", || {
+            mounted
+                .state
+                .workspace
+                .content
+                .get_untracked()
+                .ends_with("two")
+                && textarea.value().ends_with("two")
+        })
+        .await;
+        editor_key(&textarea, "Tab", false, true);
+        assert_eq!(actions.current_selections().len(), 2);
+        assert!(editor_key(&textarea, "Escape", false, false).default_prevented());
+        assert_eq!(actions.snippet_state(), (false, false));
+        assert_eq!(actions.current_selections().len(), 1);
+        drop(mounted);
+    }
+}
+
+#[wasm_bindgen_test]
 async fn cancelled_recovery_disk_decoding_keeps_overwrite_permits_in_both_modes() {
     use openwebide_core::WorkspaceMode;
     use openwebide_frontend::{
@@ -5368,22 +5460,50 @@ async fn inputs_coalesce_without_delaying_edits_or_save() {
     let textarea: web_sys::HtmlTextAreaElement =
         mounted.element(".editor-textarea").unchecked_into();
     textarea.focus().unwrap();
+    let save: web_sys::HtmlButtonElement = mounted
+        .element("button[aria-label='Save file (Ctrl/⌘S)']")
+        .unchecked_into();
     let before = highlight_count();
+    // Hold paint explicitly: saves may yield for workspace authority without
+    // depending on a paint callback. Microtask draining alone cannot prove this.
+    let frames = ResumeTasks(pause_initial_editor_frames());
+    let mut observed = Vec::new();
     for text in ["fn first() {}", "fn final_name() { /* café <>& */ }\n"] {
         input(&mounted, text);
-        assert_eq!(mounted.state.workspace.content.get_untracked(), text);
-        assert!(mounted.state.workspace.dirty.get_untracked());
+        observed.push((
+            mounted.state.workspace.content.get_untracked(),
+            mounted.state.workspace.dirty.get_untracked(),
+        ));
         settle().await;
     }
     textarea.set_selection_range(3, 8).unwrap();
-    assert_eq!(highlight_count(), before);
-    mounted.click("button[aria-label='Save file (Ctrl/⌘S)']");
-    settle().await;
-    assert!(mounted.state.fake.calls.borrow().iter().any(|call| {
-        matches!(call, Call::WriteFile { path, content }
+    let before_save = highlight_count();
+    save.click();
+    let saved = || {
+        mounted.state.fake.calls.borrow().iter().any(|call| {
+            matches!(call, Call::WriteFile { path, content }
             if path == "fixture.rs" && content == "fn final_name() { /* café <>& */ }\n")
-    }));
-    assert_eq!(highlight_count(), before);
+        })
+    };
+    let deadline = js_sys::Date::now() + 3_000.0;
+    while !saved() && js_sys::Date::now() < deadline {
+        openwebide_frontend::util::sleep_ms(10).await;
+        settle().await;
+    }
+    let saved_before_paint = saved();
+    let before_release = highlight_count();
+    // WASM panics do not unwind guards; restore frames before any assertion.
+    drop(frames);
+    assert_eq!(
+        observed,
+        [
+            ("fn first() {}".into(), true),
+            ("fn final_name() { /* café <>& */ }\n".into(), true),
+        ]
+    );
+    assert_eq!(before_save, before);
+    assert!(saved_before_paint, "Save must finish while paint is held");
+    assert_eq!(before_release, before);
     frame().await;
     assert_eq!(highlight_count(), before + 1);
     assert_eq!(
@@ -24364,6 +24484,386 @@ async fn initial_native_geometry_uses_owned_index_before_fallback_and_rejects_st
                 !actions.full_row_paint_ready(),
                 "stale index/window must not unlock geometry: {mode:?}: {change}"
             );
+        }
+    }
+}
+
+#[wasm_bindgen_test]
+async fn workspace_recovery_pause_flushes_inflight_save_and_blocks_writers_in_both_modes() {
+    use openwebide_core::{WorkspaceMode, editor::Selection};
+    use openwebide_frontend::{
+        state::editor_recovery::{EditorRecoveryState, RecoveryPhase},
+        state_actions::editor_recovery::RecoveryActions,
+    };
+    use std::{
+        cell::{Cell, RefCell},
+        rc::Rc,
+    };
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let folder = if mode == WorkspaceMode::Local {
+            Some(editorConfigFolder().await.unwrap())
+        } else {
+            None
+        };
+        let handle = folder.as_ref().map(editorConfigHandle);
+        let capture = Rc::new(Cell::new(None));
+        let slot = capture.clone();
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            sign_in_recovery(&state);
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            if let Some(handle) = handle {
+                state.projects.local_handles.update(|handles| {
+                    handles.insert(1, handle.unchecked_into());
+                });
+            }
+            state.workspace.open_file.set(Some("a.rs".into()));
+            state.workspace.content.set("base".into());
+            let view = super::support::recovery_editor_view(state);
+            slot.set(Some((
+                expect_context::<RecoveryActions>(),
+                expect_context::<EditorRecoveryState>(),
+            )));
+            view
+        });
+        let (actions, recovery) = capture.get().unwrap();
+        wait_until("recovery ready for transaction", || {
+            recovery.projects.with_untracked(|projects| {
+                projects
+                    .get(&1)
+                    .is_some_and(|entry| entry.phase == RecoveryPhase::Ready)
+            })
+        })
+        .await;
+        let editor = mounted.state.editor_actions();
+        let (send, receive) = futures::channel::oneshot::channel();
+        mounted
+            .state
+            .fake
+            .recovery_save_results
+            .borrow_mut()
+            .push_back(receive);
+        editor
+            .native_input("first".into(), Selection::caret(5), "insertText", 1.0)
+            .unwrap();
+        wait_until("inflight recovery write", || {
+            recovery
+                .projects
+                .with_untracked(|projects| projects[&1].writing)
+        })
+        .await;
+        editor
+            .native_input("latest".into(), Selection::caret(6), "insertText", 2.0)
+            .unwrap();
+        let lock = mounted.state.workspace.begin_workspace_edit(1).unwrap();
+        let permit = Rc::new(RefCell::new(None));
+        let result = permit.clone();
+        leptos::task::spawn_local(async move {
+            *result.borrow_mut() = Some(actions.pause_and_flush(1, Rc::new(|| true)).await);
+        });
+        openwebide_frontend::util::sleep_ms(20).await;
+        assert!(permit.borrow().is_none());
+        send.send(Ok(())).unwrap();
+        wait_until("latest draft flushed under transaction pause", || {
+            permit.borrow().is_some()
+        })
+        .await;
+        let paused = permit.borrow_mut().take().unwrap().unwrap();
+        assert!(paused.is_current());
+        assert_eq!(
+            paused.record().state.files[0]
+                .document
+                .as_ref()
+                .unwrap()
+                .text
+                .as_str(),
+            "latest"
+        );
+        let revision = paused.record().revision;
+        assert!(mounted.state.workspace.begin_editor_save(1).is_none());
+        assert!(
+            editor
+                .native_input("forbidden".into(), Selection::caret(9), "insertText", 3.0)
+                .is_err()
+        );
+        mounted.state.workspace.editor_scroll.update(|scroll| {
+            scroll.entry((1, "a.rs".into())).or_default().top = 25.0;
+        });
+        openwebide_frontend::util::sleep_ms(600).await;
+        assert_eq!(
+            mounted.state.fake.editor_recovery_records.borrow()[&1].revision,
+            revision
+        );
+        drop(paused);
+        drop(lock);
+        editor
+            .native_input("resumed".into(), Selection::caret(7), "insertText", 4.0)
+            .unwrap();
+        wait_until("recovery writer resumed", || {
+            mounted
+                .state
+                .fake
+                .editor_recovery_records
+                .borrow()
+                .get(&1)
+                .is_some_and(|record| {
+                    record.state.files[0]
+                        .document
+                        .as_ref()
+                        .unwrap()
+                        .text
+                        .as_str()
+                        == "resumed"
+                })
+        })
+        .await;
+        assert!(mounted.state.workspace.begin_editor_save(1).is_some());
+        drop(mounted);
+        if let Some(folder) = folder {
+            editorConfigCleanup(&folder).await.unwrap();
+        }
+    }
+}
+
+#[wasm_bindgen_test]
+async fn cancelled_forced_recovery_save_releases_ownership_without_false_acknowledgement() {
+    use futures::future::{AbortHandle, Abortable};
+    use openwebide_core::{WorkspaceMode, editor::Selection};
+    use openwebide_frontend::{
+        state::editor_recovery::{EditorRecoveryState, RecoveryPhase},
+        state_actions::editor_recovery::RecoveryActions,
+    };
+    use std::{cell::Cell, rc::Rc};
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let folder = if mode == WorkspaceMode::Local {
+            Some(editorConfigFolder().await.unwrap())
+        } else {
+            None
+        };
+        let handle = folder.as_ref().map(editorConfigHandle);
+        let slot = Rc::new(Cell::new(None));
+        let capture = slot.clone();
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            sign_in_recovery(&state);
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            if let Some(handle) = handle {
+                state.projects.local_handles.update(|handles| {
+                    handles.insert(1, handle.unchecked_into());
+                });
+            }
+            state.workspace.open_file.set(Some("a.rs".into()));
+            state.workspace.content.set("base".into());
+            let view = super::support::recovery_editor_view(state);
+            capture.set(Some((
+                expect_context::<RecoveryActions>(),
+                expect_context::<EditorRecoveryState>(),
+            )));
+            view
+        });
+        let (actions, recovery) = slot.get().unwrap();
+        wait_until("recovery ready before cancelled flush", || {
+            recovery.projects.with_untracked(|projects| {
+                projects
+                    .get(&1)
+                    .is_some_and(|entry| entry.phase == RecoveryPhase::Ready)
+            })
+        })
+        .await;
+        let (send, receive) = futures::channel::oneshot::channel();
+        mounted
+            .state
+            .fake
+            .recovery_save_results
+            .borrow_mut()
+            .push_back(receive);
+        let revision = recovery
+            .projects
+            .with_untracked(|projects| projects[&1].record.as_ref().unwrap().revision);
+        mounted
+            .state
+            .editor_actions()
+            .native_input("unsaved".into(), Selection::caret(7), "insertText", 1.0)
+            .unwrap();
+        let lock = mounted.state.workspace.begin_workspace_edit(1).unwrap();
+        let (abort, registration) = AbortHandle::new_pair();
+        let finished = Rc::new(Cell::new(false));
+        let done = finished.clone();
+        leptos::task::spawn_local(async move {
+            let _ =
+                Abortable::new(actions.pause_and_flush(1, Rc::new(|| true)), registration).await;
+            done.set(true);
+        });
+        wait_until("forced recovery save dispatched", || {
+            recovery
+                .projects
+                .with_untracked(|projects| projects[&1].writing)
+        })
+        .await;
+        abort.abort();
+        wait_until("cancelled flush cleaned up", || finished.get()).await;
+        assert!(recovery.projects.with_untracked(|projects| matches!(
+            projects[&1].phase,
+            RecoveryPhase::SaveFailed(_)
+        ) && !projects[&1].writing));
+        assert_eq!(
+            recovery.projects.with_untracked(|projects| projects[&1]
+                .record
+                .as_ref()
+                .unwrap()
+                .revision),
+            revision
+        );
+        assert!(send.send(Ok(())).is_err());
+        drop(lock);
+        actions.retry.run(1);
+        wait_until("explicit retry preserves and saves unsaved text", || {
+            mounted
+                .state
+                .fake
+                .editor_recovery_records
+                .borrow()
+                .get(&1)
+                .is_some_and(|record| {
+                    record.state.files[0]
+                        .document
+                        .as_ref()
+                        .unwrap()
+                        .text
+                        .as_str()
+                        == "unsaved"
+                })
+        })
+        .await;
+        drop(mounted);
+        if let Some(folder) = folder {
+            editorConfigCleanup(&folder).await.unwrap();
+        }
+    }
+}
+
+#[wasm_bindgen_test]
+async fn editor_save_rechecks_other_window_recovery_before_any_disk_write_in_both_modes() {
+    use openwebide_core::{
+        WorkspaceMode, editor::Selection, plugins::languages::intelligence::actions::ActionPhase,
+        workspace_transaction::TransactionPhase,
+    };
+    use openwebide_frontend::{
+        state::workspace::WorkspaceRecoveryStatus, state_actions::workspace::WorkspaceActions,
+        workspace::Workspace,
+    };
+    use std::{cell::Cell, rc::Rc};
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let folder = if mode == WorkspaceMode::Local {
+            Some(editorConfigFolder().await.unwrap())
+        } else {
+            None
+        };
+        if let Some(folder) = &folder {
+            Workspace::Local {
+                handle: editorConfigHandle(folder).unchecked_into(),
+            }
+            .write("fence.rs", "base")
+            .await
+            .unwrap();
+        }
+        let handle = folder.as_ref().map(editorConfigHandle);
+        let slot = Rc::new(Cell::new(None));
+        let capture = slot.clone();
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            if let Some(handle) = handle {
+                state.projects.local_handles.update(|handles| {
+                    handles.insert(1, handle.unchecked_into());
+                });
+            }
+            state
+                .fake
+                .files
+                .borrow_mut()
+                .insert((1, "fence.rs".into()), "base".into());
+            state.workspace.open_file.set(Some("fence.rs".into()));
+            state.workspace.content.set("base".into());
+            let view = editor_view(state);
+            capture.set(Some(expect_context::<WorkspaceActions>()));
+            view
+        });
+        settle().await;
+        let editor = mounted.state.editor_actions();
+        editor
+            .native_input("draft".into(), Selection::caret(5), "insertText", 1.0)
+            .unwrap();
+        let files = Workspace::for_project(mounted.state.api, mounted.state.projects, 1).unwrap();
+        for command in [false, true] {
+            let harness = &mounted.state.fake.workspace_transactions;
+            harness.pending(
+                1,
+                mode,
+                if command {
+                    TransactionPhase::Committed
+                } else {
+                    TransactionPhase::Finalizing
+                },
+            );
+            if command {
+                harness.command(1, ActionPhase::Running);
+            }
+            mounted.state.workspace.workspace_recovery.update(|states| {
+                states.insert(1, WorkspaceRecoveryStatus::Ready);
+            });
+            slot.get().unwrap().on_save.run(());
+            let expected = if command {
+                "pending language command"
+            } else {
+                "pending workspace operation"
+            };
+            wait_until("fresh recovery fence stops save", || {
+                mounted
+                    .state
+                    .ui
+                    .toast
+                    .get_untracked()
+                    .is_some_and(|message| message.contains(expected))
+            })
+            .await;
+            assert_eq!(files.read("fence.rs").await.unwrap(), "base");
+            assert!(mounted.state.workspace.dirty.get_untracked());
+            assert_eq!(mounted.state.workspace.content.get_untracked(), "draft");
+            assert!(
+                mounted
+                    .state
+                    .fake
+                    .calls
+                    .borrow()
+                    .iter()
+                    .all(|call| !matches!(
+                        call,
+                        openwebide_frontend::testing::fake_backend::Call::WriteFile { .. }
+                    ))
+            );
+            harness.records.borrow_mut().clear();
+            harness.commands.borrow_mut().clear();
+            mounted.state.ui.clear_toast();
+        }
+        slot.get().unwrap().on_save.run(());
+        wait_until("save after durable recovery resolves", || {
+            !mounted.state.workspace.dirty.get_untracked()
+        })
+        .await;
+        assert_eq!(files.read("fence.rs").await.unwrap(), "draft");
+        drop(mounted);
+        if let Some(folder) = folder {
+            editorConfigCleanup(&folder).await.unwrap();
         }
     }
 }

@@ -6,7 +6,10 @@ use openwebide_core::plugins::languages::{
     source_digest,
 };
 use serde_json::json;
-use std::{path::Path, time::Duration};
+use std::{collections::BTreeMap, path::Path, time::Duration};
+
+#[path = "support/cache.rs"]
+mod cache;
 
 const LIBRARY: &str = "package lib\r\n\r\nfunc Answer() int { return 42 }\r\n";
 const UNSAVED: &str = "package lib\r\n\r\nfunc Answer() string { return \"unsaved\" }\r\n";
@@ -17,12 +20,18 @@ struct Fixture {
     scope: Scope,
     sequence: u64,
     client: &'static str,
+    generations: BTreeMap<String, u64>,
+    storage: tempfile::TempDir,
 }
 
 impl Fixture {
     fn new(root: &Path) -> Result<Self> {
+        let storage = tempfile::tempdir()?;
+        let mut host = Host::default();
+        host.set_cache_directory(storage.path().into())
+            .map_err(anyhow::Error::msg)?;
         Ok(Self {
-            host: Host::default(),
+            host,
             scope: Scope {
                 owner: "fixture-owner".into(),
                 project: 1,
@@ -31,15 +40,18 @@ impl Fixture {
                 digest: "a".repeat(64),
                 server: serde_json::from_value(json!({
                     "command":"gopls", "args":["serve"],
+                    "cache":{"versionArgs":["version"],"environment":{"GOPLSCACHE":"${cache}/gopls","GOCACHE":"${cache}/build","GOMODCACHE":"${cache}/modules"}},
                     "settings":{"gopls":{"env":{
                         "GOENV":"off", "GOTOOLCHAIN":"local", "GOWORK":"", "GOFLAGS":"", "GOPROXY":"off", "GOSUMDB":"off",
-                        "GOCACHE":root.join(".go-cache").to_string_lossy(),
-                        "GOMODCACHE":root.join(".go-modules").to_string_lossy()
+                        "GOCACHE":"${cache}/build",
+                        "GOMODCACHE":"${cache}/modules"
                     }}}
                 }))?,
             },
             sequence: 0,
             client: "editor-a",
+            generations: BTreeMap::new(),
+            storage,
         })
     }
 
@@ -54,7 +66,7 @@ impl Fixture {
         let input = protocol::Request {
             version: protocol::VERSION,
             client: self.client.into(),
-            document: path.into(),
+            document: format!("{path}:{}", self.generations.get(path).unwrap_or(&0)),
             request: self.sequence,
             revision,
             language: "go".into(),
@@ -69,6 +81,11 @@ impl Fixture {
             .await
             .map_err(anyhow::Error::msg)?;
         response.validate(&input).map_err(anyhow::Error::msg)?;
+        // Reopening creates a new document lifetime. Late requests keep their
+        // old identity and must remain stale after a successful close.
+        if matches!(input.query, Query::Close) {
+            *self.generations.entry(path.into()).or_default() += 1;
+        }
         Ok(response)
     }
 
@@ -141,9 +158,39 @@ async fn main() -> Result<()> {
     std::fs::write(single.path().join("main.go"), standalone)?;
     {
         let mut fixture = Fixture::new(single.path())?;
+        let started = std::time::Instant::now();
         fixture
             .hover("main.go", standalone, "Answer", "bool")
             .await?;
+        let cold = started.elapsed();
+        let before = cache::wait_for(fixture.storage.path(), |path| {
+            path.extension()
+                .is_some_and(|suffix| suffix == "kind" || suffix == "gob")
+                || path
+                    .file_name()
+                    .is_some_and(|name| name.to_string_lossy().ends_with("-d"))
+        })
+        .await?;
+        let namespaces = cache::namespaces(fixture.storage.path())?;
+        fixture.host.shutdown();
+        openwebide_bridge::exec::proc::wait_for_cleanup().await;
+        let started = std::time::Instant::now();
+        fixture
+            .hover("main.go", standalone, "Answer", "bool")
+            .await?;
+        let restart = started.elapsed();
+        let after = cache::snapshot(fixture.storage.path())?;
+        ensure!(
+            cache::namespaces(fixture.storage.path())? == namespaces,
+            "Go allocated a new cache namespace instead of reopening the existing one"
+        );
+        cache::report("gopls", &before, &after, cold, restart)?;
+        ensure!(
+            !single.path().join(".go-cache").exists()
+                && !single.path().join(".go-modules").exists()
+        );
+        fixture.host.shutdown();
+        openwebide_bridge::exec::proc::wait_for_cleanup().await;
     }
     let root = tempfile::tempdir()?;
     std::fs::create_dir(root.path().join("lib"))?;
@@ -368,13 +415,16 @@ async fn main() -> Result<()> {
     let project = fixture.hover("app/main.go", MAIN, "Answer", "int").await?;
     ensure!(project.server != first.server && project.server != owner.server);
     fixture.scope.project = 1;
+    let before_revoke = fixture
+        .hover("app/main.go", MAIN, "Answer", "string")
+        .await?;
     fixture
         .host
         .revoke("fixture-owner", Some(1), Some("community/go"));
     let restarted = fixture
         .query("lib/answer.go", UNSAVED, 2, Query::Synchronize)
         .await?;
-    ensure!(restarted.server != first.server);
+    ensure!(restarted.server != before_revoke.server);
     fixture
         .hover("app/main.go", MAIN, "Answer", "string")
         .await?;
@@ -384,6 +434,8 @@ async fn main() -> Result<()> {
             "Language service wrote {path}"
         );
     }
+    fixture.host.shutdown();
+    openwebide_bridge::exec::proc::wait_for_cleanup().await;
     println!(
         "{}",
         json!({"go_mod_single_module":true,"go_work_multiple_modules":true,

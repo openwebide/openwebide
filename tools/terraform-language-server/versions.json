@@ -1,0 +1,72 @@
+{
+  "terraform": {
+    "version": "1.17.1",
+    "platforms": {
+      "darwin-amd64": {
+        "filename": "terraform_1.17.1_darwin_amd64.zip",
+        "url": "https://releases.hashicorp.com/terraform/1.17.1/terraform_1.17.1_darwin_amd64.zip",
+        "sha256": "fde92387cf9c0de74255003c85291f8fbede54585c10d0635ca7a43633d4d171"
+      },
+      "darwin-arm64": {
+        "filename": "terraform_1.17.1_darwin_arm64.zip",
+        "url": "https://releases.hashicorp.com/terraform/1.17.1/terraform_1.17.1_darwin_arm64.zip",
+        "sha256": "b1ecb3fe0d0a0290c1ab6f83d967d43f25da05d0b671ee0fb355252268dce95a"
+      },
+      "linux-amd64": {
+        "filename": "terraform_1.17.1_linux_amd64.zip",
+        "url": "https://releases.hashicorp.com/terraform/1.17.1/terraform_1.17.1_linux_amd64.zip",
+        "sha256": "4638628058e71a55212b1c563712eac03b902128f40740f3dc8174df12135061"
+      },
+      "linux-arm64": {
+        "filename": "terraform_1.17.1_linux_arm64.zip",
+        "url": "https://releases.hashicorp.com/terraform/1.17.1/terraform_1.17.1_linux_arm64.zip",
+        "sha256": "988e950a1c23058093b0e66ab2d5fb53fc18345ecfbd5871acf51dbac9325edd"
+      },
+      "windows-amd64": {
+        "filename": "terraform_1.17.1_windows_amd64.zip",
+        "url": "https://releases.hashicorp.com/terraform/1.17.1/terraform_1.17.1_windows_amd64.zip",
+        "sha256": "a3b71365cff94c0f978cf75d86addb075ea1bb6409055ea0ab359bf057d7898a"
+      },
+      "windows-arm64": {
+        "filename": "terraform_1.17.1_windows_arm64.zip",
+        "url": "https://releases.hashicorp.com/terraform/1.17.1/terraform_1.17.1_windows_arm64.zip",
+        "sha256": "f7a80319b1d7d1dcab926f906627824706b9897fed1fd612cc5435f543e673af"
+      }
+    }
+  },
+  "terraform-ls": {
+    "version": "0.39.1",
+    "platforms": {
+      "darwin-amd64": {
+        "filename": "terraform-ls_0.39.1_darwin_amd64.zip",
+        "url": "https://releases.hashicorp.com/terraform-ls/0.39.1/terraform-ls_0.39.1_darwin_amd64.zip",
+        "sha256": "25814afdbec9163de4ad8db58960195b9fc65ddc5405a5df7163bbdbd08b5325"
+      },
+      "darwin-arm64": {
+        "filename": "terraform-ls_0.39.1_darwin_arm64.zip",
+        "url": "https://releases.hashicorp.com/terraform-ls/0.39.1/terraform-ls_0.39.1_darwin_arm64.zip",
+        "sha256": "07748aa989fc3b9f6e4538ff83bc2e607ebc20c7587ce6556ae555d631e70b1b"
+      },
+      "linux-amd64": {
+        "filename": "terraform-ls_0.39.1_linux_amd64.zip",
+        "url": "https://releases.hashicorp.com/terraform-ls/0.39.1/terraform-ls_0.39.1_linux_amd64.zip",
+        "sha256": "fe2a158e4a1a8ec8047dae9e06c439b468412aa579929ba28b2e1258cedef9c0"
+      },
+      "linux-arm64": {
+        "filename": "terraform-ls_0.39.1_linux_arm64.zip",
+        "url": "https://releases.hashicorp.com/terraform-ls/0.39.1/terraform-ls_0.39.1_linux_arm64.zip",
+        "sha256": "a72a6d9f72580cfc30cc06d3c973fd5f55790f62e3ddb195998435070d9af36d"
+      },
+      "windows-amd64": {
+        "filename": "terraform-ls_0.39.1_windows_amd64.zip",
+        "url": "https://releases.hashicorp.com/terraform-ls/0.39.1/terraform-ls_0.39.1_windows_amd64.zip",
+        "sha256": "bb8523b2e109c2ad719dbf6245c4be035386e322cb44e8f01c74b1caa4680efb"
+      },
+      "windows-arm64": {
+        "filename": "terraform-ls_0.39.1_windows_arm64.zip",
+        "url": "https://releases.hashicorp.com/terraform-ls/0.39.1/terraform-ls_0.39.1_windows_arm64.zip",
+        "sha256": "0b6fe711414f29eeaaa09509fcb073e1f3269705e2de87a8b8ce7e77bc43fb6c"
+      }
+    }
+  }
+}

@@ -68,6 +68,7 @@ type SettingsLoad = futures::channel::oneshot::Receiver<Result<BTreeMap<String, 
 
 #[derive(Default)]
 pub struct FakeBackend {
+    pub workspace_transactions: super::transactions::Harness,
     pub language_handler: RefCell<Option<LanguageHandler>>,
     pub language_inputs: RefCell<Vec<openwebide_core::plugins::languages::LanguageInput>>,
     pub bridge_credential: RefCell<Option<(String, i64)>>,
@@ -75,6 +76,7 @@ pub struct FakeBackend {
     pub marketplace_results:
         RefCell<VecDeque<Deferred<openwebide_core::plugins::marketplace::MarketplaceRefresh>>>,
     pub plugin_packages: RefCell<VecDeque<Deferred<openwebide_core::plugins::PluginPackage>>>,
+    pub plugin_grant_sequence: std::cell::Cell<u64>,
     pub plugin_authorities: RefCell<
         BTreeMap<
             String,
@@ -167,6 +169,7 @@ pub struct FakeBackend {
     >,
     pub recovery_save_results:
         RefCell<VecDeque<futures::channel::oneshot::Receiver<Result<(), RecoveryError>>>>,
+    pub recovery_save_acknowledgements: RefCell<VecDeque<futures::channel::oneshot::Receiver<()>>>,
 
     pub session_search_results: RefCell<VecDeque<Deferred<Vec<ChatSession>>>>,
     pub session_export_results: RefCell<VecDeque<Deferred<openwebide_core::SessionExport>>>,
@@ -265,6 +268,15 @@ pub struct FakeBackend {
         RefCell<VecDeque<futures::channel::oneshot::Receiver<Result<(), String>>>>,
     pub settings: RefCell<BTreeMap<String, String>>,
     pub language_save_results: RefCell<VecDeque<Deferred<()>>>,
+    pub native_language_calls:
+        RefCell<Vec<openwebide_core::plugins::languages::intelligence::Call>>,
+    pub native_language_result: RefCell<Option<serde_json::Value>>,
+    pub native_completion_results: RefCell<VecDeque<Deferred<()>>>,
+    pub native_analysis_inputs:
+        RefCell<Vec<openwebide_core::plugins::languages::intelligence::Request>>,
+    pub native_analysis_results: RefCell<VecDeque<Deferred<()>>>,
+    pub native_analysis_error: RefCell<Option<String>>,
+    pub native_analysis_unproved: RefCell<bool>,
     pub editor_save_results: RefCell<VecDeque<Deferred<()>>>,
     pub settings_load_error: RefCell<Option<String>>,
     pub settings_load_started: RefCell<Option<futures::channel::oneshot::Sender<()>>>,
@@ -281,6 +293,81 @@ pub struct FakeBackend {
 }
 
 impl FakeBackend {
+    /// Deterministic native-host response fixture shared by backend HTTP and
+    /// paired-bridge test adapters. Real proof authenticity has native tests.
+    pub async fn native_language_reply(
+        &self,
+        input: &openwebide_core::plugins::languages::intelligence::Request,
+    ) -> Result<openwebide_core::plugins::languages::intelligence::Response, String> {
+        use openwebide_core::plugins::languages::intelligence::{
+            self as protocol, AnalysisContext, Query,
+        };
+        input.validate()?;
+        self.native_analysis_inputs.borrow_mut().push(input.clone());
+        let origin = protocol::actions::origin_fingerprint(input)?;
+        let (result, context) = if let Query::ValidateAnalysis { context } = &input.query {
+            let delayed = self.native_analysis_results.borrow_mut().pop_front();
+            if let Some(delayed) = delayed {
+                delayed
+                    .await
+                    .map_err(|_| "Analysis validation cancelled".to_string())??;
+            }
+            if let Some(error) = self.native_analysis_error.borrow().as_ref() {
+                return Err(error.clone());
+            }
+            if context.server != "test-native-server"
+                || context.proof != format!("fixture.{origin}.{}", context.result_digest)
+            {
+                return Err("The original analysis context changed".into());
+            }
+            (serde_json::Value::Null, None)
+        } else {
+            let result = self
+                .native_language_result
+                .borrow()
+                .clone()
+                .ok_or("No native language response fixture")?;
+            if matches!(input.query, Query::Completion { .. }) {
+                let delayed = self.native_completion_results.borrow_mut().pop_front();
+                if let Some(delayed) = delayed {
+                    delayed
+                        .await
+                        .map_err(|_| "Completion cancelled".to_string())??;
+                }
+            }
+            let context =
+                if input.query.produces_analysis() && !*self.native_analysis_unproved.borrow() {
+                    let digest = openwebide_core::plugins::content_digest(
+                        &serde_json::to_vec(&result).map_err(|error| error.to_string())?,
+                    );
+                    Some(AnalysisContext {
+                        identities: vec![],
+                        revisions: vec![],
+                        files: vec![],
+                        server: "test-native-server".into(),
+                        proof: format!("fixture.{origin}.{digest}"),
+                        result_digest: digest,
+                    })
+                } else {
+                    None
+                };
+            (result, context)
+        };
+        Ok(protocol::Response {
+            version: protocol::VERSION,
+            client: input.client.clone(),
+            document: input.document.clone(),
+            request: input.request,
+            revision: input.revision,
+            source_digest: input.source_digest.clone(),
+            server: "test-native-server".into(),
+            context,
+            capabilities: serde_json::json!({}),
+            result,
+            diagnostics: vec![],
+            diagnostics_ready: false,
+        })
+    }
     fn fixture_skill_records(
         &self,
         project: i64,
@@ -455,6 +542,36 @@ impl FakeBackend {
 }
 
 impl Backend for FakeBackend {
+    fn language_action_request<'a>(
+        &'a self,
+        project: i64,
+        request: &'a openwebide_core::plugins::languages::intelligence::actions::ActionJournalRequest,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<
+            Option<openwebide_core::plugins::languages::intelligence::actions::ActionRecord>,
+            String,
+        >,
+    > {
+        use openwebide_core::plugins::languages::intelligence::actions::ActionJournalRequest;
+        Box::pin(async move {
+            let ActionJournalRequest::Load { id } = request else {
+                return Err("No command recovery fixture is installed".into());
+            };
+            if self.workspace_transactions.command_journal_error.get() {
+                return Err("Command recovery transport unavailable".into());
+            }
+            let commands = self.workspace_transactions.commands.borrow();
+            Ok(match id {
+                Some(id) => commands.get(&(project, id.clone())).cloned(),
+                None => commands
+                    .iter()
+                    .filter(|((scope, _), _)| *scope == project)
+                    .min_by_key(|(_, record)| record.phase.terminal())
+                    .map(|(_, record)| record.clone()),
+            })
+        })
+    }
     fn host_updates<'a>(
         &'a self,
         request: &'a openwebide_core::host_admin::updates::UpdateRequest,
@@ -536,7 +653,13 @@ impl Backend for FakeBackend {
                 {
                     return Err("Plugin is no longer enabled".into());
                 }
-                let token = format!("grant-{}", self.plugin_authorities.borrow().len());
+                let next = self
+                    .plugin_grant_sequence
+                    .get()
+                    .checked_add(1)
+                    .ok_or("Plugin grant sequence exhausted")?;
+                self.plugin_grant_sequence.set(next);
+                let token = format!("{next:032x}");
                 self.plugin_authorities
                     .borrow_mut()
                     .insert(token.clone(), (request.context.clone(), plugin.clone()));
@@ -894,6 +1017,107 @@ impl Backend for FakeBackend {
                 .get(&project)
                 .cloned()
                 .unwrap_or_default())
+        })
+    }
+    fn session_language_context(
+        &self,
+        session: i64,
+    ) -> LocalBoxFuture<
+        '_,
+        Result<openwebide_core::plugins::languages::tools::LanguageToolContext, String>,
+    > {
+        Box::pin(async move {
+            use openwebide_core::plugins::languages::{
+                LanguageSettings,
+                tools::{LanguageToolContext, LanguageToolScope},
+            };
+            let project = self
+                .sessions
+                .borrow()
+                .iter()
+                .find(|candidate| candidate.id == session)
+                .and_then(|session| session.project_id)
+                .ok_or("Missing project session")?;
+            let project = self
+                .projects
+                .borrow()
+                .iter()
+                .find(|candidate| candidate.id == project)
+                .cloned()
+                .ok_or("Missing project")?;
+            let settings: LanguageSettings = self
+                .settings
+                .borrow()
+                .get("language_settings")
+                .map(|value| serde_json::from_str(value).map_err(|error| error.to_string()))
+                .transpose()?
+                .unwrap_or_default();
+            settings.validate()?;
+            Ok(LanguageToolContext {
+                scope: LanguageToolScope::for_project(&project),
+                bindings: self
+                    .project_plugin_entries
+                    .borrow()
+                    .get(&project.id)
+                    .cloned()
+                    .unwrap_or_default(),
+                preferences: settings.for_project(project.id),
+            })
+        })
+    }
+    fn authorize_language_server<'a>(
+        &'a self,
+        call: &'a openwebide_core::plugins::languages::intelligence::Call,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<openwebide_core::plugins::languages::intelligence::Selection, String>,
+    > {
+        Box::pin(async move {
+            let (context, prepared) = self
+                .plugin_authorities
+                .borrow()
+                .get(&call.grant)
+                .cloned()
+                .ok_or("No language authority")?;
+            if context.session_id != call.session_id || prepared != call.prepared {
+                return Err("Language authority changed".into());
+            }
+            let project = context
+                .project_id
+                .ok_or("Language services require a project")?;
+            if !self
+                .project_plugin_entries
+                .borrow()
+                .get(&project)
+                .is_some_and(|bindings| {
+                    bindings
+                        .iter()
+                        .any(|binding| binding.enabled && binding.prepared == call.prepared)
+                })
+            {
+                return Err("Language provider disabled".into());
+            }
+            self.native_language_calls.borrow_mut().push(call.clone());
+            Ok(
+                openwebide_core::plugins::languages::intelligence::Selection {
+                    user: 1,
+                    project,
+                    prepared,
+                    input: call.input.clone(),
+                },
+            )
+        })
+    }
+    fn language_server<'a>(
+        &'a self,
+        call: &'a openwebide_core::plugins::languages::intelligence::Call,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<openwebide_core::plugins::languages::intelligence::Response, String>,
+    > {
+        Box::pin(async move {
+            self.authorize_language_server(call).await?;
+            self.native_language_reply(&call.input).await
         })
     }
     fn plugin_package<'a>(
@@ -1844,6 +2068,155 @@ impl Backend for FakeBackend {
             Ok(())
         })
     }
+    fn workspace_transaction_root(
+        &self,
+        project: i64,
+    ) -> LocalBoxFuture<
+        '_,
+        Result<openwebide_core::workspace_transaction::WorkspaceRootIdentity, RecoveryError>,
+    > {
+        Box::pin(async move {
+            Ok(
+                openwebide_core::workspace_transaction::WorkspaceRootIdentity {
+                    identity: super::transactions::identity(project),
+                },
+            )
+        })
+    }
+    fn inspect_workspace_folder<'a>(
+        &'a self,
+        project: i64,
+        request: &'a openwebide_core::workspace_transaction::companion::FolderInspection,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<openwebide_core::workspace_transaction::companion::FileValue, RecoveryError>,
+    > {
+        use openwebide_core::workspace_transaction::companion::{FileAction, FileValue};
+        Box::pin(async move {
+            request.validate().map_err(RecoveryError::Conflict)?;
+            if request.root != super::transactions::identity(project) {
+                return Err(RecoveryError::Conflict("Changed physical root".into()));
+            }
+            self.workspace_transactions
+                .inspections
+                .borrow_mut()
+                .push(request.clone());
+            if self.workspace_transactions.inspection_error.get() {
+                return Err(RecoveryError::Unavailable(
+                    "Native inspection unavailable".into(),
+                ));
+            }
+            match &request.action {
+                FileAction::Canonicalize { path } => self
+                    .canonical_file_path(project, path)
+                    .await
+                    .map(FileValue::Path),
+                FileAction::List { path } => {
+                    self.list_files(project, path).await.map(FileValue::Entries)
+                }
+                FileAction::Read { path } => self
+                    .read_file_bytes(project, path)
+                    .await
+                    .map(FileValue::Bytes),
+                _ => unreachable!("Validated read-only inspection"),
+            }
+            .map_err(RecoveryError::Unavailable)
+        })
+    }
+    fn workspace_activity(
+        &self,
+        project: i64,
+    ) -> LocalBoxFuture<
+        '_,
+        Result<openwebide_core::workspace_transaction::WorkspaceActivity, RecoveryError>,
+    > {
+        use openwebide_core::workspace_transaction::{TransactionPhase, WorkspaceActivity};
+        Box::pin(async move {
+            let fixture = &self.workspace_transactions;
+            fixture.latest_reads.set(fixture.latest_reads.get() + 1);
+            // Capture the two flags together before delaying the reply.
+            let activity = WorkspaceActivity {
+                file_recovery: fixture.records.borrow().iter().any(|((id, _), state)| {
+                    *id == project
+                        && !matches!(
+                            state.journal.progress.phase,
+                            TransactionPhase::Committed | TransactionPhase::Restored
+                        )
+                }),
+                language_command: fixture
+                    .commands
+                    .borrow()
+                    .iter()
+                    .any(|((id, _), record)| *id == project && !record.phase.terminal()),
+            };
+            let failed = fixture.latest_error.get() || fixture.command_journal_error.get();
+            crate::util::sleep_ms(fixture.latest_delay_ms.get()).await;
+            if failed {
+                return Err(RecoveryError::Unavailable(
+                    "Workspace activity transport unavailable".into(),
+                ));
+            }
+            Ok(activity)
+        })
+    }
+    fn workspace_transaction<'a>(
+        &'a self,
+        project: i64,
+        id: Option<&'a str>,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<
+            Option<openwebide_core::workspace_transaction::WorkspaceTransactionState>,
+            RecoveryError,
+        >,
+    > {
+        Box::pin(async move {
+            let state = self.workspace_transactions.load(project, id);
+            if id.is_none() {
+                self.workspace_transactions
+                    .latest_reads
+                    .set(self.workspace_transactions.latest_reads.get() + 1);
+                let failed = self.workspace_transactions.latest_error.get();
+                crate::util::sleep_ms(self.workspace_transactions.latest_delay_ms.get()).await;
+                if failed {
+                    return Err(RecoveryError::Unavailable(
+                        "Workspace recovery transport unavailable".into(),
+                    ));
+                }
+            }
+            Ok(state)
+        })
+    }
+    fn begin_workspace_transaction<'a>(
+        &'a self,
+        project: i64,
+        request: &'a openwebide_core::workspace_transaction::BeginWorkspaceTransaction,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<openwebide_core::workspace_transaction::WorkspaceTransactionPrepared, RecoveryError>,
+    > {
+        Box::pin(async move { self.workspace_transactions.prepare(self, project, request) })
+    }
+    fn advance_workspace_transaction<'a>(
+        &'a self,
+        project: i64,
+        request: &'a openwebide_core::workspace_transaction::AdvanceWorkspaceTransaction,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<openwebide_core::workspace_transaction::WorkspaceTransactionAdvanced, RecoveryError>,
+    > {
+        Box::pin(async move { self.workspace_transactions.advance(self, project, request) })
+    }
+    fn execute_workspace_transaction<'a>(
+        &'a self,
+        project: i64,
+        request: &'a openwebide_core::workspace_transaction::ExecuteWorkspaceTransaction,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<openwebide_core::workspace_transaction::WorkspaceTransactionOutcome, RecoveryError>,
+    > {
+        Box::pin(super::transactions::execute(self, project, request))
+    }
     fn editor_recovery(
         &self,
         project: i64,
@@ -1886,23 +2259,32 @@ impl Backend for FakeBackend {
                 .state
                 .validate()
                 .map_err(RecoveryError::Unavailable)?;
-            let mut records = self.editor_recovery_records.borrow_mut();
-            let revision = records.get(&project).map_or(0, |record| record.revision);
-            if revision != record.revision {
-                return Err(RecoveryError::Conflict(
-                    "Editor recovery changed in another window".into(),
-                ));
+            let revision = {
+                let mut records = self.editor_recovery_records.borrow_mut();
+                let revision = records.get(&project).map_or(0, |record| record.revision);
+                if revision != record.revision {
+                    return Err(RecoveryError::Conflict(
+                        "Editor recovery changed in another window".into(),
+                    ));
+                }
+                let revision = revision
+                    .checked_add(1)
+                    .ok_or_else(|| RecoveryError::Conflict("Revision limit reached".into()))?;
+                records.insert(
+                    project,
+                    openwebide_core::editor::EditorRecoveryRecord {
+                        revision,
+                        state: record.state.clone(),
+                    },
+                );
+                revision
+            };
+            let acknowledgement = self.recovery_save_acknowledgements.borrow_mut().pop_front();
+            if let Some(acknowledgement) = acknowledgement {
+                acknowledgement
+                    .await
+                    .map_err(|error| RecoveryError::Unavailable(error.to_string()))?;
             }
-            let revision = revision
-                .checked_add(1)
-                .ok_or_else(|| RecoveryError::Conflict("Revision limit reached".into()))?;
-            records.insert(
-                project,
-                openwebide_core::editor::EditorRecoveryRecord {
-                    revision,
-                    state: record.state.clone(),
-                },
-            );
             Ok(revision)
         })
     }

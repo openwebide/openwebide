@@ -48,10 +48,20 @@ def check():
                 addEventListener('unhandledrejection',e=>lspEvidence.errors.push(String(e.reason)));
                 const fetchOriginal=window.fetch;
                 window.fetch=function(...args){const url=String(args[0]?.url??args[0]);
+                    const raw=args[1]?.body;
+                    let payload=Promise.resolve('{}');
+                    try{payload=typeof raw==='string'?Promise.resolve(raw):raw?.text?raw.text():raw?Promise.resolve(new TextDecoder().decode(raw)):args[0]?.clone?args[0].clone().text():payload;}catch{}
+                    payload=payload.catch(()=>'{}');
                     return fetchOriginal.apply(this,args).then(async response=> {
-                        if(/\/plugins\/languages\/(query|authorize|revoke)$/.test(new URL(url,location.href).pathname)) {
-                            const record={url,status:response.status};
-                            try{const data=await response.clone().json();record.server=data.server;record.ready=data.diagnostics_ready;record.diagnostics=data.diagnostics?.length;record.error=data.error;}catch{}
+                        let body={};try{body=JSON.parse(await payload);}catch{}
+                        const input=body.input??body.call?.input??body.selection?.input;
+                        const marker=typeof body.name==='string'&&body.name.startsWith('.openwebide-probe-');
+                        if(marker||/\/plugins\/languages\/(query|authorize|revoke)$/.test(new URL(url,location.href).pathname)) {
+                            const record={time:Date.now(),url,status:response.status,query:input?.query,document:input?.document,
+                                client:input?.client,request:input?.request,revision:input?.revision,source_digest:input?.source_digest};
+                            if(marker)record.marker={name:body.name,method:args[1]?.method};
+                            try{const data=await response.clone().json();record.server=data.server;record.ready=data.diagnostics_ready;record.diagnostics=data.diagnostics?.length;record.error=data.error;
+                                if(Array.isArray(data.result))record.completions=data.result.filter(item=>item.label?.startsWith('answer')).map(item=>({id:item.id,label:item.label}));}catch{}
                             lspEvidence.requests.push(record);
                         } return response;
                     });};
@@ -61,9 +71,15 @@ def check():
                 (folder/'src').mkdir(parents=True)
                 crate='rust_lsp_'+mode
                 files={'Cargo.toml':f'[package]\nname="{crate}"\nversion="0.1.0"\nedition="2021"\n',
+                       # Keep Cargo's concurrent derived writes outside source
+                       # observations, as the API 9 reference package declares.
+                       '.cargo/config.toml':'[build]\ntarget-dir = '+json.dumps(str(state/('cargo-target-'+mode)))+'\n',
+                       'Cargo.lock':f'version = 4\n\n[[package]]\nname = "{crate}"\nversion = "0.1.0"\n',
                        'src/lib.rs':'pub fn answer() -> u32 { 42 }\r\n',
                        'src/main.rs':f'// 文😀\r\nfn main() {{ let value = {crate}::answer(); println!("{{value}}"); }}\r\n'}
-                for path,text in files.items(): (folder/path).write_bytes(text.encode())
+                for path,text in files.items():
+                    (folder/path).parent.mkdir(parents=True,exist_ok=True)
+                    (folder/path).write_bytes(text.encode())
                 subprocess.run(['git','init','--quiet','--initial-branch=main','--template=',str(folder)],check=True)
                 relative=folder.relative_to(ROOT.parent.parent).as_posix()
                 project=runtime.request('POST','/api/projects',{'name':'LSP '+mode,'mode':mode,'path':relative if mode=='remote' else folder.name},expected=201)

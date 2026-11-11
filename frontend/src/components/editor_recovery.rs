@@ -43,6 +43,7 @@ pub fn RecoveryStatus() -> impl IntoView {
                     .is_some_and(|id| projects.needs_grant.with(|ids| ids.contains(&id))))
     });
     view! {
+        <WorkspaceRecoveryStatus />
         <Show when=move || phase.get().is_some_and(|phase| phase != RecoveryPhase::Ready) || issue.get().is_some()>
             <div class="editor-recovery" role="status" aria-busy=move || busy.get().to_string()>
                 <FormNotice tone=NoticeTone::Warning>
@@ -75,6 +76,71 @@ pub fn RecoveryStatus() -> impl IntoView {
             </div>
         </Show>        {state.zip(actions).map(|(state, actions)| view! { <RecoveryFileDialog state=state actions=actions /> })}
 
+    }
+}
+
+#[component]
+fn WorkspaceRecoveryStatus() -> impl IntoView {
+    use crate::state::workspace::WorkspaceRecoveryStatus as Status;
+    use openwebide_core::plugins::languages::intelligence::actions::ActionPhase;
+    let workspace = expect_context::<WorkspaceState>();
+    let actions =
+        use_context::<crate::state_actions::workspace_recovery::WorkspaceRecoveryActions>();
+    let status = Memo::new(move |_| {
+        workspace.active_project.get().and_then(|id| {
+            workspace
+                .workspace_recovery
+                .with(|states| states.get(&id).cloned())
+        })
+    });
+    view! {
+        <Show when=move || status.get().is_some_and(|status| status.blocks_saves())>
+            <div class="editor-recovery" role="status" aria-busy=move || matches!(status.get(), Some(Status::Checking | Status::Pending { recovering: true, .. } | Status::LanguageAction {recovering:true,..})).to_string()>
+                <FormNotice tone=NoticeTone::Warning>{move || status.get().map(|status| status.message()).unwrap_or_default()}</FormNotice>
+                <InlineActions>
+                    <Show when=move || matches!(status.get(), Some(Status::Unavailable(_) | Status::Pending { recovering: false, .. }))>
+                        <Button size=ButtonSize::Sm on_click=Callback::new(move |_| {
+                            if let (Some(actions), Some(id)) = (actions, workspace.active_project.get_untracked()) { actions.check.run(id); }
+                        })>"Check workspace recovery"</Button>
+                    </Show>
+                    <Show when=move || matches!(status.get(), Some(Status::Pending { recovering: false, .. }))>
+                        <Show when=move || actions.is_some_and(|actions| workspace.active_project.get().is_some_and(|id| actions.missing_folders.with(|ids| ids.contains(&id))))>
+                            <Button size=ButtonSize::Sm on_click=Callback::new(move |_| {
+                                if let (Some(actions), Some(id)) = (actions, workspace.active_project.get_untracked()) { actions.choose_folder.run(id); }
+                            })>"Choose original folder"</Button>
+                        </Show>
+                        <Show when=move || actions.is_some_and(|actions| workspace.active_project.get().is_some_and(|id| actions.folder_access.with(|ids| ids.contains(&id))))>
+                            <Button size=ButtonSize::Sm on_click=Callback::new(move |_| {
+                                if let (Some(actions), Some(id)) = (actions, workspace.active_project.get_untracked()) { actions.grant.run(id); }
+                            })>"Grant original folder access"</Button>
+                        </Show>
+                        <Button size=ButtonSize::Sm on_click=Callback::new(move |_| {
+                            if let (Some(actions), Some(id)) = (actions, workspace.active_project.get_untracked()) { actions.recover.run(id); }
+                        })>{move ||status.get().map(|status|status.recovery_label()).unwrap_or("Restore interrupted changes")}</Button>
+                    </Show>
+                    <Show when=move || matches!(status.get(),Some(Status::LanguageAction {recovering:false,..}))>
+                        <Button size=ButtonSize::Sm on_click=Callback::new(move |_| {
+                            if let (Some(actions),Some(id))=(actions,workspace.active_project.get_untracked()) {actions.check_command.run(id);}
+                        })>"Check command outcome"</Button>
+                        <Show when=move || matches!(status.get(),Some(Status::LanguageAction {phase:ActionPhase::Running,..}))>
+                            <Button size=ButtonSize::Sm on_click=Callback::new(move |_| {
+                                if let (Some(actions),Some(id))=(actions,workspace.active_project.get_untracked()) {actions.stop_command.run(id);}
+                            })>"Stop pending command"</Button>
+                        </Show>
+                        <Show when=move || matches!(status.get(),Some(Status::LanguageAction {phase:ActionPhase::Approved,..}))>
+                            <Button size=ButtonSize::Sm on_click=Callback::new(move |_| {
+                                if let (Some(actions),Some(id))=(actions,workspace.active_project.get_untracked()) {actions.discard_command.run(id);}
+                            })>"Discard unstarted command"</Button>
+                        </Show>
+                        <Show when=move || matches!(status.get(),Some(Status::LanguageAction {phase:ActionPhase::Rejected|ActionPhase::Uncertain,..}))>
+                            <Button size=ButtonSize::Sm on_click=Callback::new(move |_| {
+                                if let (Some(actions),Some(id))=(actions,workspace.active_project.get_untracked()) {actions.acknowledge_command.run(id);}
+                            })>{move ||if matches!(status.get(),Some(Status::LanguageAction {phase:ActionPhase::Uncertain,..})) {"Stop and acknowledge reviewed effects"} else {"Acknowledge reviewed outcome"}}</Button>
+                        </Show>
+                    </Show>
+                </InlineActions>
+            </div>
+        </Show>
     }
 }
 

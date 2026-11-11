@@ -440,10 +440,11 @@ async fn main() -> Result<()> {
         );
         fixture.scope.owner = "fixture-owner".into();
         fixture.scope.project = 1;
+        let before_close = fixture.hover(LIB_PATH, UNSAVED, 2, "string").await?;
         fixture.query(CLIENT_PATH, "", 8, Query::Close).await?;
         let retained = fixture.hover(LIB_PATH, UNSAVED, 2, "string").await?;
         ensure!(
-            retained.server == first.server,
+            retained.server == before_close.server,
             "Closing one file replaced the warm solution"
         );
         fixture
@@ -454,7 +455,7 @@ async fn main() -> Result<()> {
             .await?;
         let restarted = fixture.hover(CLIENT_PATH, FIXED, 9, "string").await?;
         ensure!(
-            restarted.server != first.server,
+            restarted.server != retained.server,
             "Revocation reused the old service"
         );
         for (path, original) in [(LIB_PATH, LIBRARY), (CLIENT_PATH, CLIENT)] {

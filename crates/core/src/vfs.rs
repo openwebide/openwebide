@@ -13,6 +13,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{FileEntry, SearchHit};
 
+mod moves;
+mod private;
+pub use private::{private_workspace_globs, private_workspace_path};
+
 /// Errors encountered during Virtual File System operations.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VfsError {
@@ -122,7 +126,7 @@ pub fn normalize_vfs_path(raw: &str) -> Result<String, VfsError> {
 /// Shared lexical path contract; runtime adapters additionally resolve symlinks.
 pub fn workspace_path(raw: &str) -> Result<String, VfsError> {
     let path = normalize_vfs_path(raw)?;
-    if path.split('/').any(|part| part == ".spin") {
+    if private_workspace_path(&path) {
         return Err(VfsError::PathEscape(raw.to_string()));
     }
     Ok(path)
@@ -233,6 +237,32 @@ pub trait Vfs: Send + Sync {
         })
     }
 
+    /// Atomically replace an existing file. A failed or interrupted write must
+    /// leave either the complete old contents or the complete new contents.
+    fn replace_atomic<'a>(&'a self, _path: &'a str, _contents: &'a [u8]) -> VfsFuture<'a, ()> {
+        Box::pin(async { Err(VfsError::Io("Atomic replacement is unavailable".into())) })
+    }
+
+    /// Remove exactly one entry, rejecting a different kind or nonempty directory.
+    fn remove_entry<'a>(&'a self, _path: &'a str, _kind: VfsEntryKind) -> VfsFuture<'a, ()> {
+        Box::pin(async { Err(VfsError::Io("Nonrecursive removal is unavailable".into())) })
+    }
+
+    /// Move one native object, preserving its identity and attributes. Parents
+    /// must already exist; source links, parent-path aliases and a changed source
+    /// kind are rejected.
+    /// Destination absence is tested atomically, including for directories.
+    /// Cross-filesystem moves must fail without a copy/remove fallback. An error
+    /// may follow a successful move, so journaled callers must reconcile it.
+    fn move_atomic<'a>(
+        &'a self,
+        _from: &'a str,
+        _to: &'a str,
+        _kind: VfsEntryKind,
+    ) -> VfsFuture<'a, ()> {
+        Box::pin(async { Err(VfsError::Io("Atomic object moves are unavailable".into())) })
+    }
+
     /// Write or overwrite a file with the given full contents.
     fn write<'a>(&'a self, path: &'a str, content: &'a str) -> VfsFuture<'a, ()>;
 
@@ -280,6 +310,20 @@ pub trait Vfs: Send + Sync {
 }
 
 impl<V: Vfs + ?Sized> Vfs for &V {
+    fn replace_atomic<'a>(&'a self, path: &'a str, contents: &'a [u8]) -> VfsFuture<'a, ()> {
+        (**self).replace_atomic(path, contents)
+    }
+    fn remove_entry<'a>(&'a self, path: &'a str, kind: VfsEntryKind) -> VfsFuture<'a, ()> {
+        (**self).remove_entry(path, kind)
+    }
+    fn move_atomic<'a>(
+        &'a self,
+        from: &'a str,
+        to: &'a str,
+        kind: VfsEntryKind,
+    ) -> VfsFuture<'a, ()> {
+        (**self).move_atomic(from, to, kind)
+    }
     fn read_bytes<'a>(&'a self, path: &'a str) -> VfsFuture<'a, Vec<u8>> {
         (**self).read_bytes(path)
     }
@@ -325,6 +369,20 @@ impl<V: Vfs + ?Sized> Vfs for &V {
 }
 
 impl<V: Vfs + ?Sized> Vfs for Arc<V> {
+    fn replace_atomic<'a>(&'a self, path: &'a str, contents: &'a [u8]) -> VfsFuture<'a, ()> {
+        (**self).replace_atomic(path, contents)
+    }
+    fn remove_entry<'a>(&'a self, path: &'a str, kind: VfsEntryKind) -> VfsFuture<'a, ()> {
+        (**self).remove_entry(path, kind)
+    }
+    fn move_atomic<'a>(
+        &'a self,
+        from: &'a str,
+        to: &'a str,
+        kind: VfsEntryKind,
+    ) -> VfsFuture<'a, ()> {
+        (**self).move_atomic(from, to, kind)
+    }
     fn read_bytes<'a>(&'a self, path: &'a str) -> VfsFuture<'a, Vec<u8>> {
         (**self).read_bytes(path)
     }
@@ -395,6 +453,14 @@ impl MemoryVfs {
 }
 
 impl Vfs for MemoryVfs {
+    fn move_atomic<'a>(
+        &'a self,
+        from: &'a str,
+        to: &'a str,
+        kind: VfsEntryKind,
+    ) -> VfsFuture<'a, ()> {
+        Box::pin(async move { self.move_entry(from, to, kind) })
+    }
     fn canonicalize<'a>(&'a self, path: &'a str) -> VfsFuture<'a, String> {
         Box::pin(async move {
             let mut current = normalize_vfs_path(path)?;
@@ -665,6 +731,37 @@ impl Vfs for MemoryVfs {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn runtime_recovery_names_are_reserved_without_hiding_ordinary_project_folders() {
+        for suffix in ["", ".init", ".owner", ".owner.part"] {
+            let path =
+                format!("nested/.openwebide/recovery-0123456789abcdef0123456789abcdef{suffix}");
+            assert!(workspace_path(&path).is_err());
+            assert!(workspace_path(&format!("{path}/original")).is_err());
+        }
+        for ordinal in ["0", "1", "1023"] {
+            let path = format!("src/.openwebide-create-0123456789abcdef0123456789abcdef-{ordinal}");
+            assert!(workspace_path(&path).is_err());
+            assert!(workspace_path(&format!("{path}/child")).is_err());
+        }
+        for path in [
+            ".openwebide/recovery-notes",
+            ".openwebide/recovery-0123456789abcdef0123456789abcdef-other",
+            "recovery-0123456789abcdef0123456789abcdef",
+            ".openwebide/recovery-0123456789abcdef0123456789abcde",
+            ".openwebide-create-notes",
+            ".openwebide-proof-notes",
+            ".openwebide-create-0123456789abcdef0123456789abcdef-01",
+            ".openwebide-create-0123456789abcdef0123456789abcdef-1024",
+            ".openwebide-create-0123456789abcdef0123456789abcdef-1-other",
+        ] {
+            assert!(workspace_path(path).is_ok(), "{path}");
+        }
+        let proof = ".openwebide-proof-0123456789abcdef0123456789abcdef";
+        assert!(workspace_path(proof).is_err());
+        assert!(workspace_path(&format!("nested/{proof}/child")).is_err());
+    }
 
     #[test]
     fn test_normalize_vfs_path_basic() {

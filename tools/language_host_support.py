@@ -18,8 +18,9 @@ DEFAULTS = json.loads((ROOT / 'plugins/bundled.json').read_text())
 
 
 class ExecutionHost:
-    def __init__(self, runtime):
+    def __init__(self, runtime, backend_url=None):
         self.runtime = runtime
+        self.backend_url = backend_url or runtime.url + '/api'
         self.state = Path(runtime.state) / 'execution-host'
         self.state.mkdir(parents=True, exist_ok=True)
         target = Path(os.environ.get('CARGO_TARGET_DIR', ROOT / 'target')).expanduser().resolve()
@@ -48,7 +49,7 @@ class ExecutionHost:
                      'XDG_DATA_HOME': str(self.state / 'data'), 'XDG_CACHE_HOME': str(self.state / 'cache'),
                      'XDG_CONFIG_HOME': str(self.state / 'config')}
         self.process = subprocess.Popen([str(self.binary), '--host', '127.0.0.1', '--port', str(self.port),
-            '--workspace', str(ROOT.parent.parent), '--backend-url', self.runtime.url + '/api',
+            '--workspace', str(ROOT.parent.parent), '--backend-url', self.backend_url,
             '--secret-file', str(self.secret_file), '--token', self.pairing, '--allowed-origin', self.runtime.url],
             cwd=ROOT, env=child_env, stdout=self.log, stderr=subprocess.STDOUT)
         client = urllib.request.build_opener(urllib.request.ProxyHandler({}))

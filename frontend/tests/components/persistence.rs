@@ -879,7 +879,16 @@ async fn pending_reload_and_decisions_survive_remount_with_shared_backend() {
     settle().await;
     assert!(mounted.root.text_content().unwrap().contains("Accept"));
     mounted.click_text("Accept");
-    settle().await;
+    super::support::wait_until("accepted edit persisted before unmount", || {
+        mounted
+            .state
+            .workspace
+            .pending_edits
+            .get_untracked()
+            .is_empty()
+            && !mounted.state.workspace.is_resolving()
+    })
+    .await;
     drop(mounted);
     let mounted = super::support::mount_test_with_backend(fake.clone(), pending_editor);
     settle().await;
@@ -909,7 +918,16 @@ async fn pending_reload_and_decisions_survive_remount_with_shared_backend() {
     mounted.click_text("Reject");
     settle().await;
     mounted.click(".modal-footer .danger");
-    settle().await;
+    super::support::wait_until("rejected edit persisted before unmount", || {
+        mounted
+            .state
+            .workspace
+            .pending_edits
+            .get_untracked()
+            .is_empty()
+            && !mounted.state.workspace.is_resolving()
+    })
+    .await;
     assert!(
         mounted
             .state

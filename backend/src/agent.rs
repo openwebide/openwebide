@@ -1324,7 +1324,7 @@ impl SpinTaskFactory {
     }
     fn builtin_executor(&self) -> SpinBuiltinTaskExecutor {
         let workspace = self.base.as_ref().map(|base| {
-            VfsToolExecutor::with_web_and_bridge(
+            let executor = VfsToolExecutor::with_web_and_bridge(
                 HostFsVfs::new(base.clone()),
                 openwebide_agent::NoopWebClient,
                 crate::bridge_client::SpinBridgeClient::for_project(
@@ -1332,7 +1332,23 @@ impl SpinTaskFactory {
                     base.clone(),
                 ),
             )
-            .with_context(self.environment.clone())
+            .with_context(self.environment.clone());
+            match openwebide_core::plugins::languages::tools::LanguageToolScope::from_environment(
+                &self.environment,
+            ) {
+                Some(scope) => executor.with_code_intelligence(Arc::new(
+                    openwebide_agent::intelligence::LanguageTools::new(
+                        crate::api::plugins::PlanningHost::owned(
+                            self.store.clone(),
+                            self.user,
+                            self.session,
+                        ),
+                        scope,
+                        rand::random::<u128>(),
+                    ),
+                )),
+                None => executor,
+            }
         });
         let executor = openwebide_agent::vfs_executor::SessionToolExecutor::new(
             workspace,

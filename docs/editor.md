@@ -179,6 +179,83 @@ updates only the original account, project and folder; a changed folder/bridge,
 removed project or account change cannot mark a replacement draft saved. Edits made
 while writing remain dirty, and a failed write preserves the draft and saved baseline.
 
+Reviewed language-server workspace edits may create, move or delete files as
+well as stage unsaved text edits. Approval waits for this window's current file
+saves and flushes editor recovery before starting. File-operation intent and
+recovery progress are stored in the database. An interrupted operation appears
+above the editor after reload: **Check workspace recovery** retries discovery,
+and **Restore interrupted changes** rolls back its acknowledged or reconciled
+filesystem steps while preserving current drafts. File saves and file-tree
+mutations remain paused until recovery finishes. An operation that never started
+can be cancelled without folder access, without replacing later external files.
+For local folders, **Grant original folder access** requests permission using
+the retained original directory handle. Recovery does not substitute a different
+folder automatically when the original capability is missing. **Choose original
+folder** lets you select it again: affected files must match the recorded progress,
+and **Grant this folder** explicitly authorizes the selected recovery target.
+Granting access does not change files. Files and progress are checked again when
+you confirm; a changed review requires another folder choice. This confirmation
+is necessary because the browser can no longer establish folder identity after
+its stored handle is lost. On the native host, rotating authentication credentials
+keeps the same physical-folder identity; replacing the folder does not.
+A completed operation is never silently undone by interrupted-operation recovery.
+For a journal whose editor result is already committed, **Finish workspace
+recovery** resumes cleanup. It preserves edits made since that decision. A cleanup
+acknowledgement from this window checks the latest saved draft; a newer draft
+from another window requires review before disk saves resume.
+Native-object journals additionally require the paired companion and browser to
+prove access to the same physical folder. A fresh proof fences older companion
+sessions; lost replies cannot replay a file operation or overtake recovery.
+Read/write permission is checked before and after each browser-owned native call.
+Folder calls have bounded observation deadlines. A timed-out mutation requires a
+fresh folder proof before recovery; the host finishes accepted work before that
+proof can authorize more operations. Completed requests cancel their timers.
+Regranting a folder after the irreversible decision verifies its physical identity
+without requiring later file contents to match the original operation.
+Git excludes these runtime names from project views and new commits or stashes.
+Its destructive operations check structural collisions before replacing paths;
+see [Git pane](git.md) for handling legacy tracked runtime files.
+
+Some code actions also run a server command. Review its name and arguments with
+the complete edit, then choose **Apply edits and run command**. The editor saves
+approval before applying the edit and sends the command once after synchronizing
+the resulting drafts. It does not automatically retry commands after disconnects.
+Commands wait until the file operation and its cleanup are complete.
+Pending outcomes appear above the editor. **Check command outcome** reads the
+original service; **Stop pending command** fences an unstarted command or stops
+its running service. Draft edits keep saving while disk writes are paused.
+Review any command effects before acknowledging an uncertain result; arbitrary
+effects are not automatically undone. **Discard unstarted command** keeps an
+already committed edit, or cancels the command after its file operation is restored.
+
+`python3 tools/check-workspace-transactions-client.py` verifies the production
+editor, published HTML component, native LSP transport and database journal in
+both modes. Build current release backend/frontend artifacts and the release
+execution host with compiled bundled defaults first. The deterministic LSP peer
+returns real ordered edits; the probe interrupts acknowledgement after a real
+filesystem primitive, restarts the executor, loses/regrants access and preserves
+newer drafts during rollback. It verifies native folder permission loss; its
+browser folder uses OPFS and a picker substitute, so physical browser permission
+prompts remain a separate device check. Fresh corresponding folders exercise
+command approval, once-only effects, lost dispatch, reload and same-window stop,
+draft persistence while a command runs, server errors and rollback before claim.
+
+[Recorded installed Chrome PWA checks](code-intelligence/physical-folder-checks.json)
+also cover real folder selection and browser permission prompts, native moves
+preserving inode/hard link/mode/ACL/extended attribute/CRLF bytes, and a reviewed
+command on the same physical folder. Permission loss and reload preserve drafts
+and pending command recovery; Save remains fenced until manual stop and
+acknowledgement. A remote move interrupted before cursor acknowledgement restores
+the original native objects. A separate Local interruption after the first native
+move and before editor commit survives permission revocation and reload. After
+regrant, **Restore interrupted changes** reconciles the unacknowledged move and
+restores the original inode and attributes. Reload retains the unsaved Unicode
+draft with no pending recovery banner. These checks describe the recorded resource
+checkpoint; later host changes still require integrated verification.
+
+Production language-service reload and separate-client overlay measurements are
+documented in [Language-service reload and client handoff](code-intelligence/service-measurements.md).
+
 Unreadable, invalid or oversized configuration files produce a notice and fall
 back to the remaining rules, detected indentation and defaults. Configuration
 files are limited to 256 KiB. Saving `.editorconfig` refreshes the active file's
@@ -222,11 +299,50 @@ to move keyboard focus. **Escape** dismisses the popup. A completion and its
 additional imports form one undoable edit and remain unsaved until you save.
 Composition pauses suggestions until the input method commits its text.
 
+Snippet completions select their first field. **Tab** and **Shift+Tab** move
+between fields; linked fields update together. **Alt+Up/Down** cycles choices,
+and **Escape** ends snippet editing. Tab navigation mode continues to move focus.
+The **Format selection** action reviews only the selected range when supported
+by the chosen formatter.
+
+Use **Find workspace symbol…** to search a project's symbols, and filter document
+symbols or navigation results by name. **Go to type definition** and **Go to
+implementation** use the installed server's capabilities. **F8** and **Shift+F8**
+move through current diagnostics and wrap at either end. Problems groups results
+by provider, displays pending or failed analysis, and offers fixes from the
+provider that reported each problem. Independent diagnostics providers have
+separate enablement controls in Language providers settings.
+
+Results and reviews remain open across unchanged editor/provider refreshes and
+initial Git-status loading. Changes to effective open-buffer sources or an observed
+branch/commit invalidate them while preserving drafts. Temporary Git-status loss
+retains the last known revision for comparison when status becomes available again.
+
+`python3 tools/check-language-navigation-client.py` checks navigation and
+independent analysis through the production editors and public plugin API in
+both modes. It installs two disposable server-only packages with deterministic
+LSP peers, checks exact UTF-16 caret locations after dialogs close, resolves
+lazy symbols, traverses diagnostics and stages fixes from their owning provider.
+It also checks provider disablement, startup failure and recovery while preserving
+editable drafts and disk files. Its local folder uses OPFS.
+
 Pause the mouse over a symbol to see its information without moving the caret or
 taking keyboard focus. The information stays open while the pointer is over the
 symbol or popup; **Escape** dismisses it. Hover also works in read-only files.
 The **Code intelligence** menu retains explicit symbol-information and completion
 requests. Missing or unavailable language servers leave normal editing usable.
+
+Agents use the read-only `code_intelligence` tool for diagnostics, document and
+workspace symbols, definitions and references. Queries read workspace files;
+editor drafts remain in a separate client. Installed packages, provider choices
+and project authority are refreshed for each query. Results identify their
+provider and source digest, distinguish pending diagnostics from an empty clean
+result, and report omitted records when the model's output budget is reached.
+Navigation input uses 1-based lines and UTF-16 columns; returned ranges use
+zero-based UTF-16 coordinates. Opaque symbol and external-resource IDs must be
+queried using their originating source path. External definitions are read-only
+and support bounded line windows. Agent edits continue through the ordinary file
+tools and their approval policy.
 
 Packages can declare `uniformLineComments` when one line marker or block-comment
 fallback applies throughout the file. Those explicit line-comment commands stay
@@ -917,7 +1033,10 @@ per project; edits arriving during a write are saved after its acknowledgement.
 Failures keep the last acknowledged revision and current drafts; Retry recovery
 resumes writes. A revision conflict pauses writes until Restore saved files or Keep
 this window is confirmed. Late loads cannot discard files opened or edited in flight.
-The disposable Spin/SQLite and Chrome check below verifies reload/new-window recovery. Native folder-permission and real-device verification remain in progress.
+The disposable Spin/SQLite and Chrome check below verifies reload/new-window recovery.
+Recorded installed-PWA checks also cover native permission loss/regrant and
+retained drafts, plus interrupted file-journal rollback through the installed PWA.
+Other device checks remain open.
 
 Recovery hydration primitives prepare all documents before publishing any state,
 restore ordered tabs and active or hidden buffers, and preserve unrelated workspace
@@ -938,8 +1057,8 @@ Cancel retains both versions;
 Reload disk replaces the draft, and Save draft uses the normal save policy with a
 one-use approval for the reviewed disk and draft versions. Missing files can be
 recreated explicitly, including empty files. Changed editor/root/account state or
-disk content rejects the action. Native folder-permission and real-device verification
-remain pending.
+disk content rejects the action. Additional native recovery and device checks
+remain on the roadmap.
 
 
 ### Live recovery verification

@@ -2934,6 +2934,7 @@ dependencies = [
  "base64 0.23.1",
  "bytes",
  "futures",
+ "hmac 0.13.0",
  "http-body-util",
  "hyper",
  "hyper-rustls",
@@ -2947,8 +2948,11 @@ dependencies = [
  "openwebide-storage",
  "portable-pty",
  "rand 0.10.3",
+ "rustix 1.1.5",
+ "same-file",
  "serde",
  "serde_json",
+ "sha2 0.11.0",
  "sysinfo",
  "tempfile",
  "thiserror 2.0.20",
@@ -2957,6 +2961,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "url",
+ "which",
  "windows-sys 0.61.2",
 ]
 
@@ -3483,8 +3488,6 @@ dependencies = [
 [[package]]
 name = "proc-macro-error2"
 version = "2.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11ec05c52be0a07b08061f7dd003e7d7092e0472bc731b4af7bb1ef876109802"
 dependencies = [
  "proc-macro-error-attr2",
  "proc-macro2",
@@ -5905,6 +5908,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7dcd9d09a39985f5344844e66b0c530a33843579125f23e21e9f0f220850f22a"
 dependencies = [
  "rustls-pki-types",
+]
+
+[[package]]
+name = "which"
+version = "8.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bae2f2b2b816647a1cab1acc91f5bd20812d53cb344382635ec2181940c8034f"
+dependencies = [
+ "libc",
 ]
 
 [[package]]

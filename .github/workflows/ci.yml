@@ -61,7 +61,7 @@ jobs:
         run: cargo check -p openwebide-language-syntax --target wasm32-wasip2 --locked
 
       - name: Clippy (frontend, wasm32-unknown-unknown)
-        run: cargo clippy -p openwebide-frontend --target wasm32-unknown-unknown -- -D warnings
+        run: cargo clippy -p openwebide-frontend --target wasm32-unknown-unknown --all-targets -- -D warnings
 
       - name: Keep language engines on execution hosts
         run: python3 tools/check-language-client.py --dependencies-only
@@ -103,7 +103,11 @@ jobs:
       - uses: ./.github/actions/setup-go-language-server
       - uses: ./.github/actions/setup-clangd-language-server
 
+      - uses: ./.github/actions/setup-terraform-language-server
+
       - uses: ./.github/actions/setup-typescript-language-server
+
+      - uses: ./.github/actions/setup-web-language-servers
 
       - uses: ./.github/actions/setup-csharp-language-server
 
@@ -154,6 +158,12 @@ jobs:
       - name: Check C# solutions and project references
         run: cargo run -p openwebide-bridge --example check_csharp_server --locked
 
+      - name: Check HTML, CSS and JSON language services
+        run: cargo run -p openwebide-bridge --example check_web_servers --locked
+
+      - name: Check Terraform language services
+        run: cargo run -p openwebide-bridge --example check_terraform_server --locked
+
   plugin-panels:
     runs-on: ubuntu-latest
     steps:
@@ -192,15 +202,23 @@ jobs:
 
   bridge-windows:
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.98.1
           components: clippy
       - uses: Swatinem/rust-cache@v2
       - name: Check bridge Windows adapters with TLS
-        run: cargo clippy -p openwebide-bridge -- -D warnings
+        run: cargo clippy -p openwebide-bridge --all-targets -- -D warnings
+      - name: Verify native Windows source notifications and cancellation cleanup
+        run: cargo test -p openwebide-bridge --lib languages::host::generation -- --test-threads=1
+      - name: Verify native Git metadata freshness
+        run: cargo test -p openwebide-bridge --lib languages::host::repository -- --test-threads=1
 
   frontend:
     runs-on: ubuntu-latest
@@ -227,6 +245,8 @@ jobs:
       - uses: ./.github/actions/setup-typescript-language-server
 
       - uses: ./.github/actions/setup-csharp-language-server
+
+      - uses: ./.github/actions/setup-web-language-servers
 
       - name: Install Trunk
         run: |
@@ -325,6 +345,41 @@ jobs:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
         run: python3 tools/check-csharp-server-client.py
+
+      - name: Check production HTML, CSS and JSON language-server features in both modes
+        timeout-minutes: 10
+        env:
+          CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: python3 tools/check-web-language-server-client.py
+
+      - name: Check reviewed workspace operations, commands and interrupted recovery in both modes
+        timeout-minutes: 10
+        env:
+          CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: python3 tools/check-workspace-transactions-client.py
+
+      - name: Check declared project inputs and reviewed configuration commands in both modes
+        timeout-minutes: 10
+        env:
+          CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: python3 tools/check-project-inputs-client.py
+
+      - name: Check agent language tools in browser, bridge and backend executors
+        timeout-minutes: 10
+        env:
+          CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: python3 tools/check-agent-language-client.py
+
+      - name: Check production navigation and independent diagnostics in both modes
+        timeout-minutes: 10
+        env:
+          CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: python3 tools/check-language-navigation-client.py
 
       - name: Check automatic completion and pointer information in both modes
         timeout-minutes: 10

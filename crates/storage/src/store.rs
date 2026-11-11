@@ -5,6 +5,10 @@ mod branches;
 mod chat_queue;
 mod editor_recovery;
 mod goals;
+mod language_actions;
+mod language_tools;
+mod workspace_activity;
+mod workspace_transactions;
 pub use goals::GoalTurnAssessment;
 mod host_admin;
 mod host_updates;
@@ -744,6 +748,20 @@ impl<D: Db> Store<D> {
                     .await?;
                 if check.rows.is_empty() {
                     return Err(StorageError::NotFound(format!("project {id}")));
+                }
+
+                if !tx.execute("SELECT 1 FROM workspace_transactions WHERE user_id = ? AND project_id = ? AND terminal = 0", &[DbValue::Int(user_id.get()),DbValue::Int(id)]).await?.rows.is_empty() {
+                    return Err(StorageError::Conflict("Recover the pending workspace operation before deleting this project".into()));
+                }
+
+                // A file transaction can be terminal while its approved command
+                // is still running or awaiting explicit outcome recovery. Keep
+                // both journals until that command reaches a terminal phase.
+                if !tx.execute(
+                    "SELECT 1 FROM language_actions WHERE user_id = ? AND project_id = ? AND phase NOT IN ('completed','acknowledged','cancelled')",
+                    &[DbValue::Int(user_id.get()), DbValue::Int(id)],
+                ).await?.rows.is_empty() {
+                    return Err(StorageError::Conflict("Review the pending language command before deleting this project".into()));
                 }
 
                 tx.execute(

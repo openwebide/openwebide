@@ -12,6 +12,19 @@ use crate::{
 };
 use leptos::{prelude::*, task::spawn_local};
 
+struct RewindCompletion {
+    busy: RwSignal<bool>,
+    serial: std::rc::Rc<std::cell::Cell<u64>>,
+    token: u64,
+}
+impl Drop for RewindCompletion {
+    fn drop(&mut self) {
+        if self.serial.get() == self.token {
+            self.busy.try_set(false);
+        }
+    }
+}
+
 pub fn actions(
     api: Api,
     chat: ChatState,
@@ -23,6 +36,9 @@ pub fn actions(
 ) -> Callback<i64> {
     let auth = expect_context::<AuthState>();
     let todos = use_context::<super::todos::TodoActions>();
+    let settings = use_context::<crate::state::settings::SettingsState>();
+    let epoch = super::workspace::project_epoch(projects, auth);
+    let serial = StoredValue::new_local(std::rc::Rc::new(std::cell::Cell::new(0_u64)));
     Callback::new(move |message: i64| {
         let Some(session) = chat.active_session.get_untracked() else {
             return;
@@ -36,11 +52,37 @@ pub fn actions(
         }
         let project = projects.active_project.get_untracked();
         let generation = auth.generation.get_untracked();
+        let original_epoch = epoch.get_untracked();
         let current = move || {
             auth.generation.try_get_untracked() == Some(generation)
+                && epoch.try_get_untracked() == Some(original_epoch)
                 && chat.active_session.try_get_untracked() == Some(Some(session))
                 && projects.active_project.try_get_untracked() == Some(project)
         };
+        let mutations = match project
+            .map(|id| {
+                crate::workspace_mutations::WorkspaceMutations::for_project(
+                    api, projects, auth, settings, id, current,
+                )
+            })
+            .transpose()
+        {
+            Ok(mutations) => mutations,
+            Err(error) => {
+                ui.notify(error);
+                return;
+            }
+        };
+        let mutations = mutations.map(|scope| {
+            scope.with_preflight(move || {
+                if workspace.dirty.get_untracked() {
+                    Err("Save or discard the editor's unsaved changes before rewinding".into())
+                } else {
+                    Ok(())
+                }
+            })
+        });
+        let mutations = send_wrapper::SendWrapper::new(mutations);
         spawn_local(async move {
             let backend = api.with_value(Clone::clone);
             let preview = match backend.list_messages(session).await.and_then(|entries| {
@@ -79,7 +121,14 @@ pub fn actions(
                     return;
                 }
                 chat.rewinding.set(true);
+                let serial = serial.get_value();
+                let token = serial.get().wrapping_add(1);
+                serial.set(token);
+                let completion = RewindCompletion {busy: chat.rewinding, serial, token};
+                let mutations = mutations.clone();
                 spawn_local(async move {
+                    let work = async move {
+                    let _completion = completion;
                     let result = async {
                         let backend = api.with_value(Clone::clone);
                         // Check conflicts before creating the durable project lock.
@@ -125,14 +174,19 @@ pub fn actions(
                         }
                         Ok::<_, String>(())
                     }.await;
-                    if auth.generation.try_get_untracked() == Some(generation) {
-                        chat.rewinding.set(false);
-                        if current() {
-                            match result {
-                                Ok(()) => ui.notify("Checkpoint restored."),
-                                Err(error) => ui.notify(format!("Rewind paused: {error}. Retry the same checkpoint to resume.")),
-                            }
+                    if current() {
+                        match result {
+                            Ok(()) => ui.notify("Checkpoint restored."),
+                            Err(error) => ui.notify(format!("Rewind paused: {error}. Retry the same checkpoint to resume.")),
                         }
+                    }
+                    };
+                    let guarded = match mutations.take() {
+                        Some(mutations) => mutations.run(async move {work.await; Ok(())}).await,
+                        None => {work.await; Ok(())},
+                    };
+                    if let Err(error) = guarded && current() {
+                        ui.notify(format!("Rewind paused: {error}"));
                     }
                 });
             }),

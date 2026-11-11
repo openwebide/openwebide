@@ -94,7 +94,7 @@ impl<D: Db> Store<D> {
         }
         Ok((plugin, context))
     }
-    async fn plugin_grant_in_transaction(
+    pub(super) async fn plugin_grant_in_transaction(
         &self,
         user: UserId,
         session: Option<i64>,
@@ -288,23 +288,25 @@ impl<D: Db> Store<D> {
     }
     /// Only an enabled exact installed receipt can acquire authority. Subsequent
     /// updates do not replace this invocation's source, project or model snapshot.
-    pub async fn issue_plugin_context_grant(
-        &self,
+    pub fn issue_plugin_context_grant<'a>(
+        &'a self,
         user: UserId,
-        context: &PluginExecutionContext,
-        plugin: &PreparedPlugin,
-        token: &str,
+        context: &'a PluginExecutionContext,
+        plugin: &'a PreparedPlugin,
+        token: &'a str,
         now: i64,
-    ) -> Result<(), StorageError> {
-        plugin
-            .validate()
-            .map_err(|error| StorageError::InvalidRequest(error.to_string()))?;
-        if token.len() != 32 || !token.bytes().all(|byte| byte.is_ascii_hexdigit()) || now < 0 {
-            return Err(StorageError::InvalidRequest(
-                "Invalid plugin execution grant".into(),
-            ));
-        }
-        self.db.transaction(|tx| async move {
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), StorageError>> + Send + 'a>>
+    {
+        Box::pin(async move {
+            plugin
+                .validate()
+                .map_err(|error| StorageError::InvalidRequest(error.to_string()))?;
+            if token.len() != 32 || !token.bytes().all(|byte| byte.is_ascii_hexdigit()) || now < 0 {
+                return Err(StorageError::InvalidRequest(
+                    "Invalid plugin execution grant".into(),
+                ));
+            }
+            self.db.transaction(|tx| async move {
             let store = Store::new(tx);
             store.validate_plugin_context(user, context).await?;
             if let Some(primary) = &context.primary
@@ -324,6 +326,7 @@ impl<D: Db> Store<D> {
             ]).await?;
             Ok(())
         }).await
+        })
     }
     pub(super) async fn validate_enabled_plugin(
         &self,

@@ -1,0 +1,359 @@
+{
+  "format": 1,
+  "checked_on": "2026-11-10",
+  "status": "passed_native_folder_coordination_checkpoint",
+  "source_manifest_sha256": "e4a2160f99bbfa3512aab022e7b83b647672bede8ff03b68348b849897c18ff3",
+  "source_files": 1798,
+  "base_commit": "9283345d3545ded5461ba5ca1702709954270ced",
+  "working_tree": true,
+  "relevant_source_sha256": {
+    "bridge/src/folder_coordination.rs": "a51d0b14290aa713bfa5c52837bf578412eda94ae29940829b8eb557da172cd3",
+    "bridge/src/folder_coordination/physical.rs": "747f668c28721ed7c38165b6df75b7091b15807dc98d5e74ea0f7d62332ed154",
+    "bridge/src/folder_coordination/physical/unix.rs": "a59444ec0e2b3aec4d7b1d610945742812bd168138fd4dd58f6fe6f90f1731d1",
+    "bridge/src/folder_coordination/tests.rs": "f9f5ec0adf5c19769dabcf30d6a4b312b4f28cf9acd4e0dd57d5047c782de9c6",
+    "bridge/src/folder_coordination/tests/processes.rs": "f62f8a0f86c5cccd7d93cf8a6386e7dd2891306dd2207809af851be58e705825"
+  },
+  "shared_implementation": "The existing native folder coordinator retains queue, cancellation, admission and quarantine policy. A Unix adapter acquires OS directory locks; native resource workers, paired folder calls, Git, foreground and approved language commands retain their existing shared coordinator paths.",
+  "behavior": "Acquire shared ancestor locks and an exclusive selected-directory lock on captured physical objects in ancestor-first order. Validate every original identity and path before admission. Keep quarantined directory locks for the lifetime of the original coordinator. Busy attempts release partial locks and the full descriptor reservation before awaiting retry.",
+  "before_fix": {
+    "source_manifest_sha256": "e7d13ca795c9e1e1a367a46a352f2dffe5726905c0e8a68fe099313b77bdd1c1",
+    "test": "folder_coordination::tests::processes::independent_processes_wait_for_physical_parents_and_aliases_while_other_roots_continue",
+    "observation": "An independent coordinator admitted a selected root while a distinct live native process held that same physical folder.",
+    "exit_code": 101,
+    "log_sha256": "b535639320a9eb6b3d63cbf7a5b20eeee38f201c65021feef43d7f9e1d593ea3"
+  },
+  "bounds": {
+    "directories_per_acquisition": 64,
+    "retained_lock_descriptors_per_bridge_maximum": 256,
+    "descriptor_budget_rule": "clamp(RLIMIT_NOFILE / 8, 8, 256); fallback 32 if getrlimit fails",
+    "reservation": "Reserve the complete set atomically; reject roots exceeding capacity; retain no partial OS locks or descriptor permits across a blocked await.",
+    "foreign_owner_retry_milliseconds": {
+      "initial": 10,
+      "maximum": 100
+    },
+    "host_admission": "Existing 256 waiting/active/uncertain folder limit and 256 worker limit remain.",
+    "note": "Lock descriptor budget excludes pre-existing captured-folder handles and temporary identity probes; this is not a total-process descriptor or memory bound."
+  },
+  "macos": {
+    "architecture": "arm64",
+    "kernel": "27.2.0",
+    "checks": [
+      {
+        "case": "format",
+        "command": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--check"
+        ],
+        "returncode": 0,
+        "seconds": 2.82,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "test_results": []
+      },
+      {
+        "case": "native-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 6.6,
+        "log_sha256": "f075d6bee305b0f8c71b31d9681f4b64c7879f9cfd78a9147082fcae320b88e8",
+        "test_results": []
+      },
+      {
+        "case": "native-bridge",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 108.12,
+        "log_sha256": "a79f73b8090c575b6620ec679c1f1472637d9eaaf4f52e519dd603bf00220fb6",
+        "test_results": [
+          {
+            "passed": 360,
+            "failed": 0,
+            "ignored": 1
+          }
+        ]
+      },
+      {
+        "case": "native-adapters",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--test",
+          "workspace_transactions",
+          "--test",
+          "workspace_companion",
+          "--test",
+          "plugins",
+          "--test",
+          "language_commands",
+          "--test",
+          "http_git",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 43.7,
+        "log_sha256": "c973b3398cb89d6bfd21d029592ecefcae188b6e7371610287750ec11dcc581e",
+        "test_results": [
+          {
+            "passed": 4,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          }
+        ]
+      },
+      {
+        "case": "windows-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 6.34,
+        "log_sha256": "edb87f9d6ef555b4d8b91aa7b7e553237bf17852211e8de0713de69a5fe2ae96",
+        "test_results": []
+      }
+    ]
+  },
+  "linux": {
+    "source_manifest_sha256": "e4a2160f99bbfa3512aab022e7b83b647672bede8ff03b68348b849897c18ff3",
+    "tooling_image_id": "sha256:916206a1aa179fdfeb1b73529dc6a04c84b2ccd2a12dfa4577cb6fda9019ab1a",
+    "source_mount": "read-only matching source snapshot",
+    "runtime": {
+      "uid": 502,
+      "kernel": "7.0.14-linuxkit",
+      "architecture": "aarch64",
+      "filesystem": "overlayfs",
+      "cpu_max": "200000 100000",
+      "memory_max": "4294967296",
+      "memory_swap_max": "0"
+    },
+    "container_configuration": {
+      "image_id": "sha256:916206a1aa179fdfeb1b73529dc6a04c84b2ccd2a12dfa4577cb6fda9019ab1a",
+      "cpu": 2000000000,
+      "memory": 4294967296,
+      "memory_plus_swap": 4294967296
+    },
+    "oom_killed": false,
+    "checks": [
+      {
+        "case": "clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--locked",
+          "--offline",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 70.34,
+        "log_sha256": "2ba51ad938e8f9a31f60a4936ecc68e5c176a9802b192a1daf74e22b34db65b3",
+        "test_results": []
+      },
+      {
+        "case": "coordination",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "folder_coordination",
+          "--locked",
+          "--offline"
+        ],
+        "returncode": 0,
+        "seconds": 100.59,
+        "log_sha256": "0552e74ce326319bbe95a472f75931de4d2c5990abe0f7313910c575fd973614",
+        "test_results": [
+          {
+            "passed": 14,
+            "failed": 0,
+            "ignored": 0
+          }
+        ]
+      },
+      {
+        "case": "transactions",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "workspace_transactions",
+          "--locked",
+          "--offline"
+        ],
+        "returncode": 0,
+        "seconds": 64.89,
+        "log_sha256": "420f42b2600131c0b6dec4e9f0478294a7c78bce51d7d8dab907984557543ae7",
+        "test_results": [
+          {
+            "passed": 27,
+            "failed": 0,
+            "ignored": 0
+          }
+        ]
+      },
+      {
+        "case": "execution",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "exec::workspace",
+          "--locked",
+          "--offline"
+        ],
+        "returncode": 0,
+        "seconds": 0.67,
+        "log_sha256": "c5d4b62dcc07d76bb7c2f310b682e1364f457f95aecbbe8f73ed6b41b03e8f07",
+        "test_results": [
+          {
+            "passed": 7,
+            "failed": 0,
+            "ignored": 0
+          }
+        ]
+      },
+      {
+        "case": "adapters",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--test",
+          "workspace_transactions",
+          "--test",
+          "workspace_companion",
+          "--test",
+          "plugins",
+          "--test",
+          "language_commands",
+          "--test",
+          "http_git",
+          "--locked",
+          "--offline"
+        ],
+        "returncode": 0,
+        "seconds": 70.13,
+        "log_sha256": "6530d57473fb61266c96d3bf61e71cb7df05d8bb08bdc1d1f12b06ed773577d7",
+        "test_results": [
+          {
+            "passed": 4,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          }
+        ]
+      }
+    ]
+  },
+  "coverage": [
+    "A distinct native process excludes the same root, nested children and symlink aliases while an independent root proceeds.",
+    "Quarantined locks remain visible to another process while the original coordinator retains them.",
+    "An acknowledged SIGSTOP of the original process preserves exclusion; the waiter acquires only after that process resumes and releases.",
+    "A frozen foreign waiter retains no partial ancestor locks and does not delay shutdown. A fresh coordinator acquires after the peer actually exits, even before the frozen future is polled again.",
+    "Replacing a queued root rejects the old request without changing replacement contents.",
+    "Real OS locks and an isolated descriptor budget verify complete reservation release after contention and rejection when the full set cannot fit.",
+    "The existing native workspace, command, Git and both authenticated plugin/folder transport contracts pass."
+  ],
+  "descendant_probe": {
+    "format": 1,
+    "platform": "darwin",
+    "inherited_leader_retains_lock": true,
+    "after_leader_exit_lock_reacquired_while_grandchild_runs": true,
+    "grandchild_closed_inherited_fds": true,
+    "original_grandchild_acknowledged_exit": true,
+    "conclusion": "Inheriting directory descriptors into the original server alone does not fence descendants that close inherited descriptors and outlive it."
+  },
+  "limits": [
+    "OS directory exclusion is implemented and tested on macOS/Linux only. Windows retains in-process coordination; strict cross-compilation does not prove native Windows directory locking.",
+    "The current locks belong to the bridge process. Descendants can survive its death; simply inheriting locks into the original server is insufficient, as the separate Python process probe demonstrates. Crash-safe child cleanup remains unfinished.",
+    "Durable journal actor ownership, scoped local host delegation, compound Local leases and all native/backend/browser-agent writers remain unfinished. Direct browser FSA writers do not acquire these native directory locks.",
+    "Current filesystem proofs use temporary local directories (Linux overlayfs). Other filesystem and mount behavior is not established.",
+    "The Linux tooling container uses verified 2 CPU/4 GiB/no-swap limits. These checks are not production-image, memory-performance or physical PWA measurements.",
+    "The existing ignored official-marketplace network smoke test was not executed; publication and installed package verification remain pending.",
+    "This checkpoint is not the full mandatory local CI gate or a publication receipt."
+  ],
+  "post_check_updates": [
+    "CHANGELOG.md",
+    "docs/roadmap.md",
+    "docs/code-intelligence/folder-coordination-checks.json"
+  ]
+}

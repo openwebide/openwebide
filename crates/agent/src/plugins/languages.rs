@@ -11,11 +11,16 @@ use std::sync::{
     Arc, Mutex,
     atomic::{AtomicU64, Ordering},
 };
+mod actions;
 mod composition;
+pub use actions::LanguageActionClient;
 mod documents;
 mod intelligence;
 pub use documents::LanguageDocumentRequest;
-pub use intelligence::initialization_params;
+pub use intelligence::{
+    IntelligenceDocuments, LanguageAnalysis, ProviderDiagnostics, initialization_params,
+    merge_diagnostics,
+};
 #[cfg(test)]
 mod tests;
 

@@ -26,6 +26,7 @@ pub mod context;
 mod discovery;
 pub mod executor;
 pub mod host_admin;
+pub mod intelligence;
 pub mod mcp;
 pub mod memory;
 pub mod model;

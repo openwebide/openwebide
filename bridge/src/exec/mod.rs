@@ -11,6 +11,10 @@ pub mod git;
 mod host;
 mod host_info;
 pub mod proc;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[doc(hidden)]
+pub mod process_owner;
+pub(crate) mod workspace;
 
 pub type ExecOutput = CommandOutcome;
 pub type ExecutionFuture<T> = Pin<Box<dyn Future<Output = Result<T, BridgeError>> + Send>>;
@@ -132,6 +136,16 @@ pub trait ToolExecution: Send + Sync {
         })
     }
     fn run_command(&self, spec: SpawnSpec) -> ExecutionFuture<ExecOutput>;
+    /// Trusted remote-host adapters launch a transport process locally, but its
+    /// working directory does not identify the filesystem changed on that host.
+    fn run_remote_command(&self, spec: SpawnSpec) -> ExecutionFuture<ExecOutput> {
+        self.run_command(spec)
+    }
+    /// Physical write scope for Git, which can own a parent worktree even when
+    /// its caller opens a child directory. Custom adapters may supply their own.
+    fn git_root(&self, cwd: PathBuf) -> ExecutionFuture<PathBuf> {
+        Box::pin(async move { Ok(cwd) })
+    }
     fn git(&self, request: GitRequest) -> ExecutionFuture<GitResponse>;
 }
 
@@ -139,6 +153,9 @@ pub trait ToolExecution: Send + Sync {
 pub struct HostExecution;
 
 impl ToolExecution for HostExecution {
+    fn git_root(&self, cwd: PathBuf) -> ExecutionFuture<PathBuf> {
+        Box::pin(async move { git::execution_root(&cwd).await })
+    }
     fn host_info(&self) -> ExecutionFuture<openwebide_core::HostInfo> {
         Box::pin(async {
             tokio::time::timeout(Duration::from_secs(6), host_info::snapshot())

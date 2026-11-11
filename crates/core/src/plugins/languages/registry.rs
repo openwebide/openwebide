@@ -83,6 +83,10 @@ pub struct LanguagePreferences {
     pub providers: BTreeMap<String, ProviderPreference>,
     #[serde(default)]
     pub formatters: BTreeMap<String, ProviderPreference>,
+    /// Installed diagnostics providers are enabled by default; explicit user or
+    /// project choices address their full provider namespace, including language.
+    #[serde(default)]
+    pub diagnostics: BTreeMap<String, bool>,
 }
 impl LanguagePreferences {
     pub fn validate(&self) -> Result<(), String> {
@@ -92,6 +96,15 @@ impl LanguagePreferences {
             }) {
                 return Err("Invalid or oversized language provider preferences".into());
             }
+        }
+        if self.diagnostics.len() > MAX_REGISTERED_LANGUAGES
+            || self.diagnostics.keys().any(|namespace| {
+                namespace.len() > 256
+                    || !namespace.starts_with("plugin:")
+                    || namespace.chars().any(char::is_control)
+            })
+        {
+            return Err("Invalid or oversized diagnostics provider preferences".into());
         }
         Ok(())
     }
@@ -134,6 +147,9 @@ impl LanguageSettings {
         if let Some(overrides) = self.projects.get(&project) {
             preferences.providers.extend(overrides.providers.clone());
             preferences.formatters.extend(overrides.formatters.clone());
+            preferences
+                .diagnostics
+                .extend(overrides.diagnostics.clone());
         }
         preferences
     }
@@ -323,8 +339,83 @@ impl LanguageRegistry {
     ) -> LanguageSelection<'a> {
         self.select_matching(path, first_line, language, preferences, |provider| {
             provider.plugin_api >= super::intelligence::MIN_PLUGIN_API
-                && provider.definition.features.language_server.is_some()
+                && provider
+                    .definition
+                    .features
+                    .language_server
+                    .as_ref()
+                    .is_some_and(|server| server.role.is_language())
         })
+    }
+
+    /// Recognize a buffer within the selected service's declared dialects.
+    /// Primary provider preferences do not redirect an alternate formatter or
+    /// independent analyzer to a different package's unsaved-buffer inventory.
+    pub fn server_document<'a>(
+        &'a self,
+        service: &RegisteredLanguage,
+        path: &str,
+        source: &str,
+        preferences: &LanguagePreferences,
+    ) -> Result<Option<&'a RegisteredLanguage>, String> {
+        let mut best = 0;
+        let mut selected = None;
+        let mut ambiguous = false;
+        for provider in &self.providers {
+            if !service.shares_server(provider)
+                || (provider
+                    .definition
+                    .features
+                    .language_server
+                    .as_ref()
+                    .is_some_and(|server| !server.role.is_language())
+                    && preferences.diagnostics.get(&provider.namespace) == Some(&false))
+            {
+                continue;
+            }
+            let Some(score) = recognition(&provider.definition, path, source, None) else {
+                continue;
+            };
+            if score > best {
+                best = score;
+                selected = Some(provider);
+                ambiguous = false;
+            } else if score == best {
+                ambiguous = true;
+            }
+        }
+        if ambiguous {
+            return Err("The selected service declares ambiguous document dialects".into());
+        }
+        Ok(selected)
+    }
+
+    pub fn diagnostic_providers<'a>(
+        &'a self,
+        path: &str,
+        first_line: &str,
+        language: Option<&str>,
+        preferences: &LanguagePreferences,
+    ) -> Result<Vec<&'a RegisteredLanguage>, String> {
+        let providers = self
+            .providers
+            .iter()
+            .filter(|provider| {
+                provider.plugin_api >= 9
+                    && provider
+                        .definition
+                        .features
+                        .language_server
+                        .as_ref()
+                        .is_some_and(|server| server.role == super::LanguageServerRole::Diagnostics)
+                    && preferences.diagnostics.get(&provider.namespace) != Some(&false)
+                    && recognition(&provider.definition, path, first_line, language).is_some()
+            })
+            .collect::<Vec<_>>();
+        if providers.len() > 8 {
+            return Err("Too many diagnostics providers are enabled for this language; disable unused providers".into());
+        }
+        Ok(providers)
     }
 
     fn select_matching<'a>(
@@ -397,7 +488,12 @@ impl LanguageRegistry {
                 provider.definition.id == language
                     && (provider.definition.features.formatting.is_some()
                         || (provider.plugin_api >= super::intelligence::MIN_PLUGIN_API
-                            && provider.definition.features.language_server.is_some()))
+                            && provider
+                                .definition
+                                .features
+                                .language_server
+                                .as_ref()
+                                .is_some_and(|server| server.role.is_language())))
             })
             .collect::<Vec<_>>();
         match preferences.formatters.get(language) {

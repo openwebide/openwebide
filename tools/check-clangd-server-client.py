@@ -175,6 +175,7 @@ def check():
                 wait('C header/source rename review',lambda:script(browser,"const dialog=document.querySelector('[role=dialog]');return arguments[0].every(path=>dialog?.textContent.includes(path))&&[...dialog.querySelectorAll('button')].some(button=>button.textContent.trim()==='Apply to editor tabs'&&!button.disabled);",['include/c_api.h','main.c']))
                 Path('/tmp/openwebide-clangd-lsp-c-review-'+mode+'-'+layout+'.png').write_bytes(base64.b64decode(browser.call('GET','/screenshot')))
                 assert click(browser,'Apply to editor tabs')
+                wait('C rename published before closing its review',lambda:script(browser,"return document.querySelector('textarea[data-editor-path]')?.value.includes('c_answer');"))
                 for path in ['include/c_api.h','main.c']:
                     select(browser,path)
                     wait(path+' C rename staged',lambda:script(browser,"return document.querySelector('textarea[data-editor-path]')?.value.includes('c_answer');"))
@@ -219,6 +220,7 @@ def check():
                 '''), 'Rename previews collapsed instead of allowing dialog scrolling'
                 Path('/tmp/openwebide-clangd-lsp-review-'+mode+'-'+layout+'.png').write_bytes(base64.b64decode(browser.call('GET','/screenshot')))
                 assert click(browser,'Apply to editor tabs')
+                wait('C++ rename published before closing its review',lambda:script(browser,"return document.querySelector('textarea[data-editor-path]')?.value.includes('renamed_answer');"))
                 for path in ['include/api.hpp','main.cpp']:
                     select(browser,path)
                     wait(path+' staged rename',lambda:script(browser,"return document.querySelector('textarea[data-editor-path]')?.value.includes('renamed_answer');"))

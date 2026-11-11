@@ -1,7 +1,11 @@
 //! Git domain models, repository status, commit payloads, and porcelain parsing.
 
 pub mod local;
+mod workspace;
 pub use local::LocalGit;
+pub use workspace::{
+    RestoreEntry, RestoreFiles, private_pathspecs, validate_restore, workspace_pathspecs,
+};
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -230,7 +234,7 @@ pub fn parse_porcelain_v1(
     let mut ahead = 0;
     let mut behind = 0;
 
-    for (rec, _) in porcelain_records(output) {
+    for (rec, source) in porcelain_records(output) {
         if rec.starts_with("## ") {
             // Branch header: e.g.
             // ## main...origin/main [ahead 1, behind 2]
@@ -259,9 +263,10 @@ pub fn parse_porcelain_v1(
         if rec.len() < 4 || bytes[2] != b' ' {
             continue;
         }
-        let index_status = bytes[0];
-        let work_status = bytes[1];
-        let path = rec.get(3..).unwrap_or("");
+        let Some((index_status, work_status, path, _)) = workspace::public_change(rec, source)
+        else {
+            continue;
+        };
 
         let status = if matches!(
             (index_status, work_status),
@@ -532,19 +537,21 @@ pub fn parse_path_changes(output: &str) -> GitPathChanges {
         if bytes.len() < 4 || bytes[2] != b' ' {
             continue;
         }
-        let path = &record[3..];
-        if bytes[0] == b'?' && bytes[1] == b'?' {
+        let Some((index, work, path, source)) = workspace::public_change(record, source) else {
+            continue;
+        };
+        if index == b'?' && work == b'?' {
             changes.untracked.insert(path.into());
         } else {
-            if bytes[0] != b' ' {
+            if index != b' ' {
                 changes.staged.insert(path.into());
             }
-            if bytes[1] != b' ' {
+            if work != b' ' {
                 changes.unstaged.insert(path.into());
             }
         }
         // Copies do not delete their source and must not revert it.
-        if bytes[..2].contains(&b'R')
+        if [index, work].contains(&b'R')
             && let Some(source) = source
         {
             changes.renamed_from.insert(path.into(), source.into());
@@ -554,7 +561,8 @@ pub fn parse_path_changes(output: &str) -> GitPathChanges {
 }
 
 /// Domain validation and command choice shared by every Git transport.
-/// The execution adapter must set GIT_LITERAL_PATHSPECS=1.
+/// User paths are literal; trusted exclusions use Git pathspec magic. Adapters
+/// must clear inherited pathspec interpretation flags and allow explicit magic.
 pub fn path_action_args(
     request: &GitPathRequest,
     changes: &GitPathChanges,
@@ -581,7 +589,12 @@ pub fn path_action_args(
             }
             _ => return Err("There are no changes for this Git action".into()),
         };
-        return Ok(args.into_iter().map(str::to_owned).collect());
+        let mut args = args[..args.len() - 1]
+            .iter()
+            .map(|arg| (*arg).to_owned())
+            .collect::<Vec<_>>();
+        args.extend(workspace_pathspecs(&[".".into()])?);
+        return Ok(args);
     }
     let path = crate::workspace_entries::entry_path(&request.path)?;
     let paths = changes.action_paths(&path)?;
@@ -615,12 +628,19 @@ pub fn path_action_args(
             }
         }
         GitPathAction::Revert if has_head && changes.has_tracked_changes(&path) => {
-            vec!["restore", "--source=HEAD", "--staged", "--worktree", "--"]
+            vec![
+                "restore",
+                "--no-recurse-submodules",
+                "--source=HEAD",
+                "--staged",
+                "--worktree",
+                "--",
+            ]
         }
         _ => return Err("This Git action is not available for the selected path".into()),
     };
     let mut args = args.into_iter().map(str::to_owned).collect::<Vec<_>>();
-    args.extend(paths);
+    args.extend(workspace_pathspecs(&paths)?);
     Ok(args)
 }
 
@@ -646,7 +666,11 @@ mod path_tests {
             true,
         )
         .unwrap();
-        assert_eq!(args, ["add", "-A", "--", "src/[x]*"]);
+        assert_eq!(&args[..3], ["add", "-A", "--"]);
+        assert_eq!(
+            &args[3..],
+            workspace_pathspecs(&["src/[x]*".into()]).unwrap()
+        );
     }
     #[test]
     fn unborn_unstage_keeps_worktree_and_revert_never_cleans_untracked() {
@@ -655,10 +679,12 @@ mod path_tests {
             path: "new".into(),
             action: GitPathAction::Unstage,
         };
+        let args = path_action_args(&request, &changes, false).unwrap();
         assert_eq!(
-            path_action_args(&request, &changes, false).unwrap(),
-            ["rm", "-r", "--cached", "--ignore-unmatch", "--", "new"]
+            &args[..5],
+            ["rm", "-r", "--cached", "--ignore-unmatch", "--"]
         );
+        assert_eq!(&args[5..], workspace_pathspecs(&["new".into()]).unwrap());
         for (path, has_head) in [("new", false), ("scratch", true)] {
             assert!(
                 path_action_args(
@@ -698,6 +724,9 @@ pub fn parse_numstat(output: &str) -> HashMap<String, GitLineStats> {
         let (Ok(insertions), Ok(deletions)) = (added.parse(), removed.parse()) else {
             continue;
         };
+        if crate::vfs::private_workspace_path(path) {
+            continue;
+        }
         stats.insert(
             path.to_string(),
             GitLineStats {

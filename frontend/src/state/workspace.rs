@@ -6,6 +6,9 @@ use std::{
 use leptos::prelude::*;
 use openwebide_core::{EditDecision, FileDiff, FileEntry, PersistedEdit, SearchHit};
 
+mod transactions;
+pub use transactions::{WorkspaceEditGuard, WorkspaceRecoveryStatus, WorkspaceSaveGuard};
+
 enum RecoveryDocument<'a> {
     Live(&'a openwebide_core::editor::Document),
     Clean(Arc<String>),
@@ -538,6 +541,9 @@ pub struct WorkspaceState {
     pub(crate) editor_syntax_scope: RwSignal<Option<EditorSyntaxScope>>,
     pub editor_preparation_revision: RwSignal<u64>,
     pub editor_documents: RwSignal<HashMap<(i64, String), openwebide_core::editor::Document>>,
+    editor_transactions: RwSignal<HashMap<i64, Arc<()>>>,
+    editor_saves: RwSignal<HashMap<i64, Vec<Arc<()>>>>,
+    pub workspace_recovery: RwSignal<HashMap<i64, WorkspaceRecoveryStatus>>,
     // Browser parser allocation is thread-local; the wrapper enforces owner-thread access.
     #[cfg(feature = "test-support")]
     pub editor_syntax: RwSignal<
@@ -639,6 +645,9 @@ impl WorkspaceState {
             editor_recovery_overwrites: RwSignal::new(HashMap::new()),
             editor_read_revision,
             editor_documents: RwSignal::new(HashMap::new()),
+            editor_transactions: RwSignal::new(HashMap::new()),
+            editor_saves: RwSignal::new(HashMap::new()),
+            workspace_recovery: RwSignal::new(HashMap::new()),
             editor_worker_active: RwSignal::new(false),
             editor_fallback_active: RwSignal::new(false),
             editor_fallback_paint: RwSignal::new(None),
@@ -1041,7 +1050,7 @@ impl WorkspaceState {
         Ok(self.recovery_guard_from_state(project.id, state))
     }
 
-    fn recovery_guard_from_state(
+    pub(crate) fn recovery_guard_from_state(
         &self,
         project: i64,
         state: openwebide_core::editor::EditorRecovery,

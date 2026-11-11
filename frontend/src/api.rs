@@ -1,6 +1,11 @@
 //! Thin client for the backend REST API, including SSE streaming.
 
 use gloo_net::http::{Method, RequestBuilder};
+use openwebide_core::workspace_transaction::{
+    AdvanceWorkspaceTransaction, BeginWorkspaceTransaction, ExecuteWorkspaceTransaction,
+    WorkspaceRootIdentity, WorkspaceTransactionAdvanced, WorkspaceTransactionOutcome,
+    WorkspaceTransactionPrepared, WorkspaceTransactionState,
+};
 
 use leptos::prelude::{GetUntracked, Set, Update, WithValue};
 use openwebide_core::{
@@ -436,6 +441,191 @@ impl BackendApi {
             ));
         }
         Ok(response.revision)
+    }
+
+    async fn workspace_journal_request<T: Serialize, R: DeserializeOwned>(
+        &self,
+        method: Method,
+        path: &str,
+        body: Option<&T>,
+    ) -> Result<R, crate::backend::RecoveryError> {
+        let account = self.session_revision.get_untracked();
+        let (response, _guard) = self
+            .request_response(method, path, body, true)
+            .await
+            .map_err(RequestError::into_recovery)?;
+        let value = response
+            .json()
+            .await
+            .map_err(|error| crate::backend::RecoveryError::Unavailable(error.to_string()))?;
+        if self.session_revision.try_get_untracked() != Some(account) {
+            return Err(crate::backend::RecoveryError::Unavailable(
+                "The account changed during workspace recovery".into(),
+            ));
+        }
+        Ok(value)
+    }
+
+    pub async fn workspace_activity(
+        &self,
+        project: i64,
+    ) -> Result<
+        openwebide_core::workspace_transaction::WorkspaceActivity,
+        crate::backend::RecoveryError,
+    > {
+        self.workspace_journal_request::<(), _>(
+            Method::GET,
+            &format!("/projects/{project}/workspace-activity"),
+            None,
+        )
+        .await
+    }
+    pub async fn workspace_transaction_root(
+        &self,
+        project: i64,
+    ) -> Result<WorkspaceRootIdentity, crate::backend::RecoveryError> {
+        self.workspace_journal_request::<(), _>(
+            Method::GET,
+            &format!("/projects/{project}/workspace-transactions/root"),
+            None,
+        )
+        .await
+    }
+    pub async fn inspect_workspace_folder(
+        &self,
+        project: i64,
+        request: &openwebide_core::workspace_transaction::companion::FolderInspection,
+    ) -> Result<
+        openwebide_core::workspace_transaction::companion::FileValue,
+        crate::backend::RecoveryError,
+    > {
+        request
+            .validate()
+            .map_err(crate::backend::RecoveryError::Conflict)?;
+        self.workspace_journal_request(
+            Method::POST,
+            &format!("/projects/{project}/workspace-transactions/inspect"),
+            Some(request),
+        )
+        .await
+    }
+    pub async fn execute_workspace_transaction(
+        &self,
+        project: i64,
+        request: &ExecuteWorkspaceTransaction,
+    ) -> Result<WorkspaceTransactionOutcome, crate::backend::RecoveryError> {
+        if !openwebide_core::workspace_transaction::valid_id(&request.id)
+            || !openwebide_core::workspace_transaction::valid_id(&request.generation)
+        {
+            return Err(crate::backend::RecoveryError::Unavailable(
+                "Invalid workspace transaction identity".into(),
+            ));
+        }
+        self.workspace_journal_request(
+            Method::POST,
+            &format!(
+                "/projects/{project}/workspace-transactions/{}/execute",
+                request.id
+            ),
+            Some(request),
+        )
+        .await
+    }
+    pub async fn workspace_transaction(
+        &self,
+        project: i64,
+        id: Option<&str>,
+    ) -> Result<Option<WorkspaceTransactionState>, crate::backend::RecoveryError> {
+        if id.is_some_and(|id| !openwebide_core::workspace_transaction::valid_id(id)) {
+            return Err(crate::backend::RecoveryError::Unavailable(
+                "Invalid workspace transaction identity".into(),
+            ));
+        }
+        let suffix = id.map(|id| format!("/{id}")).unwrap_or_default();
+        self.workspace_journal_request::<(), _>(
+            Method::GET,
+            &format!("/projects/{project}/workspace-transactions{suffix}"),
+            None,
+        )
+        .await
+    }
+    pub async fn begin_workspace_transaction(
+        &self,
+        project: i64,
+        request: &BeginWorkspaceTransaction,
+    ) -> Result<WorkspaceTransactionPrepared, crate::backend::RecoveryError> {
+        self.workspace_journal_request(
+            Method::POST,
+            &format!("/projects/{project}/workspace-transactions"),
+            Some(request),
+        )
+        .await
+    }
+    pub async fn delegate_workspace_transaction(
+        &self,
+        project: i64,
+        id: &str,
+        request: &openwebide_core::workspace_transaction::DelegateWorkspaceTransaction,
+    ) -> Result<
+        (
+            String,
+            openwebide_core::workspace_transaction::WorkspaceJournalDelegation,
+        ),
+        crate::backend::RecoveryError,
+    > {
+        request
+            .validate()
+            .map_err(crate::backend::RecoveryError::Unavailable)?;
+        if !openwebide_core::workspace_transaction::valid_id(id) || project <= 0 {
+            return Err(crate::backend::RecoveryError::Unavailable(
+                "Invalid workspace delegation identity".into(),
+            ));
+        }
+        let delegation: openwebide_core::workspace_transaction::WorkspaceJournalDelegation = self
+            .workspace_journal_request(
+                Method::POST,
+                &format!("/projects/{project}/workspace-transactions/{id}/delegate"),
+                Some(request),
+            )
+            .await?;
+        delegation
+            .validate()
+            .map_err(crate::backend::RecoveryError::Unavailable)?;
+        if delegation.project != project
+            || delegation.scope.id != id
+            || delegation.scope.generation != request.generation
+            || delegation.scope.revision != request.revision
+        {
+            return Err(crate::backend::RecoveryError::Unavailable(
+                "Workspace delegation no longer matches the review".into(),
+            ));
+        }
+        Ok((self.base(), delegation))
+    }
+    pub async fn advance_workspace_transaction(
+        &self,
+        project: i64,
+        request: &AdvanceWorkspaceTransaction,
+    ) -> Result<WorkspaceTransactionAdvanced, crate::backend::RecoveryError> {
+        if !openwebide_core::workspace_transaction::valid_id(&request.id)
+            || !openwebide_core::workspace_transaction::valid_id(&request.generation)
+            || request.revision == 0
+        {
+            return Err(crate::backend::RecoveryError::Unavailable(
+                "Invalid workspace transaction identity".into(),
+            ));
+        }
+        let response: WorkspaceTransactionAdvanced = self
+            .workspace_journal_request(
+                Method::PUT,
+                &format!("/projects/{project}/workspace-transactions/{}", request.id),
+                Some(request),
+            )
+            .await?;
+        response
+            .validate(&request.generation, request.revision)
+            .map_err(crate::backend::RecoveryError::Unavailable)?;
+        Ok(response)
     }
 
     pub async fn get_settings(&self) -> Result<std::collections::BTreeMap<String, String>, String> {
@@ -1312,6 +1502,45 @@ impl BackendApi {
         request: &openwebide_core::plugins::languages::intelligence::Call,
     ) -> Result<openwebide_core::plugins::languages::intelligence::Response, String> {
         self.post("/plugins/languages/query", request).await
+    }
+    pub async fn language_action_request(
+        &self,
+        project: i64,
+        request: &openwebide_core::plugins::languages::intelligence::actions::ActionJournalRequest,
+    ) -> Result<
+        Option<openwebide_core::plugins::languages::intelligence::actions::ActionRecord>,
+        String,
+    > {
+        self.post(&format!("/projects/{project}/language-actions"), request)
+            .await
+    }
+    pub async fn language_command(
+        &self,
+        project: i64,
+        request: &openwebide_core::plugins::languages::intelligence::actions::CommandDispatch,
+    ) -> Result<openwebide_core::plugins::languages::intelligence::actions::CommandProgress, String>
+    {
+        self.post(&format!("/projects/{project}/language-commands"), request)
+            .await
+    }
+    pub async fn authorize_language_command(
+        &self,
+        project: i64,
+        request: &openwebide_core::plugins::languages::intelligence::actions::CommandDispatch,
+    ) -> Result<openwebide_core::plugins::languages::intelligence::actions::AuthorizedCommand, String>
+    {
+        self.post(
+            &format!("/projects/{project}/language-commands/authorize"),
+            request,
+        )
+        .await
+    }
+    pub async fn session_language_context(
+        &self,
+        session: i64,
+    ) -> Result<openwebide_core::plugins::languages::tools::LanguageToolContext, String> {
+        self.get(&format!("/sessions/{session}/language-context"))
+            .await
     }
     pub async fn authorize_language_server(
         &self,

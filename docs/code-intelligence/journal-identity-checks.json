@@ -1,0 +1,470 @@
+{
+  "format": 1,
+  "checked_on": "2026-11-10",
+  "status": "passed_journal_identity_checkpoint",
+  "source_manifest_sha256": "2736a7947a60dae3908ef336b53d1f71afde8908ee223d66136032720a7e1adf",
+  "source_files": 1794,
+  "base_commit": "9283345d3545ded5461ba5ca1702709954270ced",
+  "working_tree": true,
+  "relevant_source_sha256": {
+    "backend/src/api/workspace_transactions.rs": "ffa6b45e9353a7c3a655059296ef4e73aa1dca2ab008b42fddd7a4acbe0a7457",
+    "bridge/src/runs/native_vfs/resources/tests.rs": "b10678233da4b7f5adebbd24fe9b9cbdb09fa4628ef11950a96d6bb86bf8bcd0",
+    "bridge/src/workspace_transactions.rs": "2edb76d775fe84f4f55b3382e6ad7d3054b1e86770dae3506418c6f3f45d5ec7",
+    "bridge/src/workspace_transactions/companion/tests/journal.rs": "494f2a9450903c58dfa8a3da4eeeee6a2573f2bf9efa7e0c6fd128bbc7a55f66",
+    "bridge/src/workspace_transactions/tests.rs": "9bef9f7e0986547541a2032a0626dd769b03e7cb7f9a0cbaa4c29c045f01448a",
+    "bridge/src/workspace_transactions/tests/scope.rs": "928cf39beb71c56e2946630cc7de155c2d6935717e1dca10bac5c0fbd75bbe93",
+    "crates/core/src/testing.rs": "115b7e56964f6bc841cffaf11f659359f67af51f39fc57bed15965f1ffe6df56",
+    "crates/core/src/workspace_transaction/journal.rs": "8cd4a1b4b6c05af9f41c63ec24d360a87102d8a5ccb3c0bcdd5fa1a9a8fce1c2",
+    "crates/core/src/workspace_transaction/requests.rs": "15d523d772bdf25614f022752ab31261879f9a7ac20b557d6c334970820406b1",
+    "crates/core/src/workspace_transaction/scope.rs": "dd64c2ba02cbff913104a0b4c9952cd430cdb45aaf5afaac387b194983151608",
+    "crates/core/src/workspace_transaction/tests.rs": "0b7cba6ebd34c2c9e28f95340bd70d6584a181b4be2cc59258a78fb45bb6a510",
+    "crates/storage/src/store/language_actions/tests.rs": "30a26a6a8887330f2d868e7f8800576b22ee09c367db80850b8f346902101f1d",
+    "crates/storage/src/store/workspace_transactions.rs": "bfb9ccd0622409fa8576a39c19423c1d722a35fb60e0e17b39dfd7413bfe9e3d",
+    "crates/storage/src/store/workspace_transactions/tests.rs": "98d7d2ae8cf207a1d9daf3a494b7e55a146905bcc7a46ffb6850668dab35cc42",
+    "crates/storage/src/store/workspace_transactions/tests/resources.rs": "ae4965e508179f2491b745ae5a20cff06395f99be8318a4a403e3f812a9f6442",
+    "crates/storage/src/store/workspace_transactions/tests/scope.rs": "0bca3298d944eaa767ad13bdf63452aaaf36d8c4661af9a870b3f51e51c39f53",
+    "frontend/src/api.rs": "c273c2edf338209221e97bdf6a4ea60b5783f78aa037c6b8e80d49f0b3236a16",
+    "frontend/src/state_actions/editor/intelligence/edits/resources.rs": "bd2a80a2e3f23f239a5c3760a574fe1503c92cd722a254505b15b7346c884ad1",
+    "frontend/src/state_actions/editor/intelligence/edits/resources/tests.rs": "7e418ff655aa4bce0d99a83e39bfc435a9bc5445ffa4004a1191710b1633eaac",
+    "frontend/src/state_actions/editor/intelligence/edits/resources/tests/decision.rs": "95412eabe2f90fe2bab27616e68e7053ef38e55964a138914e5061fd9d91938a",
+    "frontend/src/state_actions/workspace_recovery.rs": "a03061aa6385df5e81165b782e113b2bc0167806f0ce634e3fd8678833ab6a84",
+    "frontend/src/state_actions/workspace_recovery/grant.rs": "eb722020e9d8e8e803345aaa69176135eb647248ebdb6162f2deab2992e6f9e7",
+    "frontend/src/testing/transactions.rs": "24fd20e90b572cbeab88a85c2a771edeaae118131d7dc99864c94d70f531236f",
+    "frontend/src/workspace_journal.rs": "028a79ccc4f509bd1e0009191c0d7317c0ff0fc24304717537918cf3868b4c93",
+    "frontend/src/workspace_transactions.rs": "e9d07a3f046318e5630758e7b5229cfbb6dfa729d6d266e0aeac6e27ee8492ac",
+    "frontend/src/workspace_transactions/review/tests.rs": "c8d75aba162b715bd7423db6a6601ad807f2488c6155412c084a710398acb8f4"
+  },
+  "behavior": "Freeze the database-generated journal generation in preparation, every phase update, execution and acknowledgement. Shared core recovery rejects a different generation after a lost reply. Native and browser adapters reject queued replacements before mutation; UI recovery, publication and folder grant rechecks retain the original identity.",
+  "implementation": "Shared core transaction orchestration, owned storage CAS and the existing workspace transaction facade; browser/native transports supply filesystem, locking and persistence primitives. Generation is immutable record identity, not an execution lease.",
+  "before_fix": [
+    {
+      "source_manifest_sha256": "a87a94904ba7f6c584595ea3b949f2e244edb1153703e385fc3d133eab987f3e",
+      "test": "store::workspace_transactions::tests::scope::replaced_records_reject_stale_phase_updates_even_when_id_and_revision_repeat",
+      "observation": "Real SQLite accepted a stale cancellation after only the record generation changed.",
+      "exit_code": 101,
+      "log_sha256": "a534708a289fadc9330740b2c44721bcbabdfc772902c2175452c17eb406602d"
+    },
+    {
+      "test": "workspace_transaction::tests::a_lost_phase_reply_never_recovers_or_reports_success_for_a_replacement_journal",
+      "observation": "The shared engine recovered the replacement after a failed phase reply; expected Pending, observed Restored.",
+      "exit_code": 101,
+      "log_sha256": "eb2ed46f81a504dc1da0556e27f1e95958ccc1cdb671bab35c6a1cc396480db8"
+    }
+  ],
+  "macos": {
+    "architecture": "arm64",
+    "kernel": "27.2.0",
+    "checks": [
+      {
+        "case": "format",
+        "command": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--check"
+        ],
+        "returncode": 0,
+        "seconds": 2.77,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "test_results": []
+      },
+      {
+        "case": "native-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-core",
+          "-p",
+          "openwebide-storage",
+          "-p",
+          "openwebide-backend",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 28.44,
+        "log_sha256": "491f7e94dd769761945351b0a620b6ae06d290b62a421541c2293d8e4e668d2d",
+        "test_results": []
+      },
+      {
+        "case": "wasi-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-backend",
+          "--target",
+          "wasm32-wasip2",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 23.2,
+        "log_sha256": "7aa3d1e4d8b1d14608a5b471cb5047e760b8daec7b486dc01ac42da229508de7",
+        "test_results": []
+      },
+      {
+        "case": "frontend-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-frontend",
+          "--target",
+          "wasm32-unknown-unknown",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 39.15,
+        "log_sha256": "85b7bdd062263609aad49f006f3f5cdefb01cca4cb7c6cab24da3f55e1f9d033",
+        "test_results": []
+      },
+      {
+        "case": "windows-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 54.42,
+        "log_sha256": "0dc344bf234dc20b19e73bc2f3aab9438e8e06a787638cc3798ec4ca73e878ac",
+        "test_results": []
+      },
+      {
+        "case": "http-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--test",
+          "workspace_transactions",
+          "--test",
+          "workspace_companion",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 17.73,
+        "log_sha256": "3b96acc65594b8bd8a16492c930e3ff29d292c17e30d54e8888fa1bb3d0bbe2e",
+        "test_results": [
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          }
+        ]
+      },
+      {
+        "case": "completed-dev-clean",
+        "command": [
+          "cargo",
+          "clean",
+          "--profile",
+          "dev"
+        ],
+        "returncode": 0,
+        "seconds": 1.39,
+        "log_sha256": "1eab35ad225602b408591a2a1e346194c4038ccaaf3ff40274ce7b06d47e86ee",
+        "test_results": []
+      },
+      {
+        "case": "browser-transactions",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-frontend",
+          "--release",
+          "--target",
+          "wasm32-unknown-unknown",
+          "--lib",
+          "workspace_transactions",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 262.04,
+        "log_sha256": "ffa84981b81f1ca2b5e4c64465fd6fb1a1a6bd72144212fe4d8a10992195a6c8",
+        "test_results": [
+          {
+            "passed": 13,
+            "failed": 0,
+            "ignored": 0
+          }
+        ]
+      },
+      {
+        "case": "browser-resources",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-frontend",
+          "--release",
+          "--target",
+          "wasm32-unknown-unknown",
+          "--lib",
+          "state_actions::editor::intelligence::edits::resources",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 10.09,
+        "log_sha256": "20a09c130db2b0784f6e7f6393f71c1ecd9c0a47edec2a66b4ba6ce18b8e17ca",
+        "test_results": [
+          {
+            "passed": 19,
+            "failed": 0,
+            "ignored": 0
+          }
+        ]
+      }
+    ],
+    "additional_native_checks": [
+      {
+        "scope": "core/storage/backend library suites",
+        "test_results": [
+          {
+            "passed": 120,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 711,
+            "failed": 0,
+            "ignored": 1
+          },
+          {
+            "passed": 191,
+            "failed": 0,
+            "ignored": 0
+          }
+        ]
+      },
+      {
+        "scope": "workspace transaction native/paired/SQLite contracts",
+        "test_results": [
+          {
+            "passed": 27,
+            "failed": 0,
+            "ignored": 0
+          }
+        ],
+        "source_note": "The Unix-only cfg annotation was added after this runtime check; the final strict all-targets check compiles that annotation."
+      }
+    ]
+  },
+  "linux": {
+    "source_manifest_sha256": "2736a7947a60dae3908ef336b53d1f71afde8908ee223d66136032720a7e1adf",
+    "tooling_image_id": "sha256:916206a1aa179fdfeb1b73529dc6a04c84b2ccd2a12dfa4577cb6fda9019ab1a",
+    "source_mount": "read-only current snapshot",
+    "runtime": {
+      "uid": 502,
+      "kernel": "7.0.14-linuxkit",
+      "architecture": "aarch64",
+      "cpu_max": "200000 100000",
+      "memory_max": "4294967296",
+      "memory_swap_max": "0"
+    },
+    "container_configuration": {
+      "image_id": "sha256:916206a1aa179fdfeb1b73529dc6a04c84b2ccd2a12dfa4577cb6fda9019ab1a",
+      "cpu": 2000000000,
+      "memory": 4294967296,
+      "memory_plus_swap": 4294967296
+    },
+    "oom_killed": false,
+    "checks": [
+      {
+        "case": "clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-core",
+          "-p",
+          "openwebide-storage",
+          "-p",
+          "openwebide-backend",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--locked",
+          "--offline",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 84.96,
+        "log_sha256": "dc336e0b9620e175a23ac085245144c8a8923460957ad48c25789554fce7bb0e",
+        "test_results": []
+      },
+      {
+        "case": "core",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-core",
+          "--lib",
+          "workspace_transaction",
+          "--locked",
+          "--offline"
+        ],
+        "returncode": 0,
+        "seconds": 37.72,
+        "log_sha256": "648d4d1865d32d3f3d570b31a3ba3affe251d877e8d590e7e004061c61ac2d00",
+        "test_results": [
+          {
+            "passed": 34,
+            "failed": 0,
+            "ignored": 0
+          }
+        ]
+      },
+      {
+        "case": "storage",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-storage",
+          "--lib",
+          "workspace_transactions",
+          "--locked",
+          "--offline"
+        ],
+        "returncode": 0,
+        "seconds": 21.81,
+        "log_sha256": "339c2e7e0e9a8ed7d6038d7bff901c222ddb21d980fa0d4fa6fecb4b67a87404",
+        "test_results": [
+          {
+            "passed": 11,
+            "failed": 0,
+            "ignored": 0
+          }
+        ]
+      },
+      {
+        "case": "backend",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-backend",
+          "--lib",
+          "api::workspace_transactions",
+          "--locked",
+          "--offline"
+        ],
+        "returncode": 0,
+        "seconds": 35.57,
+        "log_sha256": "61f5c1c0b9b19463f1b504b4ff306f6f145bbd722d2d07e1f8f8102272b2e0a7",
+        "test_results": [
+          {
+            "passed": 3,
+            "failed": 0,
+            "ignored": 0
+          }
+        ]
+      },
+      {
+        "case": "bridge",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "workspace_transactions",
+          "--locked",
+          "--offline"
+        ],
+        "returncode": 0,
+        "seconds": 92.69,
+        "log_sha256": "d4577ed0d4c327ce0638f602b3935104fa5b0ec4a32b2b9f276bafa160e32bb8",
+        "test_results": [
+          {
+            "passed": 27,
+            "failed": 0,
+            "ignored": 0
+          }
+        ]
+      },
+      {
+        "case": "http-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--test",
+          "workspace_transactions",
+          "--test",
+          "workspace_companion",
+          "--locked",
+          "--offline"
+        ],
+        "returncode": 0,
+        "seconds": 44.67,
+        "log_sha256": "2ce5c57a459759ea10a65fbefe3cc56fc409a036b6ce89e03d0a3bd524ac22b4",
+        "test_results": [
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          }
+        ]
+      }
+    ]
+  },
+  "coverage": [
+    "Same-ID/revision replacement rejected by phase CAS in both project modes.",
+    "A delayed native active-phase request cannot change either original file or the replacement journal.",
+    "Queued browser execution rejects a replacement after acquiring its workspace lock in both modes.",
+    "Missing, malformed and different valid generations reject browser cancellation and native service callbacks without changing the journal.",
+    "Shared lost-reply recovery neither cancels a replacement nor accepts its committed state as the original success.",
+    "Existing browser lost replies, pending recovery, folder regrant, account guards, finalizing publication and newer-draft preservation continue to pass."
+  ],
+  "limits": [
+    "Generation fences replaced records; exclusive phase ownership, all managed writers, cross-process/profile coordination and frozen-owner recovery remain unfinished.",
+    "Browser checks use the fixture backend and OPFS. Earlier physical PWA evidence was not rerun on this source snapshot.",
+    "Windows was cross-compiled with strict lint; native Windows runtime verification remains pending. The new resource-worker regression runs on macOS/Linux.",
+    "Linux uses a tooling image with a read-only source snapshot under 2 CPU/4 GiB/no-swap limits. This is not a production-image or memory-performance measurement.",
+    "This checkpoint is not the full mandatory local CI gate or a publication receipt."
+  ],
+  "post_check_updates": [
+    "CHANGELOG.md",
+    "docs/roadmap.md",
+    "docs/code-intelligence/journal-identity-checks.json"
+  ]
+}

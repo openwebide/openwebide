@@ -167,8 +167,20 @@ fn parse_args() -> Result<Args, String> {
     })
 }
 
+fn main() -> anyhow::Result<()> {
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    {
+        if let Some(result) = openwebide_bridge::exec::process_owner::run_if_requested() {
+            return result.map_err(anyhow::Error::msg);
+        }
+        openwebide_bridge::exec::process_owner::register_executable()
+            .map_err(anyhow::Error::msg)?;
+    }
+    run()
+}
+
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn run() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
@@ -205,6 +217,12 @@ async fn main() -> anyhow::Result<()> {
     let secret: std::sync::Arc<str> = std::sync::Arc::from(secret.as_str());
 
     let mut config = ServerConfig::new(workspace_root, secret.clone(), args.pairing_token);
+    config
+        .set_language_memory_limits(
+            openwebide_bridge::languages::host::MemoryLimits::from_environment()
+                .map_err(anyhow::Error::msg)?,
+        )
+        .map_err(anyhow::Error::msg)?;
     config.backend_url = args.backend_url;
     for orig in args.allowed_origins {
         if !config

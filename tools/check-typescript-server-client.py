@@ -154,8 +154,15 @@ def check():
                 command(browser,'Code actions')
                 wait('import code action',lambda:script(browser,"const button=[...document.querySelectorAll('[role=dialog] button')].find(button=>/^(?:Add|Update) import from /.test(button.textContent.trim())&&!button.disabled);if(!button)return false;button.click();return true;"))
                 wait('import action review',lambda:script(browser,"return !!document.querySelector('[role=dialog] .diff-line.add');"))
-                assert click(browser,'Apply to editor tabs')
+                wait('full command approval',lambda:script(browser,"const dialog=document.querySelector('[role=dialog]');return dialog?.textContent.includes('server command runs once')&&[...dialog.querySelectorAll('button')].some(button=>button.textContent.trim()==='Apply edits and run command'&&!button.disabled);"))
+                assert runtime.request('POST',f"/api/projects/{project['id']}/language-actions",{'operation':'load','id':None}) is None, 'Review alone approved or executed a command'
+                assert click(browser,'Apply edits and run command')
                 wait('code action import staged',lambda:script(browser,"return document.querySelector('textarea[data-editor-path]')?.value.split('\\n').some(line=>line.includes('import')&&line.includes('extraAction'));"))
+                wait('durable command outcome',lambda:runtime.request('POST',f"/api/projects/{project['id']}/language-actions",{'operation':'load','id':None})['phase']=='completed')
+                approved=runtime.request('POST',f"/api/projects/{project['id']}/language-actions",{'operation':'load','id':None})
+                assert approved['approval']['review']['command']['name'], 'The attached command was stripped'
+                journal=runtime.request('GET',f"/api/projects/{project['id']}/workspace-transactions/{approved['approval']['id']}")
+                assert journal['journal']['progress']['phase']=='committed'
                 caret(browser,'answer'); command(browser,'Go to definition')
                 wait('definition target',lambda:script(browser,"const button=[...document.querySelectorAll('[role=dialog] button')].find(button=>button.textContent.includes('lib.ts:'));if(!button)return false;button.click();return true;"))
                 wait('unsaved definition navigation',lambda:script(browser,"const input=document.querySelector('textarea[data-editor-path]');return input?.dataset.editorPath==='lib.ts'&&input.value.includes('unsaved');"))
@@ -173,6 +180,7 @@ def check():
                 '''), 'Rename previews collapsed instead of allowing dialog scrolling'
                 Path('/tmp/openwebide-typescript-lsp-review-'+mode+'.png').write_bytes(base64.b64decode(browser.call('GET','/screenshot')))
                 assert click(browser,'Apply to editor tabs')
+                wait('rename published before closing its review',lambda:script(browser,"const input=document.querySelector('textarea[data-editor-path]');return input?.dataset.editorPath==='lib.ts'&&input.value.includes('renamedAnswer');"))
                 for path in ['lib.ts',*DIALECTS]:
                     select(browser,path)
                     wait(path+' staged rename',lambda:script(browser,"return document.querySelector('textarea[data-editor-path]')?.value.includes('renamedAnswer');"))
@@ -211,7 +219,7 @@ def check():
                 wait('restarted editor',lambda:script(browser,"return !!document.querySelector('button[aria-label=\"Code intelligence\"]');"))
                 hover(browser,'main.ts','string','renamedAnswer')
                 assert script(browser,'return lspEvidence.requests.filter(request=>request.server).at(-1).server;')!=warm
-                print(json.dumps({'mode':mode,'real_typescript_lsp':True,'installed_api_seven_component':True,'four_dialects_one_server':True,'unsaved_cross_dialect_hover':True,'completion_with_auto_import':True,'formatting_review_and_apply':True,'diagnostics_and_clear':True,'import_code_action_review_and_staging':True,'definition_navigation':True,'symbols_and_all_dialect_references':True,'five_file_rename_review_and_staging':True,'readable_multi_file_previews':True,'source_unchanged_on_disk':True,'close_dialect_preserves_server':True,'disable_reenable_preserves_buffers':True,'host_restart_resynchronizes_unsaved_buffers':True}),flush=True)
+                print(json.dumps({'mode':mode,'real_typescript_lsp':True,'installed_api_seven_component':True,'four_dialects_one_server':True,'unsaved_cross_dialect_hover':True,'completion_with_auto_import':True,'formatting_review_and_apply':True,'diagnostics_and_clear':True,'import_code_action_review_and_staging':True,'attached_command_approval_and_durable_outcome':True,'definition_navigation':True,'symbols_and_all_dialect_references':True,'five_file_rename_review_and_staging':True,'readable_multi_file_previews':True,'source_unchanged_on_disk':True,'close_dialect_preserves_server':True,'disable_reenable_preserves_buffers':True,'host_restart_resynchronizes_unsaved_buffers':True}),flush=True)
         except BaseException:
             if browser is not None:
                 try:

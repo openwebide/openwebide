@@ -1,8 +1,8 @@
 //! HTTP head/body limits and response helpers for the bridge's hyper server.
 //!
 //! `run_server` drops a connection's service future when the peer disconnects mid-request
-//! (hyper stops polling it); step 25's `/exec` drop guard relies on that to kill the child
-//! process group when the client goes away.
+//! (hyper stops polling it). Coordinated `/exec` workers observe that loss as
+//! cancellation and retain their folder lease until process-group cleanup ends.
 
 use std::time::Duration;
 

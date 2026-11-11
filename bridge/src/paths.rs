@@ -66,7 +66,6 @@ pub fn resolve_file_in_root(root: &Path, rel: &str) -> Result<PathBuf, String> {
 mod tests {
     use super::*;
     use std::fs;
-    use std::os::unix::fs::symlink;
 
     fn create_temp_dir() -> PathBuf {
         let mut p = std::env::temp_dir();
@@ -103,14 +102,15 @@ mod tests {
         let file = root.join("file");
         fs::write(&file, "test").unwrap();
 
-        let ext = create_temp_dir();
-        let ext_root = ext.canonicalize().unwrap();
-        let ext_dir = ext_root.join("ext_dir");
-        fs::create_dir(&ext_dir).unwrap();
-
-        // Symlink inside root pointing outside
-        let sym = root.join("sym");
-        symlink(&ext_dir, &sym).unwrap();
+        #[cfg(unix)]
+        {
+            let ext = create_temp_dir();
+            let ext_dir = ext.canonicalize().unwrap().join("ext_dir");
+            fs::create_dir(&ext_dir).unwrap();
+            let sym = root.join("sym");
+            std::os::unix::fs::symlink(&ext_dir, &sym).unwrap();
+            assert_eq!(resolve_in_root(&root, Some("sym")).unwrap(), sym);
+        }
 
         // "" -> Ok
         assert_eq!(resolve_in_root(&root, Some("")).unwrap(), root);
@@ -124,9 +124,6 @@ mod tests {
             resolve_in_root(&root, Some(sub.to_str().unwrap())).unwrap(),
             sub
         );
-
-        // symlink inside root pointing outside -> Ok
-        assert_eq!(resolve_in_root(&root, Some("sym")).unwrap(), sym);
 
         // "../.." -> Err
         assert!(

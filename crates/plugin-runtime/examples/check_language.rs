@@ -246,11 +246,14 @@ fn matrix(bytes: &[u8], prepared: &PreparedPlugin, family: bool) -> Result<()> {
         ("large.rs", large_rust.as_str(), None, None),
     ];
     for (path, source, fold, literal) in cases.chain(extra.into_iter().filter(|_| family)) {
-        let id = if path == "body.markdown-inline" {
-            "markdown-inline".into()
-        } else {
-            format!("{:?}", openwebide_core::highlight::language_from_path(path))
-                .to_ascii_lowercase()
+        // Fixture language IDs describe contributed dialects. They need not
+        // have separate parser engines in the optional syntax toolkit.
+        let id = match path.rsplit('.').next() {
+            Some("markdown-inline") => "markdown-inline".into(),
+            Some("scss") => "scss".into(),
+            Some("jsonc") => "jsonc".into(),
+            _ => format!("{:?}", openwebide_core::highlight::language_from_path(path))
+                .to_ascii_lowercase(),
         };
         if family
             && !prepared

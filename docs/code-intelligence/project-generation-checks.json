@@ -1,0 +1,221 @@
+{
+  "format": 1,
+  "checked_on": "2026-11-09",
+  "status": "passed_bounded_source_metadata_prefetch_checkpoint",
+  "source_manifest_sha256": "b795373df4f4263f53b6fab76015cfa88f79849fd4ba026d900515984602a364",
+  "source_files": 1734,
+  "platform": {
+    "os": "Darwin",
+    "release": "27.2.0",
+    "machine": "arm64"
+  },
+  "base_commit": "9283345d3545ded5461ba5ca1702709954270ced",
+  "working_tree": true,
+  "relevant_source_sha256": {
+    "crates/core/src/plugins/languages/project_files.rs": "a76c0a2b6370474414719cdf88df8f580079d8c21aa272d592fd5816f3645c15",
+    "crates/core/src/plugins/languages.rs": "0019ec2a10f63dad75c83732b9a8d7cd22a30b0133378292eaf73fd9276ce302",
+    "bridge/Cargo.toml": "e039877fbcf2a4b1aca2f7e7a4468c06685f53c09a0f6c6d02c9153d615d81d1",
+    "bridge/src/languages/host.rs": "691241d3a9acc81e2c61a24bff1a8f5fb959fcaf02073b549ee4962831e52aaf",
+    "bridge/src/languages/host/generation.rs": "df492ce9846dbb370a9e49fe100a65816d0ee046e4fdc35e8c768b9281a70c20",
+    "bridge/src/languages/host/generation/windows.rs": "58db2be09ce5afe8f53fa59d8511e638e016a55de653312fcce52dbbfdd59659",
+    "bridge/src/languages/host/generation/tests.rs": "592cf49808671629e8e655aa61d985cb41d722edb24653ff9beaaa738a86012b",
+    "bridge/src/server/routes.rs": "6fc11f461a962e962d7aa281c6ab8a05ab2d77cf58bcd1ba4be5d19a30561c8b",
+    "bridge/tests/plugins/prefetch.rs": "f7a87c77c57a2695dda04631b863e1886ea1eb942ff124588d88a0341261b264",
+    "tools/fixtures/prefetch_server.py": "69a558a4def3a6aa8b2bff01dd14c3a16d52f93742ca98ed2f9dc44791cfadcf"
+  },
+  "shared_implementation": "ProjectFiles::for_server and native languages::host::generation::Tracker through query_package, shared by both authenticated routes.",
+  "verified": [
+    "Published associations and declared project inputs determine source selection without package or language identity switches; related dialects sharing a server use the same inventory.",
+    "Content-based and association-free manual languages conservatively include unknown source filenames; Git and private runtime paths stay excluded through directory aliases.",
+    "Unix restored contents and modification times, outside-root hard-link writes, directory moves and external directory-alias dependency changes advance the observed generation.",
+    "Inventory limits and nonregular source inputs preserve the previous complete generation; ordinary queries continue when optional source collection exceeds its budget.",
+    "Cancelled scan workers retain local and global permits until actual exit, and cannot publish a late inventory.",
+    "Both installed-package transports accept unchanged controls, reject restored dependency changes during held analysis, and allow a fresh retry on the same service without saving drafts."
+  ],
+  "bounds": {
+    "examined_entries": 65536,
+    "recorded_entries": 16384,
+    "retained_path_bytes": 4194304,
+    "queued_path_bytes": 4194304,
+    "directory_depth": 128,
+    "global_scan_workers": 4,
+    "per_tracker_scan_workers": 1,
+    "scan_deadline_seconds": 4,
+    "outer_prefetch_deadline_seconds": 2
+  },
+  "regression": {
+    "before_fix_exit_code": 101,
+    "before_fix_observation": "An association-free manual declaration omitted nested/extensionless from its source inventory.",
+    "after_fix": "The regression passes in the shared core language-policy suite."
+  },
+  "cases": [
+    {
+      "case": "native-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-core",
+        "-p",
+        "openwebide-agent",
+        "-p",
+        "openwebide-bridge",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "seconds": 16.53
+    },
+    {
+      "case": "windows-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-bridge",
+        "--target",
+        "x86_64-pc-windows-gnu",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "seconds": 13.41
+    },
+    {
+      "case": "core",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-core",
+        "--release",
+        "--lib",
+        "plugins::languages",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "seconds": 78.55,
+      "tests": {
+        "passed": 50,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "case": "agent",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-agent",
+        "--release",
+        "--lib",
+        "plugins::languages::tests",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "seconds": 61.43,
+      "tests": {
+        "passed": 23,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "case": "bridge",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-bridge",
+        "--release",
+        "--lib",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "seconds": 292.39,
+      "tests": {
+        "passed": 337,
+        "failed": 0,
+        "ignored": 1
+      }
+    },
+    {
+      "case": "adapters",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-bridge",
+        "--release",
+        "--test",
+        "plugins",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "seconds": 156.41,
+      "tests": {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "case": "backend-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-backend",
+        "--target",
+        "wasm32-wasip2",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "seconds": 9.39
+    },
+    {
+      "case": "frontend-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-frontend",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "seconds": 39.67
+    }
+  ],
+  "notices": [
+    {
+      "package": "proc-macro-error2 2.0.1",
+      "kind": "cargo_future_incompatibility",
+      "diagnostic": "E0365: private extern crate proc_macro re-exported publicly",
+      "status": "present in this checkpoint before the subsequent vendored visibility correction; see vendor/proc-macro-error2/PATCH.md",
+      "introduced_by_source_inventories": false
+    }
+  ],
+  "limits": [
+    "Metadata collections are sampled observations, not filesystem-event generations or exact change barriers. Events, transitive toolchain dependencies and editor apply-time freshness remain unfinished.",
+    "Only optional prefetch uses these source inventories. No automatic editor queue or reusable-result cache is enabled.",
+    "Windows identity/change-time support passes cross-compilation only; no Windows device execution is established.",
+    "The checkpoint is not the full mandatory local CI suite; browser and production gates remain.",
+    "No latency benefit, complete retained-memory accounting, hard disk quota or full roadmap completion is established."
+  ]
+}

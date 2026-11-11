@@ -14,7 +14,7 @@ use openwebide_frontend::{
 };
 use wasm_bindgen_test::*;
 
-use super::support::{Mounted, chat_view, mount_test, settle};
+use super::support::{Mounted, chat_view, mount_test, settle, wait_until};
 
 fn message(id: i64, role: Role, content: &str) -> ChatMessage {
     ChatMessage {
@@ -1290,7 +1290,23 @@ async fn replay_during_resolution(
     } else {
         mounted.click_text("Accept");
     }
-    settle().await;
+    wait_until("edit decision committed while its response is held", || {
+        mounted
+            .state
+            .fake
+            .persisted_edits
+            .borrow()
+            .get(&(1, "file.rs".into()))
+            .is_some_and(|edit| {
+                edit.decision
+                    == if rejected {
+                        EditDecision::Rejected
+                    } else {
+                        EditDecision::Accepted
+                    }
+            })
+    })
+    .await;
     if !seen_live {
         mounted
             .state
@@ -1323,7 +1339,16 @@ async fn replay_during_resolution(
         );
     }
     release.send(Ok(())).unwrap();
-    settle().await;
+    wait_until("snapshot replay resolution finished", || {
+        mounted
+            .state
+            .workspace
+            .persisted_edits
+            .get_untracked()
+            .is_empty()
+            && !mounted.state.workspace.is_resolving()
+    })
+    .await;
     let out = (
         mounted.state.workspace.content.get_untracked(),
         mounted.state.workspace.dirty.get_untracked(),

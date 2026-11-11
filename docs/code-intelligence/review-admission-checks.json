@@ -1,0 +1,394 @@
+{
+  "format": 1,
+  "checked_on": "2026-11-10T20:34:14.389679+00:00",
+  "status": "passed_for_durable_native_review_admission_and_remote_accepted_recovery_only",
+  "base_commit": "9283345d3545ded5461ba5ca1702709954270ced",
+  "source_manifest_sha256": "11b44bede9b16b0ed9b418b5ad84ca279ff7255748ae608ad339a720efebc8f6",
+  "relevant_source_sha256": {
+    "backend/src/api/workspace_transactions.rs": "ca48b8583a776d3271bb6330aa10c9ed5081bcae19a1a9e3f2281577fedcf196",
+    "backend/src/api/workspace_transactions/delegation_tests.rs": "f1a0ec97f260fa6cf3fd6d3940a4090ef1b8a9afe35a9b05469ff247582e447c",
+    "bridge/src/languages/host/admission/tests.rs": "006abf3f9801946828635ed241ef7a65d121a764ac737b4aee888564a23fa2b5",
+    "bridge/src/languages/host/admission/tests/worker.rs": "ea305ed86b0f53d485bf7c89158e30a7967d81a8f99da7d8c95b0d189f635ce8",
+    "bridge/src/workspace_transactions.rs": "153b4144d5c2ac5f6ff9755348237ef4ad30976180e994c69d1f78953ccd6555",
+    "bridge/src/workspace_transactions/delegation.rs": "72c584a00aa8cb28fb60243585ed2ae703cf48992350bd3124d84faa93a1195d",
+    "bridge/src/workspace_transactions/tests.rs": "02fdf3351214362116d0667622465700b6d38ee00d5fedee8577d538a87e3e83",
+    "crates/core/src/workspace_transaction.rs": "e6cf99d1c916f8adb12e9fae55f5088fc98cff4e6239d6e940382bc4b01752ea",
+    "crates/core/src/workspace_transaction/delegation.rs": "5c31469c96037a70b1547abb30197ad46cca75365143dc9ca79f85007aa26f3a",
+    "crates/core/src/workspace_transaction/language_review.rs": "5a194d6b60f17c4237de9b198d0bde5a61d46a541bf23630d7fb6c1bbe8a5557",
+    "crates/core/src/workspace_transaction/language_review/tests.rs": "af9f1fe2fda1d92c11cd6edeafabbb4f3faf76d21fed913ba736a97fed264f8e",
+    "crates/core/src/workspace_transaction/language_review/tests/admission.rs": "6c5524947291ffa425839026ca86ca66b9e2d18736b250cd592b67ad7ce6a87e",
+    "crates/core/src/workspace_transaction/requests.rs": "7ccd4f517f58983b731aa78b65e1be96a2cf766069fe21adcf8291f824dd9360",
+    "crates/core/src/workspace_transaction/scope.rs": "4af9822f072f1942781ed506aff1ca380cc0aadfe8bf3135660340ff626a4685",
+    "crates/storage/src/migrations.rs": "aca7106a768a90b8fadc18c5569ced0a68b9c25506c543e6cc49af08e39eabe4",
+    "crates/storage/src/store/workspace_transactions.rs": "851921a6d428d9d7737351cb1731949976d9ded40500ff8c4d253c4a87d0a310",
+    "crates/storage/src/store/workspace_transactions/delegation.rs": "4b121cf8149f68908e06ec3e42dec327a16fbe616d325a248c771ad76be13328",
+    "crates/storage/src/store/workspace_transactions/review_admission.rs": "693e8243a26b57734f14759cc65af73022cfb169220c43809735c1726f0ae0f1",
+    "crates/storage/src/store/workspace_transactions/scope.rs": "7e6b5bbc6800902314477e27281388df62a5ae30f11bd6bd734a0b98ac9bd35c",
+    "crates/storage/src/store/workspace_transactions/tests/delegation.rs": "0e69462c884b08fd3895a05dec9614d9f7d5fcd9e418238a2e3abb925763ef60",
+    "crates/storage/src/store/workspace_transactions/tests/language_review.rs": "d0530e868758cb63ce6cc99fc0d05696a16261acc64014701d7424e0e913942a",
+    "crates/storage/src/store/workspace_transactions/tests/language_review/admission.rs": "8e76b332079545222fce02aa09ed529a8f79404d86e9490905c0423ad5c26a7d",
+    "crates/storage/src/store/workspace_transactions/worker.rs": "5a28e447d5df54d1387975a297c024faa19af7fbd399252ef6903b631e0a00a3",
+    "frontend/src/workspace_transactions.rs": "bc6d544aef87600d3e18318817ee834f385221ae9b3d236ae54fc3391bd1e934",
+    "frontend/src/workspace_transactions/companion/tests.rs": "4ca9410421f8179b37cb289d87a2969766e1ba2968bca5ab34ad0967cabd81c7"
+  },
+  "working_tree": "Uncommitted code-intelligence work. This receipt and its documentation follow frozen source checks.",
+  "contract": [
+    "Initial admission requires the exact full LanguageReview fingerprint attested by the trusted native verifier and a fresh sessionless manual UI grant for that original prepared provider/account/project. Current package, preferences, provider selection, binding revision and project root are checked in the same database transaction as worker CAS.",
+    "Command-bearing reviews additionally require the exact complete durable action approval, including prepared provider, original request, binding revision, full edit and command body. A native prepared-command pin alone cannot substitute for this approval.",
+    "Schema 67 stores accepted_language_review_digest atomically with the worker credential. It hashes complete immutable original evidence, including its proof/result and plan/editor consistency binding. No bearer grant is stored in the review, accepted scope or recovery row.",
+    "Begin and migration 67 reserve 64 receipt bytes only for review-bearing records. Existing schema-66 evidence remains unaccepted on upgrade. Earlier accounting replay preserves the real receipt and reconstructs the full charge once.",
+    "Compact scope matching and full-state loading compare accepted identity to the complete current review. Changed evidence, forged acceptance, wrong scope, stale worker identities and stale generations reject. Lost-ack retries can acknowledge only the exact accepted credential and identity.",
+    "Legacy worker admission cannot initially authorize a review-bearing record. Cursor advances require accepted review identity. Untouched account cancellation remains available without a grant/folder; cancelled cleanup does not confer review acceptance or file mutation authority.",
+    "Accepted recovery retains the same immutable intent and worker CAS, without demanding the old service, original proof freshness, provider configuration or short-lived grant. It never dispatches an LSP command.",
+    "Both Local and Remote database contracts exercise fresh authority and accepted recovery. The paired delegation path commits bootstrap activation with the same acceptance/worker CAS and fences replaced grants.",
+    "The Remote native runner verifies the real original HMAC/result under the original folder lease, then supplies the verified digest and ephemeral grant at claim. Its guard remains held through mutation and durable release.",
+    "Real native tests revoke provider authority at claim after proof verification and reject before files/receipt/worker change. Missing full command approval also rejects; approving it permits the unchanged original review to retry without additional LSP calls.",
+    "A real native ambiguous transfer prefix is recovered on a new worker after stopping the original service and expiring the database grant. Recovery restores the original object and editor revision and never creates a command execution marker.",
+    "Legacy Admit JSON and scopes without acceptance remain readable. The live begin route still rejects review-bearing requests and the frontend still emits None while Local compound execution and affected-file observation remain unfinished."
+  ],
+  "checks": [
+    {
+      "case": "format",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--check"
+      ],
+      "returncode": 0,
+      "seconds": 2.89,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test_results": [],
+      "review_contract_tests": []
+    },
+    {
+      "case": "native-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-core",
+        "-p",
+        "openwebide-storage",
+        "-p",
+        "openwebide-agent",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "returncode": 0,
+      "seconds": 13.27,
+      "log_sha256": "632ac762a636f321fd4123a5bd47e37d27ca0456ba5aca59ae5f3380e2700919",
+      "test_results": [],
+      "review_contract_tests": []
+    },
+    {
+      "case": "backend-wasi-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-backend",
+        "--target",
+        "wasm32-wasip2",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "returncode": 0,
+      "seconds": 9.47,
+      "log_sha256": "c5eccd1ce158cc7080b830345089062a052162a3a9df973cd845ac258e8a2f59",
+      "test_results": [],
+      "review_contract_tests": []
+    },
+    {
+      "case": "frontend-wasm-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-frontend",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "returncode": 0,
+      "seconds": 40.78,
+      "log_sha256": "6814ef2e7874cc9fe01d7dd1eba21da15bd6222b64bf386b6f43946a08dce420",
+      "test_results": [],
+      "review_contract_tests": []
+    },
+    {
+      "case": "bridge-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-bridge",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "returncode": 0,
+      "seconds": 15.21,
+      "log_sha256": "24452b335d4f7e846bea07d2ddd452dab4c8422f25a2408d738152154dfec190",
+      "test_results": [],
+      "review_contract_tests": []
+    },
+    {
+      "case": "shared-native",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-core",
+        "-p",
+        "openwebide-storage",
+        "-p",
+        "openwebide-agent",
+        "-p",
+        "openwebide-backend",
+        "--lib",
+        "--locked"
+      ],
+      "returncode": 0,
+      "seconds": 78.8,
+      "log_sha256": "0780c0b1df92a3d435935fe448bd1041113a105a400d37831d28b41d9f559eb4",
+      "test_results": [
+        {
+          "passed": 220,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 121,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 724,
+          "failed": 0,
+          "ignored": 1
+        },
+        {
+          "passed": 219,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "review_contract_tests": [
+        "test workspace_transaction::language_review::tests::admission::accepted_scope_binds_the_full_review_and_cannot_exist_without_a_worker_identity ... ok",
+        "test workspace_transaction::language_review::tests::admission::original_compact_admission_envelopes_remain_readable_and_grants_stay_out_of_recovery_scope ... ok",
+        "test workspace_transaction::language_review::tests::command_review_keeps_exact_arguments_and_original_action_and_service ... ok",
+        "test workspace_transaction::language_review::tests::durable_review_roundtrips_original_evidence_and_binds_both_transaction_halves ... ok",
+        "test workspace_transaction::language_review::tests::matching_transaction_digest_cannot_substitute_other_resource_operations ... ok",
+        "test workspace_transaction::language_review::tests::optional_transaction_review_keeps_old_wire_records_readable_without_rewriting_them ... ok",
+        "test workspace_transaction::language_review::tests::reproduction::a_first_editor_record_can_take_its_reviewed_root_from_the_result ... ok",
+        "test workspace_transaction::language_review::tests::reproduction::native_reproduction_retains_equal_overwrite_inputs_and_rejects_forged_editor_outputs ... ok",
+        "test workspace_transaction::language_review::tests::reproduction::no_op_text_reviews_retain_dirty_source_witnesses_and_cannot_drop_them ... ok",
+        "test workspace_transaction::language_review::tests::result_tampering_and_unrelated_or_old_protocol_queries_cannot_become_reviews ... ok",
+        "test workspace_transaction::language_review::tests::retained_workspace_reviews_share_command_provider_selection_and_revocation_policy ... ok",
+        "test workspace_transaction::language_review::tests::escaped_admitted_source_uses_the_request_budget_instead_of_the_small_scope_budget ... ok",
+        "test store::workspace_transactions::tests::language_review::admission::a_review_bearing_transaction_cannot_claim_a_worker_without_native_review_and_current_authority ... ok",
+        "test store::workspace_transactions::tests::language_review::admission::accepted_identity_cannot_be_borrowed_by_changed_evidence_or_another_worker ... ok",
+        "test store::workspace_transactions::tests::language_review::admission::paired_initial_admission_and_recovery_share_the_same_atomic_review_acceptance ... ok",
+        "test store::workspace_transactions::tests::language_review::admission::initial_admission_requires_the_exact_review_and_fresh_scoped_manual_provider_authority ... ok",
+        "test store::workspace_transactions::tests::language_review::admission::provider_rebinding_and_wrong_project_grants_cannot_become_initial_review_authority ... ok",
+        "test store::workspace_transactions::tests::language_review::admission::accepted_review_identity_survives_revocation_expiry_reopen_and_migration_replay_without_replaying_commands ... ok",
+        "test store::workspace_transactions::tests::language_review::admission::schema_66_upgrade_reserves_acceptance_without_accepting_existing_evidence ... ok",
+        "test store::workspace_transactions::tests::language_review::mismatched_language_results_and_editor_patches_never_create_intent_and_corrupt_rows_fail_closed ... ok",
+        "test store::workspace_transactions::tests::language_review::admission::unaccepted_review_cannot_advance_but_untouched_cancellation_never_needs_a_fresh_grant ... ok",
+        "test store::workspace_transactions::tests::language_review::replaying_earlier_accounting_migrations_cannot_erase_retained_review_quota ... ok",
+        "test store::workspace_transactions::tests::language_review::retained_language_evidence_survives_database_close_and_reopen_in_both_modes ... ok",
+        "test store::workspace_transactions::tests::language_review::retained_language_review_roundtrips_counts_quota_and_cannot_be_replaced_or_downgraded ... ok",
+        "test store::workspace_transactions::tests::language_review::schema_65_journals_keep_recovery_and_quota_and_review_migration_is_idempotent ... ok"
+      ]
+    },
+    {
+      "case": "frontend-native",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-frontend",
+        "--lib",
+        "--locked"
+      ],
+      "returncode": 0,
+      "seconds": 18.69,
+      "log_sha256": "bcb8344aa9573e27fbfdde9841ce606820427e49a5e43e3cf82509128a3fd8e1",
+      "test_results": [
+        {
+          "passed": 142,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "review_contract_tests": []
+    },
+    {
+      "case": "bridge-binary",
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "openwebide-bridge",
+        "--locked"
+      ],
+      "returncode": 0,
+      "seconds": 25.98,
+      "log_sha256": "28e0b7294ed0cd7c5a16504d4b3f2be32e5ea5a97052770e5e4916870bbff670",
+      "test_results": [],
+      "review_contract_tests": []
+    },
+    {
+      "case": "native-bridge",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-bridge",
+        "--lib",
+        "--locked"
+      ],
+      "returncode": 0,
+      "seconds": 81.59,
+      "log_sha256": "fe4a0bf56c93ce079ee9c374f877d615cecde34dd31b43a92ddafcba7be439f9",
+      "test_results": [
+        {
+          "passed": 401,
+          "failed": 0,
+          "ignored": 1
+        }
+      ],
+      "review_contract_tests": [
+        "test languages::host::admission::tests::a_child_folder_lease_cannot_authorize_verification_of_the_whole_project ... ok",
+        "test languages::host::admission::tests::a_prepared_command_cannot_borrow_another_pending_commands_admission_exception ... ok",
+        "test languages::host::admission::tests::native_review_holds_original_overlay_sources_until_its_guard_is_released ... ok",
+        "test languages::host::admission::tests::native_review_rejects_other_owners_projects_providers_and_request_queries_without_replacement ... ok",
+        "test languages::host::admission::tests::native_review_rejects_project_source_changes_before_any_mutation ... ok",
+        "test languages::host::admission::tests::native_review_requires_its_prepared_command_and_rejects_forged_editor_patches ... ok",
+        "test languages::host::admission::tests::original_native_review_validates_under_lease_without_replaying_request_or_lsp_in_both_profiles ... ok",
+        "test languages::host::admission::tests::worker::accepted_ambiguous_native_move_restores_after_original_service_and_grant_expire ... ok",
+        "test languages::host::analysis::tests::a_proof_cannot_move_to_another_owner_project_provider_or_client ... ok",
+        "test languages::host::admission::tests::worker::current_authority_at_claim_rejects_after_real_native_verification_then_original_review_can_retry ... ok",
+        "test languages::host::analysis::tests::analysis_context_cannot_be_attached_to_different_result_data ... ok",
+        "test languages::host::analysis::tests::expiration_does_not_turn_a_later_proof_into_an_older_valid_one ... ok",
+        "test languages::host::analysis::tests::native_admission_binds_the_original_query_and_counter_without_changing_fresh_validation ... ok",
+        "test languages::host::analysis::tests::changed_project_sources_retire_completion_and_action_handles_before_resolution ... ok",
+        "test languages::host::analysis::tests::closed_documents_and_changed_declared_configuration_cannot_validate_old_results ... ok",
+        "test languages::host::analysis::tests::dependency_and_other_unsaved_overlay_changes_reject_original_proofs ... ok",
+        "test languages::host::analysis::tests::signed_context_is_bounded_and_binds_origin_generation_overlay_service_and_issuer ... ok",
+        "test languages::host::analysis::tests::restored_dependency_bytes_and_modification_time_do_not_restore_old_analysis ... ok",
+        "test languages::host::analysis::tests::retained_context_checks_never_query_or_replace_the_original_server ... ok",
+        "test languages::host::analysis::tests::physical_folder_proof_must_precede_original_analysis_without_suppressing_source_events ... ok"
+      ]
+    },
+    {
+      "case": "browser-workspace",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-frontend",
+        "--release",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--lib",
+        "workspace_transactions::",
+        "--locked"
+      ],
+      "returncode": 0,
+      "seconds": 189.25,
+      "log_sha256": "e225a4c247f34c1824b9f019dd47b62ed3ab6313edd0ad666b1b2fb67fecce50",
+      "test_results": [
+        {
+          "passed": 14,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "review_contract_tests": []
+    },
+    {
+      "case": "browser-policy",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-frontend",
+        "--release",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--lib",
+        "state_actions::editor::intelligence::edits::",
+        "--locked"
+      ],
+      "returncode": 0,
+      "seconds": 10.38,
+      "log_sha256": "e060e8721ba6393fe2942f8ed7188f23b856df9f8699a256e00a68097b7bcda5",
+      "test_results": [
+        {
+          "passed": 29,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "review_contract_tests": []
+    },
+    {
+      "case": "browser-language-consumers",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-frontend",
+        "--release",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--test",
+        "components",
+        "language_plugins::",
+        "--locked"
+      ],
+      "returncode": 0,
+      "seconds": 179.07,
+      "log_sha256": "35f39908b6df78ea0469bd07678d64ae9dba7ccf18fd11532929dd54aec1e14c",
+      "test_results": [
+        {
+          "passed": 9,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "review_contract_tests": []
+    }
+  ],
+  "known_ignored_tests": [
+    "test editor::structure::tests::measure_indexed_language_queries ... ignored, native release measurement, not a timing assertion",
+    "test plugins::tests::official_marketplace_reference_package_installs_and_loads_on_both_host_scopes ... ignored, Smoke test against the published official marketplace; requires network access"
+  ],
+  "regression": {
+    "red_log_sha256": "b7e0e4722670837cbd9619b903bb236c6e99d4a183b924721dfb60bbc638bd59",
+    "failure": "The actual old storage worker claim accepted a review-bearing transaction with neither native verification nor current manual authority. The regression now rejects it without changing scope in both modes.",
+    "green_test": "store::workspace_transactions::tests::language_review::admission::a_review_bearing_transaction_cannot_claim_a_worker_without_native_review_and_current_authority"
+  },
+  "limits": [
+    "Local still uses browser transaction orchestration and per-call native leases. Its private paired journal supports the shared database acceptance primitive, but the public companion does not yet load full evidence or invoke the complete native runner. No complete Local whole-worker integration is claimed.",
+    "The frontend still omits durable review and first-admission grant; public Begin still rejects Some. Do not remove this rejection until both complete native execution adapters and result-specific affected-file evidence are ready.",
+    "Current source association watchers and semantic replay do not prove native identity/link/change-time for all unassociated affected files. Acceptance cannot repair missing initial observation.",
+    "Storage tests model the authenticated native attestation boundary; native success is separately established by real LSP/HMAC/lease/Store worker tests. The native ambiguous-prefix contract executes an actual transfer and leaves its intent active; it is not a process-kill or production HTTP-client test.",
+    "Strict target checks, shared native libraries, full bridge library and selected Chrome workspace/editor policy/language-plugin components are covered. This is not the full final pre-push CI suite or installed production workflow verification.",
+    "The existing native release measurement and published-marketplace network smoke remain explicitly ignored by their normal test suites. Neither was run in this matrix.",
+    "Earlier receipts retain their own source/artifact scope. Current production app/native artifacts need rebuilding; complete writer/child exclusion, cache/memory/prefetch, native Windows execution, public package publication, final main publication and cleanup remain unfinished. Editor performance is parked."
+  ]
+}

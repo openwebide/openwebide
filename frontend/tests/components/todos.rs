@@ -96,6 +96,16 @@ async fn local_agent_writes_the_persisted_checklist_and_failed_writes_keep_the_p
         stop_reason: StopReason::Complete,
         usage: None,
     };
+    // The full catalog uses discovery at this context limit. Load the
+    // optional checklist schema before asking the scripted model to use it.
+    let discover = ChatCompletion {
+        response: ChatResponse::ToolCalls(vec![ToolCall {
+            id: "discover-plan".into(),
+            name: "tool_search".into(),
+            arguments: r#"{"query":"select:todo_write"}"#.into(),
+        }]),
+        ..write.clone()
+    };
     let reply = ChatCompletion {
         response: ChatResponse::Text("done".into()),
         preamble: String::new(),
@@ -108,13 +118,34 @@ async fn local_agent_writes_the_persisted_checklist_and_failed_writes_keep_the_p
         .fake
         .scripted_completions
         .borrow_mut()
-        .extend([write.clone(), reply.clone()]);
+        .extend([discover.clone(), write.clone(), reply.clone()]);
     mounted.input("make a plan");
     mounted.key("Enter", "Enter", false);
     idle(&mounted).await;
     assert!(mounted.state.chat.error.get_untracked().is_none());
     assert_eq!(
-        mounted.state.chat.todo_plan.get_untracked().unwrap().plan,
+        mounted
+            .state
+            .chat
+            .todo_plan
+            .get_untracked()
+            .unwrap_or_else(|| {
+                panic!(
+                    "Checklist missing after run: {:?}",
+                    mounted
+                        .state
+                        .chat
+                        .messages
+                        .snapshot()
+                        .into_iter()
+                        .filter(|item| matches!(
+                            item,
+                            openwebide_frontend::conversation::ConversationItem::ToolStep { .. }
+                        ))
+                        .collect::<Vec<_>>()
+                )
+            })
+            .plan,
         plan(TodoStatus::InProgress)
     );
     assert!(
@@ -142,7 +173,7 @@ async fn local_agent_writes_the_persisted_checklist_and_failed_writes_keep_the_p
         .fake
         .scripted_completions
         .borrow_mut()
-        .extend([write, reply]);
+        .extend([discover, write, reply]);
     mounted.input("try another plan update");
     mounted.key("Enter", "Enter", false);
     idle(&mounted).await;

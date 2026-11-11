@@ -2,6 +2,7 @@ pub mod agent_host;
 pub mod backend_client;
 mod completions;
 pub mod http_client;
+mod language_tools;
 pub mod native_vfs;
 #[path = "runs.rs"]
 mod registry;

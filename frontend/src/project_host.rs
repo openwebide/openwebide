@@ -191,6 +191,7 @@ impl ProjectHost {
         let host = self.resolve_guarded(Some(id), true, || true).await.ok();
         let cwd = host.as_ref().and_then(ProjectExecution::cwd);
         let environment = openwebide_core::RunEnvironment {
+            project_id: Some(project.id),
             browser_preferences: crate::browser_preferences::capture(),
             project_name: Some(project.name),
             project_root: Some(
@@ -223,6 +224,40 @@ impl ProjectHost {
 
     pub fn track_revision(self) {
         self.revision.track();
+    }
+
+    pub async fn folder_files(
+        self,
+        user: i64,
+        project: i64,
+        handle: web_sys::FileSystemDirectoryHandle,
+        expected: Option<String>,
+        current: Rc<dyn Fn() -> bool>,
+    ) -> Result<
+        openwebide_core::workspace_transaction::companion::CompanionFiles<
+            crate::workspace_transactions::companion::BrowserFolderTransport,
+        >,
+        String,
+    > {
+        if !current()
+            || self
+                .auth
+                .user
+                .try_with_untracked(|user| user.as_ref().map(|user| user.id.get()))
+                != Some(Some(user))
+        {
+            return Err("The folder's signed-in account changed".into());
+        }
+        crate::workspace_transactions::companion::open(
+            self.api,
+            BridgeConfig::new(&self.settings.bridge_url.get_untracked()),
+            user,
+            project,
+            handle,
+            expected,
+            current,
+        )
+        .await
     }
 
     /// Hosts with no browser verification can resolve synchronously.

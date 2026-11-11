@@ -167,6 +167,7 @@ impl Run {
 
 #[derive(Debug, Default)]
 pub struct RunRegistry {
+    coordinator: crate::folder_coordination::Coordinator,
     host_administration: AtomicBool,
     runs: Mutex<HashMap<String, Arc<Run>>>,
 }
@@ -211,6 +212,12 @@ impl<B: RunBackend + 'static> Drop for PreparationGuard<B> {
 }
 
 impl RunRegistry {
+    pub(crate) fn with_coordinator(coordinator: crate::folder_coordination::Coordinator) -> Self {
+        Self {
+            coordinator,
+            ..Self::default()
+        }
+    }
     /// Selected once at the server/paired-companion capability boundary.
     pub(crate) fn configure_host_administration(&self, allowed: bool) {
         self.host_administration.store(allowed, Ordering::SeqCst);
@@ -288,7 +295,10 @@ impl RunRegistry {
             provider,
             RunHost {
                 mcp: Default::default(),
-                execution: Arc::new(crate::exec::HostExecution),
+                execution: Arc::new(crate::exec::workspace::Execution {
+                    inner: Arc::new(crate::exec::HostExecution),
+                    coordinator: self.coordinator.clone(),
+                }),
                 plugins: crate::plugins::transport::PluginExecutionHost::default(),
             },
         )
@@ -615,6 +625,10 @@ async fn run_body<B: RunBackend + 'static, P: LlmProvider + 'static>(
             }
         }
         RunKind::Agent { .. } | RunKind::WebChat => {
+            let language_scope =
+                openwebide_core::plugins::languages::tools::LanguageToolScope::from_environment(
+                    &plan.environment,
+                );
             if let Some(dir) = &dir {
                 plan.environment.project_root = Some(dir.to_string_lossy().into_owned());
                 plan.environment
@@ -622,6 +636,7 @@ async fn run_body<B: RunBackend + 'static, P: LlmProvider + 'static>(
                     .get_or_insert(openwebide_core::WorkspaceMode::Remote);
             }
             let factory = BridgeTaskFactory {
+                language_scope,
                 mcp_catalog: Arc::new(plan.mcp.clone()),
                 mcp_transport,
                 run: run.clone(),
@@ -911,6 +926,7 @@ type BridgeTaskGate<B> = openwebide_agent::plugins::management_tools::Management
     >,
 >;
 struct BridgeTaskFactory<B> {
+    language_scope: Option<openwebide_core::plugins::languages::tools::LanguageToolScope>,
     mcp_catalog: Arc<openwebide_core::mcp::Catalog>,
     mcp_transport: crate::mcp::host::NativeTransport,
     plugin_grants: Arc<std::collections::BTreeMap<String, String>>,
@@ -929,6 +945,7 @@ struct BridgeTaskFactory<B> {
 impl<B> Clone for BridgeTaskFactory<B> {
     fn clone(&self) -> Self {
         Self {
+            language_scope: self.language_scope.clone(),
             mcp_catalog: self.mcp_catalog.clone(),
             mcp_transport: self.mcp_transport.clone(),
             plugin_executables: self.plugin_executables.clone(),
@@ -997,7 +1014,7 @@ impl<B: RunBackend + 'static> BridgeTaskFactory<B> {
     }
     fn builtin_executor(&self) -> BridgeBuiltinTaskExecutor<B> {
         let workspace = self.dir.as_ref().map(|dir| {
-            VfsToolExecutor::with_web_and_bridge(
+            let executor = VfsToolExecutor::with_web_and_bridge(
                 NativeFsVfs { root: dir.clone() },
                 openwebide_agent::NoopWebClient,
                 InProcessBridgeClient {
@@ -1006,7 +1023,23 @@ impl<B: RunBackend + 'static> BridgeTaskFactory<B> {
                     cancel: self.run.cancel.clone(),
                 },
             )
-            .with_context(self.environment.clone())
+            .with_context(self.environment.clone());
+            match &self.language_scope {
+                Some(scope) => executor.with_code_intelligence(Arc::new(
+                    openwebide_agent::intelligence::LanguageTools::new(
+                        super::language_tools::LanguageHost {
+                            backend: self.backend.clone(),
+                            transport: self.plugin_transport.clone(),
+                            user: self.run.owner,
+                            session: self.run.session_id,
+                            cancel: self.run.cancel.clone(),
+                        },
+                        scope.clone(),
+                        rand::random::<u128>(),
+                    ),
+                )),
+                None => executor,
+            }
         });
         let executor = openwebide_agent::vfs_executor::SessionToolExecutor::new(
             workspace,

@@ -5,6 +5,9 @@ use openwebide_core::plugins::languages::{LanguageServer, intelligence};
 use serde_json::{Value, json};
 use std::time::Duration;
 
+#[path = "support/cache.rs"]
+mod cache;
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let root = tempfile::tempdir()?;
@@ -21,6 +24,15 @@ async fn main() -> anyhow::Result<()> {
     let main = "fn main() { let value = rust_lsp_fixture::answer(); println!(\"{value}\"); }\n";
     std::fs::write(root.path().join("src/lib.rs"), library)?;
     std::fs::write(root.path().join("src/main.rs"), main)?;
+    std::fs::write(
+        root.path().join("build.rs"),
+        r#"fn main() {
+        let path = std::path::PathBuf::from(std::env::var_os("OUT_DIR").unwrap()).join("build-count");
+        let count = std::fs::read_to_string(&path).ok().and_then(|text| text.parse::<u32>().ok()).unwrap_or(0);
+        std::fs::write(path, (count + 1).to_string()).unwrap();
+        println!("cargo:rerun-if-changed=build.rs");
+    }"#,
+    )?;
     let root_uri = url::Url::from_directory_path(root.path())
         .map_err(|()| anyhow::anyhow!("Invalid fixture root"))?;
     let server: LanguageServer = serde_json::from_value(json!({
@@ -146,11 +158,19 @@ fn service_request(
 
 async fn check_project_service(
     root: &std::path::Path,
-    server: LanguageServer,
+    mut server: LanguageServer,
 ) -> anyhow::Result<()> {
     use intelligence::{Position, Query};
     use openwebide_bridge::languages::host::{Host, Scope};
-    let host = Host::default();
+    let storage = tempfile::tempdir()?;
+    let mut host = Host::default();
+    host.set_cache_directory(storage.path().into())
+        .map_err(anyhow::Error::msg)?;
+    server.cache = Some(serde_json::from_value(
+        json!({"versionArgs":["--version"],"environment":{"CARGO_TARGET_DIR":"${cache}/cargo"}}),
+    )?);
+    server.initialization_options["cargo"]["buildScripts"]["enable"] = json!(true);
+    let cold_started = std::time::Instant::now();
     let scope = Scope {
         owner: "owner-a".into(),
         project: 1,
@@ -192,6 +212,20 @@ async fn check_project_service(
         "Native project hover did not resolve: {}",
         first.result
     );
+    let cold = cold_started.elapsed();
+    let cached = cache::wait_for(storage.path(), |path| {
+        path.file_name().is_some_and(|name| name == "build-count")
+    })
+    .await?;
+    let counts: Vec<_> = cached
+        .keys()
+        .filter(|path| path.file_name().is_some_and(|name| name == "build-count"))
+        .map(|path| Ok((path.clone(), std::fs::read_to_string(path)?)))
+        .collect::<anyhow::Result<_>>()?;
+    anyhow::ensure!(
+        !root.join("target").exists(),
+        "Rust wrote build output inside the project"
+    );
     let warm = host
         .query(scope.clone(), &input)
         .await
@@ -202,10 +236,20 @@ async fn check_project_service(
     );
     input.request += 1;
     input.query = Query::Symbols;
-    let symbols = host
-        .query(scope.clone(), &input)
-        .await
-        .map_err(anyhow::Error::msg)?;
+    let symbols = tokio::time::timeout(Duration::from_secs(30), async {
+        loop {
+            let response = host
+                .query(scope.clone(), &input)
+                .await
+                .map_err(anyhow::Error::msg)?;
+            input.request += 1;
+            if response.result.to_string().contains("answer") {
+                break Ok::<_, anyhow::Error>(response);
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+    })
+    .await??;
     anyhow::ensure!(
         symbols.result.to_string().contains("answer"),
         "Document symbols missing answer"
@@ -556,8 +600,9 @@ async fn check_project_service(
         .await
         .map_err(anyhow::Error::msg)?;
     anyhow::ensure!(
-        original.server == first.server && original.result.to_string().contains("u32"),
-        "Another client's source replaced the original overlay"
+        original.server != isolated.server && original.result.to_string().contains("u32"),
+        "Another client's source replaced the original overlay: {}",
+        original.result
     );
     let removed_path = root.join("src/deleted/old.rs");
     std::fs::create_dir_all(removed_path.parent().unwrap())?;
@@ -582,14 +627,76 @@ async fn check_project_service(
     host.revoke("owner-a", Some(1), Some("community/rust"));
     input.request += 1;
     let restarted = host
-        .query(scope, &input)
+        .query(scope.clone(), &input)
         .await
         .map_err(anyhow::Error::msg)?;
     anyhow::ensure!(
-        restarted.server != first.server,
+        restarted.server != original.server,
         "Revoked native server was reused"
     );
     host.shutdown();
+    openwebide_bridge::exec::proc::wait_for_cleanup().await;
+    let before = cache::snapshot(storage.path())?;
+    let namespaces = cache::namespaces(storage.path())?;
+    let mut restored = Host::default();
+    restored
+        .set_cache_directory(storage.path().into())
+        .map_err(anyhow::Error::msg)?;
+    let restart_started = std::time::Instant::now();
+    input.request += 1;
+    input.query = Query::Hover {
+        position: Position {
+            line: 0,
+            character: 7,
+        },
+    };
+    tokio::time::timeout(Duration::from_secs(45), async {
+        loop {
+            let response = restored
+                .query(scope.clone(), &input)
+                .await
+                .map_err(anyhow::Error::msg)?;
+            input.request += 1;
+            if response.result.to_string().contains("u32") {
+                break Ok::<_, anyhow::Error>(());
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+    })
+    .await??;
+    let restart = restart_started.elapsed();
+    // A single-file hover can resolve before Cargo workspace loading finishes.
+    // Require the restored project graph before inspecting build-script reuse.
+    definition_request.request += 10;
+    tokio::time::timeout(Duration::from_secs(45), async {
+        loop {
+            let response = restored
+                .query(scope.clone(), &definition_request)
+                .await
+                .map_err(anyhow::Error::msg)?;
+            definition_request.request += 1;
+            if response.result.to_string().contains("src/lib.rs") {
+                break Ok::<_, anyhow::Error>(());
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+    })
+    .await??;
+    let after = cache::snapshot(storage.path())?;
+    anyhow::ensure!(
+        cache::namespaces(storage.path())? == namespaces,
+        "Rust allocated a new cache namespace instead of reopening the existing one"
+    );
+    for (path, count) in counts {
+        anyhow::ensure!(
+            std::fs::read_to_string(path)? == count,
+            "Cargo reran an unchanged build script instead of reusing its cache"
+        );
+    }
+    anyhow::ensure!(!root.join("target").exists());
+    cache::report("rust-analyzer", &before, &after, cold, restart)?;
+    restored.shutdown();
+    openwebide_bridge::exec::proc::wait_for_cleanup().await;
     println!(
         "{}",
         json!({"native_project_service":true,"warm_reuse":true,"symbols":true,"definition":true,"references":true,"rename_edits":true,"formatting_edits":true,"completion":true,"completion_insertion":true,"external_definition_read_only":true,"stale_close_rejected":true,"deleted_document_closed":true,"code_action_edits":true,"versioned_diagnostics":diagnostics.diagnostics.len(),"unsaved_clients_isolated":true,"revocation_restart":true})

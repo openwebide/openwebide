@@ -58,7 +58,7 @@ impl<'a> PlanningHost<'a> {
         }
     }
 }
-async fn send_plugin_rpc<T: serde::de::DeserializeOwned>(
+pub(super) async fn send_plugin_rpc<T: serde::de::DeserializeOwned>(
     store: &openwebide_storage::Store<crate::state::AppDb>,
     user: UserId,
     path: &str,
@@ -270,13 +270,22 @@ pub(crate) async fn language_server(
     if authorize_only {
         return Ok(json_response(200, &selection));
     }
-    let project = state.store.get_project(project, user.id).await?;
+    let response = query_language_selection(&state.store, user.id, selection).await?;
+    Ok(json_response(200, &response))
+}
+async fn query_language_selection(
+    store: &openwebide_storage::Store<crate::state::AppDb>,
+    user: UserId,
+    selection: openwebide_core::plugins::languages::intelligence::Selection,
+) -> Result<openwebide_core::plugins::languages::intelligence::Response, ApiError> {
+    use openwebide_core::plugins::languages::intelligence;
+    let project = store.get_project(selection.project, user).await?;
     let root = openwebide_core::run::execution_root(&project).ok_or_else(|| {
         ApiError::bad_request("Use the paired execution host for this local project")
     })?;
     let response: intelligence::Response = send_plugin_rpc(
-        &state.store,
-        user.id,
+        store,
+        user,
         "/plugins/languages/query",
         serde_json::to_value(intelligence::HostRequest {
             user: None,
@@ -287,7 +296,98 @@ pub(crate) async fn language_server(
     )
     .await
     .map_err(ApiError::bad_request)?;
-    Ok(json_response(200, &response))
+    Ok(response)
+}
+pub(crate) async fn session_language_context(
+    state: &AppState,
+    path: &str,
+    user: AuthedUser,
+) -> Result<JsonResp, ApiError> {
+    let session = path_id(
+        path.strip_suffix("/language-context")
+            .ok_or_else(|| ApiError::bad_request("Expected language context path"))?,
+        "/api/sessions",
+    )?;
+    Ok(json_response(
+        200,
+        &state
+            .store
+            .session_language_context(user.id, session)
+            .await?,
+    ))
+}
+
+impl openwebide_agent::intelligence::AgentLanguageHost for PlanningHost<'_> {
+    async fn language_context(
+        &self,
+    ) -> Result<openwebide_core::plugins::languages::tools::LanguageToolContext, String> {
+        self.store()
+            .session_language_context(self.user, self.session)
+            .await
+            .map_err(|error| error.to_string())
+    }
+}
+impl openwebide_agent::plugins::actions::PluginActionHost for PlanningHost<'_> {
+    async fn prepare(&self, plugin: &PreparedPlugin) -> Result<PreparedPlugin, String> {
+        openwebide_agent::plugins::execution::PluginTransport::ensure_prepared(self, plugin).await
+    }
+    async fn grant(&self, plugin: &PreparedPlugin) -> Result<String, String> {
+        let session = self
+            .store()
+            .get_session(self.session, self.user)
+            .await
+            .map_err(|error| error.to_string())?;
+        let token = format!("{:032x}", rand::random::<u128>());
+        self.store()
+            .issue_plugin_context_grant(
+                self.user,
+                &openwebide_core::plugins::execution::PluginExecutionContext {
+                    user_action: false,
+                    project_id: session.project_id,
+                    session_id: Some(self.session),
+                    primary: None,
+                },
+                plugin,
+                &token,
+                now(),
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        Ok(token)
+    }
+    fn is_current(&self) -> bool {
+        true
+    }
+    async fn language_server(
+        &self,
+        call: &openwebide_core::plugins::languages::intelligence::Call,
+    ) -> Result<openwebide_core::plugins::languages::intelligence::Response, String> {
+        let mut call = call.clone();
+        call.session_id = Some(self.session);
+        let (prepared, context) = self
+            .store()
+            .authorize_language_server(self.user, &call, now())
+            .await
+            .map_err(|error| error.to_string())?;
+        let project = context
+            .project_id
+            .ok_or("Language services require a project")?;
+        query_language_selection(
+            self.store(),
+            self.user,
+            openwebide_core::plugins::languages::intelligence::Selection {
+                user: self.user.get(),
+                project,
+                prepared,
+                input: call.input,
+            },
+        )
+        .await
+        .map_err(|error| {
+            error.log_for_route("POST", "/api/plugins/languages/query");
+            error.public_message().to_owned()
+        })
+    }
 }
 pub(crate) async fn revoke_language_servers(
     req: Request,

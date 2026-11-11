@@ -1,0 +1,222 @@
+{
+  "format": 1,
+  "checked_on": "2026-11-09",
+  "status": "passed_macos_vnode_source_checkpoint",
+  "platform": {
+    "os": "Darwin",
+    "release": "27.2.0",
+    "machine": "arm64"
+  },
+  "base_commit": "9283345d3545ded5461ba5ca1702709954270ced",
+  "working_tree": true,
+  "shared_implementation": "The native languages::host::generation tracker serves both authenticated transports. macOS adds an explicit vnode primitive inside its existing owned scan workers; source selection, publication and cancellation policy remain shared.",
+  "relevant_source_sha256": {
+    "bridge/src/languages/host/generation.rs": "1e3cad515fe7a282d5cd2e4eb9d0c1c349d6d5ab30a2a985e6e1ee3b0bfe7c0d",
+    "bridge/src/languages/host/generation/events.rs": "c4d6b837f48af323a442ed89fb40263b264f379645dcc8e8704e0277a027c6e1",
+    "bridge/src/languages/host/generation/events/tests.rs": "263f33a67602b445b7e8d6857721f5eedccf6add21c1ae4764309034ee7da43a",
+    "bridge/src/languages/host/generation/tests.rs": "d4fc557721a93627b761c9141e44977d0f09cd08cf7d5c9e6ffcd4eaf4792364",
+    "bridge/src/languages/host.rs": "691241d3a9acc81e2c61a24bff1a8f5fb959fcaf02073b549ee4962831e52aaf",
+    "bridge/src/server/routes.rs": "6fc11f461a962e962d7aa281c6ab8a05ab2d77cf58bcd1ba4be5d19a30561c8b",
+    "bridge/tests/plugins/prefetch.rs": "f7a87c77c57a2695dda04631b863e1886ea1eb942ff124588d88a0341261b264",
+    "crates/core/src/plugins/languages/project_files.rs": "a76c0a2b6370474414719cdf88df8f580079d8c21aa272d592fd5816f3645c15"
+  },
+  "phases": [
+    {
+      "phase": "base",
+      "source_manifest_sha256": "7c40968d1a3fea9897e2f8ef9328fe8babb71563709d6ae50e4ef718c81e97f5",
+      "source_files": 1781,
+      "cases": [
+        {
+          "case": "format",
+          "command": [
+            "cargo",
+            "fmt",
+            "--all",
+            "--check"
+          ],
+          "exit_code": 0,
+          "seconds": 2.65
+        },
+        {
+          "case": "native-clippy",
+          "command": [
+            "cargo",
+            "clippy",
+            "-p",
+            "openwebide-bridge",
+            "--all-targets",
+            "--locked",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "exit_code": 0,
+          "seconds": 4.74
+        },
+        {
+          "case": "generation",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--lib",
+            "languages::host::generation",
+            "--locked"
+          ],
+          "exit_code": 0,
+          "seconds": 21.25,
+          "tests": {
+            "passed": 12,
+            "failed": 0,
+            "ignored": 0
+          }
+        },
+        {
+          "case": "bridge",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--lib",
+            "--locked"
+          ],
+          "exit_code": 0,
+          "seconds": 80.91,
+          "tests": {
+            "passed": 341,
+            "failed": 0,
+            "ignored": 1
+          }
+        },
+        {
+          "case": "adapters",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--test",
+            "plugins",
+            "--locked"
+          ],
+          "exit_code": 0,
+          "seconds": 30.0,
+          "tests": {
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          }
+        },
+        {
+          "case": "windows-clippy",
+          "command": [
+            "cargo",
+            "clippy",
+            "-p",
+            "openwebide-bridge",
+            "--target",
+            "x86_64-pc-windows-gnu",
+            "--all-targets",
+            "--locked",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "exit_code": 0,
+          "seconds": 55.4
+        }
+      ]
+    },
+    {
+      "phase": "fault_injection",
+      "source_manifest_sha256": "ca5e9497f4eed372932ca70b8a250c7c36c9f388acd32bfae50401c89e222b2f",
+      "source_files": 1781,
+      "cases": [
+        {
+          "case": "format",
+          "command": [
+            "cargo",
+            "fmt",
+            "--all",
+            "--check"
+          ],
+          "exit_code": 0,
+          "seconds": 2.78
+        },
+        {
+          "case": "native-clippy",
+          "command": [
+            "cargo",
+            "clippy",
+            "-p",
+            "openwebide-bridge",
+            "--all-targets",
+            "--locked",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "exit_code": 0,
+          "seconds": 4.82
+        },
+        {
+          "case": "generation",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--lib",
+            "languages::host::generation",
+            "--locked"
+          ],
+          "exit_code": 0,
+          "seconds": 21.83,
+          "tests": {
+            "passed": 13,
+            "failed": 0,
+            "ignored": 0
+          }
+        }
+      ]
+    }
+  ],
+  "supplement_scope": {
+    "production_sources_unchanged": true,
+    "changed_test": "bridge/src/languages/host/generation/events/tests.rs",
+    "changed_documentation": [
+      "CHANGELOG.md",
+      "docs/plugins.md",
+      "docs/plugin-authoring.md",
+      "docs/roadmap.md"
+    ],
+    "reason": "Add a focused registration-budget fault case after the full bridge and transport suites. Repeat formatting, strict native checking and all focused generation tests."
+  },
+  "verified": [
+    "Both installed-package authenticated routes accept unchanged speculation, reject dependency changes spanning analysis, and allow a fresh retry on the same service.",
+    "Explicit regular-file and directory watches do not discover paths or recursively add watches in response to events.",
+    "Sixteen write-and-restore rounds through an outside-root hard link retain bytes and modification time while producing vnode events; writes to an existing unrelated file do not invalidate the observation.",
+    "Replacing a file installs a watch on its replacement and releases the retired descriptor permits.",
+    "Cancelled scan workers retain their scan slots through actual exit; rebuilding lost coverage advances the generation even when source metadata is unchanged.",
+    "A partial registration-budget failure closes its descriptors and preserves both the previous complete inventory and revision. A fresh retry publishes one new generation and then remains stable."
+  ],
+  "bounds": {
+    "notification_descriptors_per_process_maximum": 1024,
+    "inherited_soft_descriptor_limit_fraction": 0.25,
+    "queue_descriptors_count_toward_budget": true,
+    "kernel_event_batch": 64,
+    "maximum_batches_per_drain": 32,
+    "scan_workers_per_process": 4,
+    "scan_workers_per_tracker": 1,
+    "outer_prefetch_deadline_seconds": 2
+  },
+  "limits": [
+    "This checkpoint adds macOS vnode observations only. Linux and Windows continue to use metadata observations; Windows is cross-compiled, not executed on a device.",
+    "Complete filesystem-event coverage, Git metadata and branch ABA, transitive runtime/toolchain invalidation, reusable contexts and editor apply-time freshness remain unfinished.",
+    "Automatic editor prefetch and reusable-result caching remain disabled.",
+    "This is a scoped checkpoint, not the full mandatory local CI suite. Browser and production verification remain for shipping.",
+    "No measured latency improvement or complete resource accounting is established; notification descriptors and kernel state must be included in later resource measurements."
+  ]
+}

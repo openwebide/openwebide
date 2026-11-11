@@ -193,6 +193,8 @@ pub const RUN_CONTEXT_PREFIX: &str = "[Open WebIDE run context]\n";
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RunEnvironment {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project_id: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub browser_preferences: Option<BrowserPreferences>,
     pub project_name: Option<String>,
     pub project_root: Option<String>,

@@ -425,7 +425,23 @@ pub async fn delete_bridge_pairing_token() -> Result<(), String> {
 
 /// Remove only the numeric directory key, leaving the pairing token intact.
 pub async fn delete_handle(project_id: i64) -> Result<(), String> {
-    delete_key(&key(project_id)).await
+    delete_key(&key(project_id)).await?;
+    let db = open_db().await?;
+    let store = get_store(&db, IdbTransactionMode::Readonly)?;
+    let keys = read(store.get_all_keys().map_err(|e| js_error(&e))?).await?;
+    for stored in js_sys::Array::from(&keys).iter() {
+        if stored.as_string().is_some_and(|key| {
+            key.starts_with("transaction-root:")
+                && key
+                    .split(':')
+                    .nth(2)
+                    .and_then(|project| project.parse::<i64>().ok())
+                    == Some(project_id)
+        }) {
+            delete_key(&stored).await?;
+        }
+    }
+    Ok(())
 }
 
 async fn delete_key(key: &JsValue) -> Result<(), String> {
@@ -505,4 +521,58 @@ pub async fn delete_orphan_handles(
         completion.await?;
     }
     Ok(())
+}
+
+/// Retain the origin-bound capability used by one reviewed transaction. The
+/// journal itself stays in the database; IndexedDB stores only directory handles.
+fn transaction_root_key(user: i64, project: i64, id: &str) -> Result<JsValue, String> {
+    if user <= 0 || project <= 0 || !openwebide_core::workspace_transaction::valid_id(id) {
+        return Err("Invalid workspace folder capability scope".into());
+    }
+    Ok(JsValue::from_str(&format!(
+        "transaction-root:{user}:{project}:{id}"
+    )))
+}
+pub async fn load_transaction_root(
+    user: i64,
+    project: i64,
+    id: &str,
+) -> Result<Option<FileSystemDirectoryHandle>, String> {
+    let key = transaction_root_key(user, project, id)?;
+    let db = open_db().await?;
+    let store = get_store(&db, IdbTransactionMode::Readonly)?;
+    let value = read(store.get(&key).map_err(|e| js_error(&e))?).await?;
+    if value.is_null() || value.is_undefined() {
+        return Ok(None);
+    }
+    value
+        .dyn_into()
+        .map(Some)
+        .map_err(|_| "The original workspace folder capability is invalid".into())
+}
+pub async fn capture_transaction_root(
+    user: i64,
+    project: i64,
+    id: &str,
+    handle: &FileSystemDirectoryHandle,
+) -> Result<(), String> {
+    // Callers hold the workspace Web Lock while checking and saving this binding.
+    if let Some(original) = load_transaction_root(user, project, id).await? {
+        let same = wasm_bindgen_futures::JsFuture::from(original.is_same_entry(handle))
+            .await
+            .map_err(|e| js_error(&e))?;
+        if same.as_bool() != Some(true) {
+            return Err("Reconnect the original project folder before recovery".into());
+        }
+        return Ok(());
+    }
+    let key = transaction_root_key(user, project, id)?;
+    let db = open_db().await?;
+    let store = get_store(&db, IdbTransactionMode::Readwrite)?;
+    let completion = TransactionFuture::new(store.transaction());
+    let _ = read(store.put_with_key(handle, &key).map_err(|e| js_error(&e))?).await?;
+    completion.await
+}
+pub async fn delete_transaction_root(user: i64, project: i64, id: &str) -> Result<(), String> {
+    delete_key(&transaction_root_key(user, project, id)?).await
 }

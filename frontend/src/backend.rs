@@ -1,6 +1,11 @@
 use crate::api::BackendApi;
 use futures::future::LocalBoxFuture;
 use leptos::prelude::{LocalStorage, RwSignal, StoredValue};
+use openwebide_core::workspace_transaction::{
+    AdvanceWorkspaceTransaction, BeginWorkspaceTransaction, ExecuteWorkspaceTransaction,
+    WorkspaceRootIdentity, WorkspaceTransactionAdvanced, WorkspaceTransactionOutcome,
+    WorkspaceTransactionPrepared, WorkspaceTransactionState,
+};
 use openwebide_core::{
     ChatCompletion, ChatMessage, ChatRequest, ChatSession, Connection, ConversationEntry,
     EditorContext, FileDiff, FileEntry, GitBranchInfo, GitCheckoutRequest, GitCheckoutResult,
@@ -154,6 +159,108 @@ pub trait Backend {
         project: i64,
         record: &'a openwebide_core::editor::EditorRecoveryRecord,
     ) -> LocalBoxFuture<'a, Result<i64, RecoveryError>>;
+    fn workspace_activity(
+        &self,
+        _project: i64,
+    ) -> LocalBoxFuture<
+        '_,
+        Result<openwebide_core::workspace_transaction::WorkspaceActivity, RecoveryError>,
+    > {
+        Box::pin(async {
+            Err(RecoveryError::Unavailable(
+                "Workspace activity is unavailable".into(),
+            ))
+        })
+    }
+    fn workspace_transaction_root(
+        &self,
+        _project: i64,
+    ) -> LocalBoxFuture<'_, Result<WorkspaceRootIdentity, RecoveryError>> {
+        Box::pin(async {
+            Err(RecoveryError::Unavailable(
+                "Workspace root discovery is unavailable".into(),
+            ))
+        })
+    }
+    fn inspect_workspace_folder<'a>(
+        &'a self,
+        _project: i64,
+        _request: &'a openwebide_core::workspace_transaction::companion::FolderInspection,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<openwebide_core::workspace_transaction::companion::FileValue, RecoveryError>,
+    > {
+        Box::pin(async {
+            Err(RecoveryError::Unavailable(
+                "Native workspace inspection is unavailable".into(),
+            ))
+        })
+    }
+    fn execute_workspace_transaction<'a>(
+        &'a self,
+        _project: i64,
+        _request: &'a ExecuteWorkspaceTransaction,
+    ) -> LocalBoxFuture<'a, Result<WorkspaceTransactionOutcome, RecoveryError>> {
+        Box::pin(async {
+            Err(RecoveryError::Unavailable(
+                "Workspace execution is unavailable".into(),
+            ))
+        })
+    }
+    fn workspace_transaction<'a>(
+        &'a self,
+        _project: i64,
+        _id: Option<&'a str>,
+    ) -> LocalBoxFuture<'a, Result<Option<WorkspaceTransactionState>, RecoveryError>> {
+        Box::pin(async {
+            Err(RecoveryError::Unavailable(
+                "Workspace recovery is unavailable".into(),
+            ))
+        })
+    }
+    fn begin_workspace_transaction<'a>(
+        &'a self,
+        _project: i64,
+        _request: &'a BeginWorkspaceTransaction,
+    ) -> LocalBoxFuture<'a, Result<WorkspaceTransactionPrepared, RecoveryError>> {
+        Box::pin(async {
+            Err(RecoveryError::Unavailable(
+                "Workspace recovery is unavailable".into(),
+            ))
+        })
+    }
+    fn delegate_workspace_transaction<'a>(
+        &'a self,
+        _project: i64,
+        _id: &'a str,
+        _request: &'a openwebide_core::workspace_transaction::DelegateWorkspaceTransaction,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<
+            (
+                String,
+                openwebide_core::workspace_transaction::WorkspaceJournalDelegation,
+            ),
+            RecoveryError,
+        >,
+    > {
+        Box::pin(async {
+            Err(RecoveryError::Unavailable(
+                "Paired workspace delegation is unavailable".into(),
+            ))
+        })
+    }
+    fn advance_workspace_transaction<'a>(
+        &'a self,
+        _project: i64,
+        _request: &'a AdvanceWorkspaceTransaction,
+    ) -> LocalBoxFuture<'a, Result<WorkspaceTransactionAdvanced, RecoveryError>> {
+        Box::pin(async {
+            Err(RecoveryError::Unavailable(
+                "Workspace recovery is unavailable".into(),
+            ))
+        })
+    }
     fn push_config(&self) -> LocalBoxFuture<'_, Result<openwebide_core::push::PushConfig, String>> {
         Box::pin(async { Err("Background notifications are unavailable".into()) })
     }
@@ -621,6 +728,15 @@ pub trait Backend {
     ) -> LocalBoxFuture<'a, Result<std::collections::BTreeMap<String, String>, String>> {
         Box::pin(async { Err("Plugin execution grants unavailable".into()) })
     }
+    fn session_language_context(
+        &self,
+        _session: i64,
+    ) -> LocalBoxFuture<
+        '_,
+        Result<openwebide_core::plugins::languages::tools::LanguageToolContext, String>,
+    > {
+        Box::pin(async { Err("Language context unavailable".into()) })
+    }
     fn plugin_context_grants<'a>(
         &'a self,
         _request: &'a openwebide_core::plugins::execution::PluginGrantRequest,
@@ -668,6 +784,42 @@ pub trait Backend {
         _request: &'a openwebide_core::plugins::languages::intelligence::Revoke,
     ) -> LocalBoxFuture<'a, Result<(), String>> {
         Box::pin(async { Err("Language server control unavailable".into()) })
+    }
+    fn language_action_request<'a>(
+        &'a self,
+        _project: i64,
+        _request: &'a openwebide_core::plugins::languages::intelligence::actions::ActionJournalRequest,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<
+            Option<openwebide_core::plugins::languages::intelligence::actions::ActionRecord>,
+            String,
+        >,
+    > {
+        Box::pin(async { Err("Language action recovery unavailable".into()) })
+    }
+    fn language_command<'a>(
+        &'a self,
+        _project: i64,
+        _request: &'a openwebide_core::plugins::languages::intelligence::actions::CommandDispatch,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<openwebide_core::plugins::languages::intelligence::actions::CommandProgress, String>,
+    > {
+        Box::pin(async { Err("Language command host unavailable".into()) })
+    }
+    fn authorize_language_command<'a>(
+        &'a self,
+        _project: i64,
+        _request: &'a openwebide_core::plugins::languages::intelligence::actions::CommandDispatch,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<
+            openwebide_core::plugins::languages::intelligence::actions::AuthorizedCommand,
+            String,
+        >,
+    > {
+        Box::pin(async { Err("Language command authority unavailable".into()) })
     }
     fn authorize_language_server<'a>(
         &'a self,
@@ -1156,6 +1308,84 @@ impl Backend for BackendApi {
         record: &'a openwebide_core::editor::EditorRecoveryRecord,
     ) -> LocalBoxFuture<'a, Result<i64, RecoveryError>> {
         Box::pin(BackendApi::save_editor_recovery(self, project, record))
+    }
+    fn workspace_activity(
+        &self,
+        project: i64,
+    ) -> LocalBoxFuture<
+        '_,
+        Result<openwebide_core::workspace_transaction::WorkspaceActivity, RecoveryError>,
+    > {
+        Box::pin(BackendApi::workspace_activity(self, project))
+    }
+    fn workspace_transaction_root(
+        &self,
+        project: i64,
+    ) -> LocalBoxFuture<'_, Result<WorkspaceRootIdentity, RecoveryError>> {
+        Box::pin(BackendApi::workspace_transaction_root(self, project))
+    }
+    fn inspect_workspace_folder<'a>(
+        &'a self,
+        project: i64,
+        request: &'a openwebide_core::workspace_transaction::companion::FolderInspection,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<openwebide_core::workspace_transaction::companion::FileValue, RecoveryError>,
+    > {
+        Box::pin(BackendApi::inspect_workspace_folder(self, project, request))
+    }
+    fn execute_workspace_transaction<'a>(
+        &'a self,
+        project: i64,
+        request: &'a ExecuteWorkspaceTransaction,
+    ) -> LocalBoxFuture<'a, Result<WorkspaceTransactionOutcome, RecoveryError>> {
+        Box::pin(BackendApi::execute_workspace_transaction(
+            self, project, request,
+        ))
+    }
+    fn workspace_transaction<'a>(
+        &'a self,
+        project: i64,
+        id: Option<&'a str>,
+    ) -> LocalBoxFuture<'a, Result<Option<WorkspaceTransactionState>, RecoveryError>> {
+        Box::pin(BackendApi::workspace_transaction(self, project, id))
+    }
+    fn begin_workspace_transaction<'a>(
+        &'a self,
+        project: i64,
+        request: &'a BeginWorkspaceTransaction,
+    ) -> LocalBoxFuture<'a, Result<WorkspaceTransactionPrepared, RecoveryError>> {
+        Box::pin(BackendApi::begin_workspace_transaction(
+            self, project, request,
+        ))
+    }
+    fn delegate_workspace_transaction<'a>(
+        &'a self,
+        project: i64,
+        id: &'a str,
+        request: &'a openwebide_core::workspace_transaction::DelegateWorkspaceTransaction,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<
+            (
+                String,
+                openwebide_core::workspace_transaction::WorkspaceJournalDelegation,
+            ),
+            RecoveryError,
+        >,
+    > {
+        Box::pin(BackendApi::delegate_workspace_transaction(
+            self, project, id, request,
+        ))
+    }
+    fn advance_workspace_transaction<'a>(
+        &'a self,
+        project: i64,
+        request: &'a AdvanceWorkspaceTransaction,
+    ) -> LocalBoxFuture<'a, Result<WorkspaceTransactionAdvanced, RecoveryError>> {
+        Box::pin(BackendApi::advance_workspace_transaction(
+            self, project, request,
+        ))
     }
     fn push_config(&self) -> LocalBoxFuture<'_, Result<openwebide_core::push::PushConfig, String>> {
         Box::pin(BackendApi::push_config(self))
@@ -1687,6 +1917,15 @@ impl Backend for BackendApi {
     ) -> LocalBoxFuture<'a, Result<std::collections::BTreeMap<String, String>, String>> {
         Box::pin(BackendApi::plugin_execution_grants(self, session, plugins))
     }
+    fn session_language_context(
+        &self,
+        session: i64,
+    ) -> LocalBoxFuture<
+        '_,
+        Result<openwebide_core::plugins::languages::tools::LanguageToolContext, String>,
+    > {
+        Box::pin(BackendApi::session_language_context(self, session))
+    }
     fn plugin_context_grants<'a>(
         &'a self,
         request: &'a openwebide_core::plugins::execution::PluginGrantRequest,
@@ -1734,6 +1973,44 @@ impl Backend for BackendApi {
         request: &'a openwebide_core::plugins::languages::intelligence::Revoke,
     ) -> LocalBoxFuture<'a, Result<(), String>> {
         Box::pin(BackendApi::revoke_language_servers(self, request))
+    }
+    fn language_action_request<'a>(
+        &'a self,
+        project: i64,
+        request: &'a openwebide_core::plugins::languages::intelligence::actions::ActionJournalRequest,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<
+            Option<openwebide_core::plugins::languages::intelligence::actions::ActionRecord>,
+            String,
+        >,
+    > {
+        Box::pin(BackendApi::language_action_request(self, project, request))
+    }
+    fn language_command<'a>(
+        &'a self,
+        project: i64,
+        request: &'a openwebide_core::plugins::languages::intelligence::actions::CommandDispatch,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<openwebide_core::plugins::languages::intelligence::actions::CommandProgress, String>,
+    > {
+        Box::pin(BackendApi::language_command(self, project, request))
+    }
+    fn authorize_language_command<'a>(
+        &'a self,
+        project: i64,
+        request: &'a openwebide_core::plugins::languages::intelligence::actions::CommandDispatch,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<
+            openwebide_core::plugins::languages::intelligence::actions::AuthorizedCommand,
+            String,
+        >,
+    > {
+        Box::pin(BackendApi::authorize_language_command(
+            self, project, request,
+        ))
     }
     fn authorize_language_server<'a>(
         &'a self,

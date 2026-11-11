@@ -1,0 +1,327 @@
+{
+  "format": 1,
+  "checked_on": "2026-11-10T15:35:31.536909+00:00",
+  "status": "passed_for_formatting_and_resolved_completion_consumers",
+  "source_manifest_sha256": "a79713702bbcac76d1b1edda8c36e524bf0e4bd47f84cdc9538a3f4d046aabc9",
+  "source_files": 1829,
+  "base_commit": "9283345d3545ded5461ba5ca1702709954270ced",
+  "working_tree": "Uncommitted code-intelligence work; hash covers tracked and unignored untracked files before this receipt and its documentation updates.",
+  "relevant_source_sha256": {
+    "frontend/src/state_actions/editor/intelligence.rs": "c431ece8a5660548933eb7baa8ed5e0cc488cd4560afda851ac0f30031e15c64",
+    "frontend/src/state_actions/editor/intelligence/application.rs": "49c5933528a4f78f432cc40c45ebf9f800b8556125e28fa3fb11e0b0f1223dd9",
+    "frontend/src/plugin_actions.rs": "9cc8a2f67052ac0225a9a62c826a70f9a7e950e53b7e5163ed8475fe8e014f91",
+    "frontend/src/testing/fake_backend.rs": "543be57cab0b6176f2900c24bdb9df1c48197db00c8f9344c2a4d77f22077a89",
+    "frontend/tests/components/language_plugins.rs": "3d6eab1909f852fd541a24406ff8c5228cb656cc6e3a4f55a6a27bbc22c035c9",
+    "frontend/tests/components/language_plugins/application.rs": "548a77a4ee07d025861e16f71d9a796604b6dde36aeac6265fbc07b8347c3d0d",
+    "frontend/tests/components/local_bridge.rs": "ea69a919ce85ad3dcf6d8a6ae4562688b23a1f9862a7f314f17c647dab087929"
+  },
+  "native_foundation": {
+    "receipt": "analysis-context-checks.json",
+    "receipt_sha256": "aa19181717a98be312f714201ba8201bcba79a4f2cc6d9899abc2325dea34719",
+    "source_manifest_sha256": "bf9bf5c8c57880530ef2300ede20bb50d825e934dceaf4baf3286e6362574302",
+    "unchanged_native_source_files": 597
+  },
+  "shared_implementation": "One editor application callback validates immutable AnalysisResult through the original ProjectLanguageService and shared LanguageService facade; both authenticated native adapters use that same workflow.",
+  "contract": [
+    "Retain the actual selected service, document/client, full effective editor source revision, query, context and normalized result for edit-producing replies. Read-only/list replies do not retain an extra body copy.",
+    "Formatting and resolved completion reject changed payloads before authority. Await original-service validation before synchronous editor-history publication, without overlay synchronization, an LSP request or a replacement process.",
+    "Guard the retained result identity, source inventory, account/provider and selection around validation. Abort superseded applications; request tickets prevent old background responses resetting a newer operation.",
+    "Automatic completion retains its popup during validation and on failure, supports retry, and closes it only after successful publication. Preserve snippets, undo and the existing unsaved baseline.",
+    "Background diagnostic replies do not replace the provider identity of an already displayed action."
+  ],
+  "coverage": [
+    "Four new optimized Chrome contracts execute through the installed controller and shared facade in Local and Remote modes.",
+    "Formatting payload tampering rejects before native authority; native dependency rejection preserves the draft, retry succeeds and undo preserves its real unsaved baseline. Missing context rejects application.",
+    "Resolved completion waits for a held validation, rejects modified items, publishes snippets with selected fields and remains undoable.",
+    "Late validation after another retained draft, selection, dismissal, provider, account generation or result replacement cannot publish; a fresh replacement remains applicable.",
+    "Automatic Suggest/Resolve completion retains its popup until validation, preserves failure and retries successfully.",
+    "Full affected language_plugins and local_bridge component suites, frontend native tests and strict all-target WASM frontend Clippy pass on the same source."
+  ],
+  "development_checks": [
+    {
+      "case": "format",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--check"
+      ],
+      "returncode": 0,
+      "seconds": 2.84,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test_results": [],
+      "failed_tests": []
+    },
+    {
+      "case": "wasm-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-frontend",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "returncode": 0,
+      "seconds": 8.04,
+      "log_sha256": "a7a0732341a1adb48d6e2b8ef5761bd5431c3c99755e1a4f51aac3165985c027",
+      "test_results": [],
+      "failed_tests": []
+    },
+    {
+      "case": "browser-application",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-frontend",
+        "--release",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--test",
+        "components",
+        "language_plugins::application::",
+        "--locked"
+      ],
+      "returncode": 0,
+      "seconds": 157.75,
+      "log_sha256": "0c975a128c8dfa32fc0f223971f00f7881a4abb2a4263b45d4a359b6e44edd9b",
+      "test_results": [
+        {
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "failed_tests": []
+    }
+  ],
+  "regression_checks": [
+    {
+      "case": "frontend-native",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-frontend",
+        "--lib",
+        "--locked"
+      ],
+      "returncode": 0,
+      "seconds": 9.33,
+      "log_sha256": "876620d926525b9c03008b665d7f5eaedebeabeba595784945bec24d640e79e9",
+      "test_results": [
+        {
+          "passed": 142,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "failed_tests": []
+    },
+    {
+      "case": "browser-language",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-frontend",
+        "--release",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--test",
+        "components",
+        "language_plugins::",
+        "--locked"
+      ],
+      "returncode": 0,
+      "seconds": 11.52,
+      "log_sha256": "c79f91d3dae37a99d1fe62e4202decd4cbe025d168fa570e9f92b7120c51c521",
+      "test_results": [
+        {
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "failed_tests": []
+    },
+    {
+      "case": "browser-local",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-frontend",
+        "--release",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--test",
+        "components",
+        "local_bridge::",
+        "--locked"
+      ],
+      "returncode": 0,
+      "seconds": 23.06,
+      "log_sha256": "4d5cc01f78d7ccee7d1bc6c55ea2638fb4213b016c296983ade865f5ceb3ec2f",
+      "test_results": [
+        {
+          "passed": 31,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "failed_tests": []
+    }
+  ],
+  "earlier_attempts": [
+    {
+      "source_sha256": "af3cb024be8319f01604d05dc1a65a62eb2191860b4946fadd7db258b242820f",
+      "checks": [
+        {
+          "case": "format",
+          "command": [
+            "cargo",
+            "fmt",
+            "--all",
+            "--check"
+          ],
+          "returncode": 1,
+          "seconds": 2.73,
+          "log_sha256": "a8557d48b1074340600fe48c9e2ab8a57bc1d26e31da5326ab75b87b72e0067d",
+          "test_results": [],
+          "failed_tests": []
+        }
+      ],
+      "correction": "Initial child module declaration needed an explicit relative path under its #[path] parent."
+    },
+    {
+      "source_sha256": "43ea8eac083349474abe76bdf1a43b4246341038294eb2ab50182ec1afe7a48f",
+      "checks": [
+        {
+          "case": "format",
+          "command": [
+            "cargo",
+            "fmt",
+            "--all",
+            "--check"
+          ],
+          "returncode": 0,
+          "seconds": 2.95,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "test_results": [],
+          "failed_tests": []
+        },
+        {
+          "case": "wasm-clippy",
+          "command": [
+            "cargo",
+            "clippy",
+            "-p",
+            "openwebide-frontend",
+            "--target",
+            "wasm32-unknown-unknown",
+            "--all-targets",
+            "--locked",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "returncode": 101,
+          "seconds": 35.53,
+          "log_sha256": "8845e190d859a68b9180148f419b63529a01fa7525454391301574c3b87179aa",
+          "test_results": [],
+          "failed_tests": []
+        }
+      ],
+      "correction": "A new test match arm needed a semicolon; no lint suppression was added."
+    },
+    {
+      "source_sha256": "f830a3d351cc8d3ce9fb3219bb73878a13bf86f43c60dcb30f429f30cfb188ac",
+      "checks": [
+        {
+          "case": "format",
+          "command": [
+            "cargo",
+            "fmt",
+            "--all",
+            "--check"
+          ],
+          "returncode": 0,
+          "seconds": 2.87,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "test_results": [],
+          "failed_tests": []
+        },
+        {
+          "case": "wasm-clippy",
+          "command": [
+            "cargo",
+            "clippy",
+            "-p",
+            "openwebide-frontend",
+            "--target",
+            "wasm32-unknown-unknown",
+            "--all-targets",
+            "--locked",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "returncode": 0,
+          "seconds": 7.63,
+          "log_sha256": "b4a9bf6dd75bc7d3994eebbb6bee61ab49ce4f9b7efa3f44476c34c4ed8156d0",
+          "test_results": [],
+          "failed_tests": []
+        },
+        {
+          "case": "browser-application",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-frontend",
+            "--release",
+            "--target",
+            "wasm32-unknown-unknown",
+            "--test",
+            "components",
+            "language_plugins::application::",
+            "--locked"
+          ],
+          "returncode": 1,
+          "seconds": 266.54,
+          "log_sha256": "10daab3d09c145aa503ff8b1aa84bbe43e30240376187c9069de53131efaa0fe",
+          "test_results": [
+            {
+              "passed": 3,
+              "failed": 1,
+              "ignored": 0
+            }
+          ],
+          "failed_tests": [
+            "test language_plugins::application::formatting_validates_the_retained_body_and_native_context_in_both_modes ... FAIL"
+          ]
+        }
+      ],
+      "correction": "Three browser contracts passed; the formatting fixture had set dirty=true on a new saved document. It now seeds a real unsaved edit and retains the original dirty-after-undo assertion."
+    }
+  ],
+  "limits": [
+    "Text-only workspace, rename/action and resource review/application do not yet consume retained contexts. Native resource intent/gate coupling is also unfinished.",
+    "The new browser fixtures use the primary provider. Dedicated independent formatter/diagnostic-provider and range-formatting cases remain; the implementation retains the selected service and compiles those shared query paths.",
+    "Additional active-document, composition/read-only and project/session interleavings remain to extend the new delayed-validation matrix.",
+    "These checks do not establish complete transitive freshness, result caches, resource/performance targets, native physical PWA regression or the full final CI gate."
+  ],
+  "post_check_updates": [
+    "docs/code-intelligence/editor-application-checks.json",
+    "docs/plugins.md",
+    "docs/roadmap.md",
+    "CHANGELOG.md"
+  ]
+}

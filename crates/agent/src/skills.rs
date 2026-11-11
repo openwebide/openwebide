@@ -511,6 +511,18 @@ mod tests {
             tools,
             model_settings: Default::default(),
         };
+        for name in [
+            "ask_user_question",
+            "monitor",
+            "schedule_create",
+            "skill_read",
+            "task",
+        ] {
+            assert!(request.tools.iter().any(|tool| tool.name == name));
+        }
+        // Use the production discovery step: optional language/extension tools
+        // are indexed instead of charging every schema to a small first turn.
+        let _catalog = crate::discovery::ToolCatalog::new(&mut request, Some(8192));
         for mode in [
             openwebide_core::WorkspaceMode::Local,
             openwebide_core::WorkspaceMode::Remote,
@@ -549,15 +561,6 @@ mod tests {
                 "{mode:?}: {tokens} tokens leave insufficient compaction room"
             );
             request.messages.pop();
-        }
-        for name in [
-            "ask_user_question",
-            "monitor",
-            "schedule_create",
-            "skill_read",
-            "task",
-        ] {
-            assert!(request.tools.iter().any(|tool| tool.name == name));
         }
     }
     #[test]

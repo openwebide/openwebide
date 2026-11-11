@@ -6,6 +6,21 @@ each declared ID to a `LanguageGrammar`. `LanguageGrammar::standard` supplies th
 existing parser families; `LanguageGrammar` also accepts a `SyntaxProvider`.
 Custom languages can use the SDK directly with another engine or lexer.
 
+A package can also supply its own tree-sitter grammar through `SyntaxProvider`,
+using `SyntaxLanguage::Plain` as a neutral toolkit tag in both provider and
+`LanguageGrammar`. Its public language IDs remain strings from the manifest.
+The package owns grammar, context/highlight selectors and fold nodes; declared
+`configuration.brackets` supplies pairing outside parsed strings, comments and
+embedded bodies. Bracket metadata shares the editor's structural record limit.
+
+`LanguageSyntax::handle_with` accepts an optional package refinement callback over
+the reconstructed source, language ID and parsed analysis. This supports grammar
+error recovery, such as unfinished HCL literals, without duplicating source/delta
+retention. Only ready analysis invokes the callback. Refined data is validated
+before shared bracket processing and again before publication; invalid metadata
+returns an error and requires source resynchronization. Close, unsupported
+languages and missing delta bases never invoke it.
+
 Link this library into an ordinary WASI component and forward its `Plugin::language`
 callback to `LanguageSyntax::handle`. Independent families construct the engine
 with `LanguageSyntax::new_delegated`; embedded scopes use the selected installed

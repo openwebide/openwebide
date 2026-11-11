@@ -467,6 +467,7 @@ where
         None => None,
     };
     let environment = openwebide_core::RunEnvironment {
+        project_id: project.as_ref().map(|project| project.id),
         browser_preferences: send.browser_preferences,
         project_name: project.as_ref().map(|project| project.name.clone()),
         project_root: project

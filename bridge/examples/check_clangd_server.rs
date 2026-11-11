@@ -6,7 +6,7 @@ use openwebide_core::plugins::languages::{
     source_digest,
 };
 use serde_json::json;
-use std::{path::Path, time::Duration};
+use std::{collections::BTreeMap, path::Path, time::Duration};
 
 const HEADER: &str = "#pragma once\r\n#ifndef BUILD_VALUE\r\n#error Missing project flags\r\n#endif\r\ninline int answer() { return BUILD_VALUE; }\r\n";
 const C_HEADER: &str = "#pragma once\r\n#ifndef BUILD_VALUE\r\n#error Missing project flags\r\n#endif\r\nstatic inline int answer(void) { return BUILD_VALUE; }\r\n";
@@ -18,6 +18,7 @@ struct Fixture {
     scope: Scope,
     sequence: u64,
     client: &'static str,
+    generations: BTreeMap<String, u64>,
 }
 
 impl Fixture {
@@ -36,6 +37,7 @@ impl Fixture {
             },
             sequence: 0,
             client: "editor-a",
+            generations: BTreeMap::new(),
         })
     }
 
@@ -51,7 +53,7 @@ impl Fixture {
         let input = protocol::Request {
             version: protocol::VERSION,
             client: self.client.into(),
-            document: path.into(),
+            document: format!("{path}:{}", self.generations.get(path).unwrap_or(&0)),
             request: self.sequence,
             revision,
             language: language.into(),
@@ -68,6 +70,11 @@ impl Fixture {
             .await
             .map_err(anyhow::Error::msg)?;
         response.validate(&input).map_err(anyhow::Error::msg)?;
+        // Reopening creates a new document lifetime. Late requests keep their
+        // old identity and must remain stale after a successful close.
+        if matches!(input.query, Query::Close) {
+            *self.generations.entry(path.into()).or_default() += 1;
+        }
         Ok(response)
     }
 
@@ -330,13 +337,14 @@ async fn main() -> Result<()> {
     let project = fixture.hover("main.cpp", "cpp", CPP, "int").await?;
     ensure!(project.server != first.server && project.server != owner.server);
     fixture.scope.project = 1;
+    let before_revoke = fixture.hover("main.cpp", "cpp", CPP, "long").await?;
     fixture
         .host
         .revoke("fixture-owner", Some(1), Some("community/native-family"));
     let restarted = fixture
         .query("include/api.hpp", "cpp", &unsaved, 2, Query::Synchronize)
         .await?;
-    ensure!(restarted.server != first.server);
+    ensure!(restarted.server != before_revoke.server);
     fixture.hover("main.cpp", "cpp", CPP, "long").await?;
     for (path, source) in files {
         ensure!(

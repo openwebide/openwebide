@@ -20,7 +20,7 @@ fn command(program: &str, args: &[&str]) -> HostCommand {
 #[tokio::test]
 #[ignore = "Run docker/host-admin-test/check.sh to provision an isolated SSH target and agent"]
 async fn ssh_administration_inspects_and_changes_the_target_and_handles_interactive_sudo() {
-    let host = SshHost::new(
+    let host = SshHost::connect(
         HostConnection {
             destination: "admin@127.0.0.1".into(),
             port: std::env::var("OPENWEBIDE_TEST_SSH_PORT")
@@ -35,6 +35,7 @@ async fn ssh_administration_inspects_and_changes_the_target_and_handles_interact
         },
         Arc::new(HostExecution),
     )
+    .await
     .unwrap();
     let environment = inspect_host(&host).await.unwrap();
     assert!(environment.target.starts_with("administration-fixture@"));
@@ -140,7 +141,7 @@ async fn ssh_administration_inspects_and_changes_the_target_and_handles_interact
 async fn ssh_update_adapter_pins_both_deployments_and_survives_ssh_disconnect() {
     use openwebide_bridge::host_admin::updates::SshUpdates;
     use openwebide_core::host_admin::updates::*;
-    let host = SshHost::new(
+    let host = SshHost::connect(
         HostConnection {
             destination: "admin@127.0.0.1".into(),
             port: std::env::var("OPENWEBIDE_TEST_SSH_PORT")
@@ -155,6 +156,7 @@ async fn ssh_update_adapter_pins_both_deployments_and_survives_ssh_disconnect() 
         },
         Arc::new(HostExecution),
     )
+    .await
     .unwrap();
     host.command(&command("sh", &["-c", "mkdir -p /home/admin/update-fixture; printf 'KEEP=original\nOPENWEBIDE_IMAGE=old\n' > /home/admin/update-fixture/.env; printf '[Image]\nImage=old\n' > /home/admin/update-fixture/openwebide.image; touch /home/admin/update-fixture/compose.yml"])).await.unwrap();
     let adapter = SshUpdates(host.clone());

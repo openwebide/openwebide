@@ -13,6 +13,135 @@ use tokio::process::Command;
 use tokio::time::timeout;
 
 pub use crate::BridgeError as GitError;
+mod metadata;
+#[cfg(test)]
+mod revision_tests;
+pub(crate) use metadata::repository_metadata;
+mod workspace;
+use workspace::{
+    validate_commit_index, validate_restore, workspace_git, workspace_history_command,
+};
+
+/// Ask Git itself, honoring linked worktrees and inherited Git environment.
+/// This is a read-only discovery primitive for the shared execution facade.
+pub(crate) async fn execution_root(cwd: &Path) -> Result<std::path::PathBuf, GitError> {
+    let output = exec_git_output(&["rev-parse", "--show-toplevel"], cwd).await?;
+    let bytes = if output.status.success() {
+        output.stdout
+    } else {
+        let bare = exec_git_output(&["rev-parse", "--is-bare-repository"], cwd).await?;
+        if !bare.status.success() || String::from_utf8_lossy(&bare.stdout).trim() != "true" {
+            return Err(GitError::Execution(
+                String::from_utf8_lossy(&output.stderr).into_owned(),
+            ));
+        }
+        let directory = exec_git_output(&["rev-parse", "--absolute-git-dir"], cwd).await?;
+        if !directory.status.success() {
+            return Err(GitError::Execution(
+                String::from_utf8_lossy(&directory.stderr).into_owned(),
+            ));
+        }
+        directory.stdout
+    };
+    let bytes = bytes.strip_suffix(b"\n").unwrap_or(&bytes);
+    #[cfg(unix)]
+    let path = {
+        use std::os::unix::ffi::OsStrExt;
+        std::path::PathBuf::from(std::ffi::OsStr::from_bytes(bytes))
+    };
+    #[cfg(not(unix))]
+    let path = std::path::PathBuf::from(
+        std::str::from_utf8(bytes)
+            .map_err(|error| GitError::Execution(error.to_string()))?
+            .trim_end_matches('\r'),
+    );
+    if !path.is_absolute() {
+        return Err(GitError::Execution(
+            "Git returned an invalid execution root".into(),
+        ));
+    }
+    Ok(path)
+}
+
+/// Repository context for consumers that retain project analysis. An unborn
+/// branch has no commit; a detached HEAD has no symbolic reference.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RepositoryRevision {
+    pub commit: Option<String>,
+    pub reference: Option<String>,
+}
+
+/// Read only revision metadata, without walking source files or refreshing the
+/// index. Git resolves worktree/common-dir pointers and packed refs itself.
+pub async fn repository_revision(cwd: &Path) -> Result<Option<RepositoryRevision>, GitError> {
+    tokio::time::timeout(Duration::from_secs(2), async {
+        let mut found = false;
+        for ancestor in cwd.ancestors() {
+            match tokio::fs::symlink_metadata(ancestor.join(".git")).await {
+                Ok(_) => {
+                    found = true;
+                    break;
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => return Err(GitError::Execution(error.to_string())),
+            }
+        }
+        if !found {
+            return Ok(None);
+        }
+        let (output, error, success) = exec_git(
+            &[
+                "--no-optional-locks",
+                "rev-parse",
+                "HEAD",
+                "--symbolic-full-name",
+                "HEAD",
+            ],
+            cwd,
+        )
+        .await?;
+        if success {
+            let mut lines = output.lines();
+            let commit = lines.next().unwrap_or_default();
+            let reference = lines.next().unwrap_or_default();
+            if !matches!(commit.len(), 40 | 64)
+                || !commit.bytes().all(|byte| byte.is_ascii_hexdigit())
+                || (reference != "HEAD" && !reference.starts_with("refs/"))
+                || reference.chars().any(char::is_control)
+                || lines.next().is_some()
+            {
+                return Err(GitError::Execution(
+                    "Git returned an invalid repository revision".into(),
+                ));
+            }
+            return Ok(Some(RepositoryRevision {
+                commit: Some(commit.into()),
+                reference: (reference != "HEAD").then(|| reference.into()),
+            }));
+        }
+        // A new repository's HEAD is a symbolic branch with no ref yet. Do not
+        // turn other rev-parse failures (corruption, permissions) into no repo.
+        let (reference, _, symbolic) = exec_git(&["symbolic-ref", "--quiet", "HEAD"], cwd).await?;
+        let reference = reference.trim_end_matches('\n');
+        if symbolic && reference.starts_with("refs/") && !reference.chars().any(char::is_control) {
+            let probe =
+                exec_git_output(&["show-ref", "--verify", "--quiet", reference], cwd).await?;
+            if probe.status.code() == Some(1) {
+                return Ok(Some(RepositoryRevision {
+                    commit: None,
+                    reference: Some(reference.into()),
+                }));
+            }
+        }
+        Err(GitError::Execution(format!(
+            "Cannot read repository revision: {error}"
+        )))
+    })
+    .await
+    .map_err(|_| {
+        GitError::Execution("Reading repository revision timed out after two seconds".into())
+    })?
+}
 
 /// Helper to execute git command with 30s timeout and return untrimmed stdout/stderr.
 async fn exec_git(args: &[&str], cwd: &Path) -> Result<(String, String, bool), GitError> {
@@ -25,6 +154,15 @@ async fn exec_git(args: &[&str], cwd: &Path) -> Result<(String, String, bool), G
 }
 
 async fn exec_git_bytes(args: &[&str], cwd: &Path) -> Result<(Vec<u8>, String, bool), GitError> {
+    let output = exec_git_output(args, cwd).await?;
+    Ok((
+        output.stdout,
+        String::from_utf8_lossy(&output.stderr).into_owned(),
+        output.status.success(),
+    ))
+}
+
+async fn exec_git_output(args: &[&str], cwd: &Path) -> Result<std::process::Output, GitError> {
     let mut cmd = Command::new("git");
     cmd.args(args);
     cmd.current_dir(cwd);
@@ -34,6 +172,16 @@ async fn exec_git_bytes(args: &[&str], cwd: &Path) -> Result<(Vec<u8>, String, b
     cmd.kill_on_drop(true);
     #[cfg(unix)]
     cmd.process_group(0);
+    // Explicit literal and trusted exclusion pathspecs must not be reinterpreted
+    // by the process that launched the bridge. All other host environment stays.
+    for name in [
+        "GIT_LITERAL_PATHSPECS",
+        "GIT_GLOB_PATHSPECS",
+        "GIT_NOGLOB_PATHSPECS",
+        "GIT_ICASE_PATHSPECS",
+    ] {
+        cmd.env_remove(name);
+    }
     cmd.env("GIT_TERMINAL_PROMPT", "0");
     if std::env::var_os("GIT_SSH_COMMAND").is_none() && std::env::var_os("GIT_SSH").is_none() {
         cmd.env(
@@ -47,18 +195,24 @@ async fn exec_git_bytes(args: &[&str], cwd: &Path) -> Result<(Vec<u8>, String, b
         .map_err(|e| GitError::Execution(format!("failed to spawn git {}: {e}", args.join(" "))))?;
     #[cfg(unix)]
     let pid = child.id().and_then(|id| i32::try_from(id).ok());
+    #[cfg(unix)]
+    let group = pid.map(crate::exec::proc::GroupGuard::new);
 
-    match timeout(Duration::from_secs(30), child.wait_with_output()).await {
+    let result = match timeout(Duration::from_secs(30), child.wait_with_output()).await {
         Ok(Ok(output)) => {
             if output.stdout.len() > 16 * 1024 * 1024 {
-                return Err(GitError::Execution("git output exceeds 16 MiB".into()));
+                Err(GitError::Execution("git output exceeds 16 MiB".into()))
+            } else {
+                Ok(output)
             }
-            let stdout = output.stdout;
-            let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
-            let success = output.status.success();
-            Ok((stdout, stderr, success))
         }
-        Ok(Err(e)) => Err(GitError::Execution(format!("git execution error: {e}"))),
+        Ok(Err(e)) => {
+            #[cfg(unix)]
+            if let Some(pgid) = pid {
+                crate::exec::proc::terminate_group(pgid, Duration::from_secs(2)).await;
+            }
+            Err(GitError::Execution(format!("git execution error: {e}")))
+        }
         Err(_) => {
             #[cfg(unix)]
             if let Some(pgid) = pid {
@@ -68,7 +222,12 @@ async fn exec_git_bytes(args: &[&str], cwd: &Path) -> Result<(Vec<u8>, String, b
                 "git command timed out after 30s".into(),
             ))
         }
+    };
+    #[cfg(unix)]
+    if let Some(group) = group {
+        group.disarm();
     }
+    result
 }
 
 /// Workspace-relative index/worktree state for file-tree actions.
@@ -79,18 +238,11 @@ pub async fn get_path_changes(
     if !success {
         return Err(GitError::Execution(stderr));
     }
-    let prefix = prefix.trim_end_matches('\n');
-    let (output, stderr, success) = exec_git(
-        &[
-            "--literal-pathspecs",
-            "status",
-            "--porcelain=v1",
-            "--untracked-files=all",
-            "-z",
-            "--",
-            ".",
-        ],
+    let prefix = prefix.strip_suffix('\n').unwrap_or(&prefix);
+    let (output, stderr, success) = workspace_git(
         repo_dir,
+        &["status", "--porcelain=v1", "--untracked-files=all", "-z"],
+        &[".".into()],
     )
     .await?;
     if !success {
@@ -137,9 +289,14 @@ pub async fn apply_path_action(
     let changes = get_path_changes(repo_dir).await?;
     let args = openwebide_core::git::path_action_args(request, &changes, changes.has_head)
         .map_err(GitError::Validation)?;
-    let mut literal_args = vec!["--literal-pathspecs"];
-    literal_args.extend(args.iter().map(String::as_str));
-    let (_, stderr, success) = exec_git(&literal_args, repo_dir).await?;
+    if request.action == openwebide_core::git::GitPathAction::Revert {
+        validate_restore(repo_dir, request, &changes).await?;
+    }
+    let (_, stderr, success) = exec_git(
+        &args.iter().map(String::as_str).collect::<Vec<_>>(),
+        repo_dir,
+    )
+    .await?;
     if !success {
         return Err(GitError::Execution(stderr));
     }
@@ -215,8 +372,18 @@ pub async fn validate_remote(repo: &Path, name: &str) -> Result<(), GitError> {
 /// Retrieve full repository status (branch, upstream, ahead/behind, line stats, uncommitted files).
 pub async fn get_repo_status(repo_dir: &Path) -> Result<GitRepoStatus, GitError> {
     // 1. Run git status --porcelain=v1 -b -z (NUL-separated, unquoted paths)
-    let (status_out, err, ok) =
-        exec_git(&["status", "--porcelain=v1", "-b", "-z"], repo_dir).await?;
+    let (status_out, err, ok) = workspace_git(
+        repo_dir,
+        &[
+            "status",
+            "--porcelain=v1",
+            "--untracked-files=all",
+            "-b",
+            "-z",
+        ],
+        &[],
+    )
+    .await?;
     if !ok {
         return Err(GitError::Execution(format!("git status failed: {err}")));
     }
@@ -243,27 +410,28 @@ pub async fn get_repo_status(repo_dir: &Path) -> Result<GitRepoStatus, GitError>
         };
 
     // Both browser-local and remote status transports use this one native primitive.
-    let file_line_stats = match exec_git(&["diff", "--numstat", "-z", "HEAD"], repo_dir).await {
-        Ok((output, _, true)) => openwebide_core::git::parse_numstat(&output),
-        _ => {
-            let mut stats = std::collections::HashMap::new();
-            for args in [
-                vec!["diff", "--numstat", "-z"],
-                vec!["diff", "--cached", "--numstat", "-z"],
-            ] {
-                if let Ok((output, _, true)) = exec_git(&args, repo_dir).await {
-                    for (path, changes) in openwebide_core::git::parse_numstat(&output) {
-                        let entry = stats
-                            .entry(path)
-                            .or_insert(openwebide_core::GitLineStats::default());
-                        entry.insertions += changes.insertions;
-                        entry.deletions += changes.deletions;
+    let file_line_stats =
+        match workspace_git(repo_dir, &["diff", "--numstat", "-z", "HEAD"], &[]).await {
+            Ok((output, _, true)) => openwebide_core::git::parse_numstat(&output),
+            _ => {
+                let mut stats = std::collections::HashMap::new();
+                for args in [
+                    vec!["diff", "--numstat", "-z"],
+                    vec!["diff", "--cached", "--numstat", "-z"],
+                ] {
+                    if let Ok((output, _, true)) = workspace_git(repo_dir, &args, &[]).await {
+                        for (path, changes) in openwebide_core::git::parse_numstat(&output) {
+                            let entry = stats
+                                .entry(path)
+                                .or_insert(openwebide_core::GitLineStats::default());
+                            entry.insertions += changes.insertions;
+                            entry.deletions += changes.deletions;
+                        }
                     }
                 }
+                stats
             }
-            stats
-        }
-    };
+        };
     let line_stats = openwebide_core::GitLineStats {
         insertions: file_line_stats.values().map(|stats| stats.insertions).sum(),
         deletions: file_line_stats.values().map(|stats| stats.deletions).sum(),
@@ -296,12 +464,11 @@ pub async fn get_repo_diff(repo_dir: &Path, file_path: Option<&str>) -> Result<S
         args.push("HEAD");
     }
 
-    if let Some(path) = file_path {
-        args.push("--");
-        args.push(path);
-    }
-
-    let (diff_out, err, ok) = exec_git(&args, repo_dir).await?;
+    args.extend(["--no-ext-diff", "--no-textconv"]);
+    let paths = file_path
+        .map(|path| vec![path.to_owned()])
+        .unwrap_or_default();
+    let (diff_out, err, ok) = workspace_git(repo_dir, &args, &paths).await?;
     if !ok {
         return Err(GitError::Execution(format!("git diff failed: {err}")));
     }
@@ -313,7 +480,13 @@ pub async fn get_file_at_head(
     repo_dir: &Path,
     file_path: &str,
 ) -> Result<openwebide_core::GitFileContent, GitError> {
-    let clean_path = file_path.trim_start_matches('/');
+    let clean_path =
+        openwebide_core::workspace_entries::entry_path(file_path).map_err(GitError::Validation)?;
+    let prefix = history_command(repo_dir, &["rev-parse".into(), "--show-prefix".into()]).await?;
+    let clean_path = format!(
+        "{}{clean_path}",
+        prefix.strip_suffix('\n').unwrap_or(&prefix)
+    );
     let (out, err, ok) = exec_git_bytes(&["show", &format!("HEAD:{clean_path}")], repo_dir).await?;
     if !ok {
         return Err(GitError::Execution(format!(
@@ -403,10 +576,18 @@ pub async fn commit_changes(
             "A staged commit cannot also stage paths or untracked files".into(),
         ));
     }
-    if req.staged_only {
+    let has_paths = req.paths.as_ref().is_some_and(|paths| !paths.is_empty());
+    let paths = req
+        .paths
+        .clone()
+        .filter(|paths| !paths.is_empty())
+        .unwrap_or_else(|| vec![".".into()]);
+    openwebide_core::git::workspace_pathspecs(&paths).map_err(GitError::Validation)?;
+    validate_commit_index(repo_dir, has_paths).await?;
+    if !has_paths {
         let prefix =
             history_command(repo_dir, &["rev-parse".into(), "--show-prefix".into()]).await?;
-        let prefix = prefix.trim_end_matches('\n');
+        let prefix = prefix.strip_suffix('\n').unwrap_or(&prefix);
         if !prefix.is_empty() {
             let paths = history_command(
                 repo_dir,
@@ -429,37 +610,23 @@ pub async fn commit_changes(
             }
         }
     }
-    let has_paths = req.paths.as_ref().is_some_and(|paths| !paths.is_empty());
-
-    let (stdout, stderr, ok) = if has_paths {
-        let paths = req.paths.as_ref().unwrap();
-        let mut add_args = vec!["add", "--"];
-        for p in paths {
-            add_args.push(p.as_str());
-        }
-        let (_, err, ok) = exec_git(&add_args, repo_dir).await?;
+    if !req.staged_only {
+        let mode = if has_paths || req.include_untracked {
+            "-A"
+        } else {
+            "-u"
+        };
+        let (_, err, ok) = workspace_git(repo_dir, &["add", mode], &paths).await?;
         if !ok {
             return Err(GitError::Execution(format!("git add failed: {err}")));
         }
-
-        let mut commit_args = vec!["commit", "-m", req.message.as_str(), "--"];
-        for p in paths {
-            commit_args.push(p.as_str());
-        }
-        exec_git(&commit_args, repo_dir).await?
+    }
+    // Check again after staging, before invoking hooks or writing a commit.
+    validate_commit_index(repo_dir, has_paths).await?;
+    let (stdout, stderr, ok) = if has_paths {
+        workspace_git(repo_dir, &["commit", "-m", &req.message], &paths).await?
     } else {
-        if req.include_untracked {
-            let (_, err, ok) = exec_git(&["add", "-A"], repo_dir).await?;
-            if !ok {
-                return Err(GitError::Execution(format!("git add -A failed: {err}")));
-            }
-        }
-
-        let mut commit_args = vec!["commit", "-m", req.message.as_str()];
-        if !req.include_untracked && !req.staged_only {
-            commit_args.push("-a");
-        }
-        exec_git(&commit_args, repo_dir).await?
+        exec_git(&["commit", "-m", &req.message], repo_dir).await?
     };
 
     if !ok {
@@ -497,6 +664,7 @@ pub async fn checkout_branch(
 ) -> Result<GitCheckoutResult, GitError> {
     let target = req.branch.trim();
     validate_branch(target).await?;
+    workspace::validate_checkout_tree(repo_dir, target).await?;
 
     let (prev_branch_raw, _, _) =
         exec_git(&["rev-parse", "--abbrev-ref", "HEAD"], repo_dir).await?;
@@ -508,7 +676,17 @@ pub async fn checkout_branch(
     };
 
     if req.create_if_missing {
-        let (_stdout, stderr, ok) = exec_git(&["switch", "-c", target], repo_dir).await?;
+        let (_stdout, stderr, ok) = exec_git(
+            &[
+                "switch",
+                "--no-recurse-submodules",
+                "--no-overwrite-ignore",
+                "-c",
+                target,
+            ],
+            repo_dir,
+        )
+        .await?;
         if !ok {
             let (_, _, branch_exists) = exec_git(
                 &[
@@ -522,8 +700,17 @@ pub async fn checkout_branch(
             .await?;
 
             if branch_exists {
-                let (_sw_stdout, sw_stderr, sw_ok) =
-                    exec_git(&["switch", target], repo_dir).await?;
+                let (_sw_stdout, sw_stderr, sw_ok) = exec_git(
+                    &[
+                        "switch",
+                        "--no-recurse-submodules",
+                        "--no-overwrite-ignore",
+                        "--no-guess",
+                        target,
+                    ],
+                    repo_dir,
+                )
+                .await?;
                 if !sw_ok {
                     return Err(GitError::Execution(format!(
                         "git switch failed: {}",
@@ -556,9 +743,31 @@ pub async fn checkout_branch(
                 .split_once('/')
                 .map(|(_, name)| name)
                 .ok_or_else(|| GitError::Validation("Choose a remote branch".into()))?;
-            exec_git(&["switch", "--track", "-c", name, &remote_ref], repo_dir).await?
+            exec_git(
+                &[
+                    "switch",
+                    "--no-recurse-submodules",
+                    "--no-overwrite-ignore",
+                    "--track",
+                    "-c",
+                    name,
+                    &remote_ref,
+                ],
+                repo_dir,
+            )
+            .await?
         } else {
-            exec_git(&["switch", target], repo_dir).await?
+            exec_git(
+                &[
+                    "switch",
+                    "--no-recurse-submodules",
+                    "--no-overwrite-ignore",
+                    "--no-guess",
+                    target,
+                ],
+                repo_dir,
+            )
+            .await?
         };
         if !ok {
             return Err(GitError::Execution(format!(
@@ -668,11 +877,62 @@ pub async fn sync_repo(repo_dir: &Path, req: &GitSyncRequest) -> Result<GitSyncR
         }
     }
     if req.action == "pull" || req.action == "sync" {
-        let (old_head_raw, _, _) = exec_git(&["rev-parse", "HEAD"], repo_dir).await?;
-        let old_head = old_head_raw.trim().to_string();
-
-        let (pull_out, pull_err, ok) =
-            exec_git(&["pull", "--rebase", "--", remote, branch], repo_dir).await?;
+        let (old_head_raw, _, has_head) =
+            exec_git(&["rev-parse", "--verify", "HEAD"], repo_dir).await?;
+        let old_head = if has_head {
+            old_head_raw.trim().to_owned()
+        } else {
+            String::new()
+        };
+        let (fetch_out, fetch_err, ok) =
+            exec_git(&["fetch", "--", remote, branch], repo_dir).await?;
+        append_output(&mut output, &fetch_out, &fetch_err);
+        if !ok {
+            return Err(GitError::Execution(format!(
+                "git pull failed: {}",
+                sync_failure_detail(&fetch_err)
+            )));
+        }
+        let upstream = history_command(
+            repo_dir,
+            &[
+                "rev-parse".into(),
+                "--verify".into(),
+                "FETCH_HEAD^{commit}".into(),
+            ],
+        )
+        .await?;
+        let upstream = upstream.trim();
+        workspace::validate_pull(repo_dir, upstream, &old_head).await?;
+        let (pull_out, pull_err, ok) = if has_head {
+            exec_git(
+                &[
+                    "-c",
+                    "submodule.recurse=false",
+                    "rebase",
+                    "--no-autostash",
+                    "--",
+                    upstream,
+                ],
+                repo_dir,
+            )
+            .await?
+        } else {
+            exec_git(
+                &[
+                    "-c",
+                    "submodule.recurse=false",
+                    "merge",
+                    "--ff-only",
+                    "--no-autostash",
+                    "--no-overwrite-ignore",
+                    "--",
+                    upstream,
+                ],
+                repo_dir,
+            )
+            .await?
+        };
         append_output(&mut output, &pull_out, &pull_err);
         if !ok {
             return Err(GitError::Execution(format!(
@@ -913,6 +1173,14 @@ pub async fn get_history(
                 "Incomplete Git history response".into(),
             ));
         };
+        // --follow may cross from a public file into a former runtime name.
+        // Stop at that boundary instead of returning private history paths.
+        if historical_path
+            .as_deref()
+            .is_some_and(openwebide_core::vfs::private_workspace_path)
+        {
+            break;
+        }
         let history_path = historical_path
             .as_ref()
             .and_then(|path| path.strip_prefix(&prefix))
@@ -1017,7 +1285,6 @@ pub async fn get_commit_diff(
         None => parents.split_whitespace().next().map(str::to_owned),
     };
     let mut base = vec![
-        "--literal-pathspecs".into(),
         "diff-tree".into(),
         "--root".into(),
         "--no-commit-id".into(),
@@ -1029,10 +1296,10 @@ pub async fn get_commit_diff(
     }
     base.push(hash);
     let mut names = base.clone();
-    names.extend(["--name-status".into(), "-z".into(), "--".into(), ".".into()]);
-    let output = history_command(repo, &names).await?;
+    names.extend(["--name-status".into(), "-z".into()]);
+    let output = workspace_history_command(repo, &names, &[".".into()]).await?;
     let prefix = history_command(repo, &["rev-parse".into(), "--show-prefix".into()]).await?;
-    let prefix = prefix.trim_end_matches('\n');
+    let prefix = prefix.strip_suffix('\n').unwrap_or(&prefix);
     let mut records = output.split('\0').filter(|value| !value.is_empty());
     let mut files = Vec::new();
     while let Some(status) = records.next() {
@@ -1059,8 +1326,8 @@ pub async fn get_commit_diff(
         "--no-textconv".into(),
         "--no-color".into(),
         "--patch".into(),
-        "--".into(),
     ]);
+    let mut paths = Vec::new();
     if let Some(path) = &request.path {
         let path =
             openwebide_core::workspace_entries::entry_path(path).map_err(GitError::Validation)?;
@@ -1069,13 +1336,13 @@ pub async fn get_commit_diff(
             .find(|file| file.path == path)
             .and_then(|file| file.previous_path.as_ref())
         {
-            base.push(previous.clone());
+            paths.push(previous.clone());
         }
-        base.push(path);
+        paths.push(path);
     } else {
-        base.push(".".into());
+        paths.push(".".into());
     }
-    let mut diff = history_command(repo, &base).await?;
+    let mut diff = workspace_history_command(repo, &base, &paths).await?;
     let truncated = diff.len() > 512 * 1024 || diff.lines().count() > 5000;
     if truncated {
         let line_end = diff
@@ -1097,19 +1364,19 @@ pub async fn get_commit_diff(
 
 /// Read only staged content, scoped to the opened project (including unborn branches).
 pub async fn get_index_diff(repo: &Path) -> Result<String, GitError> {
-    history_command(
+    workspace_git(
         repo,
-        &[
-            "--literal-pathspecs".into(),
-            "diff".into(),
-            "--cached".into(),
-            "--no-ext-diff".into(),
-            "--no-textconv".into(),
-            "--".into(),
-            ".".into(),
-        ],
+        &["diff", "--cached", "--no-ext-diff", "--no-textconv"],
+        &[".".into()],
     )
     .await
+    .and_then(|(out, err, ok)| {
+        if ok {
+            Ok(out)
+        } else {
+            Err(GitError::Execution(err))
+        }
+    })
 }
 
 pub async fn manage_stash(
@@ -1147,6 +1414,17 @@ pub async fn manage_stash(
         }
         let command = match request.action {
             GitStashAction::Save => {
+                validate_commit_index(repo, true).await?;
+                let changes = get_path_changes(repo).await?;
+                validate_restore(
+                    repo,
+                    &openwebide_core::git::GitPathRequest {
+                        path: String::new(),
+                        action: openwebide_core::git::GitPathAction::Revert,
+                    },
+                    &changes,
+                )
+                .await?;
                 let message = request.message.as_deref().unwrap_or("Open WebIDE changes");
                 if message.len() > 4096 || message.contains('\0') {
                     return Err(GitError::Validation(
@@ -1173,6 +1451,7 @@ pub async fn manage_stash(
                         GitError::Validation("This stash no longer exists; refresh the list".into())
                     })?;
                 if request.action == GitStashAction::Apply {
+                    workspace::validate_stash_apply(repo, &stash.hash).await?;
                     vec![
                         "stash".into(),
                         "apply".into(),
@@ -1185,7 +1464,11 @@ pub async fn manage_stash(
             }
             GitStashAction::List => unreachable!(),
         };
-        output = history_command(repo, &command).await?;
+        output = if request.action == GitStashAction::Save {
+            workspace_history_command(repo, &command, &[".".into()]).await?
+        } else {
+            history_command(repo, &command).await?
+        };
         stashes = list(history_command(repo, &args).await?);
     }
     Ok(GitStashResult { stashes, output })

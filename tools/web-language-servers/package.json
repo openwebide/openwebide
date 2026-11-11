@@ -1,0 +1,7 @@
+{
+  "name": "openwebide-web-language-servers",
+  "version": "0.0.0",
+  "private": true,
+  "engines": { "node": ">=22.22.2" },
+  "dependencies": { "vscode-langservers-extracted": "4.10.0" }
+}

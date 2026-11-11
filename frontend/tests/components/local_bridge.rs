@@ -120,6 +120,14 @@ export function fakeBridgeHttp() {
             return new Response(JSON.stringify({id:'plugin-ui', step:{status:'complete', ok, content:ok ? continuation.response.Ok : continuation.response.Err, summary:ok ? 'Stored' : 'Failed'}}));
         }
         if (path === '/plugins/cancel') { mock.languageActors?.delete(body.id); mock.actor = null; return new Response('{}'); }
+        if (path === '/plugins/languages/query') {
+            const input = body.selection.input;
+            if (mock.nativeLanguageHandler) {
+                try { return new Response(await mock.nativeLanguageHandler(JSON.stringify(input))); }
+                catch(error) { return new Response(JSON.stringify({error:String(error)}), {status:400}); }
+            }
+            return new Response(JSON.stringify({version:input.version,client:input.client,document:input.document,request:input.request,revision:input.revision,source_digest:input.source_digest,server:'test-native-server',capabilities:{},result:[],diagnostics:[],diagnostics_ready:false}));
+        }
         if (path === '/scheduler/host') return new Response(JSON.stringify({id:'paired-host', name:'Test host', last_seen:0}));
         if (path === '/host/info' && !mock.hanging) return new Response(JSON.stringify({host_name:'bridge-host', os:'linux', scope:'bridge host', cpu:'Test CPU', logical_cores:8, ram_total_bytes:32000000000, ram_available_bytes:16000000000, disks:[], temperatures:[], gpus:[], fans:[], notes:[]}));
         if (path === '/environment' && !mock.hanging) return new Response(JSON.stringify({os: 'linux', shell: 'sh'}));
@@ -145,6 +153,7 @@ export function releaseBridgePanel(mock, document) { mock.resolvePanel(JSON.pars
 export function setBridgePanelDocuments(mock, documents) { mock.panelDocuments = JSON.parse(documents); }
 export function setBridgePlugin(mock, plugin) { mock.plugin = plugin; }
 export function setBridgeLanguageHandler(mock, handler) { mock.languageHandler = handler; }
+export function setBridgeNativeLanguageHandler(mock, handler) { mock.nativeLanguageHandler = handler; }
 export function setBridgeDiff(mock, diff) { mock.diff = diff; }
 export function restoreBridgeHttp(mock) { mock.restore(); }
 export function bridgeCalls(mock) { return JSON.stringify(mock.calls); }
@@ -163,6 +172,8 @@ export function probeDeleted(folder, name) {
 extern "C" {
     #[wasm_bindgen(js_name = fakeBridgeHttp)]
     pub(crate) fn fake_bridge_http() -> JsValue;
+    #[wasm_bindgen(js_name = setBridgeNativeLanguageHandler)]
+    pub(crate) fn set_bridge_native_language_handler(mock: &JsValue, handler: &js_sys::Function);
     #[wasm_bindgen(js_name = deferBridgePanel)]
     pub(crate) fn defer_bridge_panel(mock: &JsValue);
     #[wasm_bindgen(js_name = releaseBridgePanel)]
@@ -390,6 +401,131 @@ pub(crate) struct HttpGuard(pub(crate) JsValue);
 impl Drop for HttpGuard {
     fn drop(&mut self) {
         restore_bridge_http(&self.0);
+    }
+}
+
+#[wasm_bindgen_test]
+async fn agent_language_queries_use_both_transports_and_reject_disabled_or_changed_context() {
+    use openwebide_core::{
+        WorkspaceMode,
+        plugins::{
+            ProjectPlugin,
+            languages::tools::{LanguageToolArgs, LanguageToolScope},
+        },
+    };
+    use openwebide_frontend::{project_host::ProjectHost, testing::languages::agent_tools};
+    let previous = openwebide_frontend::idb::get_bridge_pairing_token()
+        .await
+        .unwrap();
+    openwebide_frontend::idb::set_bridge_pairing_token("language-test-token")
+        .await
+        .unwrap();
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let mock = HttpGuard(fake_bridge_http());
+        let mut prepared = openwebide_core::plugins::testing::receipt();
+        prepared.host_id = "fixture-host".into();
+        prepared.manifest.compatibility.plugin_api = 9;
+        prepared.manifest.executable = None;
+        prepared.manifest.contributions.languages = serde_json::from_value(serde_json::json!([{"id":"custom","name":"Custom","extensions":["custom"],"features":{"languageServer":{"command":"custom-lsp"}}}])).unwrap();
+        set_bridge_plugin(&mock.0, &serde_json::to_string(&prepared).unwrap());
+        let folder = probe_folder();
+        let local = BrowserFsaVfs::new(folder.clone().unchecked_into());
+        let memory = openwebide_core::MemoryVfs::new();
+        let files: Box<dyn Vfs> = match mode {
+            WorkspaceMode::Local => Box::new(local),
+            WorkspaceMode::Remote => Box::new(memory),
+        };
+        files.write("file.custom", "文😀\r\n").await.unwrap();
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            state.seed_session();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            state.fake.projects.borrow_mut()[0].mode = mode;
+            state.projects.local_handles.update(|handles| {
+                handles.insert(1, folder.unchecked_into());
+            });
+            state
+                .settings
+                .bridge_url
+                .set("ws://bridge.test:3001".into());
+            state.fake.project_plugin_entries.borrow_mut().insert(
+                1,
+                vec![ProjectPlugin {
+                    id: 1,
+                    revision: 1,
+                    enabled: true,
+                    prepared,
+                }],
+            );
+            *state.fake.native_language_result.borrow_mut() = Some(serde_json::json!([]));
+            view! { <div/> }
+        });
+        settle().await;
+        let host = mounted.state.owner.with(expect_context::<ProjectHost>);
+        let current = std::rc::Rc::new(std::cell::Cell::new(true));
+        let guard = current.clone();
+        let scope = LanguageToolScope::for_project(&mounted.state.fake.projects.borrow()[0]);
+        let tools = mounted
+            .state
+            .owner
+            .with(|| agent_tools(mounted.state.api, host, 1, scope, move || guard.get()).unwrap());
+        for operation in ["symbols", "definitions", "references", "diagnostics"] {
+            let mut value = serde_json::json!({"operation":operation,"path":"file.custom"});
+            if matches!(operation, "definitions" | "references") {
+                value["line"] = 1.into();
+                value["column"] = 2.into();
+            }
+            let args: LanguageToolArgs = serde_json::from_value(value).unwrap();
+            let output = tools.query(files.as_ref(), &args, 2048).await;
+            assert!(output.ok, "{mode:?}: {}", output.content);
+            let result: serde_json::Value = serde_json::from_str(&output.content).unwrap();
+            assert_eq!(result["ready"], operation != "diagnostics");
+        }
+        let calls = mounted.state.fake.native_language_calls.borrow().clone();
+        assert_eq!(calls.len(), 4);
+        assert!(calls.iter().all(|call| call.session_id == Some(1)
+            && call.input.source == "文😀\r\n"
+            && call.input.client.starts_with("agent-")));
+        assert_eq!(files.read("file.custom").await.unwrap(), "文😀\r\n");
+        let args: LanguageToolArgs =
+            serde_json::from_value(serde_json::json!({"operation":"symbols","path":"file.custom"}))
+                .unwrap();
+        mounted
+            .state
+            .fake
+            .project_plugin_entries
+            .borrow_mut()
+            .get_mut(&1)
+            .unwrap()[0]
+            .enabled = false;
+        assert!(!tools.query(files.as_ref(), &args, 2048).await.ok);
+        assert_eq!(mounted.state.fake.native_language_calls.borrow().len(), 4);
+        current.set(false);
+        assert!(!tools.query(files.as_ref(), &args, 2048).await.ok);
+        if mode == WorkspaceMode::Local {
+            let requests: Vec<serde_json::Value> =
+                serde_json::from_str(&bridge_calls(&mock.0)).unwrap();
+            let requests: Vec<_> = requests
+                .iter()
+                .filter(|request| request["path"] == "/plugins/languages/query")
+                .collect();
+            assert_eq!(requests.len(), 4);
+            assert!(requests.iter().all(|request| request["authorization"]
+                == "Bearer language-test-token"
+                && request["body"]["selection"]["project"] == 1));
+        }
+    }
+    if let Some(previous) = previous {
+        openwebide_frontend::idb::set_bridge_pairing_token(&previous)
+            .await
+            .unwrap();
+    } else {
+        openwebide_frontend::idb::delete_bridge_pairing_token()
+            .await
+            .unwrap();
     }
 }
 
@@ -994,7 +1130,13 @@ async fn resume_after_failed_history_persistence_reuses_write_id() {
         .borrow_mut()
         .push_back(response);
     mounted.click_text("Accept");
-    settle().await;
+    // Acceptance acquires the browser workspace lock before committing. A
+    // microtask-only settle does not yield to its queued lock callback.
+    super::support::wait_until("accepted edit committed before its delayed reply", || {
+        mounted.state.fake.persisted_edits.borrow()[&(1, "file.rs".into())].decision
+            == EditDecision::Accepted
+    })
+    .await;
     assert_eq!(
         mounted.state.fake.persisted_edits.borrow()[&(1, "file.rs".into())].decision,
         EditDecision::Accepted
@@ -1174,12 +1316,70 @@ export async function contractFolder() {
     return {handle, cleanup: async () => root.removeEntry(name, {recursive:true})};
 }
 export function contractHandle(fixture) { return fixture.handle; }
+export function contractTransactionId() { return crypto.randomUUID().replaceAll("-", ""); }
 export async function contractCleanup(fixture) { await fixture.cleanup(); }
+export async function contractPrivatePayload(fixture) {
+    const parent=await fixture.handle.getDirectoryHandle('.openwebide',{create:true});
+    const privateArea=await parent.getDirectoryHandle('recovery-0123456789abcdef0123456789abcdef',{create:true});
+    for (const name of ['.SPIN','.ſpin']) {
+        const folder=await fixture.handle.getDirectoryHandle(name,{create:true});
+        const file=await folder.getFileHandle('secret',{create:true});
+        const writer=await file.createWritable();await writer.write('private needle');await writer.close();
+    }
+    for(const [directory,name,content] of [[privateArea,'original','private needle'],[fixture.handle,'.openwebide-create-0123456789abcdef0123456789abcdef-3','private needle'],[fixture.handle,'.openwebide-proof-0123456789abcdef0123456789abcdef','private needle'],[parent,'recovery-notes','public needle']]) {
+        const file=await directory.getFileHandle(name,{create:true});
+        const stream=await file.createWritable();await stream.write(content);await stream.close();
+    }
+}
 "#)]
 extern "C" {
     async fn contractFolder() -> JsValue;
     fn contractHandle(fixture: &JsValue) -> JsValue;
+    fn contractTransactionId() -> String;
     async fn contractCleanup(fixture: &JsValue);
+    async fn contractPrivatePayload(fixture: &JsValue);
+}
+
+#[wasm_bindgen_test]
+async fn browser_vfs_hides_runtime_recovery_payloads_and_rejects_direct_access() {
+    let fixture = contractFolder().await;
+    contractPrivatePayload(&fixture).await;
+    let vfs = BrowserFsaVfs::new(contractHandle(&fixture).unchecked_into());
+    let listing = vfs.list(".openwebide").await.unwrap();
+    assert_eq!(listing.len(), 1);
+    assert_eq!(listing[0].name, "recovery-notes");
+    assert_eq!(vfs.list("").await.unwrap().len(), 1);
+    for path in [
+        ".openwebide/recovery-0123456789abcdef0123456789abcdef/original",
+        ".openwebide-create-0123456789abcdef0123456789abcdef-3",
+        ".openwebide-proof-0123456789abcdef0123456789abcdef",
+        ".SPIN/secret",
+        ".ſpin/secret",
+        ".OPENWEBIDE/RECOVERY-0123456789ABCDEF0123456789ABCDEF/objects/secret",
+    ] {
+        assert!(vfs.read(path).await.is_err());
+        assert!(vfs.write(path, "changed").await.is_err());
+        assert!(vfs.delete(path).await.is_err());
+        assert!(vfs.copy(path, "copied").await.is_err());
+        assert!(
+            vfs.create(path, openwebide_core::vfs::VfsEntryKind::File)
+                .await
+                .is_err()
+        );
+    }
+    let hits = vfs
+        .search_content(
+            "needle",
+            "",
+            openwebide_core::vfs::SearchOptions {
+                include_ignored: true,
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(hits.len(), 1);
+    assert_eq!(hits[0].text, "public needle");
+    contractCleanup(&fixture).await;
 }
 
 #[wasm_bindgen_test]
@@ -1246,6 +1446,117 @@ async fn browser_vfs_directory_listing_tolerates_disappearing_entries_only() {
         denied.list("").await,
         Err(openwebide_core::VfsError::PermissionDenied(_))
     ));
+}
+
+#[wasm_bindgen_test]
+async fn browser_workspace_root_preserves_original_folder_capability() {
+    use openwebide_frontend::idb;
+    use wasm_bindgen_futures::JsFuture;
+    let (original, other) = (contractFolder().await, contractFolder().await);
+    let handle: web_sys::FileSystemDirectoryHandle = contractHandle(&original).unchecked_into();
+    let replacement: web_sys::FileSystemDirectoryHandle = contractHandle(&other).unchecked_into();
+    let (user, project, id) = (91734175, 91734175, contractTransactionId());
+    idb::capture_transaction_root(user, project, &id, &handle)
+        .await
+        .unwrap();
+    let retained = idb::load_transaction_root(user, project, &id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        JsFuture::from(retained.is_same_entry(&handle))
+            .await
+            .unwrap()
+            .as_bool(),
+        Some(true)
+    );
+    assert!(
+        idb::capture_transaction_root(user, project, &id, &replacement)
+            .await
+            .is_err()
+    );
+    let retained = idb::load_transaction_root(user, project, &id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        JsFuture::from(retained.is_same_entry(&replacement))
+            .await
+            .unwrap()
+            .as_bool(),
+        Some(false)
+    );
+    assert!(
+        idb::load_transaction_root(user + 1, project, &id)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    idb::delete_handle(project).await.unwrap();
+    assert!(
+        idb::load_transaction_root(user, project, &id)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    contractCleanup(&original).await;
+    contractCleanup(&other).await;
+}
+
+#[wasm_bindgen_test]
+async fn browser_workspace_lock_outlives_dropped_caller() {
+    use super::support::wait_until;
+    use futures::FutureExt;
+    use openwebide_frontend::workspace_transactions::with_workspace_lock;
+    use std::{cell::Cell, rc::Rc};
+    let key = format!(
+        "workspace-contract-{}-{}",
+        js_sys::Date::now(),
+        js_sys::Math::random()
+    );
+    let first_entered = Rc::new(Cell::new(false));
+    let release = Rc::new(Cell::new(false));
+    let second_entered = Rc::new(Cell::new(false));
+    let first = with_workspace_lock(key.clone(), {
+        let (entered, release) = (first_entered.clone(), release.clone());
+        async move {
+            entered.set(true);
+            while !release.get() {
+                sleep_ms(5).await;
+            }
+            Ok(())
+        }
+    });
+    // Polling starts an owned worker; dropping this future discards only its reply.
+    assert!(first.now_or_never().is_none());
+    wait_until("first transaction acquired its lock", || {
+        first_entered.get()
+    })
+    .await;
+    let second = with_workspace_lock(key, {
+        let entered = second_entered.clone();
+        async move {
+            entered.set(true);
+            Ok(())
+        }
+    });
+    assert!(second.now_or_never().is_none());
+    sleep_ms(20).await;
+    assert!(!second_entered.get());
+    release.set(true);
+    wait_until("queued transaction acquired the released lock", || {
+        second_entered.get()
+    })
+    .await;
+}
+
+#[wasm_bindgen_test]
+async fn browser_workspace_transaction_primitives_contract() {
+    let fixture = contractFolder().await;
+    let vfs = BrowserFsaVfs::new(contractHandle(&fixture).unchecked_into());
+    openwebide_core::testing::workspace_transaction_primitives_contract(&vfs).await;
+    openwebide_core::testing::workspace_transaction_contract(&vfs).await;
+    contractCleanup(&fixture).await;
 }
 
 #[wasm_bindgen_test]

@@ -781,6 +781,7 @@ pub async fn run_local_agent(
         chat.notify_bridge_folder_once(session_id);
     }
     let environment = openwebide_core::RunEnvironment {
+        project_id: Some(project.id),
         browser_preferences,
         project_name: Some(project.name),
         project_root: Some(
@@ -1007,6 +1008,16 @@ pub async fn run_local_agent(
             .as_ref()
             .and_then(crate::project_host::ProjectExecution::local_bridge);
         let factory = BrowserTaskFactory {
+            language: crate::plugin_actions::agent_language_tools(
+                api,
+                project_host,
+                session_id,
+                openwebide_core::plugins::languages::tools::LanguageToolScope::from_environment(
+                    &environment,
+                )
+                .ok_or("Agent language scope is unavailable")?,
+                current.clone(),
+            )?,
             current: SendWrapper::new(std::rc::Rc::new(current.clone())),
             mcp_catalog: Arc::new(plan.mcp.clone()),
             mcp_transport,
@@ -1307,6 +1318,7 @@ type BrowserTaskGate = openwebide_agent::plugins::management_tools::ManagementGa
 >;
 #[derive(Clone)]
 struct BrowserTaskFactory {
+    language: Arc<dyn openwebide_agent::intelligence::CodeIntelligence>,
     current: SendWrapper<std::rc::Rc<dyn Fn() -> bool>>,
     mcp_catalog: Arc<openwebide_core::mcp::Catalog>,
     mcp_transport: crate::mcp_bridge::McpBridge,
@@ -1375,6 +1387,7 @@ impl BrowserTaskFactory {
                 openwebide_agent::NoopWebClient,
                 self.bridge.clone(),
             )
+            .with_code_intelligence(self.language.clone())
             .with_context(self.environment.clone()),
             TodoPersistence {
                 api: self.api.clone(),

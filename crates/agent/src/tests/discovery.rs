@@ -31,6 +31,61 @@ fn catalog_request() -> ChatRequest {
 }
 
 #[test]
+fn language_queries_remain_discoverable_with_small_model_contexts() {
+    let mut request = catalog_request();
+    request.model_settings.context_limit = Some(8192);
+    request
+        .tools
+        .push(crate::tools::ToolName::CodeIntelligence.definition());
+    let (provider, seen) = FakeProvider::new(vec![
+        Ok(no_usage(ChatResponse::ToolCalls(vec![call(
+            "find",
+            "tool_search",
+            r#"{"query":"select:code_intelligence"}"#,
+        )]))),
+        Ok(no_usage(ChatResponse::ToolCalls(vec![call(
+            "inspect",
+            "code_intelligence",
+            r#"{"operation":"symbols","path":"file.rs"}"#,
+        )]))),
+        Ok(no_usage(ChatResponse::Text("done".into()))),
+    ]);
+    let executor = FakeExecutor::new(vec![]);
+    let executed = executor.executed.clone();
+    collect(run(
+        provider,
+        executor,
+        request,
+        AgentConfig::default(),
+        NoopCancel,
+        NoopGate,
+        1,
+    ));
+    assert_eq!(*executed.lock().unwrap(), ["code_intelligence"]);
+    let requests = seen.lock().unwrap();
+    assert!(
+        !requests[0]
+            .tools
+            .iter()
+            .any(|tool| tool.name == "code_intelligence")
+    );
+    assert!(
+        requests[0]
+            .system_prompt
+            .as_ref()
+            .unwrap()
+            .contains("code_intelligence")
+    );
+    assert!(
+        requests[1]
+            .tools
+            .iter()
+            .any(|tool| tool.name == "code_intelligence")
+    );
+    assert!(openwebide_core::context::tool_schema_tokens(&requests[1].tools) <= 8192 / 4);
+}
+
+#[test]
 fn deferred_schemas_activate_on_next_turn_and_do_not_reach_host_executor() {
     let (provider, seen) = FakeProvider::new(vec![
         Ok(no_usage(ChatResponse::ToolCalls(vec![

@@ -97,6 +97,62 @@ pub struct ProjectLanguageService {
     service: openwebide_agent::plugins::languages::LanguageService<ActionHost>,
 }
 impl ProjectLanguageService {
+    pub async fn synchronize_action(
+        &self,
+        project: i64,
+        approval: &openwebide_core::plugins::languages::intelligence::actions::ActionApproval,
+        recovery: &openwebide_core::editor::EditorRecovery,
+        revision: u64,
+        tab_width: usize,
+        history: &openwebide_agent::plugins::languages::IntelligenceDocuments,
+    ) -> Result<(), String> {
+        self.service
+            .synchronize_action(project, approval, recovery, revision, tab_width, history)
+            .await
+    }
+    pub fn for_query(
+        &self,
+        query: &openwebide_core::plugins::languages::intelligence::Query,
+    ) -> Result<Self, String> {
+        Ok(Self {
+            service: self.service.service_for_query(query)?,
+        })
+    }
+    pub async fn synchronize_intelligence(
+        &self,
+        project: i64,
+        client: &str,
+        active: &openwebide_agent::plugins::languages::LanguageDocumentRequest,
+        open: &[openwebide_agent::plugins::languages::LanguageDocumentRequest],
+        history: &openwebide_agent::plugins::languages::IntelligenceDocuments,
+    ) -> Result<(), String> {
+        self.service
+            .synchronize_intelligence(project, client, active, open, history)
+            .await
+    }
+    pub async fn diagnostics(
+        &self,
+        project: i64,
+        client: &str,
+        active: openwebide_agent::plugins::languages::LanguageDocumentRequest,
+        open: &[openwebide_agent::plugins::languages::LanguageDocumentRequest],
+        history: &openwebide_agent::plugins::languages::IntelligenceDocuments,
+        saved: bool,
+    ) -> Result<Vec<openwebide_agent::plugins::languages::ProviderDiagnostics>, String> {
+        self.service
+            .query_diagnostics(project, client, active, open, history, saved)
+            .await
+    }
+    pub fn diagnostic_service(
+        &self,
+        namespace: &str,
+        path: &str,
+        source: &str,
+    ) -> Result<Self, String> {
+        Ok(Self {
+            service: self.service.diagnostic_service(namespace, path, source)?,
+        })
+    }
     pub fn for_server_language(
         &self,
         provider: openwebide_core::plugins::languages::RegisteredLanguage,
@@ -110,6 +166,15 @@ impl ProjectLanguageService {
         self.service = self.service.with_sequence(sequence);
         self
     }
+    pub async fn prepare_action_synchronization(
+        &self,
+        approval: &openwebide_core::plugins::languages::intelligence::actions::ActionApproval,
+        tab_width: usize,
+    ) -> Result<(), String> {
+        self.service
+            .prepare_action_synchronization(approval, tab_width)
+            .await
+    }
     pub async fn intelligence(
         &self,
         client: &str,
@@ -119,6 +184,27 @@ impl ProjectLanguageService {
         self.service
             .query_intelligence(client, document, query)
             .await
+    }
+    pub async fn validate_analysis(
+        &self,
+        client: &str,
+        document: openwebide_agent::plugins::languages::LanguageDocumentRequest,
+        context: &openwebide_core::plugins::languages::intelligence::AnalysisContext,
+        result: &serde_json::Value,
+    ) -> Result<(), String> {
+        self.service
+            .validate_analysis(client, document, context, result)
+            .await
+    }
+    pub fn retain_analysis(
+        &self,
+        client: &str,
+        document: openwebide_agent::plugins::languages::LanguageDocumentRequest,
+        query: openwebide_core::plugins::languages::intelligence::Query,
+        response: &openwebide_core::plugins::languages::intelligence::Response,
+    ) -> Result<Option<openwebide_agent::plugins::languages::LanguageAnalysis>, String> {
+        self.service
+            .retain_analysis(client, document, query, response)
     }
     pub async fn new(
         api: Api,
@@ -204,8 +290,45 @@ enum Transport {
     Remote(Api, Option<i64>),
     Local(PluginBridgeClient),
 }
+
+pub(crate) struct ProjectLanguageActions(
+    openwebide_agent::plugins::languages::LanguageActionClient<ActionHost>,
+);
+impl std::ops::Deref for ProjectLanguageActions {
+    type Target = openwebide_agent::plugins::languages::LanguageActionClient<ActionHost>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl ProjectLanguageActions {
+    pub async fn command(
+        &self,
+        record: &openwebide_core::plugins::languages::intelligence::actions::ActionRecord,
+        operation: openwebide_core::plugins::languages::intelligence::actions::CommandOperation,
+    ) -> Result<openwebide_core::plugins::languages::intelligence::actions::CommandProgress, String>
+    {
+        let request = Box::pin(self.0.command(record, operation));
+        let deadline = Box::pin(crate::util::sleep_ms(30_000));
+        match futures::future::select(request,deadline).await {
+            futures::future::Either::Left((result,_))=>result,
+            futures::future::Either::Right(_)=>Err("The command response was lost or timed out. Check its pending outcome; do not run it again.".into()),
+        }
+    }
+}
+
+pub(crate) async fn project_language_actions(
+    api: Api,
+    host: ProjectHost,
+    project: i64,
+    preferences: openwebide_core::plugins::languages::LanguagePreferences,
+    current: impl Fn() -> bool + Clone + 'static,
+) -> Result<ProjectLanguageActions, String> {
+    let (adapter, bindings) = scoped_action_host(api, host, Some(project), current).await?;
+    openwebide_agent::plugins::languages::LanguageActionClient::new(adapter, bindings, preferences)
+        .map(ProjectLanguageActions)
+}
 #[derive(Clone)]
-struct ActionHost {
+pub(crate) struct ActionHost {
     project_host: SendWrapper<ProjectHost>,
     api: SendWrapper<Api>,
     transport: SendWrapper<Transport>,
@@ -220,7 +343,134 @@ impl ActionHost {
             .ok_or_else(|| "Plugin action context changed".into())
     }
 }
+pub(crate) fn agent_language_tools(
+    api: Api,
+    host: ProjectHost,
+    session: i64,
+    scope: openwebide_core::plugins::languages::tools::LanguageToolScope,
+    current: impl Fn() -> bool + Clone + 'static,
+) -> Result<Arc<dyn openwebide_agent::intelligence::CodeIntelligence>, String> {
+    let revision = host.revision();
+    let current = move || current() && host.revision() == revision;
+    let transport = match host.plugin_host(Some(scope.project), current.clone())? {
+        PluginExecutionHost::Remote {
+            api, project_id, ..
+        } => Transport::Remote(api, project_id),
+        PluginExecutionHost::Local(client) => Transport::Local(client),
+    };
+    let mut nonce = [0_u8; 16];
+    getrandom::getrandom(&mut nonce)
+        .map_err(|error| format!("Language client identity unavailable: {error}"))?;
+    Ok(Arc::new(
+        openwebide_agent::intelligence::LanguageTools::new(
+            ActionHost {
+                project_host: SendWrapper::new(host),
+                api: SendWrapper::new(api),
+                transport: SendWrapper::new(transport),
+                context: PluginExecutionContext {
+                    user_action: false,
+                    project_id: Some(scope.project),
+                    session_id: Some(session),
+                    primary: None,
+                },
+                current: SendWrapper::new(Rc::new(current)),
+                grants: Arc::default(),
+            },
+            scope,
+            u128::from_le_bytes(nonce),
+        ),
+    ))
+}
+impl openwebide_agent::intelligence::AgentLanguageHost for ActionHost {
+    async fn language_context(
+        &self,
+    ) -> Result<openwebide_core::plugins::languages::tools::LanguageToolContext, String> {
+        SendWrapper::new(async move {
+            self.backend()?
+                .session_language_context(
+                    self.context
+                        .session_id
+                        .ok_or("Agent language query requires a session")?,
+                )
+                .await
+        })
+        .await
+    }
+}
 impl PluginActionHost for ActionHost {
+    async fn language_action_request(
+        &self,
+        request: &openwebide_core::plugins::languages::intelligence::actions::ActionJournalRequest,
+    ) -> Result<
+        Option<openwebide_core::plugins::languages::intelligence::actions::ActionRecord>,
+        String,
+    > {
+        SendWrapper::new(async move {
+            self.backend()?
+                .language_action_request(
+                    self.context
+                        .project_id
+                        .ok_or("Language actions require a project")?,
+                    request,
+                )
+                .await
+        })
+        .await
+    }
+    async fn language_command(
+        &self,
+        request: &openwebide_core::plugins::languages::intelligence::actions::CommandDispatch,
+    ) -> Result<openwebide_core::plugins::languages::intelligence::actions::CommandProgress, String>
+    {
+        use openwebide_core::plugins::languages::intelligence::actions::{
+            CommandOperation, HostCommandRequest,
+        };
+        SendWrapper::new(async move {
+            let backend = self.backend()?;
+            let project = self
+                .context
+                .project_id
+                .ok_or("Language commands require a project")?;
+            match &*self.transport {
+                Transport::Remote(..) => backend.language_command(project, request).await,
+                Transport::Local(client) => {
+                    let command = backend.authorize_language_command(project, request).await?;
+                    if !(self.current)() {
+                        return Err("Language command context changed".into());
+                    }
+                    let root = if request.operation == CommandOperation::Start {
+                        let current = Rc::clone(&self.current);
+                        let host = self
+                            .project_host
+                            .resolve_guarded(Some(project), false, move || current())
+                            .await?;
+                        host.cwd()
+                            .ok_or(
+                                "Connect the original project folder to the paired execution host",
+                            )?
+                            .to_string()
+                    } else {
+                        String::new()
+                    };
+                    if !(self.current)() {
+                        return Err("Language command context changed".into());
+                    }
+                    client
+                        .plugin_request(
+                            "languages/command",
+                            serde_json::to_value(HostCommandRequest {
+                                user: None,
+                                root,
+                                command,
+                            })
+                            .map_err(|e| e.to_string())?,
+                        )
+                        .await
+                }
+            }
+        })
+        .await
+    }
     async fn language_server(
         &self,
         call: &openwebide_core::plugins::languages::intelligence::Call,

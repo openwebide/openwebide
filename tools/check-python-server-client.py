@@ -171,6 +171,7 @@ def check():
                 '''), 'Rename previews collapsed instead of allowing dialog scrolling'
                 Path('/tmp/openwebide-python-lsp-review-'+mode+'.png').write_bytes(base64.b64decode(browser.call('GET','/screenshot')))
                 assert click(browser,'Apply to editor tabs')
+                wait('rename published before closing its review',lambda:script(browser,"return document.querySelector('textarea[data-editor-path]')?.value.includes('renamed_answer');"))
                 for path in ['lib.py',*CLIENTS]:
                     select(browser,path)
                     wait(path+' staged rename',lambda:script(browser,"return document.querySelector('textarea[data-editor-path]')?.value.includes('renamed_answer');"))

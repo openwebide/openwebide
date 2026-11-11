@@ -97,6 +97,10 @@ Instructions, conventions, and architectural principles for AI agents working on
   ```bash
   cargo build -p openwebide-bridge
   ```
+  Language-server process watchers run the same bridge executable in a private
+  control mode. Build it before filtered native `--lib` tests or standalone
+  language-host examples; an embedded native host must have the matching bridge
+  executable beside it. The ordinary integration-test gate builds it automatically.
 
 ### Required Pre-Commit / Pre-Push Verification & Tooling Gate
 
@@ -113,6 +117,8 @@ Actions runs.
      targets `wasm32-unknown-unknown`, `wasm32-wasip2`
    - `clang` supporting `--target=wasm32-unknown-unknown` (required by `tree-sitter` C sources when
      compiling for WASM; e.g. Homebrew `llvm` symlinked into `~/.local/bin/clang`)
+   - Native `cc` for the disposable interpreter used by executable-lifecycle
+     tests. It must compile for the execution host, independently of WASI targets.
    - `wasm-bindgen` and `wasm-bindgen-test-runner` (`wasm-bindgen-cli` matching the exact
      `wasm-bindgen` version in `Cargo.lock`)
    - `google-chrome` and `chromedriver` (matching versions, e.g. Chrome for Testing in
@@ -133,6 +139,36 @@ Actions runs.
      `check_python_server` example verifies project configuration, virtual-environment
      imports, unsaved buffers, diagnostics, completion and isolation. The production
      browser check is `python3 tools/check-python-server-client.py` in both modes.
+   - Reviewed resource operations and interrupted recovery have a production
+     browser contract: `python3 tools/check-workspace-transactions-client.py`.
+     Build the current release backend/frontend and release bridge with compiled
+     bundled defaults first. It uses a deterministic LSP peer through the public
+     HTML plugin; browser OPFS coverage does not prove a physical permission prompt.
+     It also verifies command approval/outcomes, no replay after lost dispatch,
+     reload and same-window stop, draft persistence during execution and rollback
+     before command claim. Command cases use fresh corresponding native/OPFS folders.
+   - Declared project inputs have a production contract:
+     `python3 tools/check-project-inputs-client.py`. Build current release
+     backend/frontend and bridge with compiled bundled defaults first. It installs
+     a disposable server-only API 9 package through the public plugin API, rejects
+     changed dependencies before any file primitive, and checks configuration moves
+     plus unsaved text and a command on the original service in both modes.
+     The local fixture mirrors selected configuration files between OPFS and its
+     native discovery folder; it does not prove physical-folder permissions.
+   - Agent language tools have a production contract:
+     `python3 tools/check-agent-language-client.py`. Build the current release
+     backend/frontend and bridge with bundled defaults first. It uses the real
+     installed TypeScript server and a scripted local model to check browser,
+     native bridge and backend executors, separate editor drafts and provider
+     disablement. The pinned TypeScript tools must be installed, even if another
+     language-server executable already exists on `PATH`.
+   - Navigation and independent diagnostics have a production contract:
+     `python3 tools/check-language-navigation-client.py`. Build current release
+     backend/frontend artifacts and the release bridge with bundled defaults
+     first. It installs two server-only packages through the public plugin API
+     and uses deterministic LSP peers to verify navigation after result dialogs
+     close, UTF-16 locations, diagnostic traversal, owning-provider fixes and
+     disablement/failure/recovery in both modes. Its local folder uses OPFS.
    - Go 1.27.3 and gopls v0.24.0, installed with
      `python3 tools/setup-go-language-server.py`. Prepend
      `tools/go-language-server/installed/bin` and
@@ -152,6 +188,13 @@ Actions runs.
      example is `check_csharp_server`: it verifies multi-project `.slnx` and
      standalone `.csproj` discovery, unsaved references, diagnostics, code actions
      and isolation. New solution fixtures must use `.slnx`.
+   - Terraform and terraform-ls, installed from checksum-pinned distributions with
+     `python3 tools/setup-terraform-language-server.py`. Prepend
+     `tools/terraform-language-server/installed/bin` to `PATH`; set
+     `CHECKPOINT_DISABLE=1` and `TF_IN_AUTOMATION=1`. The required
+     `check_terraform_server` example verifies all seven supported dialects,
+     unsaved cross-file analysis, completion, diagnostics, reviewable formatting,
+     client/account isolation and revocation without initializing infrastructure.
 
    Quick check:
    ```bash
@@ -173,7 +216,7 @@ Actions runs.
    # 2. Clippy across all CI targets (native, WASI backend, WASM frontend, bridge)
    cargo clippy -p openwebide-storage -p openwebide-core -p openwebide-auth -p openwebide-agent -p openwebide-llm --all-targets -- -D warnings
    cargo clippy -p openwebide-backend --target wasm32-wasip2 -- -D warnings
-   cargo clippy -p openwebide-frontend --target wasm32-unknown-unknown -- -D warnings
+   cargo clippy -p openwebide-frontend --target wasm32-unknown-unknown --all-targets -- -D warnings
    cargo clippy -p openwebide-bridge --all-targets -- -D warnings
 
    # 3. Native unit & integration tests

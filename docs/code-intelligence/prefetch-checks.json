@@ -1,0 +1,211 @@
+{
+  "format": 1,
+  "checked_on": "2026-11-09",
+  "status": "passed_native_prefetch_admission_checkpoint",
+  "source_manifest_sha256": "e6c87f25323a59426eefa0f4292e4773e43cb56d1891d6e25b2facf3a22f153c",
+  "source_files": 1729,
+  "platform": {
+    "os": "Darwin",
+    "release": "27.2.0",
+    "machine": "arm64"
+  },
+  "base_commit": "9283345d3545ded5461ba5ca1702709954270ced",
+  "working_tree": true,
+  "relevant_source_sha256": {
+    "crates/core/src/plugins/languages/intelligence.rs": "cd2729a6096a583bcc882b9397835ef9b7fc153a866e4778adbe10a81d2e03c0",
+    "crates/core/src/plugins/languages/intelligence/tests.rs": "19dd7e66451d528f6e3fe2831c3038c7e5773908410b07e997a118255a9c5153",
+    "crates/agent/src/plugins/languages/intelligence.rs": "6328c15539310eb757164858a7dd95728943a10739359e216880e7b63396d780",
+    "crates/agent/src/plugins/languages/tests/prefetch.rs": "8053d93ceb4156fdf761c444a3a43d2e424c66145c4f663b14b35ab4ab48bcb7",
+    "bridge/src/languages/host.rs": "612aed43548a1850627d71d24b7d40376fc22e336098c5e318bfece846a10d8e",
+    "bridge/src/languages/host/prefetch.rs": "920925808ed9528f34c7eef6d4f0adee1cfe61a0542645d6fc3acde348c7670c",
+    "bridge/src/languages/host/prefetch/tests.rs": "f1446524ebe05d7b4950f850b7e387b9c0e7a47eafccde88c04b4b8634c2a390",
+    "bridge/src/languages/host/reuse.rs": "a60f52a4f833b79efe8b55f3a07b0ab42ad51263f84b1e1f74f38bb27360efe2",
+    "bridge/tests/plugins.rs": "1253212f31284c1ae77c3d8a83def6c268ab41e4c978bb3d26129a790837c184",
+    "bridge/tests/plugins/prefetch.rs": "bffa84a7eb194d9c2ae124521efcc8414d25f14db1d94e286fe87936325f6bfc",
+    "tools/fixtures/prefetch_server.py": "18d48695f620fe8b80ae233f822b12723e2f6cb3b7c49560a25e356ff801ecfe"
+  },
+  "shared_implementation": "LanguageService::prefetch_intelligence and the shared native languages::host, used by both authenticated routes.",
+  "verified": [
+    "Typed diagnostics/symbol prefetch retains exact source identity and fresh account/project authority.",
+    "Cold or incompatible scopes allocate no service and start no process.",
+    "One host slot covers discovery through query cleanup; interactive requests preempt across documents/projects without stealing an occupied slot.",
+    "Active reads and command pins reject speculative admission.",
+    "Timeout and interruption cancel the actual LSP request and preserve interactive use.",
+    "A peer that ignores cancellation receives no further speculative RPC on that original process; suspension follows client handoff and resets after confirmed cleanup and actual restart.",
+    "Both installed-package transports preserve unsaved sources and original disk bytes."
+  ],
+  "regression": {
+    "before_fix_exit_code": 101,
+    "before_fix_observation": "A second speculative RPC was dispatched to the same cancellation-ignoring process and timed out instead of being suspended.",
+    "after_fix": "The regression passes in the targeted eight-case run and full bridge suite."
+  },
+  "cases": [
+    {
+      "case": "core",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-core",
+        "--release",
+        "--lib",
+        "plugins::languages::intelligence::tests",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "seconds": 0.36,
+      "tests": {
+        "passed": 10,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "case": "agent",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-agent",
+        "--release",
+        "--lib",
+        "plugins::languages::tests",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "seconds": 0.18,
+      "tests": {
+        "passed": 23,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "case": "bridge",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-bridge",
+        "--release",
+        "--lib",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "seconds": 79.98,
+      "tests": {
+        "passed": 329,
+        "failed": 0,
+        "ignored": 1
+      }
+    },
+    {
+      "case": "adapters",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-bridge",
+        "--release",
+        "--test",
+        "plugins",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "seconds": 152.81,
+      "tests": {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "case": "native-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-core",
+        "-p",
+        "openwebide-agent",
+        "-p",
+        "openwebide-bridge",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "seconds": 79.99
+    },
+    {
+      "case": "backend-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-backend",
+        "--target",
+        "wasm32-wasip2",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "seconds": 30.96
+    },
+    {
+      "case": "frontend-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-frontend",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "seconds": 102.98
+    },
+    {
+      "case": "windows-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-bridge",
+        "--target",
+        "x86_64-pc-windows-gnu",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "seconds": 46.84
+    }
+  ],
+  "notices": [
+    {
+      "package": "proc-macro-error2 2.0.1",
+      "kind": "cargo_future_incompatibility",
+      "diagnostic": "E0365: private extern crate proc_macro re-exported publicly",
+      "status": "present in this checkpoint before the subsequent vendored visibility correction; see vendor/proc-macro-error2/PATCH.md",
+      "introduced_by_prefetch": false
+    }
+  ],
+  "limits": [
+    "Automatic editor prefetch and reusable-result caching are not enabled. Candidate scheduling, dependencies, freshness and production benefit measurements remain.",
+    "This scoped checkpoint is not the full mandatory local CI suite; browser tests and production verification remain.",
+    "Process cancellation is advisory to an LSP server. Suspension bounds further speculation on that original process; it does not claim to halt the server's already-running computation.",
+    "No performance improvement, complete memory accounting or full roadmap completion is established."
+  ]
+}

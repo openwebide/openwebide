@@ -67,6 +67,8 @@ pub struct FileTreeActions {
     pub epoch: Memo<u64>,
     pub send_prompt: RwSignal<Option<Callback<String>>>,
     projects: ProjectsState,
+    api: crate::backend::Api,
+    settings: Option<crate::state::settings::SettingsState>,
     workspace: WorkspaceState,
     auth: AuthState,
     ui: UiState,
@@ -112,6 +114,8 @@ impl FileTreeActions {
             reveal_target.set(None);
         });
         Self {
+            api: expect_context(),
+            settings: use_context(),
             reveal_target,
             busy,
             expanding,
@@ -296,6 +300,14 @@ impl FileTreeActions {
     }
     pub fn disabled(self) -> bool {
         self.busy.get()
+            || self.projects.active_project.get().is_some_and(|project| {
+                self.workspace.editor_operation_active(project)
+                    || self.workspace.workspace_recovery.with(|states| {
+                        states.get(&project).is_some_and(
+                            crate::state::workspace::WorkspaceRecoveryStatus::blocks_saves,
+                        )
+                    })
+            })
             || self.git_state.is_some_and(|git| {
                 git.commit_busy.get() || git.branch_busy.get() || git.sync_busy.get().is_some()
             })
@@ -397,9 +409,15 @@ impl FileTreeActions {
             self.ui.notify(error);
             return;
         }
+        let Some(save) = self.workspace.begin_editor_save(scope.project) else {
+            self.ui
+                .notify("Resolve workspace recovery before changing files");
+            return;
+        };
         self.busy.set(true);
         spawn_local(async move {
             let result = self.execute(scope, &mutation).await;
+            drop(save);
             if !self.current(scope) {
                 return;
             }
@@ -425,9 +443,28 @@ impl FileTreeActions {
         });
     }
     async fn execute(self, scope: Scope, mutation: &Mutation) -> Result<(), String> {
+        // Git owns its complete operation's critical section in ProjectGit.
+        if matches!(mutation, Mutation::Git(_) | Mutation::Stash(_)) {
+            return self.execute_files(scope, mutation).await;
+        }
+        let guard = crate::workspace_mutations::WorkspaceMutations::for_project(
+            self.api,
+            self.projects,
+            self.auth,
+            self.settings,
+            scope.project,
+            move || self.current(scope),
+        )?;
+        let mutation = mutation.clone();
+        guard
+            .run(async move { self.execute_files(scope, &mutation).await })
+            .await
+    }
+    async fn execute_files(self, scope: Scope, mutation: &Mutation) -> Result<(), String> {
         if !self.current(scope) {
             return Err("Project changed".into());
         }
+        self.guard_editor(mutation)?;
         let files = self
             .workspace_for
             .run(scope.project)
@@ -485,7 +522,11 @@ impl FileTreeActions {
                 if !current() {
                     return Err("Project changed".into());
                 }
-                repo.stash(request).await?;
+                let check = Mutation::Stash(request.clone());
+                repo.with_current(move || self.current(scope))
+                    .with_preflight(move || self.guard_editor(&check))
+                    .stash(request)
+                    .await?;
                 if current() {
                     if let Some(git) = self.git_state {
                         git.changes_revision.update(|revision| *revision += 1);
@@ -547,7 +588,12 @@ impl FileTreeActions {
                         action: request.action,
                     }))?;
                 }
-                let changes = repo.path_action(request).await?;
+                let check = Mutation::Git(request.clone());
+                let changes = repo
+                    .with_current(move || self.current(scope))
+                    .with_preflight(move || self.guard_editor(&check))
+                    .path_action(request)
+                    .await?;
                 if current()
                     && let Some(git) = self.git_state
                 {

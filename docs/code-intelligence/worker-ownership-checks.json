@@ -1,0 +1,655 @@
+{
+  "format": 1,
+  "checked_on": "2026-11-10",
+  "status": "passed_remote_worker_ownership_checkpoint",
+  "source_manifest_sha256": "cda5c4281bb1f0f374fa2f0ee0f669491482587ef0ac7430792806e97886cfb6",
+  "source_files": 1807,
+  "base_commit": "9283345d3545ded5461ba5ca1702709954270ced",
+  "working_tree": true,
+  "relevant_source_sha256": {
+    "backend/src/api/workspace_transactions.rs": "d6b7ecf29b15df392c7fa96099ff810ad0513af0d4655eba99cc5280a48b5adc",
+    "bridge/src/runs/backend_client.rs": "290225d7d86c7b2c1841f9bf8c13b24ba5be6402424388f45005eaa30b7c5b18",
+    "bridge/src/workspace_transactions.rs": "0228bcb3142c50209a2c83cf4feeabd77bf22c26f409b7371b9718dd57838595",
+    "bridge/src/workspace_transactions/tests.rs": "9d5350e3e684244bb97d892a8c44f9fd57e38df69c4a58c90b129bb4745f9666",
+    "bridge/src/workspace_transactions/tests/scope.rs": "710d33f0aa94f3dcb4cea7a27b5b4bc758169eff923a9484076e18621fcb61eb",
+    "bridge/tests/ws_delivery.rs": "aaca809503a227653712cf0a204f63316dae11c8370b111f630d240b4a192390",
+    "crates/core/src/workspace_transaction.rs": "a7f8ebbb43bb2ffcb8120b863ab46fe09cfb999e324ca35dba13d970c3e59d77",
+    "crates/core/src/workspace_transaction/requests.rs": "93196694f95205ec6a0264f45f5f00c675a1efe897e317fcaf0e3b850ee1f163",
+    "crates/core/src/workspace_transaction/scope.rs": "1ba6c88ea34f0b1ef74725f227eea023232ab16d1f8dbda67bd055fbf7748e00",
+    "crates/core/src/workspace_transaction/worker.rs": "cef6fb21f6649ce5dd04179e604f2ed303e190f53e2e90ec2016308ebc6fa1e0",
+    "crates/storage/src/migrations.rs": "1073d080221313bffc15e56e4a23ab1f261f25617413bd8c63875462ff1850f3",
+    "crates/storage/src/store/workspace_transactions.rs": "91523ab8fb70794851d414c81b5ef62c84d372015cc56aefdfabf91b0e092e32",
+    "crates/storage/src/store/workspace_transactions/scope.rs": "555bde464c9386777b79982c076ceae290678bd42f015a3e068a4fe13d986204",
+    "crates/storage/src/store/workspace_transactions/tests.rs": "6f4e7f920d67249c3447285c52ee863669f533b08dfa21959adbf1c4fbfdc279",
+    "crates/storage/src/store/workspace_transactions/tests/scope.rs": "c037e6ab98c1c10b29433788275129e51d174b19afdb699ecb8d9f2652e678a9",
+    "crates/storage/src/store/workspace_transactions/tests/worker.rs": "3b399b954dd265857edd06f3a884431068f2937995d961e61fd64dd9c5e3410b",
+    "crates/storage/src/store/workspace_transactions/worker.rs": "bbf2cd42ec33000db7e756f4a1dc9a449202c2a9555deea0864e06b2f894dce3"
+  },
+  "shared_implementation": "The shared core transaction interpreter still owns planning, cursor policy and recovery. Storage supplies one worker admission/authorization protocol for both modes. The Remote native adapter now obtains a worker only after the complete physical folder gate and fresh scope/state checks, uses it for every cursor update, and releases it before dropping the gate.",
+  "contract": [
+    "Each native execution generates fresh independent 128-bit worker and secret nonces. Only the secret digest is persisted; compact scope and acknowledgement records expose the worker ID and active state, never the secret. Debug output redacts the secret.",
+    "Admission compares journal generation, revision, root and previous worker state atomically. Repeating the same active admission acknowledges it, while a delayed claim cannot replace a later worker. No elapsed-time takeover is used.",
+    "All cursor commits check worker ID and secret digest along with journal generation/revision, before full snapshot loading and again in the final SQL CAS. Native callbacks without worker admission are rejected.",
+    "Release clears the secret digest and retains the worker ID as a tombstone. Delayed admission, cursor updates and releases cannot revive a retired worker or alter its successor.",
+    "Native workers retain the physical folder gate after observer loss, throughout filesystem work and through the durable release attempt. Failure to release cannot clear a replacement; an existing engine error preserves its original generation and includes the release failure.",
+    "Schema 63 migrates existing records idempotently and reserves the complete fixed 96-byte worker identity/digest budget. Ownership survives reopening the database and does not expire by age."
+  ],
+  "coverage": [
+    "The same storage contract passes for Local and Remote projects, including stale/wrong worker secrets, delayed takeover/release/update, active admission retry, retirement, successor admission, account isolation and generation replacement.",
+    "Real database reopen preserves an active worker. Unowned updates remain rejected even with a far-future clock value.",
+    "Ownership metadata operations work without deserializing deliberately corrupt large snapshots; credentials are hashed at rest and absent from compact replies/debug output.",
+    "Native observer disconnect keeps its active worker and complete folder gate; completion/recovery leaves a released worker tombstone.",
+    "The existing delayed same-ID/revision replacement fixture now explicitly verifies unowned update rejection and uses a privileged fixture credential for the independent generation fault. It preserves both original filesystem objects and contents.",
+    "Backend HTTP contracts exercise worker admission, private secret omission, owned updates, account isolation, release, released-owner rejection and denial of legacy native callbacks."
+  ],
+  "macos": {
+    "architecture": "arm64",
+    "kernel": "27.2.0",
+    "source_manifest_sha256": "f22703ecd44d2bc5c2fd13d62fdb75481737f8eac0b63aec7f460559d71e827c",
+    "checks": [
+      {
+        "case": "format",
+        "command": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--check"
+        ],
+        "returncode": 0,
+        "seconds": 2.7,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "test_results": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "binary",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--bin",
+          "openwebide-bridge",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 21.78,
+        "log_sha256": "4254b2baf679c9e36eb8000830eae33c2c16022557c72b876138ec3ec09b725d",
+        "test_results": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "native-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-core",
+          "-p",
+          "openwebide-storage",
+          "-p",
+          "openwebide-backend",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 19.72,
+        "log_sha256": "85650424d19eb9f4e620a564f0943329ea9e2ff165276c1fa6a14781df0f6421",
+        "test_results": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "native-tests",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-core",
+          "-p",
+          "openwebide-storage",
+          "-p",
+          "openwebide-backend",
+          "-p",
+          "openwebide-bridge",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 308.23,
+        "log_sha256": "8ef446a511175da90bafee88f367b7207f12dac687a15fe87596e13be6d81c88",
+        "test_results": [
+          {
+            "passed": 120,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 368,
+            "failed": 0,
+            "ignored": 1
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 9,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 8,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 2
+          },
+          {
+            "passed": 4,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 16,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 7,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 19,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 1
+          },
+          {
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 1
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 11,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 713,
+            "failed": 0,
+            "ignored": 1
+          },
+          {
+            "passed": 194,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          }
+        ],
+        "ignored_tests": [
+          "test plugins::tests::official_marketplace_reference_package_installs_and_loads_on_both_host_scopes ... ignored, Smoke test against the published official marketplace; requires network access",
+          "test ssh_administration_inspects_and_changes_the_target_and_handles_interactive_sudo ... ignored, Run docker/host-admin-test/check.sh to provision an isolated SSH target and agent",
+          "test ssh_update_adapter_pins_both_deployments_and_survives_ssh_disconnect ... ignored, Run docker/host-admin-test/check.sh for the isolated SSH updater fixture",
+          "test first_party_panels_publish_once_through_real_paired_and_backend_bridge_adapters ... ignored, Requires the compiled marketplace PR Review component and manifest",
+          "test scheduling_component_uses_shared_records_events_and_raw_runs_in_both_modes ... ignored, Requires the separately built Scheduling component and source manifest paths",
+          "test editor::structure::tests::measure_indexed_language_queries ... ignored, native release measurement, not a timing assertion"
+        ]
+      },
+      {
+        "case": "wasi-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-backend",
+          "--target",
+          "wasm32-wasip2",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 19.63,
+        "log_sha256": "01ebc3070fab9c121b28118a705dd755390dec4a4aec225de324078bf951c6f0",
+        "test_results": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "wasm-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-frontend",
+          "--target",
+          "wasm32-unknown-unknown",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 98.26,
+        "log_sha256": "1d4c5e93ba9b9d926f695dcf688734006f02c780fa366a6e588036ef4f412186",
+        "test_results": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "windows-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 48.47,
+        "log_sha256": "caec85a6fa04aa16af161006d177b0050d600b31be32d9339217937a7cd575f9",
+        "test_results": [],
+        "ignored_tests": []
+      }
+    ],
+    "followup_source_manifest_sha256": "cda5c4281bb1f0f374fa2f0ee0f669491482587ef0ac7430792806e97886cfb6",
+    "followup_checks": [
+      {
+        "case": "format",
+        "command": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--check"
+        ],
+        "returncode": 0,
+        "seconds": 2.67,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "test_results": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "binary",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--bin",
+          "openwebide-bridge",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 96.44,
+        "log_sha256": "f769946bf995a8479330520ae7413b3820a8f3cde76e1b63f104e71cd903c56b",
+        "test_results": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "bridge-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 42.35,
+        "log_sha256": "b3380ce72098535e1884bd0d4d475fb3a6df1f2dd19cd4e9f05610f66092670c",
+        "test_results": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "ws-delivery",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--test",
+          "ws_delivery",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 41.38,
+        "log_sha256": "5a5f913135d076bd042fa3e89175c0595ef60876a4a4bec63d5806380c47c1f7",
+        "test_results": [
+          {
+            "passed": 11,
+            "failed": 0,
+            "ignored": 0
+          }
+        ],
+        "ignored_tests": []
+      }
+    ],
+    "followup_source_changes": [
+      "bridge/tests/ws_delivery.rs"
+    ],
+    "coverage_note": "All production code is byte-identical to the complete seven-case macOS check. The sole source change is the WebSocket OS-fixture environment; its complete integration binary and strict native bridge lint are checked again on the final source."
+  },
+  "linux": {
+    "source_manifest_sha256": "cda5c4281bb1f0f374fa2f0ee0f669491482587ef0ac7430792806e97886cfb6",
+    "tooling_image_id": "sha256:916206a1aa179fdfeb1b73529dc6a04c84b2ccd2a12dfa4577cb6fda9019ab1a",
+    "runtime": {
+      "uid": 502,
+      "kernel": "7.0.14-linuxkit",
+      "architecture": "aarch64",
+      "rustdoc_version": "rustdoc 1.98.1 (48a229cea 2026-09-01)",
+      "filesystem": "overlayfs",
+      "cpu_max": "200000 100000",
+      "memory_max": "4294967296",
+      "memory_swap_max": "0"
+    },
+    "container_configuration": {
+      "image_id": "sha256:916206a1aa179fdfeb1b73529dc6a04c84b2ccd2a12dfa4577cb6fda9019ab1a",
+      "cpu": 2000000000,
+      "memory": 4294967296,
+      "memory_plus_swap": 4294967296
+    },
+    "oom_killed": false,
+    "checks": [
+      {
+        "case": "build",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--bin",
+          "openwebide-bridge",
+          "--locked",
+          "--offline"
+        ],
+        "returncode": 0,
+        "seconds": 0.93,
+        "log_sha256": "5198d55901c5c79cd16518e3498e8bb7053e7d1c93ea5bd5c746cbd572e44892",
+        "test_results": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-core",
+          "-p",
+          "openwebide-storage",
+          "-p",
+          "openwebide-backend",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--locked",
+          "--offline",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 0.89,
+        "log_sha256": "372ab3dffba995289430234e2ada6eea07e74abc6ea8dc5bd9b2212b33aade1e",
+        "test_results": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "native",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-core",
+          "-p",
+          "openwebide-storage",
+          "-p",
+          "openwebide-backend",
+          "-p",
+          "openwebide-bridge",
+          "--locked",
+          "--offline"
+        ],
+        "returncode": 0,
+        "seconds": 193.15,
+        "log_sha256": "7792cb91daba9910335a8244bd7773ec3f94e8763914d45ae0650f8d35c22ddc",
+        "test_results": [
+          {
+            "passed": 120,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 372,
+            "failed": 0,
+            "ignored": 1
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 9,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 8,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 2
+          },
+          {
+            "passed": 4,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 16,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 7,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 19,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 1
+          },
+          {
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 1
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 11,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 713,
+            "failed": 0,
+            "ignored": 1
+          },
+          {
+            "passed": 194,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          }
+        ],
+        "ignored_tests": [
+          "test plugins::tests::official_marketplace_reference_package_installs_and_loads_on_both_host_scopes ... ignored, Smoke test against the published official marketplace; requires network access",
+          "test ssh_administration_inspects_and_changes_the_target_and_handles_interactive_sudo ... ignored, Run docker/host-admin-test/check.sh to provision an isolated SSH target and agent",
+          "test ssh_update_adapter_pins_both_deployments_and_survives_ssh_disconnect ... ignored, Run docker/host-admin-test/check.sh for the isolated SSH updater fixture",
+          "test first_party_panels_publish_once_through_real_paired_and_backend_bridge_adapters ... ignored, Requires the compiled marketplace PR Review component and manifest",
+          "test scheduling_component_uses_shared_records_events_and_raw_runs_in_both_modes ... ignored, Requires the separately built Scheduling component and source manifest paths",
+          "test editor::structure::tests::measure_indexed_language_queries ... ignored, native release measurement, not a timing assertion"
+        ]
+      }
+    ]
+  },
+  "development_findings": [
+    {
+      "observation": "After the fixture correction, every Linux unit/integration test passed, but Cargo could not launch doctests because the pinned tooling image lacked a rustdoc proxy on PATH. Added the proxy to the owned tooling cache, verified rustdoc 1.98.1, and reran the complete native command successfully. No doctest was skipped.",
+      "log_sha256": "1f1b9961cdfac4a2eb2cd53effc39296b2ab16c583d7401c72a48d6801851586"
+    },
+    {
+      "observation": "The first complete Linux native command failed two WebSocket stress deadlines. Serial execution removed kill contention but the 300-process case still failed. Bounded diagnostics found live true processes waiting in d_alloc_parallel during dynamic-loader lookups; a direct 300-process burst outside Cargo completed in 32 ms. Cargo had injected host-mounted build directories into LD_LIBRARY_PATH. Giving only the system true fixture an empty library-search override preserved all 300 processes and the five-second deadline, and the diagnostic case passed in 0.18 seconds. Production environment inheritance was unchanged.",
+      "log_sha256": "5be92b2a2165ba537380c237fbd8cbbdfa64c33f1c94e4cd444974211833aca8"
+    },
+    {
+      "observation": "The first native run rejected the old replacement fixture because it used an unowned callback to retire an active worker. The fixture now asserts that rejection and deliberately impersonates its captured test-only worker credential for the separate generation-replacement fault; production authorization was not relaxed.",
+      "log_sha256": "b2fb6b09e39e519c49770da7623c3638a0c50f19eed78125433828953906d4d2"
+    }
+  ],
+  "limits": [
+    "The production worker admission/release integration currently covers Remote native resource execution. Paired Local journal delegation and a lease spanning the complete browser/native phase remain unfinished; passing the shared Local storage contract is not Local runtime verification.",
+    "The private admission API trusts its authenticated runtime to hold complete physical exclusion. It is not an arbitrary browser takeover endpoint. Scoped paired-host delegation must preserve this restriction.",
+    "Linux/macOS have cross-process physical folder gates. Other platforms reject replacing an active worker until their corresponding exclusion primitive is available; strict Windows compilation is not native runtime proof.",
+    "This does not finish all NativeFsVfs/backend-WASI/browser-FSA writers, non-LSP/Git child lifetimes, escaped process groups, multi-profile recovery or compound Local authority.",
+    "Worker credentials govern active execution of one journal. Pending recovery across aliased projects/accounts still needs the complete durable physical-folder admission protocol; a released worker tombstone is not that global recovery gate.",
+    "Linux uses the pinned tooling image at 2 CPU/4 GiB/no swap. Outer sandbox exceptions permit the real inner bubblewrap source-compiler test; this is not a production-image or memory-performance measurement.",
+    "Full mandatory browser/production-client CI, public marketplace publication and final release verification remain pending. This checkpoint does not re-prove physical PWA behavior or complete the roadmap item.",
+    "The ordinary native command retains existing marketplace, separately built component, SSH and performance fixture exclusions. Ignored test names and reasons are recorded per case; this checkpoint does not establish those separate fixtures."
+  ],
+  "post_check_updates": [
+    "CHANGELOG.md",
+    "docs/roadmap.md",
+    "docs/code-intelligence/worker-ownership-checks.json"
+  ]
+}

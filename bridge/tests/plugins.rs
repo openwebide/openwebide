@@ -1,5 +1,13 @@
 //! Both plugin transports authenticate into isolated host caches.
+#[path = "plugins/analysis.rs"]
+mod analysis;
+#[path = "plugins/cache.rs"]
+mod cache;
 mod common;
+#[path = "plugins/prefetch.rs"]
+mod prefetch;
+#[path = "plugins/reuse.rs"]
+mod reuse;
 use common::{HttpResponse, http, post};
 use openwebide_bridge::{ServerConfig, plugins::NativePluginInstaller, run_server};
 use openwebide_core::plugins::{
@@ -48,12 +56,80 @@ async fn native_language_routes_check_account_package_and_path_before_launch() {
     let fixture = tempfile::tempdir().unwrap();
     let workspace = tempfile::tempdir().unwrap();
     std::fs::write(workspace.path().join("file.notes"), "notes").unwrap();
+    git(workspace.path(), &["init", "-q", "-b", "main"]);
+    git(
+        workspace.path(),
+        &[
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@example.org",
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "--allow-empty",
+            "-qm",
+            "initial",
+        ],
+    );
+    let lifecycle_peer = workspace.path().join("lifecycle.py");
+    std::fs::write(
+        &lifecycle_peer,
+        include_str!("../../tools/fixtures/lifecycle_server.py"),
+    )
+    .unwrap();
+    let reuse_peer = workspace.path().join("reuse.py");
+    std::fs::write(
+        &reuse_peer,
+        include_str!("../../tools/fixtures/reuse_server.py"),
+    )
+    .unwrap();
+    let cache_peer = workspace.path().join("cache.py");
+    std::fs::write(
+        &cache_peer,
+        include_str!("../../tools/fixtures/cache_server.py"),
+    )
+    .unwrap();
+    let prefetch_peer = workspace.path().join("prefetch.py");
+    std::fs::write(
+        &prefetch_peer,
+        include_str!("../../tools/fixtures/prefetch_server.py"),
+    )
+    .unwrap();
+    #[cfg(unix)]
+    let (live_command, live_args) = {
+        use std::os::unix::fs::PermissionsExt;
+        let content = std::fs::read_to_string(&lifecycle_peer).unwrap();
+        std::fs::write(
+            &lifecycle_peer,
+            format!("#!/usr/bin/env python3\n{content}"),
+        )
+        .unwrap();
+        std::fs::set_permissions(&lifecycle_peer, std::fs::Permissions::from_mode(0o700)).unwrap();
+        (
+            lifecycle_peer.to_string_lossy().into_owned(),
+            Vec::<String>::new(),
+        )
+    };
+    #[cfg(not(unix))]
+    let (live_command, live_args) = (
+        "python3".to_string(),
+        vec![lifecycle_peer.to_string_lossy().into_owned()],
+    );
     for mut file in review_files() {
         if file.path == "plugin.json" {
             let mut manifest: serde_json::Value = serde_json::from_slice(&file.content).unwrap();
-            manifest["compatibility"]["pluginApi"] = serde_json::json!(6);
+            manifest["compatibility"]["pluginApi"] = serde_json::json!(9);
             manifest["contributions"] = serde_json::json!({"skills":[],"languages":[{
                 "id":"notes","name":"Notes","extensions":["notes"],"features":{"languageServer":{"command":"openwebide-test-language-server-not-installed"}}
+            }, {
+                "id":"live-notes","name":"Live Notes","extensions":["live-notes"],"features":{"languageServer":{"command":live_command,"args":live_args,"rootMarkers":["project.json"],"projectInputs":{"files":["settings.json"]}}}
+            }, {
+                "id":"reuse-notes","name":"Reuse Notes","extensions":["reuse-notes"],"features":{"languageServer":{"command":"python3","args":[reuse_peer]}}
+            }, {
+                "id":"cache-notes","name":"Cache Notes","extensions":["cache-notes"],"features":{"languageServer":{"command":"python3","args":[cache_peer],"cache":{"versionArgs":[cache_peer,"--version"],"environment":{"FIXTURE_CACHE":"${cache}/build"}},"initializationOptions":{"directory":"${cache}/options"},"settings":{"directory":"${cache}/settings"}}}
+            }, {
+                "id":"prefetch-notes","name":"Prefetch Notes","extensions":["prefetch-notes"],"features":{"languageServer":{"command":"python3","args":[prefetch_peer]}}
             }]});
             file.content = serde_json::to_vec(&manifest).unwrap();
         }
@@ -102,6 +178,10 @@ async fn native_language_routes_check_account_package_and_path_before_launch() {
         Some("paired-token".into()),
     );
     config.plugins = NativePluginInstaller::new(Some(cache.path().into()));
+    config
+        .language_servers
+        .set_cache_directory(cache.path().join("languages"))
+        .unwrap();
     let server = tokio::spawn(run_server(listener, config));
     for paired in [false, true] {
         let prepared = preparation_request(
@@ -114,6 +194,10 @@ async fn native_language_routes_check_account_package_and_path_before_launch() {
         assert_eq!(prepared.status, 200, "{}", prepared.body);
         let prepared: PreparedPlugin = serde_json::from_str(&prepared.body).unwrap();
         assert!(prepared.manifest.executable.is_none());
+        reuse::check(port, paired, &prepared, workspace.path()).await;
+        analysis::check(port, paired, &prepared, workspace.path()).await;
+        cache::check(port, paired, &prepared, workspace.path()).await;
+        prefetch::check(port, paired, &prepared, workspace.path()).await;
         let request = intelligence::HostRequest {
             user: Some(42),
             root: workspace.path().to_string_lossy().into(),
@@ -135,6 +219,20 @@ async fn native_language_routes_check_account_package_and_path_before_launch() {
                 },
             },
         };
+        let mut closed = request.clone();
+        closed.selection.input.query = intelligence::Query::Close;
+        closed.selection.input.path = "deleted/parent/file.notes".into();
+        let response = preparation_request(
+            port,
+            paired,
+            "/plugins/languages/query",
+            serde_json::to_value(&closed).unwrap(),
+        )
+        .await;
+        assert_eq!(response.status, 200, "{}", response.body);
+        let response: intelligence::Response = serde_json::from_str(&response.body).unwrap();
+        response.validate(&closed.selection.input).unwrap();
+        assert_eq!(response.server, "closed");
         let valid = preparation_request(
             port,
             paired,
@@ -148,6 +246,16 @@ async fn native_language_routes_check_account_package_and_path_before_launch() {
             "{}",
             valid.body
         );
+        // A failed startup's backoff also must not prevent closing its state.
+        closed.selection.input.request = 2;
+        let response = preparation_request(
+            port,
+            paired,
+            "/plugins/languages/query",
+            serde_json::to_value(&closed).unwrap(),
+        )
+        .await;
+        assert_eq!(response.status, 200, "{}", response.body);
         let mut forged = request.clone();
         forged.selection.prepared.manifest.contributions.languages[0]
             .features
@@ -184,6 +292,259 @@ async fn native_language_routes_check_account_package_and_path_before_launch() {
             "{}",
             rejected.body
         );
+        std::fs::create_dir(workspace.path().join("nested")).unwrap();
+        std::fs::write(workspace.path().join("nested/project.json"), "{}").unwrap();
+        let mut live = request.clone();
+        live.selection.input.language = "live-notes".into();
+        live.selection.input.path = "nested/file.notes".into();
+        let response = preparation_request(
+            port,
+            paired,
+            "/plugins/languages/query",
+            serde_json::to_value(&live).unwrap(),
+        )
+        .await;
+        assert_eq!(response.status, 200, "{}", response.body);
+        let opened: intelligence::Response = serde_json::from_str(&response.body).unwrap();
+        let calls_path = workspace.path().join("calls");
+        let calls = std::fs::read_to_string(&calls_path).unwrap();
+        let starts = calls.matches("\"method\": \"initialize\"").count();
+        let closes = calls
+            .matches("\"method\": \"textDocument/didClose\"")
+            .count();
+        std::fs::remove_dir_all(workspace.path().join("nested")).unwrap();
+        live.selection.input.request += 1;
+        live.selection.input.query = intelligence::Query::Close;
+        let response = preparation_request(
+            port,
+            paired,
+            "/plugins/languages/query",
+            serde_json::to_value(&live).unwrap(),
+        )
+        .await;
+        assert_eq!(response.status, 200, "{}", response.body);
+        let closed: intelligence::Response = serde_json::from_str(&response.body).unwrap();
+        closed.validate(&live.selection.input).unwrap();
+        assert_eq!(closed.server, opened.server);
+        tokio::time::timeout(std::time::Duration::from_secs(5), async {
+            loop {
+                let calls = std::fs::read_to_string(&calls_path).unwrap();
+                assert_eq!(calls.matches("\"method\": \"initialize\"").count(), starts);
+                if calls
+                    .matches("\"method\": \"textDocument/didClose\"")
+                    .count()
+                    == closes + 1
+                {
+                    break;
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .unwrap();
+        std::fs::create_dir(workspace.path().join("nested")).unwrap();
+        std::fs::write(workspace.path().join("nested/project.json"), "{}").unwrap();
+        live.selection.input.request += 1;
+        live.selection.input.query = intelligence::Query::Synchronize;
+        let response = preparation_request(
+            port,
+            paired,
+            "/plugins/languages/query",
+            serde_json::to_value(&live).unwrap(),
+        )
+        .await;
+        assert_eq!(response.status, 400, "{}", response.body);
+        assert!(
+            response.body.contains("physical language workspace"),
+            "{}",
+            response.body
+        );
+        live.selection.input.request += 1;
+        let response = preparation_request(
+            port,
+            paired,
+            "/plugins/languages/query",
+            serde_json::to_value(&live).unwrap(),
+        )
+        .await;
+        assert_eq!(response.status, 200, "{}", response.body);
+        let before_branch: intelligence::Response = serde_json::from_str(&response.body).unwrap();
+        git(
+            workspace.path(),
+            &[
+                "checkout",
+                "-q",
+                "-b",
+                if paired { "paired" } else { "remote" },
+            ],
+        );
+        live.selection.input.request += 1;
+        let response = preparation_request(
+            port,
+            paired,
+            "/plugins/languages/query",
+            serde_json::to_value(&live).unwrap(),
+        )
+        .await;
+        assert_eq!(response.status, 400, "{}", response.body);
+        assert!(
+            response.body.contains("Git revision changed"),
+            "{}",
+            response.body
+        );
+        live.selection.input.request += 1;
+        let response = preparation_request(
+            port,
+            paired,
+            "/plugins/languages/query",
+            serde_json::to_value(&live).unwrap(),
+        )
+        .await;
+        assert_eq!(response.status, 200, "{}", response.body);
+        let fresh: intelligence::Response = serde_json::from_str(&response.body).unwrap();
+        fresh.validate(&live.selection.input).unwrap();
+        assert_ne!(fresh.server, before_branch.server);
+        let starts = std::fs::read_to_string(&calls_path)
+            .unwrap()
+            .matches("\"method\": \"initialize\"")
+            .count();
+        live.selection.input.client = "client-git-handoff".into();
+        live.selection.input.request += 1;
+        let response = preparation_request(
+            port,
+            paired,
+            "/plugins/languages/query",
+            serde_json::to_value(&live).unwrap(),
+        )
+        .await;
+        assert_eq!(response.status, 200, "{}", response.body);
+        let handed_off: intelligence::Response = serde_json::from_str(&response.body).unwrap();
+        assert_ne!(handed_off.server, fresh.server);
+        assert_eq!(
+            std::fs::read_to_string(&calls_path)
+                .unwrap()
+                .matches("\"method\": \"initialize\"")
+                .count(),
+            starts
+        );
+        let head = workspace.path().join(".git/HEAD");
+        let modified = std::fs::metadata(&head).unwrap().modified().unwrap();
+        git(
+            workspace.path(),
+            &[
+                "checkout",
+                "-q",
+                "-b",
+                if paired {
+                    "paired-round-trip"
+                } else {
+                    "remote-round-trip"
+                },
+            ],
+        );
+        git(
+            workspace.path(),
+            &["checkout", "-q", if paired { "paired" } else { "remote" }],
+        );
+        std::fs::File::options()
+            .write(true)
+            .open(&head)
+            .unwrap()
+            .set_times(std::fs::FileTimes::new().set_modified(modified))
+            .unwrap();
+        live.selection.input.request += 1;
+        let response = preparation_request(
+            port,
+            paired,
+            "/plugins/languages/query",
+            serde_json::to_value(&live).unwrap(),
+        )
+        .await;
+        assert_eq!(response.status, 400, "{}", response.body);
+        assert!(
+            response.body.contains("Git revision changed"),
+            "{}",
+            response.body
+        );
+        live.selection.input.request += 1;
+        let response = preparation_request(
+            port,
+            paired,
+            "/plugins/languages/query",
+            serde_json::to_value(&live).unwrap(),
+        )
+        .await;
+        assert_eq!(response.status, 200, "{}", response.body);
+        let after_round_trip: intelligence::Response =
+            serde_json::from_str(&response.body).unwrap();
+        after_round_trip.validate(&live.selection.input).unwrap();
+        assert_ne!(after_round_trip.server, handed_off.server);
+        std::fs::write(
+            workspace.path().join("settings.json"),
+            "changed configuration",
+        )
+        .unwrap();
+        live.selection.input.request += 1;
+        let response = preparation_request(
+            port,
+            paired,
+            "/plugins/languages/query",
+            serde_json::to_value(&live).unwrap(),
+        )
+        .await;
+        assert_eq!(response.status, 400, "{}", response.body);
+        assert!(
+            response.body.contains("Declared project inputs changed"),
+            "{}",
+            response.body
+        );
+        live.selection.input.request += 1;
+        let response = preparation_request(
+            port,
+            paired,
+            "/plugins/languages/query",
+            serde_json::to_value(&live).unwrap(),
+        )
+        .await;
+        assert_eq!(response.status, 200, "{}", response.body);
+        let reconfigured: intelligence::Response = serde_json::from_str(&response.body).unwrap();
+        reconfigured.validate(&live.selection.input).unwrap();
+        assert_ne!(fresh.server, reconfigured.server);
+        assert_eq!(live.selection.input.source, "notes");
+        #[cfg(unix)]
+        {
+            let replacement = workspace.path().join("replacement-server");
+            std::fs::copy(&lifecycle_peer, &replacement).unwrap();
+            std::fs::rename(replacement, &lifecycle_peer).unwrap();
+            live.selection.input.request += 1;
+            let response = preparation_request(
+                port,
+                paired,
+                "/plugins/languages/query",
+                serde_json::to_value(&live).unwrap(),
+            )
+            .await;
+            assert_eq!(response.status, 400, "{}", response.body);
+            assert!(
+                response.body.contains("executable changed"),
+                "{}",
+                response.body
+            );
+            live.selection.input.request += 1;
+            let response = preparation_request(
+                port,
+                paired,
+                "/plugins/languages/query",
+                serde_json::to_value(&live).unwrap(),
+            )
+            .await;
+            assert_eq!(response.status, 200, "{}", response.body);
+            let reopened: intelligence::Response = serde_json::from_str(&response.body).unwrap();
+            reopened.validate(&live.selection.input).unwrap();
+            assert_ne!(reopened.server, reconfigured.server);
+        }
+        std::fs::remove_file(workspace.path().join("settings.json")).unwrap();
+        std::fs::remove_dir_all(workspace.path().join("nested")).unwrap();
         let revoked=preparation_request(port,paired,"/plugins/languages/revoke",serde_json::json!({"user":42,"project":1,"provider":request.selection.prepared.storage_namespace()})).await;
         assert_eq!(revoked.status, 200, "{}", revoked.body);
         if !paired {
@@ -199,7 +560,11 @@ async fn native_language_routes_check_account_package_and_path_before_launch() {
             assert_eq!(rejected.status, 401);
         }
     }
-    for path in ["/plugins/languages/query", "/plugins/languages/revoke"] {
+    for path in [
+        "/plugins/languages/query",
+        "/plugins/languages/revoke",
+        "/plugins/languages/command",
+    ] {
         let raw = format!(
             "POST {path} HTTP/1.1\r\nHost: localhost:{port}\r\nContent-Type: application/json\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{{}}"
         );

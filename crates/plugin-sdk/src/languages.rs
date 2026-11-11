@@ -190,6 +190,10 @@ pub struct LanguageHandler {
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct LanguageServer {
     pub command: String,
+    /// API 9: diagnostics-only services do not replace the language's primary
+    /// server or syntax provider. Installation still grants native execution.
+    #[serde(default, skip_serializing_if = "LanguageServerRole::is_language")]
+    pub role: LanguageServerRole,
     /// API 7: LSP document language ID when it differs from the contribution ID.
     /// It identifies a document's dialect, not a separate server instance.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -198,6 +202,14 @@ pub struct LanguageServer {
     pub args: Vec<String>,
     #[serde(default)]
     pub root_markers: Vec<String>,
+    /// API 9: project-relative configuration and dependency files whose disk
+    /// contents contribute to the service's project context.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project_inputs: Option<ProjectInputs>,
+    /// API 9: host-managed persistent derived data outside the project. The
+    /// `${cache}` path may be referenced in arguments, settings and options.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cache: Option<LanguageServerCache>,
     #[serde(default)]
     pub initialization_options: serde_json::Value,
     #[serde(default)]
@@ -206,6 +218,41 @@ pub struct LanguageServer {
     /// Only URIs received in navigation results can be read, through opaque IDs.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub virtual_documents: Vec<VirtualDocument>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct LanguageServerCache {
+    /// Arguments to this same declared executable that print its version and
+    /// exit. The host bounds execution and uses the output in the namespace.
+    pub version_args: Vec<String>,
+    /// Cache-path environment variables. Values start with `${cache}` and may
+    /// append normal relative path segments. Other host variables are inherited.
+    #[serde(default)]
+    pub environment: std::collections::BTreeMap<String, String>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct ProjectInputs {
+    /// Literal path segments and `*` within a segment; a complete `**` segment
+    /// matches any number of directories. Paths are relative to the project.
+    pub files: Vec<String>,
+    #[serde(default)]
+    pub exclude: Vec<String>,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LanguageServerRole {
+    #[default]
+    Language,
+    Diagnostics,
+}
+impl LanguageServerRole {
+    pub fn is_language(&self) -> bool {
+        *self == Self::Language
+    }
 }
 
 /// Declarative mapping from a virtual navigation URI to a server text request.

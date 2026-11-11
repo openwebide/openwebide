@@ -1,0 +1,442 @@
+{
+  "format": 1,
+  "checked_on": "2026-11-10T18:31:51.178473+00:00",
+  "status": "passed_for_original_review_capability_and_installed_workflows",
+  "base_commit": "9283345d3545ded5461ba5ca1702709954270ced",
+  "source_manifest_sha256": "011427904cf41c9ff94bdd6e7a915f5318dbec65ad78c49050b5f82d4d306bab",
+  "relevant_source_sha256": {
+    "bridge/src/languages/host/analysis/tests.rs": "491cb90b804952099c0f19f6b3d990ec144b546a8b987672aed244d52a834049",
+    "frontend/src/state_actions/editor/intelligence.rs": "0e3b13c28e7f24822a3b85fbdf83eb2854bb2dc3397bfe775701d49d22e380e3",
+    "frontend/src/state_actions/editor/intelligence/application.rs": "b6db88338243ca02ffe003c3d712dfcbf4663ce2cf8f6b5584e4a25a9eef1074",
+    "frontend/src/state_actions/editor/intelligence/edits.rs": "517d5d4db35c08d33396e634d1a8de376d3c3745a572f46de365e0dc7b29e5fb",
+    "frontend/src/state_actions/editor/intelligence/edits/resources.rs": "85ecbad28e283bfe45937e0e6003d613fe762ba5c41116b3f63b2551d88bcc0e",
+    "frontend/src/state_actions/editor/intelligence/edits/resources/tests.rs": "0bcc8b7d69754c530dad2dbb365e51485dc576eb9a25f67cc704c320efa4eb83",
+    "frontend/src/workspace_transactions.rs": "5c5b6e68cafde8c4ddd1743da08e167f25f8e3723a180034ff08e66b7443bf69",
+    "frontend/src/workspace_transactions/companion.rs": "e022b3909fde10ef5fb32daf88e391bbccdd4ac09099a56f6fffeddb00b6ae8d",
+    "frontend/src/workspace_transactions/companion/tests.rs": "8a23afe0fdbf9da23d5c8d446be8aab3d592fbfc709f1ab615782b8e348dacc6",
+    "frontend/src/workspace_transactions/companion/tests/deadline.rs": "099c47726fff09996053808747b575506012dce2b035c61ee9fdf3c440946ea6",
+    "frontend/src/workspace_transactions/review.rs": "f4467d9c388eda49e6740b608f90bb2463520e7421101a3ab6c5ed09d93f23cd",
+    "frontend/src/workspace_transactions/review/tests/companion.rs": "a889df46fe4f4c50df8626ed6ee0a58349ee1affdbc21677e432d98705fa0382",
+    "tools/check-project-inputs-client.py": "b0d99b88a4d9d7ce5d7ed03a68260f14a4e0606373e8325bfca13e586bde5b7e",
+    "tools/check-workspace-transactions-client.py": "31cb6224efdf5d5cb928151324e349535238273a96f9f881155898d5c0acd2fd"
+  },
+  "working_tree": "Uncommitted code-intelligence work; this receipt and accompanying documentation follow the frozen checks.",
+  "shared_implementation": "One editor resource policy retains WorkspaceReviewFiles across original action discovery, review and Apply. Native inspection and browser companion transports provide read capabilities. Local consumers share one mutex/cursor and original folder session; the executor does not create a second proof.",
+  "contract": [
+    "Establish the Local physical folder capability before original CodeActions/Rename; proof-file metadata/events must continue to invalidate previously captured native analysis.",
+    "Reuse the exact original capability for review and execution, with unchanged original-service validation and result/source/account/provider/editor guards. No LSP refresh or new folder proof at Apply.",
+    "Capture origin-bound recovery handles only for actual resource previews. Resource capability failure is retained and rejects resource operations; native-validated text-only edits remain available.",
+    "An acknowledged explicit companion close suppresses a redundant drop request. Failed or ambiguous close observers retain cleanup retry.",
+    "Production traces require exactly one CodeActions, ReviewAction and ValidateAnalysis on the same native service for the selected edit. Local Open/Prove completes before CodeActions and the same session performs review reads, Bind, Admit, execution and Close."
+  ],
+  "checks": [
+    {
+      "case": "format",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--check"
+      ],
+      "returncode": 0,
+      "seconds": 2.99,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test_results": []
+    },
+    {
+      "case": "wasm-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-frontend",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "returncode": 0,
+      "seconds": 35.92,
+      "log_sha256": "88a7f5c5febed9c52dad404c3bd38f124a6de4f0c080b6190cf1474865d8102a",
+      "test_results": []
+    },
+    {
+      "case": "browser-workspace-policy",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-frontend",
+        "--release",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--lib",
+        "state_actions::editor::intelligence::edits::",
+        "--locked"
+      ],
+      "returncode": 0,
+      "seconds": 189.79,
+      "log_sha256": "22ccac74b418a54b92a911a0c72c95b3b906e9038f717a2cf16412a6a5513946",
+      "test_results": [
+        {
+          "passed": 29,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "case": "browser-review-adapter",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-frontend",
+        "--release",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--lib",
+        "workspace_transactions::review::",
+        "--locked"
+      ],
+      "returncode": 0,
+      "seconds": 2.76,
+      "log_sha256": "a58f948594d6bd6e7c4b85d6e9dc53ff3c9cfffd81faa87a05c1481a9b22f4f7",
+      "test_results": [
+        {
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "case": "browser-companion-transport",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-frontend",
+        "--release",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--lib",
+        "workspace_transactions::companion::",
+        "--locked"
+      ],
+      "returncode": 0,
+      "seconds": 6.25,
+      "log_sha256": "439e731c4cfdd095a5493ad6afbc0ea43734f196a7a49b2c978391e24aa90b09",
+      "test_results": [
+        {
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "case": "browser-language-consumers",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-frontend",
+        "--release",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--test",
+        "components",
+        "language_plugins::",
+        "--locked"
+      ],
+      "returncode": 0,
+      "seconds": 191.85,
+      "log_sha256": "713e634da4d47c492f4514df3fb587b727e2feb60a3d0563300dcb2b5ac34d22",
+      "test_results": [
+        {
+          "passed": 9,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "case": "frontend-build",
+      "command": [
+        "trunk",
+        "build",
+        "--release",
+        "--locked"
+      ],
+      "returncode": 0,
+      "seconds": 180.19,
+      "log_sha256": "8e99ae2faf66efe446b8d1f1a9fb408b31c53ffe3363a7bdc36fbd1ee89e6928",
+      "test_results": []
+    },
+    {
+      "case": "workspace-client",
+      "command": [
+        "python3",
+        "ai_docs/code-intelligence-verification/capture-production-case.py",
+        "ai_docs/code-intelligence-verification/retained-session-production-1794335119/workspace-client",
+        "tools/check-workspace-transactions-client.py"
+      ],
+      "returncode": 0,
+      "seconds": 120.52,
+      "log_sha256": "eb15f6036fa50a2a6872fbe180a7270bd8478cc8a4d29aed1dd1739ff39d134a",
+      "test_results": []
+    },
+    {
+      "case": "inputs-client",
+      "command": [
+        "python3",
+        "ai_docs/code-intelligence-verification/capture-production-case.py",
+        "ai_docs/code-intelligence-verification/retained-session-production-1794335119/inputs-client",
+        "tools/check-project-inputs-client.py"
+      ],
+      "returncode": 0,
+      "seconds": 50.61,
+      "log_sha256": "b0c9f12a3e9025f81fd3a11e8210ff95c2023de8daeee7fd2fbba32e50645ea1",
+      "test_results": []
+    }
+  ],
+  "native_regression": {
+    "test": "physical_folder_proof_must_precede_original_analysis_without_suppressing_source_events",
+    "passed": 1,
+    "failed": 0,
+    "log_sha256": "d2eb3bfc4c487493d91d8ccc30fdc8ee9fd0bca629ef01c19b79e9a068f47ffa",
+    "source_file": "bridge/src/languages/host/analysis/tests.rs",
+    "source_file_sha256": "491cb90b804952099c0f19f6b3d990ec144b546a8b987672aed244d52a834049",
+    "scope": "Earlier targeted native regression in this working tree; full final native CI remains required."
+  },
+  "installed_contracts": {
+    "workspace-client": [
+      {
+        "mode": "remote",
+        "published_html_component": true,
+        "raw_lsp_resource_edits": true,
+        "no_mutation_before_approval": true,
+        "ordered_text_and_resource_review": true,
+        "original_review_and_folder_session_retained": true,
+        "dirty_baselines_and_undo_preserved": true,
+        "unrelated_draft_retained": true,
+        "edit_plus_command_rejected": true,
+        "interruption_after_actual_primitive": true,
+        "reload_and_access_regrant": true,
+        "recovery_preserves_newer_draft": true,
+        "command_only_and_combined_approval": true,
+        "lost_dispatch_never_replayed": true,
+        "running_and_uncertain_command_recovery": true,
+        "file_failure_prevents_command": true,
+        "same_window_stop_and_draft_persistence": true,
+        "admitted_prepared_cancellation_without_folder": true
+      },
+      {
+        "mode": "local",
+        "published_html_component": true,
+        "raw_lsp_resource_edits": true,
+        "no_mutation_before_approval": true,
+        "ordered_text_and_resource_review": true,
+        "original_review_and_folder_session_retained": true,
+        "dirty_baselines_and_undo_preserved": true,
+        "unrelated_draft_retained": true,
+        "edit_plus_command_rejected": true,
+        "interruption_after_actual_primitive": true,
+        "reload_and_access_regrant": true,
+        "recovery_preserves_newer_draft": true,
+        "command_only_and_combined_approval": true,
+        "lost_dispatch_never_replayed": true,
+        "running_and_uncertain_command_recovery": true,
+        "file_failure_prevents_command": true,
+        "same_window_stop_and_draft_persistence": true,
+        "admitted_prepared_cancellation_without_folder": true
+      }
+    ],
+    "inputs-client": [
+      {
+        "mode": "remote",
+        "public_api_9": true,
+        "changed_dependency_before_apply_rejects_whole_action": true,
+        "native_validation_rejects_before_any_action_or_transaction": true,
+        "no_filesystem_primitive_or_command": true
+      },
+      {
+        "mode": "remote",
+        "public_api_9": true,
+        "review_precedes_mutation": true,
+        "configuration_move_and_unsaved_edit": true,
+        "original_service_command_once": true,
+        "draft_saved_to_recovery_not_disk": true
+      },
+      {
+        "mode": "local",
+        "public_api_9": true,
+        "changed_dependency_before_apply_rejects_whole_action": true,
+        "native_validation_rejects_before_any_action_or_transaction": true,
+        "no_filesystem_primitive_or_command": true
+      },
+      {
+        "mode": "local",
+        "public_api_9": true,
+        "review_precedes_mutation": true,
+        "configuration_move_and_unsaved_edit": true,
+        "original_service_command_once": true,
+        "draft_saved_to_recovery_not_disk": true
+      }
+    ]
+  },
+  "artifacts": {
+    "fresh_frontend": {
+      "frontend/dist/about-software-85b079278d72b3fe.html": {
+        "sha256": "85b079278d72b3fefa66ae2b6852e7415bd6baae3425992a869604892e2c3f4f",
+        "bytes": 5814091
+      },
+      "frontend/dist/about.html": {
+        "sha256": "92312bec5115378198077bc221421909f8d1bd584ca7b061b05438aded694591",
+        "bytes": 2727
+      },
+      "frontend/dist/index.html": {
+        "sha256": "6a1d1d88cc03428cda4d9c39daf8430e58013e423a04949d288e76d6ece45b4d",
+        "bytes": 4295
+      },
+      "frontend/dist/manifest.webmanifest": {
+        "sha256": "cbec4dcfee8c294df6e33d782e8c1dcc9db6747c9456be89dff32a32bec78ae8",
+        "bytes": 666
+      },
+      "frontend/dist/offline.html": {
+        "sha256": "216edd3f2ec8c644b5108948692afc3d125d7cf4f4b61b886e03630cba6eb841",
+        "bytes": 824
+      },
+      "frontend/dist/openwebide-frontend-7d12dc99d48d2fd4.js": {
+        "sha256": "6f90ab5e9c362f04527cdd71732c122660c8fcb5d1b5265ccc530cc97a1c5690",
+        "bytes": 125046
+      },
+      "frontend/dist/openwebide-frontend-e6325b56889646be_bg.wasm": {
+        "sha256": "0746930c8e6e55fe5a551368af86f5109211eb8ae9135749f4060836dc2cbdcf",
+        "bytes": 16762238
+      },
+      "frontend/dist/pwa.js": {
+        "sha256": "81c9716c0f4d573404f365a05ee343ac62c77735d81f72e5bf045425e42a33e1",
+        "bytes": 5297
+      },
+      "frontend/dist/service-worker.js": {
+        "sha256": "bac333604d3cb55f8093f707b75e07178749d461670dd3e2bd21c0b5f4ea42de",
+        "bytes": 5851
+      },
+      "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline0.js": {
+        "sha256": "6ad241e34559088a9b33223453f3fe87cbc63dec552c2493794cf4a078ca240a",
+        "bytes": 763
+      },
+      "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline1.js": {
+        "sha256": "5a03350e2b798b59840b731668642dbd6972266f857de63bb082792c43c0b49e",
+        "bytes": 343
+      },
+      "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline10.js": {
+        "sha256": "70b624363333e82c279961d30faa98b59da52c983a01243f02e56e8606207377",
+        "bytes": 361
+      },
+      "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline11.js": {
+        "sha256": "feca7087e793e83b6070e5c2add5bb801827184434d58950827aeaacdbac1d9f",
+        "bytes": 856
+      },
+      "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline12.js": {
+        "sha256": "dacd4f5862ac0013fd541a19440718f6963f45bb93d7512bef7fa2e29eed78ee",
+        "bytes": 381
+      },
+      "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline2.js": {
+        "sha256": "290f6e3fd61d488609a0c5ca3aef81d0ddc8bbd4546210929a432c138b36f1ab",
+        "bytes": 594
+      },
+      "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline3.js": {
+        "sha256": "f90d2b2df58cfc7862b6744883f39ca08528584edc0e869582fcfb5bd5f49320",
+        "bytes": 260
+      },
+      "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline4.js": {
+        "sha256": "7ead7b3ac7c9c1a5610b58aa8d6e7154c4d04d8b6f99a2a8af043b1780b0c5ca",
+        "bytes": 1557
+      },
+      "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline5.js": {
+        "sha256": "f6eec4498237d845bef867094bfb183460d1566245768b8a24adbc95f5bf1fbb",
+        "bytes": 4088
+      },
+      "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline6.js": {
+        "sha256": "d435183eac99e32882d1b451f07b63a269f686e90d0cb443dd6f040fe770f6d8",
+        "bytes": 549
+      },
+      "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline7.js": {
+        "sha256": "ef8d3c20f3b1e0d9942de9e03630643f75fe6e86abba3c9d758eefac0cd82686",
+        "bytes": 17672
+      },
+      "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline8.js": {
+        "sha256": "08a020ab8a7f3618e796ef620aabf266137ecb862c574a114e51b415dbc9a850",
+        "bytes": 4844
+      },
+      "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline9.js": {
+        "sha256": "c0b793ce9dc2716cb9d33a19c51c8e1bc8a5f4e14d1c515260c639f3967e4fcd",
+        "bytes": 843
+      }
+    },
+    "cached_native_and_bundle_provenance": {
+      "producer_source_sha256": "d2066cb67ab7bd3337031a2ec288cfa108865dbdb5e608439b0fdd86ff8a356e",
+      "current_changes": [
+        "bridge/src/languages/host/analysis/tests.rs",
+        "frontend/src/state_actions/editor/intelligence.rs",
+        "frontend/src/state_actions/editor/intelligence/application.rs",
+        "frontend/src/state_actions/editor/intelligence/edits.rs",
+        "frontend/src/state_actions/editor/intelligence/edits/resources.rs",
+        "frontend/src/state_actions/editor/intelligence/edits/resources/tests.rs",
+        "frontend/src/workspace_transactions.rs",
+        "frontend/src/workspace_transactions/companion.rs",
+        "frontend/src/workspace_transactions/companion/tests.rs",
+        "frontend/src/workspace_transactions/companion/tests/deadline.rs",
+        "frontend/src/workspace_transactions/review.rs",
+        "frontend/src/workspace_transactions/review/tests/companion.rs",
+        "tools/check-project-inputs-client.py",
+        "tools/check-workspace-transactions-client.py"
+      ],
+      "bundle_provenance": {
+        "bundle_sha256": "8920461248b659a7112314479d5e3a983d019ffc30fc2a219602d51ca4fc52f4",
+        "source_snapshot_sha256": "505e87625738c619fc91c500bf874671a41b7e86d142e5847159fda246af7968",
+        "sdk_digest": "bcea8f44848024ed6a15653c5bc0fe9654aae48c727e686ecfef841f95408974",
+        "toolchain": "1.98.1",
+        "wasi_sdk_version": "34.0",
+        "digest_implementation_sha256": "a3ba042255728ee1435afc6d99991da0b00057e9bf7359707dde8abb739f74f9",
+        "artifacts": 23,
+        "producer_log_sha256": "8e5a44e0d1339b80e683a97b9d650e09f71302df1d120cc8c94cb81521e5377f",
+        "producer_source_manifest_sha256": "d2066cb67ab7bd3337031a2ec288cfa108865dbdb5e608439b0fdd86ff8a356e"
+      },
+      "artifacts": {
+        "target/release/openwebide-bridge": {
+          "sha256": "4a276bc67d152fccb31babd99d2ee826acc70c8476bf699a6dbb1a03b29b1dfc",
+          "bytes": 121633888
+        },
+        "target/wasm32-wasip2/release/openwebide_backend.wasm": {
+          "sha256": "a0e6573739ceefa8cc3ea53c9e1824f6be596860e36ab83177257ef758acccfa",
+          "bytes": 12168127
+        }
+      }
+    }
+  },
+  "failures_found_and_preserved": [
+    {
+      "source_sha256": "d2066cb67ab7bd3337031a2ec288cfa108865dbdb5e608439b0fdd86ff8a356e",
+      "failure": "Local proof created after ReviewAction changed directory-source observation and native ValidateAnalysis rejected before intent. Remote full installed workflow passed.",
+      "log_sha256": "a216ffb4692cfb99a5d2d742b91ae2a3f4dee579cf8f2c0b9ce98a3b06488277"
+    },
+    {
+      "source_sha256": "3ebbaade4fb0031258ca7dd0414cc7dc2312b78545ba91dc2278bb4f83ab21c7",
+      "failure": "Local edit validated and committed on the original folder session, then strict trace assertion caught redundant Drop Close400 after explicit Close200. Fixed acknowledged-close cleanup; positive oracle retained.",
+      "log_sha256": "c35a3d7497746d4509a556d3868974eae6c900c89416c9c899d7a6111395c2b6"
+    }
+  ],
+  "limits": [
+    "Installed Local browser folders use OPFS/native correspondence; this check does not establish a physical permission prompt. Earlier physical-folder evidence is separate.",
+    "Validation still precedes transaction creation in the UI. Durable LanguageReview evidence and native validation under the original physical transaction lease remain unfinished.",
+    "This checkpoint does not establish complete writer exclusion, affected-file metadata proofs outside language associations, cache/memory/prefetch work, Windows native execution, or full final CI/publication.",
+    "Native/backend artifacts are reused only after exact hash and source/provenance checks; frontend artifacts were freshly built. The original native producer source and allowed changes are recorded separately."
+  ]
+}

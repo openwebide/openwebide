@@ -22,7 +22,7 @@ use crate::StorageError;
 use crate::db::Db;
 
 /// The highest schema version this build knows how to apply.
-pub const SCHEMA_VERSION: i64 = 59;
+pub const SCHEMA_VERSION: i64 = 68;
 
 pub const MIGRATIONS: &[&str] = &[
     "CREATE TABLE IF NOT EXISTS settings (
@@ -733,6 +733,97 @@ async fn apply_step<D: Db>(
             db.execute("CREATE INDEX IF NOT EXISTS plugin_panel_instances_cleanup ON plugin_panel_instances(user_id,retired,updated_at)", &[]).await?;
             db.execute("CREATE INDEX IF NOT EXISTS plugin_panel_claims_revision ON plugin_panel_claims(user_id,instance,input_revision)", &[]).await?;
             db.execute("CREATE TRIGGER IF NOT EXISTS delete_project_plugin_panels AFTER DELETE ON projects BEGIN UPDATE plugin_panel_instances SET retired=1,document=NULL,prepared='',active_request=NULL WHERE project_scope=OLD.id; DELETE FROM plugin_panel_claims WHERE user_id=OLD.user_id AND instance IN (SELECT instance FROM plugin_panel_instances WHERE project_scope=OLD.id); END", &[]).await?;
+            Ok(())
+        }
+        60 => {
+            db.execute("CREATE TABLE IF NOT EXISTS workspace_transactions (user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE, id TEXT NOT NULL, revision INTEGER NOT NULL CHECK(revision > 0), plan TEXT NOT NULL, editor TEXT NOT NULL, progress TEXT NOT NULL, editor_revision INTEGER NOT NULL CHECK(editor_revision >= 0), terminal INTEGER NOT NULL DEFAULT 0 CHECK(terminal IN (0,1)), bytes INTEGER NOT NULL CHECK(bytes >= 0), created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY(user_id,project_id,id))", &[]).await?;
+            db.execute("CREATE UNIQUE INDEX IF NOT EXISTS workspace_transactions_pending ON workspace_transactions(user_id,project_id) WHERE terminal = 0", &[]).await?;
+            db.execute("CREATE INDEX IF NOT EXISTS workspace_transactions_retention ON workspace_transactions(user_id,terminal,updated_at)", &[]).await?;
+            Ok(())
+        }
+        61 => {
+            db.execute("CREATE TABLE IF NOT EXISTS language_actions (user_id INTEGER NOT NULL, project_id INTEGER NOT NULL, id TEXT NOT NULL, revision INTEGER NOT NULL CHECK(revision > 0), server TEXT NOT NULL, command_id TEXT NOT NULL, approval TEXT NOT NULL, phase TEXT NOT NULL CHECK(phase IN ('approved','running','completed','rejected','uncertain','acknowledged','cancelled')), outcome TEXT, acknowledgement TEXT, bytes INTEGER NOT NULL CHECK(bytes >= 0), created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY(user_id,project_id,id), UNIQUE(user_id,project_id,server,command_id), FOREIGN KEY(user_id,project_id,id) REFERENCES workspace_transactions(user_id,project_id,id) ON DELETE CASCADE)", &[]).await?;
+            db.execute("CREATE UNIQUE INDEX IF NOT EXISTS language_actions_pending ON language_actions(user_id,project_id) WHERE phase NOT IN ('completed','acknowledged','cancelled')", &[]).await?;
+            db.execute("CREATE INDEX IF NOT EXISTS language_actions_retention ON language_actions(user_id,phase,updated_at)", &[]).await?;
+            Ok(())
+        }
+        62 => {
+            for (column, default) in [
+                ("root_identity", "''"),
+                ("editor_root", "'null'"),
+                ("generation", "''"),
+            ] {
+                if db
+                    .execute(
+                        "SELECT 1 FROM pragma_table_info('workspace_transactions') WHERE name = ?",
+                        &[crate::db::DbValue::Text(column.into())],
+                    )
+                    .await?
+                    .rows
+                    .is_empty()
+                {
+                    db.execute(&format!("ALTER TABLE workspace_transactions ADD COLUMN {column} TEXT NOT NULL DEFAULT {default}"), &[]).await?;
+                }
+            }
+            // Backfill once during migration, so ordinary scope reads never
+            // parse or transfer the large plan and editor snapshots.
+            db.execute("UPDATE workspace_transactions SET generation=lower(hex(randomblob(16))) WHERE generation=''", &[]).await?;
+            db.execute("UPDATE workspace_transactions SET root_identity=json_extract(plan,'$.root'), editor_root=json_extract(editor,'$.root'), bytes=length(CAST(plan AS BLOB))+length(CAST(editor AS BLOB))+length(CAST(json_extract(plan,'$.root') AS BLOB))+length(CAST(json_extract(editor,'$.root') AS BLOB))+length(CAST(generation AS BLOB))", &[]).await?;
+            Ok(())
+        }
+        63 => {
+            for column in ["worker_id", "worker_digest"] {
+                if db
+                    .execute(
+                        "SELECT 1 FROM pragma_table_info('workspace_transactions') WHERE name=?",
+                        &[crate::db::DbValue::Text(column.into())],
+                    )
+                    .await?
+                    .rows
+                    .is_empty()
+                {
+                    db.execute(&format!("ALTER TABLE workspace_transactions ADD COLUMN {column} TEXT NOT NULL DEFAULT ''"), &[]).await?;
+                }
+            }
+            // Reserve the complete fixed-size worker identity/digest budget,
+            // even before first claim. Replaying this step never adds it twice.
+            db.execute("UPDATE workspace_transactions SET bytes=length(CAST(plan AS BLOB))+length(CAST(editor AS BLOB))+length(CAST(root_identity AS BLOB))+length(CAST(editor_root AS BLOB))+length(CAST(generation AS BLOB))+96", &[]).await?;
+            Ok(())
+        }
+        64 => {
+            db.execute("CREATE TABLE IF NOT EXISTS workspace_transaction_delegations (id TEXT PRIMARY KEY, secret_digest TEXT NOT NULL, user_id INTEGER NOT NULL, project_id INTEGER NOT NULL, transaction_id TEXT NOT NULL, generation TEXT NOT NULL, scope TEXT NOT NULL, worker_id TEXT NOT NULL, worker_digest TEXT NOT NULL, admitted INTEGER NOT NULL DEFAULT 0 CHECK(admitted IN (0,1)), expires_at INTEGER NOT NULL, FOREIGN KEY(user_id,project_id,transaction_id) REFERENCES workspace_transactions(user_id,project_id,id) ON DELETE CASCADE, UNIQUE(user_id,project_id,transaction_id,generation,worker_id))", &[]).await?;
+            db.execute("CREATE INDEX IF NOT EXISTS workspace_delegations_quota ON workspace_transaction_delegations(user_id,admitted,expires_at)", &[]).await?;
+            Ok(())
+        }
+        65 => {
+            // New approved actions retain version-2 language requests. Version
+            // 1 reviews remain readable without rewriting their authority or
+            // outcomes; older binaries must refuse this data format on startup.
+            Ok(())
+        }
+        66 => {
+            if db.execute("SELECT 1 FROM pragma_table_info('workspace_transactions') WHERE name='language_review'", &[]).await?.rows.is_empty() {
+                db.execute("ALTER TABLE workspace_transactions ADD COLUMN language_review TEXT", &[]).await?;
+            }
+            // Earlier idempotent steps can rebuild their base-only charge on
+            // replay. Derive the complete charge rather than adding it twice
+            // or trusting a previously calculated total.
+            db.execute("UPDATE workspace_transactions SET bytes=length(CAST(plan AS BLOB))+length(CAST(editor AS BLOB))+length(CAST(root_identity AS BLOB))+length(CAST(editor_root AS BLOB))+length(CAST(generation AS BLOB))+96+COALESCE(length(CAST(language_review AS BLOB)),0)", &[]).await?;
+            Ok(())
+        }
+        67 => {
+            if db.execute("SELECT 1 FROM pragma_table_info('workspace_transactions') WHERE name='accepted_language_review_digest'", &[]).await?.rows.is_empty() {
+                db.execute("ALTER TABLE workspace_transactions ADD COLUMN accepted_language_review_digest TEXT", &[]).await?;
+            }
+            // Existing evidence is not accepted merely by upgrading. Preserve
+            // any real receipt on replay and reserve its bounded charge once.
+            db.execute("UPDATE workspace_transactions SET bytes=length(CAST(plan AS BLOB))+length(CAST(editor AS BLOB))+length(CAST(root_identity AS BLOB))+length(CAST(editor_root AS BLOB))+length(CAST(generation AS BLOB))+96+COALESCE(length(CAST(language_review AS BLOB)),0)+CASE WHEN language_review IS NOT NULL THEN 64 ELSE 0 END", &[]).await?;
+            Ok(())
+        }
+        68 => {
+            // Protocol-3 reviews retain the signed affected-file path set.
+            // Preserve archived requests/digests verbatim; older binaries must
+            // refuse new state instead of rewriting its recovery authority.
             Ok(())
         }
         other => Err(StorageError::Db(format!("unknown migration step {other}"))),

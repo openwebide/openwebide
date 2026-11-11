@@ -1,0 +1,966 @@
+{
+  "format": 1,
+  "checked_on": "2026-11-10",
+  "status": "passed_managed_lsp_process_group_checkpoint",
+  "source_manifest_sha256": "e30e2bb93064003941a24557de5288bb11c07cc60b34d720187e57de9c0f344d",
+  "source_files": 1803,
+  "base_commit": "9283345d3545ded5461ba5ca1702709954270ced",
+  "working_tree": true,
+  "relevant_source_sha256": {
+    "AGENTS.md": "c02d1e5148445a9af3e00527b943036bc3d4044c8fba7cc731b949208f7e2f2d",
+    "bridge/src/exec/mod.rs": "0c518e8e47d4f207e6094bef5d87ca6792d7c2c1feadfbb53424fd03e49c9621",
+    "bridge/src/exec/process_owner.rs": "e3ebff96ff4a49d2f2e17304c49f7f05b7adc484fb536efffc52096b51dd517b",
+    "bridge/src/exec/process_owner/groups.rs": "ae4be7ce0e3b99bb29a3501e717c323b92fbbd4e3b2d639a235d0eba39108a69",
+    "bridge/src/exec/process_owner/tests.rs": "c5b140012035553d9de1552840cdca81230e0477a9ff72f9096a2bb7410ed654",
+    "bridge/src/exec/process_owner/wire.rs": "b90a63bf6b24a6b3f2efa479bacd9b47ee958415bbf44c69ce139be8c17dc41a",
+    "bridge/src/folder_coordination.rs": "adeb95be7f6677bb6cfc092ac2b1e0f3f1b2746b10cd75756df13c2d851219bf",
+    "bridge/src/folder_coordination/physical/unix.rs": "34c92ae3f88ae47a2a74960b9729a7fc5f7ee30c4f14b7433381c63db6bb43e3",
+    "bridge/src/languages/host.rs": "df66522c6fdf017a1b8fb59ba8500a7a4f6b5181ac4fcf371efa50b8513015a8",
+    "bridge/src/languages/host/commands.rs": "53c753f0152c8da80da44122cc0dbb84ef74e3f64d19ca99d035335203bb8155",
+    "bridge/src/languages/process.rs": "cf47e385f4f2e1b8af2243febd45d1314e5627de78f6ac3a64aad5928a082b30",
+    "bridge/src/main.rs": "c092f137f153c7baa084b40afacb1748927d590dee71f964d915f39a6a6e1397"
+  },
+  "shared_implementation": "All declared language services use the same process primitive and shared command workflow in both authenticated transports. Linux/macOS run an independent watcher through a private mode in the matching bridge executable. The original server keeps its declared program, arguments, environment, working directory and direct inherited stdio.",
+  "behavior": "Before approved command dispatch, the existing folder lease passes its complete directory lock set to that service watcher. Acknowledged command completion releases the loan and preserves the warm server. Lost control, signals or server exit stop the original managed process group. The watcher retains the unreaped child identity and directory descriptors until the group is confirmed quiescent, then closes descriptors before reaping.",
+  "bounds": {
+    "control_protocol": 1,
+    "control_body_bytes": 4194304,
+    "passed_directory_descriptors": 64,
+    "control_io_timeout_seconds": 2,
+    "process_cleanup_observer_timeout_seconds": 3,
+    "cleanup_retention": "Failed or incomplete cleanup retains the physical locks without an age-based takeover.",
+    "linux_inventory_limit": 65536,
+    "macos_group_inventory_limit": 4096,
+    "runtime": "One watcher per language service, no Tokio runtime in the watcher. Resource sampling includes the watcher as the original process-tree root."
+  },
+  "macos": {
+    "architecture": "arm64",
+    "kernel": "27.2.0",
+    "checks": [
+      {
+        "case": "format",
+        "command": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--check"
+        ],
+        "returncode": 0,
+        "seconds": 2.85,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "test_results": []
+      },
+      {
+        "case": "native-build",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--bin",
+          "openwebide-bridge",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 13.83,
+        "log_sha256": "7ee5fb2a8dd95124caabcf8fc3196fc42bde5d98d697fe67e254b9aba12c21e3",
+        "test_results": []
+      },
+      {
+        "case": "native-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 40.65,
+        "log_sha256": "0ac81f52919258e37e48bb7ffcb2904f328bcb0deb0298e4c0635eaf86511a48",
+        "test_results": []
+      },
+      {
+        "case": "native-bridge",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 108.99,
+        "log_sha256": "ee427be8bf33b7a4f0f343392e9c4418aabbc4ba959fe5e899492f0ab6ca1863",
+        "test_results": [
+          {
+            "passed": 368,
+            "failed": 0,
+            "ignored": 1
+          }
+        ]
+      },
+      {
+        "case": "native-adapters",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--test",
+          "workspace_transactions",
+          "--test",
+          "workspace_companion",
+          "--test",
+          "plugins",
+          "--test",
+          "language_commands",
+          "--test",
+          "http_git",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 46.16,
+        "log_sha256": "2e3c65cd99c33474d15f3e399d622077e06cf7d5420fc1eba8d701fc8b519b65",
+        "test_results": [
+          {
+            "passed": 4,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          }
+        ]
+      },
+      {
+        "case": "windows-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 49.26,
+        "log_sha256": "89b7250664147eddbdb9ef53c023e553eda8b3734697d8579214e98d425c6d65",
+        "test_results": []
+      },
+      {
+        "case": "real-rust",
+        "command": [
+          "cargo",
+          "run",
+          "-p",
+          "openwebide-bridge",
+          "--example",
+          "check_language_server",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 7.93,
+        "log_sha256": "112e800c92bf16bdb6c76591d2469172ae3ef370fbf4c96aa6df566e0604eef1",
+        "test_results": [],
+        "server_contract_results": [
+          {
+            "code_action_edits": true,
+            "completion": true,
+            "completion_insertion": true,
+            "definition": true,
+            "deleted_document_closed": true,
+            "external_definition_read_only": true,
+            "formatting_edits": true,
+            "native_project_service": true,
+            "references": true,
+            "rename_edits": true,
+            "revocation_restart": true,
+            "stale_close_rejected": true,
+            "symbols": true,
+            "unsaved_clients_isolated": true,
+            "versioned_diagnostics": 2,
+            "warm_reuse": true
+          }
+        ]
+      },
+      {
+        "case": "real-typescript",
+        "command": [
+          "cargo",
+          "run",
+          "-p",
+          "openwebide-bridge",
+          "--example",
+          "check_typescript_server",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 4.92,
+        "log_sha256": "a5124b55a359cb7d03e11815795a6da38dc3f7368c54c35c43cb49e42df80397",
+        "test_results": [],
+        "server_contract_results": [
+          {
+            "client_isolation": true,
+            "closed_dialect_preserves_other_documents": true,
+            "code_actions": true,
+            "completion_auto_import": true,
+            "dialects": 4,
+            "formatting": true,
+            "references": true,
+            "rename": true,
+            "revocation_restart": true,
+            "shared_server": true,
+            "source_bound_navigation": true,
+            "source_files_unchanged": true,
+            "symbols": true,
+            "unsaved_cross_dialect_types": true,
+            "versionless_diagnostics": true
+          }
+        ]
+      },
+      {
+        "case": "real-python",
+        "command": [
+          "cargo",
+          "run",
+          "-p",
+          "openwebide-bridge",
+          "--example",
+          "check_python_server",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 4.73,
+        "log_sha256": "b6d9816d844316bd4714b27542472ee25bc0d7c34bde4b1b545688f0540c380b",
+        "test_results": [],
+        "server_contract_results": [
+          {
+            "client_owner_project_isolation": true,
+            "close_retains_service": true,
+            "diagnostics_clear": true,
+            "json_config_precedence": true,
+            "pyproject_venv_imports": true,
+            "references": true,
+            "resolved_member_completion": true,
+            "reviewable_rename": true,
+            "revocation_restart": true,
+            "source_bound_definition": true,
+            "source_files_unchanged": true,
+            "standard_library_read_only": true,
+            "stub_language_service": true,
+            "symbols": true,
+            "unsaved_cross_file_types": true,
+            "warm_service": true
+          }
+        ]
+      },
+      {
+        "case": "real-go",
+        "command": [
+          "cargo",
+          "run",
+          "-p",
+          "openwebide-bridge",
+          "--example",
+          "check_go_server",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 4.51,
+        "log_sha256": "8244aea66fdab8022184167b702cbc8084136af7bbd9529640f5211a5931a216",
+        "test_results": [],
+        "server_contract_results": [
+          {
+            "client_owner_project_isolation": true,
+            "close_retains_service": true,
+            "diagnostics_clear": true,
+            "formatting": true,
+            "go_mod_single_module": true,
+            "go_work_multiple_modules": true,
+            "references": true,
+            "resolved_auto_import_completion": true,
+            "reviewable_rename": true,
+            "revocation_restart": true,
+            "source_bound_definition": true,
+            "source_files_unchanged": true,
+            "standard_library_read_only": true,
+            "symbols": true,
+            "unsaved_cross_module_types": true,
+            "warm_service": true
+          }
+        ]
+      },
+      {
+        "case": "real-clangd",
+        "command": [
+          "cargo",
+          "run",
+          "-p",
+          "openwebide-bridge",
+          "--example",
+          "check_clangd_server",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 2.52,
+        "log_sha256": "821e583c704d735ef370b5105b8faccc35742101a9e72dc42ea40ca9104dc06d",
+        "test_results": [],
+        "server_contract_results": [
+          {
+            "c_cpp_one_service": true,
+            "client_owner_project_isolation": true,
+            "close_retains_service": true,
+            "compilation_database_flags": true,
+            "diagnostics_clear": true,
+            "fallback_project_configuration": true,
+            "formatting": true,
+            "references_and_symbols": true,
+            "resolved_member_completion": true,
+            "reviewable_rename": true,
+            "revocation_restart": true,
+            "source_bound_definition": true,
+            "source_files_unchanged": true,
+            "unsaved_header_overlays": true,
+            "utf16_crlf_navigation": true
+          }
+        ]
+      },
+      {
+        "case": "real-csharp",
+        "command": [
+          "cargo",
+          "run",
+          "-p",
+          "openwebide-bridge",
+          "--example",
+          "check_csharp_server",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 11.97,
+        "log_sha256": "c1fb1ef2a869415b314bc4571d22778160c57c7d3bf434c02d73133a8e7b7fdf",
+        "test_results": [],
+        "server_contract_results": [
+          {
+            "client_project_isolation": true,
+            "close_preserves_solution": true,
+            "current_diagnostics_and_clear": true,
+            "deferred_import_code_action": true,
+            "formatting": true,
+            "member_completion": true,
+            "multi_project_slnx": true,
+            "read_only_framework_definition": true,
+            "real_csharp_lsp": true,
+            "references": true,
+            "reviewable_cross_project_rename": true,
+            "revocation_restart": true,
+            "source_bound_navigation": true,
+            "source_files_unchanged": true,
+            "standalone_csproj": true,
+            "symbols": true,
+            "unsaved_cross_project_hover": true
+          }
+        ]
+      },
+      {
+        "case": "real-web",
+        "command": [
+          "cargo",
+          "run",
+          "-p",
+          "openwebide-bridge",
+          "--example",
+          "check_web_servers",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 2.52,
+        "log_sha256": "6b07acd6f3921de9a673fa5d0b42750e3b9abd077e76b40731a830cc239957c7",
+        "test_results": [],
+        "server_contract_results": [
+          {
+            "document_and_selection_formatting": true,
+            "language": "html",
+            "resolved_completion": true,
+            "source_files_unchanged": true,
+            "symbols": true
+          },
+          {
+            "document_and_selection_formatting": true,
+            "language": "css",
+            "resolved_completion": true,
+            "source_files_unchanged": true,
+            "symbols": true
+          },
+          {
+            "document_and_selection_formatting": true,
+            "language": "scss",
+            "resolved_completion": true,
+            "source_files_unchanged": true,
+            "symbols": true
+          },
+          {
+            "document_and_selection_formatting": true,
+            "language": "json",
+            "resolved_completion": true,
+            "source_files_unchanged": true,
+            "symbols": true
+          },
+          {
+            "document_and_selection_formatting": true,
+            "language": "jsonc",
+            "resolved_completion": true,
+            "source_files_unchanged": true,
+            "symbols": true
+          },
+          {
+            "independent_unsaved_clients": true,
+            "json_schema_diagnostics": true
+          }
+        ]
+      },
+      {
+        "case": "real-terraform",
+        "command": [
+          "cargo",
+          "run",
+          "-p",
+          "openwebide-bridge",
+          "--example",
+          "check_terraform_server",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 2.68,
+        "log_sha256": "42005bf8e34b738ede45af8f76f92aa45298bc012af659156da20a94b6fe1f42",
+        "test_results": [],
+        "server_contract_results": [
+          {
+            "client_owner_isolation": true,
+            "completion": true,
+            "diagnostics_and_clear": true,
+            "real_terraform_lsp": true,
+            "references": true,
+            "reviewable_formatting": true,
+            "revocation_restart": true,
+            "seven_dialects_share_service": true,
+            "source_bound_definition": true,
+            "source_files_unchanged": true,
+            "symbols": true,
+            "unsaved_cross_file_hover": true,
+            "workspace_not_initialized": true
+          }
+        ]
+      }
+    ]
+  },
+  "linux": {
+    "source_manifest_sha256": "e30e2bb93064003941a24557de5288bb11c07cc60b34d720187e57de9c0f344d",
+    "tooling_image_id": "sha256:916206a1aa179fdfeb1b73529dc6a04c84b2ccd2a12dfa4577cb6fda9019ab1a",
+    "source_mount": "read-only matching source snapshot",
+    "runtime": {
+      "uid": 502,
+      "kernel": "7.0.14-linuxkit",
+      "architecture": "aarch64",
+      "filesystem": "overlayfs",
+      "cpu_max": "200000 100000",
+      "memory_max": "4294967296",
+      "memory_swap_max": "0"
+    },
+    "container_configuration": {
+      "image_id": "sha256:916206a1aa179fdfeb1b73529dc6a04c84b2ccd2a12dfa4577cb6fda9019ab1a",
+      "cpu": 2000000000,
+      "memory": 4294967296,
+      "memory_plus_swap": 4294967296
+    },
+    "oom_killed": false,
+    "checks": [
+      {
+        "case": "build",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--bin",
+          "openwebide-bridge",
+          "--locked",
+          "--offline"
+        ],
+        "returncode": 0,
+        "seconds": 22.52,
+        "log_sha256": "cd5871489e7bef642d9de5ebc690730d486b45c94193ca31e9bff8ef8cf3591e",
+        "test_results": []
+      },
+      {
+        "case": "clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--locked",
+          "--offline",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 9.4,
+        "log_sha256": "525842f7ae778960dfa0e39dfa512e3f79f78474ffa5ec6f9e104f9449ea81f5",
+        "test_results": []
+      },
+      {
+        "case": "bridge",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--offline"
+        ],
+        "returncode": 0,
+        "seconds": 104.09,
+        "log_sha256": "949661282d42d62eb4987f6a6cc728f3fb1a3a0ee301eba0950bbb7d0b487bfa",
+        "test_results": [
+          {
+            "passed": 372,
+            "failed": 0,
+            "ignored": 1
+          }
+        ]
+      },
+      {
+        "case": "adapters",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--test",
+          "workspace_transactions",
+          "--test",
+          "workspace_companion",
+          "--test",
+          "plugins",
+          "--test",
+          "language_commands",
+          "--test",
+          "http_git",
+          "--locked",
+          "--offline"
+        ],
+        "returncode": 0,
+        "seconds": 70.65,
+        "log_sha256": "d3e440d2613f0953ef82cce61eaea1d20b80c2d745c7f5efcf0d23226db4e2b7",
+        "test_results": [
+          {
+            "passed": 4,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          }
+        ]
+      },
+      {
+        "case": "real-rust",
+        "command": [
+          "cargo",
+          "run",
+          "-p",
+          "openwebide-bridge",
+          "--example",
+          "check_language_server",
+          "--locked",
+          "--offline"
+        ],
+        "returncode": 0,
+        "seconds": 10.42,
+        "log_sha256": "f5ef8839a7d9b6ef67de08b051800ae35de6d63bb3299af055d3df58242404cc",
+        "test_results": [],
+        "server_contract_results": [
+          {
+            "code_action_edits": true,
+            "completion": true,
+            "completion_insertion": true,
+            "definition": true,
+            "deleted_document_closed": true,
+            "external_definition_read_only": true,
+            "formatting_edits": true,
+            "native_project_service": true,
+            "references": true,
+            "rename_edits": true,
+            "revocation_restart": true,
+            "stale_close_rejected": true,
+            "symbols": true,
+            "unsaved_clients_isolated": true,
+            "versioned_diagnostics": 2,
+            "warm_reuse": true
+          }
+        ]
+      },
+      {
+        "case": "real-typescript",
+        "command": [
+          "cargo",
+          "run",
+          "-p",
+          "openwebide-bridge",
+          "--example",
+          "check_typescript_server",
+          "--locked",
+          "--offline"
+        ],
+        "returncode": 0,
+        "seconds": 8.26,
+        "log_sha256": "04e34ca26a04758fb5d1d0ee5afe990c0ac9d0275709094e88b8c2fe0890303e",
+        "test_results": [],
+        "server_contract_results": [
+          {
+            "client_isolation": true,
+            "closed_dialect_preserves_other_documents": true,
+            "code_actions": true,
+            "completion_auto_import": true,
+            "dialects": 4,
+            "formatting": true,
+            "references": true,
+            "rename": true,
+            "revocation_restart": true,
+            "shared_server": true,
+            "source_bound_navigation": true,
+            "source_files_unchanged": true,
+            "symbols": true,
+            "unsaved_cross_dialect_types": true,
+            "versionless_diagnostics": true
+          }
+        ]
+      },
+      {
+        "case": "real-python",
+        "command": [
+          "cargo",
+          "run",
+          "-p",
+          "openwebide-bridge",
+          "--example",
+          "check_python_server",
+          "--locked",
+          "--offline"
+        ],
+        "returncode": 0,
+        "seconds": 7.81,
+        "log_sha256": "b7fced89f0923a6750718603a5614e3df975c7fedcfe7e690b1798218e38588f",
+        "test_results": [],
+        "server_contract_results": [
+          {
+            "client_owner_project_isolation": true,
+            "close_retains_service": true,
+            "diagnostics_clear": true,
+            "json_config_precedence": true,
+            "pyproject_venv_imports": true,
+            "references": true,
+            "resolved_member_completion": true,
+            "reviewable_rename": true,
+            "revocation_restart": true,
+            "source_bound_definition": true,
+            "source_files_unchanged": true,
+            "standard_library_read_only": true,
+            "stub_language_service": true,
+            "symbols": true,
+            "unsaved_cross_file_types": true,
+            "warm_service": true
+          }
+        ]
+      },
+      {
+        "case": "real-go",
+        "command": [
+          "cargo",
+          "run",
+          "-p",
+          "openwebide-bridge",
+          "--example",
+          "check_go_server",
+          "--locked",
+          "--offline"
+        ],
+        "returncode": 0,
+        "seconds": 6.88,
+        "log_sha256": "01ad19bd24261c61eb34f94623c7ace3c815fc0ae19c641170d1014f2e8bbf59",
+        "test_results": [],
+        "server_contract_results": [
+          {
+            "client_owner_project_isolation": true,
+            "close_retains_service": true,
+            "diagnostics_clear": true,
+            "formatting": true,
+            "go_mod_single_module": true,
+            "go_work_multiple_modules": true,
+            "references": true,
+            "resolved_auto_import_completion": true,
+            "reviewable_rename": true,
+            "revocation_restart": true,
+            "source_bound_definition": true,
+            "source_files_unchanged": true,
+            "standard_library_read_only": true,
+            "symbols": true,
+            "unsaved_cross_module_types": true,
+            "warm_service": true
+          }
+        ]
+      },
+      {
+        "case": "real-clangd",
+        "command": [
+          "cargo",
+          "run",
+          "-p",
+          "openwebide-bridge",
+          "--example",
+          "check_clangd_server",
+          "--locked",
+          "--offline"
+        ],
+        "returncode": 0,
+        "seconds": 6.06,
+        "log_sha256": "013393b5b7452a3df324e65e85c3f038fc6edc2635261f91728f2c0bb202eae7",
+        "test_results": [],
+        "server_contract_results": [
+          {
+            "c_cpp_one_service": true,
+            "client_owner_project_isolation": true,
+            "close_retains_service": true,
+            "compilation_database_flags": true,
+            "diagnostics_clear": true,
+            "fallback_project_configuration": true,
+            "formatting": true,
+            "references_and_symbols": true,
+            "resolved_member_completion": true,
+            "reviewable_rename": true,
+            "revocation_restart": true,
+            "source_bound_definition": true,
+            "source_files_unchanged": true,
+            "unsaved_header_overlays": true,
+            "utf16_crlf_navigation": true
+          }
+        ]
+      },
+      {
+        "case": "real-csharp",
+        "command": [
+          "cargo",
+          "run",
+          "-p",
+          "openwebide-bridge",
+          "--example",
+          "check_csharp_server",
+          "--locked",
+          "--offline"
+        ],
+        "returncode": 0,
+        "seconds": 14.52,
+        "log_sha256": "e918b6b919794cb9c153358e871ae749980a758fa3d8ad16af7bf0ba4a7ecd7f",
+        "test_results": [],
+        "server_contract_results": [
+          {
+            "client_project_isolation": true,
+            "close_preserves_solution": true,
+            "current_diagnostics_and_clear": true,
+            "deferred_import_code_action": true,
+            "formatting": true,
+            "member_completion": true,
+            "multi_project_slnx": true,
+            "read_only_framework_definition": true,
+            "real_csharp_lsp": true,
+            "references": true,
+            "reviewable_cross_project_rename": true,
+            "revocation_restart": true,
+            "source_bound_navigation": true,
+            "source_files_unchanged": true,
+            "standalone_csproj": true,
+            "symbols": true,
+            "unsaved_cross_project_hover": true
+          }
+        ]
+      },
+      {
+        "case": "real-web",
+        "command": [
+          "cargo",
+          "run",
+          "-p",
+          "openwebide-bridge",
+          "--example",
+          "check_web_servers",
+          "--locked",
+          "--offline"
+        ],
+        "returncode": 0,
+        "seconds": 5.85,
+        "log_sha256": "399a5af42127e175a593ebde639375d903afd5864b8cbb18f8e33a763258e013",
+        "test_results": [],
+        "server_contract_results": [
+          {
+            "document_and_selection_formatting": true,
+            "language": "html",
+            "resolved_completion": true,
+            "source_files_unchanged": true,
+            "symbols": true
+          },
+          {
+            "document_and_selection_formatting": true,
+            "language": "css",
+            "resolved_completion": true,
+            "source_files_unchanged": true,
+            "symbols": true
+          },
+          {
+            "document_and_selection_formatting": true,
+            "language": "scss",
+            "resolved_completion": true,
+            "source_files_unchanged": true,
+            "symbols": true
+          },
+          {
+            "document_and_selection_formatting": true,
+            "language": "json",
+            "resolved_completion": true,
+            "source_files_unchanged": true,
+            "symbols": true
+          },
+          {
+            "document_and_selection_formatting": true,
+            "language": "jsonc",
+            "resolved_completion": true,
+            "source_files_unchanged": true,
+            "symbols": true
+          },
+          {
+            "independent_unsaved_clients": true,
+            "json_schema_diagnostics": true
+          }
+        ]
+      },
+      {
+        "case": "real-terraform",
+        "command": [
+          "cargo",
+          "run",
+          "-p",
+          "openwebide-bridge",
+          "--example",
+          "check_terraform_server",
+          "--locked",
+          "--offline"
+        ],
+        "returncode": 0,
+        "seconds": 6.09,
+        "log_sha256": "133a99e3c1d55e1bcdc127a9c064a239c272452a99f899e0a08bc0951408d5fd",
+        "test_results": [],
+        "server_contract_results": [
+          {
+            "client_owner_isolation": true,
+            "completion": true,
+            "diagnostics_and_clear": true,
+            "real_terraform_lsp": true,
+            "references": true,
+            "reviewable_formatting": true,
+            "revocation_restart": true,
+            "seven_dialects_share_service": true,
+            "source_bound_definition": true,
+            "source_files_unchanged": true,
+            "symbols": true,
+            "unsaved_cross_file_hover": true,
+            "workspace_not_initialized": true
+          }
+        ]
+      }
+    ]
+  },
+  "coverage": [
+    "A separate bridge peer dies while its watcher is stopped; orphan-group hangup triggers cleanup rather than losing the loaned locks.",
+    "An original child closes inherited descriptors and ignores SIGTERM. Directory reuse occurs only after that child is independently observed absent or zombie, with no later write after a controlled gate opens.",
+    "Confirmed claim release preserves the warm server; explicit stop confirms managed-group termination.",
+    "Cancelling a folder handoff before acknowledgement closes the original control channel while the warm owner remains retained, so the independent watcher cannot keep an abandoned loan indefinitely.",
+    "All 64 passed descriptors arrive close-on-exec; malformed reply decoding drops received descriptors. The complete public argument budget survives JSON framing.",
+    "Existing lifecycle, warm handoff, context checks, cancellation, source compilation, both authenticated transports and all eight pinned real-server contracts pass."
+  ],
+  "development_findings": [
+    {
+      "observation": "The added cancellation regression failed on the previous implementation: cancelling the unacknowledged retain future left the retained warm owner control channel open. Constructing the cleanup guard before awaiting the handoff now shuts that channel on every incomplete return or cancellation.",
+      "log_sha256": "f2977415b6e4d5ba7d4889d8127f950c022348df081f2c5666220767309caef4"
+    },
+    {
+      "observation": "The initial stopped-watcher crash test exposed default SIGHUP terminating the watcher after its parent died, leaving its original server/child alive. Signal-safe stop handlers now perform group cleanup. The final test uses a deterministic write gate and independent process inspection.",
+      "log_sha256": "72d4e4d1153ee320ae9a9854bc0b03dc98717cc114f2ccf269268c800d4396b2"
+    },
+    {
+      "source_manifest_sha256": "cf859978030fc236cb3166306ac2d4559af376532c76edd998c58cc5c1c79627",
+      "observation": "The first Linux matrix found two EINTR failures on private socket I/O and a fixture dependency on an absent ps binary. Control syscalls now retry EINTR; the fixture uses the existing process-inspection library.",
+      "log_sha256": "2a46b880ee9c85e5c539d20830f8dc76d072ce2a420e0e8cebe116a3194a64a7"
+    }
+  ],
+  "limits": [
+    "This supervises the original managed LSP process group. Escaped/detached groups, non-LSP foreground/Git process lifetimes and other native/backend/browser-agent writers still need the broader authority protocol.",
+    "Durable journal actor claims, scoped paired-host backend delegation, compound Local leases and multi-profile recovery remain unfinished. Direct FSA writes do not take these native process claims.",
+    "Windows retains its existing process/job primitives; strict cross-compilation is not native Windows watcher verification.",
+    "The Linux tooling container uses 2 CPU/4 GiB/no-swap limits. Outer sandbox exceptions permit the real inner bubblewrap source-compiler test; no compiler sandbox was skipped. This is not a production-image or memory-performance measurement.",
+    "Resource sampling now includes watcher processes, but complete retained-memory and in-flight pressure measurements still need updating.",
+    "The existing ignored public-marketplace network smoke test and final publication remain pending. This is not the full mandatory local CI gate, installed physical PWA verification or a publication receipt."
+  ],
+  "post_check_updates": [
+    "CHANGELOG.md",
+    "docs/roadmap.md",
+    "docs/code-intelligence/lsp-process-group-checks.json"
+  ]
+}

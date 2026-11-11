@@ -91,6 +91,44 @@ pub fn LanguageProviderSettings() -> impl IntoView {
                         </FormField>
                     }
                 } />
+            <For each=move || actions.registry.with(|registry| registry.providers.iter()
+                    .filter(|provider| provider.definition.features.language_server.as_ref().is_some_and(|server| !server.role.is_language()))
+                    .cloned().collect::<Vec<_>>())
+                key=|provider| provider.namespace.clone() children=move |provider| {
+                    let value_namespace = provider.namespace.clone();
+                    let change_namespace = provider.namespace;
+                    view! {
+                        <FormField label=format!("{} · {} diagnostics", provider.plugin_label, provider.definition.name)>
+                            <DropdownSelect label="Diagnostics provider"
+                                value=Signal::derive(move || state.settings.with(|settings| {
+                                    let preferences = if project_scope.get() { projects.active_project.get().and_then(|id| settings.projects.get(&id)) } else { Some(&settings.defaults) };
+                                    match preferences.and_then(|preferences| preferences.diagnostics.get(&value_namespace)) {
+                                        Some(false) => "disabled",
+                                        None if project_scope.get() => "inherit",
+                                        _ => "enabled",
+                                    }.to_string()
+                                }))
+                                options=Signal::derive(move || {
+                                    let mut options = Vec::new();
+                                    if project_scope.get() { options.push(SelectOption::new("inherit", "Use my default")); }
+                                    options.push(SelectOption::new("enabled", "Enabled"));
+                                    options.push(SelectOption::new("disabled", "Disabled"));
+                                    options
+                                })
+                                disabled=Signal::derive(move || !actions.ready.get())
+                                on_change=Callback::new(move |value: String| {
+                                    let mut settings = state.settings.get_untracked();
+                                    let preferences = if project_scope.get_untracked() {
+                                        let Some(project) = projects.active_project.get_untracked() else { return };
+                                        settings.projects.entry(project).or_default()
+                                    } else { &mut settings.defaults };
+                                    if value == "inherit" { preferences.diagnostics.remove(&change_namespace); }
+                                    else { preferences.diagnostics.insert(change_namespace.clone(), value == "enabled"); }
+                                    actions.save.run(settings);
+                                }) />
+                        </FormField>
+                    }
+                } />
             <Show when=move || actions.registry.with(|registry| registry.providers.is_empty())>
                 <p class="form-hint">"Enable a language package in Plugins to add language support."</p>
             </Show>

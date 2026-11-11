@@ -3,6 +3,7 @@
 
 use std::ops::Range;
 mod change;
+pub mod snippet;
 pub use change::TextChangePreparation;
 
 mod fold_providers;
@@ -123,7 +124,7 @@ pub use reindent::supports_reindent;
 mod pairs;
 pub use pairs::is_pair_character;
 mod structure;
-pub use structure::{MAX_STRUCTURE_BYTES, Structure, supports_brackets};
+pub use structure::{MAX_BRACKETS, MAX_STRUCTURE_BYTES, Structure, supports_brackets};
 mod indent;
 pub use indent::{IndentStyle, Indentation};
 mod configuration;
@@ -346,6 +347,7 @@ pub struct Document {
     motion_columns: Option<visual_motion::MotionColumns>,
     automatic_pairs: Vec<pairs::AutomaticPair>,
     newline_indentation: Vec<indent::NewlineIndentation>,
+    snippet: Option<snippet::SnippetSession>,
 }
 
 // Derived presentation allocations are outside document identity/history. Clones
@@ -429,6 +431,7 @@ impl Document {
             motion_columns: None,
             automatic_pairs: Vec::new(),
             newline_indentation: Vec::new(),
+            snippet: None,
         }
     }
 
@@ -663,6 +666,7 @@ impl Document {
             self.motion_columns = None;
         }
         self.selections = selections;
+        self.retain_snippet_selection();
         Ok(())
     }
 
@@ -757,6 +761,7 @@ impl Document {
         };
         let edits = retain(edits);
         let inverse = retain(inverse);
+        self.rebase_snippet(&edits);
         self.rebase_automatic_pairs(&edits);
         self.newline_indentation.clear();
         let bytes = edits
@@ -832,6 +837,7 @@ impl Document {
             self.selections.clone_from(&transaction.before);
         }
         self.history_cursor -= 1;
+        self.snippet = None;
         self.automatic_pairs.clear();
         self.newline_indentation.clear();
         self.selection_history.clear();
@@ -868,6 +874,7 @@ impl Document {
             self.selections.clone_from(&transaction.after);
         }
         self.history_cursor += 1;
+        self.snippet = None;
         self.automatic_pairs.clear();
         self.newline_indentation.clear();
         self.selection_history.clear();

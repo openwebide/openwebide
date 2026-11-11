@@ -14,6 +14,28 @@ use std::{collections::BTreeMap, future::Future, sync::Arc};
 
 /// Adapters provide preparation, authority and transport, never feature behavior.
 pub trait PluginActionHost: PluginTransport + GrantedHost {
+    fn language_action_request(
+        &self,
+        _request: &openwebide_core::plugins::languages::intelligence::actions::ActionJournalRequest,
+    ) -> impl Future<
+        Output = Result<
+            Option<openwebide_core::plugins::languages::intelligence::actions::ActionRecord>,
+            String,
+        >,
+    > + Send {
+        async { Err("Language action recovery is unavailable".into()) }
+    }
+    fn language_command(
+        &self,
+        _request: &openwebide_core::plugins::languages::intelligence::actions::CommandDispatch,
+    ) -> impl Future<
+        Output = Result<
+            openwebide_core::plugins::languages::intelligence::actions::CommandProgress,
+            String,
+        >,
+    > + Send {
+        async { Err("Language command execution is unavailable".into()) }
+    }
     /// Native RPC primitive. Provider selection, authority and result ownership
     /// stay in the shared language facade above the server and paired adapters.
     fn language_server(

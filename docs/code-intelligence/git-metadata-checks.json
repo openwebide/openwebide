@@ -1,0 +1,489 @@
+{
+  "format": 1,
+  "checked_on": "2026-11-09",
+  "status": "passed_macos_linux_git_metadata_checkpoint_native_windows_pending",
+  "source_manifest_sha256": "463ebd1306beefd632000f2e670ece09e94364edd21cbdac6d48753c05acdc85",
+  "source_files": 1793,
+  "base_commit": "9283345d3545ded5461ba5ca1702709954270ced",
+  "working_tree": true,
+  "relevant_source_sha256": {
+    "bridge/src/exec/git.rs": "c88bc4694bb913937915b0ad59328d08e641a5cd73b6f609d08aa3f23022216b",
+    "bridge/src/exec/git/metadata.rs": "016cb9a3fe48c1e2daedbfe96cee33183a35f80480e57c0f84c52ea347d83b25",
+    "bridge/src/languages/host.rs": "20c656980f29db5c8e4737c85621d406696628157a36ba07a27a61ecec4f770e",
+    "bridge/src/languages/host/repository.rs": "7447ccb84cbfbe4239e51c0c07271aa10992aaa670fbb5ed41b598baab0c9054",
+    "bridge/src/languages/host/repository/tests.rs": "3ebd718ea9c9dae657f48c1f25f53a0fb788565fe6b5023e208d85fb56354551",
+    "bridge/src/languages/host/generation.rs": "9cd0d0a5383b1153c97a1d350d2cbf68aff35bc31c11af28b806284d48786287",
+    "bridge/src/languages/host/generation/metadata.rs": "68d6c72751d87dbfefa0c0d6dda1aff28240532d574bcab526465fb82254a9db",
+    "bridge/src/languages/host/generation/events.rs": "31db4ce987c9cc46c2fe4c205ed247aae703532a32cbb5177a3c685ac2911614",
+    "bridge/src/languages/host/generation/events/tests.rs": "460c1f1703408c718148abad6720f9809c66578c55bdfa07da76d54d58b92b5c",
+    "bridge/src/languages/host/generation/tests.rs": "c27d8d8f5be8c337667bebf25548b18b6fd73fa1823e7086b140d3693bd9a6ff",
+    "bridge/src/languages/host/tests/lifecycle.rs": "861a4ff9489d293912847247a2397303da5d4e45da117e85c5b5540f922cdefe",
+    "bridge/tests/plugins.rs": "d904bf639c97e6b8da3d1f524cb660696cd23ddb6b426d0e606eed3979a9bc4c",
+    "bridge/tests/language_commands.rs": "defbca52d8fce2a3f6633e11d8a7d00d8dd795a9f3202d4b7e3fced788d7be6f",
+    ".github/workflows/ci.yml": "9ff46dfb12e87aca560197e0cb6cd8413327ad6a12fdbd68e48004e58d61010c"
+  },
+  "shared_implementation": "The original Session retains Repository context through client handoff. Git supplies metadata paths. Source and explicit metadata selections share one generation tracker, cancellation ownership, native event reconciliation and atomic complete publication. Both authenticated query and command adapters call that same host implementation.",
+  "platforms": [
+    {
+      "platform": "macOS",
+      "architecture": "arm64",
+      "os_release": "27.2.0",
+      "git_version": "2.56.0",
+      "cases": [
+        {
+          "case": "format",
+          "command": [
+            "cargo",
+            "fmt",
+            "--all",
+            "--check"
+          ],
+          "exit_code": 0,
+          "seconds": 2.73
+        },
+        {
+          "case": "native-clippy",
+          "command": [
+            "cargo",
+            "clippy",
+            "-p",
+            "openwebide-bridge",
+            "--all-targets",
+            "--locked",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "exit_code": 0,
+          "seconds": 74.84
+        },
+        {
+          "case": "generation",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--lib",
+            "languages::host::generation",
+            "--locked"
+          ],
+          "exit_code": 0,
+          "seconds": 75.64,
+          "tests": {
+            "passed": 15,
+            "failed": 0,
+            "ignored": 0
+          }
+        },
+        {
+          "case": "repository",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--lib",
+            "languages::host::repository",
+            "--locked"
+          ],
+          "exit_code": 0,
+          "seconds": 0.95,
+          "tests": {
+            "passed": 6,
+            "failed": 0,
+            "ignored": 0
+          }
+        },
+        {
+          "case": "repository-reftable",
+          "command": [
+            "env",
+            "OPENWEBIDE_TEST_GIT_REF_FORMAT=reftable",
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--lib",
+            "languages::host::repository",
+            "--locked"
+          ],
+          "exit_code": 0,
+          "seconds": 0.73,
+          "tests": {
+            "passed": 6,
+            "failed": 0,
+            "ignored": 0
+          }
+        },
+        {
+          "case": "branch-round-trip",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--lib",
+            "branch_round_trip_during_startup_or_query_rejects_old_analysis",
+            "--locked"
+          ],
+          "exit_code": 0,
+          "seconds": 0.7,
+          "tests": {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          }
+        },
+        {
+          "case": "bridge",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--lib",
+            "--locked"
+          ],
+          "exit_code": 0,
+          "seconds": 85.38,
+          "tests": {
+            "passed": 351,
+            "failed": 0,
+            "ignored": 1
+          }
+        },
+        {
+          "case": "adapters",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--test",
+            "plugins",
+            "--locked"
+          ],
+          "exit_code": 0,
+          "seconds": 33.7,
+          "tests": {
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          }
+        },
+        {
+          "case": "commands",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--test",
+            "language_commands",
+            "--locked"
+          ],
+          "exit_code": 0,
+          "seconds": 4.44,
+          "tests": {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          }
+        },
+        {
+          "case": "adapters-reftable",
+          "command": [
+            "env",
+            "GIT_DEFAULT_REF_FORMAT=reftable",
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--test",
+            "plugins",
+            "--locked"
+          ],
+          "exit_code": 0,
+          "seconds": 18.72,
+          "tests": {
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          }
+        },
+        {
+          "case": "commands-reftable",
+          "command": [
+            "env",
+            "GIT_DEFAULT_REF_FORMAT=reftable",
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--test",
+            "language_commands",
+            "--locked"
+          ],
+          "exit_code": 0,
+          "seconds": 1.88,
+          "tests": {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          }
+        },
+        {
+          "case": "windows-clippy",
+          "command": [
+            "cargo",
+            "clippy",
+            "-p",
+            "openwebide-bridge",
+            "--target",
+            "x86_64-pc-windows-gnu",
+            "--all-targets",
+            "--locked",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "exit_code": 0,
+          "seconds": 54.6
+        }
+      ],
+      "actual_reftable_tooling_probe": {
+        "git": "git version 2.56.0",
+        "GIT_DEFAULT_REF_FORMAT": "reftable",
+        "actual_initialized_format": "reftable"
+      }
+    },
+    {
+      "platform": "Linux",
+      "architecture": "aarch64",
+      "os_release": "7.0.14-linuxkit",
+      "git_version": "2.39.5",
+      "uid": 502,
+      "cases": [
+        {
+          "case": "clippy",
+          "command": [
+            "cargo",
+            "clippy",
+            "-p",
+            "openwebide-bridge",
+            "--all-targets",
+            "--locked",
+            "--offline",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "exit_code": 0,
+          "seconds": 69.82
+        },
+        {
+          "case": "git-revision",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--lib",
+            "exec::git::revision_tests",
+            "--locked",
+            "--offline"
+          ],
+          "exit_code": 0,
+          "seconds": 98.91,
+          "tests": {
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          }
+        },
+        {
+          "case": "repository",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--lib",
+            "languages::host::repository",
+            "--locked",
+            "--offline"
+          ],
+          "exit_code": 0,
+          "seconds": 63.2,
+          "tests": {
+            "passed": 6,
+            "failed": 0,
+            "ignored": 0
+          }
+        },
+        {
+          "case": "generation",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--lib",
+            "languages::host::generation",
+            "--locked",
+            "--offline"
+          ],
+          "exit_code": 0,
+          "seconds": 0.67,
+          "tests": {
+            "passed": 18,
+            "failed": 0,
+            "ignored": 0
+          }
+        },
+        {
+          "case": "bridge",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--lib",
+            "--locked",
+            "--offline"
+          ],
+          "exit_code": 0,
+          "seconds": 74.69,
+          "tests": {
+            "passed": 355,
+            "failed": 0,
+            "ignored": 1
+          }
+        },
+        {
+          "case": "adapters",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--test",
+            "plugins",
+            "--locked",
+            "--offline"
+          ],
+          "exit_code": 0,
+          "seconds": 39.75,
+          "tests": {
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          }
+        },
+        {
+          "case": "commands",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--test",
+            "language_commands",
+            "--locked",
+            "--offline"
+          ],
+          "exit_code": 0,
+          "seconds": 11.35,
+          "tests": {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          }
+        }
+      ],
+      "environment": {
+        "cpu_limit": 2,
+        "memory_limit_bytes": 4294967296,
+        "swap_enabled": false,
+        "tooling_base_image": "sha256:916206a1aa179fdfeb1b73529dc6a04c84b2ccd2a12dfa4577cb6fda9019ab1a",
+        "current_production_image_verified": false,
+        "runtime_limits_observation": "Separate identical-configuration probe after the completed test container was removed; test-run limits were requested by the recorded driver, not inspected while it was live.",
+        "source": "Complete frozen source snapshot mounted read-only, with current native code compiled and executed in the container.",
+        "outer_container_options": [
+          "seccomp=unconfined",
+          "systempaths=unconfined"
+        ],
+        "inner_compiler_sandbox": "Actual bubblewrap proc/dev preflight and isolated source-compilation coverage in the full bridge suite remained enabled."
+      }
+    }
+  ],
+  "bounds": {
+    "scan_workers_total": 4,
+    "speculative_source_scan_workers": 3,
+    "required_metadata_scan_workers": 1,
+    "persistent_notification_handles_maximum": 1024,
+    "unix_inherited_soft_descriptor_limit_fraction": 0.25,
+    "metadata_handle_budget_fraction": 0.25,
+    "source_handle_budget_fraction": 0.75,
+    "windows_notification_buffer_budget_bytes": 16777216,
+    "inventory_record_limit": 16384,
+    "inventory_retained_path_bytes": 4194304,
+    "metadata_parent_depth_limit": 128,
+    "symbolic_reference_chain_limit": 16,
+    "observation_timeout_seconds": 4,
+    "git_path_discovery_timeout_seconds": 2,
+    "cancelled_workers_retain_permits_until_actual_completion": true
+  },
+  "verified": [
+    "The before-fix startup regression accepted stale analysis after returning to the initial branch and restoring HEAD bytes/mtime. The corrected regression passes startup and active-query subcases.",
+    "Ordinary index.lock creation/removal and status refreshes preserve the original Git context.",
+    "Six native metadata cases cover loose/packed refs, detached HEAD, linked worktrees, symbolic reference chains, external reference directory aliases, symbolic Git directories and repository creation. The cases run with files and reftable storage on macOS, and files storage on Linux Git 2.39.5.",
+    "A symbolic Git-directory marker retains its own sampled stamp and canonical target. Its target directory identity is retained independently; target namespace timestamps do not spuriously invalidate on index refresh. Replacing the marker by an equivalent link invalidates the context.",
+    "Both authenticated query adapters transfer the original process to another client (fresh service ID with unchanged initialize count), reject its context after a restored branch round trip, then accept a fresh service.",
+    "Both authenticated command adapters reject restored branch round trips before dispatch, execute no command and retain terminal outcomes without replay. Both transport contracts also pass with reftable storage on macOS.",
+    "Actual source scan/handle pressure tests prove optional sources cannot consume required metadata capacity. Both selections use the same atomic publisher and cancellation ownership."
+  ],
+  "before_fix": {
+    "source_manifest_sha256": "d5c6b4f34a0bd765c057b014f6dafd1130675561b26475e3f5a04c35d2acb3ef",
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "openwebide-bridge",
+      "--lib",
+      "branch_round_trip_during_startup_or_query_rejects_old_analysis",
+      "--locked"
+    ],
+    "exit_code": 101,
+    "finding": "Startup returned Ok stale analysis after returning to the initial commit/branch and restoring HEAD bytes/mtime. The active-query subcase was not reached before this failure."
+  },
+  "implementation_findings": [
+    "The first reftable run exposed Not-a-directory errors from canonical loose reference paths. Reftable now observes its table list and namespace; supported older Git uses files paths when --show-ref-format is passed through unchanged.",
+    "The first adapter fixture reused one branch name across two modes. Separate temporary branch names fixed the fixture; no production correction was needed for that failure.",
+    "Review found that a symbolic Git-directory marker would be rejected as a regular file. The final source snapshot includes its correction and a dedicated real filesystem regression."
+  ],
+  "native_windows_runtime_verified": false,
+  "primary_protocol_sources": [
+    "https://git-scm.com/docs/git-rev-parse",
+    "https://git-scm.com/docs/git-symbolic-ref",
+    "https://git-scm.com/docs/git-init"
+  ],
+  "limits": [
+    "Windows production and test code passes strict cross-compilation. Its configured native generation/repository CI checks have not executed.",
+    "These observations do not establish every unobserved Git/filesystem change: transient repository creation/removal, complete alias ABA, transitive Git configuration and every reftable table content remain unfinished.",
+    "Current command fixtures prove round-trip rejection before start. A targeted queued-wait round-trip test remains open beyond the existing shared after-wait and before-dispatch context hooks.",
+    "Public reusable-result context binding, result caching, editor apply-time freshness and automatic prefetch scheduling remain unfinished.",
+    "This correctness container uses 4 GiB, not the separate 2 GiB production workload. No latency benefit, complete retained-memory accounting, current full app image or full mandatory local CI claim is established.",
+    "One existing published official marketplace smoke test remains explicitly ignored in the full bridge suite. Required real language-server examples and production browser gates remain separate."
+  ],
+  "post_check_updates": {
+    "files": [
+      "CHANGELOG.md",
+      "docs/code-intelligence/git-metadata-checks.json",
+      "docs/plugins.md",
+      "docs/roadmap.md"
+    ],
+    "scope": "Documentation and this checkpoint only; all production and test source hashes match the frozen macOS/Linux checks."
+  }
+}

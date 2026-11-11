@@ -53,6 +53,17 @@ pub struct Symbol {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+pub struct WorkspaceSymbol {
+    pub name: String,
+    pub kind: u32,
+    pub container: Option<String>,
+    pub target: Option<Target>,
+    /// Opaque, source-bound identity for a lazily resolved location.
+    pub id: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct FileEdit {
     pub path: String,
     pub source_digest: String,
@@ -62,7 +73,63 @@ pub struct FileEdit {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct WorkspaceEdit {
+    #[serde(default)]
     pub files: Vec<FileEdit>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub changes: Vec<WorkspaceChange>,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum WorkspaceChange {
+    Text {
+        file: FileEdit,
+    },
+    File {
+        operation: crate::workspace_transaction::FileOperation,
+    },
+}
+impl WorkspaceEdit {
+    pub fn validate(&self) -> Result<(), String> {
+        for change in self.clone().ordered()? {
+            match change {
+                WorkspaceChange::File { operation } => operation.validate()?,
+                WorkspaceChange::Text { file } => {
+                    if !super::relative_path(&file.path)
+                        || file.source_digest.len() != 64
+                        || !file
+                            .source_digest
+                            .bytes()
+                            .all(|byte| byte.is_ascii_hexdigit())
+                        || file.edits.len() > super::MAX_RECORDS
+                        || file
+                            .edits
+                            .iter()
+                            .any(|edit| edit.range.start > edit.range.end)
+                    {
+                        return Err("Invalid file changes in language action review".into());
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+    pub fn ordered(self) -> Result<Vec<WorkspaceChange>, String> {
+        if !self.files.is_empty() && !self.changes.is_empty() {
+            return Err("Workspace edits cannot mix unordered and ordered changes".into());
+        }
+        let changes = if self.changes.is_empty() {
+            self.files
+                .into_iter()
+                .map(|file| WorkspaceChange::Text { file })
+                .collect()
+        } else {
+            self.changes
+        };
+        if changes.len() > super::MAX_RECORDS {
+            return Err("Workspace edit has too many changes".into());
+        }
+        Ok(changes)
+    }
 }
 
 /// One deterministic, nonoverlapping transaction. Preserve the server's order
@@ -138,14 +205,35 @@ pub fn completion_edits(
     position: super::Position,
     item: &serde_json::Value,
 ) -> Result<Vec<TextEdit>, String> {
+    completion(source, position, item, &std::collections::BTreeMap::new())
+        .map(|completion| completion.edits)
+}
+
+pub struct Completion {
+    pub edits: Vec<TextEdit>,
+    pub snippet: Option<crate::editor::snippet::Snippet>,
+    pub suggest: bool,
+}
+
+pub fn completion(
+    source: &str,
+    position: super::Position,
+    item: &serde_json::Value,
+    variables: &std::collections::BTreeMap<String, String>,
+) -> Result<Completion, String> {
+    let command = &item["command"];
+    let suggest = command["command"].as_str() == Some("editor.action.triggerSuggest")
+        && (command["arguments"].is_null()
+            || command["arguments"].as_array().is_some_and(Vec::is_empty));
     if item["insertTextFormat"]
         .as_u64()
-        .is_some_and(|format| format != 1)
-        || !item["command"].is_null()
+        .is_some_and(|format| !matches!(format, 1 | 2))
+        || (!command.is_null() && !suggest)
     {
-        return Err("This completion requires unsupported snippet or command behavior".into());
+        return Err("This completion requires unsupported insertion or command behavior".into());
     }
-    let edit = if let Some(edit) = item.get("textEdit").filter(|edit| !edit.is_null()) {
+    let mut edit: TextEdit = if let Some(edit) = item.get("textEdit").filter(|edit| !edit.is_null())
+    {
         if edit.get("range").is_some() {
             serde_json::from_value(edit.clone()).map_err(|_| "Invalid completion edit")?
         } else {
@@ -178,6 +266,13 @@ pub fn completion_edits(
                 .into(),
         }
     };
+    let mut snippet = if item["insertTextFormat"].as_u64() == Some(2) {
+        let snippet = crate::editor::snippet::Snippet::expand(&edit.new_text, variables)?;
+        edit.new_text.clone_from(&snippet.text);
+        Some(snippet)
+    } else {
+        None
+    };
     let mut edits = vec![edit];
     if let Some(additional) = item
         .get("additionalTextEdits")
@@ -188,8 +283,40 @@ pub fn completion_edits(
                 .map_err(|_| "Invalid completion import edits")?,
         );
     }
-    editor_edits(source, &edits)?;
-    Ok(edits)
+    let validated = editor_edits(source, &edits)?;
+    if let Some(snippet) = &mut snippet {
+        let primary = edits[0].range.offsets(source)?;
+        let mut order = edits
+            .iter()
+            .enumerate()
+            .map(|(index, edit)| Ok((index, edit.range.offsets(source)?)))
+            .collect::<Result<Vec<_>, String>>()?;
+        order.sort_by_key(|(_, range)| (range.start, range.end));
+        let mut start = primary.start;
+        for ((index, _), edit) in order.iter().zip(&validated) {
+            if *index == 0 {
+                break;
+            }
+            start = start
+                .checked_sub(edit.range.len())
+                .and_then(|start| start.checked_add(edit.text.len()))
+                .ok_or("Completion placeholder offset overflow")?;
+        }
+        for range in snippet.fields.values_mut().flatten().chain(
+            snippet
+                .transforms
+                .iter_mut()
+                .map(|transform| &mut transform.range),
+        ) {
+            range.start += start;
+            range.end += start;
+        }
+    }
+    Ok(Completion {
+        edits,
+        snippet,
+        suggest,
+    })
 }
 
 pub fn hover(result: &serde_json::Value) -> Result<Option<String>, String> {
@@ -303,7 +430,7 @@ mod tests {
             "use example::Match;\nfn f() { Match"
         );
         let mut invalid = item;
-        invalid["insertTextFormat"] = serde_json::json!(2);
+        invalid["insertTextFormat"] = serde_json::json!(3);
         assert!(
             completion_edits(
                 source,
@@ -328,6 +455,44 @@ mod tests {
             )
             .is_err()
         );
+    }
+    #[test]
+    fn snippet_completion_imports_keep_linked_fields_and_one_insertion_undo_step() {
+        use crate::editor::{Document, Selection};
+        let source = "fn f() { ca }";
+        let item = serde_json::json!({"label":"call", "insertTextFormat":2,
+            "textEdit":{"range":{"start":{"line":0,"character":9},"end":{"line":0,"character":11}},"newText":"call(${1:文}, $1)$0"},
+            "additionalTextEdits":[{"range":{"start":{"line":0,"character":0},"end":{"line":0,"character":0}},"newText":"use call;\n"}]});
+        let completion = completion(
+            source,
+            Position {
+                line: 0,
+                character: 11,
+            },
+            &item,
+            &std::collections::BTreeMap::new(),
+        )
+        .unwrap();
+        let mut document = Document::new(source);
+        let edits = editor_edits(source, &completion.edits).unwrap();
+        document
+            .apply(edits, vec![Selection::caret(0)], None)
+            .unwrap();
+        document.start_snippet(completion.snippet.unwrap()).unwrap();
+        assert_eq!(document.text(), "use call;\nfn f() { call(文, 文) }");
+        for selected in document.selections() {
+            assert_eq!(&document.text()[selected.range()], "文");
+        }
+        document.replace_selections("😀x", None).unwrap();
+        assert_eq!(document.text(), "use call;\nfn f() { call(😀x, 😀x) }");
+        document.snippet_next(false).unwrap();
+        assert_eq!(
+            &document.text()[..document.selections()[0].head],
+            "use call;\nfn f() { call(😀x, 😀x)"
+        );
+        document.undo();
+        document.undo();
+        assert_eq!(document.text(), source);
     }
     #[test]
     fn hover_accepts_standard_lsp_content_forms_without_turning_plaintext_into_markup() {

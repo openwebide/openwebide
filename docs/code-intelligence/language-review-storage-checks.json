@@ -1,0 +1,363 @@
+{
+  "format": 1,
+  "checked_on": "2026-11-10T18:59:49.906255+00:00",
+  "status": "passed_for_durable_review_format_storage_and_compatibility_only",
+  "base_commit": "9283345d3545ded5461ba5ca1702709954270ced",
+  "source_manifest_sha256": "ab9c3482626b463d33b93ffdf4fbd4bfd923c806b473af38a4c0cb4908ea7eae",
+  "relevant_source_sha256": {
+    "backend/src/api/workspace_transactions.rs": "fe39a33bfaf09d82ebb36c28605eab64d155c031a9f0e115d68ac12eaee0220c",
+    "backend/src/api/workspace_transactions/delegation_tests.rs": "974f3a67498799d84dc79d6f1eb8e9c5aa178f94a184661f3c3f605769771099",
+    "bridge/src/workspace_transactions/companion/tests/authority.rs": "2f745200cfca1eb9534e5e435654bc4b55f9a3814b1fc4056db32031d694cdfe",
+    "bridge/src/workspace_transactions/tests.rs": "373761e98f61457b5faa3e08be39916251d1a894845df75166d07d130378addb",
+    "bridge/src/workspace_transactions/tests/scope.rs": "f701ca562ce8f678f57410ffd651ee4b8239b07f6b275db19057f335dbc72a42",
+    "crates/core/src/plugins/languages/intelligence.rs": "6764c883a5bca3e6e35c28a2c20ce561203a21c506349adb025b190f86c0d1d3",
+    "crates/core/src/plugins/languages/intelligence/actions.rs": "2ee4720c544d913fd8648a0488720d859af2566a0384e301cfc9a945523283a0",
+    "crates/core/src/plugins/languages/intelligence/results.rs": "21af92e3ac7cd95c3b31f1f8747f65b63b45e6a050d0c07eb51e15817be1d201",
+    "crates/core/src/workspace_transaction.rs": "b0a812aa00175375ac2f0c9a4fb6358951ad0f96c198a2830aa91b6aa273a679",
+    "crates/core/src/workspace_transaction/language_review.rs": "09408a6696deca0f3f080ef319038852fc0fe52b3e221a77bc4f2d152ccca6a7",
+    "crates/core/src/workspace_transaction/language_review/tests.rs": "0424d7c3f1fbdf4ff1b1b3be6c90a3ee37d5979c699832ce248f5423954b4457",
+    "crates/core/src/workspace_transaction/requests.rs": "8c8c813eb085a391e71bdddc4a66405516dfc312673cc64bd731ebf94d0b4d0c",
+    "crates/storage/src/migrations.rs": "52672ec950015e2e8e4dc35cdd3be69fa6740b18653d80cbfeca5749331efb3c",
+    "crates/storage/src/store/language_actions/tests.rs": "f17e4d41644f45ea6e18dbbf934d67b011e0e9d6fbf805b56b907d9c2d630e05",
+    "crates/storage/src/store/workspace_transactions.rs": "52ced9eac1f2a6b999273bcd71346f5901914e14b20e3cc521766dde18d2996b",
+    "crates/storage/src/store/workspace_transactions/tests.rs": "f0fb043fe36c614aa2cc4eaeef5780763c1ef2fc93d1dfeb71dfbb1a6446dcd6",
+    "crates/storage/src/store/workspace_transactions/tests/delegation.rs": "0bbc43dfea7fd85c356c0355b37b4433cf43dbb13b4080056a7b493e050b36e4",
+    "crates/storage/src/store/workspace_transactions/tests/language_review.rs": "86b3b54782608b474c4581882696e630a8aa09e6ffde011b4a847fbc2e383e89",
+    "crates/storage/src/store/workspace_transactions/tests/resources.rs": "a43c155b133423ded3630b8b2f9a6b27eb5fb379f9706a334133ae86e358f31f",
+    "frontend/src/state_actions/editor/intelligence/edits/resources.rs": "4b3558eed918b8bcf6c67b9388fb8342983dc76e2131db5ffca30153f2c3f56f",
+    "frontend/src/state_actions/editor/intelligence/edits/resources/tests.rs": "ec0fdf61185e86e181294d5a3b6c2ec294d99ffc25c7ff2538278d7f2544c454",
+    "frontend/src/state_actions/editor/intelligence/edits/resources/tests/decision.rs": "9a65ff1d187832c37398f5962c5b71a909b16eccc87acf755be79c80286fd799",
+    "frontend/src/state_actions/workspace_recovery.rs": "f5057d22e8804fab9f153b958976a70999485871388f8543fe99e7781f86537c",
+    "frontend/src/testing/transactions.rs": "af190cbcfd20e83eed2d8b9e797181622e0112623ee29163cb86e227a04df18f",
+    "frontend/src/workspace_journal.rs": "5175516a243c0002bd415139b33e852b7a390bbc4a91c1d3c875d8a4b69daac5",
+    "frontend/src/workspace_transactions.rs": "eb757b3d5e87587d850fcf9c6d56f24f75a9f0f5ea3ff7bf656051a5a21a7f06",
+    "frontend/src/workspace_transactions/review/tests.rs": "6c6c8822a0ec5e2218ed4853d65f7577b5a25419d9e4d8debe00459bc8f2a113"
+  },
+  "working_tree": "Uncommitted code-intelligence work. Receipt and accompanying documentation follow the frozen checks.",
+  "contract": [
+    "LanguageReview retains original prepared provider, binding revision, live-protocol request, analysis context and complete normalized result, plus a streaming digest of the exact file plan and editor patch. It contains no manual grant.",
+    "Format validation checks context/result consistency, editing query/result shape, complete command identity/arguments and resource operation order. These checks do not authenticate a native proof or reproduce editor edits.",
+    "Provider selection/revocation policy is shared with existing command approval; live retrieval of current authority and native validation remain to be wired.",
+    "Begin and loaded state expose optional transaction.language_review; absent fields remain readable and are omitted from JSON. Frontend recovery preserves evidence and the journal adapter compares it to its captured expectation.",
+    "Schema 66 persists the review, charges its serialized bytes under existing body/account quotas and rejects retry replacement or removal. Recovery survives database reopen and schema-65 upgrade in both modes.",
+    "Replaying earlier base-accounting migrations cannot erase the review charge. Step 66 derives the full charge from stored values, including review bytes, without editing shipped steps.",
+    "The live HTTP begin route rejects structurally valid review-bearing requests before creating any row in both modes. The editor still emits no durable review until both native admission adapters can verify it."
+  ],
+  "budgets": {
+    "review": "MAX_REQUEST_ENVELOPE_BYTES + intelligence::MAX_RESULT_BYTES + 64 KiB framing",
+    "journal_api": "Existing 192 MiB combined envelope includes retained review bytes",
+    "account_quota": "Existing 256 MiB journal quota includes retained review bytes",
+    "small_scope": "The review is absent from the existing 64 KiB recovery scope",
+    "hashing": "Plan/editor digest uses serde streaming into SHA-256 instead of another serialized snapshot copy"
+  },
+  "checks": [
+    {
+      "case": "format",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--check"
+      ],
+      "returncode": 0,
+      "seconds": 2.94,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test_results": [],
+      "review_contract_tests": []
+    },
+    {
+      "case": "native-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-core",
+        "-p",
+        "openwebide-storage",
+        "-p",
+        "openwebide-agent",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "returncode": 0,
+      "seconds": 4.4,
+      "log_sha256": "e7f534a4424631c8ceede183b7efddfa268210d7efcba6c56ab1bd55e4e7b1e8",
+      "test_results": [],
+      "review_contract_tests": []
+    },
+    {
+      "case": "backend-wasi-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-backend",
+        "--target",
+        "wasm32-wasip2",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "returncode": 0,
+      "seconds": 4.1,
+      "log_sha256": "ce8ae9cf18cc303236f22cd3770b3600a700efcd9aaf9b76c5eff129153a9e05",
+      "test_results": [],
+      "review_contract_tests": []
+    },
+    {
+      "case": "frontend-wasm-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-frontend",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "returncode": 0,
+      "seconds": 0.7,
+      "log_sha256": "deb6cb4a6c3e79707fe01a80013f10f53ed028864b8a94992b33872d11736be8",
+      "test_results": [],
+      "review_contract_tests": []
+    },
+    {
+      "case": "bridge-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-bridge",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "returncode": 0,
+      "seconds": 8.66,
+      "log_sha256": "10cada71137cd3523a205a9791a49a6d8d07563419e8764ba4e211c1d715a10a",
+      "test_results": [],
+      "review_contract_tests": []
+    },
+    {
+      "case": "shared-native",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-core",
+        "-p",
+        "openwebide-storage",
+        "-p",
+        "openwebide-agent",
+        "-p",
+        "openwebide-backend",
+        "--lib",
+        "--locked"
+      ],
+      "returncode": 0,
+      "seconds": 52.25,
+      "log_sha256": "d3b8ea845c2ac98155515689230bebf41896da5b9445f93ebeb46fcb9e871250",
+      "test_results": [
+        {
+          "passed": 220,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 121,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 719,
+          "failed": 0,
+          "ignored": 1
+        },
+        {
+          "passed": 211,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "review_contract_tests": [
+        "test api::workspace_transactions::api_contract::owned_journal_http_contract_in_both_modes ... ok",
+        "test workspace_transaction::language_review::tests::command_review_keeps_exact_arguments_and_original_action_and_service ... ok",
+        "test workspace_transaction::language_review::tests::durable_review_roundtrips_original_evidence_and_binds_both_transaction_halves ... ok",
+        "test workspace_transaction::language_review::tests::matching_transaction_digest_cannot_substitute_other_resource_operations ... ok",
+        "test workspace_transaction::language_review::tests::optional_transaction_review_keeps_old_wire_records_readable_without_rewriting_them ... ok",
+        "test workspace_transaction::language_review::tests::result_tampering_and_unrelated_or_old_protocol_queries_cannot_become_reviews ... ok",
+        "test workspace_transaction::language_review::tests::retained_workspace_reviews_share_command_provider_selection_and_revocation_policy ... ok",
+        "test workspace_transaction::language_review::tests::escaped_admitted_source_uses_the_request_budget_instead_of_the_small_scope_budget ... ok",
+        "test store::workspace_transactions::tests::language_review::mismatched_language_results_and_editor_patches_never_create_intent_and_corrupt_rows_fail_closed ... ok",
+        "test store::workspace_transactions::tests::language_review::replaying_earlier_accounting_migrations_cannot_erase_retained_review_quota ... ok",
+        "test store::workspace_transactions::tests::language_review::retained_language_evidence_survives_database_close_and_reopen_in_both_modes ... ok",
+        "test store::workspace_transactions::tests::language_review::retained_language_review_roundtrips_counts_quota_and_cannot_be_replaced_or_downgraded ... ok",
+        "test store::workspace_transactions::tests::language_review::schema_65_journals_keep_recovery_and_quota_and_review_migration_is_idempotent ... ok"
+      ]
+    },
+    {
+      "case": "frontend-native",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-frontend",
+        "--lib",
+        "--locked"
+      ],
+      "returncode": 0,
+      "seconds": 0.52,
+      "log_sha256": "27288550bd7a88bc53e964fba654594082e70b95bff134c172cc82ad0ba592dc",
+      "test_results": [
+        {
+          "passed": 142,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "review_contract_tests": []
+    },
+    {
+      "case": "bridge-binary",
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "openwebide-bridge",
+        "--locked"
+      ],
+      "returncode": 0,
+      "seconds": 0.4,
+      "log_sha256": "a178c7902ac24dda0e2c0cd4cf0e47a2a6976ef30481cb4015f2f71620380d8b",
+      "test_results": [],
+      "review_contract_tests": []
+    },
+    {
+      "case": "native-workspace",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-bridge",
+        "--lib",
+        "workspace_transactions::",
+        "--locked"
+      ],
+      "returncode": 0,
+      "seconds": 28.4,
+      "log_sha256": "f896d43a5b6f7bd3821b9e19429552f3f844953a6ebb67418c861767085b6739",
+      "test_results": [
+        {
+          "passed": 40,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "review_contract_tests": []
+    },
+    {
+      "case": "browser-workspace",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-frontend",
+        "--release",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--lib",
+        "workspace_transactions::",
+        "--locked"
+      ],
+      "returncode": 0,
+      "seconds": 6.65,
+      "log_sha256": "4bd2c6c69e687ad7451ee41303d01fb9e6e1af652123f6599ff33ed0da9b36d2",
+      "test_results": [
+        {
+          "passed": 14,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "review_contract_tests": []
+    },
+    {
+      "case": "browser-policy",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-frontend",
+        "--release",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--lib",
+        "state_actions::editor::intelligence::edits::",
+        "--locked"
+      ],
+      "returncode": 0,
+      "seconds": 10.22,
+      "log_sha256": "ad23a92f08ffda29839806ae645f848fff28de73191eda64ee99aa264e00c7db",
+      "test_results": [
+        {
+          "passed": 29,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "review_contract_tests": []
+    },
+    {
+      "case": "browser-language-consumers",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-frontend",
+        "--release",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--test",
+        "components",
+        "language_plugins::",
+        "--locked"
+      ],
+      "returncode": 0,
+      "seconds": 11.7,
+      "log_sha256": "475d1081dc9880515b1d28578739592626ea6764026c9a3fe6afae2ee827deb6",
+      "test_results": [
+        {
+          "passed": 9,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "review_contract_tests": []
+    }
+  ],
+  "known_ignored_measurement": [
+    "test editor::structure::tests::measure_indexed_language_queries ... ignored, native release measurement, not a timing assertion"
+  ],
+  "migration_regression": {
+    "red_log_sha256": "3e1eee815fd3fa600ba3b76cbbce9eec3d7a5765a55ba6524004e1dc35f4f700",
+    "failure": "Actual replay through schema 63 followed by the versioned upgrade reduced the Local fixture charge from 3096 to 1100 bytes. Fixed new step 66; the final test verifies restored charges and evidence in both modes.",
+    "green_test": "store::workspace_transactions::tests::language_review::replaying_earlier_accounting_migrations_cannot_erase_retained_review_quota"
+  },
+  "limits": [
+    "Native worker admission does not consume LanguageReview yet; the live API rejects these requests. No native HMAC freshness, original-service admission, normalized editor replay or transaction-gate approval is established by this receipt.",
+    "UI retained-analysis validation still runs before transaction creation, as covered by earlier checkpoints. Do not remove the live rejection or populate the new field until both native admission paths consume it under the original folder gate.",
+    "Format fixtures use explicit opaque proof strings, not successful native-authentication substitutes. No new proof is granted by decoding or storing the type.",
+    "The earlier installed workflow checkpoint has its own source/artifact scope. Production app/native artifacts require rebuilding after these source changes; no fresh installed workflow claim is made here.",
+    "Full final CI, complete writer/child exclusion, affected-file metadata evidence, memory/cache/prefetch work, native Windows execution, public package publication and final main publication remain outside this checkpoint."
+  ]
+}

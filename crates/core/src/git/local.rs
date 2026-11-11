@@ -531,6 +531,9 @@ impl<V: Vfs> LocalGit<V> {
             } else {
                 format!("{prefix}/{}", entry.name)
             };
+            if crate::vfs::private_workspace_path(&path) {
+                continue;
+            }
             if entry.is_dir {
                 Box::pin(self.flatten_tree_inner(&entry.hash, &path, map)).await?;
             } else {
@@ -712,6 +715,9 @@ impl<V: Vfs> LocalGit<V> {
         &self,
         request: &GitCommitDiffRequest,
     ) -> Result<GitCommitDiff, String> {
+        if let Some(path) = &request.path {
+            crate::workspace_entries::entry_path(path)?;
+        }
         let (kind, data) = self.read_object(&request.hash).await?;
         if kind != GitObjectType::Commit {
             return Err(format!("expected commit object for {}", request.hash));
@@ -797,6 +803,7 @@ impl<V: Vfs> LocalGit<V> {
 
     /// Read file content at `HEAD` for editor diff comparisons.
     pub async fn file_head(&self, path: &str) -> Result<String, String> {
+        let path = crate::workspace_entries::entry_path(path)?;
         let head_hash = self.resolve_ref("HEAD").await?;
         let (kind, data) = self.read_object(&head_hash).await?;
         if kind != GitObjectType::Commit {
@@ -805,7 +812,7 @@ impl<V: Vfs> LocalGit<V> {
         let commit = self.parse_commit(&head_hash, &data)?;
         let tree = self.flatten_tree(&commit.tree_hash).await?;
         let blob_hash = tree
-            .get(path)
+            .get(&path)
             .ok_or_else(|| format!("path not found in HEAD: {path}"))?;
         self.read_blob_text(blob_hash).await
     }
@@ -937,6 +944,9 @@ impl<V: Vfs> LocalGit<V> {
     async fn collect_worktree_files(&self, dir: &str, files: &mut HashMap<String, String>) {
         if let Ok(entries) = self.vfs.list(dir).await {
             for entry in entries {
+                if crate::vfs::private_workspace_path(&entry.path) {
+                    continue;
+                }
                 let name = &entry.name;
                 if name.starts_with('.') && name == ".git" {
                     continue;
@@ -955,6 +965,9 @@ impl<V: Vfs> LocalGit<V> {
 
     /// Compute working tree diff for a file or the whole repository.
     pub async fn diff(&self, path: Option<&str>) -> Result<String, String> {
+        if let Some(path) = path {
+            crate::workspace_entries::entry_path(path)?;
+        }
         let status = self.status().await?;
         let mut diff_builder = String::new();
 
@@ -1066,6 +1079,9 @@ impl<V: Vfs> LocalGit<V> {
 
     /// Create a local commit with modified/untracked files.
     pub async fn commit(&self, request: &GitCommitRequest) -> Result<GitCommitResult, String> {
+        if let Some(paths) = &request.paths {
+            super::workspace_pathspecs(paths)?;
+        }
         let parent_hash = self.resolve_ref("HEAD").await.ok();
 
         // 1. Collect working files to commit
@@ -1183,11 +1199,42 @@ impl<V: Vfs> LocalGit<V> {
 
     /// Perform a working-tree path action (e.g. revert changes).
     pub async fn path_action(&self, request: &GitPathRequest) -> Result<GitPathChanges, String> {
-        if request.action == GitPathAction::Revert {
-            if let Ok(head_content) = self.file_head(&request.path).await {
-                let _ = self.vfs.write(&request.path, &head_content).await;
+        if request.action != GitPathAction::Revert {
+            return Err("Index actions require the connected execution host".into());
+        }
+        let changes = self.path_changes().await?;
+        super::path_action_args(request, &changes, changes.has_head)?;
+        let selection = changes.action_paths(&request.path)?;
+        let head = self.resolve_ref("HEAD").await?;
+        let (_, data) = self.read_object(&head).await?;
+        let commit = self.parse_commit(&head, &data)?;
+        let tree = self.flatten_tree(&commit.tree_hash).await?;
+        let mut restores = Vec::new();
+        for path in changes.staged.iter().chain(&changes.unstaged) {
+            if selection
+                .iter()
+                .any(|parent| crate::workspace_entries::contains_path(parent, path))
+            {
+                let content = if let Some(hash) = tree.get(path) {
+                    Some(self.read_blob_text(hash).await?)
+                } else {
+                    None
+                };
+                restores.push((path, content));
+            }
+        }
+        super::validate_restore(self, request, &changes).await?;
+        for (path, content) in restores {
+            if let Some(content) = content {
+                self.vfs
+                    .write(path, &content)
+                    .await
+                    .map_err(|error| error.to_string())?;
             } else {
-                let _ = self.vfs.delete(&request.path).await;
+                match self.vfs.delete(path).await {
+                    Ok(()) | Err(crate::vfs::VfsError::NotFound(_)) => {}
+                    Err(error) => return Err(error.to_string()),
+                }
             }
         }
         self.path_changes().await
@@ -1204,6 +1251,32 @@ impl<V: Vfs> LocalGit<V> {
     /// Remote sync informs the user that network sync requires bridge connection.
     pub async fn sync(&self, _request: &GitSyncRequest) -> Result<GitSyncResult, String> {
         Err("Remote sync requires network credentials. Connect openwebide-bridge to push/pull with your system credentials.".into())
+    }
+}
+
+impl<V: crate::vfs::Vfs> super::RestoreFiles for LocalGit<V> {
+    async fn restore_entry(&self, path: &str) -> Result<super::RestoreEntry, String> {
+        use super::RestoreEntry;
+        let entries = match self.vfs.list(crate::workspace_entries::parent(path)).await {
+            Ok(entries) => entries,
+            Err(crate::vfs::VfsError::NotFound(_)) => return Ok(RestoreEntry::Missing),
+            Err(error) => return Err(error.to_string()),
+        };
+        let Some(entry) = entries.into_iter().find(|entry| entry.path == path) else {
+            return Ok(RestoreEntry::Missing);
+        };
+        let canonical = self
+            .vfs
+            .canonicalize(path)
+            .await
+            .map_err(|error| error.to_string())?;
+        Ok(if canonical != path {
+            RestoreEntry::Link
+        } else if entry.is_dir {
+            RestoreEntry::Directory
+        } else {
+            RestoreEntry::File
+        })
     }
 }
 
@@ -1499,3 +1572,7 @@ mod tests {
         });
     }
 }
+
+#[cfg(test)]
+#[path = "local/workspace_tests.rs"]
+mod workspace_tests;

@@ -38,14 +38,22 @@ fn publish_diagnostics(snapshots: &mut BTreeMap<String, Diagnostics>, params: &V
         return;
     };
     // LSP permits an omitted version. Such notifications describe the currently
-    // open document; explicit versions must match exactly. Source changes clear
-    // this slot before synchronization, and editor publication remains bound to
-    // the request's source, revision and editing-client identity.
-    if let Some(version) = params.get("version").filter(|value| !value.is_null())
-        && version.as_i64() != Some(i64::from(snapshot.version))
-    {
-        return;
-    }
+    // open document. The open and its full-content synchronization describe the
+    // same bytes. Accept either explicit version, but never let an earlier one
+    // replace a later publication. Actual source changes reset both bounds.
+    // Editor publication still binds source, revision and editing client.
+    let version = if let Some(version) = params.get("version").filter(|value| !value.is_null()) {
+        let Some(version) = version
+            .as_i64()
+            .and_then(|value| i32::try_from(value).ok())
+            .filter(|version| (snapshot.minimum_version..=snapshot.version).contains(version))
+        else {
+            return;
+        };
+        version
+    } else {
+        snapshot.version
+    };
     let Some(items) = params["diagnostics"]
         .as_array()
         .filter(|items| items.len() <= protocol::MAX_DIAGNOSTICS)
@@ -53,6 +61,7 @@ fn publish_diagnostics(snapshots: &mut BTreeMap<String, Diagnostics>, params: &V
         return;
     };
     snapshot.raw = items.clone();
+    snapshot.minimum_version = version;
     snapshot.ready = true;
 }
 
@@ -78,6 +87,45 @@ mod tests {
     use super::*;
 
     #[test]
+    fn identical_open_versions_remain_valid_without_allowing_diagnostics_to_move_backwards() {
+        let uri = "file:///project/file.cpp";
+        let mut snapshots = BTreeMap::from([(
+            uri.into(),
+            Diagnostics {
+                version: 8,
+                minimum_version: 7,
+                raw: vec![],
+                ready: false,
+            },
+        )]);
+        let publish = |version, message| json!({"uri":uri,"version":version,"diagnostics":[{"message":message}]});
+        publish_diagnostics(&mut snapshots, &publish(6, "stale"));
+        publish_diagnostics(&mut snapshots, &publish(9, "future"));
+        assert!(!snapshots[uri].ready);
+        publish_diagnostics(&mut snapshots, &publish(7, "opening"));
+        assert_eq!(snapshots[uri].raw[0]["message"], "opening");
+        publish_diagnostics(&mut snapshots, &publish(8, "current"));
+        publish_diagnostics(&mut snapshots, &publish(7, "late opening"));
+        assert_eq!(snapshots[uri].raw[0]["message"], "current");
+        snapshots.insert(
+            uri.into(),
+            Diagnostics {
+                version: 10,
+                minimum_version: 9,
+                raw: vec![],
+                ready: false,
+            },
+        );
+        publish_diagnostics(&mut snapshots, &publish(8, "previous source"));
+        assert!(!snapshots[uri].ready);
+        publish_diagnostics(&mut snapshots, &publish(9, "reopened"));
+        publish_diagnostics(&mut snapshots, &json!({"uri":uri,"diagnostics":[]}));
+        publish_diagnostics(&mut snapshots, &publish(9, "late after versionless"));
+        assert!(snapshots[uri].ready);
+        assert!(snapshots[uri].raw.is_empty());
+    }
+
+    #[test]
     fn versionless_diagnostics_use_only_open_documents_and_explicit_versions_reject_stale_results()
     {
         let uri = "file:///project/file.ts";
@@ -85,6 +133,7 @@ mod tests {
             uri.into(),
             Diagnostics {
                 version: 4,
+                minimum_version: 4,
                 raw: vec![],
                 ready: false,
             },

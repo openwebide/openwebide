@@ -31,7 +31,8 @@ use crate::highlight::Language;
 
 /// Bound structural commands and source snapshots independently of transport.
 pub const MAX_STRUCTURE_BYTES: usize = 2 * 1024 * 1024;
-const MAX_BRACKETS: usize = 65_536;
+/// Bound structural metadata independently of the source byte limit.
+pub const MAX_BRACKETS: usize = 65_536;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub(super) enum RegionKind {

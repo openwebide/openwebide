@@ -8,6 +8,18 @@ use openwebide_core::plugins::{
 use openwebide_language_syntax::{LanguageGrammar, LanguageSyntax, SyntaxLanguage};
 use serde::Deserialize;
 use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
+mod native;
+pub use native::NativeLanguageHost;
+
+pub fn agent_tools(
+    api: crate::backend::Api,
+    host: crate::project_host::ProjectHost,
+    session: i64,
+    scope: openwebide_core::plugins::languages::tools::LanguageToolScope,
+    current: impl Fn() -> bool + Clone + 'static,
+) -> Result<std::sync::Arc<dyn openwebide_agent::intelligence::CodeIntelligence>, String> {
+    crate::plugin_actions::agent_language_tools(api, host, session, scope, current)
+}
 
 #[derive(Deserialize)]
 struct Snapshot {
@@ -62,7 +74,7 @@ pub fn standard_binding() -> ProjectPlugin {
                     );
                 }
             }
-            assert_eq!(definitions.len(), 24);
+            assert_eq!(definitions.len(), 26);
             definitions.into_values().collect()
         });
     let binding: ProjectPlugin = serde_json::from_value(serde_json::json!({
@@ -95,8 +107,10 @@ pub fn standard_handler(binding: &ProjectPlugin) -> LanguageHandler {
         ("csharp", CSharp),
         ("php", Php),
         ("json", Json),
+        ("jsonc", Json),
         ("html", Html),
         ("css", Css),
+        ("scss", Css),
         ("markdown", Markdown),
         ("ini", Ini),
         ("xml", Xml),

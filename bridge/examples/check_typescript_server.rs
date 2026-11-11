@@ -3,7 +3,13 @@ use anyhow::{Context, Result, ensure};
 use openwebide_bridge::languages::host::{Host, Scope};
 use openwebide_core::plugins::languages::{
     LanguageServer,
-    intelligence::{self as protocol, Position, Query, Response, results},
+    intelligence::{
+        self as protocol, Position, Query, Response,
+        actions::{
+            ActionReview, CommandInvocation, CommandOutcome, CommandProgress, origin_fingerprint,
+        },
+        results,
+    },
     source_digest,
 };
 use serde_json::json;
@@ -411,22 +417,96 @@ async fn main() -> Result<()> {
                 .is_some_and(|title| title.to_lowercase().contains("import"))
         })
         .context("Missing import code action")?;
+    let action_id = action["id"]
+        .as_str()
+        .context("Missing action ID")?
+        .to_string();
     let action = fixture
         .query(
             "main.ts",
             "typescript",
             action_source,
             6,
-            Query::ResolveAction {
-                id: action["id"].as_str().context("Missing action ID")?.into(),
+            Query::ReviewAction {
+                id: action_id.clone(),
             },
         )
         .await?;
-    let edit: results::WorkspaceEdit = serde_json::from_value(action.result)?;
+    let review: ActionReview = serde_json::from_value(action.result)?;
+    let edit = &review.edit;
     ensure!(
         edit.files.iter().any(|file| file.path == "main.ts"),
         "Code action omitted the current file"
     );
+    ensure!(
+        edit.changes.is_empty() && edit.files.iter().all(|file| file.path == "main.ts"),
+        "Import action unexpectedly changed another resource"
+    );
+    let after =
+        results::apply_edits(action_source, &edit.files[0].edits).map_err(anyhow::Error::msg)?;
+    let command = review
+        .command
+        .as_ref()
+        .context("The pinned server's code-action command was discarded")?;
+    let original = protocol::Request {
+        version: protocol::VERSION,
+        client: fixture.client.into(),
+        document: "main.ts".into(),
+        path: "main.ts".into(),
+        language: "typescript".into(),
+        request: action.request,
+        revision: 6,
+        source: action_source.into(),
+        source_digest: source_digest(action_source),
+        query: Query::ReviewAction { id: action_id },
+    };
+    // This example verifies the trusted native primitive. Actual manual grants,
+    // durable claims and editor recovery are separate storage/UI contracts.
+    let invocation = CommandInvocation {
+        id: "b".repeat(32),
+        client: fixture.client.into(),
+        command: command.id.clone(),
+        server: command.server.clone(),
+        origin: origin_fingerprint(&original).map_err(anyhow::Error::msg)?,
+        review: review.fingerprint().map_err(anyhow::Error::msg)?,
+        approval: "c".repeat(64),
+    };
+    fixture
+        .query("main.ts", "typescript", &after, 7, Query::Synchronize)
+        .await?;
+    fixture
+        .host
+        .start_command(fixture.scope.clone(), invocation.clone())
+        .await
+        .map_err(anyhow::Error::msg)?;
+    let outcome = tokio::time::timeout(Duration::from_secs(45), async {
+        loop {
+            if let CommandProgress::Finished { outcome } = fixture
+                .host
+                .command_progress(fixture.scope.clone(), &invocation)
+                .await
+                .map_err(anyhow::Error::msg)?
+            {
+                return Ok::<_, anyhow::Error>(outcome);
+            }
+            tokio::time::sleep(Duration::from_millis(25)).await;
+        }
+    })
+    .await??;
+    ensure!(
+        matches!(&outcome, CommandOutcome::Completed { .. }),
+        "Import action command did not complete: {outcome:?}"
+    );
+    ensure!(
+        fixture
+            .host
+            .start_command(fixture.scope.clone(), invocation)
+            .await
+            .map_err(anyhow::Error::msg)?
+            == CommandProgress::Finished { outcome },
+        "Duplicate dispatch did not return the retained outcome"
+    );
+    fixture.diagnostics(&after, 7, None).await?;
     std::fs::remove_file(root.path().join("widget.jsx"))?;
     fixture
         .query("widget.jsx", "jsx", "", 2, Query::Close)
@@ -451,7 +531,7 @@ async fn main() -> Result<()> {
         .hover("plain.js", "javascript", JS, "boolean")
         .await?;
     fixture.client = "editor-a";
-    fixture
+    let before_revoke = fixture
         .hover("plain.js", "javascript", JS, "string")
         .await?;
     fixture
@@ -461,7 +541,7 @@ async fn main() -> Result<()> {
         .query("lib.ts", "typescript", UNSAVED, 2, Query::Synchronize)
         .await?;
     ensure!(
-        restarted.server != first.server,
+        restarted.server != before_revoke.server,
         "Revocation did not replace the service"
     );
     fixture

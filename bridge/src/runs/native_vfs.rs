@@ -7,6 +7,12 @@ use tokio::io::AsyncReadExt;
 
 use crate::paths::resolve_file_in_root;
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+pub(crate) mod resources;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+pub(crate) mod rooted;
+mod transfer;
+
 #[derive(Clone, Debug)]
 pub struct NativeFsVfs {
     pub root: PathBuf,
@@ -22,7 +28,49 @@ fn io_error(error: std::io::Error, path: &str) -> VfsError {
 }
 
 impl NativeFsVfs {
+    fn canonical_relative(&self, path: &str) -> Result<String, VfsError> {
+        let root = std::fs::canonicalize(&self.root).map_err(|e| io_error(e, path))?;
+        let lexical = openwebide_core::vfs::workspace_path(path)?;
+        let mut full = if lexical.is_empty() {
+            root.clone()
+        } else {
+            resolve_file_in_root(&root, &lexical).map_err(VfsError::PathEscape)?
+        };
+        let mut missing = Vec::new();
+        let mut symlinks = 0;
+        let mut resolved = loop {
+            match std::fs::canonicalize(&full) {
+                Ok(resolved) => break resolved,
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                    if std::fs::symlink_metadata(&full)
+                        .is_ok_and(|meta| meta.file_type().is_symlink())
+                    {
+                        symlinks += 1;
+                        if symlinks > 32 {
+                            return Err(VfsError::Io("too many symbolic links".into()));
+                        }
+                        let target = std::fs::read_link(&full).map_err(|e| io_error(e, path))?;
+                        full.pop();
+                        full.push(target);
+                        continue;
+                    }
+                    let name = full.file_name().ok_or_else(|| io_error(error, path))?;
+                    missing.push(name.to_os_string());
+                    full.pop();
+                }
+                Err(error) => return Err(io_error(error, path)),
+            }
+        };
+        for name in missing.into_iter().rev() {
+            resolved.push(name);
+        }
+        let rel = resolved
+            .strip_prefix(root)
+            .map_err(|_| VfsError::PathEscape(path.into()))?;
+        openwebide_core::vfs::workspace_path(&rel.to_string_lossy().replace('\\', "/"))
+    }
     fn resolve(&self, rel: &str) -> Result<PathBuf, VfsError> {
+        self.canonical_relative(rel)?;
         resolve_file_in_root(&self.root, &openwebide_core::vfs::workspace_path(rel)?)
             .map_err(VfsError::PathEscape)
     }
@@ -45,50 +93,19 @@ impl NativeFsVfs {
 }
 
 impl Vfs for NativeFsVfs {
+    fn move_atomic<'a>(
+        &'a self,
+        from: &'a str,
+        to: &'a str,
+        kind: openwebide_core::vfs::VfsEntryKind,
+    ) -> VfsFuture<'a, ()> {
+        // Keep descriptor acquisition, exclusive rename and directory sync in
+        // one non-yielding primitive. Cancelling an awaited caller cannot leave
+        // a detached move which publishes after recovery has started.
+        Box::pin(async move { transfer::transfer(&self.root, from, to, kind) })
+    }
     fn canonicalize<'a>(&'a self, path: &'a str) -> VfsFuture<'a, String> {
-        Box::pin(async move {
-            let root = fs::canonicalize(&self.root)
-                .await
-                .map_err(|e| io_error(e, path))?;
-            let mut full = self.directory(path)?;
-            let mut missing = Vec::new();
-            let mut symlinks = 0;
-            let mut resolved = loop {
-                match fs::canonicalize(&full).await {
-                    Ok(resolved) => break resolved,
-                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                        if fs::symlink_metadata(&full)
-                            .await
-                            .is_ok_and(|meta| meta.file_type().is_symlink())
-                        {
-                            symlinks += 1;
-                            if symlinks > 32 {
-                                return Err(VfsError::Io("too many symbolic links".into()));
-                            }
-                            let target =
-                                fs::read_link(&full).await.map_err(|e| io_error(e, path))?;
-                            full.pop();
-                            full.push(target);
-                            continue;
-                        }
-                        let name = full.file_name().ok_or_else(|| io_error(error, path))?;
-                        missing.push(name.to_os_string());
-                        full.pop();
-                    }
-                    Err(error) => return Err(io_error(error, path)),
-                }
-            };
-            for name in missing.into_iter().rev() {
-                resolved.push(name);
-            }
-            let rel = resolved
-                .strip_prefix(root)
-                .map_err(|_| VfsError::PathEscape(path.into()))?;
-            if rel.components().any(|part| part.as_os_str() == ".spin") {
-                return Err(VfsError::PathEscape(path.into()));
-            }
-            Ok(rel.to_string_lossy().replace('\\', "/"))
-        })
+        Box::pin(async move { self.canonical_relative(path) })
     }
     fn read<'a>(&'a self, path: &'a str) -> VfsFuture<'a, String> {
         Box::pin(async move {
@@ -125,8 +142,88 @@ impl Vfs for NativeFsVfs {
                 .map_err(|e| io_error(e, path))
         })
     }
+    fn replace_atomic<'a>(&'a self, path: &'a str, content: &'a [u8]) -> VfsFuture<'a, ()> {
+        Box::pin(async move {
+            use std::io::Write;
+            let destination = self.resolve(path)?;
+            let metadata =
+                std::fs::symlink_metadata(&destination).map_err(|e| io_error(e, path))?;
+            if !metadata.is_file() {
+                return Err(VfsError::Io(
+                    "Atomic replacement requires an existing regular file".into(),
+                ));
+            }
+            // This bounded critical section does not yield or spawn a detached
+            // write: dropping its caller cannot publish a replacement later.
+            // Root-level temporary files stay outside every affected subtree.
+            let mut temporary = tempfile::Builder::new()
+                .prefix(".openwebide-replace-")
+                .tempfile_in(&self.root)
+                .map_err(|e| io_error(e, path))?;
+            temporary
+                .as_file()
+                .set_permissions(metadata.permissions())
+                .map_err(|e| io_error(e, path))?;
+            temporary
+                .write_all(content)
+                .map_err(|e| io_error(e, path))?;
+            temporary
+                .as_file()
+                .sync_all()
+                .map_err(|e| io_error(e, path))?;
+            temporary
+                .persist(&destination)
+                .map_err(|e| io_error(e.error, path))?;
+            #[cfg(unix)]
+            {
+                std::fs::File::open(destination.parent().unwrap())
+                    .and_then(|dir| dir.sync_all())
+                    .map_err(|e| io_error(e, path))?;
+                std::fs::File::open(&self.root)
+                    .and_then(|dir| dir.sync_all())
+                    .map_err(|e| io_error(e, path))?;
+            }
+            Ok(())
+        })
+    }
+    fn remove_entry<'a>(
+        &'a self,
+        path: &'a str,
+        kind: openwebide_core::vfs::VfsEntryKind,
+    ) -> VfsFuture<'a, ()> {
+        Box::pin(async move {
+            let full = self.resolve(path)?;
+            let metadata = fs::symlink_metadata(&full)
+                .await
+                .map_err(|e| io_error(e, path))?;
+            if metadata.file_type().is_symlink()
+                || metadata.is_dir() != kind.is_dir()
+                || (!kind.is_dir() && !metadata.is_file())
+            {
+                return Err(VfsError::Io("Workspace entry kind changed".into()));
+            }
+            if kind.is_dir() {
+                fs::remove_dir(&full).await
+            } else {
+                fs::remove_file(&full).await
+            }
+            .map_err(|e| io_error(e, path))?;
+            #[cfg(unix)]
+            {
+                let parent = full.parent().unwrap().to_path_buf();
+                tokio::task::spawn_blocking(move || {
+                    std::fs::File::open(parent).and_then(|dir| dir.sync_all())
+                })
+                .await
+                .map_err(|e| VfsError::Io(e.to_string()))?
+                .map_err(|e| io_error(e, path))?;
+            }
+            Ok(())
+        })
+    }
     fn list<'a>(&'a self, dir: &'a str) -> VfsFuture<'a, Vec<FileEntry>> {
         Box::pin(async move {
+            let canonical = self.canonical_relative(dir)?;
             let mut reader = fs::read_dir(self.directory(dir)?)
                 .await
                 .map_err(|e| io_error(e, dir))?;
@@ -141,6 +238,11 @@ impl Vfs for NativeFsVfs {
                 } else {
                     format!("{}/{name}", dir.trim_end_matches('/'))
                 };
+                if openwebide_core::vfs::private_workspace_path(&path)
+                    || openwebide_core::vfs::private_workspace_path(&format!("{canonical}/{name}"))
+                {
+                    continue;
+                }
                 let metadata = match entry.metadata().await {
                     Ok(metadata) => metadata,
                     Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
@@ -442,6 +544,52 @@ mod tests {
 
 #[cfg(test)]
 mod creation_contract {
+    #[tokio::test]
+    async fn transaction_primitives() {
+        let directory = tempfile::tempdir().unwrap();
+        let vfs = super::NativeFsVfs {
+            root: directory.path().canonicalize().unwrap(),
+        };
+        openwebide_core::testing::workspace_transaction_primitives_contract(&vfs).await;
+        openwebide_core::testing::workspace_transaction_contract(&vfs).await;
+        #[cfg(unix)]
+        {
+            use openwebide_core::Vfs;
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::write(directory.path().join("executable"), "before").unwrap();
+            std::fs::set_permissions(
+                directory.path().join("executable"),
+                std::fs::Permissions::from_mode(0o751),
+            )
+            .unwrap();
+            vfs.replace_atomic("executable", b"after").await.unwrap();
+            assert_eq!(
+                std::fs::metadata(directory.path().join("executable"))
+                    .unwrap()
+                    .permissions()
+                    .mode()
+                    & 0o777,
+                0o751
+            );
+            std::os::unix::fs::symlink("executable", directory.path().join("alias")).unwrap();
+            assert!(
+                vfs.remove_entry("alias", openwebide_core::vfs::VfsEntryKind::File)
+                    .await
+                    .is_err()
+            );
+            assert_eq!(
+                std::fs::read_to_string(directory.path().join("executable")).unwrap(),
+                "after"
+            );
+        }
+        assert!(std::fs::read_dir(directory.path()).unwrap().all(|entry| {
+            !entry
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .starts_with(".openwebide-replace-")
+        }));
+    }
     #[tokio::test]
     async fn native() {
         let dir = tempfile::tempdir().unwrap();

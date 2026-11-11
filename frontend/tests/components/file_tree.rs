@@ -1888,3 +1888,113 @@ async fn git_tree_colors_counts_and_phone_disclosures_stay_visible_in_both_modes
         }
     }
 }
+
+#[wasm_bindgen_test]
+async fn tree_confirmation_and_compound_writes_recheck_durable_recovery_in_both_modes() {
+    use openwebide_core::{vfs::VfsEntryKind, workspace_transaction::TransactionPhase};
+    use openwebide_frontend::state::workspace::WorkspaceRecoveryStatus;
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let folder = if mode == WorkspaceMode::Local {
+            Some(treeFolder().await.unwrap())
+        } else {
+            None
+        };
+        let (mounted, slot) = fixture(folder.as_ref().map(treeHandle));
+        settle().await;
+        let actions = slot.get().unwrap();
+        let files = Workspace::for_project(mounted.state.api, mounted.state.projects, 1).unwrap();
+        mounted.state.workspace.workspace_recovery.update(|states| {
+            states.insert(1, WorkspaceRecoveryStatus::Ready);
+        });
+        // Another tab prepares a journal after this dialog was opened.
+        actions.move_entry(&file("a.txt"), true);
+        settle().await;
+        let rename = mounted.state.ui.prompt.get_untracked().unwrap().on_submit;
+        mounted
+            .state
+            .fake
+            .workspace_transactions
+            .pending(1, mode, TransactionPhase::Finalizing);
+        rename.run("moved.txt".into());
+        wait_until("fresh tree rename fence", || !actions.busy.get_untracked()).await;
+        assert_eq!(files.read("a.txt").await.unwrap(), "Original");
+        assert!(files.read("moved.txt").await.is_err());
+        assert!(
+            mounted
+                .state
+                .ui
+                .toast
+                .get_untracked()
+                .unwrap()
+                .contains("pending workspace operation")
+        );
+        actions.ignore(&file("a.txt"));
+        wait_until("fresh tree ignore fence", || !actions.busy.get_untracked()).await;
+        assert!(files.read(".gitignore").await.is_err());
+        actions.delete(&file("a.txt"));
+        settle().await;
+        mounted
+            .state
+            .ui
+            .confirm
+            .get_untracked()
+            .unwrap()
+            .action
+            .run(());
+        wait_until("fresh tree delete fence", || !actions.busy.get_untracked()).await;
+        assert_eq!(files.read("a.txt").await.unwrap(), "Original");
+        actions.create("", VfsEntryKind::File);
+        settle().await;
+        mounted
+            .state
+            .ui
+            .prompt
+            .get_untracked()
+            .unwrap()
+            .on_submit
+            .run("new.txt".into());
+        wait_until("fresh tree create fence", || !actions.busy.get_untracked()).await;
+        assert!(files.read("new.txt").await.is_err());
+        assert!(mounted.state.fake.workspace_transactions.latest_reads.get() >= 4);
+        assert!(
+            mounted
+                .state
+                .fake
+                .calls
+                .borrow()
+                .iter()
+                .all(|call| !matches!(
+                    call,
+                    openwebide_frontend::testing::fake_backend::Call::WriteFile { .. }
+                        | openwebide_frontend::testing::fake_backend::Call::CopyFile { .. }
+                        | openwebide_frontend::testing::fake_backend::Call::DeleteFile { .. }
+                ))
+        );
+        mounted
+            .state
+            .fake
+            .workspace_transactions
+            .records
+            .borrow_mut()
+            .clear();
+        actions.move_entry(&file("a.txt"), true);
+        settle().await;
+        mounted
+            .state
+            .ui
+            .prompt
+            .get_untracked()
+            .unwrap()
+            .on_submit
+            .run("moved.txt".into());
+        wait_until("tree write resumes after recovery", || {
+            !actions.busy.get_untracked()
+        })
+        .await;
+        assert_eq!(files.read("moved.txt").await.unwrap(), "Original");
+        drop(mounted);
+        if let Some(folder) = folder {
+            treeCleanup(&folder).await.unwrap();
+        }
+    }
+}

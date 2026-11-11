@@ -77,6 +77,12 @@ pub mod util;
 pub mod web_push;
 #[cfg(target_arch = "wasm32")]
 pub mod workspace;
+#[cfg(target_arch = "wasm32")]
+pub mod workspace_journal;
+#[cfg(target_arch = "wasm32")]
+pub mod workspace_mutations;
+#[cfg(target_arch = "wasm32")]
+pub mod workspace_transactions;
 
 #[cfg(target_arch = "wasm32")]
 pub fn mount() {

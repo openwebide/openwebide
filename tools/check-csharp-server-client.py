@@ -177,6 +177,7 @@ def check():
                 assert script(browser,"const diffs=[...document.querySelectorAll('[role=dialog] .editor-diff')];return diffs.length===2&&diffs.every(diff=>diff.clientHeight>=diff.scrollHeight-1);")
                 Path('/tmp/openwebide-csharp-lsp-review-'+mode+'.png').write_bytes(base64.b64decode(browser.call('GET','/screenshot')))
                 assert click(browser,'Apply to editor tabs')
+                wait('rename published before closing its review',lambda:script(browser,"return document.querySelector('textarea[data-editor-path]')?.value.includes('RenamedAnswer');"))
                 for path in [LIB,CLIENT]:
                     select(browser,path)
                     wait('staged C# rename',lambda:script(browser,"return document.querySelector('textarea[data-editor-path]')?.value.includes('RenamedAnswer');"))

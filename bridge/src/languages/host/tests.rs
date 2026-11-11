@@ -1,6 +1,8 @@
 use super::super::{framing, rpc};
 use super::*;
 use tokio::io::BufReader;
+mod lifecycle;
+mod synchronization;
 
 fn key(owner: &str, project: i64) -> Key {
     Key {
@@ -13,6 +15,119 @@ fn key(owner: &str, project: i64) -> Key {
         server: "configuration".into(),
         client: "client".into(),
     }
+}
+
+#[tokio::test]
+async fn workspace_symbol_resolution_and_extended_navigation_reject_other_clients_and_stale_results()
+ {
+    let root = tempfile::tempdir().unwrap();
+    let source = "文😀 Item\n";
+    std::fs::write(root.path().join("main.notes"), source).unwrap();
+    let script = root.path().join("server.py");
+    std::fs::write(&script,r#"import json,sys,pathlib
+def send(value):
+    body=json.dumps({'jsonrpc':'2.0',**value}).encode()
+    sys.stdout.buffer.write(('Content-Length: %d\r\n\r\n'%len(body)).encode()+body);sys.stdout.buffer.flush()
+uri=pathlib.Path('main.notes').resolve().as_uri()
+where={'uri':uri,'range':{'start':{'line':0,'character':4},'end':{'line':0,'character':8}}}
+while True:
+    headers={}
+    while True:
+        line=sys.stdin.buffer.readline()
+        if not line:sys.exit(0)
+        if line==b'\r\n':break
+        name,value=line.decode().split(':',1);headers[name.lower()]=value.strip()
+    message=json.loads(sys.stdin.buffer.read(int(headers['content-length'])))
+    method=message.get('method');params=message.get('params') or {};result=None
+    if method=='initialize':result={'capabilities':{'textDocumentSync':1,'workspaceSymbolProvider':{'resolveProvider':True},'typeDefinitionProvider':True,'implementationProvider':True}}
+    elif method=='workspace/symbol':result=[{'name':'Item','kind':5,'location':where},{'name':'Later','kind':5,'containerName':'Example','location':{'uri':uri},'data':{'selected':True}}]
+    elif method=='workspaceSymbol/resolve':
+        assert params['data']['selected'];result={**params,'location':where}
+    elif method in ('textDocument/typeDefinition','textDocument/implementation'):result=[{'targetUri':uri,'targetSelectionRange':where['range'],'targetRange':where['range']}]
+    if 'id' in message:send({'id':message['id'],'result':result})
+"#).unwrap();
+    let host = Host::default();
+    let scope = Scope {
+        owner: "owner".into(),
+        project: 1,
+        root: root.path().into(),
+        provider: "community/notes".into(),
+        digest: "a".repeat(64),
+        server: serde_json::from_value(json!({"command":"python3","args":[script]})).unwrap(),
+    };
+    let mut input = Request {
+        version: protocol::VERSION,
+        client: "client-a".into(),
+        document: "document".into(),
+        request: 1,
+        revision: 1,
+        language: "notes".into(),
+        path: "main.notes".into(),
+        source_digest: openwebide_core::plugins::languages::source_digest(source),
+        source: source.into(),
+        query: Query::WorkspaceSymbols {
+            query: "Item".into(),
+        },
+    };
+    let response = host.query(scope.clone(), &input).await.unwrap();
+    let symbols: Vec<protocol::results::WorkspaceSymbol> =
+        serde_json::from_value(response.result).unwrap();
+    assert_eq!(symbols[0].target.as_ref().unwrap().range.start.character, 4);
+    let id = symbols[1].id.clone().unwrap();
+    assert_eq!(id.len(), 32);
+    assert!(symbols[1].target.is_none());
+    input.request += 1;
+    input.query = Query::ResolveSymbol { id: id.clone() };
+    let resolved = host.query(scope.clone(), &input).await.unwrap();
+    let targets: Vec<protocol::results::Target> = serde_json::from_value(resolved.result).unwrap();
+    assert_eq!(targets[0].range.offsets(source).unwrap(), 8..12);
+    let mut other = input.clone();
+    other.client = "client-b".into();
+    assert!(
+        host.query(scope.clone(), &other)
+            .await
+            .unwrap_err()
+            .contains("stale or belongs")
+    );
+    input.request += 1;
+    input.revision += 1;
+    input.source.push('\n');
+    input.source_digest = openwebide_core::plugins::languages::source_digest(&input.source);
+    assert!(
+        host.query(scope.clone(), &input)
+            .await
+            .unwrap_err()
+            .contains("stale or belongs")
+    );
+    for query in [
+        Query::TypeDefinition {
+            position: protocol::Position {
+                line: 0,
+                character: 4,
+            },
+        },
+        Query::Implementation {
+            position: protocol::Position {
+                line: 0,
+                character: 4,
+            },
+        },
+    ] {
+        input.request += 1;
+        input.query = query;
+        let response = host.query(scope.clone(), &input).await.unwrap();
+        let targets: Vec<protocol::results::Target> =
+            serde_json::from_value(response.result).unwrap();
+        assert_eq!(
+            targets[0].source_digest.as_deref(),
+            Some(input.source_digest.as_str())
+        );
+    }
+    host.shutdown();
+    assert_eq!(
+        std::fs::read_to_string(root.path().join("main.notes")).unwrap(),
+        source
+    );
 }
 
 #[tokio::test]
@@ -108,6 +223,15 @@ while True:
     request.request += 1;
     request.query = Query::Close;
     host.query(scope.clone(), &request).await.unwrap();
+    let mut late = request.clone();
+    late.request -= 1;
+    late.query = Query::Synchronize;
+    assert!(
+        host.query(scope.clone(), &late)
+            .await
+            .unwrap_err()
+            .contains("stale")
+    );
     main.request += 1;
     let closed = host.query(scope.clone(), &main).await.unwrap();
     assert_eq!(closed.result["contents"], "disk");
@@ -328,25 +452,21 @@ while True:
 #[tokio::test]
 async fn capacity_never_evicts_active_requests_and_revocation_is_scoped() {
     let host = Host::default();
-    let first = host.entry(&key("owner-a", 1)).unwrap();
-    let second = host.entry(&key("owner-a", 2)).unwrap();
+    let input = lifecycle::request();
+    let (first_request, _) = host.acquire(&key("owner-a", 1), &input).unwrap();
+    let first = first_request.entry.clone();
+    let (second_request, _) = host.acquire(&key("owner-a", 2), &input).unwrap();
+    let second = second_request.entry.clone();
+    drop(second_request);
     *first.used.lock().unwrap() = Instant::now() - Duration::from_secs(2);
     *second.used.lock().unwrap() = Instant::now() - Duration::from_secs(1);
-    first
-        .active
-        .lock()
-        .unwrap()
-        .insert("document".into(), (1, watch::channel(false).0));
-    let third = host.entry(&key("owner-a", 3)).unwrap();
+    let (third_request, _) = host.acquire(&key("owner-a", 3), &input).unwrap();
+    let third = third_request.entry.clone();
     assert!(!*first.stopped.borrow());
     assert!(*second.stopped.borrow());
-    third
-        .active
-        .lock()
-        .unwrap()
-        .insert("document".into(), (1, watch::channel(false).0));
-    assert!(host.entry(&key("owner-a", 4)).is_err());
-    let other = host.entry(&key("owner-b", 1)).unwrap();
+    assert!(host.acquire(&key("owner-a", 4), &input).is_err());
+    let (other_request, _) = host.acquire(&key("owner-b", 1), &input).unwrap();
+    let other = other_request.entry.clone();
     host.revoke("owner-a", Some(1), Some("provider"));
     assert!(*first.stopped.borrow());
     assert!(!*third.stopped.borrow());
@@ -617,4 +737,133 @@ while True:
         );
         host.shutdown();
     }
+}
+
+#[tokio::test]
+async fn ordered_workspace_edits_keep_logical_sources_and_reject_partial_commands() {
+    use openwebide_core::plugins::languages::{
+        intelligence::{
+            Position, Range,
+            results::{WorkspaceChange, WorkspaceEdit},
+        },
+        source_digest,
+    };
+    let root = tempfile::tempdir().unwrap();
+    std::fs::write(root.path().join("main.notes"), "disk original").unwrap();
+    std::fs::write(root.path().join("doomed.notes"), [0, 255]).unwrap();
+    let script = root.path().join("ordered.py");
+    std::fs::write(&script, r#"import json,sys,pathlib
+root=pathlib.Path.cwd();uri=(root/'main.notes').as_uri();moved=(root/'moved.notes').as_uri();new=(root/'new'/'new.notes').as_uri();final=(root/'final.notes').as_uri()
+def text(uri,end,value,version=None):return {'textDocument':{'uri':uri,'version':version},'edits':[{'range':{'start':{'line':0,'character':0},'end':{'line':0,'character':end}},'newText':value}]}
+def send(id,result):
+    data=json.dumps({'jsonrpc':'2.0','id':id,'result':result}).encode();sys.stdout.buffer.write(('Content-Length: %d\r\n\r\n'%len(data)).encode()+data);sys.stdout.buffer.flush()
+while True:
+    headers={}
+    while True:
+        line=sys.stdin.buffer.readline()
+        if not line:sys.exit(0)
+        if line==b'\r\n':break
+        key,value=line.decode().split(':',1);headers[key.lower()]=value.strip()
+    message=json.loads(sys.stdin.buffer.read(int(headers['content-length'])))
+    method=message.get('method');params=message.get('params') or {};result=None
+    if method=='initialize':result={'capabilities':{'textDocumentSync':1,'renameProvider':True,'codeActionProvider':True}}
+    elif method=='textDocument/rename':
+        changes=[text(uri,9,'first'),{'kind':'rename','oldUri':uri,'newUri':moved},text(moved,5,'second 文😀'),{'kind':'create','uri':new},text(new,0,'created'),{'kind':'rename','oldUri':new,'newUri':final},{'kind':'delete','uri':(root/'doomed.notes').as_uri()}]
+        if params['newName']=='outside':changes[1]['newUri']=(root.parent/'outside.notes').as_uri()
+        if params['newName']=='stale':changes[0]['textDocument']['version']=999
+        if params['newName']=='options':changes[1]['options']={'overwrite':'yes'}
+        result={'documentChanges':changes}
+    elif method=='textDocument/codeAction':result=[{'title':'Edit and command','kind':'quickfix','edit':{'changes':{uri:text(uri,9,'changed')['edits']}},'command':{'title':'Run','command':'must-not-execute'}}]
+    elif method=='codeAction/resolve':result=params
+    elif method=='workspace/executeCommand':raise Exception('Unapproved server command executed')
+    if 'id' in message:send(message['id'],result)
+"#).unwrap();
+    let host = Host::default();
+    let scope = Scope {
+        owner: "owner".into(),
+        project: 1,
+        root: root.path().into(),
+        provider: "community/notes".into(),
+        digest: "a".repeat(64),
+        server: serde_json::from_value(json!({"command":"python3","args":[script]})).unwrap(),
+    };
+    let mut input = Request {
+        version: protocol::VERSION,
+        client: "client".into(),
+        document: "document".into(),
+        request: 1,
+        revision: 1,
+        language: "notes".into(),
+        path: "main.notes".into(),
+        source: "draft old".into(),
+        source_digest: source_digest("draft old"),
+        query: Query::Rename {
+            position: Position::default(),
+            new_name: "move".into(),
+        },
+    };
+    let response = host.query(scope.clone(), &input).await.unwrap();
+    let edit: WorkspaceEdit = serde_json::from_value(response.result).unwrap();
+    assert!(edit.files.is_empty());
+    assert_eq!(edit.changes.len(), 7);
+    let sources = edit
+        .changes
+        .iter()
+        .filter_map(|change| match change {
+            WorkspaceChange::Text { file } => {
+                Some((file.path.as_str(), file.source_digest.clone()))
+            }
+            WorkspaceChange::File { .. } => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        sources,
+        [
+            ("main.notes", source_digest("draft old")),
+            ("moved.notes", source_digest("first")),
+            ("new/new.notes", source_digest(""))
+        ]
+    );
+    for (name, message) in [
+        ("outside", "outside"),
+        ("stale", "stale"),
+        ("options", "options"),
+    ] {
+        input.request += 1;
+        input.query = Query::Rename {
+            position: Position::default(),
+            new_name: name.into(),
+        };
+        assert!(
+            host.query(scope.clone(), &input)
+                .await
+                .unwrap_err()
+                .contains(message)
+        );
+    }
+    input.request += 1;
+    input.query = Query::CodeActions {
+        range: Range::default(),
+    };
+    let response = host.query(scope.clone(), &input).await.unwrap();
+    let id = response.result[0]["id"].as_str().unwrap().to_string();
+    input.request += 1;
+    input.query = Query::ResolveAction { id };
+    assert!(
+        host.query(scope, &input)
+            .await
+            .unwrap_err()
+            .contains("command approval")
+    );
+    host.shutdown();
+    assert_eq!(
+        std::fs::read_to_string(root.path().join("main.notes")).unwrap(),
+        "disk original"
+    );
+    assert!(!root.path().join("moved.notes").exists());
+    assert!(!root.path().join("new").exists());
+    assert_eq!(
+        std::fs::read(root.path().join("doomed.notes")).unwrap(),
+        [0, 255]
+    );
 }

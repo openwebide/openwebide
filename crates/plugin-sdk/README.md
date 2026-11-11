@@ -47,8 +47,9 @@ optional parser toolkit and do not restrict community language IDs or engines.
 Definitions contain recognition, comments, brackets, conditional automatic pairs,
 surrounding pairs and indentation rules. Block comments explicitly declare
 whether they can nest. Data-only packages can contribute a subset without an
-executable. Formatting, snippets, diagnostics and language-server definitions are
-extension points; declaration alone does not launch a server or implement LSP.
+executable. API 5 formatting, snippet, diagnostics and language-server metadata
+alone does not implement those services. Native server execution requires the
+newer contract below; it does not grant the syntax component host capabilities.
 
 Syntax handlers run only on the execution host, with no host capability grants.
 Requests identify an opaque client document, request, revision, language, path,
@@ -69,6 +70,35 @@ The [syntax toolkit](../language-syntax/README.md) is optional. A custom languag
 can implement this same protocol directly, including a different grammar or a
 pure Rust lexer. Browser clients only render validated results and apply
 declarative rules.
+
+## Native language services (APIs 6–9)
+
+API 6 opts a language into its declared native server command and ordinary
+process-access installation review. API 7 adds per-document `languageId` values
+for related dialects sharing a service. API 8 adds declared, read-only virtual
+source requests. API 9 adds optional `LanguageServer.project_inputs` (JSON
+`projectInputs`) for bounded configuration/dependency file patterns checked at
+native request boundaries. See the authoring guide for pattern syntax, limits
+and remaining project-generation work. It also adds `LanguageServerRole::Diagnostics` (`"diagnostics"` in
+JSON), independent of the default primary `Language` role. Diagnostics providers
+have separate user/project enablement, preserve result provenance, and may supply
+fixes through code-action review. They do not replace primary completion,
+formatting or navigation providers.
+
+API 9 also adds optional `LanguageServer.cache`: a bounded `versionArgs` probe
+and `environment` map of native cache paths. `${cache}` references in arguments,
+initialization options and settings resolve to the same derived-data directory
+outside the project. This is ordinary public metadata, with the same process
+approval and lifecycle for bundled and community packages. See the authoring
+guide for namespace ownership, limits and supported path templates.
+
+Servers execute only on project execution hosts. The shared facade owns provider
+selection, preparation, fresh project authority and unsaved-buffer synchronization
+above both transports. Host clients validate source-bound results and render
+completion snippets, document/selection formatting, symbols and diagnostics;
+packages do not inject editor scripts. See the full
+[native service contract](../../docs/plugin-authoring.md#language-plugin-build-toolchain)
+for bounds, supported methods and explicit unsupported operations.
 
 ## Host capabilities
 

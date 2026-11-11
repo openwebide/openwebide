@@ -106,6 +106,7 @@ pub struct GitBranchArgs {
 /// A parsed tool call: the tool plus its typed arguments.
 #[derive(Debug, Clone)]
 pub enum Tool {
+    CodeIntelligence(openwebide_core::plugins::languages::tools::LanguageToolArgs),
     ReadFile(ReadFileArgs),
     WriteFile(WriteFileArgs),
     EditFile(EditFileArgs),
@@ -135,6 +136,7 @@ impl Tool {
     /// in the UI before the tool runs.
     pub fn describe(&self) -> String {
         match self {
+            Tool::CodeIntelligence(args) => format!("inspect code intelligence for {}", args.path),
             Tool::ReadFile(args) => format!("read {}", args.path),
             Tool::WriteFile(args) => {
                 let n = args.content.lines().count();
@@ -237,6 +239,7 @@ impl Tool {
 /// The name of a built-in tool, matching the wire names sent to the model.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ToolName {
+    CodeIntelligence,
     ReadFile,
     WriteFile,
     EditFile,
@@ -277,7 +280,8 @@ impl ToolName {
     pub fn cancellable(self) -> bool {
         matches!(
             self,
-            Self::AskUserQuestion
+            Self::CodeIntelligence
+                | Self::AskUserQuestion
                 | Self::RunCommand
                 | Self::FetchWebPage
                 | Self::SearchWeb
@@ -288,6 +292,7 @@ impl ToolName {
 
     /// Every built-in tool. Memory tools are advertised only for enabled projects.
     pub const ALL: &[ToolName] = &[
+        ToolName::CodeIntelligence,
         ToolName::ReadFile,
         ToolName::WriteFile,
         ToolName::EditFile,
@@ -325,6 +330,7 @@ impl ToolName {
     /// The wire name of the tool (e.g. `"read_file"`).
     pub fn as_str(self) -> &'static str {
         match self {
+            ToolName::CodeIntelligence => "code_intelligence",
             ToolName::ReadFile => "read_file",
             ToolName::WriteFile => "write_file",
             ToolName::EditFile => "edit_file",
@@ -364,6 +370,20 @@ impl ToolName {
     /// The tool's JSON-schema definition, as advertised to the model.
     pub fn definition(self) -> ToolDefinition {
         match self {
+            ToolName::CodeIntelligence => ToolDefinition {
+                name: self.as_str().into(),
+                description: "Query installed language servers against workspace files (separate from editor drafts). Read-only diagnostics, symbols, definitions and references. Navigation input line/column is 1-based UTF-16; result ranges are zero-based UTF-16. Use the same origin path for opaque symbol/resource IDs. Pending diagnostics are not a clean result; retry when ready is false. Mutations use the ordinary reviewed file tools.".into(),
+                parameters: json!({"type":"object","additionalProperties":false,"required":["operation","path"],"properties":{
+                    "operation":{"type":"string","enum":["diagnostics","symbols","workspace_symbols","definitions","references","resolve_symbol","read_resource"]},
+                    "path":{"type":"string","description":"Workspace-relative source file"},
+                    "line":{"type":"integer","minimum":1,"description":"Definitions/references only"},
+                    "column":{"type":"integer","minimum":1,"description":"1-based UTF-16 column; definitions/references only"},
+                    "query":{"type":"string","maxLength":256,"description":"Workspace symbols only"},
+                    "id":{"type":"string","maxLength":256,"description":"Opaque ID from this file's prior result, resolve_symbol/read_resource only"},
+                    "offset":{"type":"integer","minimum":1,"description":"read_resource: first line (default 1)"},
+                    "limit":{"type":"integer","minimum":1,"maximum":2000,"description":"read_resource: line count (default 200)"}
+                }}),
+            },
             ToolName::SkillList | ToolName::SkillRead | ToolName::SkillCreate | ToolName::SkillUpdate | ToolName::SkillDelete | ToolName::SkillCreator => crate::skills::definition(self.as_str()),
             ToolName::Monitor | ToolName::ScheduleList | ToolName::ScheduleCreate | ToolName::ScheduleUpdate | ToolName::ScheduleDelete => crate::scheduled::definition(self.as_str()),
             ToolName::MemoryCreate => ToolDefinition { name: self.as_str().into(), description: "Store a durable project fact or convention. Omit title for an automatic name. Avoid secrets and transient state.".into(), parameters: json!({"type":"object","properties":{"auto_title":{"type":"boolean","description":"Generate title from content"},"title":{"type":"string","maxLength":120},"content":{"type":"string","maxLength":4000}},"required":["content"],"additionalProperties":false}) },
@@ -552,7 +572,8 @@ impl ToolName {
     pub fn requires_approval(self) -> bool {
         !matches!(
             self,
-            ToolName::ReadFile
+            ToolName::CodeIntelligence
+                | ToolName::ReadFile
                 | ToolName::ListDir
                 | ToolName::Search
                 | ToolName::GrepSearch
@@ -599,6 +620,7 @@ impl FromStr for ToolName {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
+            "code_intelligence" => Ok(ToolName::CodeIntelligence),
             "read_file" => Ok(ToolName::ReadFile),
             "write_file" => Ok(ToolName::WriteFile),
             "edit_file" => Ok(ToolName::EditFile),
@@ -800,6 +822,10 @@ pub fn parse(call: &ToolCall) -> Result<Tool, ToolArgError> {
         }
         ToolName::TodoWrite => parse_as!(TodoWrite, openwebide_core::TodoPlan),
         ToolName::ReadFile => parse_as!(ReadFile, ReadFileArgs),
+        ToolName::CodeIntelligence => parse_as!(
+            CodeIntelligence,
+            openwebide_core::plugins::languages::tools::LanguageToolArgs
+        ),
         ToolName::WriteFile => parse_as!(WriteFile, WriteFileArgs),
         ToolName::EditFile => parse_as!(EditFile, EditFileArgs),
         ToolName::ListDir => parse_as!(ListDir, ListDirArgs),
@@ -905,6 +931,7 @@ mod tests {
 
     fn tool_name_of(tool: &Tool) -> ToolName {
         match tool {
+            Tool::CodeIntelligence(_) => ToolName::CodeIntelligence,
             Tool::ReadFile(_) => ToolName::ReadFile,
             Tool::WriteFile(_) => ToolName::WriteFile,
             Tool::EditFile(_) => ToolName::EditFile,
@@ -1046,6 +1073,7 @@ mod tests {
     #[test]
     fn tool_name_policy_methods_match_the_lists() {
         let auto: &[ToolName] = &[
+            ToolName::CodeIntelligence,
             ToolName::ScheduleList,
             ToolName::ReadFile,
             ToolName::ListDir,

@@ -23,7 +23,7 @@ fn urldecode(s: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
-pub(super) fn query(req: &Request) -> HashMap<String, String> {
+pub(super) fn query<B>(req: &Request<B>) -> HashMap<String, String> {
     parse_query(req.uri().query().unwrap_or_default())
 }
 

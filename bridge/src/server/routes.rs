@@ -89,6 +89,10 @@ pub(super) async fn route(
 
     let is_api_req = path.starts_with("/mcp/")
         || path == "/exec"
+        || path == "/workspace/execute"
+        || path == "/workspace/root"
+        || path == "/workspace/inspect"
+        || path == "/workspace/files"
         || path == "/environment"
         || path == "/scheduler/host"
         || path == "/host/info"
@@ -109,6 +113,7 @@ pub(super) async fn route(
                 | "/plugins/continue"
                 | "/plugins/cancel"
                 | "/plugins/languages/query"
+                | "/plugins/languages/command"
                 | "/plugins/languages/revoke"
         )
         || path.starts_with("/git/")
@@ -187,6 +192,132 @@ pub(super) async fn route(
             }.await;
             Ok(execution_response(result, allowed_origin))
         }
+        ("POST", "/workspace/root") => {
+            let result = async {
+                if principal.is_some() {
+                    return Err(BridgeError::Unauthorized(
+                        "Workspace roots require backend service authentication".into(),
+                    ));
+                }
+                #[derive(Deserialize)]
+                #[serde(deny_unknown_fields)]
+                struct Root {
+                    user: i64,
+                    project: i64,
+                    path: String,
+                }
+                let root: Root = read_json(req.into_body(), 64 * 1024).await?;
+                let identity = crate::workspace_transactions::Host::root_identity(
+                    &config.workspace_root,
+                    &root.path,
+                    root.user,
+                    root.project,
+                )
+                .map_err(BridgeError::Validation)?;
+                serde_json::to_string(
+                    &openwebide_core::workspace_transaction::WorkspaceRootIdentity { identity },
+                )
+                .map_err(|e| BridgeError::Execution(e.to_string()))
+            }
+            .await;
+            Ok(execution_response(result, allowed_origin))
+        }
+        ("POST", "/workspace/inspect") => {
+            let result = async {
+                if principal.is_some() {
+                    return Err(BridgeError::Unauthorized(
+                        "Workspace inspection requires backend service authentication".into(),
+                    ));
+                }
+                use openwebide_core::workspace_transaction::companion::{
+                    NativeFolderInspection, REQUEST_LIMIT,
+                };
+                let request: NativeFolderInspection =
+                    read_json(req.into_body(), REQUEST_LIMIT).await?;
+                request.validate().map_err(BridgeError::Validation)?;
+                #[cfg(any(target_os = "linux", target_os = "macos"))]
+                {
+                    let value = config
+                        .workspace_transactions
+                        .companion
+                        .inspect(config.workspace_root.clone(), request)
+                        .await
+                        .map_err(BridgeError::Validation)?;
+                    serde_json::to_string(&value)
+                        .map_err(|error| BridgeError::Execution(error.to_string()))
+                }
+                #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+                {
+                    Err(BridgeError::Validation(
+                        "Native workspace inspection is unavailable on this host".into(),
+                    ))
+                }
+            }
+            .await;
+            Ok(execution_response(result, allowed_origin))
+        }
+        ("POST", "/workspace/files") => {
+            let result = async {
+                use openwebide_core::workspace_transaction::companion::{
+                    FolderRequest, REQUEST_LIMIT,
+                };
+                let request: FolderRequest = read_json(req.into_body(), REQUEST_LIMIT).await?;
+                let (_, owner) = execution_owner(principal, None, request.user)?;
+                #[cfg(any(target_os = "linux", target_os = "macos"))]
+                {
+                    let reply = config
+                        .workspace_transactions
+                        .folder_request(
+                            config.workspace_root.clone(),
+                            owner,
+                            request,
+                            Some(config.language_servers.clone()),
+                        )
+                        .await
+                        .map_err(BridgeError::Validation)?;
+                    serde_json::to_string(&reply)
+                        .map_err(|error| BridgeError::Execution(error.to_string()))
+                }
+                #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+                {
+                    let _ = owner;
+                    Err(BridgeError::Validation(
+                        "Native folder capabilities are unavailable on this platform".into(),
+                    ))
+                }
+            }
+            .await;
+            Ok(execution_response(result, allowed_origin))
+        }
+        ("POST", "/workspace/execute") => {
+            let result = async {
+                if principal.is_some() {
+                    return Err(BridgeError::Unauthorized(
+                        "Workspace dispatch requires backend service authentication".into(),
+                    ));
+                }
+                let request: openwebide_core::workspace_transaction::NativeWorkspaceTransaction =
+                    read_json(req.into_body(), 64 * 1024).await?;
+                let backend = std::sync::Arc::new(crate::runs::backend_client::BackendClient::new(
+                    config.backend_url.clone(),
+                    config.secret.clone(),
+                    crate::runs::http_client::ReqwestHttpClient::default(),
+                ));
+                let outcome = config
+                    .workspace_transactions
+                    .execute_reviewed(
+                        config.workspace_root.clone(),
+                        request,
+                        backend,
+                        Some(config.language_servers.clone()),
+                    )
+                    .await
+                    .map_err(BridgeError::Validation)?;
+                serde_json::to_string(&outcome).map_err(|e| BridgeError::Execution(e.to_string()))
+            }
+            .await;
+            Ok(execution_response(result, allowed_origin))
+        }
         ("POST", "/plugins/languages/query") => {
             let result = async {
                 use openwebide_core::plugins::languages::{
@@ -195,7 +326,7 @@ pub(super) async fn route(
                 let request: intelligence::HostRequest =
                     read_json(req.into_body(), MAX_REQUEST_ENVELOPE_BYTES).await?;
                 let (cache_owner, owner) =
-                    language_owner(principal, request.user, request.selection.user)?;
+                    execution_owner(principal, request.user, request.selection.user)?;
                 if request.selection.project <= 0 {
                     return Err(BridgeError::Validation(
                         "A language project is required".into(),
@@ -216,7 +347,7 @@ pub(super) async fn route(
                         .map_err(BridgeError::Validation)?;
                 let output = config
                     .language_servers
-                    .query(
+                    .query_package(
                         crate::languages::host::Scope {
                             owner,
                             project: request.selection.project,
@@ -226,6 +357,7 @@ pub(super) async fn route(
                             server,
                         },
                         &request.selection.input,
+                        prepared,
                     )
                     .await
                     .map_err(BridgeError::Validation)?;
@@ -235,14 +367,82 @@ pub(super) async fn route(
             .await;
             Ok(execution_response(result, allowed_origin))
         }
+        ("POST", "/plugins/languages/command") => {
+            let result = async {
+                use openwebide_core::plugins::languages::intelligence::{
+                    self,
+                    actions::{
+                        CommandOperation, HostCommandRequest, MAX_APPROVAL_BYTES,
+                        origin_fingerprint,
+                    },
+                };
+                let request: HostCommandRequest =
+                    read_json(req.into_body(), MAX_APPROVAL_BYTES).await?;
+                let command = request.command;
+                let selection = command.selection;
+                let (_, owner) = execution_owner(principal, request.user, selection.user)?;
+                if selection.project <= 0
+                    || origin_fingerprint(&selection.input).map_err(BridgeError::Validation)?
+                        != command.invocation.origin
+                {
+                    return Err(BridgeError::Validation(
+                        "Language command scope changed".into(),
+                    ));
+                }
+                let server =
+                    intelligence::declared_server(&selection.prepared, &selection.input.language)
+                        .map_err(BridgeError::Validation)?
+                        .clone();
+                let root = if command.operation == CommandOperation::Start {
+                    crate::paths::resolve_in_root(&config.workspace_root, Some(&request.root))
+                        .map_err(BridgeError::Validation)?
+                } else {
+                    // Status and stop address only an existing authenticated
+                    // session. Losing folder access must not prevent fencing it.
+                    config.workspace_root.clone()
+                };
+                let scope = crate::languages::host::Scope {
+                    owner,
+                    project: selection.project,
+                    root,
+                    provider: selection.prepared.storage_namespace(),
+                    digest: selection.prepared.digest,
+                    server,
+                };
+                let progress = match command.operation {
+                    CommandOperation::Start => {
+                        config
+                            .language_servers
+                            .start_command(scope, command.invocation)
+                            .await
+                    }
+                    CommandOperation::Status => {
+                        config
+                            .language_servers
+                            .command_progress(scope, &command.invocation)
+                            .await
+                    }
+                    CommandOperation::Stop => {
+                        config
+                            .language_servers
+                            .stop_command(scope, &command.invocation)
+                            .await
+                    }
+                }
+                .map_err(BridgeError::Validation)?;
+                serde_json::to_string(&progress).map_err(|e| BridgeError::Execution(e.to_string()))
+            }
+            .await;
+            Ok(execution_response(result, allowed_origin))
+        }
         ("POST", "/plugins/languages/revoke") => {
             let result = async {
                 let request: openwebide_core::plugins::languages::intelligence::Revoke =
                     read_json(req.into_body(), 4096).await?;
                 let user = request.user.ok_or_else(|| {
-                    BridgeError::Validation("A language service account is required".into())
+                    BridgeError::Validation("An execution host account is required".into())
                 })?;
-                let (_, owner) = language_owner(principal, request.user, user)?;
+                let (_, owner) = execution_owner(principal, request.user, user)?;
                 if request.project.is_some_and(|id| id <= 0)
                     || request
                         .provider
@@ -468,7 +668,7 @@ pub(super) async fn route(
                         let connection = crate::host_admin::connection(&backend).await?;
                         crate::host_admin::ssh::SshHost::connect(
                             connection,
-                            config.execution.clone(),
+                            config.guarded_execution(),
                         )
                         .await
                     }
@@ -524,7 +724,7 @@ pub(super) async fn route(
                         .map_err(BridgeError::Execution)?;
                     let host = crate::host_admin::ssh::SshHost::connect(
                         connection,
-                        config.execution.clone(),
+                        config.guarded_execution(),
                     )
                     .await
                     .map_err(BridgeError::Execution)?;
@@ -603,7 +803,7 @@ pub(super) async fn route(
                 ));
                 let response = crate::host_admin::request(
                     backend,
-                    config.execution.clone(),
+                    config.guarded_execution(),
                     body.user,
                     body.session,
                     body.request,
@@ -683,14 +883,14 @@ pub(super) async fn route(
 
 /// Map a `check_request` rejection to a response. These never carry CORS headers: the request
 /// failed the Host/Origin baseline, so there is no origin to trust.
-fn language_owner(
+fn execution_owner(
     principal: Option<crate::auth::Principal>,
     backend_user: Option<i64>,
     selected_user: i64,
 ) -> Result<(String, String), BridgeError> {
     if selected_user <= 0 {
         return Err(BridgeError::Validation(
-            "A language service account is required".into(),
+            "An execution host account is required".into(),
         ));
     }
     match principal {
@@ -706,7 +906,7 @@ fn language_owner(
             Ok((owner.clone(), owner))
         }
         _ => Err(BridgeError::Unauthorized(
-            "Language service belongs to another account".into(),
+            "Execution host request belongs to another account".into(),
         )),
     }
 }
@@ -860,7 +1060,7 @@ async fn handle_exec(req: Request<Incoming>, config: &ServerConfig) -> Result<St
     let cwd = crate::paths::resolve_in_root(&config.workspace_root, payload.cwd.as_deref())
         .map_err(BridgeError::Validation)?;
     let output = config
-        .execution
+        .guarded_execution()
         .run_command(SpawnSpec::shell(
             payload.command,
             cwd,
@@ -951,6 +1151,9 @@ async fn handle_git(req: Request<Incoming>, config: &ServerConfig) -> Result<Str
             )));
         }
     };
-    let output = config.execution.git(GitRequest { cwd, operation }).await?;
+    let output = config
+        .guarded_execution()
+        .git(GitRequest { cwd, operation })
+        .await?;
     serde_json::to_string(&output).map_err(|error| BridgeError::Execution(error.to_string()))
 }

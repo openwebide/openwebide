@@ -9,12 +9,20 @@ mod composition;
 pub use composition::LanguageComposition;
 pub mod intelligence;
 mod registry;
+pub mod tools;
 pub use registry::*;
 mod service;
 pub use service::*;
+mod cache;
+mod project_files;
+mod project_inputs;
+pub use cache::{BoundServer, bind_server_cache, validate_server_cache};
+pub use project_files::ProjectFiles;
+pub use project_inputs::{ProjectInputPatterns, validate_project_inputs};
 
 pub const MAX_LANGUAGES: usize = 64;
 pub const MAX_DEFINITION_BYTES: usize = 256 * 1024;
+
 const MAX_VALIDATED_EXPRESSIONS: usize = 256;
 static VALID_EXPRESSIONS: LazyLock<Mutex<BTreeSet<String>>> =
     LazyLock::new(|| Mutex::new(BTreeSet::new()));
@@ -175,7 +183,11 @@ fn validate_definition_limits(
             return Err("Invalid language feature declaration".into());
         }
         if let Some(server) = &features.language_server {
+            validate_server_cache(server)?;
             validate_virtual_documents(&server.virtual_documents)?;
+            if let Some(inputs) = &server.project_inputs {
+                validate_project_inputs(inputs)?;
+            }
         }
         if let Some(server) = &features.language_server
             && (!text(&server.command, 1024)

@@ -954,3 +954,189 @@ async fn degraded_git_refresh_retains_rows_and_complete_empty_status_clears_them
     }
     restore_token(old).await;
 }
+
+#[wasm_bindgen_test]
+async fn all_git_writers_recheck_durable_recovery_even_when_the_ui_still_says_ready_in_both_modes()
+{
+    use openwebide_core::{
+        GitCheckoutRequest, GitCommitRequest, GitSyncRequest,
+        git::{GitPathAction, GitPathRequest, GitStashAction, GitStashRequest},
+        plugins::languages::intelligence::actions::ActionPhase,
+        workspace_transaction::TransactionPhase,
+    };
+    use openwebide_frontend::state::workspace::WorkspaceRecoveryStatus;
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let old = token().await;
+        let http = Http(gitHttp());
+        let folder = probe_folder();
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            if mode == WorkspaceMode::Local {
+                state.projects.local_handles.update(|handles| {
+                    handles.insert(1, folder.unchecked_into());
+                });
+            }
+            state.settings.bridge_url.set("ws://git.test:3001".into());
+            view! {<span/>}
+        });
+        settle().await;
+        let facade = mounted.state.owner.with(expect_context::<ProjectGit>);
+        let repo = facade.repository(Some(1)).await.unwrap();
+        let commit = GitCommitRequest {
+            message: "save".into(),
+            paths: None,
+            include_untracked: false,
+            staged_only: false,
+        };
+        let checkout = GitCheckoutRequest {
+            branch: "other".into(),
+            create_if_missing: false,
+        };
+        let sync = GitSyncRequest {
+            action: "sync".into(),
+            remote: None,
+            branch: None,
+        };
+        let path = GitPathRequest {
+            path: String::new(),
+            action: GitPathAction::StageAll,
+        };
+        for transaction in [true, false] {
+            for phase in 0..4 {
+                let harness = &mounted.state.fake.workspace_transactions;
+                harness.records.borrow_mut().clear();
+                harness.commands.borrow_mut().clear();
+                if transaction {
+                    harness.pending(
+                        1,
+                        mode,
+                        [
+                            TransactionPhase::Prepared,
+                            TransactionPhase::Applying,
+                            TransactionPhase::Reverting,
+                            TransactionPhase::Finalizing,
+                        ][phase],
+                    );
+                } else {
+                    harness.pending(1, mode, TransactionPhase::Committed);
+                    harness.command(
+                        1,
+                        [
+                            ActionPhase::Approved,
+                            ActionPhase::Running,
+                            ActionPhase::Rejected,
+                            ActionPhase::Uncertain,
+                        ][phase],
+                    );
+                }
+                mounted.state.workspace.workspace_recovery.update(|states| {
+                    states.insert(1, WorkspaceRecoveryStatus::Ready);
+                });
+                assert!(repo.commit(&commit).await.is_err());
+                assert!(repo.checkout(&checkout).await.is_err());
+                assert!(repo.sync(&sync).await.is_err());
+                assert!(repo.path_action(&path).await.is_err());
+                for action in [
+                    GitStashAction::Save,
+                    GitStashAction::Apply,
+                    GitStashAction::Drop,
+                ] {
+                    assert!(
+                        repo.stash(&GitStashRequest {
+                            action,
+                            hash: Some("a".repeat(40)),
+                            message: None
+                        })
+                        .await
+                        .is_err()
+                    );
+                }
+                // Read-only recovery inspection remains available.
+                repo.diff(None).await.unwrap();
+                repo.stash(&GitStashRequest {
+                    action: GitStashAction::List,
+                    hash: None,
+                    message: None,
+                })
+                .await
+                .unwrap();
+                assert!(matches!(
+                    mounted
+                        .state
+                        .workspace
+                        .workspace_recovery
+                        .get_untracked()
+                        .get(&1),
+                    Some(WorkspaceRecoveryStatus::Ready)
+                ));
+            }
+        }
+        let calls: Vec<serde_json::Value> = serde_json::from_str(&gitCalls(&http.0)).unwrap();
+        assert!(!calls.iter().any(|call| matches!(
+            call["path"].as_str(),
+            Some("/git/commit" | "/git/checkout" | "/git/sync" | "/git/path")
+        )));
+        assert!(
+            !calls
+                .iter()
+                .any(|call| call["path"] == "/git/stash" && call["body"]["action"] != "list")
+        );
+        assert!(mounted.state.fake.git_commit_requests.borrow().is_empty());
+        assert!(mounted.state.fake.git_checkout_requests.borrow().is_empty());
+        assert!(mounted.state.fake.git_sync_requests.borrow().is_empty());
+        assert!(mounted.state.fake.git_path_requests.borrow().is_empty());
+        assert!(
+            mounted
+                .state
+                .fake
+                .git_stash_requests
+                .borrow()
+                .iter()
+                .all(|request| request.action == GitStashAction::List)
+        );
+        let harness = &mounted.state.fake.workspace_transactions;
+        harness.records.borrow_mut().clear();
+        harness.commands.borrow_mut().clear();
+        for phase in [
+            ActionPhase::Completed,
+            ActionPhase::Acknowledged,
+            ActionPhase::Cancelled,
+        ] {
+            harness.pending(
+                1,
+                mode,
+                if phase == ActionPhase::Cancelled {
+                    TransactionPhase::Restored
+                } else {
+                    TransactionPhase::Committed
+                },
+            );
+            harness.command(1, phase);
+            if mode == WorkspaceMode::Remote {
+                let (send, receive) = futures::channel::oneshot::channel();
+                send.send(Ok(openwebide_core::GitCommitResult {
+                    commit_hash: "abc".into(),
+                    summary: "saved".into(),
+                    is_signed: false,
+                    pre_commit_output: None,
+                }))
+                .unwrap();
+                mounted
+                    .state
+                    .fake
+                    .git_commit_results
+                    .borrow_mut()
+                    .push_back(receive);
+            }
+            repo.commit(&commit).await.unwrap();
+        }
+        drop(repo);
+        drop(mounted);
+        drop(http);
+        restore_token(old).await;
+    }
+}

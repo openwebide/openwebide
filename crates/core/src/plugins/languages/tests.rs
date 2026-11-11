@@ -22,6 +22,122 @@ fn rust() -> serde_json::Value {
 }
 
 #[test]
+fn native_cache_declarations_require_api_nine() {
+    let mut plugin = binding(
+        "custom",
+        "host",
+        json!({"id":"custom","name":"Custom","extensions":["custom"],"features":{"languageServer":{"command":"custom-lsp","cache":{"versionArgs":["--version"],"environment":{"CUSTOM_CACHE":"${cache}/index"}}}}}),
+    );
+    for api in 5..=8 {
+        plugin.prepared.manifest.compatibility.plugin_api = api;
+        assert!(plugin.prepared.manifest.validate().is_err(), "API {api}");
+    }
+    plugin.prepared.manifest.compatibility.plugin_api = 9;
+    plugin.prepared.manifest.validate().unwrap();
+}
+
+#[test]
+fn declared_project_inputs_require_api_nine_and_validate_the_public_pattern_contract() {
+    let mut plugin = binding(
+        "custom",
+        "host",
+        json!({
+            "id":"custom","name":"Custom","extensions":["custom"],
+            "features":{"languageServer":{"command":"custom-lsp","projectInputs":{"files":["**/settings.json"],"exclude":["generated/**"]}}}
+        }),
+    );
+    for api in 5..=8 {
+        plugin.prepared.manifest.compatibility.plugin_api = api;
+        assert!(plugin.prepared.manifest.validate().is_err(), "API {api}");
+    }
+    plugin.prepared.manifest.compatibility.plugin_api = 9;
+    plugin.prepared.manifest.validate().unwrap();
+    plugin.prepared.manifest.contributions.languages[0]
+        .features
+        .language_server
+        .as_mut()
+        .unwrap()
+        .project_inputs
+        .as_mut()
+        .unwrap()
+        .files = vec!["../settings.json".into()];
+    assert!(plugin.prepared.manifest.validate().is_err());
+}
+
+#[test]
+fn independent_diagnostics_have_versioned_roles_and_preferences_without_primary_conflicts() {
+    let mut primary = binding(
+        "rust",
+        "host",
+        json!({"id":"rust","name":"Rust","extensions":["rs"],"features":{"languageServer":{"command":"rust-server"}}}),
+    );
+    primary.prepared.manifest.compatibility.plugin_api = 6;
+    let mut lint = binding(
+        "lint",
+        "host",
+        json!({"id":"rust","name":"Rust lint","extensions":["rs"],"features":{"languageServer":{"command":"lint-server","role":"diagnostics"}}}),
+    );
+    for api in 5..=8 {
+        lint.prepared.manifest.compatibility.plugin_api = api;
+        assert!(
+            lint.prepared.manifest.validate().is_err(),
+            "API {api} cannot opt into diagnostics roles"
+        );
+    }
+    lint.prepared.manifest.compatibility.plugin_api = 9;
+    lint.prepared.manifest.validate().unwrap();
+    primary.prepared.manifest.validate().unwrap();
+    let registry = LanguageRegistry::from_bindings(&[primary, lint]);
+    let mut settings = LanguageSettings::default();
+    let selected = registry.select_server("main.rs", "", None, &settings.defaults);
+    let LanguageSelection::Selected(selected) = selected else {
+        panic!("the linter must not shadow the primary server")
+    };
+    assert_eq!(selected.plugin_label, "rust");
+    let diagnostics = registry
+        .diagnostic_providers("main.rs", "", None, &settings.defaults)
+        .unwrap();
+    assert_eq!(diagnostics.len(), 1);
+    let namespace = diagnostics[0].namespace.clone();
+    settings
+        .defaults
+        .diagnostics
+        .insert(namespace.clone(), false);
+    assert!(
+        registry
+            .diagnostic_providers("main.rs", "", None, &settings.for_project(1))
+            .unwrap()
+            .is_empty()
+    );
+    settings
+        .projects
+        .entry(1)
+        .or_default()
+        .diagnostics
+        .insert(namespace, true);
+    assert_eq!(
+        registry
+            .diagnostic_providers("main.rs", "", None, &settings.for_project(1))
+            .unwrap()
+            .len(),
+        1
+    );
+    assert!(
+        registry
+            .diagnostic_providers("main.rs", "", None, &settings.for_project(2))
+            .unwrap()
+            .is_empty()
+    );
+    settings.validate().unwrap();
+    let roundtrip: LanguageSettings =
+        serde_json::from_value(serde_json::to_value(&settings).unwrap()).unwrap();
+    assert_eq!(roundtrip, settings);
+    let legacy: LanguagePreferences =
+        serde_json::from_value(json!({"providers":{},"formatters":{}})).unwrap();
+    assert!(legacy.diagnostics.is_empty());
+}
+
+#[test]
 fn repeated_registration_preserves_expression_limits_and_bounds_retained_validation() {
     let mut definition: LanguageDefinition = serde_json::from_value(rust()).unwrap();
     for index in 0..2 * MAX_VALIDATED_EXPRESSIONS {

@@ -6,7 +6,7 @@ use openwebide_core::plugins::languages::{
     source_digest,
 };
 use serde_json::json;
-use std::{path::Path, process::Command, time::Duration};
+use std::{collections::BTreeMap, path::Path, process::Command, time::Duration};
 
 const LIBRARY: &str = "def answer() -> int:\r\n    return 42\r\n";
 const UNSAVED: &str = "def answer() -> str:\r\n    return 'unsaved'\r\n";
@@ -17,6 +17,7 @@ struct Fixture {
     scope: Scope,
     sequence: u64,
     client: &'static str,
+    generations: BTreeMap<String, u64>,
 }
 
 impl Fixture {
@@ -36,6 +37,7 @@ impl Fixture {
             },
             sequence: 0,
             client: "editor-a",
+            generations: BTreeMap::new(),
         })
     }
 
@@ -50,7 +52,7 @@ impl Fixture {
         let input = protocol::Request {
             version: protocol::VERSION,
             client: self.client.into(),
-            document: path.into(),
+            document: format!("{path}:{}", self.generations.get(path).unwrap_or(&0)),
             request: self.sequence,
             revision,
             language: "python".into(),
@@ -65,6 +67,11 @@ impl Fixture {
             .await
             .map_err(anyhow::Error::msg)?;
         response.validate(&input).map_err(anyhow::Error::msg)?;
+        // Reopening creates a new document lifetime. Late requests keep their
+        // old identity and must remain stale after a successful close.
+        if matches!(input.query, Query::Close) {
+            *self.generations.entry(path.into()).or_default() += 1;
+        }
         Ok(response)
     }
 
@@ -341,13 +348,14 @@ async fn main() -> Result<()> {
     let other_project = fixture.hover("main.py", MAIN, "answer", "int").await?;
     ensure!(other_project.server != first.server && other_project.server != other_owner.server);
     fixture.scope.project = 1;
+    let before_revoke = fixture.hover("main.py", MAIN, "answer", "str").await?;
     fixture
         .host
         .revoke("fixture-owner", Some(1), Some("community/python"));
     let restarted = fixture
         .query("lib.py", UNSAVED, 2, Query::Synchronize)
         .await?;
-    ensure!(restarted.server != first.server);
+    ensure!(restarted.server != before_revoke.server);
     fixture.hover("main.py", MAIN, "answer", "str").await?;
     // JSON configuration has priority over pyproject.toml. Verify on a fresh
     // service so this contract does not depend on filesystem watcher timing.

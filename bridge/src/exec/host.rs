@@ -81,9 +81,9 @@ async fn capture_stream<R: AsyncRead + Unpin>(mut reader: R) -> String {
 /// Execute a command with a timeout, capturing stdout and stderr into a
 /// [`CommandOutcome`]. `spec.cancel` resolves when the caller no longer needs the result (e.g.
 /// the run driving this call was cancelled); the command's process group is killed either way.
-/// The HTTP `/exec` handler passes [`std::future::pending`] here: hyper simply drops this whole
-/// future when its client disconnects mid-request, and a `GroupGuard` dropped along with it is
-/// what kills the process group in that case.
+/// Direct callers may also drop this future; its `GroupGuard` kills the group.
+/// Coordinated HTTP/run execution instead owns this future in a worker, turns
+/// observer loss into `spec.cancel`, and retains folder exclusion through cleanup.
 pub(super) async fn execute_command_direct(spec: SpawnSpec) -> Result<CommandOutcome, BridgeError> {
     let display_cmd = spec.display_cmd();
     let mut cmd = Command::new(&spec.command);

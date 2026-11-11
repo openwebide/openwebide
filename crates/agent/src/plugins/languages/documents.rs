@@ -1,6 +1,7 @@
 //! Full/delta synchronization, one resync and bounded acknowledged sources.
 use super::*;
 
+#[derive(Clone)]
 pub struct LanguageDocumentRequest {
     pub document: String,
     pub path: String,

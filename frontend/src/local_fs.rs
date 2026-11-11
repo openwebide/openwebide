@@ -83,10 +83,10 @@ async fn call_permission_method(
 
 pub const PERMISSION_NEEDED: &str = "folder access needs to be granted";
 
-/// Ensure the handle has readwrite permission, prompting the user if needed.
+/// Ensure the handle has readwrite permission without prompting.
 /// A freshly picked handle is already granted; one restored from IndexedDB
 /// after a reload reverts to "prompt" and must be re-requested before use.
-async fn ensure_permission(handle: &FileSystemDirectoryHandle) -> Result<(), VfsError> {
+pub(crate) async fn ensure_permission(handle: &FileSystemDirectoryHandle) -> Result<(), VfsError> {
     let query = call_permission_method(handle, "queryPermission").await?;
     if query.as_string().as_deref() == Some("granted") {
         return Ok(());
@@ -272,6 +272,31 @@ fn check_read_size(size: f64) -> Result<(), VfsError> {
 
 pub async fn request_access(handle: &FileSystemDirectoryHandle) -> Result<bool, String> {
     crate::idb::request_permission(handle).await
+}
+
+/// Keep the current capability object when a picker/IDB read returns another
+/// wrapper for the same accessible entry. Actual root changes still replace it
+/// and invalidate captured editor scopes.
+pub async fn retain_folder_handle(
+    previous: Option<&FileSystemDirectoryHandle>,
+    granted: &FileSystemDirectoryHandle,
+) -> Result<FileSystemDirectoryHandle, String> {
+    if let Some(previous) = previous {
+        let same = JsFuture::from(previous.is_same_entry(granted))
+            .await
+            .map_err(|e| js_error(&e))?;
+        if same.as_bool() == Some(true)
+            && call_permission_method(previous, "queryPermission")
+                .await
+                .map_err(display_error)?
+                .as_string()
+                .as_deref()
+                == Some("granted")
+        {
+            return Ok(previous.clone());
+        }
+    }
+    Ok(granted.clone())
 }
 
 /// Prompt the user to pick a directory to work on.
@@ -526,6 +551,9 @@ async fn dir_entries_with_handles(
         } else {
             format!("{prefix}/{name}")
         };
+        if openwebide_core::vfs::private_workspace_path(&path) {
+            continue;
+        }
         entries.push((
             FileEntry {
                 name,
@@ -612,6 +640,54 @@ impl Vfs for BrowserFsaVfs {
         let root = self.root.clone();
         Box::pin(SendWrapper::new(async move {
             write_bytes_typed(&root, path, contents).await
+        }))
+    }
+    fn replace_atomic<'a>(&'a self, path: &'a str, contents: &'a [u8]) -> VfsFuture<'a, ()> {
+        let root = self.root.clone();
+        Box::pin(SendWrapper::new(async move {
+            let path = openwebide_core::vfs::workspace_path(path)?;
+            ensure_permission(&root).await?;
+            let (parent, name) = split_path(&path);
+            let parent = resolve_dir(&root, &parent).await?;
+            let handle = file_handle(&parent, &name).await?;
+            let writable: FileSystemWritableFileStream = JsFuture::from(handle.create_writable())
+                .await
+                .map_err(js_vfs_error)?
+                .unchecked_into();
+            let parts = js_sys::Array::new();
+            parts.push(&js_sys::Uint8Array::from(contents));
+            let blob = Blob::new_with_u8_array_sequence(&parts).map_err(js_vfs_error)?;
+            JsFuture::from(writable.write_with_blob(&blob).map_err(js_vfs_error)?)
+                .await
+                .map_err(js_vfs_error)?;
+            // File System Access publishes its swap file only when close succeeds.
+            JsFuture::from(writable.close())
+                .await
+                .map_err(js_vfs_error)?;
+            Ok(())
+        }))
+    }
+    fn remove_entry<'a>(
+        &'a self,
+        path: &'a str,
+        kind: openwebide_core::vfs::VfsEntryKind,
+    ) -> VfsFuture<'a, ()> {
+        let root = self.root.clone();
+        Box::pin(SendWrapper::new(async move {
+            let path = openwebide_core::vfs::workspace_path(path)?;
+            ensure_permission(&root).await?;
+            let (parent, name) = split_path(&path);
+            let parent = resolve_dir(&root, &parent).await?;
+            if kind.is_dir() {
+                dir_handle(&parent, &name).await?;
+            } else {
+                file_handle(&parent, &name).await?;
+            }
+            // The default is nonrecursive; unexpected children survive a retry.
+            JsFuture::from(parent.remove_entry(&name))
+                .await
+                .map_err(js_vfs_error)?;
+            Ok(())
         }))
     }
     fn copy<'a>(&'a self, from: &'a str, to: &'a str) -> VfsFuture<'a, ()> {

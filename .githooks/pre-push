@@ -9,6 +9,7 @@ required_tools=(
   rust-analyzer
   cargo-clippy
   clang
+  cc
   trunk
   spin
   wasm-bindgen-test-runner
@@ -54,6 +55,8 @@ fi
 
 bash tools/setup-typescript-language-server.sh
 export PATH="$repo_root/tools/typescript-language-server/node_modules/.bin:$PATH"
+python3 tools/setup-web-language-servers.py
+export PATH="$repo_root/tools/web-language-servers/node_modules/.bin:$PATH"
 bash tools/setup-python-language-server.sh
 export PATH="$repo_root/tools/python-language-server/node_modules/.bin:$PATH"
 python3 tools/setup-csharp-language-server.py
@@ -62,23 +65,39 @@ python3 tools/setup-go-language-server.py
 export PATH="$repo_root/tools/go-language-server/installed/bin:$repo_root/tools/go-language-server/installed/go/bin:$PATH"
 python3 tools/setup-clangd-language-server.py
 export PATH="$repo_root/tools/clangd-language-server/installed/bin:$PATH"
+python3 tools/setup-terraform-language-server.py
+export PATH="$repo_root/tools/terraform-language-server/installed/bin:$PATH"
+export CHECKPOINT_DISABLE=1
+export TF_IN_AUTOMATION=1
 
 export WASI_SYSROOT="${WASI_SYSROOT:-$WASI_SDK_PATH/share/wasi-sysroot}"
+
+# Native, WASI and browser verification share target/. Honor the repository's
+# disk reserve only at stage boundaries, after every compiler/test has exited.
+clean_completed_dev_artifacts_if_needed() {
+  if python3 -c 'import shutil, sys; sys.exit(0 if shutil.disk_usage(".").free < 50 * 1024**3 else 1)'; then
+    echo "[pre-push] Cleaning completed dev artifacts before the next verification stage..."
+    cargo clean --profile dev
+  fi
+}
 
 echo "[pre-push] 1/4 Checking formatting (cargo fmt --all --check)..."
 cargo fmt --all --check
 python3 -m unittest discover -s tools -p test_wasi_sdk.py
+python3 -m unittest discover -s tools -p test_setup_terraform_language_server.py
 
 echo "[pre-push] 2/4 Running Clippy across native, WASI, WASM, and bridge targets..."
+clean_completed_dev_artifacts_if_needed
 cargo clippy -p openwebide-storage -p openwebide-core -p openwebide-auth -p openwebide-agent -p openwebide-llm -p openwebide-plugin-sdk -p openwebide-plugin-runtime -p openwebide-plugin-build -p openwebide-language-syntax --features openwebide-core/editor-parser --all-targets -- -D warnings
 cargo check -p openwebide-language-syntax --target wasm32-wasip2 --locked
 cargo clippy -p openwebide-backend --target wasm32-wasip2 -- -D warnings
-cargo clippy -p openwebide-frontend --target wasm32-unknown-unknown -- -D warnings
+cargo clippy -p openwebide-frontend --target wasm32-unknown-unknown --all-targets -- -D warnings
 python3 tools/check-language-client.py --dependencies-only
 python3 tools/check-language-isolation.py --clippy --tests
 cargo clippy -p openwebide-bridge --all-targets -- -D warnings
 
 echo "[pre-push] 3/4 Running native unit & integration tests..."
+clean_completed_dev_artifacts_if_needed
 cargo test -p openwebide-storage -p openwebide-core -p openwebide-auth -p openwebide-agent -p openwebide-llm -p openwebide-bridge -p openwebide-backend -p openwebide-plugin-sdk -p openwebide-plugin-runtime -p openwebide-language-syntax --features openwebide-core/editor-parser -- --skip source_compilation_validates_tools_caches_offline_and_rejects_artifact_corruption
 cargo test -p openwebide-frontend --lib
 cargo run -p openwebide-bridge --example check_language_server --locked
@@ -87,9 +106,12 @@ cargo run -p openwebide-bridge --example check_python_server --locked
 cargo run -p openwebide-bridge --example check_go_server --locked
 cargo run -p openwebide-bridge --example check_clangd_server --locked
 cargo run -p openwebide-bridge --example check_csharp_server --locked
+cargo run -p openwebide-bridge --example check_web_servers --locked
+cargo run -p openwebide-bridge --example check_terraform_server --locked
 
 if [[ -z "$changed_files" ]] || echo "$changed_files" | grep -qE '^(frontend/|crates/core/|crates/agent/|Cargo\.)'; then
   echo "[pre-push] 4/4 Running headless Chrome WASM UI tests..."
+  clean_completed_dev_artifacts_if_needed
   CHROMEDRIVER="$(command -v chromedriver)" WASM_BINDGEN_TEST_TIMEOUT=300 cargo test -p openwebide-frontend --release --target wasm32-unknown-unknown -- --skip 'editor::'
   CHROMEDRIVER="$(command -v chromedriver)" WASM_BINDGEN_TEST_TIMEOUT=300 python3 tools/run-editor-browser-tests.py
 fi

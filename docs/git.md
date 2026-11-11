@@ -25,10 +25,25 @@ files; Apply restores the index and keeps the stash. Drop asks for confirmation.
 Open the repository root to manage stashes; nested project folders can list them.
 The existing draft-description actions and `/commit` command remain available.
 
+Runtime proof files, retained recovery objects, unpublished creations and `.spin`
+are excluded from status, diffs, staging and new stashes. Their case aliases are
+reserved as well. Ordinary names such as
+`.openwebide/recovery-notes` remain project files. A commit refuses runtime entries
+already in the index; remove those entries from the index while preserving their
+files before committing. A path-limited commit or new stash also waits for any
+staged removal of legacy runtime entries to be committed.
+
+Revert, stash, branch switching and pull refuse file/directory collisions that
+could replace hidden contents. Existing stashes and target revisions that would apply runtime entries require
+cleanup outside the app before application. Submodules
+are not recursively updated by branch switching or pull.
+
 The branch picker switches branches or creates a new branch. Checkout preserves
 uncommitted work; Git reports a conflict if switching would overwrite it.
 The hamburger menu contains **Fetch**, **Pull** and **Push**, which show progress and their output or error. Pull uses
-rebase; push establishes tracking when needed. Operations use the branch's
+rebase after fetching and checking the target tree and local replay history.
+Save or stash working changes first; pull does not create an automatic stash.
+Push establishes tracking when needed. Operations use the branch's
 configured upstream, falling back to `origin` and the current branch.
 See [Git SSH setup](git-ssh.md) for execution-host authentication.
 

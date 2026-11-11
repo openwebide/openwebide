@@ -271,6 +271,12 @@ pub fn App() -> impl IntoView {
         request_open,
     );
     provide_context(recovery_actions);
+    crate::state_actions::workspace_recovery::WorkspaceRecoveryActions::install(
+        api,
+        auth,
+        projects_state,
+        workspace_state,
+    );
 
     provide_context(crate::components::editor_chrome::EditorFooterMount::new());
     let git_actions = GitActions::new(GitActionContext {

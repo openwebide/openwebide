@@ -1,5 +1,124 @@
 use super::*;
 use openwebide_core::{editor::syntax_contracts::LANGUAGE_CASES, highlight::language_from_path};
+#[cfg(feature = "rust")]
+use openwebide_plugin_sdk::serde_json;
+
+#[test]
+#[cfg(feature = "rust")]
+fn custom_grammar_uses_declared_pairs_and_its_own_parsed_contexts_without_builtin_ids() {
+    let mut provider = syntax_provider(SyntaxLanguage::Rust).unwrap();
+    provider.language = SyntaxLanguage::Plain;
+    let definition=serde_json::from_value(serde_json::json!({"id":"custom-language","name":"Custom","configuration":{"brackets":[{"open":"{","close":"}"},{"open":"(","close":")"}]},"features":{"syntax":true,"folding":true,"structure":true}})).unwrap();
+    let mut engine = LanguageSyntax::new_delegated(
+        vec![definition],
+        BTreeMap::from([(
+            "custom-language".into(),
+            LanguageGrammar {
+                language: SyntaxLanguage::Plain,
+                provider: Some(provider),
+            },
+        )]),
+    )
+    .unwrap();
+    let text = "fn example() { let text = \"文😀 }\"; /* ( */ }\r\n";
+    let input = LanguageInput::Analyze(request(text, "custom-language", "custom", 1));
+    let output = engine.handle(input.clone()).unwrap();
+    protocol::validate_output(&input, &output, Some(text)).unwrap();
+    let LanguageOutput::Analyzed(response) = output else {
+        panic!("analysis required")
+    };
+    let data = response.analysis.unwrap();
+    let structure = data.structure.unwrap();
+    assert_eq!(structure.language, "custom-language");
+    assert_eq!(structure.brackets.len(), 4);
+    assert!(
+        structure
+            .brackets
+            .iter()
+            .all(|bracket| bracket.partner.is_some())
+    );
+    let text = "fn example() { [unconfigured] }";
+    let output = engine
+        .handle(LanguageInput::Analyze(request(
+            text,
+            "custom-language",
+            "custom",
+            2,
+        )))
+        .unwrap();
+    let LanguageOutput::Analyzed(response) = output else {
+        panic!("analysis required")
+    };
+    assert_eq!(
+        response.analysis.unwrap().structure.unwrap().brackets.len(),
+        4
+    );
+    let invalid = engine.handle_with(
+        LanguageInput::Analyze(request(text, "custom-language", "custom", 3)),
+        |source, _, data| {
+            data.structure
+                .as_mut()
+                .unwrap()
+                .protected
+                .push(protocol::ProtectedRegion {
+                    range: protocol::TextRange {
+                        start: 0,
+                        end: source.len() + 1,
+                    },
+                    complete: false,
+                    kind: protocol::RegionKind::String,
+                });
+            Ok(())
+        },
+    );
+    assert!(
+        invalid.is_err(),
+        "package refinements must satisfy the public output contract"
+    );
+    assert!(
+        engine
+            .handle_with(
+                LanguageInput::Analyze(request("文😀", "custom-language", "invalid-utf8", 1)),
+                |_, _, data| {
+                    let structure = data.structure.as_mut().unwrap();
+                    structure.protected.clear();
+                    structure.protected.push(protocol::ProtectedRegion {
+                        range: protocol::TextRange { start: 0, end: 1 },
+                        complete: false,
+                        kind: protocol::RegionKind::String,
+                    });
+                    Ok(())
+                },
+            )
+            .is_err(),
+        "reject invalid UTF-8 boundaries before structural scanning"
+    );
+    let mut input = request(text, "custom-language", "custom", 4);
+    input.source = protocol::SourceChange::Replace {
+        base_revision: 3,
+        start: 0,
+        end: 0,
+        text: String::new(),
+    };
+    let output = engine
+        .handle_with(LanguageInput::Analyze(input), |_, _, _| {
+            panic!("missing source must not invoke package refinement")
+        })
+        .unwrap();
+    let LanguageOutput::Analyzed(response) = output else {
+        panic!("analysis required")
+    };
+    assert_eq!(response.status, AnalysisStatus::NeedsSource);
+    engine
+        .handle_with(
+            LanguageInput::Close {
+                version: protocol::VERSION,
+                document: "custom".into(),
+            },
+            |_, _, _| panic!("close must not invoke package refinement"),
+        )
+        .unwrap();
+}
 
 fn engine() -> LanguageSyntax {
     let mut grammars = BTreeMap::new();

@@ -65,13 +65,11 @@ pub async fn serve(config: ServerConfig) {
                         queued_prompt: Some(delivery.prompt.key()),
                         host_path: delivery.binding.map(|binding| binding.path),
                     };
-                    let run = config
-                        .runs
-                        .start(
-                            &principal,
-                            start,
-                            &config.workspace_root,
-                            backend.clone(),
+                    let run =
+                        async {
+                            let run = config.runs.reserve(&principal, &start)?;
+                            config.runs.prepare(
+                            run, start, &config.workspace_root, backend.clone(),
                             |plan| {
                                 openwebide_llm::registry::Provider::for_connection_with_memo(
                                     &plan.connection,
@@ -79,7 +77,9 @@ pub async fn serve(config: ServerConfig) {
                                     config.tool_stream_memos.get_or_insert(&plan.connection),
                                 )
                             },
-                        )
+                            config.run_host(),
+                        ).await
+                        }
                         .await;
                     match run {
                         Err((code, detail)) => {

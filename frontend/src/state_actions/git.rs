@@ -244,10 +244,20 @@ impl GitActions {
             let revision = git.branch_revision.get_untracked();
             git.branch_busy.set(true);
             spawn_local(async move {
+                let current = move || {
+                    active_project.try_get_untracked() == Some(Some(project_id))
+                        && auth.generation.try_get_untracked() == Some(generation)
+                        && project_git.revision() == host_revision
+                        && git.branch_revision.try_get_untracked() == Some(revision)
+                };
                 let result = async {
+                    if !current() {
+                        return Err("Git checkout superseded".into());
+                    }
                     project_git
                         .repository(Some(project_id))
                         .await?
+                        .with_current(current)
                         .checkout(&GitCheckoutRequest {
                             branch,
                             create_if_missing,
@@ -331,10 +341,20 @@ impl GitActions {
             git.commit_busy.set(true);
             git.commit_error.set(None);
             spawn_local(async move {
+                let current = move || {
+                    active_project.try_get_untracked() == Some(Some(project_id))
+                        && auth.generation.try_get_untracked() == Some(generation)
+                        && project_git.revision() == host_revision
+                        && git.branch_revision.try_get_untracked() == Some(revision)
+                };
                 let result = async {
+                    if !current() {
+                        return Err("Git commit superseded".into());
+                    }
                     project_git
                         .repository(Some(project_id))
                         .await?
+                        .with_current(current)
                         .commit(&request)
                         .await
                 }
@@ -410,7 +430,14 @@ impl GitActions {
                     {
                         return Err("Git operation superseded".into());
                     }
-                    repo.sync(&request).await
+                    repo.with_current(move || {
+                        active_project.try_get_untracked() == Some(Some(project_id))
+                            && auth.generation.try_get_untracked() == Some(generation)
+                            && project_git.revision() == host_revision
+                            && git.branch_revision.try_get_untracked() == Some(revision)
+                    })
+                    .sync(&request)
+                    .await
                 }
                 .await;
                 if active_project.try_get_untracked() != Some(Some(project_id))

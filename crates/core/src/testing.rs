@@ -2,6 +2,9 @@
 
 use crate::{Vfs, VfsError, vfs::VfsEntryKind};
 
+mod resource_transfers;
+pub use resource_transfers::workspace_resource_transfer_contract;
+
 /// Run on an empty, disposable workspace; creation must be exclusive for files and idempotent for directories.
 pub async fn vfs_creation_contract(vfs: &impl Vfs) {
     vfs.create("created", VfsEntryKind::Directory)
@@ -371,4 +374,242 @@ pub async fn review_contract(files: &impl crate::rewind::RewindFiles) {
         }
     }
     files.delete("review.txt").await.unwrap();
+}
+
+/// Atomic replacement and typed, nonrecursive removal must have identical
+/// semantics on the native execution host and File System Access adapters.
+pub async fn workspace_transaction_primitives_contract(vfs: &impl Vfs) {
+    use crate::workspace_transaction::{EntryState, VfsTransactionFiles, WorkspaceMutation};
+    vfs.create("transaction", VfsEntryKind::Directory)
+        .await
+        .unwrap();
+    vfs.create("transaction/file", VfsEntryKind::File)
+        .await
+        .unwrap();
+    vfs.write_bytes("transaction/file", &[0, 255, 1])
+        .await
+        .unwrap();
+    let files = VfsTransactionFiles {
+        vfs,
+        identity: "owned-test-root",
+    };
+    let mutation = WorkspaceMutation {
+        path: "transaction/file".into(),
+        before: EntryState::file([0, 255, 1]),
+        after: EntryState::file([254, 0, 2]),
+    };
+    mutation.execute(&files).await.unwrap();
+    mutation.execute(&files).await.unwrap();
+    assert_eq!(
+        vfs.read_bytes("transaction/file").await.unwrap(),
+        [254, 0, 2]
+    );
+    vfs.write_bytes("transaction/file", b"external change")
+        .await
+        .unwrap();
+    assert!(mutation.execute(&files).await.is_err());
+    assert_eq!(
+        vfs.read_bytes("transaction/file").await.unwrap(),
+        b"external change"
+    );
+    assert!(
+        vfs.replace_atomic("transaction/missing", b"new")
+            .await
+            .is_err()
+    );
+    assert!(vfs.read_bytes("transaction/missing").await.is_err());
+    assert!(vfs.replace_atomic("transaction", b"new").await.is_err());
+    assert!(
+        vfs.remove_entry("transaction", VfsEntryKind::Directory)
+            .await
+            .is_err()
+    );
+    assert!(
+        vfs.remove_entry("transaction/file", VfsEntryKind::Directory)
+            .await
+            .is_err()
+    );
+    assert!(
+        vfs.remove_entry("transaction", VfsEntryKind::File)
+            .await
+            .is_err()
+    );
+    assert_eq!(
+        vfs.read_bytes("transaction/file").await.unwrap(),
+        b"external change"
+    );
+    assert!(vfs.replace_atomic("../escape", b"new").await.is_err());
+    assert!(
+        vfs.remove_entry("../escape", VfsEntryKind::File)
+            .await
+            .is_err()
+    );
+    assert_eq!(vfs.list("transaction").await.unwrap().len(), 1);
+    vfs.remove_entry("transaction/file", VfsEntryKind::File)
+        .await
+        .unwrap();
+    vfs.remove_entry("transaction", VfsEntryKind::Directory)
+        .await
+        .unwrap();
+}
+
+/// Run the shared journaled workflow against an empty real filesystem adapter.
+/// Database ownership/CAS/atomic editor commits have their own storage contract.
+pub async fn workspace_transaction_contract(vfs: &impl Vfs) {
+    use crate::workspace_transaction::{
+        self as transaction, FileOperation, JournalRecord, PreparedJournal, TransactionProgress,
+        VfsTransactionFiles, WorkspaceJournal, WorkspacePlan,
+    };
+    use std::sync::Mutex;
+    struct Journal(Mutex<Option<JournalRecord>>);
+    impl WorkspaceJournal for Journal {
+        async fn prepare(&self, plan: &WorkspacePlan) -> Result<PreparedJournal, String> {
+            let id = "0123456789abcdef0123456789abcdef".to_string();
+            let prepared = PreparedJournal {
+                id: id.clone(),
+                generation: "c".repeat(32),
+                revision: 1,
+                fingerprint: plan.fingerprint()?,
+            };
+            *self.0.lock().unwrap() = Some(JournalRecord {
+                id,
+                generation: prepared.generation.clone(),
+                revision: 1,
+                plan: plan.clone(),
+                progress: TransactionProgress::default(),
+            });
+            Ok(prepared)
+        }
+        async fn advance(
+            &self,
+            id: &str,
+            generation: &str,
+            revision: u64,
+            progress: &TransactionProgress,
+        ) -> Result<u64, String> {
+            let mut state = self.0.lock().unwrap();
+            let record = state.as_mut().ok_or("Missing journal")?;
+            if record.id != id || record.generation != generation || record.revision != revision {
+                return Err("Stale journal".into());
+            }
+            record.validate_transition(progress)?;
+            record.progress = progress.clone();
+            record.revision += 1;
+            Ok(record.revision)
+        }
+        async fn load(&self, id: Option<&str>) -> Result<Option<JournalRecord>, String> {
+            Ok(self
+                .0
+                .lock()
+                .unwrap()
+                .as_ref()
+                .filter(|record| id.is_none_or(|id| id == record.id))
+                .cloned())
+        }
+    }
+    vfs.create("resource/original/sub", VfsEntryKind::Directory)
+        .await
+        .unwrap();
+    vfs.create("resource/original/sub/data", VfsEntryKind::File)
+        .await
+        .unwrap();
+    vfs.write_bytes("resource/original/sub/data", &[0, 255, 128, 1])
+        .await
+        .unwrap();
+    vfs.create("resource/delete", VfsEntryKind::File)
+        .await
+        .unwrap();
+    vfs.write("resource/delete", "remove after copying")
+        .await
+        .unwrap();
+    let files = VfsTransactionFiles {
+        vfs,
+        identity: "owned-test-root",
+    };
+    let operations = vec![
+        FileOperation::Rename {
+            from: "resource/original".into(),
+            to: "resource/renamed".into(),
+            overwrite: false,
+            ignore_if_exists: false,
+        },
+        FileOperation::Create {
+            path: "resource/new/file".into(),
+            overwrite: false,
+            ignore_if_exists: false,
+        },
+        FileOperation::Delete {
+            path: "resource/delete".into(),
+            recursive: false,
+            ignore_if_missing: false,
+        },
+    ];
+    let plan = transaction::prepare(&files, "owned-test-root".into(), operations, || true)
+        .await
+        .unwrap();
+    let journal = Journal(Mutex::new(None));
+    let committed = transaction::apply(&files, &journal, plan, || true)
+        .await
+        .unwrap();
+    assert_eq!(
+        committed.progress.phase,
+        transaction::TransactionPhase::Committed
+    );
+    assert_eq!(
+        vfs.read_bytes("resource/renamed/sub/data").await.unwrap(),
+        [0, 255, 128, 1]
+    );
+    assert_eq!(vfs.read("resource/new/file").await.unwrap(), "");
+    assert!(vfs.read("resource/delete").await.is_err());
+    assert!(vfs.list("resource/original").await.is_err());
+
+    // Recover an operation whose create primitive completed but whose cursor
+    // acknowledgement was interrupted. Repeating restoration is harmless.
+    let plan = transaction::prepare(
+        &files,
+        "owned-test-root".into(),
+        vec![FileOperation::Create {
+            path: "resource/interrupted".into(),
+            overwrite: false,
+            ignore_if_exists: false,
+        }],
+        || true,
+    )
+    .await
+    .unwrap();
+    let prepared = journal.prepare(&plan).await.unwrap();
+    let mut record = JournalRecord {
+        id: prepared.id,
+        generation: "c".repeat(32),
+        revision: prepared.revision,
+        plan,
+        progress: TransactionProgress {
+            phase: transaction::TransactionPhase::Applying,
+            active: true,
+            ..TransactionProgress::default()
+        },
+    };
+    *journal.0.lock().unwrap() = Some(record.clone());
+    record
+        .active_mutation()
+        .unwrap()
+        .execute(&files)
+        .await
+        .unwrap();
+    record = transaction::recover(&files, &journal, record.clone(), || true)
+        .await
+        .unwrap();
+    assert_eq!(
+        record.progress.phase,
+        transaction::TransactionPhase::Restored
+    );
+    transaction::recover(&files, &journal, record.clone(), || true)
+        .await
+        .unwrap();
+    assert!(vfs.read("resource/interrupted").await.is_err());
+    assert_eq!(
+        vfs.read_bytes("resource/renamed/sub/data").await.unwrap(),
+        [0, 255, 128, 1]
+    );
+    vfs.delete("resource").await.unwrap();
 }

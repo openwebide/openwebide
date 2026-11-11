@@ -8,7 +8,8 @@ use crate::state_actions::editor::{EditorIntelligence, IntelligenceCommand};
 use leptos::prelude::*;
 use openwebide_core::plugins::languages::intelligence::{
     Query,
-    results::{self, Symbol, Target, TextEdit, WorkspaceEdit},
+    actions::ActionReview,
+    results::{self, Symbol, Target, TextEdit, WorkspaceEdit, WorkspaceSymbol},
 };
 pub(super) use popups::{IntelligencePopups, PopupAdapter};
 
@@ -17,11 +18,17 @@ fn title(query: &Query) -> &'static str {
         Query::Hover { .. } => "Symbol information",
         Query::Completion { .. } | Query::ResolveCompletion { .. } => "Completions",
         Query::Definition { .. } => "Definitions",
+        Query::TypeDefinition { .. } => "Type definitions",
+        Query::Implementation { .. } => "Implementations",
         Query::References { .. } => "References",
         Query::Symbols => "Document symbols",
+        Query::WorkspaceSymbols { .. } | Query::ResolveSymbol { .. } => "Workspace symbols",
         Query::Rename { .. } => "Review rename",
         Query::Formatting { .. } => "Review formatting",
-        Query::CodeActions { .. } | Query::ResolveAction { .. } => "Code actions",
+        Query::RangeFormatting { .. } => "Review selection formatting",
+        Query::CodeActions { .. } | Query::ResolveAction { .. } | Query::ReviewAction { .. } => {
+            "Code actions"
+        }
         Query::ReadResource { .. } => "External source · read-only",
         _ => "Language service",
     }
@@ -49,6 +56,18 @@ pub fn EditorIntelligenceToolbar(
     let rename = actions.rename_open;
     let name = RwSignal::new(String::new());
     let problems = RwSignal::new(false);
+    let symbols_open = RwSignal::new(false);
+    let symbol_query = RwSignal::new(String::new());
+    let find_symbols = Callback::new(move |()| {
+        let query = symbol_query.get_untracked().trim().to_string();
+        if query.is_empty() || query.len() > 256 {
+            return;
+        }
+        symbols_open.set(false);
+        actions
+            .request
+            .run(IntelligenceCommand::WorkspaceSymbols(query));
+    });
     let close = actions.dismiss;
     view! {
         <Show when=move || actions.available.get()>
@@ -56,13 +75,17 @@ pub fn EditorIntelligenceToolbar(
                 <Show when=move || actions.error.with(Option::is_some)>
                     <p class="form-hint" role="alert">{move || actions.error.get()}</p>
                 </Show>
+                <Show when=move || actions.primary_available.get()>
                 {[
                     ("Symbol information", IntelligenceCommand::Hover, false),
                     ("Complete at cursor", IntelligenceCommand::Completion, true),
                     ("Go to definition", IntelligenceCommand::Definition, false),
+                    ("Go to type definition", IntelligenceCommand::TypeDefinition, false),
+                    ("Go to implementation", IntelligenceCommand::Implementation, false),
                     ("Find references", IntelligenceCommand::References, false),
                     ("Document symbols", IntelligenceCommand::Symbols, false),
                     ("Format document", IntelligenceCommand::Formatting, true),
+                    ("Format selection", IntelligenceCommand::RangeFormatting, true),
                     ("Code actions", IntelligenceCommand::CodeActions, true),
                 ].into_iter().map(move |(label, command, writes)| view! {
                     <button type="button" role="menuitem" class="ui-dropdown-item recent-item"
@@ -70,12 +93,31 @@ pub fn EditorIntelligenceToolbar(
                         on:click=move |_| actions.request.run(command.clone())>{label}</button>
                 }).collect_view()}
                 <button type="button" role="menuitem" class="ui-dropdown-item recent-item"
+                    disabled=move || actions.busy.get() on:click=move |_| symbols_open.set(true)>"Find workspace symbol…"</button>
+                <button type="button" role="menuitem" class="ui-dropdown-item recent-item"
                     disabled=move || read_only.get() || actions.busy.get()
                     on:click=move |_| { name.set(String::new()); rename.set(true); }>"Rename symbol…"</button>
+                </Show>
+                <button type="button" role="menuitem" class="ui-dropdown-item recent-item" title="F8"
+                    disabled=move || actions.diagnostics.with(Vec::is_empty) on:click=move |_| { actions.navigate_next_diagnostic(false); }>"Next problem"</button>
+                <button type="button" role="menuitem" class="ui-dropdown-item recent-item" title="Shift+F8"
+                    disabled=move || actions.diagnostics.with(Vec::is_empty) on:click=move |_| { actions.navigate_next_diagnostic(true); }>"Previous problem"</button>
+
                 <button type="button" role="menuitem" class="ui-dropdown-item recent-item"
                     on:click=move |_| problems.set(true)>"Problems ("{move || actions.diagnostics.with(Vec::len)}")"</button>
             </super::dropdown::ActionMenu>
             <LanguageServiceFeedback busy=actions.busy.read_only() error=actions.error.read_only() />
+        </Show>
+        <Show when=move || symbols_open.get()>
+            <Modal title=Signal::derive(|| "Find workspace symbol".to_string()) on_close=Callback::new(move |()| symbols_open.set(false))>
+                <DialogBody><FormField label="Symbol name">
+                    <input type="search" class="form-input" maxlength="256" prop:value=move || symbol_query.get()
+                        on:input=move |event| symbol_query.set(event_target_value(&event))
+                        on:keydown=move |event: web_sys::KeyboardEvent| { if event.key()=="Enter" { event.prevent_default(); find_symbols.run(()); } } />
+                </FormField></DialogBody>
+                <DialogActions><Button disabled=Signal::derive(move || symbol_query.with(|query| query.trim().is_empty() || query.len() > 256))
+                    on_click=Callback::new(move |_| find_symbols.run(()))>"Find symbols"</Button></DialogActions>
+            </Modal>
         </Show>
         <Show when=move || rename.get()>
             <Modal title=Signal::derive(|| "Rename symbol".to_string()) on_close=Callback::new(move |()| rename.set(false))>
@@ -90,13 +132,39 @@ pub fn EditorIntelligenceToolbar(
         <Show when=move || problems.get()>
             <Modal title=Signal::derive(|| "Problems".to_string()) on_close=Callback::new(move |()| problems.set(false))>
                 <DialogBody>
-                    <Show when=move || actions.diagnostics.with(Vec::is_empty)><p class="form-hint">"No reported problems in this document."</p></Show>
-                    {move || actions.diagnostics.get().into_iter().map(move |diagnostic| {
-                        let location = format!("{}:{}", diagnostic.range.start.line + 1, diagnostic.range.start.character + 1);
-                        view! { <button type="button" class="ui-dropdown-item" on:click=move |_| {
-                            actions.navigate_diagnostic(diagnostic.range);
-                            problems.set(false);
-                        }><span>{location}" "{diagnostic.message}</span></button> }
+                    <Show when=move || actions.provider_diagnostics.with(Vec::is_empty)>
+                        <p class="form-hint" role="status">"Waiting for analysis…"</p>
+                    </Show>
+                    {move || actions.provider_diagnostics.get().into_iter().map(move |report| {
+                        let primary = report.provider.definition.features.language_server.as_ref().is_some_and(|server|server.role.is_language());
+                        let namespace = report.provider.namespace;
+                        let label = format!("{} · {}", report.provider.plugin_label, report.provider.definition.name);
+                        let status = report.error.unwrap_or_else(|| if report.ready {
+                            if report.diagnostics.is_empty() { "No reported problems." } else { "Analysis ready." }
+                        } else { "Waiting for analysis…" }.to_string());
+                        view! { <section aria-label=label.clone()>
+                            <p><strong>{label.clone()}</strong></p><p class="form-hint" role="status">{status}</p>
+                            {report.diagnostics.into_iter().map(move |diagnostic| {
+                                let provider = namespace.clone();
+                                let location = format!("{}:{}", diagnostic.range.start.line + 1, diagnostic.range.start.character + 1);
+                                view! { <div>
+                                    <button type="button" class="ui-dropdown-item" on:click=move |_| {
+                                        actions.navigate_diagnostic(diagnostic.range);
+                                        problems.set(false);
+                                    }><span>{location}" "{diagnostic.message}</span></button>
+                                    <Button disabled=Signal::derive(move || read_only.get() || actions.busy.get() || !actions.diagnostics_current())
+                                        on_click=Callback::new(move |_| {
+                                            let query = Query::CodeActions { range: diagnostic.range };
+                                            if primary {
+                                                actions.request.run(IntelligenceCommand::Query(query));
+                                            } else {
+                                                actions.request.run(IntelligenceCommand::ProviderQuery {provider:provider.clone(), query});
+                                            }
+                                            problems.set(false);
+                                        })>"Find fixes"</Button>
+                                </div> }
+                            }).collect_view()}
+                        </section> }
                     }).collect_view()}
                 </DialogBody>
             </Modal>
@@ -126,7 +194,11 @@ fn result_view(
                 .unwrap_or_else(|| "No symbol information.".into());
             view! { <div class="markdown" inner_html=crate::markdown::render(&text) /> }.into_any()
         }
-        Query::Definition { .. } | Query::References { .. } => {
+        Query::Definition { .. }
+        | Query::TypeDefinition { .. }
+        | Query::Implementation { .. }
+        | Query::References { .. }
+        | Query::ResolveSymbol { .. } => {
             let targets = serde_json::from_value::<Vec<Target>>(result).unwrap_or_default();
             navigation(
                 actions,
@@ -156,6 +228,22 @@ fn result_view(
                     .collect(),
             )
         }
+        Query::WorkspaceSymbols { .. } => {
+            let symbols =
+                serde_json::from_value::<Vec<WorkspaceSymbol>>(result).unwrap_or_default();
+            let empty = symbols.is_empty();
+            view! {
+                <Show when=move || empty><p class="form-hint">"No matching symbols."</p></Show>
+                {symbols.into_iter().map(move |symbol| {
+                    let label = symbol.container.as_ref().map_or_else(||symbol.name.clone(),|container|format!("{} · {container}",symbol.name));
+                    view! { <button type="button" class="ui-dropdown-item" disabled=move || actions.busy.get()
+                        on:click=move |_| {
+                            if let Some(target)=&symbol.target { actions.navigate.run(target.clone()); }
+                            else if let Some(id)=&symbol.id { actions.request.run(IntelligenceCommand::Query(Query::ResolveSymbol {id:id.clone()})); }
+                        }>{label}</button> }
+                }).collect_view()}
+            }.into_any()
+        }
         Query::Completion { .. } | Query::CodeActions { .. } => {
             let completion = matches!(query, Query::Completion { .. });
             let values = result.as_array().cloned().unwrap_or_default();
@@ -167,7 +255,7 @@ fn result_view(
                     let label = value[if completion { "label" } else { "title" }].as_str()?.to_string();
                     let disabled = !value["disabled"].is_null();
                     Some(view! { <button type="button" class="ui-dropdown-item" disabled=move || disabled || read_only.get() || actions.busy.get()
-                        on:click=move |_| actions.request.run(IntelligenceCommand::Query(if completion { Query::ResolveCompletion { id: id.clone() } } else { Query::ResolveAction { id: id.clone() } }))>{label}</button> })
+                        on:click=move |_| actions.request.run(IntelligenceCommand::Query(if completion { Query::ResolveCompletion { id: id.clone() } } else { Query::ReviewAction { id: id.clone() } }))>{label}</button> })
                 }).collect_view()}
             }.into_any()
         }
@@ -176,7 +264,7 @@ fn result_view(
             let detail = result["detail"].as_str().unwrap_or_default().to_string();
             view! { <p>{label}</p><pre>{detail}</pre><Button disabled=read_only on_click=Callback::new(move |_| actions.apply_completion(&result))>"Insert completion"</Button> }.into_any()
         }
-        Query::Formatting { .. } => {
+        Query::Formatting { .. } | Query::RangeFormatting { .. } => {
             let edits = if result.is_null() {
                 Ok(vec![])
             } else {
@@ -195,6 +283,12 @@ fn result_view(
                     }
                 }
                 Err(_) => view! { <p role="alert">"Invalid formatting result."</p> }.into_any(),
+            }
+        }
+        Query::ReviewAction {..} => {
+            match serde_json::from_value::<ActionReview>(result) {
+                Ok(review)=>view! { <WorkspaceEditReview actions edit=review.edit.clone() read_only reviewed_action=review /> }.into_any(),
+                Err(_)=>view! { <p role="alert">"Invalid code action review."</p> }.into_any(),
             }
         }
         Query::Rename { .. } | Query::ResolveAction { .. } => {
@@ -216,11 +310,15 @@ fn result_view(
 }
 fn navigation(actions: EditorIntelligence, targets: Vec<(String, Target)>) -> AnyView {
     let empty = targets.is_empty();
+    let filter = RwSignal::new(String::new());
+    let targets = StoredValue::new(targets);
     view! {
+        <input type="search" class="form-input" aria-label="Filter symbols and locations" placeholder="Filter results"
+            prop:value=move || filter.get() on:input=move |event| filter.set(event_target_value(&event)) />
         <Show when=move || empty><p class="form-hint">"No results."</p></Show>
-        {targets.into_iter().map(move |(label, target)| view! {
+        {move || { let query=filter.get().to_lowercase(); targets.get_value().into_iter().filter(|(label,_)|label.to_lowercase().contains(&query)).map(move |(label, target)| view! {
             <button type="button" class="ui-dropdown-item" on:click=move |_| actions.navigate.run(target.clone())>{label}</button>
-        }).collect_view()}
+        }).collect_view() }}
     }.into_any()
 }
 
@@ -229,17 +327,51 @@ fn WorkspaceEditReview(
     actions: EditorIntelligence,
     edit: WorkspaceEdit,
     read_only: Signal<bool>,
+    #[prop(optional)] reviewed_action: Option<ActionReview>,
 ) -> impl IntoView {
     let edit = StoredValue::new(edit);
-    Effect::new(move |_| actions.prepare_workspace(edit.get_value()));
+    let reviewed_action = StoredValue::new(reviewed_action);
+    Effect::new(move |_| {
+        // The declared review is immutable. Preparing it must not subscribe this
+        // view effect to incidental editor reads and restart its own work.
+        untrack(|| {
+            if let Some(review) = reviewed_action.get_value() {
+                actions.prepare_action(review);
+            } else {
+                actions.prepare_workspace(edit.get_value());
+            }
+        });
+    });
     view! {
+        {move || actions.resources.get().map(|review| {
+            let approved = review.clone();
+            view! {
+            <p class="form-hint">"Approve the complete file operation. Text edits remain unsaved drafts in editor tabs."</p>
+            {review.command().map(|command|view! {
+                <p class="form-hint">"After the complete edit, this server command runs once. It can change files or other project state."</p>
+                <h3>{command.name.clone()}</h3>
+                <pre>{serde_json::to_string_pretty(&command.arguments).unwrap_or_default()}</pre>
+            })}
+            <ul>{review.operations.iter().cloned().map(|operation| view! { <li>{operation}</li> }).collect_view()}</ul>
+            {review.previews.iter().cloned().map(super::editor::render_inline_diff).collect_view()}
+            <Button disabled=Signal::derive(move || read_only.get() || actions.busy.get())
+                on_click=Callback::new(move |_| actions.apply_resource_workspace(approved.clone(), read_only))>{if review.command().is_some() {"Apply edits and run command"} else {"Apply file operations and editor edits"}}</Button>
+        }})}
+        <Show when=move || actions.resources.get().is_none()>
         <p class="form-hint">"Apply to open tabs as unsaved changes. Each file keeps its undo history; save when ready."</p>
-        {move || actions.review.get().into_iter().map(|file| view! {
-            <h3>{file.path.clone()}</h3>
-            {super::editor::render_inline_diff(openwebide_core::FileDiff { path: file.path, old: Some(file.before.as_ref().clone()), new: file.after.text().to_string(), old_unavailable: false, backup_path: None })}
-        }).collect_view()}
-        <Button disabled=Signal::derive(move || read_only.get() || actions.busy.get() || actions.review.with(Vec::is_empty))
-            on_click=Callback::new(move |_| actions.apply_workspace(read_only))>"Apply to editor tabs"</Button>
+        {move || actions.review.get().map(|review| {
+            let approved = review.clone();
+            let empty = review.files.is_empty();
+            view! {
+                {review.files.iter().map(|file| view! {
+                    <h3>{file.path.clone()}</h3>
+                    {super::editor::render_inline_diff(openwebide_core::FileDiff { path: file.path.clone(), old: Some(file.before.as_ref().clone()), new: file.after.text().to_string(), old_unavailable: false, backup_path: None })}
+                }).collect_view()}
+                <Button disabled=Signal::derive(move || read_only.get() || actions.busy.get() || empty)
+                    on_click=Callback::new(move |_| actions.apply_workspace(approved.clone(), read_only))>"Apply to editor tabs"</Button>
+            }
+        })}
+        </Show>
     }
 }
 

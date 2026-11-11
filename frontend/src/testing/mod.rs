@@ -1,5 +1,6 @@
 pub mod fake_backend;
 pub mod languages;
+pub mod transactions;
 /// Initialize the same Leptos executor used by mounted UI before an isolated
 /// library fixture creates effects. The detached mount owns no application state.
 pub fn initialize_runtime() {

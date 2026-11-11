@@ -45,6 +45,265 @@ fn binding() -> ProjectPlugin {
 
 type Delayed = Rc<RefCell<Option<futures::channel::oneshot::Receiver<()>>>>;
 
+#[wasm_bindgen_test]
+async fn repository_changes_clear_language_results_without_discarding_drafts_in_both_modes() {
+    use openwebide_core::{
+        GitRepoStatus,
+        plugins::languages::intelligence::{self, Query, Response},
+    };
+    use openwebide_frontend::state_actions::editor::EditorIntelligence;
+    let previous = openwebide_frontend::idb::get_bridge_pairing_token()
+        .await
+        .unwrap();
+    openwebide_frontend::idb::set_bridge_pairing_token("revision-language-test-token")
+        .await
+        .unwrap();
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let http = HttpGuard(fake_bridge_http());
+        let mut plugin = binding();
+        plugin.prepared.manifest.compatibility.plugin_api = 9;
+        plugin.prepared.manifest.executable = None;
+        plugin.prepared.manifest.contributions.languages = serde_json::from_value(serde_json::json!([
+            {"id":"notes","name":"Notes","extensions":["notes"],"features":{"languageServer":{"command":"notes-lsp"}}}
+        ])).unwrap();
+        let mut local = plugin.prepared.clone();
+        local.host_id = "paired-local-fixture".into();
+        set_bridge_plugin(&http.0, &serde_json::to_string(&local).unwrap());
+        let fake = Rc::new(FakeBackend::default());
+        fake.project_plugin_entries
+            .borrow_mut()
+            .insert(1, vec![plugin]);
+        *fake.native_language_result.borrow_mut() = Some(serde_json::json!([]));
+        let slot = Rc::new(Cell::new(None::<EditorIntelligence>));
+        let captured = slot.clone();
+        let folder = probe_folder();
+        let mounted = mount_test_with_backend(fake, move |state| {
+            state.seed_project();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            state.fake.projects.borrow_mut()[0].mode = mode;
+            state.projects.local_handles.update(|handles| {
+                handles.insert(1, folder.unchecked_into());
+            });
+            state
+                .settings
+                .bridge_url
+                .set("ws://bridge.test:3001".into());
+            state.auth.set_user(User {
+                id: UserId::new(1),
+                username: "owner".into(),
+                role: UserRole::User,
+                created_at: 0,
+            });
+            state.workspace.open_file.set(Some("draft.notes".into()));
+            state.workspace.content.set("unsaved draft".into());
+            state.workspace.dirty.set(true);
+            captured.set(Some(
+                EditorActions::new(state.workspace)
+                    .install_intelligence(Signal::derive(|| false))
+                    .unwrap(),
+            ));
+            view! { <div/> }
+        });
+        let actions = slot.get().unwrap();
+        wait_until("language identity is ready", || {
+            actions.available.get_untracked()
+        })
+        .await;
+        settle().await;
+        mounted
+            .state
+            .workspace
+            .register_editor_tab(1, "dependency.notes".into());
+        mounted
+            .state
+            .workspace
+            .editor_documents
+            .update(|documents| {
+                documents.insert(
+                    (1, "dependency.notes".into()),
+                    openwebide_core::editor::Document::new("cached dependency"),
+                );
+            });
+        mounted.state.workspace.editor_buffers.update(|buffers| {
+            buffers.insert(
+                (1, "dependency.notes".into()),
+                openwebide_frontend::state::workspace::EditorBuffer {
+                    content: "effective unsaved dependency".into(),
+                    dirty: true,
+                    read_only: false,
+                },
+            );
+        });
+        settle().await;
+        let response = Response {
+            version: intelligence::VERSION,
+            client: "client".into(),
+            document: "draft".into(),
+            request: 1,
+            revision: 1,
+            source_digest: source_digest("unsaved draft"),
+            server: "service".into(),
+            context: None,
+            capabilities: serde_json::json!({}),
+            result: serde_json::json!({"contents":"from previous revision"}),
+            diagnostics: vec![],
+            diagnostics_ready: true,
+        };
+        let query = Query::Hover {
+            position: Default::default(),
+        };
+        actions.result.set(Some((query.clone(), response.clone())));
+        actions.popup.set(Some((query.clone(), response.clone())));
+        let revision = actions.context_revision.get_untracked();
+        mounted.state.git.status.set(Some(GitRepoStatus {
+            branch: "main".into(),
+            commit_hash: "a".repeat(40),
+            ..Default::default()
+        }));
+        settle().await;
+        assert!(
+            actions.result.get_untracked().is_some(),
+            "Initial Git status must not cancel a language result"
+        );
+        assert!(actions.popup.get_untracked().is_some());
+        assert_eq!(actions.context_revision.get_untracked(), revision);
+        mounted.state.git.status.set(None);
+        settle().await;
+        assert!(
+            actions.result.get_untracked().is_some(),
+            "Unavailable Git status must retain the last known revision"
+        );
+        mounted.state.git.status.set(Some(GitRepoStatus {
+            branch: "main".into(),
+            commit_hash: "a".repeat(40),
+            ..Default::default()
+        }));
+        settle().await;
+        assert!(actions.result.get_untracked().is_some());
+        mounted
+            .state
+            .workspace
+            .dirty
+            .set(mounted.state.workspace.dirty.get_untracked());
+        mounted
+            .state
+            .workspace
+            .editor_composition
+            .set(mounted.state.workspace.editor_composition.get_untracked());
+        mounted
+            .state
+            .workspace
+            .open_file
+            .set(mounted.state.workspace.open_file.get_untracked());
+        mounted
+            .state
+            .workspace
+            .content
+            .set(mounted.state.workspace.content.get_untracked());
+        mounted
+            .state
+            .workspace
+            .active_session
+            .set(mounted.state.workspace.active_session.get_untracked());
+        mounted
+            .state
+            .projects
+            .projects
+            .set(mounted.state.projects.projects.get_untracked());
+        mounted
+            .state
+            .languages
+            .settings
+            .set(mounted.state.languages.settings.get_untracked());
+        let plugins = mounted.state.owner.with(expect_context::<PluginsState>);
+        plugins
+            .project_plugins
+            .set(plugins.project_plugins.get_untracked());
+        settle().await;
+        assert!(
+            actions.result.get_untracked().is_some(),
+            "Unchanged editor notifications must not discard a language result"
+        );
+        assert!(actions.popup.get_untracked().is_some());
+        assert_eq!(actions.context_revision.get_untracked(), revision);
+        mounted
+            .state
+            .workspace
+            .editor_documents
+            .update(|documents| {
+                documents.insert(
+                    (1, "dependency.notes".into()),
+                    openwebide_core::editor::Document::new("changed underlying cached document"),
+                );
+            });
+        settle().await;
+        assert!(
+            actions.result.get_untracked().is_some(),
+            "A retained buffer owns its effective source over a cached document"
+        );
+        mounted.state.workspace.editor_buffers.update(|buffers| {
+            buffers
+                .get_mut(&(1, "dependency.notes".into()))
+                .unwrap()
+                .content = "changed unsaved dependency".into();
+        });
+        wait_until("an unsaved dependency invalidates language results", || {
+            actions.result.get_untracked().is_none() && actions.popup.get_untracked().is_none()
+        })
+        .await;
+        assert_eq!(
+            mounted.state.workspace.content.get_untracked().as_str(),
+            "unsaved draft"
+        );
+        actions.result.set(Some((query.clone(), response.clone())));
+        actions.popup.set(Some((query.clone(), response.clone())));
+        mounted.state.git.status.update(|status| {
+            status.as_mut().unwrap().ahead += 1;
+        });
+        settle().await;
+        assert_eq!(actions.context_revision.get_untracked(), revision);
+        assert!(actions.result.get_untracked().is_some());
+        assert!(actions.popup.get_untracked().is_some());
+        for commit in [false, true] {
+            actions.result.set(Some((query.clone(), response.clone())));
+            actions.popup.set(Some((query.clone(), response.clone())));
+            let mut status = mounted.state.git.status.get_untracked().unwrap();
+            if commit {
+                status.commit_hash = "b".repeat(40);
+            } else {
+                mounted.state.git.status.set(None);
+                settle().await;
+                assert!(actions.result.get_untracked().is_some());
+                status.branch = "topic".into();
+            }
+            mounted.state.git.status.set(Some(status));
+            wait_until("repository change clears stale language UI", || {
+                actions.result.get_untracked().is_none() && actions.popup.get_untracked().is_none()
+            })
+            .await;
+            assert!(actions.context_revision.get_untracked() > revision);
+            assert_eq!(
+                mounted.state.workspace.content.get_untracked().as_str(),
+                "unsaved draft"
+            );
+            assert!(mounted.state.workspace.dirty.get_untracked());
+        }
+        drop(mounted);
+    }
+    if let Some(previous) = previous {
+        openwebide_frontend::idb::set_bridge_pairing_token(&previous)
+            .await
+            .unwrap();
+    } else {
+        openwebide_frontend::idb::delete_bridge_pairing_token()
+            .await
+            .unwrap();
+    }
+}
+
 fn host_handler(
     fail: Rc<Cell<bool>>,
     inputs: Rc<RefCell<Vec<LanguageInput>>>,
@@ -511,3 +770,6 @@ async fn language_settings_controls_persist_defaults_and_project_overrides_in_bo
         host.close().await;
     }
 }
+
+#[path = "language_plugins/application.rs"]
+mod application;

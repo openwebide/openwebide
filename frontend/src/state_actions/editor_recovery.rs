@@ -32,9 +32,21 @@ struct RecoveryContext {
     timers: StoredValue<std::collections::HashMap<i64, u64>>,
     checking: StoredValue<std::collections::HashMap<i64, u64>>,
     capturing: StoredValue<std::collections::HashMap<i64, u64>>,
+    paused: StoredValue<std::collections::HashMap<i64, u64>>,
+    workspace_publications: StoredValue<
+        std::collections::HashMap<i64, send_wrapper::SendWrapper<WorkspacePublication>>,
+    >,
     choice_ticket: StoredValue<u64>,
     file_guard: StoredValue<send_wrapper::SendWrapper<Option<FileReviewGuard>>>,
     save_file: Callback<()>,
+}
+
+struct WorkspacePublication {
+    transaction: String,
+    account: u64,
+    ticket: u64,
+    revision: i64,
+    root: super::workspace::EditorRoot,
 }
 
 struct FileReviewGuard {
@@ -57,6 +69,7 @@ enum LoadPolicy {
 
 #[derive(Clone, Copy)]
 pub struct RecoveryActions {
+    context: RecoveryContext,
     pub review_file: Callback<()>,
     pub close_file_review: Callback<()>,
     pub reload_file: Callback<()>,
@@ -112,7 +125,52 @@ impl RecoveryContext {
         });
     }
 
+    fn publication(
+        self,
+        project: i64,
+        record: &EditorRecoveryRecord,
+        hydrated: crate::state::workspace::EditorRecoveryHydration,
+    ) {
+        self.workspace.editor_recovery_checks.update(|checks| {
+            checks.retain(|(id, _), _| *id != project);
+            checks.extend(
+                record
+                    .state
+                    .files
+                    .iter()
+                    .filter(|file| file.document.is_some())
+                    .map(|file| ((project, file.path.clone()), RecoveredFileIssue::Pending)),
+            );
+        });
+        self.workspace.editor_recovered.update(|files| {
+            files.retain(|(id, _)| *id != project);
+            files.extend(
+                record
+                    .state
+                    .files
+                    .iter()
+                    .filter(|file| file.document.is_some())
+                    .map(|file| (project, file.path.clone())),
+            );
+        });
+        self.workspace
+            .editor_recovery_overwrites
+            .update(|permits| permits.retain(|(id, _), _| *id != project));
+        for url in hydrated.revoke_urls {
+            let _ = web_sys::Url::revoke_object_url(&url);
+        }
+        if self.projects.active_project.get_untracked() == Some(project) {
+            self.read_only.set(hydrated.read_only);
+            if let Some(path) = hydrated.selected {
+                self.open.run(path);
+            }
+        }
+    }
+
     fn load(self, id: i64, policy: LoadPolicy) {
+        if self.paused.with_value(|paused| paused.contains_key(&id)) {
+            return;
+        }
         if self
             .state
             .projects
@@ -231,27 +289,24 @@ impl RecoveryContext {
                 }
                 match hydrated {
                     Ok(Some(hydrated)) => {
-                        self.workspace.editor_recovery_checks.update(|checks| {
-                            checks.retain(|(project, _), _| *project != id);
-                            for file in &record.state.files {
-                                if file.document.is_some() { checks.insert((id, file.path.clone()), RecoveredFileIssue::Pending); }
-                            }
-                        });
-                        self.workspace.editor_recovered.update(|files| {
-                            files.retain(|(project, _)| *project != id);
-                            files.extend(record.state.files.iter().filter(|file| file.document.is_some()).map(|file| (id, file.path.clone())));
-                        });
-                        for url in hydrated.revoke_urls { let _ = web_sys::Url::revoke_object_url(&url); }
-                        if self.projects.active_project.get_untracked() == Some(id) {
-                            self.read_only.set(hydrated.read_only);
-                            if let Some(path) = hydrated.selected { self.open.run(path); }
-                        }
+                        self.publication(id, &record, hydrated);
                         RecoveryPhase::Ready
                     }
                     Ok(None) => RecoveryPhase::Conflict("The editor changed while recovery was loading. Your current files are preserved; choose which files to keep.".into()),
                     Err(error) => RecoveryPhase::Conflict(error),
                 }
             };
+            if phase == RecoveryPhase::Ready {
+                self.workspace.workspace_recovery.update(|states| {
+                    if matches!(
+                        states.get(&id),
+                        Some(crate::state::workspace::WorkspaceRecoveryStatus::EditorConflict(_))
+                    ) {
+                        states.insert(id, crate::state::workspace::WorkspaceRecoveryStatus::Ready);
+                    }
+                });
+                check_files(self, id);
+            }
             self.state.projects.update(|projects| {
                 if let Some(entry) = projects.get_mut(&id) {
                     entry.record = Some(std::sync::Arc::new(record));
@@ -261,7 +316,15 @@ impl RecoveryContext {
         });
     }
 
+    fn writable(self, id: i64, pause: Option<u64>) -> bool {
+        self.paused
+            .try_with_value(|paused| paused.get(&id).copied())
+            == Some(pause)
+    }
     fn schedule(self, id: i64) {
+        if !self.writable(id, None) {
+            return;
+        }
         let ticket = self.next_ticket();
         self.timers.update_value(|timers| {
             timers.insert(id, ticket);
@@ -277,11 +340,14 @@ impl RecoveryContext {
             {
                 return;
             }
-            self.save(id, account).await;
+            self.save(id, account, None).await;
         });
     }
 
-    async fn save(self, id: i64, account: u64) {
+    async fn save(self, id: i64, account: u64, pause: Option<u64>) {
+        if !self.writable(id, pause) {
+            return;
+        }
         let Some(project) = self.projects.project(id) else {
             return;
         };
@@ -328,9 +394,12 @@ impl RecoveryContext {
             .editor_recovery_cooperative(
                 &project,
                 || self.read_only.get_untracked(),
-                || self.current(account, &project, ticket),
+                || self.current(account, &project, ticket) && self.writable(id, pause),
             )
             .await;
+        if !self.writable(id, pause) {
+            return;
+        }
         if !self.current(account, &project, ticket) {
             self.reject_changed_root(account, id, ticket);
             return;
@@ -350,12 +419,16 @@ impl RecoveryContext {
         let timer = self.timers.with_value(|timers| timers.get(&id).copied());
         let same = compare_recovery_snapshots(&state, &previous.state, || {
             self.current(account, &project, ticket)
+                && self.writable(id, pause)
                 && self
                     .timers
                     .try_with_value(|timers| timers.get(&id).copied())
                     == Some(timer)
         })
         .await;
+        if !self.writable(id, pause) {
+            return;
+        }
         if !self.current(account, &project, ticket) {
             self.reject_changed_root(account, id, ticket);
             return;
@@ -382,6 +455,13 @@ impl RecoveryContext {
                 entry.writing = true;
             }
         });
+        let mut writing = RecoveryWriteGuard {
+            context: self,
+            project: project.clone(),
+            account,
+            ticket,
+            acknowledged: false,
+        };
         let result = self
             .api
             .with_value(Clone::clone)
@@ -412,6 +492,7 @@ impl RecoveryContext {
                 self.phase(id, RecoveryPhase::SaveFailed(error));
             }
         }
+        writing.acknowledged = true;
     }
 }
 
@@ -439,6 +520,8 @@ impl RecoveryActions {
             timers: StoredValue::new(Default::default()),
             checking: StoredValue::new(Default::default()),
             capturing: StoredValue::new(Default::default()),
+            paused: StoredValue::new(Default::default()),
+            workspace_publications: StoredValue::new(Default::default()),
             choice_ticket: StoredValue::new(0),
             file_guard: StoredValue::new(send_wrapper::SendWrapper::new(None)),
             save_file: expect_context::<super::workspace::WorkspaceActions>().on_save,
@@ -451,6 +534,8 @@ impl RecoveryActions {
                 ctx.timers.set_value(Default::default());
                 ctx.checking.set_value(Default::default());
                 ctx.capturing.set_value(Default::default());
+                ctx.paused.set_value(Default::default());
+                ctx.workspace_publications.set_value(Default::default());
                 state.projects.set(Default::default());
                 state.file_review.set(None);
                 ctx.file_guard
@@ -592,6 +677,7 @@ impl RecoveryActions {
             });
         };
         Self {
+            context: ctx,
             review_file: Callback::new(move |()| ctx.review_file()),
             close_file_review: Callback::new(move |()| {
                 state.file_review_ticket.set(ctx.next_ticket());
@@ -1450,251 +1536,371 @@ async fn read_review_disk(
     .await
 }
 
-#[cfg(test)]
-mod disk_tests {
-    #[wasm_bindgen_test::wasm_bindgen_test]
-    async fn snapshot_comparison_yields_and_discards_superseded_results_in_both_modes() {
-        crate::testing::initialize_runtime();
-        use openwebide_core::editor::{
-            Document, EditorRecovery, EditorRecoveryFile, EditorRecoveryRoot, RecoveryScroll,
+/// A transaction temporarily owns editor recovery writes. The caller freezes
+/// editing before obtaining this permit and publishes the committed editor and
+/// acknowledgement together before dropping it.
+pub struct RecoveryPause {
+    context: RecoveryContext,
+    project: Project,
+    account: u64,
+    recovery_ticket: u64,
+    ticket: u64,
+    current: std::rc::Rc<dyn Fn() -> bool>,
+    record: std::sync::Arc<EditorRecoveryRecord>,
+}
+impl RecoveryPause {
+    pub fn is_current(&self) -> bool {
+        (self.current)()
+            && self
+                .context
+                .current(self.account, &self.project, self.recovery_ticket)
+            && self.context.writable(self.project.id, Some(self.ticket))
+    }
+    pub fn record(&self) -> &std::sync::Arc<EditorRecoveryRecord> {
+        &self.record
+    }
+    /// Cache the exact database acknowledgement after the caller preflights its
+    /// live publication. This performs no second persistence write.
+    pub fn acknowledge(&mut self, record: EditorRecoveryRecord) -> Result<(), String> {
+        if !self.is_current()
+            || Some(record.revision) != self.record.revision.checked_add(1)
+            || record.state.root.as_ref()
+                != Some(&openwebide_core::editor::EditorRecoveryRoot::for_project(
+                    &self.project,
+                ))
+        {
+            return Err(
+                "Editor recovery changed before the workspace operation could be published".into(),
+            );
+        }
+        record.state.validate()?;
+        let record = std::sync::Arc::new(record);
+        self.context.state.projects.update(|projects| {
+            if let Some(entry) = projects.get_mut(&self.project.id) {
+                entry.record = Some(record.clone());
+            }
+        });
+        self.record = record;
+        Ok(())
+    }
+}
+impl Drop for RecoveryPause {
+    fn drop(&mut self) {
+        if self.context.writable(self.project.id, Some(self.ticket)) {
+            self.context.paused.try_update_value(|paused| {
+                paused.remove(&self.project.id);
+            });
+            if self
+                .context
+                .current(self.account, &self.project, self.recovery_ticket)
+            {
+                self.context.schedule(self.project.id);
+            }
+        }
+    }
+}
+impl RecoveryActions {
+    pub fn phase(self, project: i64) -> Option<RecoveryPhase> {
+        self.context
+            .state
+            .projects
+            .with(|projects| projects.get(&project).map(|entry| entry.phase.clone()))
+    }
+    pub fn ready(self, project: i64) -> bool {
+        self.context.state.projects.with(|projects| {
+            projects
+                .get(&project)
+                .is_some_and(|entry| entry.phase == RecoveryPhase::Ready)
+        })
+    }
+    pub fn file_read_only(self) -> bool {
+        self.context.read_only.get_untracked()
+    }
+    pub fn publication_failed(self, project: i64, message: String) {
+        self.context
+            .workspace_publications
+            .try_update_value(|entries| {
+                entries.remove(&project);
+            });
+        let workspace = self.context.workspace;
+        workspace.workspace_recovery.try_update(|states| {
+            states.insert(
+                project,
+                crate::state::workspace::WorkspaceRecoveryStatus::EditorConflict(message.clone()),
+            );
+        });
+        let paths = workspace
+            .editor_tabs
+            .with_untracked(|tabs| tabs.get(&project).cloned().unwrap_or_default());
+        workspace
+            .editor_recovered
+            .update(|files| files.extend(paths.iter().map(|path| (project, path.clone()))));
+        workspace.editor_recovery_checks.update(|checks| {
+            checks.extend(
+                paths
+                    .into_iter()
+                    .map(|path| ((project, path), RecoveredFileIssue::Pending)),
+            );
+        });
+        self.context
+            .phase(project, RecoveryPhase::Conflict(message));
+    }
+    pub fn published(
+        self,
+        project: i64,
+        record: &EditorRecoveryRecord,
+        hydrated: crate::state::workspace::EditorRecoveryHydration,
+    ) {
+        self.context.publication(project, record, hydrated);
+        self.check_files.run(project);
+    }
+    /// Remember only proof of this window's publication, without retaining its
+    /// document snapshots. Reloads and other windows still require review.
+    pub(crate) fn workspace_published(
+        self,
+        project: i64,
+        transaction: &str,
+        record: &EditorRecoveryRecord,
+        hydrated: crate::state::workspace::EditorRecoveryHydration,
+    ) {
+        let ctx = self.context;
+        if let Some(owned) = ctx.projects.project(project)
+            && let Some(ticket) = ctx
+                .state
+                .projects
+                .with_untracked(|entries| entries.get(&project).map(|entry| entry.ticket))
+        {
+            let publication = WorkspacePublication {
+                transaction: transaction.into(),
+                account: ctx.auth.generation.get_untracked(),
+                ticket,
+                revision: record.revision,
+                root: super::workspace::EditorRoot::for_project(
+                    &owned,
+                    ctx.projects,
+                    Some(ctx.settings),
+                ),
+            };
+            ctx.workspace_publications.update_value(|entries| {
+                if entries.len() >= 128
+                    && !entries.contains_key(&project)
+                    && let Some(oldest) = entries
+                        .iter()
+                        .min_by_key(|(_, entry)| entry.ticket)
+                        .map(|(id, _)| *id)
+                {
+                    entries.remove(&oldest);
+                }
+                entries.insert(project, send_wrapper::SendWrapper::new(publication));
+            });
+        }
+        self.published(project, record, hydrated);
+    }
+    /// Background checks only use publication proof from this account and root.
+    pub(crate) fn has_workspace_publication(self, project: i64) -> bool {
+        let ctx = self.context;
+        let Some(owned) = ctx.projects.project(project) else {
+            return false;
         };
-        for mode in [
-            openwebide_core::WorkspaceMode::Local,
-            openwebide_core::WorkspaceMode::Remote,
-        ] {
-            let left = EditorRecovery {
-                root: Some(EditorRecoveryRoot { mode, path: None }),
-                files: vec![EditorRecoveryFile {
-                    path: "a.rs".into(),
-                    document: Some(Document::new("文😀\r\n".repeat(10_000)).recovery()),
-                    scroll: RecoveryScroll::default(),
-                    read_only: false,
-                }],
-                ..EditorRecovery::default()
+        let root =
+            super::workspace::EditorRoot::for_project(&owned, ctx.projects, Some(ctx.settings));
+        ctx.workspace_publications.try_with_value(|entries| {
+            entries.get(&project).is_some_and(|proof| {
+                ctx.auth.generation.try_get_untracked() == Some(proof.account)
+                    && !proof.root.changed(&root)
+            })
+        }) == Some(true)
+    }
+    /// A cleanup acknowledgement must not republish over drafts made since the
+    /// irreversible decision. Consume proof tied to the original window/root.
+    pub(crate) fn workspace_commit_needs_save_ack(self, project: i64, saved: Option<i64>) -> bool {
+        self.context.state.projects.try_with_untracked(|entries| {
+            entries.get(&project).is_some_and(|entry| {
+                entry.phase == RecoveryPhase::Ready
+                    && (entry.writing
+                        || saved.is_some_and(|revision| {
+                            entry
+                                .record
+                                .as_ref()
+                                .is_some_and(|record| record.revision > revision)
+                        }))
+            })
+        }) == Some(true)
+    }
+    pub(crate) fn acknowledge_workspace_commit(
+        self,
+        project: i64,
+        transaction: &str,
+        saved: &EditorRecoveryRecord,
+    ) -> bool {
+        let ctx = self.context;
+        let Some(owned) = ctx.projects.project(project) else {
+            return false;
+        };
+        let root =
+            super::workspace::EditorRoot::for_project(&owned, ctx.projects, Some(ctx.settings));
+        let current = ctx.workspace_publications.try_with_value(|entries| {
+            entries.get(&project).is_some_and(|proof| {
+                proof.transaction == transaction
+                    && ctx.auth.generation.try_get_untracked() == Some(proof.account)
+                    && !proof.root.changed(&root)
+                    && ctx.state.projects.try_with_untracked(|entries| {
+                        entries.get(&project).is_some_and(|entry| {
+                            entry.ticket == proof.ticket
+                                && entry.phase == RecoveryPhase::Ready
+                                && entry.record.as_ref().is_some_and(|record| {
+                                    record.revision >= proof.revision
+                                        && record.revision == saved.revision
+                                })
+                        })
+                    }) == Some(true)
+            })
+        }) == Some(true);
+        if current {
+            ctx.workspace_publications.try_update_value(|entries| {
+                entries.remove(&project);
+            });
+        }
+        current
+    }
+    pub async fn pause_and_flush(
+        self,
+        project: i64,
+        current: std::rc::Rc<dyn Fn() -> bool>,
+    ) -> Result<RecoveryPause, String> {
+        let context = self.context;
+        let owned = context
+            .projects
+            .project(project)
+            .ok_or("The project is unavailable")?;
+        let account = context.auth.generation.get_untracked();
+        let (recovery_ticket, record) = context
+            .state
+            .projects
+            .with_untracked(|projects| {
+                projects
+                    .get(&project)
+                    .filter(|entry| entry.phase == RecoveryPhase::Ready)
+                    .and_then(|entry| {
+                        entry
+                            .record
+                            .as_ref()
+                            .map(|record| (entry.ticket, record.clone()))
+                    })
+            })
+            .ok_or("Wait for editor recovery to be ready before applying workspace changes")?;
+        if !current()
+            || !context.current(account, &owned, recovery_ticket)
+            || !context.writable(project, None)
+        {
+            return Err("Another operation owns editor recovery or the project changed".into());
+        }
+        let ticket = context.next_ticket();
+        context.paused.update_value(|paused| {
+            paused.insert(project, ticket);
+        });
+        context.timers.update_value(|timers| {
+            timers.remove(&project);
+        });
+        let mut permit = RecoveryPause {
+            context,
+            project: owned,
+            account,
+            recovery_ticket,
+            ticket,
+            current,
+            record,
+        };
+        let deadline = js_sys::Date::now() + 30_000.0;
+        loop {
+            if !permit.is_current() {
+                return Err(
+                    "The editor or project changed while preparing workspace recovery".into(),
+                );
+            }
+            if js_sys::Date::now() > deadline {
+                return Err("Editor recovery is still busy; try the operation again after its save finishes".into());
+            }
+            let (phase, writing) = context.state.projects.with_untracked(|projects| {
+                let entry = &projects[&project];
+                (entry.phase.clone(), entry.writing)
+            });
+            match phase {
+                RecoveryPhase::Ready => (),
+                RecoveryPhase::SaveFailed(error)
+                | RecoveryPhase::LoadFailed(error)
+                | RecoveryPhase::Conflict(error) => return Err(error),
+                RecoveryPhase::Loading => return Err("Editor recovery is still loading".into()),
+            }
+            if writing
+                || context
+                    .capturing
+                    .with_value(|captures| captures.contains_key(&project))
+            {
+                crate::util::sleep_ms(10).await;
+                continue;
+            }
+            context.save(project, account, Some(ticket)).await;
+            if !permit.is_current() {
+                return Err(
+                    "The editor or project changed while flushing workspace recovery".into(),
+                );
+            }
+            let acknowledged = context.state.projects.with_untracked(|projects| {
+                projects
+                    .get(&project)
+                    .filter(|entry| entry.phase == RecoveryPhase::Ready && !entry.writing)
+                    .and_then(|entry| entry.record.clone())
+            });
+            let Some(acknowledged) = acknowledged else {
+                continue;
             };
-            let mut right = left.clone();
-            let document = right.files[0].document.as_mut().unwrap();
-            document.text = std::sync::Arc::new(document.text.as_str().to_owned());
-            document.saved = std::sync::Arc::new(document.saved.as_str().to_owned());
-            let current = std::cell::Cell::new(true);
-            let mut pending = Box::pin(compare_recovery_snapshots(&left, &right, || current.get()));
-            assert!(futures::poll!(&mut pending).is_pending());
-            current.set(false);
-            assert_eq!(pending.await, None);
-            assert_eq!(
-                compare_recovery_snapshots(&left, &right, || true).await,
-                Some(true)
-            );
-            right.files[0].read_only = true;
-            assert_eq!(
-                compare_recovery_snapshots(&left, &right, || true).await,
-                Some(false)
-            );
+            let candidate = context
+                .workspace
+                .editor_recovery_cooperative(
+                    &permit.project,
+                    || context.read_only.get_untracked(),
+                    || permit.is_current(),
+                )
+                .await?;
+            if let Some(candidate) = candidate
+                && compare_recovery_snapshots(&candidate, &acknowledged.state, || {
+                    permit.is_current()
+                })
+                .await
+                    == Some(true)
+            {
+                permit.record = acknowledged;
+                return Ok(permit);
+            }
+            crate::util::yield_task().await;
         }
     }
-
-    use super::*;
-    use std::{
-        cell::Cell,
-        future::Future,
-        task::{Context, Poll, Waker},
-    };
-
-    #[wasm_bindgen_test::wasm_bindgen_test]
-    async fn review_disk_comparison_yields_without_partial_equality_or_stale_results() {
-        crate::testing::initialize_runtime();
-        let left = "ASCII 文😀\r\n".repeat(8000);
-        let right = left.clone();
-        let active = Cell::new(true);
-        let current = || active.get();
-        let mut pending = Box::pin(compare_review_disk(Some(&left), Some(&right), current));
-        assert!(matches!(
-            pending
-                .as_mut()
-                .poll(&mut Context::from_waker(Waker::noop())),
-            Poll::Pending
-        ));
-        active.set(false);
-        assert_eq!(pending.await, None);
-        active.set(true);
-        assert_eq!(
-            compare_review_disk(Some(&left), Some(&right), current).await,
-            Some(true)
-        );
-        let mut changed = right;
-        changed.replace_range(changed.len() - 2.., "xx");
-        assert_eq!(
-            compare_review_disk(Some(&left), Some(&changed), current).await,
-            Some(false)
-        );
-        assert_eq!(
-            compare_review_disk(None, Some(""), current).await,
-            Some(false)
-        );
-        assert_eq!(compare_review_disk(None, None, current).await, Some(true));
-        active.set(false);
-        assert_eq!(compare_review_disk(None, None, current).await, None);
-    }
-
-    #[wasm_bindgen_test::wasm_bindgen_test]
-    async fn overwrite_comparison_yields_retries_committed_sources_and_rejects_lost_owners() {
-        crate::testing::initialize_runtime();
-        for change in ["complete", "draft", "saved", "cancel", "remove", "dispose"] {
-            let owner = Owner::new();
-            let key = (1, "draft.txt".to_string());
-            let source = "ASCII 文😀\r\n".repeat(8000);
-            let workspace = owner.with(|| {
-                let workspace = WorkspaceState::new();
-                workspace.editor_documents.update(|documents| {
-                    documents.insert(
-                        key.clone(),
-                        openwebide_core::editor::Document::new(source.clone()),
-                    );
-                });
-                workspace
-            });
-            let expected = crate::state::workspace::RecoveryOverwrite {
-                draft: source.clone(),
-                disk: Some(source.clone()),
-            };
-            let active = Cell::new(true);
-            let current = || active.get() && !workspace.editor_documents.is_disposed();
-            let mut pending = Box::pin(approved_recovery_overwrite(
-                workspace,
-                &key,
-                &expected,
-                Some(&source),
-                &current,
-            ));
-            assert!(matches!(
-                pending
-                    .as_mut()
-                    .poll(&mut Context::from_waker(Waker::noop())),
-                Poll::Pending
-            ));
-            match change {
-                "draft" => workspace.editor_documents.update(|documents| {
-                    documents
-                        .get_mut(&key)
-                        .unwrap()
-                        .replace_selections("edit", None)
-                        .unwrap();
-                }),
-                "saved" => workspace.editor_documents.update(|documents| {
-                    documents
-                        .get_mut(&key)
-                        .unwrap()
-                        .mark_saved_source(std::sync::Arc::new("other".into()));
-                }),
-                "cancel" => active.set(false),
-                "remove" => workspace.editor_documents.update(|documents| {
-                    documents.remove(&key);
-                }),
-                "dispose" => owner.cleanup(),
-                _ => {}
-            }
-            assert_eq!(pending.await, matches!(change, "complete" | "saved"));
-            owner.cleanup();
-        }
-    }
-
-    #[wasm_bindgen_test::wasm_bindgen_test]
-    async fn strict_disk_decoding_yields_and_rejects_lost_scope_before_publication() {
-        crate::testing::initialize_runtime();
-        let source = "ASCII 文😀e\u{301}\r\n".repeat(8000);
-        let active = Cell::new(true);
-        let current = || active.get();
-        let mut pending = Box::pin(decode_disk_bytes(
-            Some(source.clone().into_bytes()),
-            &current,
-            "invalid",
-        ));
-        assert!(matches!(
-            pending
-                .as_mut()
-                .poll(&mut Context::from_waker(Waker::noop())),
-            Poll::Pending
-        ));
-        active.set(false);
-        assert!(pending.await.is_err());
-        active.set(true);
-        assert_eq!(
-            decode_disk_bytes(Some(source.clone().into_bytes()), &current, "invalid").await,
-            Ok(Some(source))
-        );
-        assert_eq!(decode_disk_bytes(None, &current, "invalid").await, Ok(None));
-        assert_eq!(
-            decode_disk_bytes(Some(vec![0xff]), &current, "invalid").await,
-            Err("invalid".into())
-        );
-        active.set(false);
-        assert!(decode_disk_bytes(None, &current, "invalid").await.is_err());
-    }
-
-    #[wasm_bindgen_test::wasm_bindgen_test]
-    async fn disk_reconciliation_yields_retries_current_sources_and_discards_lost_owners() {
-        crate::testing::initialize_runtime();
-        for change in ["complete", "draft", "saved", "remove", "cancel", "dispose"] {
-            let owner = Owner::new();
-            let key = (1, "disk.txt".to_owned());
-            let source = "x\n".repeat(40_000);
-            let workspace = owner.with(|| {
-                let workspace = WorkspaceState::new();
-                workspace.editor_documents.update(|documents| {
-                    documents.insert(
-                        key.clone(),
-                        openwebide_core::editor::Document::for_editor(source.clone()).unwrap(),
-                    );
-                });
-                workspace
-            });
-            let active = Cell::new(true);
-            let disk = if change == "draft" {
-                "external change"
-            } else {
-                source.as_str()
-            };
-            let current = || active.get() && !workspace.editor_documents.is_disposed();
-            let mut pending =
-                Box::pin(classify_recovery_disk(workspace, &key, Some(disk), current));
-            assert!(matches!(
-                pending
-                    .as_mut()
-                    .poll(&mut Context::from_waker(Waker::noop())),
-                Poll::Pending
-            ));
-            match change {
-                "draft" => workspace.editor_documents.update(|documents| {
-                    documents
-                        .get_mut(&key)
-                        .unwrap()
-                        .replace_selections("edit", None)
-                        .unwrap();
-                }),
-                "saved" => workspace.editor_documents.update(|documents| {
-                    documents
-                        .get_mut(&key)
-                        .unwrap()
-                        .mark_saved_source(std::sync::Arc::new("other".into()));
-                }),
-                "remove" => workspace.editor_documents.update(|documents| {
-                    documents.remove(&key);
-                }),
-                "cancel" => active.set(false),
-                "dispose" => owner.cleanup(),
-                _ => {}
-            }
-            let result = pending.await.unwrap();
-            assert_eq!(
-                result,
-                match change {
-                    "complete" => Some(RecoveryDiskState::Current),
-                    "draft" => Some(RecoveryDiskState::Conflict),
-                    "saved" => Some(RecoveryDiskState::AlreadySaved),
-                    _ => None,
-                },
-                "{change}"
+}
+struct RecoveryWriteGuard {
+    context: RecoveryContext,
+    project: Project,
+    account: u64,
+    ticket: u64,
+    acknowledged: bool,
+}
+impl Drop for RecoveryWriteGuard {
+    fn drop(&mut self) {
+        if !self.acknowledged
+            && self
+                .context
+                .current(self.account, &self.project, self.ticket)
+        {
+            self.context.phase(
+                self.project.id,
+                RecoveryPhase::SaveFailed(
+                    "Editor recovery save was interrupted; retry to check its acknowledged version"
+                        .into(),
+                ),
             );
         }
     }
 }
+
+#[cfg(test)]
+mod disk_tests;

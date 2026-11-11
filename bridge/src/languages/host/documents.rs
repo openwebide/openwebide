@@ -8,12 +8,16 @@ const MAX_ACTIONS: usize = 128;
 const MAX_ACTION_BYTES: usize = 256 * 1024;
 const MAX_RESOURCE_BYTES: usize = 256 * 1024;
 mod results;
+mod reuse;
+mod symbols;
 
 #[derive(Default)]
 pub(super) struct Documents {
     documents: BTreeMap<String, Document>,
     version: i32,
     overlay_revision: u64,
+    analysis_generation: Option<generation::Observation>,
+    watermarks: BTreeMap<String, (u64, u64, Instant)>,
 }
 struct Document {
     path: PathBuf,
@@ -25,13 +29,19 @@ struct Document {
     source: Arc<str>,
     version: i32,
     overlay_revision: u64,
-    actions: BTreeMap<String, Value>,
+    actions: BTreeMap<String, RetainedAction>,
     completions: BTreeMap<String, Value>,
     resources: BTreeMap<String, Resource>,
+    symbols: BTreeMap<String, Value>,
 }
 enum Resource {
     File(PathBuf),
     Virtual { uri: String, name: String },
+}
+#[derive(Clone)]
+struct RetainedAction {
+    value: Value,
+    created: Instant,
 }
 impl Resource {
     fn bytes(&self) -> usize {
@@ -43,28 +53,153 @@ impl Resource {
 }
 pub(super) struct Diagnostics {
     pub version: i32,
+    pub minimum_version: i32,
     pub raw: Vec<Value>,
     pub ready: bool,
 }
 impl Documents {
+    pub(super) fn overlay_revision(&self) -> u64 {
+        self.overlay_revision
+    }
+    pub(super) fn observe_generation(&mut self, observation: generation::Observation) {
+        if self.analysis_generation != Some(observation) {
+            for document in self.documents.values_mut() {
+                document.actions.clear();
+                document.completions.clear();
+                document.resources.clear();
+                document.symbols.clear();
+            }
+            self.analysis_generation = Some(observation);
+        }
+    }
+    pub(super) fn invalidate_generation(&mut self) {
+        self.analysis_generation = None;
+        // Unmeasurable coverage cannot authorize edits. Retain read-only
+        // resource/navigation capabilities, whose existing scope and source
+        // checks still apply, so optional observation cannot remove navigation.
+        for document in self.documents.values_mut() {
+            document.actions.clear();
+            document.completions.clear();
+        }
+    }
+    pub(super) fn validate_analysis(
+        &mut self,
+        session: &Session,
+        input: &Request,
+        path: &Path,
+        context: &protocol::AnalysisContext,
+        observation: generation::Observation,
+    ) -> Result<(Response, analysis::affected::Snapshot), String> {
+        self.admit(input)?;
+        if !self.has_source(input, path) {
+            return Err("The original analysis document changed or closed".into());
+        }
+        let affected = session.analysis.verify_at(
+            context,
+            &session.id,
+            input,
+            observation,
+            self.overlay_revision,
+            &session.root,
+        )?;
+        self.documents.get_mut(&input.document).unwrap().request = input.request;
+        Ok((
+            response(session, input, Value::Null, vec![], true),
+            affected,
+        ))
+    }
+    async fn open_document(session: &Session, document: &Document) -> Result<(), String> {
+        // Opening an overlay can leave a server's previously indexed directory
+        // unchanged. Follow the open with a full content synchronization so
+        // restored drafts and newly opened files invalidate that index too.
+        // Both messages carry the exact source; no filesystem write or Save is
+        // implied. Both versions describe identical source; diagnostics can use
+        // either until the server publishes the later version. Edit reviews
+        // always use the final version. Startup requires live synchronization.
+        let opening_version = document.version - 1;
+        session
+            .client
+            .notify(
+                "textDocument/didOpen",
+                json!({"textDocument":{
+                    "uri":document.uri,"languageId":document.language,
+                    "version":opening_version,"text":document.source.as_ref()
+                }}),
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        session
+            .client
+            .notify(
+                "textDocument/didChange",
+                json!({
+                    "textDocument":{"uri":document.uri,"version":document.version},
+                    "contentChanges":[{"text":document.source.as_ref()}]
+                }),
+            )
+            .await
+            .map_err(|error| error.to_string())
+    }
+
+    pub(super) fn workspace_documents(
+        &self,
+        root: &Path,
+    ) -> BTreeMap<
+        String,
+        openwebide_core::plugins::languages::intelligence::workspace_edit::WorkspaceDocument,
+    > {
+        use openwebide_core::{
+            editor::Document as EditorDocument,
+            plugins::languages::intelligence::workspace_edit::WorkspaceDocument,
+        };
+        self.documents
+            .values()
+            .filter_map(|document| {
+                results::relative(root, &document.path).map(|path| {
+                    let mut value = WorkspaceDocument::new(
+                        &path,
+                        EditorDocument::new(document.source.as_ref()),
+                    );
+                    value.revision = Some(document.revision);
+                    value.server_version = Some(i64::from(document.version));
+                    (path, value)
+                })
+            })
+            .collect()
+    }
+    pub(super) fn overlay_source(&self, path: &Path) -> Option<&str> {
+        self.documents
+            .values()
+            .find(|document| document.path == path)
+            .map(|document| document.source.as_ref())
+    }
+    pub(super) fn has_source(&self, input: &Request, path: &Path) -> bool {
+        self.documents.get(&input.document).is_some_and(|document| {
+            document.path == path
+                && document.digest == input.source_digest
+                && document.revision == input.revision
+        })
+    }
     pub(super) async fn query(
         &mut self,
         session: &Session,
         input: &Request,
         path: &Path,
         language: &str,
-    ) -> Result<Response, String> {
-        if matches!(input.query, Query::Close) {
-            if self.documents.get(&input.document).is_some_and(|document| {
-                input.request <= document.request || input.revision < document.revision
-            }) {
-                return Err("Language close request is stale".into());
-            }
-            if let Some(document) = self.documents.remove(&input.document) {
-                self.overlay_revision = self
-                    .overlay_revision
-                    .checked_add(1)
-                    .ok_or("Language overlay revision exhausted")?;
+    ) -> Result<(Response, Option<analysis::affected::Snapshot>), String> {
+        let mut affected = None;
+        self.admit(input)?;
+        if matches!(
+            input.query,
+            Query::PrepareAction { .. } | Query::ReleaseAction { .. }
+        ) {
+            return Ok((response(session, input, Value::Null, vec![], true), None));
+        }
+        if matches!(
+            input.query,
+            Query::Close | Query::SynchronizeAction { close: true, .. }
+        ) {
+            if let Some(document) = self.remove_closed(input)? {
                 session.diagnostics.lock().unwrap().remove(&document.uri);
                 session
                     .client
@@ -75,7 +210,7 @@ impl Documents {
                     .await
                     .map_err(|error| error.to_string())?;
             }
-            return Ok(response(session, input, Value::Null, vec![], true));
+            return Ok((response(session, input, Value::Null, vec![], true), None));
         }
         let uri = url::Url::from_file_path(path)
             .map_err(|()| "Invalid language document URI")?
@@ -157,6 +292,7 @@ impl Documents {
                 actions: BTreeMap::new(),
                 completions: BTreeMap::new(),
                 resources: BTreeMap::new(),
+                symbols: BTreeMap::new(),
             });
         // Some servers retain a translation unit until that document changes or
         // reopens, even when another unsaved overlay changes its dependencies.
@@ -169,7 +305,7 @@ impl Documents {
         if source_changed || is_new || refresh {
             self.version = self
                 .version
-                .checked_add(1)
+                .checked_add(if is_new || refresh { 2 } else { 1 })
                 .ok_or("Language document version exhausted")?;
             document.version = self.version;
             document.overlay_revision = self.overlay_revision;
@@ -178,10 +314,16 @@ impl Documents {
             document.actions.clear();
             document.completions.clear();
             document.resources.clear();
+            document.symbols.clear();
             session.diagnostics.lock().unwrap().insert(
                 uri.clone(),
                 Diagnostics {
                     version: document.version,
+                    minimum_version: if is_new || refresh {
+                        document.version - 1
+                    } else {
+                        document.version
+                    },
                     raw: vec![],
                     ready: false,
                 },
@@ -194,7 +336,7 @@ impl Documents {
                     .map_err(|error| error.to_string())?;
             }
             if is_new || refresh {
-                session.client.notify("textDocument/didOpen",json!({"textDocument":{"uri":uri,"languageId":language,"version":document.version,"text":input.source}})).await.map_err(|error|error.to_string())?;
+                Self::open_document(session, document).await?;
             } else {
                 session.client.notify("textDocument/didChange",json!({"textDocument":{"uri":uri,"version":document.version},"contentChanges":[{"text":input.source}]})).await.map_err(|error|error.to_string())?;
             }
@@ -217,8 +359,10 @@ impl Documents {
                 .await
                 .map_err(|error| error.to_string())?;
         }
-        if matches!(input.query, Query::Synchronize | Query::Saved)
-            && supported(&session.capabilities, "diagnosticProvider")
+        if matches!(
+            input.query,
+            Query::Synchronize | Query::Saved | Query::SynchronizeAction { .. }
+        ) && supported(&session.capabilities, "diagnosticProvider")
         {
             let diagnostics = request_current(
                 &session.client,
@@ -236,6 +380,7 @@ impl Documents {
                     uri.clone(),
                     Diagnostics {
                         version: document.version,
+                        minimum_version: document.version,
                         raw,
                         ready: true,
                     },
@@ -285,11 +430,19 @@ impl Documents {
                 Query::Hover { .. } => "hoverProvider",
                 Query::Completion { .. } | Query::ResolveCompletion { .. } => "completionProvider",
                 Query::Definition { .. } => "definitionProvider",
+                Query::TypeDefinition { .. } => "typeDefinitionProvider",
+                Query::Implementation { .. } => "implementationProvider",
                 Query::References { .. } => "referencesProvider",
                 Query::Symbols => "documentSymbolProvider",
+                Query::WorkspaceSymbols { .. } | Query::ResolveSymbol { .. } => {
+                    "workspaceSymbolProvider"
+                }
                 Query::Rename { .. } => "renameProvider",
                 Query::Formatting { .. } => "documentFormattingProvider",
-                Query::CodeActions { .. } | Query::ResolveAction { .. } => "codeActionProvider",
+                Query::RangeFormatting { .. } => "documentRangeFormattingProvider",
+                Query::CodeActions { .. }
+                | Query::ResolveAction { .. }
+                | Query::ReviewAction { .. } => "codeActionProvider",
                 _ => unreachable!("query has a method"),
             };
             if !supported(&session.capabilities, capability) {
@@ -300,6 +453,8 @@ impl Documents {
                 Query::Hover { position }
                 | Query::Completion { position }
                 | Query::Definition { position }
+                | Query::TypeDefinition { position }
+                | Query::Implementation { position }
                 | Query::References { position }
                 | Query::Rename { position, .. } => {
                     params["position"] = json!(position);
@@ -307,12 +462,38 @@ impl Documents {
                 _ => {}
             }
             match &input.query {
+                Query::WorkspaceSymbols { query } => params = json!({"query":query}),
+                Query::ResolveSymbol { id } => {
+                    if session
+                        .capabilities
+                        .pointer("/workspaceSymbolProvider/resolveProvider")
+                        .and_then(Value::as_bool)
+                        != Some(true)
+                    {
+                        return Err(
+                            "Language server does not support resolving workspace symbols".into(),
+                        );
+                    }
+                    params = document
+                        .symbols
+                        .get(id)
+                        .cloned()
+                        .ok_or("Workspace symbol is stale or belongs to another document")?;
+                }
                 Query::References { .. } => params["context"] = json!({"includeDeclaration":true}),
                 Query::Rename { new_name, .. } => params["newName"] = json!(new_name),
                 Query::Formatting {
                     tab_width,
                     insert_spaces,
                 } => params["options"] = json!({"tabSize":tab_width,"insertSpaces":insert_spaces}),
+                Query::RangeFormatting {
+                    range,
+                    tab_width,
+                    insert_spaces,
+                } => {
+                    params["range"] = json!(range);
+                    params["options"] = json!({"tabSize":tab_width,"insertSpaces":insert_spaces});
+                }
                 Query::CodeActions { range } => {
                     params["range"] = json!(range);
                     let raw = session
@@ -323,11 +504,14 @@ impl Documents {
                         .map_or_else(Vec::new, |diagnostics| diagnostics.raw.clone());
                     params["context"] = json!({"diagnostics":raw,"triggerKind":1});
                 }
-                Query::ResolveAction { id } => {
+                Query::ResolveAction { id } | Query::ReviewAction { id } => {
                     let action = document
                         .actions
                         .get(id)
-                        .cloned()
+                        .filter(|action| {
+                            action.created.elapsed() < super::commands::COMMAND_LIFETIME
+                        })
+                        .map(|action| action.value.clone())
                         .ok_or("Code action is stale or belongs to another document")?;
                     let can_resolve = session
                         .capabilities
@@ -342,7 +526,10 @@ impl Documents {
                             == Some(&Value::Bool(true))
                             && action.get("data").is_some_and(|data| !data.is_null())
                             && action.get("command").is_none_or(Value::is_null));
-                    if action.get("edit").is_some_and(|edit| !edit.is_null()) || !can_resolve {
+                    if action.get("edit").is_some_and(|edit| !edit.is_null())
+                        || action.get("command").is_some_and(Value::is_string)
+                        || !can_resolve
+                    {
                         result = action;
                     } else {
                         params = action;
@@ -405,14 +592,22 @@ impl Documents {
                 let mut visible = Vec::new();
                 for action in actions {
                     let id = format!("{:032x}", rand::random::<u128>());
-                    document.actions.insert(id.clone(), action.clone());
+                    document.actions.insert(
+                        id.clone(),
+                        RetainedAction {
+                            value: action.clone(),
+                            created: Instant::now(),
+                        },
+                    );
                     visible.push(json!({"id":id,"title":action["title"],"kind":action["kind"],"isPreferred":action["isPreferred"],"disabled":action["disabled"]}));
                 }
                 result = json!(visible);
             }
         }
         let document_version = document.version;
-        result = self.normalize_result(session, input, result).await?;
+        result = self
+            .normalize_result(session, input, result, &mut affected)
+            .await?;
         let (diagnostics, ready) = {
             let snapshots = session.diagnostics.lock().unwrap();
             match snapshots.get(&uri) {
@@ -424,7 +619,7 @@ impl Documents {
         };
         let response = response(session, input, result, diagnostics, ready);
         response.validate(input)?;
-        Ok(response)
+        Ok((response, affected))
     }
 }
 fn supported(capabilities: &Value, name: &str) -> bool {
@@ -447,6 +642,7 @@ fn response(
         revision: input.revision,
         source_digest: input.source_digest.clone(),
         server: session.id.clone(),
+        context: None,
         capabilities: session.capabilities.clone(),
         result,
         diagnostics,

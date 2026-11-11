@@ -11,11 +11,15 @@ use protocol::{
 };
 use std::{collections::BTreeMap, sync::Arc};
 
+mod custom;
+
 const MAX_DOCUMENTS: usize = 16;
 const MAX_SOURCE_BYTES: usize = 8 * 1024 * 1024;
 
 #[derive(Clone, Copy)]
 pub struct LanguageGrammar {
+    /// Use Plain with a custom provider for grammars outside the built-in set.
+    /// Parsed contexts and declared bracket pairs supply structural metadata.
     pub language: SyntaxLanguage,
     pub provider: Option<SyntaxProvider>,
 }
@@ -87,17 +91,32 @@ impl LanguageSyntax {
     }
 
     pub fn handle(&mut self, input: LanguageInput) -> Result<LanguageOutput, String> {
+        self.handle_with(input, |_, _, _| Ok(()))
+    }
+
+    /// Refine complete parsed data using the reconstructed source, for example
+    /// to recover unfinished literals in a package's own grammar. Host bounds
+    /// and validation still apply; unavailable sources never invoke the callback.
+    pub fn handle_with(
+        &mut self,
+        input: LanguageInput,
+        refine: impl FnOnce(&str, &str, &mut protocol::SyntaxAnalysis) -> Result<(), String>,
+    ) -> Result<LanguageOutput, String> {
         protocol::validate_input(&input)?;
         match input {
             LanguageInput::Close { version, document } => {
                 self.documents.remove(&document);
                 Ok(LanguageOutput::Closed { version, document })
             }
-            LanguageInput::Analyze(request) => self.analyze(request),
+            LanguageInput::Analyze(request) => self.analyze(request, refine),
         }
     }
 
-    fn analyze(&mut self, request: AnalysisRequest) -> Result<LanguageOutput, String> {
+    fn analyze(
+        &mut self,
+        request: AnalysisRequest,
+        refine: impl FnOnce(&str, &str, &mut protocol::SyntaxAnalysis) -> Result<(), String>,
+    ) -> Result<LanguageOutput, String> {
         let Some(grammar) = self.grammars.get(&request.language).copied() else {
             return Ok(protocol::analysis_response(
                 &request,
@@ -181,6 +200,21 @@ impl LanguageSyntax {
                 let composition = protocol::LanguageComposition::new(&source.source);
                 for scope in scopes {
                     composition.replace(&mut data, &scope, None)?;
+                }
+                protocol::validate_analysis(&data, &source.source, &request.language)?;
+            }
+            refine(&source.source, &request.language, &mut data)?;
+            protocol::validate_analysis(&data, &source.source, &request.language)?;
+            if grammar.language == SyntaxLanguage::Plain && grammar.provider.is_some() {
+                let definition = self
+                    .definitions
+                    .iter()
+                    .find(|definition| definition.id == request.language)
+                    .unwrap();
+                if custom::brackets(&source.source, &mut data, &definition.configuration).is_none()
+                {
+                    response.status = AnalysisStatus::TooLarge;
+                    return Ok(output);
                 }
                 protocol::validate_analysis(&data, &source.source, &request.language)?;
             }

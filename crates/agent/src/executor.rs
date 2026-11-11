@@ -106,6 +106,7 @@ pub struct VfsToolExecutor<V: Vfs, W: WebClient = NoopWebClient, B: BridgeClient
     vfs: V,
     web: W,
     bridge: B,
+    language: Option<std::sync::Arc<dyn crate::intelligence::CodeIntelligence>>,
 }
 
 impl<V: Vfs> VfsToolExecutor<V, NoopWebClient, NoopBridgeClient> {
@@ -116,6 +117,7 @@ impl<V: Vfs> VfsToolExecutor<V, NoopWebClient, NoopBridgeClient> {
             vfs,
             web: NoopWebClient,
             bridge: NoopBridgeClient,
+            language: None,
         }
     }
 }
@@ -128,6 +130,7 @@ impl<V: Vfs, W: WebClient> VfsToolExecutor<V, W, NoopBridgeClient> {
             vfs,
             web,
             bridge: NoopBridgeClient,
+            language: None,
         }
     }
 }
@@ -140,6 +143,7 @@ impl<V: Vfs, W: WebClient, B: BridgeClient> VfsToolExecutor<V, W, B> {
             vfs,
             web,
             bridge,
+            language: None,
         }
     }
 
@@ -147,6 +151,14 @@ impl<V: Vfs, W: WebClient, B: BridgeClient> VfsToolExecutor<V, W, B> {
         let mut context = crate::context::RunContext::new(environment);
         context.set_context_limit(self.active_context_limit());
         self.context = Some(context);
+        self
+    }
+
+    pub fn with_code_intelligence(
+        mut self,
+        language: std::sync::Arc<dyn crate::intelligence::CodeIntelligence>,
+    ) -> Self {
+        self.language = Some(language);
         self
     }
 
@@ -757,6 +769,22 @@ impl<V: Vfs, W: WebClient, B: BridgeClient> VfsToolExecutor<V, W, B> {
     /// Route a parsed [`Tool`] to its handler.
     async fn dispatch(&self, tool: Tool, step_id: &str) -> ToolOutcome {
         match tool {
+            Tool::CodeIntelligence(args) => match &self.language {
+                Some(language) => {
+                    language
+                        .query(
+                            &self.vfs,
+                            &args,
+                            tool_content_budget(self.active_context_limit()),
+                        )
+                        .await
+                }
+                None => fail(
+                    "code_intelligence",
+                    &args.path,
+                    "Language services are unavailable for this run",
+                ),
+            },
             Tool::ReadFile(args) => self.read_file(&args).await,
             Tool::WriteFile(args) => self.write_file(&args, step_id).await,
             Tool::EditFile(args) => self.edit_file(&args).await,
@@ -815,6 +843,7 @@ impl<V: Vfs, W: WebClient, B: BridgeClient> ToolExecutor for VfsToolExecutor<V, 
             None => Some(context.startup(&self.vfs, &self.bridge, definitions).await),
             Some(call) => match tools::parse(call).ok()? {
                 Tool::ReadFile(args) => context.for_path(&self.vfs, &args.path).await,
+                Tool::CodeIntelligence(args) => context.for_path(&self.vfs, &args.path).await,
                 Tool::WriteFile(args) => context.for_path(&self.vfs, &args.path).await,
                 Tool::EditFile(args) => context.for_path(&self.vfs, &args.path).await,
                 _ => None,
@@ -1413,7 +1442,11 @@ mod tests {
             .filter(|tool| {
                 !matches!(
                     tool.name.as_str(),
-                    "edit_file" | "host_info" | "todo_write" | "ask_user_question"
+                    "edit_file"
+                        | "host_info"
+                        | "todo_write"
+                        | "ask_user_question"
+                        | "code_intelligence"
                 )
             })
             .collect::<Vec<_>>();

@@ -13,23 +13,29 @@ use openwebide_core::{
 use crate::{backend::Api, local_fs, workspace::Workspace};
 
 #[derive(Clone, PartialEq)]
-struct EditorRoot {
+pub(crate) struct EditorRoot {
     identity: (i64, openwebide_core::WorkspaceMode, Option<String>),
     handle: Option<web_sys::FileSystemDirectoryHandle>,
     bridge: Option<String>,
 }
 
 impl EditorRoot {
-    fn changed(&self, next: &Self) -> bool {
-        self.identity != next.identity
-            || self.bridge != next.bridge
-            || self
-                .handle
-                .as_ref()
-                .is_some_and(|handle| next.handle.as_ref() != Some(handle))
+    pub(crate) fn changed(&self, next: &Self) -> bool {
+        self.identity != next.identity || self.bridge != next.bridge || self.handle != next.handle
     }
 
-    fn for_project(
+    /// Recovered tabs can exist before the browser grants a folder. Attaching
+    /// their first capability preserves those tabs; each recovered file still
+    /// passes fresh disk-baseline/overwrite approval checks before any save.
+    /// Captured async scopes always use `changed`, including this transition.
+    fn first_access(&self, next: &Self) -> bool {
+        self.identity == next.identity
+            && self.bridge == next.bridge
+            && self.handle.is_none()
+            && next.handle.is_some()
+    }
+
+    pub(crate) fn for_project(
         project: &openwebide_core::Project,
         projects: ProjectsState,
         settings: Option<crate::state::settings::SettingsState>,
@@ -329,26 +335,28 @@ impl WorkspaceActions {
             });
         });
 
-        let on_grant_access = Callback::new(move |()| {
-            let Some(project_id) = active_project.get() else {
-                return;
-            };
-            let handle = projects
-                .local_handles
-                .with(|handles| handles.get(&project_id).cloned());
-            let Some(project) = projects.project(project_id) else {
-                return;
-            };
-            let generation = auth.generation.get_untracked();
-            spawn_local(async move {
-                let current = || {
-                    auth.generation.try_get_untracked() == Some(generation)
-                        && projects
-                            .projects
-                            .try_with_untracked(|items| items.iter().any(|p| p.id == project_id))
-                            == Some(true)
+        let on_grant_access =
+            Callback::new(move |()| {
+                let Some(project_id) = active_project.get() else {
+                    return;
                 };
-                let result = async {
+                let handle = projects
+                    .local_handles
+                    .with(|handles| handles.get(&project_id).cloned());
+                let Some(project) = projects.project(project_id) else {
+                    return;
+                };
+                let generation = auth.generation.get_untracked();
+                let root = EditorRoot::for_project(&project, projects, settings);
+                spawn_local(async move {
+                    let current = || {
+                        auth.generation.try_get_untracked() == Some(generation)
+                            && projects.project(project_id).is_some_and(|project| {
+                                !root
+                                    .changed(&EditorRoot::for_project(&project, projects, settings))
+                            })
+                    };
+                    let result = async {
                     let restored = match handle.as_ref() {
                         Some(handle) if local_fs::request_access(handle).await.unwrap_or(false) => {
                             handle.clone()
@@ -385,6 +393,8 @@ impl WorkspaceActions {
                     if !current() {
                         return Ok(());
                     }
+                    let restored = local_fs::retain_folder_handle(handle.as_ref(),&restored).await?;
+                    if !current() { return Ok(()); }
                     crate::idb::save_handle(project_id, project.user_id, &restored).await?;
                     if !current() {
                         return Ok(());
@@ -400,13 +410,13 @@ impl WorkspaceActions {
                     Ok(())
                 }
                 .await;
-                if let Err(error) = result
-                    && current()
-                {
-                    ui.notify(error);
-                }
+                    if let Err(error) = result
+                        && current()
+                    {
+                        ui.notify(error);
+                    }
+                });
             });
-        });
 
         let ensure_root = Callback::new(move |project_id: i64| {
             if workspace.entries.get().contains_key("") {
@@ -484,9 +494,9 @@ impl WorkspaceActions {
                 };
                 let root = EditorRoot::for_project(&project, projects, settings);
                 let changed = editor_roots.with_value(|roots| {
-                    roots
-                        .get(&project_id)
-                        .is_some_and(|previous| previous.changed(&root))
+                    roots.get(&project_id).is_some_and(|previous| {
+                        previous.changed(&root) && !previous.first_access(&root)
+                    })
                 });
                 if changed
                     && (workspace.dirty.get_untracked()
@@ -871,6 +881,15 @@ impl WorkspaceActions {
             let Some(project_id) = active_project.get_untracked() else {
                 return;
             };
+            if workspace.workspace_saves_blocked(project_id) {
+                if let Some(status) = workspace
+                    .workspace_recovery
+                    .with_untracked(|states| states.get(&project_id).cloned())
+                {
+                    ui.notify(status.message());
+                }
+                return;
+            }
             let Some(path) = workspace.open_file.get_untracked() else {
                 return;
             };
@@ -908,7 +927,7 @@ impl WorkspaceActions {
             if editor_roots.with_value(|roots| {
                 roots
                     .get(&project_id)
-                    .is_some_and(|origin| origin.changed(&root))
+                    .is_some_and(|origin| origin.changed(&root) && !origin.first_access(&root))
             }) {
                 workspace.editor_recovery_overwrites.update(|permits| {
                     permits.remove(&(project_id, path.clone()));
@@ -922,6 +941,9 @@ impl WorkspaceActions {
                 ui.notify("The project folder changed while this file was open. Restore the original folder before saving its draft.");
                 return;
             }
+            let Some(save_guard) = workspace.begin_editor_save(project_id) else {
+                return;
+            };
             let content_before = workspace.content.get_untracked();
             let account = auth.generation.get_untracked();
             let epoch = directory_epoch.get_untracked();
@@ -929,7 +951,29 @@ impl WorkspaceActions {
                 .map(|settings| settings.editor_preferences.get_untracked())
                 .unwrap_or_default();
             ui.clear_toast();
+            let guard_path = path.clone();
+            let error_path = path.clone();
+            let mutations = match crate::workspace_mutations::WorkspaceMutations::for_project(
+                api,
+                projects,
+                auth,
+                settings,
+                project_id,
+                move || {
+                    directory_epoch.try_get_untracked() == Some(epoch)
+                        && save_editor.is_current(project_id, &guard_path)
+                },
+            ) {
+                Ok(mutations) => mutations,
+                Err(error) => {
+                    ui.notify(error);
+                    return;
+                }
+            };
             spawn_local(async move {
+                let result = mutations.run(async move {
+                let work = async move {
+                let _save_guard = save_guard;
                 let current = || {
                     auth.generation.try_get_untracked() == Some(account)
                         && directory_epoch.try_get_untracked() == Some(epoch)
@@ -969,6 +1013,9 @@ impl WorkspaceActions {
                 if !current() || workspace.content.get_untracked() != content_before {
                     return;
                 }
+                editor_roots.update_value(|roots| {
+                    roots.insert(project_id, root.clone());
+                });
                 let content = match save_editor.prepare_save(&rules) {
                     Ok(Some(content)) => content,
                     Ok(None) => return,
@@ -1036,6 +1083,17 @@ impl WorkspaceActions {
                         }
                     }
                 }
+                };
+                work.await;
+                Ok(())
+                }).await;
+                if let Err(error) = result
+                    && auth.generation.try_get_untracked() == Some(account)
+                    && directory_epoch.try_get_untracked() == Some(epoch)
+                    && save_editor.is_current(project_id, &error_path)
+                {
+                    ui.notify(error);
+                }
             });
         });
 
@@ -1048,46 +1106,67 @@ impl WorkspaceActions {
             refresh_git,
         );
         provide_context(review_actions);
-        let resolve = Callback::new(move |(edit, decision): (PersistedEdit, EditDecision)| {
-            let project_id = edit.project_id;
-            let path = edit.path.clone();
-            let key = (project_id, path.clone());
-            if workspace
-                .resolving_edits
-                .with_untracked(|edits| edits.contains(&key))
-            {
-                return;
-            }
-            workspace.resolving_edits.update(|edits| {
-                edits.insert(key.clone());
-            });
-            let agent_writes_before = workspace
-                .agent_writes
-                .with_untracked(|writes| writes.get(&key).copied().unwrap_or_default());
-            let editor_before = if active_project.get_untracked() == Some(project_id) {
-                (
-                    workspace.open_file.get_untracked(),
-                    workspace.content.get_untracked(),
-                    workspace.dirty.get_untracked(),
-                )
-            } else {
-                workspace.snapshots.with_untracked(|snapshots| {
-                    snapshots
-                        .get(&project_id)
-                        .map(|snapshot| {
-                            (
-                                snapshot.open_file.clone(),
-                                snapshot.content.clone(),
-                                snapshot.dirty,
-                            )
-                        })
-                        .unwrap_or_default()
-                })
-            };
-            let auth_generation = auth.generation.get_untracked();
-            let epoch = workspace.pending_epoch.get_untracked();
-            ui.clear_toast();
-            spawn_local(async move {
+        let resolve =
+            Callback::new(move |(edit, decision): (PersistedEdit, EditDecision)| {
+                let project_id = edit.project_id;
+                let path = edit.path.clone();
+                let key = (project_id, path.clone());
+                if workspace
+                    .resolving_edits
+                    .with_untracked(|edits| edits.contains(&key))
+                {
+                    return;
+                }
+                workspace.resolving_edits.update(|edits| {
+                    edits.insert(key.clone());
+                });
+                let agent_writes_before = workspace
+                    .agent_writes
+                    .with_untracked(|writes| writes.get(&key).copied().unwrap_or_default());
+                let editor_before = if active_project.get_untracked() == Some(project_id) {
+                    (
+                        workspace.open_file.get_untracked(),
+                        workspace.content.get_untracked(),
+                        workspace.dirty.get_untracked(),
+                    )
+                } else {
+                    workspace.snapshots.with_untracked(|snapshots| {
+                        snapshots
+                            .get(&project_id)
+                            .map(|snapshot| {
+                                (
+                                    snapshot.open_file.clone(),
+                                    snapshot.content.clone(),
+                                    snapshot.dirty,
+                                )
+                            })
+                            .unwrap_or_default()
+                    })
+                };
+                let auth_generation = auth.generation.get_untracked();
+                let epoch = workspace.pending_epoch.get_untracked();
+                ui.clear_toast();
+                let error_key = key.clone();
+                let mutations = match crate::workspace_mutations::WorkspaceMutations::for_project(
+                    api,
+                    projects,
+                    auth,
+                    settings,
+                    project_id,
+                    move || workspace.pending_epoch.try_get_untracked() == Some(epoch),
+                ) {
+                    Ok(mutations) => mutations,
+                    Err(error) => {
+                        workspace.resolving_edits.update(|edits| {
+                            edits.remove(&key);
+                        });
+                        ui.notify(error);
+                        return;
+                    }
+                };
+                spawn_local(async move {
+                    let guarded = mutations.run(async move {
+                let work = async move {
                 let current = || {
                     auth.generation.try_get_untracked() == Some(auth_generation)
                         && workspace.pending_epoch.try_get_untracked() == Some(epoch)
@@ -1252,8 +1331,21 @@ impl WorkspaceActions {
                     }
                     Err(error) => ui.notify(error),
                 }
+                };
+                work.await;
+                Ok(())
+                }).await;
+                    if let Err(error) = guarded
+                        && auth.generation.try_get_untracked() == Some(auth_generation)
+                        && workspace.pending_epoch.try_get_untracked() == Some(epoch)
+                    {
+                        workspace.resolving_edits.update(|edits| {
+                            edits.remove(&error_key);
+                        });
+                        ui.notify(error);
+                    }
+                });
             });
-        });
 
         let on_accept = Callback::new(move |()| {
             let Some(path) = workspace.open_file.get_untracked() else {

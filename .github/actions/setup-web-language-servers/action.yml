@@ -1,0 +1,12 @@
+name: Set up the HTML, CSS and JSON language servers
+description: Install the pinned upstream tools for real language-service checks.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+    - shell: bash
+      run: |
+        python3 tools/setup-web-language-servers.py
+        echo "$GITHUB_WORKSPACE/tools/web-language-servers/node_modules/.bin" >> "$GITHUB_PATH"

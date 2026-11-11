@@ -266,12 +266,12 @@ impl SessionManager {
                     )
                 });
             futures::future::join_all(kills).await;
-            crate::exec::proc::wait_for_cleanup().await;
         }
         #[cfg(windows)]
         for session in self.sessions.read().unwrap().values() {
             session.try_kill(Signal::Kill);
         }
+        crate::exec::proc::wait_for_cleanup().await;
     }
 }
 

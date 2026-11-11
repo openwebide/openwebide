@@ -23,6 +23,13 @@ pub enum EditorCommand {
     Reindent,
 }
 
+#[derive(Clone, Copy)]
+pub enum SnippetCommand {
+    Next { backwards: bool },
+    Choice { backwards: bool },
+    Cancel,
+}
+
 mod columns;
 mod intelligence;
 mod languages;
@@ -129,6 +136,64 @@ pub struct EditorActions {
 }
 
 impl EditorActions {
+    pub fn snippet_state(self) -> (bool, bool) {
+        let Some(key) = self.key() else {
+            return (false, false);
+        };
+        self.workspace.editor_documents.with_untracked(|documents| {
+            documents.get(&key).map_or((false, false), |document| {
+                (
+                    document.snippet_active(),
+                    document.snippet_choices_available(),
+                )
+            })
+        })
+    }
+
+    pub fn snippet_command(self, command: SnippetCommand) -> Result<Option<Selection>, String> {
+        if self.transaction_locked() {
+            return Err("A workspace operation is applying reviewed changes".into());
+        }
+        let Some(key) = self.key() else {
+            return Ok(None);
+        };
+        if self.is_composing() {
+            return Ok(None);
+        }
+        self.cancel_native_text();
+        self.typing.set(None);
+        let changed = self
+            .workspace
+            .editor_documents
+            .try_update(|documents| {
+                let original = self.document(documents, key.clone());
+                let mut document = original.clone();
+                let handled = match command {
+                    SnippetCommand::Next { backwards } => document.snippet_next(backwards)?,
+                    SnippetCommand::Choice { backwards } => document.snippet_choice(backwards)?,
+                    SnippetCommand::Cancel => document.cancel_snippet(),
+                };
+                if !handled {
+                    return Ok(None);
+                }
+                let result = Some((
+                    EditorText::from(document.shared_text()),
+                    document.selections()[0],
+                ));
+                *original = document;
+                Ok::<_, String>(result)
+            })
+            .ok_or("Editor closed")??;
+        self.publish_edit(key, Ok::<_, String>(changed))
+    }
+
+    fn transaction_locked(self) -> bool {
+        self.workspace
+            .active_project
+            .try_get_untracked()
+            .flatten()
+            .is_some_and(|project| self.workspace.editor_operation_active_untracked(project))
+    }
     pub fn presentation_scope(self) -> Option<EditorPresentationScope> {
         Some(EditorPresentationScope {
             project: self.workspace.active_project.try_get().flatten()?,
@@ -1211,7 +1276,10 @@ impl EditorActions {
         index: Option<usize>,
     ) -> Result<Option<Selection>, openwebide_core::editor::SearchError> {
         use openwebide_core::editor::{SearchError, SearchPattern};
-        if self.workspace.is_resolving() || self.workspace.pending_diff.get_untracked().is_some() {
+        if self.transaction_locked()
+            || self.workspace.is_resolving()
+            || self.workspace.pending_diff.get_untracked().is_some()
+        {
             return Err(SearchError::ReadOnly);
         }
         if !self.source_matches(source) {
@@ -1592,6 +1660,9 @@ impl EditorActions {
         native: Selection,
         timestamp: f64,
     ) -> Result<Option<NativeTextCommit>, EditError> {
+        if self.transaction_locked() {
+            return Err(EditError::StaleContext);
+        }
         let Some(insertion) = self.workspace.editor_text_insertion.get_untracked() else {
             return Ok(None);
         };
@@ -1634,6 +1705,9 @@ impl EditorActions {
         text: &str,
         timestamp: f64,
     ) -> Result<Option<Selection>, EditError> {
+        if self.transaction_locked() {
+            return Err(EditError::StaleContext);
+        }
         if self.is_composing() {
             return Err(EditError::CompositionActive);
         }
@@ -1699,6 +1773,9 @@ impl EditorActions {
         timestamp: f64,
         prepare: impl FnOnce(&Document) -> Result<(Option<Edit>, Selection), EditError>,
     ) -> Result<(), EditError> {
+        if self.transaction_locked() {
+            return Err(EditError::StaleContext);
+        }
         let Some(key) = self.key() else {
             return Ok(());
         };
@@ -1770,6 +1847,9 @@ impl EditorActions {
         selection: Selection,
         indentation: Indentation,
     ) -> Result<Option<Selection>, EditError> {
+        if self.transaction_locked() {
+            return Err(EditError::StaleContext);
+        }
         let Some(key) = self.key() else {
             return Ok(None);
         };

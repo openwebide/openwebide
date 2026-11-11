@@ -3,7 +3,7 @@ use openwebide_core::{EditDecision, FileDiff, PersistedEdit};
 use openwebide_frontend::testing::fake_backend::Call;
 use wasm_bindgen_test::*;
 
-use super::support::{Mounted, editor_view, mount_test, settle};
+use super::support::{Mounted, editor_view, mount_test, settle, wait_until};
 
 fn mount_diff(diff: FileDiff) -> Mounted {
     mount_test(move |state| {
@@ -40,14 +40,35 @@ fn mount_diff(diff: FileDiff) -> Mounted {
     })
 }
 
+async fn wait_for_resolution_attempt(mounted: &Mounted, before: usize) {
+    // A Web Lock is granted by a browser task, and fresh recovery reads may
+    // involve timers/HTTP. Draining only Promise reactions cannot observe it.
+    wait_until("edit resolution reached the backend or settled", || {
+        mounted.state.fake.resolution_requests.borrow().len() != before
+            || mounted
+                .state
+                .workspace
+                .resolving_edits
+                .with_untracked(std::collections::HashSet::is_empty)
+    })
+    .await;
+    settle().await;
+}
+async fn accept(mounted: &Mounted) {
+    let before = mounted.state.fake.resolution_requests.borrow().len();
+    mounted.click_text("Accept");
+    wait_for_resolution_attempt(mounted, before).await;
+}
+
 async fn reject(mounted: &Mounted) {
     let before = file_calls(mounted);
+    let requests = mounted.state.fake.resolution_requests.borrow().len();
     settle().await;
     mounted.click_text("Reject");
     settle().await;
     assert_eq!(file_calls(mounted), before);
     mounted.click(".modal-footer .danger");
-    settle().await;
+    wait_for_resolution_attempt(mounted, requests).await;
 }
 
 fn file_calls(mounted: &Mounted) -> Vec<Call> {
@@ -208,8 +229,7 @@ async fn accept_unavailable_original_only_deletes_backup() {
         backup_path: Some("backup.rs".into()),
     });
     settle().await;
-    mounted.click_text("Accept");
-    settle().await;
+    accept(&mounted).await;
     assert_eq!(
         file_calls(&mounted),
         vec![Call::DeleteFile {
@@ -400,8 +420,7 @@ async fn duplicate_accept_is_disabled_and_stale_resolution_keeps_newer_edit() {
         .borrow_mut()
         .push_back(pending);
     settle().await;
-    mounted.click_text("Accept");
-    settle().await;
+    accept(&mounted).await;
     assert!(mounted.element(".btn.approve").has_attribute("disabled"));
     mounted.click_text("Accept");
     assert_eq!(mounted.state.fake.resolution_requests.borrow().len(), 1);
@@ -439,10 +458,7 @@ async fn missing_backup_and_unavailable_original_remain_pending() {
             .borrow_mut()
             .remove(&(1, "missing.rs".into()));
         settle().await;
-        mounted.click_text("Reject");
-        settle().await;
-        mounted.click(".modal-footer .danger");
-        settle().await;
+        reject(&mounted).await;
         assert_eq!(
             mounted.state.workspace.pending_edits.get_untracked().len(),
             1
@@ -509,8 +525,7 @@ async fn local_folder_unavailable_keeps_rejection_pending_but_allows_acceptance(
             .contains("Grant folder access")
     );
     assert!(file_calls(&mounted).is_empty());
-    mounted.click_text("Accept");
-    settle().await;
+    accept(&mounted).await;
     assert!(
         mounted
             .state
@@ -535,13 +550,10 @@ async fn resolution_refresh_preserves_new_editor_input() {
             .push_back(saving);
         settle().await;
         if reject_edit {
-            mounted.click_text("Reject");
-            settle().await;
-            mounted.click(".modal-footer .danger");
+            reject(&mounted).await;
         } else {
-            mounted.click_text("Accept");
+            accept(&mounted).await;
         }
-        settle().await;
         let (refresh, refreshing) = futures::channel::oneshot::channel();
         mounted
             .state
@@ -609,8 +621,7 @@ async fn accept_finishes_editor_transition_after_early_authoritative_refresh() {
                 .borrow_mut()
                 .push_back(pending);
             settle().await;
-            mounted.click_text("Accept");
-            settle().await;
+            accept(&mounted).await;
             assert_eq!(mounted.state.fake.resolution_requests.borrow().len(), 1);
             // Simulate a committed decision whose response has not arrived yet.
             mounted
@@ -694,8 +705,7 @@ async fn background_accept_updates_snapshot_and_preserves_intervening_changes() 
             .borrow_mut()
             .push_back(pending);
         settle().await;
-        mounted.click_text("Accept");
-        settle().await;
+        accept(&mounted).await;
         if intervening_edit {
             mounted.state.workspace.content.set("newer draft".into());
         }
@@ -784,7 +794,10 @@ async fn interrupted_delete_listing_does_not_mutate_files() {
         mounted.click_text("Reject");
         settle().await;
         mounted.click(".modal-footer .danger");
-        settle().await;
+        wait_until("held delete listing", || {
+            mounted.state.fake.file_list_results.borrow().is_empty()
+        })
+        .await;
         if delete_project {
             mounted.state.projects.projects.set(vec![]);
             mounted.state.workspace.clear_active();
@@ -904,8 +917,7 @@ async fn delayed_resolution_after_agent_write(dirty: bool, rejected: bool) {
     if rejected {
         reject(&mounted).await;
     } else {
-        mounted.click_text("Accept");
-        settle().await;
+        accept(&mounted).await;
     }
     assert_eq!(
         mounted.state.fake.persisted_edits.borrow()[&(1, "file.rs".into())].decision,
@@ -1105,8 +1117,7 @@ async fn delayed_accept_preserves_editor_after_newer_revision_hydrates() {
         .borrow_mut()
         .push_back(pending);
     settle().await;
-    mounted.click_text("Accept");
-    settle().await;
+    accept(&mounted).await;
     assert_eq!(
         mounted.state.fake.persisted_edits.borrow()[&(1, "file.rs".into())].decision,
         EditDecision::Accepted
@@ -1165,10 +1176,7 @@ async fn background_backup_rejection_restores_editor_without_overwriting_new_inp
             .borrow_mut()
             .push_back(pending);
         settle().await;
-        mounted.click_text("Reject");
-        settle().await;
-        mounted.click(".modal-footer .danger");
-        settle().await;
+        reject(&mounted).await;
         if intervening_edit {
             mounted.state.workspace.content.set("newer draft".into());
         }

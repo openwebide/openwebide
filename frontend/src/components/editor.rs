@@ -2616,6 +2616,10 @@ pub fn Editor(
     let file_read_only = read_only;
     let read_only = Signal::derive(move || {
         read_only.get()
+            || workspace
+                .active_project
+                .get()
+                .is_some_and(|project| workspace.editor_operation_active(project))
             || workspace.editor_loading.get()
             || workspace.is_resolving()
             || file_tree_actions.is_some_and(|actions| actions.busy.get())
@@ -4108,6 +4112,24 @@ pub fn Editor(
                                                 if event.is_composing() { return; }
                                                 editor_actions.cancel_native_text();
                                                 let Some(textarea) = event.target().and_then(|target| target.dyn_into::<web_sys::HtmlTextAreaElement>().ok()).filter(|textarea| current_editor_target(editor_actions, textarea)) else { return; };
+                                                if !read_only.get_untracked() && !event.ctrl_key() && !event.meta_key() {
+                                                    let (snippet, choices) = editor_actions.snippet_state();
+                                                    let command = match event.key().as_str() {
+                                                        "Tab" if snippet && !tab_moves_focus.get_untracked() && !event.alt_key() => Some(crate::state_actions::editor::SnippetCommand::Next { backwards: event.shift_key() }),
+                                                        "Escape" if snippet && !event.alt_key() => Some(crate::state_actions::editor::SnippetCommand::Cancel),
+                                                        "ArrowUp" | "ArrowDown" if choices && event.alt_key() && !event.shift_key() => Some(crate::state_actions::editor::SnippetCommand::Choice { backwards: event.key() == "ArrowUp" }),
+                                                        _ => None,
+                                                    };
+                                                    if let Some(command) = command {
+                                                        event.prevent_default(); event.stop_propagation();
+                                                        match editor_actions.snippet_command(command) {
+                                                            Ok(Some(selection)) => render_editor_selection(editor_actions, &textarea, selection, true),
+                                                            Ok(None) => (),
+                                                            Err(error) => action_error.set(Some(error)),
+                                                        }
+                                                        return;
+                                                    }
+                                                }
                                                 if editor_selection_key(editor_actions, &textarea, &event, action_error, motion_adapter) { event.prevent_default(); event.stop_propagation(); return; }
                                                 if !motion_adapter.flush(&textarea) { event.prevent_default(); event.stop_propagation(); return; }
                                                 let modified = event.ctrl_key() || event.meta_key();

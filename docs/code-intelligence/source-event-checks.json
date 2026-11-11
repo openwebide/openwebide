@@ -1,0 +1,366 @@
+{
+  "format": 1,
+  "checked_on": "2026-11-09",
+  "status": "passed_macos_linux_source_event_checkpoint",
+  "source_manifest_sha256": "69f77497c2cf20139d57dbb19cc50c1177236603bef3fe7bb6a7d0063ba104fb",
+  "source_files": 1785,
+  "base_commit": "9283345d3545ded5461ba5ca1702709954270ced",
+  "working_tree": true,
+  "relevant_source_sha256": {
+    "bridge/src/languages/host/generation.rs": "707ee7a91c7ca66876a16df6df04485a3bd38983f3490d3242db44b0867f8190",
+    "bridge/src/languages/host/generation/events.rs": "45aed390132289a4c640e567f849316cde81374f9fcef7fc8fc7418aa352bf71",
+    "bridge/src/languages/host/generation/events/macos.rs": "1e9812b4e22e1dba8e83f6f17b45dc393c11bfe2ce1655963337ef9d60558ebb",
+    "bridge/src/languages/host/generation/events/linux.rs": "31fc6b7e9ee7cd4371bb73098aa9f9a3d6045215177e68c8cf791d7da4e549cd",
+    "bridge/src/languages/host/generation/events/linux/tests.rs": "ffb7ef1d5f942edd96c4f00b2057d23b92689ce30e0e5361282524b4b9f297a9",
+    "bridge/src/languages/host/generation/events/tests.rs": "0d64225c53862bd98e53fb2c1522c6ee72e9a02f75bc60f86dcb2ea5371f6598",
+    "bridge/src/languages/host/generation/tests.rs": "8c02b8fb6c8fc64496711dfc462260c31f9c62831a4fb7b29e9b91d2058ec340",
+    "bridge/tests/plugins/prefetch.rs": "f7a87c77c57a2695dda04631b863e1886ea1eb942ff124588d88a0341261b264",
+    "crates/core/src/vfs/private.rs": "d0dd5e9aa94c3c38167910e5ba380f879f53e47f03e97d929d547e20cdcbe498",
+    "bridge/src/exec/git/workspace/tests.rs": "bb255c1ca95c10de00e1ab5f0e19d84a0ade9218481a6c403562ad7a0748a85d"
+  },
+  "shared_implementation": "ProjectFiles and the native generation tracker own source selection, cancellation and atomic publication. One Events manager owns object reconciliation and quotas above thin kqueue and inotify adapters. Both authenticated transports use that same implementation.",
+  "platforms": [
+    {
+      "platform": "macOS",
+      "os_release": "27.2.0",
+      "architecture": "arm64",
+      "cases": [
+        {
+          "case": "format",
+          "command": [
+            "cargo",
+            "fmt",
+            "--all",
+            "--check"
+          ],
+          "exit_code": 0,
+          "seconds": 2.83
+        },
+        {
+          "case": "core",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-core",
+            "--lib",
+            "--locked"
+          ],
+          "exit_code": 0,
+          "seconds": 50.02,
+          "tests": {
+            "passed": 708,
+            "failed": 0,
+            "ignored": 1
+          }
+        },
+        {
+          "case": "native-clippy",
+          "command": [
+            "cargo",
+            "clippy",
+            "-p",
+            "openwebide-bridge",
+            "--all-targets",
+            "--locked",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "exit_code": 0,
+          "seconds": 13.61
+        },
+        {
+          "case": "generation",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--lib",
+            "languages::host::generation",
+            "--locked"
+          ],
+          "exit_code": 0,
+          "seconds": 35.21,
+          "tests": {
+            "passed": 13,
+            "failed": 0,
+            "ignored": 0
+          }
+        },
+        {
+          "case": "bridge",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--lib",
+            "--locked"
+          ],
+          "exit_code": 0,
+          "seconds": 82.67,
+          "tests": {
+            "passed": 342,
+            "failed": 0,
+            "ignored": 1
+          }
+        },
+        {
+          "case": "adapters",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--test",
+            "plugins",
+            "--locked"
+          ],
+          "exit_code": 0,
+          "seconds": 29.65,
+          "tests": {
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          }
+        },
+        {
+          "case": "backend-clippy",
+          "command": [
+            "cargo",
+            "clippy",
+            "-p",
+            "openwebide-backend",
+            "--target",
+            "wasm32-wasip2",
+            "--locked",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "exit_code": 0,
+          "seconds": 30.35
+        },
+        {
+          "case": "frontend-clippy",
+          "command": [
+            "cargo",
+            "clippy",
+            "-p",
+            "openwebide-frontend",
+            "--target",
+            "wasm32-unknown-unknown",
+            "--all-targets",
+            "--locked",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "exit_code": 0,
+          "seconds": 40.68
+        },
+        {
+          "case": "windows-clippy",
+          "command": [
+            "cargo",
+            "clippy",
+            "-p",
+            "openwebide-bridge",
+            "--target",
+            "x86_64-pc-windows-gnu",
+            "--all-targets",
+            "--locked",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "exit_code": 0,
+          "seconds": 13.51
+        }
+      ]
+    },
+    {
+      "platform": "Linux",
+      "os_release": "7.0.14-linuxkit",
+      "architecture": "aarch64",
+      "uid": 502,
+      "cases": [
+        {
+          "case": "git-regression",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--lib",
+            "exec::git::workspace::tests::project_bulk_commit_does_not_stage_siblings_or_include_their_staged_changes",
+            "--locked",
+            "--offline"
+          ],
+          "exit_code": 0,
+          "seconds": 1.08,
+          "tests": {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          }
+        },
+        {
+          "case": "source-build",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--lib",
+            "plugins::rust_plugin_tests::source_compilation_validates_tools_caches_offline_and_rejects_artifact_corruption",
+            "--locked",
+            "--offline"
+          ],
+          "exit_code": 0,
+          "seconds": 55.47,
+          "tests": {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          }
+        },
+        {
+          "case": "clippy",
+          "command": [
+            "cargo",
+            "clippy",
+            "-p",
+            "openwebide-bridge",
+            "--all-targets",
+            "--locked",
+            "--offline",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "exit_code": 0,
+          "seconds": 30.65
+        },
+        {
+          "case": "generation",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--lib",
+            "languages::host::generation",
+            "--locked",
+            "--offline"
+          ],
+          "exit_code": 0,
+          "seconds": 0.67,
+          "tests": {
+            "passed": 16,
+            "failed": 0,
+            "ignored": 0
+          }
+        },
+        {
+          "case": "bridge",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--lib",
+            "--locked",
+            "--offline"
+          ],
+          "exit_code": 0,
+          "seconds": 73.86,
+          "tests": {
+            "passed": 346,
+            "failed": 0,
+            "ignored": 1
+          }
+        },
+        {
+          "case": "adapters",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-bridge",
+            "--test",
+            "plugins",
+            "--locked",
+            "--offline"
+          ],
+          "exit_code": 0,
+          "seconds": 37.62,
+          "tests": {
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          }
+        }
+      ],
+      "environment": {
+        "tooling_base_image": "sha256:916206a1aa179fdfeb1b73529dc6a04c84b2ccd2a12dfa4577cb6fda9019ab1a",
+        "current_application_image_verified": false,
+        "source": "Copied frozen unignored source files, mounted read-only; current native code compiled and executed inside the container.",
+        "cpu_limit": 2,
+        "memory_limit_bytes": 4294967296,
+        "swap_enabled": false,
+        "outer_container_options": [
+          "seccomp=unconfined",
+          "systempaths=unconfined"
+        ],
+        "inner_compiler_sandbox": "bubblewrap, including its own proc/dev mounts; actual source compilation, cache isolation and corruption tests passed."
+      }
+    }
+  ],
+  "bounds": {
+    "notification_descriptors_per_process_maximum": 1024,
+    "inherited_soft_descriptor_limit_fraction": 0.25,
+    "queue_and_owned_object_descriptors_count_toward_budget": true,
+    "scan_workers_per_process": 4,
+    "scan_workers_per_tracker": 1,
+    "macos_event_drain_maximum": 2048,
+    "linux_event_read_bytes": 8192,
+    "linux_event_read_maximum_batches": 32,
+    "outer_prefetch_deadline_seconds": 2
+  },
+  "verified": [
+    "The same public package and source-change rejection/retry contracts pass over both authenticated transports on macOS and Linux.",
+    "Explicit object watches never discover or recursively add paths. Reconciliation rechecks owned object metadata and registration changes require another matching complete inventory.",
+    "Outside-root hard-link writes with restored contents and modification times, directory aliases, file replacements, cancellation cleanup and loss of coverage are covered by actual native tests.",
+    "Linux inotify watches bind to owned O_PATH descriptors. Removing one hard-link registration preserves the shared inode watch until its last registration is removed.",
+    "Unexpected Linux watch loss, queue overflow, truncated event data and unknown registrations reject coverage rather than publish a fresh observation.",
+    "Partial registration-budget failure preserves the previous complete inventory and revision, closes partial descriptors, and permits one clean generation advance on retry.",
+    "Git 2.39.5 nested-project staging preserves public project files while excluding runtime folders and case aliases; sibling files remain unstaged and staged siblings prevent a project-wide commit."
+  ],
+  "before_fix": [
+    {
+      "scope": "Linux full bridge suite",
+      "passed": 344,
+      "failed": 2,
+      "ignored": 1,
+      "findings": [
+        "Nested-project bulk commit staged no files with the literal **/.spin top-level exclusion.",
+        "The unprivileged test container lacked the documented bubblewrap dependency."
+      ]
+    },
+    {
+      "scope": "Isolated Linux source build after installing bubblewrap",
+      "finding": "The outer Docker proc masks prevented mounting the inner sandbox proc filesystem. The disposable test container was configured for nested sandbox mounts; application isolation remained enabled."
+    }
+  ],
+  "limits": [
+    "Windows retains metadata observations only; its code passes cross-compilation but no native Windows event implementation or device execution is established.",
+    "Complete filesystem guarantees, unsupported/network filesystems, Git metadata and branch ABA, transitive runtime/toolchain invalidation, reusable contexts and editor apply-time freshness remain unfinished.",
+    "Automatic editor prefetch and reusable-result caching remain disabled.",
+    "These are correctness checks under 2 CPU / 4 GiB limits, not a 2 GiB performance benchmark. No latency improvement or complete retained-memory accounting is established.",
+    "The old image supplies Linux tooling only. It does not validate a current full production image, browser workflows or the full mandatory local CI suite.",
+    "Documentation-only updates followed the frozen checks; production and test source hashes remained unchanged."
+  ]
+}

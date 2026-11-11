@@ -221,7 +221,7 @@ pub fn spawn_headless(id: String, spec: crate::exec::SpawnSpec) -> Result<Arc<Se
     Ok(session)
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
     use crate::terminals::session::SessionManager;

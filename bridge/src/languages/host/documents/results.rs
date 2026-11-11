@@ -1,6 +1,10 @@
+use super::super::analysis::affected::Files;
 use super::*;
+use openwebide_core::workspace_entries::WorkspaceEntries;
 use protocol::results::{FileEdit, Symbol, Target, TextEdit, WorkspaceEdit};
 use tokio::io::AsyncReadExt;
+
+mod workspace;
 
 impl Documents {
     pub(super) async fn normalize_result(
@@ -8,6 +12,7 @@ impl Documents {
         session: &Session,
         input: &Request,
         result: Value,
+        affected: &mut Option<analysis::affected::Snapshot>,
     ) -> Result<Value, String> {
         let mut sources = self
             .documents
@@ -15,7 +20,10 @@ impl Documents {
             .map(|document| (document.path.clone(), Arc::clone(&document.source)))
             .collect::<BTreeMap<_, _>>();
         match &input.query {
-            Query::Definition { .. } | Query::References { .. } => {
+            Query::Definition { .. }
+            | Query::TypeDefinition { .. }
+            | Query::Implementation { .. }
+            | Query::References { .. } => {
                 let values = if result.is_null() {
                     vec![]
                 } else if let Some(values) = result.as_array() {
@@ -37,6 +45,24 @@ impl Documents {
                     );
                 }
                 serde_json::to_value(targets).map_err(|error| error.to_string())
+            }
+            Query::WorkspaceSymbols { .. } => {
+                self.workspace_symbols(session, input, &mut sources, result)
+                    .await
+            }
+            Query::ResolveSymbol { .. } => {
+                let document = self
+                    .documents
+                    .get_mut(&input.document)
+                    .ok_or("Language document is closed")?;
+                let target = target(
+                    session,
+                    &mut document.resources,
+                    &mut sources,
+                    &result["location"],
+                )
+                .await?;
+                serde_json::to_value(vec![target]).map_err(|error| error.to_string())
             }
             Query::Symbols => {
                 let mut pending = result
@@ -112,10 +138,40 @@ impl Documents {
                 }
                 serde_json::to_value(symbols).map_err(|error| error.to_string())
             }
-            Query::Rename { .. } => self.workspace_edit(session, result).await,
+            Query::Rename { .. } => self.workspace_edit(session, result, affected).await,
+            Query::ReviewAction { id } => {
+                if result.get("disabled").is_some_and(|value| !value.is_null()) {
+                    return Err("This language-server action is disabled".into());
+                }
+                let edit = serde_json::from_value(
+                    self.workspace_edit(
+                        session,
+                        result.get("edit").cloned().unwrap_or(Value::Null),
+                        affected,
+                    )
+                    .await?,
+                )
+                .map_err(|error| error.to_string())?;
+                let created = self
+                    .documents
+                    .get(&input.document)
+                    .and_then(|document| document.actions.get(id))
+                    .ok_or("Code action is stale or belongs to another document")?
+                    .created;
+                let review =
+                    super::super::commands::prepare(self, session, input, result, edit, created)
+                        .await?;
+                serde_json::to_value(review).map_err(|error| error.to_string())
+            }
             Query::ResolveAction { .. } => {
+                if result
+                    .get("command")
+                    .is_some_and(|command| !command.is_null())
+                {
+                    return Err("This action includes a server command and needs command approval; no part of its edit was applied".into());
+                }
                 if let Some(edit) = result.get("edit") {
-                    self.workspace_edit(session, edit.clone()).await
+                    self.workspace_edit(session, edit.clone(), affected).await
                 } else {
                     Err(
                         "This code action requires a server command rather than a workspace edit"
@@ -127,9 +183,39 @@ impl Documents {
         }
     }
 
-    async fn workspace_edit(&self, session: &Session, result: Value) -> Result<Value, String> {
+    async fn workspace_edit(
+        &self,
+        session: &Session,
+        result: Value,
+        affected: &mut Option<analysis::affected::Snapshot>,
+    ) -> Result<Value, String> {
+        let files = Files::new(&session.root)?;
+        let result = self
+            .observed_workspace_edit(session, result, &files)
+            .await?;
+        *affected = Some(files.finish()?);
+        Ok(result)
+    }
+    async fn observed_workspace_edit(
+        &self,
+        session: &Session,
+        result: Value,
+        observed: &Files,
+    ) -> Result<Value, String> {
         if result.is_null() {
-            return Ok(json!(WorkspaceEdit { files: vec![] }));
+            return Ok(json!(WorkspaceEdit {
+                files: vec![],
+                changes: vec![]
+            }));
+        }
+        if result
+            .get("documentChanges")
+            .and_then(Value::as_array)
+            .is_some_and(|changes| changes.iter().any(|change| change.get("kind").is_some()))
+        {
+            return self
+                .ordered_workspace_edit(session, &result, observed)
+                .await;
         }
         let mut changes = Vec::new();
         if let Some(files) = result.get("documentChanges").and_then(Value::as_array) {
@@ -154,10 +240,11 @@ impl Documents {
         }
         let mut files = Vec::new();
         for (uri, version, edits) in changes {
-            let path = file_path(&uri)?;
+            let path = file_uri_path(&uri)?;
             let relative = relative(&session.root, &path)
                 .ok_or("Workspace edits cannot modify files outside the selected project")?;
-            let path = source_path(&session.root, &relative).await?;
+            let relative = observed.canonicalize(&relative).await?;
+            let path = session.root.join(&relative);
             let open = self
                 .documents
                 .values()
@@ -170,7 +257,11 @@ impl Documents {
             let source = if let Some(document) = open {
                 document.source.to_string()
             } else {
-                read_source(&path).await?
+                let bytes = observed.read_limited(
+                    &relative,
+                    u64::try_from(openwebide_core::plugins::languages::MAX_SOURCE_BYTES).unwrap(),
+                )?;
+                String::from_utf8(bytes).map_err(|_| "Language resource is not valid UTF-8")?
             };
             let edits: Vec<TextEdit> =
                 serde_json::from_value(edits).map_err(|_| "Invalid workspace text edits")?;
@@ -182,11 +273,15 @@ impl Documents {
                 edits,
             });
         }
-        serde_json::to_value(WorkspaceEdit { files }).map_err(|error| error.to_string())
+        serde_json::to_value(WorkspaceEdit {
+            files,
+            changes: vec![],
+        })
+        .map_err(|error| error.to_string())
     }
 }
 
-async fn target(
+pub(super) async fn target(
     session: &Session,
     resources: &mut BTreeMap<String, Resource>,
     sources: &mut BTreeMap<PathBuf, Arc<str>>,
@@ -302,6 +397,10 @@ fn resource_target(
     Ok(target)
 }
 fn file_path(uri: &str) -> Result<PathBuf, String> {
+    let path = file_uri_path(uri)?;
+    Ok(std::fs::canonicalize(&path).unwrap_or(path))
+}
+fn file_uri_path(uri: &str) -> Result<PathBuf, String> {
     let uri = url::Url::parse(uri).map_err(|_| "Invalid language-server URI")?;
     if uri.scheme() != "file" {
         return Err("This language-server resource scheme is not supported".into());
@@ -309,9 +408,9 @@ fn file_path(uri: &str) -> Result<PathBuf, String> {
     let path = uri
         .to_file_path()
         .map_err(|()| "Invalid language-server file URI")?;
-    Ok(std::fs::canonicalize(&path).unwrap_or(path))
+    Ok(path)
 }
-fn relative(root: &Path, path: &Path) -> Option<String> {
+pub(super) fn relative(root: &Path, path: &Path) -> Option<String> {
     let path = path
         .strip_prefix(root)
         .ok()?

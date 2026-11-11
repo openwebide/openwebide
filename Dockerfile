@@ -7,6 +7,9 @@ RUN npm ci --omit=dev --ignore-scripts --registry=https://registry.npmjs.org --n
 WORKDIR /opt/openwebide-python-language-server
 COPY tools/python-language-server/package.json tools/python-language-server/package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts --registry=https://registry.npmjs.org --no-audit --no-fund
+WORKDIR /opt/openwebide-web-language-servers
+COPY tools/web-language-servers/package.json tools/web-language-servers/package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts --registry=https://registry.npmjs.org --no-audit --no-fund
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0.403-noble@sha256:de4fe90a98845d75910b9769662465c84de1a934665c431279d1382b2bddc02b AS csharp-language-server-tools
 RUN apt-get update && \
@@ -32,6 +35,14 @@ RUN apt-get update && \
 COPY tools/setup-clangd-language-server.py /opt/openwebide-setup/
 COPY tools/clangd-language-server/versions.json /opt/openwebide-setup/clangd-language-server/
 RUN python3 /opt/openwebide-setup/setup-clangd-language-server.py --tool-path /opt/openwebide-clangd-language-server
+
+FROM ghcr.io/spinframework/spin:v4.1.0 AS terraform-language-server-tools
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends python3 ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+COPY tools/setup-terraform-language-server.py /opt/openwebide-setup/
+COPY tools/terraform-language-server/versions.json /opt/openwebide-setup/terraform-language-server/
+RUN python3 /opt/openwebide-setup/setup-terraform-language-server.py --tool-path /opt/openwebide-terraform-language-server
 
 # --- builder: Spin runtime + Rust + Trunk; builds both components via `spin build` ---
 FROM ghcr.io/spinframework/spin:v4.1.0 AS builder
@@ -105,6 +116,8 @@ COPY --from=language-server-tools /opt/openwebide-language-servers/node_modules 
 ENV PATH="/opt/openwebide-language-servers/node_modules/.bin:${PATH}"
 COPY --from=language-server-tools /opt/openwebide-python-language-server/node_modules /opt/openwebide-python-language-server/node_modules
 ENV PATH="/opt/openwebide-python-language-server/node_modules/.bin:${PATH}"
+COPY --from=language-server-tools /opt/openwebide-web-language-servers/node_modules /opt/openwebide-web-language-servers/node_modules
+ENV PATH="/opt/openwebide-web-language-servers/node_modules/.bin:${PATH}"
 RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
     ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx && \
     node --version && npm --version && typescript-language-server --version && tsc --version && \
@@ -127,6 +140,12 @@ COPY --from=clangd-language-server-tools /opt/openwebide-clangd-language-server 
 COPY tools/clangd-language-server/LICENSE ./licenses/clangd-Apache-LLVM.txt
 ENV PATH="/opt/openwebide-clangd-language-server/bin:${PATH}"
 RUN clangd --version
+COPY --from=terraform-language-server-tools /opt/openwebide-terraform-language-server /opt/openwebide-terraform-language-server
+COPY --from=terraform-language-server-tools /opt/openwebide-terraform-language-server/licenses ./licenses/terraform
+ENV PATH="/opt/openwebide-terraform-language-server/bin:${PATH}"
+ENV CHECKPOINT_DISABLE=1
+ENV TF_IN_AUTOMATION=1
+RUN terraform version -json && terraform-ls --version
 
 # --- runtime: Spin + prebuilt components ---
 FROM runtime-tools

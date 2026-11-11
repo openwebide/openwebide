@@ -29,6 +29,7 @@ pub struct ServerConfig {
     pub plugins: crate::plugins::NativePluginInstaller,
     pub plugin_invocations: crate::plugins::invocations::Invocations,
     pub language_servers: crate::languages::host::Host,
+    pub workspace_transactions: crate::workspace_transactions::Host,
     pub allowed_origins: Vec<String>,
     pub allowed_hosts: Vec<String>,
     pub limits: Limits,
@@ -43,14 +44,49 @@ pub struct ServerConfig {
 }
 
 impl ServerConfig {
+    /// Configure limits before serving requests, preserving the shared folder runtime.
+    pub fn set_language_memory_limits(
+        &mut self,
+        limits: crate::languages::host::MemoryLimits,
+    ) -> Result<(), String> {
+        self.language_servers.set_memory_limits(limits)
+    }
+    pub(crate) fn run_host(&self) -> crate::runs::RunHost {
+        crate::runs::RunHost {
+            mcp: self.mcp.clone(),
+            execution: self.guarded_execution(),
+            plugins: crate::plugins::transport::PluginExecutionHost {
+                paired: self.pairing_token.is_some(),
+                host_id: crate::scheduled::host(self).id,
+                installer: self.plugins.clone(),
+                invocations: self.plugin_invocations.clone(),
+            },
+        }
+    }
+    pub(crate) fn guarded_execution(&self) -> Arc<dyn crate::exec::ToolExecution> {
+        Arc::new(crate::exec::workspace::Execution {
+            inner: self.execution.clone(),
+            coordinator: self.workspace_transactions.coordinator.clone(),
+        })
+    }
     pub fn new(workspace_root: PathBuf, secret: Arc<str>, pairing_token: Option<String>) -> Self {
+        let workspace_transactions = crate::workspace_transactions::Host::default();
+        let runs = Arc::new(crate::runs::RunRegistry::with_coordinator(
+            workspace_transactions.coordinator.clone(),
+        ));
+        let language_servers = crate::languages::host::Host::with_runtime(
+            crate::languages::host::MemoryLimits::default(),
+            workspace_transactions.coordinator.clone(),
+        )
+        .expect("Default language memory limits are valid");
         Self {
             workspace_root,
             execution: Arc::new(crate::exec::HostExecution),
             mcp: Default::default(),
             plugins: crate::plugins::NativePluginInstaller::new(crate::plugins::default_root()),
             plugin_invocations: Default::default(),
-            language_servers: Default::default(),
+            language_servers,
+            workspace_transactions,
             allowed_origins: default_origins(),
             allowed_hosts: default_hosts(),
             limits: Limits::default(),
@@ -59,7 +95,7 @@ impl ServerConfig {
             pairing_token,
             backend_url: "http://127.0.0.1:3000/api".into(),
             tool_stream_memos: Arc::new(openwebide_llm::ToolStreamMemos::default()),
-            runs: Arc::new(crate::runs::RunRegistry::default()),
+            runs,
         }
     }
 }
@@ -272,6 +308,7 @@ pub async fn run_server_until(
     let plugin_runs = tokio::spawn(crate::plugins::runs::serve(config.clone()));
     let host_operations = tokio::spawn(crate::host_admin::serve(config.clone()));
     let runs = config.runs.clone();
+    let workspace_workers = config.workspace_transactions.coordinator.clone();
     let language_servers = config.language_servers.clone();
     let (stop, stopped) = tokio::sync::oneshot::channel();
     let accept = tokio::spawn(run_accept_loop(
@@ -293,6 +330,7 @@ pub async fn run_server_until(
     let _ = stop.send(());
     let _ = accept.await;
     runs.shutdown().await;
+    workspace_workers.shutdown().await;
     shutdown_mcp.shutdown().await;
     language_servers.shutdown();
     session_manager.kill_all().await;

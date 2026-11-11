@@ -135,6 +135,9 @@ pub async fn sanitize(resolver: &impl PathResolver, rel: &str) -> Result<String>
         } else {
             format!("{}/{}", resolved.join("/"), comp)
         };
+        if openwebide_core::vfs::private_workspace_path(&test_path) {
+            return Err(FsError::Reserved(rel.into()));
+        }
 
         match resolver.readlink(&test_path).await {
             Ok(target) => {
@@ -269,6 +272,8 @@ async fn read_dir_entries(dir: &Descriptor) -> Result<Vec<DirectoryEntry>> {
 /// caller passed in — e.g. listing `sym_dir` returns entries like
 /// `sym_dir/child`, not `real_dir/child`.
 pub async fn list(rel: &str) -> Result<Vec<FileEntry>> {
+    let root = root()?;
+    let canonical = sanitize(&WasiResolver::new(&root), rel).await?;
     // `dir_at` resolves through symlinks so filesystem reads target the real
     // directory; all safety checks run inside `dir_at` → `sanitize`.
     let dir = dir_at(rel).await?;
@@ -293,6 +298,11 @@ pub async fn list(rel: &str) -> Result<Vec<FileEntry>> {
         } else {
             format!("{logical_base}/{}", e.name)
         };
+        if openwebide_core::vfs::workspace_path(&path).is_err()
+            || openwebide_core::vfs::private_workspace_path(&format!("{canonical}/{}", e.name))
+        {
+            continue;
+        }
         out.push(FileEntry {
             name: e.name,
             path,
@@ -458,6 +468,7 @@ pub async fn delete(rel: &str) -> Result<()> {
     let root_desc = root()?;
     let resolver = WasiResolver::new(&root_desc);
     let resolved_parent = sanitize(&resolver, parent_rel).await?;
+    openwebide_core::vfs::workspace_path(&format!("{resolved_parent}/{leaf}"))?;
 
     // Open the resolved parent directory and unlink the leaf by its literal name.
     let parent_dir = if resolved_parent.is_empty() {
@@ -774,6 +785,33 @@ mod tests {
 
             // Basic allowed
             assert_eq!(sanitize(&resolver, "a/b").await.unwrap(), "a/b");
+        });
+    }
+
+    #[test]
+    fn runtime_recovery_is_reserved_after_every_symbolic_link_expansion() {
+        futures::executor::block_on(async {
+            let area = ".openwebide/recovery-0123456789abcdef0123456789abcdef";
+            let resolver = FakeResolver {
+                symlinks: HashMap::from([
+                    ("alias".into(), ".openwebide".into()),
+                    ("payload".into(), format!("{area}/objects/0")),
+                ]),
+            };
+            for path in [
+                format!("{area}/objects/0"),
+                "alias/recovery-0123456789abcdef0123456789abcdef/objects/0".into(),
+                "payload".into(),
+            ] {
+                assert!(matches!(
+                    sanitize(&resolver, &path).await,
+                    Err(FsError::Reserved(_))
+                ));
+            }
+            assert_eq!(
+                sanitize(&resolver, "alias/recovery-notes").await.unwrap(),
+                ".openwebide/recovery-notes"
+            );
         });
     }
 

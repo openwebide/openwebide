@@ -562,5 +562,6 @@ pub use tasks::{
 
 pub mod file_nesting;
 pub mod workspace_entries;
+pub mod workspace_transaction;
 
 pub mod network;

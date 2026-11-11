@@ -390,6 +390,8 @@ async fn signal_death_reported() {
         if let BridgeServerMessage::Exited { signal, .. } = recv_msg(&mut ws).await {
             #[cfg(unix)]
             assert_eq!(signal, Some("SIGKILL".into()));
+            #[cfg(not(unix))]
+            assert!(signal.is_none());
             exited = true;
         }
     }
@@ -420,6 +422,14 @@ async fn signal_death_reported() {
 
 #[tokio::test]
 async fn fast_spawns_all_see_exited() {
+    // This system executable needs no Cargo artifact libraries. Cargo adds
+    // host-mounted target directories to LD_LIBRARY_PATH during container tests;
+    // avoid making 300 dynamic-loader directory scans part of the exit contract.
+    #[cfg(target_os = "linux")]
+    let command_environment =
+        std::collections::HashMap::from([("LD_LIBRARY_PATH".into(), String::new())]);
+    #[cfg(not(target_os = "linux"))]
+    let command_environment: std::collections::HashMap<String, String> = Default::default();
     let port = spawn_server().await;
     let mut ws = connect_ws(port).await;
 
@@ -431,7 +441,7 @@ async fn fast_spawns_all_see_exited() {
                 command: "true".into(),
                 args: vec![],
                 cwd: None,
-                env: Default::default(),
+                env: command_environment.clone(),
                 pty: false,
                 cols: 80,
                 rows: 24,

@@ -1,6 +1,18 @@
 use super::*;
 // -- project files (remote mode) ---------------------------------------------------
 
+/// Fresh dispatch preflight, shared by all direct filesystem mutations. The
+/// native physical-folder worker must additionally serialize accepted writes;
+/// an idle observation is not an execution lease.
+async fn ensure_idle(state: &AppState, user: UserId, project: i64) -> Result<(), ApiError> {
+    state
+        .store
+        .workspace_activity(user, project)
+        .await?
+        .ensure_idle()
+        .map_err(ApiError::conflict)
+}
+
 /// Load a remote project and join its base with a project-relative path.
 pub(crate) async fn remote_project_path(
     state: &AppState,
@@ -145,6 +157,7 @@ pub(crate) async fn files_get(
                     .apply(&mut tools);
             }
             let environment = openwebide_core::RunEnvironment {
+                project_id: Some(project.id),
                 browser_preferences: params
                     .get("browser_preferences")
                     .and_then(|value| serde_json::from_str(value).ok())
@@ -225,12 +238,17 @@ pub(crate) async fn files_get(
     }
 }
 
-pub(crate) async fn files_put(
-    req: Request,
+pub(crate) async fn files_put<B>(
+    req: Request<B>,
     state: &AppState,
     path: &str,
     user: AuthedUser,
-) -> Result<JsonResp, ApiError> {
+) -> Result<JsonResp, ApiError>
+where
+    B: http_body::Body + Send + 'static,
+    B::Data: AsRef<[u8]> + Send,
+    B::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+{
     let params = query(&req);
     let user_id = user.id;
     let (id, sub) = project_files_path(path)?;
@@ -255,6 +273,7 @@ pub(crate) async fn files_put(
     if !binary && std::str::from_utf8(&content).is_err() {
         return Err(ApiError::bad_request("request body is not valid UTF-8"));
     }
+    ensure_idle(state, user_id, id).await?;
     crate::files::write(&full, &content).await?;
     Ok(json_response(200, &json!({ "path": rel })))
 }
@@ -265,12 +284,17 @@ pub(super) struct CopyBody {
     to: String,
 }
 
-pub(crate) async fn files_post(
-    req: Request,
+pub(crate) async fn files_post<B>(
+    req: Request<B>,
     state: &AppState,
     path: &str,
     user: AuthedUser,
-) -> Result<JsonResp, ApiError> {
+) -> Result<JsonResp, ApiError>
+where
+    B: http_body::Body + Send + 'static,
+    B::Data: AsRef<[u8]> + Send,
+    B::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+{
     let params = query(&req);
     let user_id = user.id;
     let (id, sub) = project_files_path(path)?;
@@ -283,6 +307,7 @@ pub(crate) async fn files_post(
             let kind = params.get("type").cloned().unwrap_or_else(|| "file".into());
             let is_dir = kind == "dir";
             let (full, _) = remote_project_path(state, user_id, id, &rel).await?;
+            ensure_idle(state, user_id, id).await?;
             crate::files::create(&full, is_dir).await?;
             Ok(json_response(
                 201,
@@ -294,6 +319,7 @@ pub(crate) async fn files_post(
             let args: CopyBody = parse_json(body)?;
             let (full_from, _) = remote_project_path(state, user_id, id, &args.from).await?;
             let (full_to, _) = remote_project_path(state, user_id, id, &args.to).await?;
+            ensure_idle(state, user_id, id).await?;
             crate::files::copy(&full_from, &full_to).await?;
             Ok(json_response(
                 200,
@@ -304,12 +330,17 @@ pub(crate) async fn files_post(
     }
 }
 
-pub(crate) async fn files_delete(
-    req: Request,
+pub(crate) async fn files_delete<B>(
+    req: Request<B>,
     state: &AppState,
     path: &str,
     user: AuthedUser,
-) -> Result<JsonResp, ApiError> {
+) -> Result<JsonResp, ApiError>
+where
+    B: http_body::Body + Send + 'static,
+    B::Data: AsRef<[u8]> + Send,
+    B::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+{
     let params = query(&req);
     let user_id = user.id;
     let (id, sub) = project_files_path(path)?;
@@ -321,6 +352,7 @@ pub(crate) async fn files_delete(
         .cloned()
         .ok_or_else(|| ApiError::bad_request("missing ?path="))?;
     let (full, _) = remote_project_path(state, user_id, id, &rel).await?;
+    ensure_idle(state, user_id, id).await?;
     crate::files::delete(&full).await?;
     Ok(json_response(200, &json!({ "path": rel })))
 }

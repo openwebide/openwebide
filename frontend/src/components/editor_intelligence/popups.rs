@@ -247,7 +247,7 @@ impl PopupAdapter {
                 || actions.busy.get_untracked()
                 || actions.result.with_untracked(Option::is_some)
                 || actions.rename_open.get_untracked()
-                || actions.review.with_untracked(|files| !files.is_empty())
+                || actions.review.with_untracked(Option::is_some)
                 || adapter.expected.with_value(|expected| {
                     expected
                         .as_ref()
@@ -353,7 +353,7 @@ impl PopupAdapter {
         if expected.selection.anchor != expected.selection.head
             || self.actions.editor.selection_count() > 1
             || self.actions.editor.is_composing()
-            || !self.actions.available.get_untracked()
+            || !self.actions.primary_available.get_untracked()
             || (completion && self.read_only.get_untracked())
         {
             return;
@@ -414,6 +414,10 @@ impl PopupAdapter {
         })
     }
     pub fn typed(self, input_type: &str) {
+        if self.actions.editor.snippet_state().0 {
+            self.cancel();
+            return;
+        }
         let refresh = input_type == "deleteContentBackward" && self.actions.completion_active();
         if input_type != "insertText" && !refresh {
             self.cancel();
@@ -455,6 +459,15 @@ impl PopupAdapter {
         if event.is_composing() || self.actions.editor.is_composing() {
             self.cancel();
             return false;
+        }
+        if event.key() == "F8"
+            && !event.ctrl_key()
+            && !event.meta_key()
+            && !event.alt_key()
+            && self.actions.navigate_next_diagnostic(event.shift_key())
+        {
+            self.cancel();
+            return true;
         }
         if event.ctrl_key()
             && !event.alt_key()

@@ -39,8 +39,8 @@ The following checks still require hands-on device or environment testing:
   and configured transport timeouts, dense file timelines and pointer resizing.
 - A phone on the LAN; podman/systemd.
 - Editor IME composition, paste and caret behaviour with a real input method.
-- Windows runtime process cleanup. The Windows adapter compiles without TLS locally;
-  the Windows CI job checks the full TLS build.
+- Windows runtime process cleanup. The full TLS adapter cross-compiles with strict
+  lint locally; Windows CI also checks that build.
 
 ### Full code editor: editing, structure and navigation
 
@@ -1125,6 +1125,11 @@ unsaved header overlays. Diagnostics, completion, navigation and reviewed
 header/source rename and formatting work in both modes. The shared host refreshes
 dependent documents after overlay changes without saving files or restarting
 the service.
+HTML, CSS/SCSS and JSON/JSONC 0.2.0 packages declare the corresponding VS Code
+language servers through the public API 7 contract. Related dialects share their
+server while each package remains independently installable. Local JSON schemas,
+unsaved buffers, snippets, diagnostics and provider lifecycle use the same service
+and editor paths in both modes.
 The shared host facade supports diagnostics, hover panels and pointer information,
 manual and while-typing completion, definitions, references, document symbols,
 rename, document formatting and text-edit code actions in both project modes. Clients validate source-bound
@@ -1135,35 +1140,299 @@ Completion popups support keyboard and pointer selection, single-transaction
 insertion with imports, and normal Tab focus navigation. Automatic requests are
 debounced and coalesced; source, selection and provider changes reject stale
 results. Pointer information preserves the caret and works in read-only files.
+Dismissing completion preserves new-source refreshes and periodic diagnostics.
+Completion snippets, selection formatting, type definitions, implementations,
+filtered outlines, workspace-symbol search and diagnostic traversal use the
+shared editor paths. Independently enabled analysis providers label their own
+problems and fixes; failures preserve ordinary editing. Production browser checks
+cover these workflows and provider lifecycle in both modes.
 
 Remaining work:
 
-- Add further server integrations through independently installable language
-  packages, grouped by server coverage. Keep server selection,
-  configuration, validation and lifecycle above the thin host adapters.
-- Add snippets, selection formatting and richer symbol/diagnostic navigation.
-  Support separate host lint/analysis providers through the same diagnostics UI. Keep ordinary
-  editing available when providers or toolchains are unavailable.
-- Extend reviewed workspace edits to file creation, movement and deletion, and
-  define an approval and recovery contract for server commands. Keep unsupported
-  operations explicit and reject partial application.
-- Expose diagnostics, symbols, definitions and references to agent tools through
-  the existing shared language-service facade. Reuse account/project authority,
-  installed versions and normal approval rules for mutations.
-- Reuse suitable project services across browser reloads and device handoff while
-  preserving independent unsaved overlays. Measure and bound native process RSS,
-  not just retained protocol data; verify pressure-based eviction and recovery.
-- Put server-supported persistent derived caches outside user workspaces. Measure
-  cold/warm latency, cache hits and resource cost before adding OpenWebIDE result
-  caches. Installation settings and user preferences remain in the database.
+- Finish the Terraform reference package's public-toolkit pin, publication and
+  installed editor lifecycle checks in both project modes. Its independent
+  component owns HCL parsing and editing rules without adding a host language
+  switch. Native checks cover terraform-ls across all seven supported dialects,
+  unsaved cross-file hover, completion, diagnostics, navigation, symbols and
+  reviewable Terraform formatting. Pinned CLI/server distributions and native
+  service contracts pass macOS and Linux tooling-image checks; production browser
+  integration remains unfinished
+  ([native checks](code-intelligence/lsp-process-group-checks.json)).
+- Finish durable phase authority and complete native/backend/browser-agent
+  filesystem coverage, multi-process/profile ownership, durable outcomes and
+  frozen-owner recovery. The installed macOS Chrome PWA checks now cover native
+  moves and reviewed commands, permission revocation/regrant, automatic remote
+  rollback and manual Local rollback after an unacknowledged move before editor
+  commit. Original inode/hard link/mode/ACL/extended attributes/CRLF bytes and
+  unsaved Unicode drafts survive recovery. Pending commands retain their recovery
+  through permission loss and require manual acknowledgement for uncertain effects
+  ([recorded cases and checkpoint limits](code-intelligence/physical-folder-checks.json)).
+  These device cases do not establish the remaining mutation authority guarantees.
+  Companion observers now have deadlines without cancelling accepted native work.
+  Expired and abandoned folder-proof cleanup now uses bounded registered workers
+  and the original physical folder gate, preserving changed proofs/folders and
+  safely declining cleanup during shutdown, runtime loss or capacity pressure
+  ([proof cleanup checkpoint](code-intelligence/folder-proof-cleanup-checks.json)).
+  Shared runtime-name filters now protect Git views, staging, commits and new stashes;
+  restore, branch and pull checks reject directory collisions and legacy runtime
+  entries. Browser saves, file-tree operations, pending-edit resolution, rewinds
+  and Git writes now check fresh file/command journals under the same project
+  browser lock as resource execution. Queued Git callbacks retain their original
+  request scope; draft guards run again after waits. Browser dispatch checks now
+  use one compact, owned database observation of file and command recovery;
+  direct file API mutations reject pending recovery before dispatch. Native Git
+  and foreground command workers now share physical folder leases within each
+  bridge process with resource execution and paired calls, including nested roots
+  and worktree scope.
+  On macOS/Linux, the shared gate now also acquires bounded OS directory locks
+  across live bridge processes, with shared ancestor locks, physical alias checks
+  and cancellation that retains no partial lock set while waiting. Real process
+  tests include suspended owners, quarantine, replacement and shutdown
+  ([coordination checkpoint](code-intelligence/folder-coordination-checks.json)).
+  Non-LSP child processes still need crash-surviving ownership; durable actor
+  ownership and complete writer coverage remain unfinished.
+  Native resource workers now obtain bounded owned recovery scope metadata and
+  queue physical folders before taking the large-snapshot slot; full journals
+  and folder identity are checked again after waiting. Database-generated record
+  identities distinguish a replacement even when its public ID and revision repeat.
+  Preparation, phase updates, execution acknowledgements and lost-reply recovery
+  now retain that identity in both modes; queued browser/native work rejects a
+  replacement before mutation or editor publication
+  ([identity checkpoint](code-intelligence/journal-identity-checks.json)). This
+  identity fence does not establish exclusive worker authority.
+  Remote resource workers now obtain durable private worker credentials after
+  acquiring the complete native folder gate. Phase updates and release bind the
+  journal generation and current worker; admission compares the full compact
+  scope, including the previous owner. Released worker IDs remain as tombstones,
+  native callbacks without admission are rejected, and database reopen does not
+  expire ownership ([worker checkpoint](code-intelligence/worker-ownership-checks.json)).
+  Scoped Local journal delegation and its bounded native HTTP adapter now reuse
+  the same worker admission and cursor policy without deployment credentials. A
+  real SQLite/native-folder contract applies the shared resource interpreter on
+  macOS and Linux ([transport checkpoint](code-intelligence/local-delegation-checks.json)).
+  Proven Local folder sessions now mint private workers, admit account-scoped
+  grants and proxy cursor writes while authenticated browser recovery reads stay
+  at the backend. Every mutable native call and cached acknowledgement checks
+  current ownership under its physical folder gate. The shared interpreter
+  recovers lost file/cursor replies through a successor bridge; production
+  resource workflows pass in both modes
+  ([session checkpoint](code-intelligence/local-session-checks.json)).
+  Untouched Prepared journals now cancel after admission through an account-owned
+  metadata CAS without folder access. Revoked credentials retain worker identity
+  fences and leave accepted native gates intact. Native mutation calls also
+  require a durable execution phase; normal rollback stays on its existing
+  authorization path ([cancellation checkpoint](code-intelligence/prepared-cancellation-checks.json)).
+  Compound phase authority and writer coverage across physical aliases, accounts
+  and profiles remain unfinished.
+  Accepted Git work and command cancellation cleanup retain their lease after
+  disconnect; queued cancelled commands stop before dispatch. Approved LSP commands
+  now share these leases, recheck their context after queued waits and wait for
+  original-service cleanup before releasing folder access. Linux/macOS services now
+  run under independent process watchers, using the same bridge executable and
+  unchanged server stdio. Approved commands loan their physical directory locks
+  to the watcher, which retains the original managed group identity and locks
+  through lost observers and confirmed group cleanup. Warm services survive
+  acknowledged command completion; native memory sampling includes watchers
+  ([process-group checkpoint](code-intelligence/lsp-process-group-checks.json)).
+  Escaped groups and remaining command/filesystem writers still need the complete
+  authority protocol. Unconfirmed cleanup rejects overlapping native work;
+  physical directory locks also exclude other bridge processes while their
+  owning host or watcher retains them. Scheduled, plugin
+  and interactive bridge runs share configured services. Project deletion retains
+  pending command recovery after the linked file journal commits. Final combined-source
+  verification remains open.
+- Complete production reload/device-handoff verification and resource measurements.
+  Matching idle processes now transfer under the service-acquisition lock, closing
+  the previous client's live documents before restoring the incoming client's
+  separate, bounded source inventory. Active requests and unexpired command reviews
+  keep their original service. Fresh service identities and increasing LSP versions
+  invalidate earlier result handles; cancellation and changed paths preserve dirty
+  sources for retry or explicit close. Native contracts cover both authenticated
+  transports. Closing a retained file starts no process, and claimed receipts
+  survive service removal without retaining its process or documents. Measure
+  complete retained host/native/WASM memory and broader pressure behavior before
+  declaring this complete. Production TypeScript
+  measurements now cover 128/512-module workspaces, eight reloads and sixteen
+  alternating-client queries per mode, with separate unsaved overlays and sampled
+  native RSS. A larger Local baseline retained two services after overlap. Idle
+  consolidation now releases redundant compatible processes while retaining both
+  source inventories and command pins. Both production adapters now pass the same
+  workloads again with an explicit single-idle-server convergence check; pressure
+  behavior, broader resource measurements and prefetch remain open. The same
+  production workflow also passes in the complete Linux arm64 app under verified
+  2 CPU / 2 GiB / no-swap limits, with 1.07/1.19 GiB cgroup peaks for 128/512 modules
+  and no OOM events. Additional real cgroup reserve-pressure checks now remove
+  original idle server trees and restore both clients' distinct drafts on replacement
+  processes in both modes. In-flight analysis/command pressure behavior and complete
+  retained-memory stability remain open
+  ([measurements and limits](code-intelligence/service-measurements.md)).
+- Finish persistent derived-cache adoption, active disk-growth bounds and resource measurements.
+  Public API 9 cache declarations now bind native environment, argument and settings
+  paths outside the opened project through both authenticated adapters. Namespaces
+  include account/project/physical folder, provider/configuration, executable and
+  reported server version plus declared disk inputs. Confirmed process cleanup
+  releases native leases; unconfirmed owners retain their physical directory.
+  Allocation and confirmed retirement enforce a count/byte retention budget,
+  reclaiming idle owned data only. Periodic bounded inventories now stop owned
+  producers after sampled growth exceeds that budget, reclaiming idle data first
+  and releasing leases after confirmed cleanup while preserving unsaved sources.
+  Shared namespaces count once; failed inventories stop local producers. Measure
+  sampling overhead and overshoot, and finish cross-process enforcement and hard
+  active-growth bounds; sampled stopping is not an OS disk quota.
+  Real Rust and Go probes retain derived files across process restart outside the
+  project, and Cargo reuses unchanged build-script output. Tiny cold/restart samples
+  show mixed latency rather than an established speed improvement. Complete
+  representative hit/resource measurements, C# build-output compatibility and supported
+  overrides for other servers; do not remove clangd background indexing to force
+  a relocation its installed version does not support. Measure cold/warm latency,
+  cache hits and resource cost before adding OpenWebIDE result caches. Installation
+  settings and user preferences remain in the database.
 - Add bounded, cancellable prefetching for open tabs, recent edits and dependencies.
-  Prefer interactive requests, limit speculative concurrency and begin with
-  reusable diagnostics and symbols rather than context-sensitive completion.
+  The shared facade and native host now accept optional diagnostics/symbol queries
+  through ordinary source and authority checks. One speculative request per host
+  includes discovery, requires a compatible warm service and yields to interactive
+  work within a two-second budget. Interrupted speculation stays suspended on its
+  original process through handoff until restart, without disabling interactive
+  queries. Bounded source metadata inventories now reject speculation spanning
+  associated-source, directory or alias changes; failed collections publish no
+  partial generation. Completed analysis rejected for changed sources can retry
+  on the same service. Finish editor candidate scheduling, scope/source cancellation,
+  dependency admission, reusable-result freshness and production resource/benefit
+  measurements before enabling automatic prefetch. Context-sensitive completion
+  is excluded from speculation.
 - Key reusable results by account/project/host, source, effective configuration,
   dependencies and plugin/server version. Verify external edits, branch changes,
   dependency/configuration changes, updates and host restarts invalidate affected
   results. Cross-file analysis needs a project-generation contract as well as
-  document revisions.
+  document revisions. Git revision checks now reject analysis and command dispatch
+  spanning branch/commit changes, and observed revisions clear stale editor results.
+  Native services now also retain bounded Git metadata generations through the
+  same atomic publisher as source observations. HEAD/symbolic-ref chains, selected
+  reference namespaces, packed refs, linked-worktree pointers/configuration and
+  reftable table lists/namespaces reject branch/reference round trips around startup, analysis
+  and command dispatch. Index refreshes preserve the service. Required metadata
+  has reserved worker/notification capacity so optional source scans cannot
+  exhaust it. The [checkpoint](code-intelligence/git-metadata-checks.json) records
+  macOS/Linux contracts and the remaining native Windows verification.
+  Complete unobserved Git changes and apply-time freshness remain open.
+  API 9 declared configuration/dependency inputs provide bounded disk snapshots
+  checked around native requests, rejecting analysis spanning matching changes in
+  both transports. Native input observations also retain a monotonic revision for
+  metadata and identity changes, rejecting restored contents across startup,
+  analysis, handoff and queued command dispatch. Complete inventories publish
+  atomically, leaving failed observations uncommitted. These sampled observations
+  do not replace filesystem-event generations or detect every unobserved change.
+  Reviewed commands prepare before file application and retain
+  their exact service through action-specific synchronization; durable discard
+  releases unclaimed reviews. Declared executables and observed startup images now
+  have identity/modification checks around native requests and command dispatch;
+  replaced direct, parent-directory and intermediate launch links also reject
+  old services even if their final target is unchanged. Command dispatch rechecks
+  native context after affected-file verification. Optional prefetch now collects
+  bounded metadata inventories of associated sources, declared inputs, directories
+  and links through both native routes, including aliases and restored-content
+  Unix cases. macOS and Linux additionally retain bounded, explicit object watches and
+  recheck inventories after registration changes. Lost coverage advances the
+  generation; failed setup publishes no partial inventory. Linux preserves shared
+  hard-link registrations and rejects watch loss or queue overflow. Windows now
+  implements nonrecursive directory notifications with owned pending I/O, unique
+  completion events, one retirement worker and shared handle/buffer budgets.
+  Its production and test code passes cross-compilation; finish native Windows
+  execution of the configured generation/retirement CI cases
+  ([checkpoint](code-intelligence/windows-source-event-checks.json)). Native intelligence
+  protocol 2 now returns bounded, result-bound analysis contexts and validates them
+  against the original live service through both authenticated adapters, without
+  an LSP request or replacement. Proofs bind source generations and overlay epochs;
+  changed results, expired proofs and changed native context reject. Incomplete
+  observations preserve read-only replies without a proof and reject edit-producing
+  queries. Schema 65 preserves archived version-1 command-review recovery while
+  fencing older builds ([checkpoint](code-intelligence/analysis-context-checks.json)).
+  Formatting and resolved completion now retain immutable results and their selected
+  service, validate before editor publication and reject late scope/source changes
+  in both modes. Popup retry, snippets and unsaved undo pass the browser contracts
+  ([checkpoint](code-intelligence/editor-application-checks.json)). Workspace
+  reviews using normalized `files` now retain the original analysis, bind approval
+  to the displayed review and validate before atomic draft/history publication.
+  Both-mode contracts cover tampering, rejection/retry, undo, stale approvals and
+  late draft changes ([checkpoint](code-intelligence/workspace-text-application-checks.json)).
+  Ordered `changes` and command-bearing reviews now retain original analysis,
+  reject changed commands/edit-only downgrades and validate before transaction
+  creation. Shared-policy fixtures cover displayed-review identity, rejection/retry,
+  no intent while validation is pending and intrinsic read-only changes in both
+  filesystem modes ([checkpoint](code-intelligence/resource-review-analysis-checks.json)).
+  Local folder proof now precedes original action discovery/rename; the same
+  capability survives review and execution, with recovery handles retained only
+  for actual resource previews. Installed resource/command workflows, interrupted
+  recovery, command non-replay and declared-input rejection/acceptance pass in
+  both modes. Traces verify original-service validation and Local session reuse
+  ([checkpoint](code-intelligence/review-capability-checks.json)). Finish
+  independent-provider and remaining editor interleaving coverage.
+  Schema 66 now stores optional `LanguageReview` evidence bound to the exact plan
+  and editor patch, with immutable retry identity, quota accounting, old-record
+  recovery and migration replay checks in both modes
+  ([checkpoint](code-intelligence/language-review-storage-checks.json)). The native
+  verifier now authenticates the exact original service/request/result under its
+  folder lease without replaying the LSP query, preserves the ordinary pending-command
+  fence and pins overlays. It reproduces the plan and complete editor patch through
+  the same planner used by frontend review. Both authority profiles and both-mode
+  shared replay contracts pass
+  ([checkpoint](code-intelligence/native-review-checks.json)). Initial worker CAS
+  now checks fresh manual authority, current provider/configuration and complete
+  command approval, then atomically stores the accepted full-review digest.
+  Schema 67 reserves receipt bytes and preserves acceptance across migration
+  replay/reopen. Remote recovery restores an ambiguous native move without the
+  original service or expired grant and never replays its command. Both modes
+  share the database acceptance policy, including paired delegation
+  ([checkpoint](code-intelligence/review-admission-checks.json)). Local and Remote
+  now share complete native execution above thin journal/root adapters. Local
+  retains the original proven session and whole-operation physical gate through
+  durable release. Both-mode contracts cover observer loss, competing access and
+  stale queued recovery before full snapshot load; a real Local LSP/HMAC fixture
+  verifies original admission and accepted committed retry on a successor session.
+  Fresh installed resource/command and declared-input workflows pass in both
+  modes, with one Local Execute and no browser cursor/mutation loop
+  ([checkpoint](code-intelligence/paired-worker-checks.json)). The editor now
+  persists `LanguageReview` from the retained original result and package revision,
+  then obtains fresh sessionless manual authority before initial execution. Both
+  installed modes verify exact native evidence, one Execute, interruption/restart
+  recovery, access loss/regrant, Prepared cancellation and command non-replay
+  ([retained review checkpoint](code-intelligence/retained-review-execution-checks.json)).
+  Finish independent-provider and remaining interleaving coverage plus physical
+  permission verification for review-bearing Local recovery.
+  Result normalization and initial native admission now retain affected-file
+  identity/change-time evidence outside language associations. Ordinary validation
+  shares the stateless signed path set and rechecks it after asynchronous context
+  checks. Native contracts cover restored contents/mtime, aliases, missing paths,
+  repeated reads, bounded metadata capacity and fresh retry; protocol 3/schema 68
+  preserve archived review identity
+  ([checkpoint](code-intelligence/affected-files-checks.json)). Shared original and
+  created-object provenance now rejects same-content replacements after accepted
+  Prepared state, ambiguous directory moves, durable intent and private cleanup in
+  both native modes. Folder fences reject reparented roots and replaced ancestors
+  ([identity checkpoint](code-intelligence/accepted-object-checks.json)). Shared
+  accepted-recovery metadata checks now reject changed permissions, mtime, restored
+  bytes/mtime and added hard links on untouched originals, including partial
+  cleanup. Script-owned moves and directory changes permit only their corresponding
+  metadata transitions. Persistent original birth identity is required for new
+  resource reviews; ordinary analysis remains available without it. The recorded
+  native contracts pass macOS and Linux. Original ACLs, extended attributes and
+  semantic flags now remain checked after script-owned moves and namespace changes.
+  Bounded attribute collection preserves text and command reviews without file
+  operations; both modes preserve changed private originals before rollback or
+  cleanup ([attribute checkpoint](code-intelligence/accepted-attribute-checks.json)).
+  New native creation receipts now preserve changed metadata through publication,
+  rollback, interrupted staging and final anchor cleanup. Both modes cover later
+  permissions, timestamps, attributes, ACLs, flags and file hard links after the
+  original service/grant expires; archived recovery remains compatible
+  ([creation receipt checkpoint](code-intelligence/accepted-creation-checks.json)).
+  New claims preserve unwitnessed creations before receipt publication, requiring
+  explicit inspection/resolution instead of guessing their original metadata.
+  Both native modes resume after that resolution without replay; archived claims
+  and damaged/future records have separate recovery checks
+  ([unwitnessed creation checkpoint](code-intelligence/unwitnessed-creation-checks.json)).
+  Finish reusable-result keys, filesystem-event coverage and transitive runtime/toolchain
+  invalidation. Windows identity/change-time and notification behavior still need
+  native verification.
 - Run the same service/cache contracts against both adapters, including reconnect,
   concurrent overlays, cancellation, eviction, folder-access recovery and updates.
   Benchmark resource use on a small homelab before claiming prefetch improvements.
@@ -1344,9 +1613,10 @@ Language-family packages are implemented. Extend their host services with
   the community package format and permission rules: a GitHub integration with
   authentication, MCP tools and review/issue skills, extending the existing
   skills-only PR Review plugin; and browser testing with host dependencies
-  and artifacts. Add Terraform after
-  host LSP support is available to demonstrate file recognition, syntax,
-  formatting and an existing LSP server. Keep upstream runtime/server versions
+  and artifacts. Finish publication and installed lifecycle verification for
+  the independent Terraform reference package described under
+  [Code intelligence](#code-intelligence-host-language-services-lsp-and-caching).
+  Keep upstream runtime/server versions
   pinned and distinguish OpenWebIDE-maintained packaging from upstream ownership.
   Include the planned bundled Git annotations package as the reference for editor hooks,
   declarative annotations and navigation through existing Git actions.

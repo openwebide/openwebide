@@ -135,7 +135,7 @@ impl SshHost {
         timeout_seconds: u64,
     ) -> Result<CommandOutcome, String> {
         self.execution
-            .run_command(self.spec(command, timeout_seconds, false)?)
+            .run_remote_command(self.spec(command, timeout_seconds, false)?)
             .await
             .map_err(|error| format!("Host SSH execution failed: {error}"))
     }

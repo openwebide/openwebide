@@ -80,6 +80,10 @@ enum Route {
     PluginContextHostRequest,
     PluginStartInvocation,
     LanguageServerQuery,
+    LanguageActionJournal,
+    LanguageCommand,
+    LanguageCommandAuthorize,
+    SessionLanguageContext,
     LanguageServerAuthorize,
     LanguageServerRevoke,
     PluginContinueInvocation,
@@ -98,6 +102,16 @@ enum Route {
     PluginPreparation,
     GetEditorRecovery,
     SaveEditorRecovery,
+    GetWorkspaceTransaction,
+    WorkspaceActivity,
+    BeginWorkspaceTransaction,
+    AdvanceWorkspaceTransaction,
+    ExecuteWorkspaceTransaction,
+    WorkspaceJournalService,
+    DelegateWorkspaceTransaction,
+    DelegatedWorkspaceJournal,
+    WorkspaceTransactionRoot,
+    InspectWorkspaceFolder,
     CreateProject,
     ListPendingEdits,
     ListRunChanges,
@@ -247,6 +261,66 @@ fn resolve(method: &str, segments: &[&str]) -> Option<Route> {
         ("PUT", ["projects", id, "editor-recovery"]) if numeric_id(id) => {
             Some(Route::SaveEditorRecovery)
         }
+        ("POST", ["workspace-transactions", "service"]) => Some(Route::WorkspaceJournalService),
+        ("POST", ["workspace-transactions", "delegated"]) => Some(Route::DelegatedWorkspaceJournal),
+        ("POST", ["projects", id, "language-actions"]) if numeric_id(id) => {
+            Some(Route::LanguageActionJournal)
+        }
+        ("POST", ["projects", id, "language-commands"]) if numeric_id(id) => {
+            Some(Route::LanguageCommand)
+        }
+        ("POST", ["projects", id, "language-commands", "authorize"]) if numeric_id(id) => {
+            Some(Route::LanguageCommandAuthorize)
+        }
+        (
+            "POST",
+            [
+                "projects",
+                id,
+                "workspace-transactions",
+                transaction,
+                "execute",
+            ],
+        ) if numeric_id(id) && openwebide_core::workspace_transaction::valid_id(transaction) => {
+            Some(Route::ExecuteWorkspaceTransaction)
+        }
+        (
+            "POST",
+            [
+                "projects",
+                id,
+                "workspace-transactions",
+                transaction,
+                "delegate",
+            ],
+        ) if numeric_id(id) && openwebide_core::workspace_transaction::valid_id(transaction) => {
+            Some(Route::DelegateWorkspaceTransaction)
+        }
+        ("POST", ["projects", id, "workspace-transactions", "inspect"]) if numeric_id(id) => {
+            Some(Route::InspectWorkspaceFolder)
+        }
+        ("GET", ["projects", id, "workspace-transactions", "root"]) if numeric_id(id) => {
+            Some(Route::WorkspaceTransactionRoot)
+        }
+        ("GET", ["projects", id, "workspace-activity"]) if numeric_id(id) => {
+            Some(Route::WorkspaceActivity)
+        }
+        ("GET", ["projects", id, "workspace-transactions"]) if numeric_id(id) => {
+            Some(Route::GetWorkspaceTransaction)
+        }
+        ("GET", ["projects", id, "workspace-transactions", transaction])
+            if numeric_id(id) && openwebide_core::workspace_transaction::valid_id(transaction) =>
+        {
+            Some(Route::GetWorkspaceTransaction)
+        }
+        ("POST", ["projects", id, "workspace-transactions"]) if numeric_id(id) => {
+            Some(Route::BeginWorkspaceTransaction)
+        }
+        ("PUT", ["projects", id, "workspace-transactions", transaction])
+            if numeric_id(id) && openwebide_core::workspace_transaction::valid_id(transaction) =>
+        {
+            Some(Route::AdvanceWorkspaceTransaction)
+        }
         ("GET", ["projects", id, "memories"]) if numeric_id(id) => Some(Route::GetProjectMemories),
         ("POST", ["projects", id, "memories"]) if numeric_id(id) => {
             Some(Route::ProjectMemoryCommand)
@@ -272,6 +346,9 @@ fn resolve(method: &str, segments: &[&str]) -> Option<Route> {
         ("POST", ["plugins", "host"]) => Some(Route::PluginContextHostRequest),
         ("POST", ["plugins", "invoke"]) => Some(Route::PluginStartInvocation),
         ("POST", ["plugins", "languages", "query"]) => Some(Route::LanguageServerQuery),
+        ("GET", ["sessions", id, "language-context"]) if numeric_id(id) => {
+            Some(Route::SessionLanguageContext)
+        }
         ("POST", ["plugins", "languages", "authorize"]) => Some(Route::LanguageServerAuthorize),
         ("POST", ["plugins", "languages", "revoke"]) => Some(Route::LanguageServerRevoke),
         ("POST", ["plugins", "continue"]) => Some(Route::PluginContinueInvocation),
@@ -444,6 +521,17 @@ pub async fn route(req: Request) -> JsonResp {
             return with_cors(error.into_response(), origin);
         }
     };
+    if route == Some(Route::DelegatedWorkspaceJournal) {
+        // This native transport authenticates a journal-scoped bootstrap and
+        // the worker's private preimage, independently of cookies/service keys.
+        return match api::workspace_transactions::delegated(req, &state).await {
+            Ok(response) => response,
+            Err(error) => {
+                error.log_for_route(method.as_str(), &path);
+                error.into_response()
+            }
+        };
+    }
     if matches!(
         route,
         Some(
@@ -455,10 +543,14 @@ pub async fn route(req: Request) -> JsonResp {
                 | Route::PluginJobRebind
                 | Route::PluginUpdateService
                 | Route::PluginRunService
+                | Route::WorkspaceJournalService
         )
     ) {
         let result = match crate::auth::require_bridge_service(&state, req.headers()).await {
             Ok(()) => match route {
+                Some(Route::WorkspaceJournalService) => {
+                    api::workspace_transactions::service(req, &state).await
+                }
                 Some(Route::HostJournal) => api::host_admin::journal(req, &state).await,
                 Some(Route::PluginJobService) => api::plugin_jobs::service(req, &state).await,
                 Some(Route::PluginJobRebind) => api::plugin_jobs::rebind(req, &state).await,
@@ -575,6 +667,18 @@ pub async fn route(req: Request) -> JsonResp {
         (Some(Route::LanguageServerQuery), Some(user)) => {
             api::plugins::language_server(req, &state, user, false).await
         }
+        (Some(Route::LanguageActionJournal), Some(user)) => {
+            api::language_actions::journal(req, &state, &path, user).await
+        }
+        (Some(Route::LanguageCommand), Some(user)) => {
+            api::language_actions::dispatch(req, &state, &path, user, false).await
+        }
+        (Some(Route::LanguageCommandAuthorize), Some(user)) => {
+            api::language_actions::dispatch(req, &state, &path, user, true).await
+        }
+        (Some(Route::SessionLanguageContext), Some(user)) => {
+            api::plugins::session_language_context(&state, &path, user).await
+        }
         (Some(Route::LanguageServerAuthorize), Some(user)) => {
             api::plugins::language_server(req, &state, user, true).await
         }
@@ -634,6 +738,30 @@ pub async fn route(req: Request) -> JsonResp {
         }
         (Some(Route::SaveEditorRecovery), Some(user)) => {
             api::editor_recovery::save(req, &state, &path, user).await
+        }
+        (Some(Route::ExecuteWorkspaceTransaction), Some(user)) => {
+            api::workspace_transactions::execute(req, &state, &path, user).await
+        }
+        (Some(Route::InspectWorkspaceFolder), Some(user)) => {
+            api::workspace_transactions::inspect(req, &state, &path, user).await
+        }
+        (Some(Route::WorkspaceTransactionRoot), Some(user)) => {
+            api::workspace_transactions::root(&state, &path, user).await
+        }
+        (Some(Route::WorkspaceActivity), Some(user)) => {
+            api::workspace_transactions::activity(&state, &path, user).await
+        }
+        (Some(Route::GetWorkspaceTransaction), Some(user)) => {
+            api::workspace_transactions::get(&state, &path, user).await
+        }
+        (Some(Route::BeginWorkspaceTransaction), Some(user)) => {
+            api::workspace_transactions::begin(req, &state, &path, user).await
+        }
+        (Some(Route::AdvanceWorkspaceTransaction), Some(user)) => {
+            api::workspace_transactions::advance(req, &state, &path, user).await
+        }
+        (Some(Route::DelegateWorkspaceTransaction), Some(user)) => {
+            api::workspace_transactions::delegate(req, &state, &path, user).await
         }
         (Some(Route::PushConfig), Some(_)) => api::push::config(&state).await,
         (Some(Route::PushContext), Some(user)) => api::push::context(&state, user).await,
@@ -1122,6 +1250,17 @@ mod tests {
                 );
             }
             for route in [
+                Route::LanguageActionJournal,
+                Route::LanguageCommand,
+                Route::LanguageCommandAuthorize,
+                Route::ExecuteWorkspaceTransaction,
+                Route::WorkspaceTransactionRoot,
+                Route::WorkspaceJournalService,
+                Route::DelegateWorkspaceTransaction,
+                Route::DelegatedWorkspaceJournal,
+                Route::GetWorkspaceTransaction,
+                Route::BeginWorkspaceTransaction,
+                Route::AdvanceWorkspaceTransaction,
                 Route::HostUpdates,
                 Route::HostInputKey,
                 Route::HostInput,
@@ -1138,6 +1277,7 @@ mod tests {
                 Route::PluginContextHostRequest,
                 Route::PluginStartInvocation,
                 Route::LanguageServerQuery,
+                Route::SessionLanguageContext,
                 Route::LanguageServerAuthorize,
                 Route::LanguageServerRevoke,
                 Route::PluginContinueInvocation,
@@ -1229,6 +1369,26 @@ mod tests {
             ("POST", "plugins/invoke", Route::PluginStartInvocation),
             (
                 "POST",
+                "projects/5/language-actions",
+                Route::LanguageActionJournal,
+            ),
+            (
+                "POST",
+                "projects/5/language-commands",
+                Route::LanguageCommand,
+            ),
+            (
+                "POST",
+                "projects/5/language-commands/authorize",
+                Route::LanguageCommandAuthorize,
+            ),
+            (
+                "GET",
+                "sessions/5/language-context",
+                Route::SessionLanguageContext,
+            ),
+            (
+                "POST",
                 "plugins/languages/query",
                 Route::LanguageServerQuery,
             ),
@@ -1266,6 +1426,61 @@ mod tests {
                 "PUT",
                 "projects/5/editor-recovery",
                 Route::SaveEditorRecovery,
+            ),
+            (
+                "GET",
+                "projects/5/workspace-activity",
+                Route::WorkspaceActivity,
+            ),
+            (
+                "GET",
+                "projects/5/workspace-transactions",
+                Route::GetWorkspaceTransaction,
+            ),
+            (
+                "GET",
+                "projects/5/workspace-transactions/0123456789abcdef0123456789abcdef",
+                Route::GetWorkspaceTransaction,
+            ),
+            (
+                "POST",
+                "projects/5/workspace-transactions",
+                Route::BeginWorkspaceTransaction,
+            ),
+            (
+                "PUT",
+                "projects/5/workspace-transactions/0123456789abcdef0123456789abcdef",
+                Route::AdvanceWorkspaceTransaction,
+            ),
+            (
+                "POST",
+                "workspace-transactions/service",
+                Route::WorkspaceJournalService,
+            ),
+            (
+                "POST",
+                "workspace-transactions/delegated",
+                Route::DelegatedWorkspaceJournal,
+            ),
+            (
+                "POST",
+                "projects/5/workspace-transactions/0123456789abcdef0123456789abcdef/delegate",
+                Route::DelegateWorkspaceTransaction,
+            ),
+            (
+                "POST",
+                "projects/5/workspace-transactions/0123456789abcdef0123456789abcdef/execute",
+                Route::ExecuteWorkspaceTransaction,
+            ),
+            (
+                "GET",
+                "projects/5/workspace-transactions/root",
+                Route::WorkspaceTransactionRoot,
+            ),
+            (
+                "POST",
+                "projects/5/workspace-transactions/inspect",
+                Route::InspectWorkspaceFolder,
             ),
             ("POST", "projects", Route::CreateProject),
             ("GET", "projects/5/pending-edits", Route::ListPendingEdits),

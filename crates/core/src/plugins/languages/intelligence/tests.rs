@@ -1,6 +1,180 @@
 use super::*;
 
 #[test]
+fn analysis_contexts_bind_result_data_and_validation_requires_an_empty_original_service_ack() {
+    let mut input = request();
+    let result = serde_json::json!({"edit":"reviewed"});
+    let context = AnalysisContext {
+        identities: vec![],
+        revisions: vec![],
+        files: vec![],
+        server: "service".into(),
+        result_digest: crate::plugins::content_digest(&serde_json::to_vec(&result).unwrap()),
+        proof: "opaque.signature".into(),
+    };
+    let mut response = Response {
+        version: VERSION,
+        client: input.client.clone(),
+        document: input.document.clone(),
+        request: input.request,
+        revision: input.revision,
+        source_digest: input.source_digest.clone(),
+        server: context.server.clone(),
+        context: Some(context.clone()),
+        capabilities: serde_json::json!({}),
+        result: result.clone(),
+        diagnostics: vec![],
+        diagnostics_ready: true,
+    };
+    response.validate(&input).unwrap();
+    response.result = serde_json::Value::Null;
+    assert!(response.validate(&input).is_err());
+    response.result = result.clone();
+    response.server = "other".into();
+    assert!(response.validate(&input).is_err());
+    for proof in [
+        String::new(),
+        "A".repeat(2049),
+        "invalid\nproof".into(),
+        "文".into(),
+    ] {
+        let invalid = AnalysisContext {
+            proof,
+            ..context.clone()
+        };
+        assert!(invalid.validate_result(&result).is_err());
+    }
+    input.query = Query::ValidateAnalysis {
+        context: context.clone(),
+    };
+    input.validate().unwrap();
+    assert!(input.query.method().is_none());
+    assert!(!input.query.produces_analysis());
+    response.context = None;
+    response.server = context.server;
+    assert!(response.validate(&input).is_err());
+    response.result = serde_json::Value::Null;
+    response.validate(&input).unwrap();
+    input.version = VERSION - 1;
+    assert!(input.validate().unwrap_err().contains("protocol version"));
+}
+
+#[test]
+fn prefetch_is_limited_to_read_only_diagnostics_and_symbols() {
+    for (kind, foreground) in [
+        (PrefetchKind::Diagnostics, Query::Synchronize),
+        (PrefetchKind::Symbols, Query::Symbols),
+    ] {
+        let mut input = request();
+        input.query = Query::Prefetch { kind };
+        input.validate().unwrap();
+        assert!(input.query.is_prefetch());
+        assert_eq!(input.query.foreground_query(), Some(foreground.clone()));
+        assert_eq!(input.query.method(), foreground.method());
+        let serialized = serde_json::to_value(&input).unwrap();
+        assert_eq!(
+            serde_json::from_value::<Request>(serialized).unwrap(),
+            input
+        );
+        input.source.push('!');
+        assert!(input.validate().is_err());
+    }
+    for value in [
+        serde_json::json!({"operation":"prefetch","kind":"completion"}),
+        serde_json::json!({"operation":"prefetch","kind":"rename"}),
+        serde_json::json!({"operation":"prefetch","kind":"symbols","position":{"line":0,"character":0}}),
+    ] {
+        assert!(serde_json::from_value::<Query>(value).is_err());
+    }
+}
+
+#[test]
+fn workspace_search_and_extended_navigation_keep_bounded_source_bound_requests() {
+    let mut input = request();
+    for query in ["", "文 symbol", "foo::Bar"] {
+        input.query = Query::WorkspaceSymbols {
+            query: query.into(),
+        };
+        input.validate().unwrap();
+        assert_eq!(input.query.method(), Some("workspace/symbol"));
+    }
+    for query in ["x".repeat(257), "bad\nquery".into(), "bad\0query".into()] {
+        input.query = Query::WorkspaceSymbols { query };
+        assert!(input.validate().is_err());
+    }
+    for query in [
+        Query::TypeDefinition {
+            position: Position {
+                line: 999,
+                character: 0,
+            },
+        },
+        Query::Implementation {
+            position: Position {
+                line: 999,
+                character: 0,
+            },
+        },
+    ] {
+        input.query = query;
+        assert!(input.validate().is_err());
+    }
+}
+
+#[test]
+fn selection_formatting_validates_utf16_ranges_and_indentation_before_transport() {
+    let mut input = request();
+    input.source = "a😀\r\n水".into();
+    input.source_digest = crate::plugins::languages::source_digest(&input.source);
+    let range = Range {
+        start: position(&input.source, 1).unwrap(),
+        end: position(&input.source, 5).unwrap(),
+    };
+    input.query = Query::RangeFormatting {
+        range,
+        tab_width: 4,
+        insert_spaces: true,
+    };
+    input.validate().unwrap();
+    assert_eq!(input.query.method(), Some("textDocument/rangeFormatting"));
+    for width in [0, 33, u32::MAX] {
+        input.query = Query::RangeFormatting {
+            range,
+            tab_width: width,
+            insert_spaces: true,
+        };
+        assert!(input.validate().is_err());
+    }
+    input.query = Query::RangeFormatting {
+        range: Range {
+            start: Position {
+                line: 0,
+                character: 2,
+            },
+            ..range
+        },
+        tab_width: 4,
+        insert_spaces: true,
+    };
+    assert!(
+        input.validate().is_err(),
+        "half-surrogate ranges cannot reach a provider"
+    );
+    input.query = Query::RangeFormatting {
+        range: Range {
+            start: range.end,
+            end: range.start,
+        },
+        tab_width: 4,
+        insert_spaces: true,
+    };
+    assert!(
+        input.validate().is_err(),
+        "reversed ranges cannot reach a provider"
+    );
+}
+
+#[test]
 fn dialect_language_ids_require_api_seven_and_share_only_the_same_installed_server() {
     use crate::plugins::{ProjectPlugin, languages::*};
     let mut prepared = crate::plugins::testing::receipt();
@@ -173,6 +347,7 @@ fn old_client_document_request_revision_and_digest_cannot_publish_results() {
         revision: request.revision,
         source_digest: request.source_digest.clone(),
         server: "native-service-a".into(),
+        context: None,
         capabilities: serde_json::json!({}),
         result: serde_json::Value::Null,
         diagnostics: vec![],
@@ -188,6 +363,57 @@ fn old_client_document_request_revision_and_digest_cannot_publish_results() {
         };
         let stale: Response = serde_json::from_value(json).unwrap();
         assert!(stale.validate(&request).is_err(), "{field}");
+    }
+}
+
+#[test]
+fn reviewed_action_control_frames_reject_invalid_proofs_and_replacement_services() {
+    let action = actions::ActionSynchronization {
+        command: "a".repeat(32),
+        server: "original-service".into(),
+        origin: "b".repeat(64),
+        review: "c".repeat(64),
+    };
+    for query in [
+        Query::PrepareAction {
+            action: action.clone(),
+        },
+        Query::SynchronizeAction {
+            action: action.clone(),
+            close: false,
+        },
+        Query::ReleaseAction {
+            action: action.clone(),
+        },
+    ] {
+        let mut input = request();
+        input.query = query;
+        input.validate().unwrap();
+        let mut response = Response {
+            version: VERSION,
+            client: input.client.clone(),
+            document: input.document.clone(),
+            request: input.request,
+            revision: input.revision,
+            source_digest: input.source_digest.clone(),
+            server: action.server.clone(),
+            context: None,
+            capabilities: serde_json::json!({}),
+            result: serde_json::Value::Null,
+            diagnostics: vec![],
+            diagnostics_ready: true,
+        };
+        response.validate(&input).unwrap();
+        response.server = "replacement-service".into();
+        assert!(response.validate(&input).is_err());
+    }
+    for field in ["command", "server", "origin", "review"] {
+        let mut invalid = serde_json::to_value(&action).unwrap();
+        invalid[field] = serde_json::json!("");
+        let invalid = serde_json::from_value(invalid).unwrap();
+        let mut input = request();
+        input.query = Query::PrepareAction { action: invalid };
+        assert!(input.validate().is_err(), "{field}");
     }
 }
 
@@ -348,6 +574,144 @@ fn virtual_documents_require_api_eight_and_validate_the_public_resource_contract
         serde_json::to_value(old)
             .unwrap()
             .get("virtualDocuments")
+            .is_none()
+    );
+}
+
+#[test]
+fn affected_observation_paths_are_bounded_ordered_relative_and_archived_by_default() {
+    let mut context = AnalysisContext {
+        identities: vec![],
+        revisions: vec![],
+        files: vec!["".into(), "dir".into(), "dir/file.json".into()],
+        server: "original".into(),
+        result_digest: "a".repeat(64),
+        proof: "opaque.signature".into(),
+    };
+    context.validate().unwrap();
+    for files in [
+        vec!["../outside".into()],
+        vec!["file".into(), "file".into()],
+        vec!["z".into(), "a".into()],
+        vec!["x".repeat(MAX_ANALYSIS_PATH_BYTES + 1)],
+        vec!["file".into(); MAX_ANALYSIS_FILES + 1],
+    ] {
+        context.files = files;
+        assert!(context.validate().is_err());
+    }
+    let archived:AnalysisContext=serde_json::from_value(serde_json::json!({"server":"original","result_digest":"a".repeat(64),"proof":"opaque.signature"})).unwrap();
+    assert!(archived.files.is_empty());
+    assert!(archived.identities.is_empty());
+    assert!(archived.revisions.is_empty());
+    archived.validate().unwrap();
+    assert!(
+        serde_json::to_value(&archived)
+            .unwrap()
+            .get("files")
+            .is_none()
+    );
+    assert!(
+        serde_json::to_value(&archived)
+            .unwrap()
+            .get("identities")
+            .is_none()
+    );
+    for version in [1, 2] {
+        let mut input = request();
+        input.version = version;
+        input.query = Query::ReviewAction { id: "a".repeat(32) };
+        input.validate_archived().unwrap();
+        assert!(input.validate().is_err());
+        input.query = Query::Hover {
+            position: Position::default(),
+        };
+        assert!(input.validate_archived().is_err());
+    }
+}
+
+#[test]
+fn original_object_identities_are_bounded_and_aligned_without_changing_archived_contexts() {
+    let valid = AnalysisContext {
+        revisions: vec![],
+        files: vec!["".into(), "missing".into(), "source".into()],
+        identities: vec![
+            format!("u1.{}", "a".repeat(64)),
+            String::new(),
+            format!("w1.{}", "b".repeat(64)),
+        ],
+        server: "original".into(),
+        result_digest: "a".repeat(64),
+        proof: "opaque.signature".into(),
+    };
+    valid.validate().unwrap();
+    assert_eq!(
+        serde_json::from_value::<AnalysisContext>(serde_json::to_value(&valid).unwrap()).unwrap(),
+        valid
+    );
+    for identities in [
+        vec![format!("u1.{}", "a".repeat(64))],
+        vec![String::new(); 4],
+        vec![String::new(), String::new(), "u1.".into()],
+        vec![
+            String::new(),
+            String::new(),
+            format!("v1.{}", "a".repeat(64)),
+        ],
+        vec![
+            String::new(),
+            String::new(),
+            format!("u1.{}", "z".repeat(64)),
+        ],
+        vec![
+            String::new(),
+            String::new(),
+            "x".repeat(MAX_ANALYSIS_PATH_BYTES + 1),
+        ],
+    ] {
+        let mut changed = valid.clone();
+        changed.identities = identities;
+        assert!(changed.validate().is_err());
+    }
+}
+
+#[test]
+fn native_metadata_is_opaque_aligned_bounded_and_omitted_for_archived_contexts() {
+    let mut context = AnalysisContext {
+        files: vec!["".into(), "missing".into(), "source".into()],
+        identities: vec![],
+        revisions: vec![
+            "opaque root metadata".into(),
+            "missing".into(),
+            "opaque source metadata".into(),
+        ],
+        server: "original".into(),
+        result_digest: "a".repeat(64),
+        proof: "opaque.signature".into(),
+    };
+    context.validate().unwrap();
+    for revisions in [
+        vec!["one".into()],
+        vec![String::new(); 3],
+        vec!["control\0metadata".into(); 3],
+        vec!["x".repeat(MAX_ANALYSIS_METADATA_RECORD_BYTES + 1); 3],
+    ] {
+        let mut changed = context.clone();
+        changed.revisions = revisions;
+        assert!(changed.validate().is_err());
+    }
+    context.files = (0..MAX_ANALYSIS_FILES)
+        .map(|index| format!("file-{index:05}"))
+        .collect();
+    context.revisions =
+        vec!["m".repeat(MAX_ANALYSIS_METADATA_BYTES / MAX_ANALYSIS_FILES); MAX_ANALYSIS_FILES];
+    context.validate().unwrap();
+    context.revisions[0].push('x');
+    assert!(context.validate().is_err());
+    let archived: AnalysisContext = serde_json::from_value(serde_json::json!({"server":"original","result_digest":"a".repeat(64),"proof":"opaque.signature"})).unwrap();
+    assert!(
+        serde_json::to_value(archived)
+            .unwrap()
+            .get("revisions")
             .is_none()
     );
 }

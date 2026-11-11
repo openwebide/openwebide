@@ -1,0 +1,1017 @@
+{
+  "format": 1,
+  "checked_on": "2026-11-10T15:17:57.865288+00:00",
+  "status": "passed_for_native_analysis_context_foundation",
+  "source_manifest_sha256": "bf9bf5c8c57880530ef2300ede20bb50d825e934dceaf4baf3286e6362574302",
+  "source_files": 1826,
+  "base_commit": "9283345d3545ded5461ba5ca1702709954270ced",
+  "working_tree": "Uncommitted code-intelligence work; the source hash covers tracked and unignored untracked files before this receipt and documentation updates.",
+  "relevant_source_sha256": {
+    "bridge/Cargo.toml": "4c1cd67539d326323cbc82d2ab98a8eb6eda82a7ede038e3dc8ae2eb62ef4a91",
+    "Cargo.lock": "d8ed09511350dfe86e8f9acb7fa044726b7d8c03d909843d1d574fc93f6dfe7f",
+    "bridge/src/languages/host.rs": "7b5eb13a7b3f3a5619b56211b1d52165ef44bb096674f8be2c7b95b438e4d048",
+    "bridge/src/languages/host/analysis.rs": "30578990af0e01b31a8bea65cace6a98e5c5447436bdf0f67146876f814be46b",
+    "bridge/src/languages/host/analysis/tests.rs": "d12a7a68ebd6c9de6038aa531c7460e3382d490b771b57b530cea33486fd0f23",
+    "bridge/src/languages/host/documents.rs": "d573fbda691f096a993a68d702bcf4a99f02343cf31c886ad9dc045dd513e344",
+    "bridge/src/languages/host/messages.rs": "2981cdb132a6e52f27da216ce891e7e983ec6fe9a25df23d2bec9e543881a85f",
+    "bridge/tests/plugins.rs": "de54d69ece0dcbcb4d1ff312e4a082bd3df9b43b67a777ac3d4d9e28a96fbe6d",
+    "bridge/tests/plugins/analysis.rs": "35cb8e23ea00bc02e8598a7db7b47460af7e68fce2667db19a082c4cdd383b74",
+    "crates/core/src/plugins/languages/intelligence.rs": "502678ea7de779247a089b78eb24e4584803395684a8310bccf6bd7e95a452d9",
+    "crates/core/src/plugins/languages/intelligence/tests.rs": "a34918d38ebabab683c0b900c4aa429ba0167a3c34dd26d794b7b0df2bca41b8",
+    "crates/core/src/plugins/languages/intelligence/actions.rs": "ea65aaf2930f1bd1dfa387239160d4594684793f510b14330e72e336454e9613",
+    "crates/agent/src/plugins/languages/intelligence.rs": "f01f569ec1f72e211c95db46c3f451d490a1914b363f07d24d9d3c844a44f262",
+    "crates/agent/src/plugins/languages/tests.rs": "93ac1b2235920bbaf3790f7ba61f1372a14817965cc84fd8e3708468b6b9ceb3",
+    "crates/storage/src/migrations.rs": "bad5ecc0af6291c6b685849305a945e134906077e5f81d4948b0b4662eba5b13",
+    "crates/storage/src/store/language_actions/tests.rs": "84de0ed4fbdac393ff6ff69f64c5c94c4e1cb5df2c871ea4c08e746073a8e36c",
+    "frontend/src/plugin_actions.rs": "9cc8a2f67052ac0225a9a62c826a70f9a7e950e53b7e5163ed8475fe8e014f91",
+    "frontend/src/testing/fake_backend.rs": "a18c4a130ff5bc12eb34e8c1151c8e249762589b6cd7bf96edce4548cf0c8f76",
+    "frontend/tests/components/local_bridge.rs": "8eaeb82d810c1d6622e414b11624cb3596cd435b28a9db5b1e41acf6c710829c",
+    "frontend/tests/components/language_plugins.rs": "7ec10c25fa88b43552ec08eb431f8b13be370c4fdd62a69f00b77f5bca74dd57"
+  },
+  "shared_implementation": "The versioned core protocol and shared LanguageService facade use both existing authenticated native adapters. One native host issues and verifies result-bound analysis contexts.",
+  "contract": [
+    "Intelligence protocol 2 carries optional bounded analysis contexts. Plugin API 9 and syntax protocol 1 remain separate.",
+    "Contexts bind the normalized result digest, original service, client/document/language/path/revision/source, observed source generation and overlay epoch. Stateless HMAC proofs expire after 300 seconds and service replacement resets the key.",
+    "Validation checks the exact retained original service without an LSP RPC, new overlays or a replacement process. The shared facade rejects changed result data before preparing authority.",
+    "Source-generation changes discard mutable opaque handles before resolution. Incomplete observation retains ordinary read-only analysis without a proof; speculation and edit-producing queries reject incomplete coverage.",
+    "Live protocol 1 requests reject. Schema 65 fences older readers; archived protocol 1 action reviews remain recoverable without rewriting their input."
+  ],
+  "coverage": [
+    "Full seven-crate native tests and frontend native tests on macOS and Linux.",
+    "Strict native all-target Clippy on both hosts, plus WASI backend, all-target WASM frontend and Windows bridge cross-compilation on macOS.",
+    "Targeted optimized Chrome language_plugins and local_bridge component suites.",
+    "Installed public-package HTTP regressions exercise paired-local and backend-auth routes, result tampering, changed dependencies, successful original-service validation and absence of extra LSP requests or restarts.",
+    "Both facade profiles check result binding before authority, and both stored action modes recover real schema-64 protocol-1 records through schema 65."
+  ],
+  "browser_regression": {
+    "first_attempt_source_sha256": "a0f66da76f696e9d438da93f2a6115b97b64b3eb1046d6fb0e72dd92c7c59db0",
+    "first_attempt": {
+      "case": "browser-local",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-frontend",
+        "--release",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--test",
+        "components",
+        "local_bridge::",
+        "--locked"
+      ],
+      "returncode": 1,
+      "seconds": 23.26,
+      "log_sha256": "e2209d7829213b2aff68d7afb81d0ce9b5a474da44d92b148222fa1414d56174",
+      "test_results": [],
+      "failure_results": [
+        {
+          "passed": 30,
+          "failed": 1,
+          "ignored": 0
+        }
+      ],
+      "failed_tests": [
+        "test local_bridge::resume_after_failed_history_persistence_reuses_write_id ... FAIL"
+      ],
+      "ignored_tests": []
+    },
+    "failure": "The existing resume-after-history-failure test asserted Accepted while the browser workspace-lock callback was still queued; 30 cases passed and this case failed. A later RefCell panic followed the failed assertion retaining its borrow in WASM.",
+    "correction": "Only the test now waits, within its existing three-second observable-result helper, for the durable Accepted decision before exercising its original delayed acknowledgement and resumed write assertions. Production locking and all original assertions remain unchanged.",
+    "focused_check": {
+      "case": "resume_after_failed_history_persistence_reuses_write_id",
+      "returncode": 0,
+      "source_manifest_sha256": "bf9bf5c8c57880530ef2300ede20bb50d825e934dceaf4baf3286e6362574302",
+      "log_sha256": "8090cb6a786a37da0acde54a3f2d2ef851b23e58c071d7cb5d77207fb33d5cce",
+      "test_results": [
+        {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    "focused_log_sha256": "8090cb6a786a37da0acde54a3f2d2ef851b23e58c071d7cb5d77207fb33d5cce"
+  },
+  "matching_debug_binary": {
+    "sha256": "afebf074b9006a29f3f3d1a05cf62554746b830aed6206351521e7684ce24761",
+    "bytes": 191015584,
+    "source_manifest_sha256": "bf9bf5c8c57880530ef2300ede20bb50d825e934dceaf4baf3286e6362574302"
+  },
+  "macos": {
+    "checks": [
+      {
+        "case": "format",
+        "command": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--check"
+        ],
+        "returncode": 0,
+        "seconds": 2.76,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "test_results": [],
+        "failure_results": [],
+        "failed_tests": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "binary",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--bin",
+          "openwebide-bridge",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 0.63,
+        "log_sha256": "520a2dfdec7786fd380c2ba4d4a0c5f0b1cb1b39a1783b8a6bbf09dd0c7a25da",
+        "test_results": [],
+        "failure_results": [],
+        "failed_tests": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "native-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-core",
+          "-p",
+          "openwebide-auth",
+          "-p",
+          "openwebide-agent",
+          "-p",
+          "openwebide-llm",
+          "-p",
+          "openwebide-storage",
+          "-p",
+          "openwebide-backend",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 0.68,
+        "log_sha256": "80a72ab0b6d57f57833fbff08eb4f1c216d4bb98fd0953be701bdd8ef1a25c8e",
+        "test_results": [],
+        "failure_results": [],
+        "failed_tests": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "native-tests",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-core",
+          "-p",
+          "openwebide-auth",
+          "-p",
+          "openwebide-agent",
+          "-p",
+          "openwebide-llm",
+          "-p",
+          "openwebide-storage",
+          "-p",
+          "openwebide-backend",
+          "-p",
+          "openwebide-bridge",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 190.03,
+        "log_sha256": "16c30dbbceefe64d0f2b2ca4e9d8ada977f9ba6f2b5559406cdc05ffed6000ed",
+        "test_results": [
+          {
+            "passed": 218,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 10,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 121,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 390,
+            "failed": 0,
+            "ignored": 1
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 9,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 8,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 2
+          },
+          {
+            "passed": 4,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 16,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 7,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 19,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 1
+          },
+          {
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 1
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 11,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 714,
+            "failed": 0,
+            "ignored": 1
+          },
+          {
+            "passed": 100,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 206,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          }
+        ],
+        "failure_results": [],
+        "failed_tests": [],
+        "ignored_tests": [
+          "test plugins::tests::official_marketplace_reference_package_installs_and_loads_on_both_host_scopes ... ignored, Smoke test against the published official marketplace; requires network access",
+          "test ssh_administration_inspects_and_changes_the_target_and_handles_interactive_sudo ... ignored, Run docker/host-admin-test/check.sh to provision an isolated SSH target and agent",
+          "test ssh_update_adapter_pins_both_deployments_and_survives_ssh_disconnect ... ignored, Run docker/host-admin-test/check.sh for the isolated SSH updater fixture",
+          "test first_party_panels_publish_once_through_real_paired_and_backend_bridge_adapters ... ignored, Requires the compiled marketplace PR Review component and manifest",
+          "test scheduling_component_uses_shared_records_events_and_raw_runs_in_both_modes ... ignored, Requires the separately built Scheduling component and source manifest paths",
+          "test editor::structure::tests::measure_indexed_language_queries ... ignored, native release measurement, not a timing assertion"
+        ]
+      },
+      {
+        "case": "frontend-native",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-frontend",
+          "--lib",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 0.59,
+        "log_sha256": "151974d5456568f8e9255cea24645165f76acfd986506b66199e9cc55f1bb587",
+        "test_results": [
+          {
+            "passed": 142,
+            "failed": 0,
+            "ignored": 0
+          }
+        ],
+        "failure_results": [],
+        "failed_tests": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "wasi-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-backend",
+          "--target",
+          "wasm32-wasip2",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 0.47,
+        "log_sha256": "bcb74884a78099501f6bfc31de29d15aae4eb48dcd18d5c99bdde44d75b90089",
+        "test_results": [],
+        "failure_results": [],
+        "failed_tests": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "wasm-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-frontend",
+          "--target",
+          "wasm32-unknown-unknown",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 7.38,
+        "log_sha256": "3477481f0616a8338c598b8af602451c2bba68ed484bb6e9c48f8e274d6ef9c3",
+        "test_results": [],
+        "failure_results": [],
+        "failed_tests": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "windows-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 0.55,
+        "log_sha256": "9c73735a1033f44f00ea48e15c38d73843ff5a391557aac653bd81d564a34b5f",
+        "test_results": [],
+        "failure_results": [],
+        "failed_tests": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "browser-language",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-frontend",
+          "--release",
+          "--target",
+          "wasm32-unknown-unknown",
+          "--test",
+          "components",
+          "language_plugins::",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 7.51,
+        "log_sha256": "ac64eda05abb6ba6449973be74ca29f6b9f33a37eb80f2bb8102935ea2752ec9",
+        "test_results": [
+          {
+            "passed": 3,
+            "failed": 0,
+            "ignored": 0
+          }
+        ],
+        "failure_results": [],
+        "failed_tests": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "browser-local",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-frontend",
+          "--release",
+          "--target",
+          "wasm32-unknown-unknown",
+          "--test",
+          "components",
+          "local_bridge::",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 23.03,
+        "log_sha256": "6e7d0d8bffe4b11f0cd3910c5d44fc6da6295f1129d73e75658aac0f0229efc6",
+        "test_results": [
+          {
+            "passed": 31,
+            "failed": 0,
+            "ignored": 0
+          }
+        ],
+        "failure_results": [],
+        "failed_tests": [],
+        "ignored_tests": []
+      }
+    ]
+  },
+  "linux": {
+    "tooling_image_id": "sha256:916206a1aa179fdfeb1b73529dc6a04c84b2ccd2a12dfa4577cb6fda9019ab1a",
+    "runtime": {
+      "uid": 502,
+      "kernel": "7.0.14-linuxkit",
+      "architecture": "aarch64",
+      "pid1": "docker-init",
+      "rustdoc_version": "rustdoc 1.98.1 (48a229cea 2026-09-01)",
+      "filesystem": "overlayfs",
+      "source_filesystem": "UNKNOWN (0x6a656a63)",
+      "cpu.max": "200000 100000",
+      "memory.max": "4294967296",
+      "memory.swap.max": "0"
+    },
+    "container_configuration": {
+      "image_id": "sha256:916206a1aa179fdfeb1b73529dc6a04c84b2ccd2a12dfa4577cb6fda9019ab1a",
+      "init": true,
+      "cpu": 2000000000,
+      "memory": 4294967296,
+      "memory_plus_swap": 4294967296,
+      "security_options": [
+        "seccomp=unconfined"
+      ]
+    },
+    "oom_killed": false,
+    "checks": [
+      {
+        "case": "binary",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--bin",
+          "openwebide-bridge",
+          "--locked",
+          "--offline"
+        ],
+        "returncode": 0,
+        "seconds": 47.73,
+        "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "memory_peak_bytes": 2588704768,
+        "log_sha256": "3999bd692e4c86397e645798b39d4370fbb779164a9d1d9edadab64508aad865",
+        "test_results": [],
+        "failure_results": [],
+        "failed_tests": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "native-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-core",
+          "-p",
+          "openwebide-auth",
+          "-p",
+          "openwebide-agent",
+          "-p",
+          "openwebide-llm",
+          "-p",
+          "openwebide-storage",
+          "-p",
+          "openwebide-backend",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--locked",
+          "--offline",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 43.23,
+        "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "memory_peak_bytes": 2950299648,
+        "log_sha256": "ab5d9380161f655732ba521a9426df50b4bb8993e7f47eb06d0f3ef41fa3f546",
+        "test_results": [],
+        "failure_results": [],
+        "failed_tests": [],
+        "ignored_tests": []
+      },
+      {
+        "case": "native-tests",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-core",
+          "-p",
+          "openwebide-auth",
+          "-p",
+          "openwebide-agent",
+          "-p",
+          "openwebide-llm",
+          "-p",
+          "openwebide-storage",
+          "-p",
+          "openwebide-backend",
+          "-p",
+          "openwebide-bridge",
+          "--locked",
+          "--offline",
+          "--jobs",
+          "1"
+        ],
+        "returncode": 0,
+        "seconds": 214.72,
+        "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "memory_peak_bytes": 2950299648,
+        "log_sha256": "5425194d48555a3b66a7bd86a2043937e2b4c15b002539bcda8c46389eadd891",
+        "test_results": [
+          {
+            "passed": 218,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 10,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 121,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 394,
+            "failed": 0,
+            "ignored": 1
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 9,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 8,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 2
+          },
+          {
+            "passed": 4,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 16,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 7,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 19,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 1
+          },
+          {
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 1
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 11,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 714,
+            "failed": 0,
+            "ignored": 1
+          },
+          {
+            "passed": 100,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 206,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0
+          }
+        ],
+        "failure_results": [],
+        "failed_tests": [],
+        "ignored_tests": [
+          "test plugins::tests::official_marketplace_reference_package_installs_and_loads_on_both_host_scopes ... ignored, Smoke test against the published official marketplace; requires network access",
+          "test ssh_administration_inspects_and_changes_the_target_and_handles_interactive_sudo ... ignored, Run docker/host-admin-test/check.sh to provision an isolated SSH target and agent",
+          "test ssh_update_adapter_pins_both_deployments_and_survives_ssh_disconnect ... ignored, Run docker/host-admin-test/check.sh for the isolated SSH updater fixture",
+          "test first_party_panels_publish_once_through_real_paired_and_backend_bridge_adapters ... ignored, Requires the compiled marketplace PR Review component and manifest",
+          "test scheduling_component_uses_shared_records_events_and_raw_runs_in_both_modes ... ignored, Requires the separately built Scheduling component and source manifest paths",
+          "test editor::structure::tests::measure_indexed_language_queries ... ignored, native release measurement, not a timing assertion"
+        ]
+      },
+      {
+        "case": "frontend-native",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-frontend",
+          "--lib",
+          "--locked",
+          "--offline",
+          "--jobs",
+          "1"
+        ],
+        "returncode": 0,
+        "seconds": 124.07,
+        "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+        "memory_peak_bytes": 3731415040,
+        "log_sha256": "951d31941dab3cb373058a6e4ef147726f780403c3a684ec78a457c5d7189e45",
+        "test_results": [
+          {
+            "passed": 142,
+            "failed": 0,
+            "ignored": 0
+          }
+        ],
+        "failure_results": [],
+        "failed_tests": [],
+        "ignored_tests": []
+      }
+    ],
+    "first_attempt": {
+      "status": "failed_without_an_orphan_reaper",
+      "container_configuration": {
+        "image_id": "sha256:916206a1aa179fdfeb1b73529dc6a04c84b2ccd2a12dfa4577cb6fda9019ab1a",
+        "cpu": 2000000000,
+        "memory": 4294967296,
+        "memory_plus_swap": 4294967296,
+        "security_options": [
+          "seccomp=unconfined"
+        ]
+      },
+      "container_state": {
+        "Status": "exited",
+        "Running": false,
+        "Paused": false,
+        "Restarting": false,
+        "OOMKilled": false,
+        "Dead": false,
+        "Pid": 0,
+        "ExitCode": 101,
+        "Error": "",
+        "StartedAt": "2026-11-10T14:55:17.569391167Z",
+        "FinishedAt": "2026-11-10T15:06:50.704384751Z"
+      },
+      "checks": [
+        {
+          "case": "binary",
+          "command": [
+            "cargo",
+            "build",
+            "-p",
+            "openwebide-bridge",
+            "--bin",
+            "openwebide-bridge",
+            "--locked",
+            "--offline"
+          ],
+          "returncode": 0,
+          "seconds": 114.24,
+          "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+          "memory_peak_bytes": 3498246144,
+          "log_sha256": "828ed90460554196085a0eb7de95537929dc68b5659be9a28df51b51f57fbc8f",
+          "test_results": [],
+          "failure_results": [],
+          "failed_tests": [],
+          "ignored_tests": []
+        },
+        {
+          "case": "native-clippy",
+          "command": [
+            "cargo",
+            "clippy",
+            "-p",
+            "openwebide-core",
+            "-p",
+            "openwebide-auth",
+            "-p",
+            "openwebide-agent",
+            "-p",
+            "openwebide-llm",
+            "-p",
+            "openwebide-storage",
+            "-p",
+            "openwebide-backend",
+            "-p",
+            "openwebide-bridge",
+            "--all-targets",
+            "--locked",
+            "--offline",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "returncode": 0,
+          "seconds": 84.2,
+          "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+          "memory_peak_bytes": 3600633856,
+          "log_sha256": "1cab124ec678e05101f8d3471c82040e11f901fa19a664bcb0675e0f4bb72859",
+          "test_results": [],
+          "failure_results": [],
+          "failed_tests": [],
+          "ignored_tests": []
+        },
+        {
+          "case": "native-tests",
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "openwebide-core",
+            "-p",
+            "openwebide-auth",
+            "-p",
+            "openwebide-agent",
+            "-p",
+            "openwebide-llm",
+            "-p",
+            "openwebide-storage",
+            "-p",
+            "openwebide-backend",
+            "-p",
+            "openwebide-bridge",
+            "--locked",
+            "--offline",
+            "--jobs",
+            "1"
+          ],
+          "returncode": 101,
+          "seconds": 490.46,
+          "memory_events": "low 0\nhigh 0\nmax 5268\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+          "memory_peak_bytes": 4294967296,
+          "log_sha256": "819b7ef268789a02b5b8e4a314f7b8f9727211b358723a2f323421e0dd37d5ee",
+          "test_results": [
+            {
+              "passed": 218,
+              "failed": 0,
+              "ignored": 0
+            },
+            {
+              "passed": 10,
+              "failed": 0,
+              "ignored": 0
+            },
+            {
+              "passed": 121,
+              "failed": 0,
+              "ignored": 0
+            }
+          ],
+          "failure_results": [
+            {
+              "passed": 390,
+              "failed": 4,
+              "ignored": 1
+            }
+          ],
+          "failed_tests": [
+            "test exec::host::tests::exec_cancel_fires_despite_backgrounded_stdout_holder ... FAILED",
+            "test exec::host::tests::test_execute_command_direct_timeout ... FAILED",
+            "test exec::host::tests::exec_timeout_fires_despite_backgrounded_stdout_holder ... FAILED",
+            "test mcp::tests::closing_a_catalog_terminates_descendants_that_ignore_sigterm ... FAILED"
+          ],
+          "ignored_tests": [
+            "test plugins::tests::official_marketplace_reference_package_installs_and_loads_on_both_host_scopes ... ignored, Smoke test against the published official marketplace; requires network access"
+          ]
+        }
+      ],
+      "init_probe": {
+        "image_id": "sha256:916206a1aa179fdfeb1b73529dc6a04c84b2ccd2a12dfa4577cb6fda9019ab1a",
+        "checks": [
+          {
+            "init": false,
+            "returncode": 0,
+            "pid1": "python3",
+            "orphan_pid": 8,
+            "state_after_kill": "Z",
+            "seconds": 2.015,
+            "cpu_max": "200000 100000",
+            "memory_max": "4294967296",
+            "swap_max": "0"
+          },
+          {
+            "init": true,
+            "returncode": 0,
+            "pid1": "docker-init",
+            "orphan_pid": 9,
+            "state_after_kill": null,
+            "seconds": 0.023,
+            "cpu_max": "200000 100000",
+            "memory_max": "4294967296",
+            "swap_max": "0"
+          }
+        ]
+      },
+      "correction": "Docker --init supplies the missing PID-1 orphan reaper. The same source and assertions rerun under unchanged CPU, memory, swap and deadline limits; the failed attempt is not counted as passing."
+    },
+    "sandbox": "Outer container exceptions permit the real inner bubblewrap source-compiler sandbox. The full native test command uses one build job under unchanged 2 CPU / 4 GiB / no-swap limits."
+  },
+  "limits": [
+    "Editor application callbacks do not yet consume these contexts. This checkpoint does not establish editor apply-time freshness.",
+    "Resource mutation validation is not yet coupled to native transaction intent under the physical folder gate.",
+    "Complete transitive runtime/toolchain and unobserved filesystem/Git invalidation remain open; native Windows notification execution is not established by cross-compilation.",
+    "These are correctness and targeted compatibility checks, not the complete final CI gate or an application memory/performance benchmark.",
+    "The prior temporary-directory interruption lost earlier raw development logs. This receipt relies on the new persistent, same-source runs only."
+  ],
+  "post_check_updates": [
+    "docs/code-intelligence/analysis-context-checks.json",
+    "docs/plugins.md",
+    "docs/roadmap.md",
+    "CHANGELOG.md"
+  ]
+}

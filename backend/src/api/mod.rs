@@ -80,7 +80,12 @@ where
 /// Read the raw request body, refusing bodies over `limit` bytes with
 /// a 413 — first from a lying `content-length`, then from the actual byte
 /// count via the `Limited` wrapper.
-async fn read_bytes_body(req: Request, limit: usize) -> Result<Bytes, ApiError> {
+async fn read_bytes_body<B>(req: Request<B>, limit: usize) -> Result<Bytes, ApiError>
+where
+    B: http_body::Body + Send + 'static,
+    B::Data: AsRef<[u8]> + Send,
+    B::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+{
     if let Some(len) = req
         .headers()
         .get("content-length")
@@ -107,7 +112,12 @@ where
         .map_err(|_| ApiError::bad_request("request body is not valid UTF-8"))
 }
 
-async fn read_body(req: Request, limit: usize) -> Result<String, ApiError> {
+async fn read_body<B>(req: Request<B>, limit: usize) -> Result<String, ApiError>
+where
+    B: http_body::Body + Send + 'static,
+    B::Data: AsRef<[u8]> + Send,
+    B::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+{
     let bytes = read_bytes_body(req, limit).await?;
     String::from_utf8(bytes.to_vec())
         .map_err(|_| ApiError::bad_request("request body is not valid UTF-8"))
@@ -131,6 +141,7 @@ pub(super) mod connections;
 pub(super) mod editor_recovery;
 pub(super) mod files;
 pub(super) mod git;
+pub(super) mod language_actions;
 pub(crate) mod memories;
 pub(crate) mod model_operations;
 pub(crate) mod model_setup;
@@ -145,6 +156,7 @@ pub(super) mod sessions;
 pub(super) mod settings;
 pub(crate) mod skills;
 pub(super) mod web;
+pub(super) mod workspace_transactions;
 use paths::*;
 use query::query;
 

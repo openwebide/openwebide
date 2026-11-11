@@ -1,0 +1,96 @@
+{
+  "format": 1,
+  "status": "passed_recorded_cases",
+  "platform": {
+    "os": "macOS",
+    "version": "27.2",
+    "browser": "Google Chrome",
+    "browser_version": "157.0.8103.39",
+    "installed_pwa": true
+  },
+  "resource_source_checkpoint": "ab385383f91b96739f6d58313d7744817dc947236e7308a89aecf87f6662322e",
+  "fixture_bridge_launch_sha256": "d4ca1e4e543bbc8dffbedd2eb5d0f9d550a5b6ff75fe30c3601377253c6c2fab",
+  "local": {
+    "native_folder_picker": true,
+    "native_edit_permission_prompt": true,
+    "unsaved_unicode_input": true,
+    "native_move": {
+      "inode_preserved": true,
+      "hardlink_preserved": true,
+      "mode": "0640",
+      "acl_preserved": true,
+      "extended_attribute_preserved": true,
+      "crlf_disk_bytes_preserved": true,
+      "new_file_empty_with_unsaved_editor_text": true
+    },
+    "reviewed_edit_and_command": {
+      "same_physical_folder": true,
+      "executions": 1,
+      "exact_post_edit_draft_verified_by_native_peer": true
+    },
+    "permission_recovery": {
+      "browser_file_editing_revoked": true,
+      "reload_preserves_both_unsaved_tabs": true,
+      "save_blocked_until_regrant": true,
+      "site_setting_restored_and_native_permission_prompt_accepted": true,
+      "physical_files_and_attributes_unchanged": true,
+      "command_not_replayed": true
+    },
+    "pending_file_and_command_recovery": {
+      "native_create_before_delayed_command": true,
+      "permission_revoked_while_action_pending": true,
+      "reload_preserves_two_drafts_and_command_recovery": true,
+      "same_folder_access_restored": true,
+      "uncertain_outcome_fences_save": true,
+      "manual_stop_and_acknowledge": true,
+      "subsequent_reload_has_no_pending_banner": true,
+      "command_executions": 1,
+      "original_files_and_attributes_unchanged": true
+    },
+    "interrupted_file_journal_recovery": {
+      "same_physical_folder_after_native_picker": true,
+      "native_move_before_cursor_acknowledgement": true,
+      "lost_acknowledgement_progress": {
+        "phase": "applying",
+        "completed": 0,
+        "active": true
+      },
+      "permission_revoked_before_page_reload": true,
+      "reload_preserves_original_unsaved_unicode_draft": true,
+      "save_disabled_before_recovery": true,
+      "no_additional_file_primitives_before_regrant": true,
+      "site_file_editing_setting_restored": true,
+      "existing_folder_grant_restored_without_additional_prompt": true,
+      "manual_restore_interrupted_changes": true,
+      "terminal_phase": "restored",
+      "original_inode_hardlink_mode_acl_xattr_crlf_restored": true,
+      "unrelated_file_and_unreached_operations_unchanged": true,
+      "subsequent_reload_preserves_draft_without_recovery_banner": true,
+      "command_dispatched": false,
+      "transport_fault": "Owned localhost proxy withheld the completed first-primitive acknowledgement; permission revocation and reload destroyed the original page before the proxy returned 503."
+    }
+  },
+  "remote": {
+    "native_move_before_cursor_acknowledgement": true,
+    "acknowledgement_interrupted": true,
+    "automatic_rollback_phase": "restored",
+    "original_inode_hardlink_mode_acl_xattr_crlf_restored": true,
+    "pwa_reload_preserves_unsaved_unicode_draft": true,
+    "reviewed_edit_and_command_same_physical_folder": true,
+    "command_executions": 1,
+    "native_attributes_unchanged_by_unsaved_edits_and_command": true
+  },
+  "limitations": [
+    "The remote rollback happened automatically after the lost acknowledgement; manual file rollback was exercised on the Local adapter.",
+    "Checks describe this uncommitted resource checkpoint, before later cache-watchdog and input-observation changes; they are not verification of a newer complete app build.",
+    "Windows runtime and other devices were not tested.",
+    "The update was activated by closing the test app windows and reopening; activation while retaining old windows was not exercised."
+  ],
+  "pwa_update": {
+    "older_shell_retained_while_test_app_windows_were_open": true,
+    "closing_and_reopening_test_pwa_activates_waiting_update": true,
+    "normal_reload_preserves_current_language_controls_after_activation": true,
+    "remote_plugins_list_shows_23_installed": true,
+    "project_switch_preserves_remote_and_local_unsaved_drafts_and_language_controls": true
+  }
+}

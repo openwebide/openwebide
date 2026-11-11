@@ -65,6 +65,8 @@ pub(super) fn watch_tree(
                         .needs_grant
                         .with_untracked(|ids| ids.contains(&project_id))
                     || request.borrow().is_some()
+                    || workspace.editor_operation_active_untracked(project_id)
+                    || workspace.workspace_saves_blocked(project_id)
                 {
                     return;
                 }
@@ -111,6 +113,8 @@ pub(super) async fn refresh_tree(
     let mut dirs = VecDeque::from([String::new()]);
     while let Some(dir) = dirs.pop_front() {
         if !current()
+            || workspace.editor_operation_active_untracked(project_id)
+            || workspace.workspace_saves_blocked(project_id)
             || web_sys::window()
                 .is_none_or(|window| window.document().is_none_or(|document| document.hidden()))
         {
@@ -137,7 +141,10 @@ pub(super) async fn refresh_tree(
         };
         match result {
             Ok(mut entries) => {
-                if !current() {
+                if !current()
+                    || workspace.editor_operation_active_untracked(project_id)
+                    || workspace.workspace_saves_blocked(project_id)
+                {
                     return Ok(());
                 }
                 // Stable ordering avoids publishing changes caused only by enumeration order.

@@ -1,0 +1,366 @@
+{
+  "format": 1,
+  "checked_on": "2026-11-09",
+  "status": "passed_cross_compilation_and_macos_regressions_native_windows_execution_pending",
+  "source_manifest_sha256": "34a97a1ada4c7d37d445c4a981d48daf33b609d5de71a0838bead880efac78ce",
+  "source_files": 1788,
+  "base_commit": "9283345d3545ded5461ba5ca1702709954270ced",
+  "working_tree": true,
+  "relevant_source_sha256": {
+    "bridge/src/languages/host/generation.rs": "052e89153e134517486742671da951eaf3c1472ac091faf3903f74ba250c4eb0",
+    "bridge/src/languages/host/generation/windows.rs": "0385246e25f59fb9ce4cc799694a211c399e50c6c0af8d852ce5abb0834c98cb",
+    "bridge/src/languages/host/generation/events.rs": "1bdcfa742270b17aa4051718d17b5d71bdc688e0fd912643c3fc55c1bcf49fa1",
+    "bridge/src/languages/host/generation/events/windows.rs": "87ca8a1b38dff7cc07c65b545ae5ef46b3945d66be1c302b43f6ea9375269a3b",
+    "bridge/src/languages/host/generation/events/windows/tests.rs": "b950922f32e29bf41a23872de409a09c52db9ac1328f7de9e6d39ec0d73d194b",
+    "bridge/src/languages/host/generation/events/macos.rs": "42021bc65222058dd11690683881a04d77bd704e6ebcd9431161ff87f154e341",
+    "bridge/src/languages/host/generation/events/linux.rs": "d2f7827e99155ee738cd4f94c9d6d7e609e5d6b557370ee5ee309b796e9e7b02",
+    "bridge/src/languages/host/generation/tests.rs": "ce994f96a1778af4ca07bbe7e466d274eaa58312ce5b4abcc6bbb9128f724d23",
+    ".github/workflows/ci.yml": "6bf65115e8cfc452adb20d8aa860f06550298a94ec8ebb7f9ec7b97d80b2b9f2",
+    "bridge/Cargo.toml": "d33a9746f2d59fa923dba6b9c63d3b7a643df3ab4a5ac8c2b8ba726241986d55"
+  },
+  "execution_host": {
+    "platform": "macOS",
+    "os_release": "27.2.0",
+    "architecture": "arm64"
+  },
+  "cases": [
+    {
+      "case": "format",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--check"
+      ],
+      "exit_code": 0,
+      "seconds": 2.65
+    },
+    {
+      "case": "native-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-bridge",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "seconds": 45.05
+    },
+    {
+      "case": "generation",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-bridge",
+        "--lib",
+        "languages::host::generation",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "seconds": 71.57,
+      "tests": {
+        "passed": 13,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "case": "bridge",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-bridge",
+        "--lib",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "seconds": 80.96,
+      "tests": {
+        "passed": 342,
+        "failed": 0,
+        "ignored": 1
+      }
+    },
+    {
+      "case": "adapters",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-bridge",
+        "--test",
+        "plugins",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "seconds": 29.94,
+      "tests": {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "case": "windows-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-bridge",
+        "--target",
+        "x86_64-pc-windows-gnu",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "seconds": 4.51
+    }
+  ],
+  "native_windows_runtime_verified": false,
+  "implementation": "The existing generation tracker and Events manager retain shared source selection, reconciliation, cancellation and atomic publication. A Windows primitive uses explicit nonrecursive ReadDirectoryChangesW reads with a separate event for every read. Pending reads retain owned handles, OVERLAPPED memory, buffers and resource permits until GetOverlappedResult confirms completion, including cancellation retirement.",
+  "bounds": {
+    "notification_handles_per_process_maximum": 1024,
+    "notification_buffer_budget_bytes": 16777216,
+    "read_buffer_bytes": 16384,
+    "completion_polls_per_collection_maximum": 4096,
+    "name_comparisons_per_collection_maximum": 65536,
+    "cleanup_workers_per_process_maximum": 1,
+    "scan_workers_per_process_maximum": 4,
+    "outer_prefetch_deadline_seconds": 2,
+    "persistent_handles_charged": true,
+    "transient_metadata_handles": "Metadata-only identity opens are short-lived, outside the persistent notification quota, and bounded by the four scan workers."
+  },
+  "native_windows_ci_configured_not_executed": {
+    "job": "bridge-windows",
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "openwebide-bridge",
+      "--lib",
+      "languages::host::generation",
+      "--",
+      "--test-threads=1"
+    ],
+    "cases": [
+      "UTF-16 notification parsing, unrelated names, conservative case matching and malformed input rejection.",
+      "Actual directory notifications, unrelated sibling writes and eventual cancellation permit recovery.",
+      "Partial native and shared registration failure without premature permit reuse.",
+      "Directory replacement and object identity loss.",
+      "Shared generation publication, stable sources, inventory failure and cancellation behavior."
+    ]
+  },
+  "limits": [
+    "Cross-compilation checks Windows production and test code but does not establish actual Windows event delivery, driver cancellation, native identity behavior or unsupported/network filesystem behavior. Native Windows execution remains required.",
+    "The initial macOS bridge library and both authenticated transport regressions passed. The Linux followup additionally ran strict bridge lint, all 16 source-generation tests and both authenticated transport contracts against the updated common code; its complete full bridge suite remains at the preceding historical checkpoint.",
+    "Resource permits remain charged if cancellation does not complete. Cleanup-service failure deliberately retains pending memory and permits instead of freeing kernel-visible storage.",
+    "Directory notifications may not report writes through outside-directory hard links. Metadata observations supplement notifications; complete unobserved-change guarantees remain unfinished.",
+    "No automatic editor prefetch queue, reusable-result cache, production latency benefit or complete retained-memory accounting is established.",
+    "This checkpoint is not the complete mandatory local CI suite and authorizes no completion or publication claim."
+  ],
+  "verification_followup": {
+    "source_manifest_sha256": "af0643351435084636bd6b3903ee266100929942ec3616082668bfa97259fd53",
+    "source_files": 1789,
+    "changes_since_initial_checks": [
+      ".github/workflows/ci.yml",
+      "CHANGELOG.md",
+      "bridge/src/languages/host/reuse/tests.rs",
+      "docs/code-intelligence/windows-source-event-checks.json",
+      "docs/plugin-authoring.md",
+      "docs/plugins.md",
+      "docs/roadmap.md"
+    ],
+    "reason": "The Windows CI job explicitly installs Python 3.12 and runs all shared generation tests. Its shared test fixture uses python on Windows and retains python3 on Unix. Documentation now describes the implementation and its pending native verification.",
+    "cases": [
+      {
+        "case": "format",
+        "command": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--check"
+        ],
+        "exit_code": 0,
+        "seconds": 2.83
+      },
+      {
+        "case": "native-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit_code": 0,
+        "seconds": 4.57
+      },
+      {
+        "case": "generation",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "languages::host::generation",
+          "--locked"
+        ],
+        "exit_code": 0,
+        "seconds": 21.63,
+        "tests": {
+          "passed": 13,
+          "failed": 0,
+          "ignored": 0
+        }
+      },
+      {
+        "case": "windows-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit_code": 0,
+        "seconds": 4.2
+      }
+    ],
+    "relevant_source_sha256": {
+      "bridge/src/languages/host/generation.rs": "052e89153e134517486742671da951eaf3c1472ac091faf3903f74ba250c4eb0",
+      "bridge/src/languages/host/generation/windows.rs": "0385246e25f59fb9ce4cc799694a211c399e50c6c0af8d852ce5abb0834c98cb",
+      "bridge/src/languages/host/generation/events.rs": "1bdcfa742270b17aa4051718d17b5d71bdc688e0fd912643c3fc55c1bcf49fa1",
+      "bridge/src/languages/host/generation/events/windows.rs": "87ca8a1b38dff7cc07c65b545ae5ef46b3945d66be1c302b43f6ea9375269a3b",
+      "bridge/src/languages/host/generation/events/windows/tests.rs": "b950922f32e29bf41a23872de409a09c52db9ac1328f7de9e6d39ec0d73d194b",
+      "bridge/src/languages/host/generation/events/macos.rs": "42021bc65222058dd11690683881a04d77bd704e6ebcd9431161ff87f154e341",
+      "bridge/src/languages/host/generation/events/linux.rs": "d2f7827e99155ee738cd4f94c9d6d7e609e5d6b557370ee5ee309b796e9e7b02",
+      "bridge/src/languages/host/generation/tests.rs": "ce994f96a1778af4ca07bbe7e466d274eaa58312ce5b4abcc6bbb9128f724d23",
+      ".github/workflows/ci.yml": "14eea4258c5a9d4c34863e3f111d7cbfea25f2bdb15d9ab1fd9f7d7b486813df",
+      "bridge/Cargo.toml": "d33a9746f2d59fa923dba6b9c63d3b7a643df3ab4a5ac8c2b8ba726241986d55",
+      "bridge/src/languages/host/reuse/tests.rs": "779822bbd81491f493b2dbbb386c506dab02f98b770654fcb94d26c25948f66d"
+    },
+    "native_windows_runtime_verified": false,
+    "full_bridge_and_transport_suites": "The initial source snapshot passed the complete macOS bridge library and both authenticated transport tests. This followup changes only test interpreter selection, Windows CI setup and documentation; production/test code for Windows notifications is unchanged."
+  },
+  "linux_followup": {
+    "source_manifest_sha256": "40d438f69eee171450c5e2c590725d9b60a391507f548652ea953d84c70f0938",
+    "source_files": 1789,
+    "cases": [
+      {
+        "case": "clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--locked",
+          "--offline",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit_code": 0,
+        "seconds": 69.75
+      },
+      {
+        "case": "generation",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "languages::host::generation",
+          "--locked",
+          "--offline"
+        ],
+        "exit_code": 0,
+        "seconds": 95.33,
+        "tests": {
+          "passed": 16,
+          "failed": 0,
+          "ignored": 0
+        }
+      },
+      {
+        "case": "adapters",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--test",
+          "plugins",
+          "--locked",
+          "--offline"
+        ],
+        "exit_code": 0,
+        "seconds": 70.77,
+        "tests": {
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0
+        }
+      }
+    ],
+    "platform": {
+      "os": "Linux",
+      "release": "7.0.14-linuxkit",
+      "architecture": "aarch64",
+      "uid": 502
+    },
+    "environment": {
+      "cpu_limit": 2,
+      "memory_limit_bytes": 4294967296,
+      "swap_enabled": false,
+      "tooling_base_image": "sha256:916206a1aa179fdfeb1b73529dc6a04c84b2ccd2a12dfa4577cb6fda9019ab1a",
+      "current_production_image_verified": false,
+      "source": "Complete frozen unignored source snapshot mounted read-only, with current native code compiled and executed inside the container.",
+      "outer_container_options": [
+        "seccomp=unconfined",
+        "systempaths=unconfined"
+      ],
+      "compiler_sandbox": "Actual bubblewrap proc/dev preflight retained; this focused followup does not repeat the earlier source-compilation test."
+    },
+    "relevant_source_sha256": {
+      "bridge/src/languages/host/generation.rs": "052e89153e134517486742671da951eaf3c1472ac091faf3903f74ba250c4eb0",
+      "bridge/src/languages/host/generation/windows.rs": "0385246e25f59fb9ce4cc799694a211c399e50c6c0af8d852ce5abb0834c98cb",
+      "bridge/src/languages/host/generation/events.rs": "1bdcfa742270b17aa4051718d17b5d71bdc688e0fd912643c3fc55c1bcf49fa1",
+      "bridge/src/languages/host/generation/events/windows.rs": "87ca8a1b38dff7cc07c65b545ae5ef46b3945d66be1c302b43f6ea9375269a3b",
+      "bridge/src/languages/host/generation/events/windows/tests.rs": "b950922f32e29bf41a23872de409a09c52db9ac1328f7de9e6d39ec0d73d194b",
+      "bridge/src/languages/host/generation/events/macos.rs": "42021bc65222058dd11690683881a04d77bd704e6ebcd9431161ff87f154e341",
+      "bridge/src/languages/host/generation/events/linux.rs": "d2f7827e99155ee738cd4f94c9d6d7e609e5d6b557370ee5ee309b796e9e7b02",
+      "bridge/src/languages/host/generation/tests.rs": "ce994f96a1778af4ca07bbe7e466d274eaa58312ce5b4abcc6bbb9128f724d23",
+      ".github/workflows/ci.yml": "14eea4258c5a9d4c34863e3f111d7cbfea25f2bdb15d9ab1fd9f7d7b486813df",
+      "bridge/Cargo.toml": "d33a9746f2d59fa923dba6b9c63d3b7a643df3ab4a5ac8c2b8ba726241986d55",
+      "bridge/src/languages/host/reuse/tests.rs": "779822bbd81491f493b2dbbb386c506dab02f98b770654fcb94d26c25948f66d"
+    },
+    "limits": [
+      "Focused strict lint, source-generation and both authenticated transport checks; not a repeat of the complete bridge suite or mandatory full CI.",
+      "The 4 GiB correctness container is not a 2 GiB production performance benchmark.",
+      "This Linux execution does not verify the Windows notification primitive."
+    ]
+  }
+}

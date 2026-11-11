@@ -13,6 +13,32 @@ use serde_json::{Value, json};
 use crate::runs::http_client::ReqwestHttpClient;
 
 pub trait RunBackend: Send + Sync {
+    fn language_context(
+        &self,
+        _user: i64,
+        _session: i64,
+    ) -> impl Future<
+        Output = Result<openwebide_core::plugins::languages::tools::LanguageToolContext, String>,
+    > + Send {
+        async { Err("Language context unavailable".into()) }
+    }
+    fn language_grant(
+        &self,
+        _user: i64,
+        _session: i64,
+        _plugin: &openwebide_core::plugins::PreparedPlugin,
+    ) -> impl Future<Output = Result<String, String>> + Send {
+        async { Err("Language authority unavailable".into()) }
+    }
+    fn language_query(
+        &self,
+        _user: i64,
+        _call: &openwebide_core::plugins::languages::intelligence::Call,
+    ) -> impl Future<
+        Output = Result<openwebide_core::plugins::languages::intelligence::Response, String>,
+    > + Send {
+        async { Err("Language transport unavailable".into()) }
+    }
     fn plugin_management(
         &self,
         _user: i64,
@@ -272,6 +298,52 @@ impl BackendClient {
         Self { url, secret, http }
     }
 
+    pub async fn workspace_journal_service(
+        &self,
+        request: &openwebide_core::workspace_transaction::WorkspaceJournalRequest,
+    ) -> Result<openwebide_core::workspace_transaction::WorkspaceJournalResponse, String> {
+        use http_body_util::{BodyExt, Limited};
+        let response_limit = if matches!(
+            &request.operation,
+            openwebide_core::workspace_transaction::WorkspaceJournalOperation::Scope
+                | openwebide_core::workspace_transaction::WorkspaceJournalOperation::ClaimWorker { .. }
+                | openwebide_core::workspace_transaction::WorkspaceJournalOperation::ReleaseWorker { .. }
+        ) {
+            openwebide_core::workspace_transaction::RECOVERY_SCOPE_BODY_LIMIT
+        } else {
+            openwebide_core::workspace_transaction::JOURNAL_API_BODY_LIMIT
+        };
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!(
+                "{}/workspace-transactions/service",
+                self.url.trim_end_matches('/')
+            ))
+            .header("authorization", format!("Bearer {}", self.secret))
+            .header("content-type", "application/json")
+            .body(Full::new(Bytes::from(
+                serde_json::to_vec(request).map_err(|e| e.to_string())?,
+            )))
+            .map_err(|e| e.to_string())?;
+        let response = self.http.send(request).await.map_err(|e| e.to_string())?;
+        let status = response.status();
+        let bytes = tokio::time::timeout(
+            std::time::Duration::from_secs(60),
+            Limited::new(response.into_body(), response_limit).collect(),
+        )
+        .await
+        .map_err(|_| "Workspace recovery response timed out")?
+        .map_err(|_| "Workspace recovery response failed or exceeded its limit")?
+        .to_bytes();
+        if !status.is_success() {
+            let error = serde_json::from_slice::<Value>(&bytes)
+                .ok()
+                .and_then(|value| value["error"].as_str().map(str::to_string))
+                .unwrap_or_else(|| format!("Workspace recovery service returned {status}"));
+            return Err(error);
+        }
+        serde_json::from_slice(&bytes).map_err(|e| e.to_string())
+    }
     pub async fn plugin_run_service(
         &self,
         request: &openwebide_core::plugins::runs::RunServiceRequest,
@@ -442,6 +514,47 @@ impl RunBackend for BackendClient {
             json!(request),
         )
         .await
+    }
+    async fn language_context(
+        &self,
+        user: i64,
+        session: i64,
+    ) -> Result<openwebide_core::plugins::languages::tools::LanguageToolContext, String> {
+        self.call(
+            user,
+            "GET",
+            &format!("/sessions/{session}/language-context"),
+            Value::Null,
+        )
+        .await
+    }
+    async fn language_grant(
+        &self,
+        user: i64,
+        session: i64,
+        plugin: &openwebide_core::plugins::PreparedPlugin,
+    ) -> Result<String, String> {
+        let grants: std::collections::BTreeMap<String, String> = self
+            .call(
+                user,
+                "POST",
+                &format!("/sessions/{session}/plugin-grants"),
+                json!([plugin]),
+            )
+            .await?;
+        grants
+            .get(&plugin.digest)
+            .filter(|grant| !grant.is_empty())
+            .cloned()
+            .ok_or_else(|| "Language authority unavailable".into())
+    }
+    async fn language_query(
+        &self,
+        user: i64,
+        call: &openwebide_core::plugins::languages::intelligence::Call,
+    ) -> Result<openwebide_core::plugins::languages::intelligence::Response, String> {
+        self.call(user, "POST", "/plugins/languages/query", json!(call))
+            .await
     }
     async fn host_journal(
         &self,
@@ -927,6 +1040,61 @@ impl<B: RunBackend> openwebide_agent::compaction::CompactionSource for ModelSour
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn recovery_scope_transport_is_bounded_before_large_snapshot_capacity_is_acquired() {
+        use openwebide_core::workspace_transaction::{
+            RECOVERY_SCOPE_BODY_LIMIT, WorkspaceJournalOperation, WorkspaceJournalRequest,
+        };
+        for (scope, padding, accepted) in [
+            (true, 0, true),
+            (true, RECOVERY_SCOPE_BODY_LIMIT, false),
+            (false, RECOVERY_SCOPE_BODY_LIMIT, true),
+        ] {
+            let body = if scope {
+                r#"{"result":"scope","scope":null}"#
+            } else {
+                r#"{"result":"loaded","state":null}"#
+            }
+            .to_string()
+                + &" ".repeat(padding);
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            );
+            let (url, captured) =
+                crate::runs::http_client::tests::capture(Box::leak(response.into_boxed_str()))
+                    .await;
+            let client = BackendClient::new(
+                format!("{url}/api"),
+                "shared-secret".into(),
+                ReqwestHttpClient::default(),
+            );
+            let result = client
+                .workspace_journal_service(&WorkspaceJournalRequest {
+                    user: 42,
+                    project: 7,
+                    id: "a".repeat(32),
+                    operation: if scope {
+                        WorkspaceJournalOperation::Scope
+                    } else {
+                        WorkspaceJournalOperation::Load
+                    },
+                })
+                .await;
+            assert_eq!(result.is_ok(), accepted, "{result:?}");
+            if !accepted {
+                assert!(result.unwrap_err().contains("exceeded its limit"));
+            }
+            let request = captured.await.unwrap();
+            assert!(request.starts_with("POST /api/workspace-transactions/service HTTP/1.1"));
+            assert!(
+                request
+                    .to_ascii_lowercase()
+                    .contains("authorization: bearer shared-secret\r\n")
+            );
+        }
+    }
 
     #[tokio::test]
     async fn plugin_management_transport_attaches_account_and_session_and_preserves_failure() {

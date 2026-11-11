@@ -15,6 +15,7 @@ use crate::tools::ToolName;
 /// Every other tool (destructive operations, external network calls like
 /// `fetch_web_page`, shell execution, git mutations) requires user approval.
 pub const AUTO_APPROVED: &[&str] = &[
+    "code_intelligence",
     "schedule_list",
     "todo_write",
     "ask_user_question",

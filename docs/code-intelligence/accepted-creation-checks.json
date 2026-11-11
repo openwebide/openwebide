@@ -1,0 +1,896 @@
+{
+  "format": 1,
+  "checked_on": "2026-11-11T03:40:41.792052+00:00",
+  "status": "passed_for_native_creation_receipt_metadata",
+  "base_commit": "9283345d3545ded5461ba5ca1702709954270ced",
+  "source_manifest_sha256": "3854ae646e57851f9113e5635c87b36cd407e0fa1789dec05150f00ec9a8f191",
+  "relevant_source_sha256": {
+    "bridge/src/languages/host/admission/tests/worker/recovery_identity.rs": "5ab89c2f22d122989d23f33fee487d6f2f7e2020b147685aea0c224f765c92e8",
+    "bridge/src/languages/host/admission/tests/worker/recovery_identity/created_metadata.rs": "df4b93256ec42c578d4b3b0efbe94671575190a9e439c99396788a9ebc6a70fe",
+    "bridge/src/languages/host/admission/tests/worker/recovery_identity/metadata.rs": "248927310eebd5a289f1984ebc347959287160bf67f79d8e1e1a879ddc4dad42",
+    "bridge/src/runs/native_vfs/resources.rs": "ed6feb35bf900e91029b203120453e39005a19c450190e5592e788de27ed2288",
+    "bridge/src/runs/native_vfs/resources/creations.rs": "1fd33560c73172b345c163f08cfef39698d0081cda7d792060f24090cb798caf",
+    "bridge/src/runs/native_vfs/resources/creations/claims.rs": "6f65377e4110bf0ec7010476d0991011d0906f8c31c9dad80598e886cf540888",
+    "bridge/src/runs/native_vfs/resources/tests.rs": "21c0488f0cc0b310cc9f0db37b1b5270d13e03e60506225ce282feb14bcebe16",
+    "bridge/src/runs/native_vfs/resources/tests/creations.rs": "f4e780735da591892fdeeb14ea53173a3dd45552c7faf125b3f1e985e0aa24bc",
+    "bridge/src/runs/native_vfs/resources/tests/creations/metadata.rs": "1c61650099de8470e5c9583c7d65cbb140d8eb1a91432f1ce753fe844b9d53f1",
+    "bridge/src/runs/native_vfs/rooted/revision.rs": "fae1ea8757544401c846999b5e21542d6ceb5a7fcb68f3f8f2d94421a2c5f3b8",
+    "crates/core/src/workspace_transaction/journal.rs": "a98733e3f1f3467737994b2b64615c590ccace630870261c676fa0b2d47bd24e",
+    "crates/core/src/workspace_transaction/journal/recipe.rs": "401835a52f4b854f74eb1c606cee45c159d7c82eef82e862278ce4a26b433065",
+    "crates/core/src/workspace_transaction/resources/state.rs": "07e58b198d17c6c2738278ecee82c7f93460df41310cfb7d411f3683120bb1a4",
+    "tools/fixtures/commands_server.py": "91b9f7ab7a848998ed61d2b03f4d7e93711c5b0505cffaedd77fd2a0dfaca2a0"
+  },
+  "working_tree": "Uncommitted code-intelligence work; this receipt and documentation follow the frozen checks.",
+  "shared_implementation": "The shared resource interpreter retains created-object provenance through moves, child changes, rollback and cleanup. Both native workers use one descriptor-bound receipt implementation and the existing bounded native Revision/Observation reader. Thin journal adapters do not choose separate recovery policies.",
+  "contract": [
+    "New native creation receipts persist descriptor identity and an opaque native stat/attribute revision before creating a file anchor. The revision predicts exactly one anchor link; matching and last-link cleanup account only for that application-owned link transition. Existing revision-less receipts retain their earlier identity/empty-content contract rather than sampling a new baseline.",
+    "Attribute comparison includes the existing bounded xattr/ACL/semantic-flag digest. Mode, ownership and ordinary file link count, size and modification time remain checked through publication and rollback. Creation publication itself permits ctime changes; tracked directory namespace changes do not exempt attributes or ownership.",
+    "Native staging may touch a created parent even when the child is never published. A bounded immutable namespace intent is persisted before that syscall, bound to the exact transaction, plan, parent receipt ordinal and native identity. Recovery validates complete and partial intent metadata, preserves unknown metadata and cleans intents before removing their original receipt. The root-parent fast path avoids a receipt scan.",
+    "Actual original-service/HMAC acceptance and SQLite worker admission previously deleted an externally updated empty created file after lost acknowledgement in both native modes. Updated Local and Remote tests expire the original service/grant, invalidate provider settings, then preserve file/directory permission, modification-time, xattr, ACL and nodump changes and added file hard links. Unchanged controls roll back normally. No action query, command dispatch or editor successor is replayed.",
+    "Native fault contracts preserve changed attributes at every recorded creation boundary, including unpublished objects and the final empty file anchor. Controls cover every creation/rollback primitive and database acknowledgement. Archived receipt recovery and complete, partial and invalid namespace intent cases remain covered.",
+    "Fresh installed Local and Remote resource, command, interrupted recovery and declared-input workflows pass with the immutable original LanguageReview and fresh authority only for initial dispatch. The native ownership contracts pass on macOS and Linux; browser fixtures do not replace native permission-prompt evidence."
+  ],
+  "regression_before_fix": {
+    "accepted-created-metadata-red.log": {
+      "sha256": "d86d6f0ffce4ed50f1efbeeead3a30fbaebbe52b8f6496dc3e49506943c9d075",
+      "passed": 0,
+      "failed": 2
+    }
+  },
+  "checks": [
+    {
+      "case": "format",
+      "returncode": 0,
+      "seconds": 2.87,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "group": "matrix",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--check"
+      ],
+      "test_results": [],
+      "review_contract_tests": []
+    },
+    {
+      "case": "native-clippy",
+      "returncode": 0,
+      "seconds": 14.82,
+      "log_sha256": "20c030c3ae0a8c421294b2e606418ff866cb0159224e0ee019a22c04e5d7a92d",
+      "group": "matrix",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-core",
+        "-p",
+        "openwebide-storage",
+        "-p",
+        "openwebide-agent",
+        "-p",
+        "openwebide-backend",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "test_results": [],
+      "review_contract_tests": []
+    },
+    {
+      "case": "backend-wasi-clippy",
+      "returncode": 0,
+      "seconds": 8.96,
+      "log_sha256": "474ff8ab355d9db7af70b3d69ab116cc7c5c235f09f3ba20942fa52375bf4bc2",
+      "group": "matrix",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-backend",
+        "--target",
+        "wasm32-wasip2",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "test_results": [],
+      "review_contract_tests": []
+    },
+    {
+      "case": "frontend-wasm-clippy",
+      "returncode": 0,
+      "seconds": 38.78,
+      "log_sha256": "fcd2a05ad418dd80374a3b33ddb7f3125bd332132df6fbac3902564b9c859ce3",
+      "group": "matrix",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-frontend",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "test_results": [],
+      "review_contract_tests": []
+    },
+    {
+      "case": "bridge-windows-check",
+      "returncode": 0,
+      "seconds": 13.68,
+      "log_sha256": "0e2726e025d2f476cce0baf556ae1af0082875ae53e58b6102beeaf10e1427af",
+      "group": "matrix",
+      "command": [
+        "cargo",
+        "check",
+        "-p",
+        "openwebide-bridge",
+        "--target",
+        "x86_64-pc-windows-gnu",
+        "--all-targets",
+        "--locked"
+      ],
+      "test_results": [],
+      "review_contract_tests": []
+    },
+    {
+      "case": "bridge-clippy",
+      "returncode": 0,
+      "seconds": 0.5,
+      "log_sha256": "beed191cf5cd39a57477a6d66e9acb53f3b4efe7566a30e0ada805357a0fe6ff",
+      "group": "matrix",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-bridge",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "test_results": [],
+      "review_contract_tests": []
+    },
+    {
+      "case": "shared-native",
+      "returncode": 0,
+      "seconds": 77.61,
+      "log_sha256": "28d5d46d5d7a042836e9bb159222e4678016611770d209a7ba6c234843325061",
+      "group": "matrix",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-core",
+        "-p",
+        "openwebide-storage",
+        "-p",
+        "openwebide-agent",
+        "-p",
+        "openwebide-backend",
+        "--lib",
+        "--locked"
+      ],
+      "test_results": [
+        {
+          "passed": 221,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 122,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 728,
+          "failed": 0,
+          "ignored": 1
+        },
+        {
+          "passed": 221,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "review_contract_tests": [
+        "test plugins::languages::tests::analysis::retained_language_review_captures_original_evidence_without_new_queries_or_grants ... ok",
+        "test api::workspace_transactions::api_contract::native_language_review_begins_roundtrip_without_granting_worker_authority_in_both_modes ... ok"
+      ]
+    },
+    {
+      "case": "frontend-native",
+      "returncode": 0,
+      "seconds": 18.04,
+      "log_sha256": "f938cac5f6a81775c1c6df61e2a9b768fe8d9686e31c0ecf5f5fc91892820188",
+      "group": "matrix",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-frontend",
+        "--lib",
+        "--locked"
+      ],
+      "test_results": [
+        {
+          "passed": 142,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "review_contract_tests": []
+    },
+    {
+      "case": "bridge-binary",
+      "returncode": 0,
+      "seconds": 0.38,
+      "log_sha256": "1f5852af1ed7025b5728e842e3c3c2f5d2f720d25557d84c38f1ffda99719c59",
+      "group": "matrix",
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "openwebide-bridge",
+        "--locked"
+      ],
+      "test_results": [],
+      "review_contract_tests": []
+    },
+    {
+      "case": "native-bridge",
+      "returncode": 0,
+      "seconds": 87.19,
+      "log_sha256": "f2bcf942bfd531af5c9febbe755c30cade8f60ad8cf2ae9af9d3282ba15b0837",
+      "group": "matrix",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-bridge",
+        "--lib",
+        "--locked"
+      ],
+      "test_results": [
+        {
+          "passed": 450,
+          "failed": 0,
+          "ignored": 1
+        }
+      ],
+      "review_contract_tests": [
+        "test languages::host::admission::tests::bounded_attributes_preserve_text_and_command_reviews_without_native_file_operations ... ok",
+        "test languages::host::admission::tests::command_only_review_accepts_empty_affected_paths_without_weakening_original_checks ... ok",
+        "test languages::host::admission::tests::resource_review_requires_persistent_native_identity_without_disabling_ordinary_reads ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::created_metadata::remote_accepted_created_directory_metadata_is_preserved_after_service_expiry ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::created_metadata::paired_accepted_created_directory_metadata_is_preserved_after_service_expiry ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::created_metadata::remote_accepted_created_metadata_is_preserved_after_service_expiry ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::created_metadata::paired_accepted_created_metadata_is_preserved_after_service_expiry ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::metadata::paired_accepted_metadata_ambiguous_directory ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::metadata::paired_accepted_metadata_cleanup ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::metadata::paired_accepted_ambiguous_directory_preserves_changed_root_attribute ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::metadata::paired_accepted_cleanup_preserves_changed_root_attribute ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::metadata::paired_accepted_metadata_partial_cleanup ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::metadata::paired_accepted_metadata_prepared ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::metadata::remote_accepted_metadata_ambiguous_directory ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::metadata::remote_accepted_metadata_cleanup ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::metadata::remote_accepted_cleanup_preserves_changed_root_attribute ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::metadata::remote_accepted_metadata_prepared ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::metadata::remote_accepted_metadata_partial_cleanup ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::metadata::remote_accepted_ambiguous_directory_preserves_changed_root_attribute ... ok",
+        "test runs::native_vfs::resources::tests::creations::metadata::archived_creation_receipts_keep_their_original_recovery_contract ... ok",
+        "test runs::native_vfs::resources::tests::creations::metadata::every_recorded_creation_boundary_preserves_later_metadata ... ok",
+        "test runs::native_vfs::resources::tests::creations::metadata::last_creation_anchor_preserves_later_metadata_after_rollback ... ok",
+        "test runs::native_vfs::resources::tests::creations::metadata::partial_creation_namespace_intents_resume_and_unknown_intents_are_preserved ... ok"
+      ]
+    },
+    {
+      "case": "browser-workspace",
+      "returncode": 0,
+      "seconds": 177.83,
+      "log_sha256": "9ba2110002de68033ff002e8eabcd08eb1eed0e1c1acf7ad310262cfc8799e8f",
+      "group": "matrix",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-frontend",
+        "--release",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--lib",
+        "workspace_transactions::",
+        "--locked"
+      ],
+      "test_results": [
+        {
+          "passed": 16,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "review_contract_tests": [
+        "test workspace_transactions::review::tests::retained_language_authority_is_fresh_manual_and_only_requested_for_initial_apply_in_both_modes ... ok"
+      ]
+    },
+    {
+      "case": "browser-policy",
+      "returncode": 0,
+      "seconds": 10.64,
+      "log_sha256": "696ecbeb0ead05b2f7e8f909f12a70abaebf9e8c861ba5c3a82ac6033ed2a2d6",
+      "group": "matrix",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-frontend",
+        "--release",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--lib",
+        "state_actions::editor::intelligence::edits::",
+        "--locked"
+      ],
+      "test_results": [
+        {
+          "passed": 29,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "review_contract_tests": []
+    },
+    {
+      "case": "browser-language-consumers",
+      "returncode": 0,
+      "seconds": 175.04,
+      "log_sha256": "38643b2c19e309d3728a35dfa5b9a3ee29c22ec65ef4900f2445d007ddd090be",
+      "group": "matrix",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-frontend",
+        "--release",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--test",
+        "components",
+        "language_plugins::",
+        "--locked"
+      ],
+      "test_results": [
+        {
+          "passed": 9,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "review_contract_tests": []
+    },
+    {
+      "case": "app-build",
+      "returncode": 0,
+      "seconds": 233.85,
+      "log_sha256": "3cb149f5ebe1e8f6fcee0c63f04e473dda5b47b151755f796a8c277382f7defb",
+      "group": "production",
+      "command": [
+        "spin",
+        "build"
+      ],
+      "test_results": [],
+      "review_contract_tests": []
+    },
+    {
+      "case": "bridge-build",
+      "returncode": 0,
+      "seconds": 158.28,
+      "log_sha256": "2ae9848e585a299d0a4481eb672ffb9fb5b2ac2415f5d7c4bb9ab17fb540e553",
+      "group": "production",
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "openwebide-bridge",
+        "--release",
+        "--locked",
+        "--features",
+        "bundled-defaults"
+      ],
+      "test_results": [],
+      "review_contract_tests": []
+    },
+    {
+      "case": "workspace-client",
+      "returncode": 0,
+      "seconds": 139.72,
+      "log_sha256": "503e24addda8b1f1e1aa96b50dc5ce44f7e5c72587059a3b0ba20364b3d6357c",
+      "group": "production",
+      "command": [
+        "python3",
+        "ai_docs/code-intelligence-verification/capture-production-case.py",
+        "ai_docs/code-intelligence-verification/live-review-production-1794367490/workspace-client",
+        "tools/check-workspace-transactions-client.py"
+      ],
+      "test_results": [],
+      "review_contract_tests": []
+    },
+    {
+      "case": "inputs-client",
+      "returncode": 0,
+      "seconds": 46.85,
+      "log_sha256": "b0c9f12a3e9025f81fd3a11e8210ff95c2023de8daeee7fd2fbba32e50645ea1",
+      "group": "production",
+      "command": [
+        "python3",
+        "ai_docs/code-intelligence-verification/capture-production-case.py",
+        "ai_docs/code-intelligence-verification/live-review-production-1794367490/inputs-client",
+        "tools/check-project-inputs-client.py"
+      ],
+      "test_results": [],
+      "review_contract_tests": []
+    },
+    {
+      "case": "binary",
+      "returncode": 0,
+      "seconds": 33.61,
+      "log_sha256": "4816139e06823481172f7ae0473db35a48fb02af96b642ebd38fd1c698b9397e",
+      "group": "linux",
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "openwebide-bridge",
+        "--bin",
+        "openwebide-bridge",
+        "--locked",
+        "--offline"
+      ],
+      "test_results": [],
+      "review_contract_tests": [],
+      "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+      "memory_peak_bytes": 3065769984
+    },
+    {
+      "case": "native-clippy",
+      "returncode": 0,
+      "seconds": 27.38,
+      "log_sha256": "c824ff1415149e1f86f1e573daaf03b0756cc50d1b601e87384b3162f593dade",
+      "group": "linux",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-core",
+        "-p",
+        "openwebide-auth",
+        "-p",
+        "openwebide-agent",
+        "-p",
+        "openwebide-llm",
+        "-p",
+        "openwebide-storage",
+        "-p",
+        "openwebide-backend",
+        "-p",
+        "openwebide-bridge",
+        "--all-targets",
+        "--locked",
+        "--offline",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "test_results": [],
+      "review_contract_tests": [],
+      "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+      "memory_peak_bytes": 3727699968
+    },
+    {
+      "case": "native-tests",
+      "returncode": 0,
+      "seconds": 249.75,
+      "log_sha256": "a393fbae344cfbeefa8823f717ec8f77f2bca3dbde33cebac4b4933cbfb30d93",
+      "group": "linux",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-core",
+        "-p",
+        "openwebide-auth",
+        "-p",
+        "openwebide-agent",
+        "-p",
+        "openwebide-llm",
+        "-p",
+        "openwebide-storage",
+        "-p",
+        "openwebide-backend",
+        "-p",
+        "openwebide-bridge",
+        "--lib",
+        "--locked",
+        "--offline",
+        "--jobs",
+        "1"
+      ],
+      "test_results": [
+        {
+          "passed": 221,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 10,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 122,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 453,
+          "failed": 0,
+          "ignored": 1
+        },
+        {
+          "passed": 730,
+          "failed": 0,
+          "ignored": 1
+        },
+        {
+          "passed": 100,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 221,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "review_contract_tests": [
+        "test plugins::languages::tests::analysis::retained_language_review_captures_original_evidence_without_new_queries_or_grants ... ok",
+        "test api::workspace_transactions::api_contract::native_language_review_begins_roundtrip_without_granting_worker_authority_in_both_modes ... ok",
+        "test languages::host::admission::tests::command_only_review_accepts_empty_affected_paths_without_weakening_original_checks ... ok",
+        "test languages::host::admission::tests::resource_review_requires_persistent_native_identity_without_disabling_ordinary_reads ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::created_metadata::remote_accepted_created_directory_metadata_is_preserved_after_service_expiry ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::created_metadata::paired_accepted_created_directory_metadata_is_preserved_after_service_expiry ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::created_metadata::paired_accepted_created_metadata_is_preserved_after_service_expiry ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::created_metadata::remote_accepted_created_metadata_is_preserved_after_service_expiry ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::metadata::paired_accepted_metadata_ambiguous_directory ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::metadata::paired_accepted_ambiguous_directory_preserves_changed_root_attribute ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::metadata::paired_accepted_cleanup_preserves_changed_root_attribute ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::metadata::paired_accepted_metadata_partial_cleanup ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::metadata::paired_accepted_metadata_cleanup ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::metadata::paired_accepted_metadata_prepared ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::metadata::remote_accepted_metadata_ambiguous_directory ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::metadata::remote_accepted_ambiguous_directory_preserves_changed_root_attribute ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::metadata::remote_accepted_metadata_cleanup ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::metadata::remote_accepted_cleanup_preserves_changed_root_attribute ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::metadata::remote_accepted_metadata_partial_cleanup ... ok",
+        "test languages::host::admission::tests::worker::recovery_identity::metadata::remote_accepted_metadata_prepared ... ok",
+        "test runs::native_vfs::resources::tests::creations::metadata::archived_creation_receipts_keep_their_original_recovery_contract ... ok",
+        "test runs::native_vfs::resources::tests::creations::metadata::last_creation_anchor_preserves_later_metadata_after_rollback ... ok",
+        "test runs::native_vfs::resources::tests::creations::metadata::every_recorded_creation_boundary_preserves_later_metadata ... ok",
+        "test runs::native_vfs::resources::tests::creations::metadata::partial_creation_namespace_intents_resume_and_unknown_intents_are_preserved ... ok"
+      ],
+      "memory_events": "low 0\nhigh 0\nmax 5637\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+      "memory_peak_bytes": 4294967296
+    },
+    {
+      "case": "frontend-native",
+      "returncode": 0,
+      "seconds": 28.39,
+      "log_sha256": "1e26a05ecc8b52779ed39bed628bdd528a53216fb40f3099bbfad821a61ffa2a",
+      "group": "linux",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-frontend",
+        "--lib",
+        "--locked",
+        "--offline",
+        "--jobs",
+        "1"
+      ],
+      "test_results": [
+        {
+          "passed": 142,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "review_contract_tests": [],
+      "memory_events": "low 0\nhigh 0\nmax 5637\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+      "memory_peak_bytes": 4294967296
+    }
+  ],
+  "passed_tests": 3937,
+  "existing_ignored_tests": [
+    "test editor::structure::tests::measure_indexed_language_queries ... ignored, native release measurement, not a timing assertion",
+    "test plugins::tests::official_marketplace_reference_package_installs_and_loads_on_both_host_scopes ... ignored, Smoke test against the published official marketplace; requires network access",
+    "test plugins::tests::official_marketplace_reference_package_installs_and_loads_on_both_host_scopes ... ignored, Smoke test against the published official marketplace; requires network access",
+    "test editor::structure::tests::measure_indexed_language_queries ... ignored, native release measurement, not a timing assertion"
+  ],
+  "installed_contracts": {
+    "workspace-client": [
+      {
+        "mode": "remote",
+        "published_html_component": true,
+        "raw_lsp_resource_edits": true,
+        "no_mutation_before_approval": true,
+        "ordered_text_and_resource_review": true,
+        "original_review_and_folder_session_retained": true,
+        "durable_language_review_matches_original_reply": true,
+        "fresh_sessionless_manual_grant_before_initial_dispatch": true,
+        "dirty_baselines_and_undo_preserved": true,
+        "unrelated_draft_retained": true,
+        "edit_plus_command_rejected": true,
+        "interruption_after_actual_primitive": true,
+        "reload_and_access_regrant": true,
+        "recovery_preserves_newer_draft": true,
+        "command_only_and_combined_approval": true,
+        "lost_dispatch_never_replayed": true,
+        "running_and_uncertain_command_recovery": true,
+        "file_failure_prevents_command": true,
+        "same_window_stop_and_draft_persistence": true,
+        "admitted_prepared_cancellation_without_folder": true
+      },
+      {
+        "mode": "local",
+        "published_html_component": true,
+        "raw_lsp_resource_edits": true,
+        "no_mutation_before_approval": true,
+        "ordered_text_and_resource_review": true,
+        "original_review_and_folder_session_retained": true,
+        "durable_language_review_matches_original_reply": true,
+        "fresh_sessionless_manual_grant_before_initial_dispatch": true,
+        "dirty_baselines_and_undo_preserved": true,
+        "unrelated_draft_retained": true,
+        "edit_plus_command_rejected": true,
+        "interruption_after_actual_primitive": true,
+        "reload_and_access_regrant": true,
+        "recovery_preserves_newer_draft": true,
+        "command_only_and_combined_approval": true,
+        "lost_dispatch_never_replayed": true,
+        "running_and_uncertain_command_recovery": true,
+        "file_failure_prevents_command": true,
+        "same_window_stop_and_draft_persistence": true,
+        "admitted_prepared_cancellation_without_folder": true
+      }
+    ],
+    "inputs-client": [
+      {
+        "mode": "remote",
+        "public_api_9": true,
+        "changed_dependency_before_apply_rejects_whole_action": true,
+        "native_validation_rejects_before_any_action_or_transaction": true,
+        "no_filesystem_primitive_or_command": true
+      },
+      {
+        "mode": "remote",
+        "public_api_9": true,
+        "review_precedes_mutation": true,
+        "configuration_move_and_unsaved_edit": true,
+        "original_service_command_once": true,
+        "draft_saved_to_recovery_not_disk": true
+      },
+      {
+        "mode": "local",
+        "public_api_9": true,
+        "changed_dependency_before_apply_rejects_whole_action": true,
+        "native_validation_rejects_before_any_action_or_transaction": true,
+        "no_filesystem_primitive_or_command": true
+      },
+      {
+        "mode": "local",
+        "public_api_9": true,
+        "review_precedes_mutation": true,
+        "configuration_move_and_unsaved_edit": true,
+        "original_service_command_once": true,
+        "draft_saved_to_recovery_not_disk": true
+      }
+    ]
+  },
+  "rebuilt_artifacts": {
+    "ai_docs/code-intelligence-verification/compiled-defaults.json": {
+      "sha256": "8920461248b659a7112314479d5e3a983d019ffc30fc2a219602d51ca4fc52f4",
+      "bytes": 92205881
+    },
+    "target/release/openwebide-bridge": {
+      "sha256": "39ad45bcb3eafbef32063ecd3a567347605a5d59c7eda08319b7063b9a2db050",
+      "bytes": 122316784
+    },
+    "target/wasm32-wasip2/release/openwebide_backend.wasm": {
+      "sha256": "3e74aefa3bc32477cee937db19c22fc124898229324d9df0abf273bfacc104ff",
+      "bytes": 12316160
+    },
+    "frontend/dist/about-software-85b079278d72b3fe.html": {
+      "sha256": "85b079278d72b3fefa66ae2b6852e7415bd6baae3425992a869604892e2c3f4f",
+      "bytes": 5814091
+    },
+    "frontend/dist/about.html": {
+      "sha256": "92312bec5115378198077bc221421909f8d1bd584ca7b061b05438aded694591",
+      "bytes": 2727
+    },
+    "frontend/dist/apple-touch-icon.png": {
+      "sha256": "12866be1ff99b5221423a4698886f1a350099a8eb88b81f090d0a896346cbef6",
+      "bytes": 2443
+    },
+    "frontend/dist/favicon.png": {
+      "sha256": "dca4e62f62b06faab8c788d0a9d07921dceb138be4ee624775c97eab9b812cfe",
+      "bytes": 757
+    },
+    "frontend/dist/favicon.svg": {
+      "sha256": "c85ddc89e0a2d99d52e124a3f16e4f7cea2d68da4908680255e03245c687512b",
+      "bytes": 556
+    },
+    "frontend/dist/fonts/MonaspaceArgon-v1.400.woff2": {
+      "sha256": "ad0ad84cb65ab56ea82b3098800403aeec1bbc445ba24da0dc87f439b3883db6",
+      "bytes": 540384
+    },
+    "frontend/dist/fonts/MonaspaceKrypton-v1.400.woff2": {
+      "sha256": "f1357532c080c3f976e35ec1d18a92b423d4261103acb7d2cdccffa03a989fad",
+      "bytes": 445408
+    },
+    "frontend/dist/fonts/MonaspaceNeon-v1.400.woff2": {
+      "sha256": "6569968f448ae856ab5b57dff1f13b109b220ca8e3f664169e135fcb5c4f0721",
+      "bytes": 510832
+    },
+    "frontend/dist/fonts/MonaspaceRadon-v1.400.woff2": {
+      "sha256": "6411b3c2b3e02e3913248184800d6c5a83bb1ccd1472daeb7bfee605c176cb33",
+      "bytes": 796308
+    },
+    "frontend/dist/fonts/MonaspaceXenon-v1.400.woff2": {
+      "sha256": "eea00c02f4c00f09fd50e80efdb8341975f9eb8c82720ce50f44c19a962996c5",
+      "bytes": 583680
+    },
+    "frontend/dist/fonts/OFL.txt": {
+      "sha256": "481f459f4a5f063c0926aeefd7deac7962b36dcc51d27599a569844eedef5546",
+      "bytes": 4479
+    },
+    "frontend/dist/fonts/README.md": {
+      "sha256": "1d922dd2a54926d7937fc9c35e9b6a26b88d3fda2d78267ccd5b8089a25c7413",
+      "bytes": 352
+    },
+    "frontend/dist/icon-192.png": {
+      "sha256": "f947eb0c832410d7a422683b1ba263aec234754db3e2a38f63a9102a86701eed",
+      "bytes": 3807
+    },
+    "frontend/dist/icon-512.png": {
+      "sha256": "5b1bfb344b6c5525f31532d805534f54b496e2f1cb6f5aae7deafbf19e5d43d9",
+      "bytes": 11097
+    },
+    "frontend/dist/index.html": {
+      "sha256": "1720aaeb19bbea5bfcf68f3ad16533fa7dc9accf9298053c41eeea8ac6e74ad1",
+      "bytes": 4295
+    },
+    "frontend/dist/logo.svg": {
+      "sha256": "28db742d4d42122325bd86b324bb60f05ccb3df055ed58307536a41c4e920ab7",
+      "bytes": 499
+    },
+    "frontend/dist/manifest.webmanifest": {
+      "sha256": "cbec4dcfee8c294df6e33d782e8c1dcc9db6747c9456be89dff32a32bec78ae8",
+      "bytes": 666
+    },
+    "frontend/dist/maskable-icon-192.png": {
+      "sha256": "5cf9b9bb76d2a30997da6272c93e873190c2d11771ffa052f8181375e774fd3e",
+      "bytes": 2151
+    },
+    "frontend/dist/maskable-icon-512.png": {
+      "sha256": "ecc7a56e47afbbd957957633dea877e3f6077a6971d1586e409442834529f31f",
+      "bytes": 6463
+    },
+    "frontend/dist/offline.html": {
+      "sha256": "216edd3f2ec8c644b5108948692afc3d125d7cf4f4b61b886e03630cba6eb841",
+      "bytes": 824
+    },
+    "frontend/dist/openwebide-frontend-3a24e7e70cc579ee.js": {
+      "sha256": "3e0eb50bf0ef9d778eb1464602cd0194cf17ec97bbd3aa1360020fc8c709db33",
+      "bytes": 125055
+    },
+    "frontend/dist/openwebide-frontend-e1ec015f12a2f24c_bg.wasm": {
+      "sha256": "2c78b645271186fbd79a08ad23cf89eca8a1c7173fb396cb324a8be2eabbeebe",
+      "bytes": 16644545
+    },
+    "frontend/dist/pwa.js": {
+      "sha256": "81c9716c0f4d573404f365a05ee343ac62c77735d81f72e5bf045425e42a33e1",
+      "bytes": 5297
+    },
+    "frontend/dist/service-worker.js": {
+      "sha256": "d1de7c36c1156419c1e894ec4a2030f058035a9034fdda0bc5587238e77e150b",
+      "bytes": 5851
+    },
+    "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline0.js": {
+      "sha256": "70b624363333e82c279961d30faa98b59da52c983a01243f02e56e8606207377",
+      "bytes": 361
+    },
+    "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline1.js": {
+      "sha256": "7ead7b3ac7c9c1a5610b58aa8d6e7154c4d04d8b6f99a2a8af043b1780b0c5ca",
+      "bytes": 1557
+    },
+    "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline10.js": {
+      "sha256": "6ad241e34559088a9b33223453f3fe87cbc63dec552c2493794cf4a078ca240a",
+      "bytes": 763
+    },
+    "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline11.js": {
+      "sha256": "5a03350e2b798b59840b731668642dbd6972266f857de63bb082792c43c0b49e",
+      "bytes": 343
+    },
+    "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline12.js": {
+      "sha256": "f90d2b2df58cfc7862b6744883f39ca08528584edc0e869582fcfb5bd5f49320",
+      "bytes": 260
+    },
+    "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline2.js": {
+      "sha256": "f6eec4498237d845bef867094bfb183460d1566245768b8a24adbc95f5bf1fbb",
+      "bytes": 4088
+    },
+    "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline3.js": {
+      "sha256": "d435183eac99e32882d1b451f07b63a269f686e90d0cb443dd6f040fe770f6d8",
+      "bytes": 549
+    },
+    "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline4.js": {
+      "sha256": "ef8d3c20f3b1e0d9942de9e03630643f75fe6e86abba3c9d758eefac0cd82686",
+      "bytes": 17672
+    },
+    "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline5.js": {
+      "sha256": "08a020ab8a7f3618e796ef620aabf266137ecb862c574a114e51b415dbc9a850",
+      "bytes": 4844
+    },
+    "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline6.js": {
+      "sha256": "c0b793ce9dc2716cb9d33a19c51c8e1bc8a5f4e14d1c515260c639f3967e4fcd",
+      "bytes": 843
+    },
+    "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline7.js": {
+      "sha256": "dacd4f5862ac0013fd541a19440718f6963f45bb93d7512bef7fa2e29eed78ee",
+      "bytes": 381
+    },
+    "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline8.js": {
+      "sha256": "feca7087e793e83b6070e5c2add5bb801827184434d58950827aeaacdbac1d9f",
+      "bytes": 856
+    },
+    "frontend/dist/snippets/openwebide-frontend-a1c24f78e62ce5e7/inline9.js": {
+      "sha256": "290f6e3fd61d488609a0c5ca3aef81d0ddc8bbd4546210929a432c138b36f1ab",
+      "bytes": 594
+    },
+    "frontend/dist/styles-2ec248de921c744e.css": {
+      "sha256": "c7db11ae5d7ce0e267d203b010141328926a8c1f8f9d9cf6af11b749f9157042",
+      "bytes": 129461
+    }
+  },
+  "linux_runtime": {
+    "uid": 502,
+    "kernel": "7.0.14-linuxkit",
+    "architecture": "aarch64",
+    "pid1": "docker-init",
+    "rustdoc_version": "rustdoc 1.98.1 (48a229cea 2026-09-01)",
+    "filesystem": "overlayfs",
+    "source_filesystem": "UNKNOWN (0x6a656a63)",
+    "cpu.max": "200000 100000",
+    "memory.max": "4294967296",
+    "memory.swap.max": "0"
+  },
+  "limits_and_remaining_work": [
+    "The new metadata witness begins when the creation receipt is durable. Claim-only interruptions before that receipt keep their existing unpublished empty-artifact recovery behavior; this checkpoint does not establish metadata-change evidence for that earlier window. Incomplete attribute observations do not authorize removal through a new metadata receipt.",
+    "Atime is excluded because application reads may update it. Known internal Linux storage-layout flags are excluded; unknown semantic bits are retained. This does not establish universal restored-byte/ctime ABA detection after application-owned moves or namespace changes.",
+    "Installed Local fixtures use OPFS correspondence and native discovery folders. Physical browser permission prompts and unconditional process-kill restoration remain separate checks. Computer Use did not provide an accessible native Chrome/PWA window during this continuation.",
+    "Linux uses the recorded arm64 tooling image with 2 CPU, 4 GiB and no swap, not a complete-app 2 GiB memory workload. Windows all-target compilation does not establish native Windows behavior.",
+    "Full mutation/child/cross-process authority, filesystem-event/transitive-runtime coverage, complete retained/in-flight memory bounds, reusable-result keys, editor prefetch scheduling and measured benefit, and Terraform public SDK/toolkit pins/publication remain unfinished.",
+    "This affected 13-case matrix, rebuilt installed contracts and four Linux checks do not replace final complete local pre-push integration/browser/editor/font/real-server verification. Existing ignored tests remain unexecuted in both native runs. No commit, push, hosted CI or publication is implied. Editor performance remains parked."
+  ]
+}

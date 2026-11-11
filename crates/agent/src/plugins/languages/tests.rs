@@ -1,4 +1,7 @@
 use super::*;
+mod actions;
+mod analysis;
+mod prefetch;
 use crate::plugins::execution::{GrantedHost, PluginTransport};
 use openwebide_core::plugins::execution::*;
 use openwebide_core::plugins::languages::intelligence as server_protocol;
@@ -46,8 +49,16 @@ impl PluginActionHost for Host {
             revision: call.input.revision + u64::from(self.stale_server_result),
             source_digest: call.input.source_digest.clone(),
             server: "test-native-service".into(),
+            context: None,
             capabilities: serde_json::json!({"hoverProvider":true}),
-            result: serde_json::json!({"contents":"a type"}),
+            result: if matches!(
+                call.input.query,
+                intelligence::Query::ValidateAnalysis { .. }
+            ) {
+                serde_json::Value::Null
+            } else {
+                serde_json::json!({"contents":"a type"})
+            },
             diagnostics: vec![],
             diagnostics_ready: false,
         })
@@ -323,6 +334,70 @@ fn native_formatting_honors_disabled_and_explicit_formatter_preferences() {
                 assert_eq!(calls[0].prepared.storage_namespace(), formatter_namespace);
                 assert_eq!(host.starts.load(Ordering::Relaxed), 0);
             }
+        }
+    });
+}
+
+#[test]
+fn analysis_validation_checks_result_data_before_authority_and_uses_both_native_adapters() {
+    futures::executor::block_on(async {
+        for profile in ["server", "paired"] {
+            let (host, mut bindings, _, _) = setup(profile);
+            let manifest = &mut bindings[0].prepared.manifest;
+            manifest.compatibility.plugin_api = 6;
+            manifest.executable = None;
+            manifest.contributions.languages[0].features.syntax = false;
+            manifest.contributions.languages[0].features.language_server = Some(
+                serde_json::from_value(serde_json::json!({"command":"community-lsp"})).unwrap(),
+            );
+            let provider = LanguageRegistry::from_bindings(&bindings)
+                .providers
+                .remove(0);
+            let service = LanguageService::new(host.clone(), bindings, provider).unwrap();
+            let document = LanguageDocumentRequest {
+                document: "file".into(),
+                path: "file.custom".into(),
+                revision: 1,
+                source: Arc::new("unsaved 文😀".into()),
+                tab_width: 4,
+            };
+            let result = serde_json::json!({"edit":"reviewed result"});
+            let context = server_protocol::AnalysisContext {
+                identities: vec![],
+                revisions: vec![],
+                files: vec![],
+                server: "test-native-service".into(),
+                proof: "fixture".into(),
+                result_digest: openwebide_core::plugins::content_digest(
+                    &serde_json::to_vec(&result).unwrap(),
+                ),
+            };
+            assert!(
+                service
+                    .validate_analysis(
+                        "client",
+                        document.clone(),
+                        &context,
+                        &serde_json::Value::Null
+                    )
+                    .await
+                    .is_err()
+            );
+            assert!(host.server_calls.lock().unwrap().is_empty());
+            assert_eq!(host.preparations.load(Ordering::Relaxed), 0);
+            assert_eq!(host.grants.load(Ordering::Relaxed), 0);
+            service
+                .validate_analysis("client", document, &context, &result)
+                .await
+                .unwrap();
+            let calls = host.server_calls.lock().unwrap();
+            assert_eq!(calls.len(), 1);
+            assert_eq!(calls[0].prepared.host_id, profile);
+            assert!(
+                matches!(&calls[0].input.query,server_protocol::Query::ValidateAnalysis {context:sent} if sent==&context)
+            );
+            assert_eq!(host.grants.load(Ordering::Relaxed), 1);
+            assert_eq!(host.starts.load(Ordering::Relaxed), 0);
         }
     });
 }
@@ -1088,6 +1163,474 @@ fn recursive_embedding_is_bounded_and_yields_cannot_publish_after_owner_changes(
                     );
                 }
             }
+        }
+    });
+}
+
+fn intelligence_document(path: &str, revision: u64) -> LanguageDocumentRequest {
+    LanguageDocumentRequest {
+        document: source_digest(path),
+        path: path.into(),
+        revision,
+        source: Arc::new("unsaved 文😀".into()),
+        tab_width: 4,
+    }
+}
+
+#[test]
+fn independent_diagnostics_keep_failures_authority_and_buffer_lifecycles_separate_on_both_hosts() {
+    futures::executor::block_on(async {
+        for profile in ["server", "paired"] {
+            let (host, mut bindings, _, _) = setup(profile);
+            let manifest = &mut bindings[0].prepared.manifest;
+            manifest.compatibility.plugin_api = 9;
+            manifest.executable = None;
+            manifest.contributions.languages[0].features.syntax = false;
+            manifest.contributions.languages[0].features.language_server =
+                Some(serde_json::from_value(serde_json::json!({"command":"primary-lsp"})).unwrap());
+            let mut linter = bindings[0].clone();
+            linter.id = 2;
+            linter.prepared.manifest.name = "linter".into();
+            linter.prepared.source.path = "plugins/linter".into();
+            linter.prepared.digest = "b".repeat(64);
+            linter.prepared.manifest.contributions.languages[0]
+                .features
+                .syntax = false;
+            linter.prepared.manifest.contributions.languages[0]
+                .features
+                .language_server = Some(
+                serde_json::from_value(
+                    serde_json::json!({"command":"lint-lsp","role":"diagnostics"}),
+                )
+                .unwrap(),
+            );
+            bindings.push(linter);
+            let registry = LanguageRegistry::from_bindings(&bindings);
+            assert_eq!(registry.providers.len(), 2, "{:?}", registry.errors);
+            let primary = registry
+                .providers
+                .iter()
+                .find(|provider| {
+                    provider
+                        .definition
+                        .features
+                        .language_server
+                        .as_ref()
+                        .unwrap()
+                        .role
+                        .is_language()
+                })
+                .unwrap()
+                .clone();
+            let linter = registry
+                .providers
+                .iter()
+                .find(|provider| {
+                    !provider
+                        .definition
+                        .features
+                        .language_server
+                        .as_ref()
+                        .unwrap()
+                        .role
+                        .is_language()
+                })
+                .unwrap()
+                .clone();
+            let service =
+                LanguageService::new(host.clone(), bindings.clone(), primary.clone()).unwrap();
+            let history = IntelligenceDocuments::default();
+            let active = intelligence_document("active.custom", 1);
+            let open = [
+                intelligence_document("other.custom", 1),
+                intelligence_document("untouched.txt", 1),
+            ];
+            let reports = service
+                .query_diagnostics(1, "client", active.clone(), &open, &history, false)
+                .await
+                .unwrap();
+            assert_eq!(reports.len(), 2);
+            assert!(reports.iter().all(|report| report.error.is_none()));
+            let calls = host.server_calls.lock().unwrap().clone();
+            assert_eq!(calls.len(), 4);
+            assert!(
+                calls
+                    .iter()
+                    .all(|call| call.input.path.ends_with(".custom"))
+            );
+            assert!(calls.iter().all(|call| call.prepared.host_id == profile));
+            assert_eq!(host.grants.load(Ordering::Relaxed), 4);
+            let analyzer = service
+                .diagnostic_service(&linter.namespace, &active.path, &active.source)
+                .unwrap();
+            assert!(
+                analyzer
+                    .query_intelligence("client", active.clone(), server_protocol::Query::Symbols)
+                    .await
+                    .unwrap_err()
+                    .contains("primary language")
+            );
+            assert_eq!(
+                host.grants.load(Ordering::Relaxed),
+                4,
+                "No authority acquired for disallowed operation"
+            );
+            assert!(
+                service
+                    .diagnostic_service(&linter.namespace, "unrelated.txt", "")
+                    .is_err()
+            );
+            host.rejected_packages
+                .lock()
+                .unwrap()
+                .insert("linter".into());
+            let reports = service
+                .query_diagnostics(
+                    1,
+                    "client",
+                    intelligence_document("active.custom", 2),
+                    &[],
+                    &history,
+                    true,
+                )
+                .await
+                .unwrap();
+            assert_eq!(reports.len(), 2);
+            assert!(reports[0].error.is_none());
+            assert!(reports[1].error.as_ref().unwrap().contains("enabled"));
+            let calls = host.server_calls.lock().unwrap().clone();
+            let closes = calls
+                .iter()
+                .filter(|call| matches!(call.input.query, server_protocol::Query::Close))
+                .collect::<Vec<_>>();
+            assert_eq!(closes.len(), 1);
+            assert_eq!(closes[0].input.path, "other.custom");
+            host.rejected_packages.lock().unwrap().clear();
+            let retry = service
+                .query_diagnostics(
+                    1,
+                    "client",
+                    intelligence_document("active.custom", 3),
+                    &[],
+                    &history,
+                    false,
+                )
+                .await
+                .unwrap();
+            assert!(retry.iter().all(|report| report.error.is_none()));
+            let closes = host
+                .server_calls
+                .lock()
+                .unwrap()
+                .iter()
+                .filter(|call| matches!(call.input.query, server_protocol::Query::Close))
+                .map(|call| call.input.path.clone())
+                .collect::<Vec<_>>();
+            assert_eq!(
+                closes,
+                ["other.custom", "other.custom"],
+                "Failed close retries only its owning provider"
+            );
+            let mut preferences = LanguagePreferences::default();
+            preferences
+                .diagnostics
+                .insert(linter.namespace.clone(), false);
+            let service =
+                LanguageService::new_with_preferences(host.clone(), bindings, primary, preferences)
+                    .unwrap();
+            assert!(
+                service
+                    .diagnostic_service(&linter.namespace, &active.path, &active.source)
+                    .is_err()
+            );
+            let reports = service
+                .query_diagnostics(
+                    1,
+                    "client",
+                    intelligence_document("active.custom", 3),
+                    &[],
+                    &history,
+                    false,
+                )
+                .await
+                .unwrap();
+            assert_eq!(reports.len(), 1);
+            assert_eq!(
+                host.starts.load(Ordering::Relaxed),
+                0,
+                "Native servers do not invoke language components"
+            );
+        }
+    });
+}
+
+#[test]
+fn alternate_formatter_synchronizes_its_declared_dialects_instead_of_primary_provider_choices() {
+    futures::executor::block_on(async {
+        for profile in ["server", "paired"] {
+            let (host, mut bindings, _, _) = setup(profile);
+            bindings[0].prepared.manifest.compatibility.plugin_api = 7;
+            bindings[0].prepared.manifest.executable = None;
+            bindings[0].prepared.manifest.contributions.languages[0]
+                .features
+                .syntax = false;
+            bindings[0].prepared.manifest.contributions.languages[0]
+                .features
+                .language_server =
+                Some(serde_json::from_value(serde_json::json!({"command":"primary-lsp"})).unwrap());
+            let mut formatter = bindings[0].clone();
+            formatter.id = 2;
+            formatter.prepared.source.path = "plugins/formatter".into();
+            formatter.prepared.manifest.name = "formatter".into();
+            formatter.prepared.digest = "b".repeat(64);
+            let definition = &mut formatter.prepared.manifest.contributions.languages[0];
+            definition.features.syntax = false;
+            definition.features.language_server = Some(
+                serde_json::from_value(serde_json::json!({"command":"formatter-lsp"})).unwrap(),
+            );
+            let mut dialect = definition.clone();
+            dialect.id = "dialect".into();
+            dialect.extensions = vec!["dialect".into()];
+            dialect
+                .features
+                .language_server
+                .as_mut()
+                .unwrap()
+                .language_id = Some("dialect".into());
+            formatter
+                .prepared
+                .manifest
+                .contributions
+                .languages
+                .push(dialect);
+            bindings.push(formatter);
+            let registry = LanguageRegistry::from_bindings(&bindings);
+            let primary = registry
+                .providers
+                .iter()
+                .find(|provider| {
+                    provider
+                        .definition
+                        .features
+                        .language_server
+                        .as_ref()
+                        .unwrap()
+                        .command
+                        == "primary-lsp"
+                })
+                .unwrap()
+                .clone();
+            let formatter = registry
+                .providers
+                .iter()
+                .find(|provider| {
+                    provider.definition.id == "custom"
+                        && provider
+                            .definition
+                            .features
+                            .language_server
+                            .as_ref()
+                            .unwrap()
+                            .command
+                            == "formatter-lsp"
+                })
+                .unwrap()
+                .clone();
+            let mut preferences = LanguagePreferences::default();
+            preferences.providers.insert(
+                "custom".into(),
+                ProviderPreference::Provider {
+                    namespace: primary.namespace.clone(),
+                },
+            );
+            preferences.formatters.insert(
+                "custom".into(),
+                ProviderPreference::Provider {
+                    namespace: formatter.namespace.clone(),
+                },
+            );
+            let service =
+                LanguageService::new_with_preferences(host.clone(), bindings, primary, preferences)
+                    .unwrap();
+            let query = server_protocol::Query::RangeFormatting {
+                range: server_protocol::Range::default(),
+                tab_width: 4,
+                insert_spaces: true,
+            };
+            let service = service.service_for_query(&query).unwrap();
+            service
+                .synchronize_intelligence(
+                    1,
+                    "client",
+                    &intelligence_document("active.custom", 1),
+                    &[
+                        intelligence_document("other.custom", 1),
+                        intelligence_document("other.dialect", 1),
+                    ],
+                    &IntelligenceDocuments::default(),
+                )
+                .await
+                .unwrap();
+            let calls = host.server_calls.lock().unwrap();
+            assert_eq!(calls.len(), 2);
+            assert_eq!(calls[1].input.language, "dialect");
+            assert!(
+                calls
+                    .iter()
+                    .all(|call| call.prepared.manifest.name == "formatter")
+            );
+        }
+    });
+}
+
+#[test]
+fn superseded_open_buffer_sync_cannot_query_active_source_or_launch_additional_services() {
+    futures::executor::block_on(async {
+        for profile in ["server", "paired"] {
+            let (mut host, mut bindings, _, _) = setup(profile);
+            host.change_on_resume = true;
+            let manifest = &mut bindings[0].prepared.manifest;
+            manifest.compatibility.plugin_api = 9;
+            manifest.contributions.languages[0].features.language_server =
+                Some(serde_json::from_value(serde_json::json!({"command":"primary-lsp"})).unwrap());
+            let provider = LanguageRegistry::from_bindings(&bindings)
+                .providers
+                .remove(0);
+            let service = LanguageService::new(host.clone(), bindings, provider).unwrap();
+            assert!(
+                service
+                    .query_diagnostics(
+                        1,
+                        "client",
+                        intelligence_document("active.custom", 1),
+                        &[
+                            intelligence_document("other.custom", 1),
+                            intelligence_document("later.custom", 1)
+                        ],
+                        &IntelligenceDocuments::default(),
+                        false
+                    )
+                    .await
+                    .unwrap_err()
+                    .contains("context changed")
+            );
+            assert_eq!(host.server_calls.lock().unwrap().len(), 1);
+            assert_ne!(
+                host.server_calls.lock().unwrap()[0].input.path,
+                "active.custom"
+            );
+        }
+    });
+}
+
+#[test]
+fn merged_provider_diagnostics_keep_provenance_replacements_and_explicit_combined_limits() {
+    let (_, _, provider, _) = setup("server");
+    let diagnostic = server_protocol::Diagnostic {
+        range: server_protocol::Range::default(),
+        severity: 1,
+        message: "Problem".into(),
+        source: None,
+        code: None,
+    };
+    let report = ProviderDiagnostics {
+        provider: provider.clone(),
+        diagnostics: vec![diagnostic.clone()],
+        ready: true,
+        server: Some("server".into()),
+        error: None,
+    };
+    let mut other = report.clone();
+    other.provider.namespace.push_str("-other");
+    let mut replacement = report.clone();
+    replacement.diagnostics[0].message = "Updated".into();
+    let merged = merge_diagnostics(vec![report, other.clone()], vec![replacement]);
+    assert_eq!(merged.len(), 2);
+    assert_eq!(merged[0].diagnostics[0].message, "Updated");
+    assert_eq!(merged[1].provider.namespace, other.provider.namespace);
+    other.diagnostics = vec![diagnostic; server_protocol::MAX_DIAGNOSTICS];
+    let merged = merge_diagnostics(merged, vec![other]);
+    assert_eq!(merged[0].diagnostics.len(), 1);
+    assert!(merged[1].diagnostics.is_empty());
+    assert!(!merged[1].ready);
+    assert!(
+        merged[1]
+            .error
+            .as_ref()
+            .unwrap()
+            .contains("combined document limit")
+    );
+}
+
+#[test]
+fn disabling_analyzer_dialect_closes_its_old_buffer_without_blocking_related_analysis() {
+    futures::executor::block_on(async {
+        for profile in ["server", "paired"] {
+            let (host, mut bindings, _, _) = setup(profile);
+            let manifest = &mut bindings[0].prepared.manifest;
+            manifest.compatibility.plugin_api = 9;
+            manifest.executable = None;
+            let definition = &mut manifest.contributions.languages[0];
+            definition.features.syntax = false;
+            definition.features.language_server = Some(
+                serde_json::from_value(
+                    serde_json::json!({"command":"lint-lsp","role":"diagnostics"}),
+                )
+                .unwrap(),
+            );
+            let mut dialect = definition.clone();
+            dialect.id = "custom2".into();
+            dialect.extensions = vec!["custom2".into()];
+            manifest.contributions.languages.push(dialect);
+            let registry = LanguageRegistry::from_bindings(&bindings);
+            assert_eq!(registry.providers.len(), 2, "{:?}", registry.errors);
+            let primary = registry.providers[0].clone();
+            let dialect = registry.providers[1].clone();
+            let sequence = Arc::new(AtomicU64::new(0));
+            let history = IntelligenceDocuments::default();
+            let service = LanguageService::new(host.clone(), bindings.clone(), primary.clone())
+                .unwrap()
+                .with_sequence(sequence.clone());
+            service
+                .query_diagnostics(
+                    1,
+                    "client",
+                    intelligence_document("active.custom", 1),
+                    &[intelligence_document("old.custom2", 1)],
+                    &history,
+                    false,
+                )
+                .await
+                .unwrap();
+            let mut preferences = LanguagePreferences::default();
+            preferences
+                .diagnostics
+                .insert(dialect.namespace.clone(), false);
+            let service =
+                LanguageService::new_with_preferences(host.clone(), bindings, primary, preferences)
+                    .unwrap()
+                    .with_sequence(sequence);
+            let reports = service
+                .query_diagnostics(
+                    1,
+                    "client",
+                    intelligence_document("active.custom", 2),
+                    &[],
+                    &history,
+                    false,
+                )
+                .await
+                .unwrap();
+            assert_eq!(reports.len(), 1);
+            assert!(reports[0].error.is_none());
+            let calls = host.server_calls.lock().unwrap();
+            assert_eq!(calls.len(), 4);
+            assert!(matches!(
+                calls[2].input.query,
+                server_protocol::Query::Close
+            ));
+            assert_eq!(calls[2].input.path, "old.custom2");
+            assert_eq!(calls[3].input.path, "active.custom");
         }
     });
 }

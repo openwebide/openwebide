@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-exclude = ["vendor/ec4rs", "vendor/tree-sitter-rust"]
+exclude = ["vendor/ec4rs", "vendor/tree-sitter-rust", "vendor/proc-macro-error2"]
 members = [
     "backend",
     "bridge",
@@ -198,6 +198,7 @@ used_underscore_binding = "warn"
 [patch.crates-io]
 openwebide-plugin-sdk = { path = "crates/plugin-sdk" }
 ec4rs = { path = "vendor/ec4rs" }
+proc-macro-error2 = { path = "vendor/proc-macro-error2" }
 tree-sitter-rust = { path = "vendor/tree-sitter-rust" }
 
 tree-sitter-language = { path = "vendor/tree-sitter-language" }
