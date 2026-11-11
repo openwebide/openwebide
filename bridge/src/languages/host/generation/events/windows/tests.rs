@@ -85,11 +85,19 @@ fn wait_for(mut condition: impl FnMut() -> bool) {
 
 #[test]
 fn native_notifications_track_changes_and_retirement_releases_all_permits() {
-    let root = tempfile::tempdir().unwrap();
+    use std::io::Write;
+
+    // Own the watched parent too: the system temporary directory has unrelated
+    // runner activity. Finish setup writes before installing notifications.
+    let parent = tempfile::tempdir().unwrap();
+    let root = tempfile::tempdir_in(parent.path()).unwrap();
     let source = root.path().join("a.notes");
     let unrelated = root.path().join("calls");
-    std::fs::write(&source, "one").unwrap();
-    std::fs::write(&unrelated, "").unwrap();
+    for (path, contents) in [(&source, "one"), (&unrelated, "")] {
+        let mut file = std::fs::File::create(path).unwrap();
+        file.write_all(contents.as_bytes()).unwrap();
+        file.sync_all().unwrap();
+    }
     let available = Arc::new(Semaphore::new(32));
     let mut kernel = Kernel::new(available.clone()).unwrap();
     let directory = kernel

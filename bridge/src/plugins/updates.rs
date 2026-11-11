@@ -124,9 +124,9 @@ mod tests {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let port = listener.local_addr().unwrap().port();
         drop(listener);
-        let mut daemon = Command::new("git")
+        let mut daemon = crate::plugins::tests::git_daemon()
+            .await
             .args([
-                "daemon",
                 "--reuseaddr",
                 "--export-all",
                 "--listen=127.0.0.1",
@@ -208,11 +208,7 @@ mod tests {
                 2
             );
         }
-        daemon.kill().await.unwrap();
-        daemon.wait().await.unwrap();
-        // A daemon child can outlive its listener briefly. Remove this URL
-        // deterministically while retaining both adapter caches.
-        std::fs::rename(&directory, repository.path().join("unavailable.git")).unwrap();
+        crate::plugins::tests::stop_git_daemon(&mut daemon, port).await;
         for (_, host) in &adapters {
             assert!(host.catalog(&source).await.is_err());
         }

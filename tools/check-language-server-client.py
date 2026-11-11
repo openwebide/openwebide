@@ -36,7 +36,10 @@ def check():
             runtime.request('POST', '/api/auth/register', {'username':'lsp-'+secrets.token_hex(6),'password':secrets.token_urlsafe(32)}, expected=201)
             runtime.acknowledge_release()
             user = runtime.request('GET', '/api/auth/me')['user']['id']
-            host.initialize_defaults()
+            installations = host.initialize_defaults()
+            installation = next(entry for entry in installations if entry['prepared']['manifest']['name']=='rust')
+            assert installation['prepared']['manifest']['version']=='0.3.0'
+            assert installation['prepared']['manifest']['compatibility']['pluginApi']==9
             browser = Browser(state)
             browser.call('POST', '/url', {'url':runtime.url+'/offline.html'})
             for cookie in runtime.cookies:
@@ -71,15 +74,13 @@ def check():
                 (folder/'src').mkdir(parents=True)
                 crate='rust_lsp_'+mode
                 files={'Cargo.toml':f'[package]\nname="{crate}"\nversion="0.1.0"\nedition="2021"\n',
-                       # Keep Cargo's concurrent derived writes outside source
-                       # observations, as the API 9 reference package declares.
-                       '.cargo/config.toml':'[build]\ntarget-dir = '+json.dumps(str(state/('cargo-target-'+mode)))+'\n',
-                       'Cargo.lock':f'version = 4\n\n[[package]]\nname = "{crate}"\nversion = "0.1.0"\n',
                        'src/lib.rs':'pub fn answer() -> u32 { 42 }\r\n',
                        'src/main.rs':f'// 文😀\r\nfn main() {{ let value = {crate}::answer(); println!("{{value}}"); }}\r\n'}
                 for path,text in files.items():
                     (folder/path).parent.mkdir(parents=True,exist_ok=True)
                     (folder/path).write_bytes(text.encode())
+                subprocess.run(['cargo','generate-lockfile','--offline','--manifest-path',str(folder/'Cargo.toml')],cwd=ROOT,check=True)
+                files['Cargo.lock']=(folder/'Cargo.lock').read_text()
                 subprocess.run(['git','init','--quiet','--initial-branch=main','--template=',str(folder)],check=True)
                 relative=folder.relative_to(ROOT.parent.parent).as_posix()
                 project=runtime.request('POST','/api/projects',{'name':'LSP '+mode,'mode':mode,'path':relative if mode=='remote' else folder.name},expected=201)
@@ -137,7 +138,8 @@ def check():
                 Path('/tmp/openwebide-rust-lsp-review-'+mode+'.png').write_bytes(base64.b64decode(browser.call('GET','/screenshot')))
                 assert click(browser,'Apply to editor tabs')
                 wait('rename applied',lambda:script(browser,"return document.querySelector('textarea[data-editor-path]')?.value.includes('renamed_answer');"))
-                for path in ('src/main.rs','src/lib.rs'): assert (folder/path).read_bytes()==files[path].encode(), 'Review wrote behind Save'
+                for path in ('Cargo.toml','Cargo.lock','src/main.rs','src/lib.rs'): assert (folder/path).read_bytes()==files[path].encode(), 'Language workflow changed '+path+' on disk'
+                assert not (folder/'target').exists(), 'The installed Rust package wrote Cargo output inside the project'
                 evidence=script(browser,'return lspEvidence;')
                 assert not evidence['errors'], evidence['errors']
                 expected=(host.url if mode=='local' else runtime.url+'/api')+'/plugins/languages/query'

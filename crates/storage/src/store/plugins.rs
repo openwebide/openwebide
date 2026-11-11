@@ -1612,13 +1612,13 @@ mod bundled_tests {
                     .await
                     .unwrap();
                 let packages = packages();
-                assert_eq!(packages.len(), 23);
+                assert_eq!(packages.len(), 24);
                 let languages: Vec<_> = packages
                     .iter()
                     .filter(|package| !package.prepared.manifest.contributions.languages.is_empty())
                     .cloned()
                     .collect();
-                assert_eq!(languages.len(), 19);
+                assert_eq!(languages.len(), 20);
                 for mut previous in packages
                     .iter()
                     .filter(|package| package.prepared.manifest.contributions.languages.is_empty())
@@ -1688,7 +1688,7 @@ mod bundled_tests {
                         .iter()
                         .filter(|entry| !entry.prepared.manifest.contributions.languages.is_empty())
                         .count(),
-                    19
+                    20
                 );
                 assert!(
                     bindings

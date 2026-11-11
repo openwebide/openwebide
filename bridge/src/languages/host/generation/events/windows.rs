@@ -479,6 +479,13 @@ fn records(
                 }
             }
         }
+        #[cfg(test)]
+        if relevant {
+            eprintln!(
+                "Relevant Windows source event: action={action}, name={:?}, directory_owner={owner}",
+                String::from_utf16_lossy(&name)
+            );
+        }
         changed |= relevant;
         if next == 0 {
             return Ok(changed);

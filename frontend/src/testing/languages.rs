@@ -63,7 +63,7 @@ pub fn standard_binding() -> ProjectPlugin {
                 for mut definition in validate_files(&files).unwrap().contributions.languages {
                     // This API 5 fixture implements pure analysis, not native
                     // processes. Real host checks retain and execute the actual
-                    // API 6/7 server declarations and document language IDs.
+                    // versioned server declarations and document language IDs.
                     definition.features.language_server = None;
                     assert!(
                         definitions
@@ -74,7 +74,7 @@ pub fn standard_binding() -> ProjectPlugin {
                     );
                 }
             }
-            assert_eq!(definitions.len(), 26);
+            assert_eq!(definitions.len(), 33);
             definitions.into_values().collect()
         });
     let binding: ProjectPlugin = serde_json::from_value(serde_json::json!({
@@ -92,8 +92,9 @@ pub fn standard_binding() -> ProjectPlugin {
 }
 
 /// Emulates the component behind a test transport using the same public toolkit
-/// and the actual pinned package declarations. Native tests separately execute
-/// each family's compiled WASI artifact, including the complete fixture matrix.
+/// and the actual pinned package declarations. Only the reference grammars below
+/// are emulated; other contributed grammars require their real components.
+/// Native tests separately execute the complete compiled package matrix.
 pub fn standard_handler(binding: &ProjectPlugin) -> LanguageHandler {
     use SyntaxLanguage::*;
     let bindings = [

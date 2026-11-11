@@ -69,8 +69,8 @@ def check():
             user=runtime.request('GET','/api/auth/me')['user']['id']
             installations=host.initialize_defaults()
             installation=next(entry for entry in installations if entry['prepared']['manifest']['name']=='go')
-            assert installation['prepared']['manifest']['version']=='0.2.0'
-            assert installation['prepared']['manifest']['compatibility']['pluginApi']==6
+            assert installation['prepared']['manifest']['version']=='0.3.0'
+            assert installation['prepared']['manifest']['compatibility']['pluginApi']==9
             browser=Browser(state)
             browser.call('POST','/url',{'url':runtime.url+'/offline.html'})
             for cookie in runtime.cookies:
@@ -223,7 +223,7 @@ def check():
                 wait('restarted editor',lambda:script(browser,"return !!document.querySelector('button[aria-label=\"Code intelligence\"]');"))
                 hover(browser,'app/main.go','string','RenamedAnswer')
                 assert script(browser,'return lspEvidence.requests.filter(request=>request.server).at(-1).server;')!=reenabled
-                print(json.dumps({'mode':mode,'layout':layout,'installed_api_six_component':True,'real_go_lsp':True,'module_workspace_resolution':True,'unsaved_cross_file_hover':True,'completion_import_and_insertion':True,'formatting_review_and_staging':True,'diagnostics_and_clear':True,'definition_navigation':True,'standard_library_read_only':True,'symbols_and_references':True,'two_file_rename_review_and_staging':True,'source_unchanged_on_disk':True,'recovery_persisted':True,'close_preserves_warm_service':True,'disable_reenable_preserves_buffers':True,'host_restart_resynchronizes_unsaved_buffers':True}),flush=True)
+                print(json.dumps({'mode':mode,'layout':layout,'installed_plugin_api':installation['prepared']['manifest']['compatibility']['pluginApi'],'real_go_lsp':True,'module_workspace_resolution':True,'unsaved_cross_file_hover':True,'completion_import_and_insertion':True,'formatting_review_and_staging':True,'diagnostics_and_clear':True,'definition_navigation':True,'standard_library_read_only':True,'symbols_and_references':True,'two_file_rename_review_and_staging':True,'source_unchanged_on_disk':True,'recovery_persisted':True,'close_preserves_warm_service':True,'disable_reenable_preserves_buffers':True,'host_restart_resynchronizes_unsaved_buffers':True}),flush=True)
 
         except BaseException:
             if browser is not None:

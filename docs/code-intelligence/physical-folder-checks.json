@@ -92,5 +92,113 @@
     "normal_reload_preserves_current_language_controls_after_activation": true,
     "remote_plugins_list_shows_23_installed": true,
     "project_switch_preserves_remote_and_local_unsaved_drafts_and_language_controls": true
+  },
+  "retained_language_review_followup": {
+    "checked_on": "2026-11-11",
+    "status": "passed_two_physical_local_recovery_cases",
+    "source_manifest_sha256": "94038daf8a3483c1fbe54c106bd449183588c004e1679f5648c2d7662460d1eb",
+    "artifact_source_manifest_sha256": "3d9d2aa0fcadcf6ec03dcdd416a28e680cdb7896436e314b21d98b8cebdf725d",
+    "platform": {
+      "os": "macOS",
+      "version": "27.2",
+      "architecture": "arm64",
+      "browser": "Google Chrome",
+      "browser_version": "157.0.8103.50",
+      "installed_test_pwa": true
+    },
+    "artifacts": {
+      "ai_docs/code-intelligence-verification/compiled-defaults.json": {
+        "sha256": "9205c6c6b44729093b62e8681cd2ff8a03318b468c29176e626b97578817e4b2",
+        "bytes": 95969448
+      },
+      "target/release/openwebide-bridge": {
+        "sha256": "d4050e60940d5d79b848b5e73b98ba603f3577d6b18afa6eac7a5c1b78631b70",
+        "bytes": 126230400
+      },
+      "target/wasm32-wasip2/release/openwebide_backend.wasm": {
+        "sha256": "3dd01b685678a1c467c37d5e43c98c9cb408ff4d16b43fd79f2ef48dc85ae62f",
+        "bytes": 12316288
+      },
+      "frontend/dist/openwebide-frontend-de571363fd7f0f8c_bg.wasm": {
+        "sha256": "be2fd27300628a19ca61512fd3401dccfc3c1b31ea44e8b190a393c22bf08bc7",
+        "bytes": 16647764
+      }
+    },
+    "artifact_source_difference": [
+      "CHANGELOG.md",
+      "bridge/src/plugins.rs (test fixture only)",
+      "bridge/src/plugins/updates.rs (test fixture only)",
+      "docs/roadmap.md",
+      "frontend/src/testing/languages.rs (test mock only)",
+      "tools/check-go-server-client.py (report label only)"
+    ],
+    "shared_implementation": "The same native workspace interpreter and database review admission run above the existing journal/root adapters. These cases exercise the Local proven-session adapter with an actual Chrome directory handle; they do not substitute OPFS.",
+    "interruption": "An owned fixture bridge is suspended after one accepted primitive and killed after permission revocation/reload. A new bridge at the same paired endpoint recovers without the original language service.",
+    "cases": [
+      {
+        "case": "retained_file_review",
+        "retained_review": true,
+        "native_review_accepted": true,
+        "observed_durable_phase_before_crash": {
+          "phase": "applying",
+          "completed": 1,
+          "active": true,
+          "rollback_from": null
+        },
+        "permission_revoke_reload_and_native_regrant": true,
+        "manual_restore_final_phase": {
+          "phase": "restored",
+          "completed": 1,
+          "active": false,
+          "rollback_from": 1
+        },
+        "original_inode_device_hard_link_permissions_owner_group_mtime_acl_xattr_crlf_bytes_preserved": true,
+        "both_unsaved_unicode_drafts_preserved": true,
+        "private_entries_removed": true,
+        "worker_released": true
+      },
+      {
+        "case": "retained_command_review_before_dispatch",
+        "retained_review_and_complete_command_approval": true,
+        "native_review_accepted": true,
+        "observed_durable_phase_before_crash": {
+          "phase": "applying",
+          "completed": 1,
+          "active": false,
+          "rollback_from": null
+        },
+        "permission_revoke_reload_and_native_regrant": true,
+        "manual_restore_final_phase": {
+          "phase": "restored",
+          "completed": 1,
+          "active": false,
+          "rollback_from": 1
+        },
+        "approved_command_retained_after_file_restore": true,
+        "explicit_discard_final_command_phase": "cancelled",
+        "execute_command_requests": 0,
+        "created_file_removed": true,
+        "original_metadata_and_both_drafts_preserved": true,
+        "worker_released": true
+      }
+    ],
+    "evidence_sha256": {
+      "physical-recovery-proof.json": "99e18b228386f0ae36a9a4bac2674d02d124274a2e173fe8cc31184d00c6b021",
+      "physical-command-recovery-proof.json": "39a50c7e4b2a99e147203fd1dc80f95852eb26b2d7a1dcda83306b2072e0d0fd",
+      "interruption.json": "0a58f743e1d060a10e9b84fa5ff0869e040eb9008a921373444798ea98bb6070",
+      "revoked-pending.json": "41839ded3f7d5366c2d2470eecaddf7f7f911656f394ee8ead8e48db5df6aeea",
+      "successor.json": "c13d3f1101dade0b7133ea011df5a300ca9d194dac64b4242d71ded9398fb033",
+      "command-interruption.json": "8bb79fe4d69e66018247e9d417fe95746dddeecdf246d802b930972b2f9f5c8a",
+      "command-revoked-pending.json": "342e0619556464979839a2f2dc4d35b40744f4cdadb198912a24385e7b75df0c",
+      "command-restored-before-discard.json": "e5569798be72a53c5204dbddf4f4f72e794286ab0587c0f68b8bdc566aabccaf",
+      "command-successor.json": "aa5be099218c473f4e75d532f7ac69f7161fb4636bfff5521797123987b2dbe2"
+    },
+    "limits": [
+      "These are two physical Local recovery cases; earlier Remote device cases and the automated both-mode contracts remain separate evidence.",
+      "The command case interrupts before dispatch. It does not establish physical permission recovery for an already running command or uncertain external effects.",
+      "The first command-review attempt was rejected as superseded before journal creation. A newly queried action was admitted; the rejected attempt is not a successful execution.",
+      "Complete durable phase authority, all filesystem writers, crash-surviving non-LSP children, multi-profile ownership and native Windows verification remain open.",
+      "Computer Use became unavailable after the completed cases. Fixture and replacement servers were stopped, and both owned listening ports were verified closed."
+    ]
   }
 }

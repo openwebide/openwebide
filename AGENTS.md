@@ -124,6 +124,8 @@ Actions runs.
    - `google-chrome` and `chromedriver` (matching versions, e.g. Chrome for Testing in
      `~/.local/bin`)
    - `trunk` and `spin`
+   - Bash 4.3 or newer for local container-supervisor checks (`wait -n`); macOS
+     ships Bash 3.2, so install a current Bash and put it first on PATH.
    - `rust-analyzer`, `rust-src` and `rustfmt` from the pinned Rust toolchain for
      the required real language-server service check:
      `rustup component add rust-analyzer rust-src rustfmt`
@@ -195,6 +197,10 @@ Actions runs.
      `check_terraform_server` example verifies all seven supported dialects,
      unsaved cross-file analysis, completion, diagnostics, reviewable formatting,
      client/account isolation and revocation without initializing infrastructure.
+     After rebuilding the app and compiled defaults, run
+     `python3 tools/check-terraform-server-client.py` for installed syntax, real
+     server queries, formatting/undo and lifecycle in both production editors.
+     Its Local OPFS correspondence does not prove physical folder permissions.
 
    Quick check:
    ```bash

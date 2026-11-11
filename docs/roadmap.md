@@ -1106,7 +1106,8 @@ and [EditorConfig](https://editorconfig.org/).
 
 ### Code intelligence: host language services, LSP and caching
 
-Rust's API 6 language plugin declares `rust-analyzer`. The API 7
+Rust 0.3.0 declares `rust-analyzer` through API 9, with declared Cargo/toolchain
+inputs and Cargo build output in the execution host's cache. The API 7
 JavaScript/TypeScript plugin declares `typescript-language-server` for JS, JSX,
 TS and TSX; its dialects share one service and synchronize unsaved open buffers.
 C# 0.2.0 declares `csharp-ls` through API 8, with the .NET 10 SDK and
@@ -1116,7 +1117,8 @@ Python 0.2.0 declares Pyright through API 6, with project configuration and
 virtual-environment import resolution on the execution host. Unsaved cross-file
 types, diagnostics, completion, navigation and reviewed rename use the shared
 service; Pyright does not provide formatting.
-Go 0.2.0 declares gopls through API 6, with single-module `go.mod` and
+Go 0.3.0 declares gopls through API 9, with declared project inputs, external
+build/module caches, single-module `go.mod` and
 multi-module `go.work` projects, unsaved cross-module analysis, completion imports,
 read-only standard-library definitions and reviewed rename/formatting in both modes.
 C/C++ 0.2.0 declares clangd through API 7. C and C++ retain their language IDs
@@ -1130,6 +1132,12 @@ language servers through the public API 7 contract. Related dialects share their
 server while each package remains independently installable. Local JSON schemas,
 unsaved buffers, snippets, diagnostics and provider lifecycle use the same service
 and editor paths in both modes.
+Terraform 0.1.0 owns HCL parsing and editing rules in an independently installable
+API 9 package built on the public toolkit. Seven Terraform/HCL dialects share
+`terraform-ls`. Installed editor checks cover component-owned syntax, unsaved
+cross-file types, navigation, completion, reviewed formatting and undo, diagnostics,
+disable/re-enable and host restart in both modes without initializing infrastructure
+([editor contract](../tools/check-terraform-server-client.py)).
 The shared host facade supports diagnostics, hover panels and pointer information,
 manual and while-typing completion, definitions, references, document symbols,
 rename, document formatting and text-edit code actions in both project modes. Clients validate source-bound
@@ -1149,15 +1157,6 @@ cover these workflows and provider lifecycle in both modes.
 
 Remaining work:
 
-- Finish the Terraform reference package's public-toolkit pin, publication and
-  installed editor lifecycle checks in both project modes. Its independent
-  component owns HCL parsing and editing rules without adding a host language
-  switch. Native checks cover terraform-ls across all seven supported dialects,
-  unsaved cross-file hover, completion, diagnostics, navigation, symbols and
-  reviewable Terraform formatting. Pinned CLI/server distributions and native
-  service contracts pass macOS and Linux tooling-image checks; production browser
-  integration remains unfinished
-  ([native checks](code-intelligence/lsp-process-group-checks.json)).
 - Finish durable phase authority and complete native/backend/browser-agent
   filesystem coverage, multi-process/profile ownership, durable outcomes and
   frozen-owner recovery. The installed macOS Chrome PWA checks now cover native
@@ -1337,8 +1336,9 @@ Remaining work:
   hard-link registrations and rejects watch loss or queue overflow. Windows now
   implements nonrecursive directory notifications with owned pending I/O, unique
   completion events, one retirement worker and shared handle/buffer budgets.
-  Its production and test code passes cross-compilation; finish native Windows
-  execution of the configured generation/retirement CI cases
+  Its production and test code passes cross-compilation. The first native Windows
+  run found unexpected invalidation during unrelated writes; finish diagnosis and
+  native verification of the generation/retirement cases
   ([checkpoint](code-intelligence/windows-source-event-checks.json)). Native intelligence
   protocol 2 now returns bounded, result-bound analysis contexts and validates them
   against the original live service through both authenticated adapters, without
@@ -1397,8 +1397,14 @@ Remaining work:
   installed modes verify exact native evidence, one Execute, interruption/restart
   recovery, access loss/regrant, Prepared cancellation and command non-replay
   ([retained review checkpoint](code-intelligence/retained-review-execution-checks.json)).
-  Finish independent-provider and remaining interleaving coverage plus physical
-  permission verification for review-bearing Local recovery.
+  Installed macOS Chrome PWA checks now also cover retained file and
+  command-bearing reviews during physical folder permission loss/regrant after
+  accepted native execution. Replacement hosts restore original file metadata
+  and both unsaved Unicode drafts without the original service; an unstarted
+  approved command remains pending until explicit discard and is never replayed
+  ([physical followup](code-intelligence/physical-folder-checks.json)). These two
+  cases do not establish physical recovery for an already running command.
+  Finish independent-provider and remaining interleaving coverage.
   Result normalization and initial native admission now retain affected-file
   identity/change-time evidence outside language associations. Ordinary validation
   shares the stateless signed path set and rechecks it after asynchronous context

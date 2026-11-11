@@ -30,10 +30,10 @@ RUN python3 /opt/openwebide-setup/setup-go-language-server.py --tool-path /opt/o
 
 FROM ghcr.io/spinframework/spin:v4.1.0 AS clangd-language-server-tools
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends python3 ca-certificates libedit2 libffi8 libz3-4 libzstd1 liblzma5 && \
+    apt-get install -y --no-install-recommends python3 ca-certificates libstdc++6 zlib1g && \
     rm -rf /var/lib/apt/lists/*
 COPY tools/setup-clangd-language-server.py /opt/openwebide-setup/
-COPY tools/clangd-language-server/versions.json /opt/openwebide-setup/clangd-language-server/
+COPY tools/clangd-language-server/versions.json tools/clangd-language-server/LICENSE.TXT /opt/openwebide-setup/clangd-language-server/
 RUN python3 /opt/openwebide-setup/setup-clangd-language-server.py --tool-path /opt/openwebide-clangd-language-server
 
 FROM ghcr.io/spinframework/spin:v4.1.0 AS terraform-language-server-tools

@@ -15,6 +15,7 @@
     "plugins/php",
     "plugins/shell",
     "plugins/go",
+    "plugins/terraform",
     "plugins/html",
     "plugins/css",
     "plugins/json",
@@ -27,14 +28,15 @@
     "plugins/plain-text"
   ],
   "commits": {
-    "plugins/rust": "27dd0936cf5f9e043090455fe348c368c6149009",
+    "plugins/rust": "37677a1de1a5f69c0362d328050133dbb9820b2c",
     "plugins/javascript-typescript": "4d7e7c656579485d69aea556368a8b290b08f8bf",
     "plugins/csharp": "53292ce1d6ca77295d397ee7516c4cb5d3f41947",
     "plugins/python": "a2ee289204a7fc277158c9356f6679b91429ae2c",
-    "plugins/go": "e57c8369e8c1f79fbfb44b966ea39054ae8f769e",
+    "plugins/go": "37677a1de1a5f69c0362d328050133dbb9820b2c",
     "plugins/c-cpp": "ca80902823d84808e1c6aa2175e6fe3329776704",
     "plugins/html": "b29aa4b6da3e29dc3ca3135ba7c5c3a8bc723f2e",
     "plugins/css": "b29aa4b6da3e29dc3ca3135ba7c5c3a8bc723f2e",
-    "plugins/json": "b29aa4b6da3e29dc3ca3135ba7c5c3a8bc723f2e"
+    "plugins/json": "b29aa4b6da3e29dc3ca3135ba7c5c3a8bc723f2e",
+    "plugins/terraform": "37677a1de1a5f69c0362d328050133dbb9820b2c"
   }
 }

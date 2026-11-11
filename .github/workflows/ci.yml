@@ -38,6 +38,7 @@ jobs:
         run: |
           python3 -m unittest discover -s tools -p 'test_release.py'
           python3 -m unittest discover -s tools -p 'test_wasi_sdk.py'
+          python3 -m unittest discover -s tools -p 'test_setup_*_language_server.py'
           python3 -m unittest discover -s tools -p 'test_host_updates.py'
           python3 -m unittest discover -s tools -p 'test_open_source.py'
           python3 -m unittest discover -s tools -p 'test_editor_measurements.py'
@@ -248,6 +249,8 @@ jobs:
 
       - uses: ./.github/actions/setup-web-language-servers
 
+      - uses: ./.github/actions/setup-terraform-language-server
+
       - name: Install Trunk
         run: |
           curl -sSL https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-x86_64-unknown-linux-gnu.tar.gz \
@@ -353,6 +356,13 @@ jobs:
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
         run: python3 tools/check-web-language-server-client.py
 
+      - name: Check production Terraform language-server features in both modes
+        timeout-minutes: 10
+        env:
+          CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: python3 tools/check-terraform-server-client.py
+
       - name: Check reviewed workspace operations, commands and interrupted recovery in both modes
         timeout-minutes: 10
         env:
@@ -416,6 +426,7 @@ jobs:
             /tmp/openwebide-go-lsp-*.png
             /tmp/openwebide-csharp-lsp-client-*.log
             /tmp/openwebide-csharp-lsp-*.png
+            /tmp/openwebide-terraform-client-*.log
             /tmp/openwebide-completion-popup-*.log
             /tmp/openwebide-completion-popup-*.png
             /tmp/openwebide-hover-popup-*.png

@@ -10,7 +10,7 @@ import threading
 with tempfile.TemporaryDirectory(prefix='openwebide-clangd-') as directory:
     root = Path(directory).resolve()
     version = subprocess.check_output(['clangd', '--version'], text=True, timeout=10)
-    assert 'clangd version 23.1.6' in version, version
+    assert 'clangd version 23.1.0' in version, version
     (root / 'include').mkdir()
     header = '#pragma once\nstatic inline int answer(void) { return BUILD_VALUE; }\n'
     c = '#include "api.h"\n#include <stddef.h>\nlong c_value(void) { return answer(); }\n'
@@ -77,7 +77,7 @@ with tempfile.TemporaryDirectory(prefix='openwebide-clangd-') as directory:
                 server.wait(timeout=10)
     for path, text in files.items():
         assert (root / path).read_text() == text
-    print(json.dumps({'offline': True, 'unprivileged_uid': os.getuid(), 'clangd': '23.1.6',
+    print(json.dumps({'offline': True, 'unprivileged_uid': os.getuid(), 'clangd': '23.1.0',
                       'compilation_database_flags': True, 'c_cpp_standard_library_headers': True,
                       'type_diagnostics': True, 'real_lsp_unsaved_header_hover_both_languages': True,
                       'source_files_unchanged': True}))

@@ -245,13 +245,78 @@ fn matrix(bytes: &[u8], prepared: &PreparedPlugin, family: bool) -> Result<()> {
         ("large.md", large_markdown.as_str(), None, None),
         ("large.rs", large_rust.as_str(), None, None),
     ];
-    for (path, source, fold, literal) in cases.chain(extra.into_iter().filter(|_| family)) {
+    // Reference fixtures carry their contributed IDs. A new package needs no
+    // application-owned language enum or parser registration to join the matrix.
+    let contributed = [
+        (
+            "terraform",
+            "package.tf",
+            "locals {\n  message = \"文😀\"\n}\n",
+            Some(FoldRange {
+                start_line: 0,
+                end_line: 2,
+            }),
+            Some(("文😀", Some("locals"))),
+        ),
+        (
+            "terraform-vars",
+            "probe.tfvars",
+            "message = \"文😀\"\n",
+            None,
+            None,
+        ),
+        (
+            "terraform-stack",
+            "probe.tfcomponent.hcl",
+            "variable \"probe\" { type = string }\n",
+            None,
+            None,
+        ),
+        (
+            "terraform-deploy",
+            "probe.tfdeploy.hcl",
+            "deployment \"probe\" {}\n",
+            None,
+            None,
+        ),
+        (
+            "terraform-search",
+            "probe.tfquery.hcl",
+            "list \"probe\" \"example\" {}\n",
+            None,
+            None,
+        ),
+        (
+            "terraform-policy",
+            "probe.policy.hcl",
+            "policy \"probe\" {}\n",
+            None,
+            None,
+        ),
+        (
+            "terraform-policytest",
+            "probe.policytest.hcl",
+            "test \"probe\" {}\n",
+            None,
+            None,
+        ),
+    ];
+    let ordinary = cases
+        .chain(extra.into_iter().filter(|_| family))
+        .map(|(path, source, fold, literal)| (path, source, fold, literal, None));
+    for (path, source, fold, literal, declared_id) in ordinary.chain(
+        contributed
+            .into_iter()
+            .filter(|_| family)
+            .map(|(id, path, source, fold, literal)| (path, source, fold, literal, Some(id))),
+    ) {
         // Fixture language IDs describe contributed dialects. They need not
         // have separate parser engines in the optional syntax toolkit.
-        let id = match path.rsplit('.').next() {
-            Some("markdown-inline") => "markdown-inline".into(),
-            Some("scss") => "scss".into(),
-            Some("jsonc") => "jsonc".into(),
+        let id = match (declared_id, path.rsplit('.').next()) {
+            (Some(id), _) => id.into(),
+            (_, Some("markdown-inline")) => "markdown-inline".into(),
+            (_, Some("scss")) => "scss".into(),
+            (_, Some("jsonc")) => "jsonc".into(),
             _ => format!("{:?}", openwebide_core::highlight::language_from_path(path))
                 .to_ascii_lowercase(),
         };

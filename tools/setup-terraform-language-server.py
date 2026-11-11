@@ -29,7 +29,10 @@ def download(url, destination):
 
 
 def verify(destination, pins, suffix):
-    environment = {**os.environ, 'CHECKPOINT_DISABLE': '1', 'TF_IN_AUTOMATION': '1'}
+    # BuildKit can inject an OTLP exporter whose collector blocks this simple
+    # version check. Probe the binaries without exporting build tracing spans.
+    environment = {**os.environ, 'CHECKPOINT_DISABLE': '1', 'TF_IN_AUTOMATION': '1',
+                   'OTEL_TRACES_EXPORTER': 'none'}
     cli = subprocess.check_output([str(destination / 'bin' / ('terraform' + suffix)), 'version', '-json'], text=True, env=environment, timeout=15)
     if json.loads(cli)['terraform_version'] != pins['terraform']['version']:
         raise RuntimeError('Installed Terraform version differs from the pin')

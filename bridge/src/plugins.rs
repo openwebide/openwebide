@@ -804,6 +804,37 @@ mod tests {
         );
         String::from_utf8(result.stdout).unwrap().trim().into()
     }
+
+    pub(super) async fn git_daemon() -> Command {
+        // The `git daemon` wrapper launches another process. Own the listener
+        // directly so killing the fixture also closes its source endpoint.
+        let result = Command::new("git")
+            .arg("--exec-path")
+            .output()
+            .await
+            .unwrap();
+        assert!(result.status.success());
+        let directory = String::from_utf8(result.stdout).unwrap();
+        let executable =
+            Path::new(directory.trim()).join(format!("git-daemon{}", std::env::consts::EXE_SUFFIX));
+        assert!(executable.is_file(), "Git daemon is not installed");
+        Command::new(executable)
+    }
+
+    pub(super) async fn stop_git_daemon(daemon: &mut tokio::process::Child, port: u16) {
+        daemon.kill().await.unwrap();
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        while tokio::net::TcpStream::connect(("127.0.0.1", port))
+            .await
+            .is_ok()
+        {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "Git source endpoint stayed online after fixture shutdown"
+            );
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    }
     pub(crate) fn seed(root: &Path, owner: &str) -> PluginSource {
         let fixture = tempfile::tempdir().unwrap();
         for file in review_files() {
@@ -962,9 +993,9 @@ mod tests {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let port = listener.local_addr().unwrap().port();
         drop(listener);
-        let mut daemon = Command::new("git")
+        let mut daemon = git_daemon()
+            .await
             .args([
-                "daemon",
                 "--export-all",
                 "--reuseaddr",
                 "--listen=127.0.0.1",
@@ -1018,7 +1049,7 @@ mod tests {
             .prepare("user:1", "remote-host".into(), &source)
             .await
             .unwrap();
-        daemon.kill().await.unwrap();
+        stop_git_daemon(&mut daemon, port).await;
         assert_eq!(prepared.manifest.name, "pr-review");
         let package = installer
             .package("user:1", "remote-host".into(), &prepared)
@@ -1137,7 +1168,7 @@ mod bundled_tests {
     #[tokio::test]
     async fn bundled_core_plugins_prepare_offline_on_both_hosts_using_normal_validation() {
         let sources = openwebide_core::plugins::bundled_plugin_sources();
-        assert_eq!(sources.len(), 23);
+        assert_eq!(sources.len(), 24);
         for host in ["server-host", "paired-local-host"] {
             let root = tempfile::tempdir().unwrap();
             let installer = NativePluginInstaller::new(Some(root.path().to_path_buf()));
@@ -1780,9 +1811,9 @@ mod rust_plugin_tests {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let port = listener.local_addr().unwrap().port();
         drop(listener);
-        let mut daemon = Command::new("git")
+        let mut daemon = super::tests::git_daemon()
+            .await
             .args([
-                "daemon",
                 "--export-all",
                 "--reuseaddr",
                 "--listen=127.0.0.1",
@@ -2081,7 +2112,7 @@ mod rust_plugin_tests {
                     .is_err()
             );
         }
-        daemon.kill().await.unwrap();
+        super::tests::stop_git_daemon(&mut daemon, port).await;
         // Repeat preparation/execution with the source endpoint offline.
         for (owner, host_id) in [("user:1", "server-host"), ("paired", "paired-local-host")] {
             let prepared = installer

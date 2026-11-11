@@ -362,5 +362,25 @@
       "The 4 GiB correctness container is not a 2 GiB production performance benchmark.",
       "This Linux execution does not verify the Windows notification primitive."
     ]
+  },
+  "native_windows_execution_followup": {
+    "checked_on": "2026-11-11",
+    "commit": "41f02adb590a03dad9addf9acff0badb1e584937",
+    "workflow_run": 43013269835,
+    "job": 130497999215,
+    "url": "https://github.com/openwebide/openwebide/actions/runs/43013269835/job/130497999215",
+    "status": "failed_unrelated_write_invalidation",
+    "tests": {
+      "passed": 11,
+      "failed": 1,
+      "ignored": 0
+    },
+    "failure": {
+      "test": "languages::host::generation::events::windows::tests::native_notifications_track_changes_and_retirement_releases_all_permits",
+      "source": "bridge/src/languages/host/generation/events/windows/tests.rs:108",
+      "assertion": "!kernel.poll().unwrap()"
+    },
+    "native_windows_runtime_verified": false,
+    "pending_work": "Isolate the fixture parent, flush setup writes before watch registration and retain event diagnostics. Assertions remain unchanged. Run the corrected source on native Windows before claiming this behavior verified."
   }
 }

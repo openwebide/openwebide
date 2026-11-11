@@ -29,60 +29,22 @@
       ]
     },
     "linux-amd64": {
-      "version": "23.1.6",
+      "version": "23.1.0",
       "archives": [
         {
-          "url": "https://apt.llvm.org/bookworm/pool/main/l/llvm-toolchain-23/clangd-23_23.1.6~++20261103094256+2875c6073a7e-1~exp1~20261103214307.97_amd64.deb",
-          "sha256": "6563dc6676c70698b80a63d6d271a4e3e9f6da74727bd744c34e42970e6bb03e"
-        },
-        {
-          "url": "https://apt.llvm.org/bookworm/pool/main/l/llvm-toolchain-23/libclang-common-23-dev_23.1.6~++20261103094256+2875c6073a7e-1~exp1~20261103214307.97_amd64.deb",
-          "sha256": "09a045f3dbeb638d20ebf89c869f461ca79d754b75c3d1dc6815953d461c8201"
-        },
-        {
-          "url": "https://apt.llvm.org/bookworm/pool/main/l/llvm-toolchain-23/libclang-cpp23_23.1.6~++20261103094256+2875c6073a7e-1~exp1~20261103214307.97_amd64.deb",
-          "sha256": "89ec2b982a58b23ef2e4318ebe5171ceea3dc0df31b037bfabbb1a8df9c2021c"
-        },
-        {
-          "url": "https://apt.llvm.org/bookworm/pool/main/l/llvm-toolchain-23/libllvm23_23.1.6~++20261103094256+2875c6073a7e-1~exp1~20261103214307.97_amd64.deb",
-          "sha256": "76e14b68e66991c28c3a2475f2a28586ca8bd7d0170be075a4a87b8e9be6678f"
-        },
-        {
-          "url": "https://deb.debian.org/debian/pool/main/libx/libxml2/libxml2_2.9.14+dfsg-1.3~deb12u6_amd64.deb",
-          "sha256": "4460e39dda10a815881374217cde08474747cfa018358cd8612c14b390eff53b"
-        },
-        {
-          "url": "https://deb.debian.org/debian/pool/main/i/icu/libicu72_72.1-3+deb12u1_amd64.deb",
-          "sha256": "f7f6f99c6d7b025914df2447fc93e11d22c44c0c8bdd8b6f36691c9e7ddcef88"
+          "url": "https://github.com/clangd/clangd/releases/download/23.1.0/clangd-linux-23.1.0.zip",
+          "sha256": "e53b1a96196095faedb7642cf64964f7fb9ad4a0c1f00dd2c172a3d9dcbafdfd"
         }
       ]
     },
     "linux-arm64": {
-      "version": "23.1.6",
+      "version": "23.1.0",
+      "licenseSha256": "8d85c1057d742e597985c7d4e6320b015a9139385cff4cbae06ffc0ebe89afee",
       "archives": [
         {
-          "url": "https://apt.llvm.org/bookworm/pool/main/l/llvm-toolchain-23/clangd-23_23.1.6~++20261103094256+2875c6073a7e-1~exp1~20261103214307.97_arm64.deb",
-          "sha256": "047681b3c71e0efef00aaba509255d690d5bbbc96c1c33f4a4469945219f7f7f"
-        },
-        {
-          "url": "https://apt.llvm.org/bookworm/pool/main/l/llvm-toolchain-23/libclang-common-23-dev_23.1.6~++20261103094256+2875c6073a7e-1~exp1~20261103214307.97_arm64.deb",
-          "sha256": "d8069a7645311f11be0640e61034d08f76f6245b354b90894d8ad046d7e41b80"
-        },
-        {
-          "url": "https://apt.llvm.org/bookworm/pool/main/l/llvm-toolchain-23/libclang-cpp23_23.1.6~++20261103094256+2875c6073a7e-1~exp1~20261103214307.97_arm64.deb",
-          "sha256": "681ceb255c090ce53ea44bd8e276e117e2ea5220e2a7bdeda5695236ea30158c"
-        },
-        {
-          "url": "https://apt.llvm.org/bookworm/pool/main/l/llvm-toolchain-23/libllvm23_23.1.6~++20261103094256+2875c6073a7e-1~exp1~20261103214307.97_arm64.deb",
-          "sha256": "33bdd01519d257d54f54ef55f3c94af599ebeecb172bc322f9a12f7f5a27e667"
-        },
-        {
-          "url": "https://deb.debian.org/debian/pool/main/libx/libxml2/libxml2_2.9.14+dfsg-1.3~deb12u6_arm64.deb",
-          "sha256": "0bc00975e459387535a4bbabe98a398f0e77c9ab82474face18d01ae8ed0dae4"
-        },
-        {
-          "url": "https://deb.debian.org/debian/pool/main/i/icu/libicu72_72.1-3+deb12u1_arm64.deb",
-          "sha256": "4f5d892fd81110435e45ed0a5f1b12899d7ff989d51db283cbc043f5631646d8"
+          "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.0/LLVM-23.1.0-Linux-ARM64.tar.xz",
+          "sha256": "cfb31bfc713ef453248bf5bd026312f838ad6c52c25623e987cb6a340f3050d4",
+          "root": "LLVM-23.1.0-Linux-ARM64"
         }
       ]
     }

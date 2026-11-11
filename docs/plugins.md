@@ -210,10 +210,12 @@ for protocol and toolchain requirements.
 
 API 6 opts in to native language servers through a language's `languageServer`
 declaration. API 5 declarations remain metadata and do not launch processes.
-Rust is the first bundled integration, using `rust-analyzer`, `rust-src` and
-`rustfmt` from the project's Rust toolchain. On a paired host, install those
-components with `rustup component add rust-analyzer rust-src rustfmt`. The server
-image includes them. Upgrading an existing package to add native server execution
+Rust 0.3.0 uses API 9 with `rust-analyzer`, `rust-src` and `rustfmt` from the
+project's Rust toolchain. On a paired host, install those components with
+`rustup component add rust-analyzer rust-src rustfmt`. The server image includes
+them. Its declared Cargo/toolchain inputs invalidate stale services, and
+`CARGO_TARGET_DIR` points to the execution host's derived cache rather than the
+opened project. Upgrading an existing package to add native server execution
 requires the ordinary capability review, including under Automatic updates.
 
 API 7 additionally supports server document language IDs that differ from the
@@ -248,12 +250,14 @@ completion, navigation and reviewed rename use the same editor controls as other
 servers. Pyright does not supply document formatting; unsupported operations
 remain explicit, and server commands are not executed automatically.
 
-Go 0.2.0 uses API 6 with `gopls serve`. Images include Go 1.27.3 and gopls
+Go 0.3.0 uses API 9 with `gopls serve`. Images include Go 1.27.3 and gopls
 v0.24.0. Paired hosts need both `go` and `gopls` on PATH; install the server with
 `go install golang.org/x/tools/gopls@v0.24.0`. The server discovers `go.mod` and
 `go.work`; open the folder containing `go.work` to edit its modules together.
-Dependencies, private-module settings and writable Go build/module caches belong
-to the execution host. Open buffers share the client's service across packages
+Dependencies and private-module settings belong to the execution host. Declared
+`go.mod`, `go.sum`, `go.work` and `go.work.sum` inputs invalidate stale services;
+`GOPLSCACHE`, `GOCACHE` and `GOMODCACHE` use the host's derived cache outside the
+opened project. Open buffers share the client's service across packages
 and modules without saving. Diagnostics, hover, completion imports, navigation,
 symbols, reviewed rename and document formatting use the shared editor controls.
 Standard-library definitions remain read-only. File operations and attached
@@ -265,8 +269,8 @@ Execution-host images include pinned clangd and C/C++ build tools. Native bridge
 archives require clangd, the compiler and project headers/libraries separately
 installed on the execution host. For development checks, run
 `python3 tools/setup-clangd-language-server.py` and add
-`tools/clangd-language-server/installed/bin` to PATH. The pinned distributions
-are 23.1.0 on macOS/Windows and 23.1.6 on Linux, with archive checksums in
+`tools/clangd-language-server/installed/bin` to PATH. Platform versions, upstream
+archives and their checksums are pinned in
 `tools/clangd-language-server/versions.json`.
 
 Generate `compile_commands.json` on the execution host so its paths match the
@@ -292,6 +296,19 @@ Restore the dependencies and SDKs required by the project. The server discovers
 imports use reviewed code actions. Framework and generated definitions use the
 plugin's API 8 virtual document declaration to retrieve read-only source from
 `csharp/metadata`; project definitions use ordinary file URIs.
+
+Terraform 0.1.0 uses API 9 with `terraform-ls`. Its executable plugin owns HCL
+syntax and editing rules through the public language toolkit. Terraform, variable,
+stack, deploy, search, policy and policy-test files retain their own language IDs
+while sharing one server: `.tf`, `.tfvars`, `.tfcomponent.hcl`, `.tfdeploy.hcl`,
+`.tfquery.hcl`, `.policy.hcl` and `.policytest.hcl`. The package does not claim
+generic HCL/Packer files or Terraform JSON variants. Execution-host images include
+Terraform and terraform-ls; paired hosts need both on PATH. For the pinned
+development tools, run `python3 tools/setup-terraform-language-server.py` and add
+`tools/terraform-language-server/installed/bin` to PATH. Unsaved cross-file types,
+completion, navigation, diagnostics and reviewed formatting use the shared editor
+service in both modes. Code-intelligence verification does not run `terraform init`
+or apply infrastructure.
 
 The editor's **Code intelligence** menu offers symbol information, completion at
 the cursor, definitions, type definitions, implementations, references, document

@@ -9,6 +9,14 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Bundle the independently installable Terraform 0.1 language plugin, with plugin-owned HCL syntax and seven dialects sharing terraform-ls. Verify unsaved cross-file intelligence, formatting and undo, diagnostics and provider lifecycle in both project modes without initializing infrastructure.
+
+- Bundle Rust and Go 0.3 plugins with API 9 project-input declarations and external build caches. Keep Rust Cargo output outside the project and preserve unsaved editor workflows in both modes.
+
+- Install Linux clangd 23.1.0 from checksum-pinned official releases with resource headers and licenses, preserving AMD64 and ARM64 support when old APT snapshots disappear.
+
+- Keep Terraform installer version probes independent of inherited build tracing, avoiding stalled telemetry collectors during image builds.
+
 - Keep current-source and periodic diagnostics running after dismissing automatic completion in both project modes. Reject abandoned suggestions while retaining one automatic request in flight.
 
 - Preserve unpublished native creations interrupted before their metadata receipt exists. Keep recovery pending for explicit inspection, then resume the accepted transaction without replaying language queries or commands. Share this behavior across modes and retain archived claim recovery.
@@ -17,7 +25,7 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 - Bind original native ACLs, extended attributes and semantic flags through reviewed resource moves and retained cleanup in both modes. Bound collection memory and preserve text/command reviews that need no native file operation when attribute observation is incomplete.
 
-- Retain original `LanguageReview` evidence through native workspace execution in both modes, with fresh manual authority before initial dispatch and no grant/query replay during accepted recovery. Shared original-object checks protect identity and metadata through moves, rollback and cleanup; installed checks cover interruption and command non-replay. Physical review-bearing permission checks and broader code-intelligence work remain in progress.
+- Retain original `LanguageReview` evidence through native workspace execution in both modes, with fresh manual authority before initial dispatch and no grant/query replay during accepted recovery. Shared original-object checks protect identity and metadata through moves, rollback and cleanup; installed checks cover interruption and command non-replay. Installed macOS Chrome PWA checks also cover physical permission loss/regrant and replacement-host recovery for retained file and command-bearing reviews, preserving original metadata and drafts without dispatching an unstarted command. Broader code-intelligence work remains in progress.
 
 - Bind workspace-edit analysis to native metadata for affected files outside language associations. Share bounded before/read/after observations across normalization, original-service validation and initial native admission; reject restored contents/mtime, changed links and tampered path sets. Recheck after asynchronous context checks, keep observations local to requests and preserve the existing resource inventory limit. Intelligence protocol 3 and schema 68 preserve archived review identity.
 
