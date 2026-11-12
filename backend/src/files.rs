@@ -339,6 +339,39 @@ pub async fn read_bytes(rel: &str) -> Result<Vec<u8>> {
     Ok(bytes)
 }
 
+/// Read at most the caller's byte budget, including growth after metadata was
+/// checked. Use one open descriptor for metadata and contents.
+pub async fn read_bytes_with_limit(rel: &str, max: u64) -> Result<Vec<u8>> {
+    let max = max.min(MAX_READ_BYTES);
+    let file = file_at_read(rel).await?;
+    let size = file.stat().await.map_err(fs_error)?.size;
+    if size > max {
+        return Err(FsError::TooLarge { size, max });
+    }
+    let capacity = usize::try_from(max + 1).map_err(|error| FsError::Io(error.to_string()))?;
+    let (mut stream, result) = file.read_via_stream(0);
+    let mut bytes = Vec::with_capacity(capacity);
+    loop {
+        let (status, buffer) = stream.read(bytes).await;
+        bytes = buffer;
+        if bytes.len() as u64 > max {
+            return Err(FsError::TooLarge {
+                size: bytes.len() as u64,
+                max,
+            });
+        }
+        match status {
+            spin_sdk::wit_bindgen::rt::async_support::StreamResult::Dropped => break,
+            spin_sdk::wit_bindgen::rt::async_support::StreamResult::Complete(_) => {}
+            spin_sdk::wit_bindgen::rt::async_support::StreamResult::Cancelled => {
+                return Err(FsError::Io("Bounded file read was cancelled".into()));
+            }
+        }
+    }
+    result.await.map_err(fs_error)?;
+    Ok(bytes)
+}
+
 /// Read a file's contents as UTF-8 text.
 pub async fn read(rel: &str) -> Result<String> {
     let bytes = read_bytes(rel).await?;

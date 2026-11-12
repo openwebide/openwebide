@@ -78,7 +78,19 @@ impl<H: PluginActionHost> LanguageService<H> {
         document: LanguageDocumentRequest,
         kind: protocol::PrefetchKind,
     ) -> Result<Response, String> {
-        self.query_selected_intelligence(client, document, Query::Prefetch { kind })
+        self.query_selected_intelligence(client, document, Query::Prefetch { kind, close: false })
+            .await
+    }
+    /// Warm a source that the editor does not currently hold open. Native
+    /// retirement is part of the request, including cancellation and timeout;
+    /// callers never issue a separate best-effort Close with newer authority.
+    pub async fn prefetch_closed_intelligence(
+        &self,
+        client: &str,
+        document: LanguageDocumentRequest,
+        kind: protocol::PrefetchKind,
+    ) -> Result<Response, String> {
+        self.query_selected_intelligence(client, document, Query::Prefetch { kind, close: true })
             .await
     }
     /// Retain shared transport, authority checks and request ordering while
@@ -149,7 +161,8 @@ impl<H: PluginActionHost> LanguageService<H> {
                 query,
                 Query::Synchronize
                     | Query::Prefetch {
-                        kind: protocol::PrefetchKind::Diagnostics
+                        kind: protocol::PrefetchKind::Diagnostics,
+                        ..
                     }
                     | Query::SynchronizeAction { .. }
                     | Query::PrepareAction { .. }

@@ -171,6 +171,13 @@ Actions runs.
      and uses deterministic LSP peers to verify navigation after result dialogs
      close, UTF-16 locations, diagnostic traversal, owning-provider fixes and
      disablement/failure/recovery in both modes. Its local folder uses OPFS.
+   - Idle language warming has a production contract:
+     `python3 tools/check-language-prefetch-client.py`. Build current release
+     backend/frontend artifacts and the release bridge with bundled defaults
+     first. It installs a server-only public package and checks default-off
+     behavior, fresh unopened/recently closed sources, bounded authenticated
+     file reads, source retirement and original service/draft continuity in both
+     editors. Its Local OPFS correspondence does not prove physical permissions.
    - Go 1.27.3 and gopls v0.24.0, installed with
      `python3 tools/setup-go-language-server.py`. Prepend
      `tools/go-language-server/installed/bin` and
@@ -297,6 +304,8 @@ of GB, and agents running several copies at once have filled the disk before.
 - Prefer `git worktree add` over copying the repo, and remove copies and worktrees when done.
 - Dev builds keep only line tables (`[profile.dev] debug = "line-tables-only"`, and no debug info
   for dependencies) — don't turn full debug info back on in the workspace profile.
+- Wasmtime uses dev `opt-level = 1` to keep the native bridge test binary below macOS's
+  compact-unwind DWARF offset limit. Keep normal panic unwinding and all tests enabled.
 - Run `cargo clean` after finishing a feature, once it's pushed, and also whenever free space
   drops under ~50 GB between batches. Never run it while a build is running.
 

@@ -122,6 +122,12 @@ pub enum Query {
     /// time and cancel it in favor of interactive work. Never carries edits.
     Prefetch {
         kind: PrefetchKind,
+        /// Analyze a closed file, then retire only this request's temporary
+        /// overlay. Existing open documents must be rejected without changes.
+        /// Omitted for ordinary open-buffer requests, preserving their wire
+        /// format; older strict hosts reject the new flag rather than retain it.
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        close: bool,
     },
     PrepareAction {
         action: actions::ActionSynchronization,
@@ -219,15 +225,21 @@ impl Query {
         matches!(self, Self::Prefetch { .. })
     }
 
+    pub fn closes_prefetch(&self) -> bool {
+        matches!(self, Self::Prefetch { close: true, .. })
+    }
+
     /// Share ordinary synchronization/result handling after admission. This
     /// does not turn a speculative request into an interactive scheduling claim.
     pub fn foreground_query(&self) -> Option<Self> {
         match self {
             Self::Prefetch {
                 kind: PrefetchKind::Diagnostics,
+                ..
             } => Some(Self::Synchronize),
             Self::Prefetch {
                 kind: PrefetchKind::Symbols,
+                ..
             } => Some(Self::Symbols),
             _ => None,
         }
@@ -239,6 +251,7 @@ impl Query {
             | Self::ValidateAnalysis { .. }
             | Self::Prefetch {
                 kind: PrefetchKind::Diagnostics,
+                ..
             }
             | Self::PrepareAction { .. }
             | Self::ReleaseAction { .. }
@@ -256,6 +269,7 @@ impl Query {
             Self::Symbols
             | Self::Prefetch {
                 kind: PrefetchKind::Symbols,
+                ..
             } => Some("textDocument/documentSymbol"),
             Self::WorkspaceSymbols { .. } => Some("workspace/symbol"),
             Self::ResolveSymbol { .. } => Some("workspaceSymbol/resolve"),

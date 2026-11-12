@@ -10,7 +10,8 @@ use wasm_bindgen_futures::JsFuture;
 use web_sys::{
     Blob, DirectoryPickerOptions, File, FileSystemDirectoryHandle, FileSystemFileHandle,
     FileSystemGetDirectoryOptions, FileSystemHandle, FileSystemHandleKind,
-    FileSystemPermissionMode, FileSystemWritableFileStream,
+    FileSystemPermissionMode, FileSystemWritableFileStream, ReadableStreamDefaultReader,
+    ReadableStreamReadResult,
 };
 
 /// Extract a human-readable message from a rejected JS value. File System
@@ -128,6 +129,15 @@ pub(crate) async fn read_bytes_typed(
     root: &FileSystemDirectoryHandle,
     path: &str,
 ) -> Result<Vec<u8>, VfsError> {
+    let blob = file_blob(root, path).await?;
+    check_read_size(blob.size())?;
+    let buffer = JsFuture::from(blob.array_buffer())
+        .await
+        .map_err(js_vfs_error)?;
+    Ok(js_sys::Uint8Array::new(&buffer).to_vec())
+}
+
+async fn file_blob(root: &FileSystemDirectoryHandle, path: &str) -> Result<Blob, VfsError> {
     let path = openwebide_core::vfs::workspace_path(path)?;
     ensure_permission(root).await?;
     let (parent, name) = split_path(&path);
@@ -136,15 +146,65 @@ pub(crate) async fn read_bytes_typed(
     let file_value = JsFuture::from(file_handle.get_file())
         .await
         .map_err(js_vfs_error)?;
-    let blob: Blob = file_value
+    file_value
         .dyn_into()
-        .map_err(|_| VfsError::Io(format!("no such file: {path}")))?;
+        .map_err(|_| VfsError::Io(format!("no such file: {path}")))
+}
+
+struct FileRead {
+    reader: ReadableStreamDefaultReader,
+    complete: bool,
+}
+impl Drop for FileRead {
+    fn drop(&mut self) {
+        if !self.complete {
+            // Dropping a JsFuture cannot cancel an underlying Blob read. Keep
+            // cancellation attached to the owned reader instead of leaving a
+            // whole-file arrayBuffer allocation running after an edit/revoke.
+            let cancelled = self.reader.cancel();
+            wasm_bindgen_futures::spawn_local(async move {
+                let _ = JsFuture::from(cancelled).await;
+            });
+        }
+        self.reader.release_lock();
+    }
+}
+
+pub(crate) async fn read_bytes_with_limit_typed(
+    root: &FileSystemDirectoryHandle,
+    path: &str,
+    max: u64,
+) -> Result<Vec<u8>, VfsError> {
+    let blob = file_blob(root, path).await?;
     check_read_size(blob.size())?;
-    let buffer = JsFuture::from(blob.array_buffer())
-        .await
-        .map_err(js_vfs_error)?;
-    let u8_array = js_sys::Uint8Array::new(&buffer);
-    Ok(u8_array.to_vec())
+    if blob.size() > max as f64 {
+        return Err(VfsError::Io(format!("file exceeds {max} bytes")));
+    }
+    let mut read = FileRead {
+        reader: blob
+            .stream()
+            .get_reader()
+            .dyn_into()
+            .map_err(|error| js_vfs_error(error.into()))?,
+        complete: false,
+    };
+    let mut bytes = Vec::new();
+    loop {
+        let chunk: ReadableStreamReadResult = JsFuture::from(read.reader.read())
+            .await
+            .map_err(js_vfs_error)?
+            .unchecked_into();
+        if chunk.get_done().unwrap_or(false) {
+            read.complete = true;
+            break;
+        }
+        let value: js_sys::Uint8Array = chunk.get_value().dyn_into().map_err(js_vfs_error)?;
+        if u64::from(value.length()) > max - bytes.len() as u64 {
+            return Err(VfsError::Io(format!("file exceeds {max} bytes")));
+        }
+        bytes.extend_from_slice(&value.to_vec());
+    }
+    Ok(bytes)
 }
 
 /// Create an object URL (blob:...) for a local file to display media assets.
@@ -782,5 +842,93 @@ impl Vfs for BrowserFsaVfs {
         Box::pin(SendWrapper::new(
             async move { delete_typed(&root, &path).await },
         ))
+    }
+}
+
+#[cfg(test)]
+mod bounded_read_tests {
+    use super::*;
+    use wasm_bindgen::prelude::*;
+    use wasm_bindgen_test::*;
+
+    wasm_bindgen_test_configure!(run_in_browser);
+
+    #[wasm_bindgen(inline_js = r#"
+    export function limitedReadFolder(size, held) {
+        const state = {starts:0, cancelled:0};
+        const file = new File([new Uint8Array(4)], 'file.notes');
+        Object.defineProperty(file, 'size', {value:size});
+        file.stream = () => new ReadableStream({
+            start(controller) {
+                state.starts++;
+                if (!held) controller.enqueue(new Uint8Array(9));
+            },
+            cancel() {state.cancelled++;}
+        });
+        const handle = Object.assign(Object.create(FileSystemFileHandle.prototype), {
+            getFile: async () => file
+        });
+        state.folder = Object.assign(Object.create(FileSystemDirectoryHandle.prototype), {
+            queryPermission: async () => 'granted',
+            getFileHandle: async () => handle
+        });
+        return state;
+    }
+    export function limitedReadHandle(state) {return state.folder;}
+    export function limitedReadStarts(state) {return state.starts;}
+    export function limitedReadCancellations(state) {return state.cancelled;}
+    "#)]
+    extern "C" {
+        fn limitedReadFolder(size: u32, held: bool) -> JsValue;
+        fn limitedReadHandle(state: &JsValue) -> FileSystemDirectoryHandle;
+        fn limitedReadStarts(state: &JsValue) -> u32;
+        fn limitedReadCancellations(state: &JsValue) -> u32;
+    }
+
+    #[wasm_bindgen_test]
+    async fn oversized_local_files_are_rejected_before_content_streams_start() {
+        let state = limitedReadFolder(64, true);
+        let root = limitedReadHandle(&state);
+        assert!(
+            read_bytes_with_limit_typed(&root, "file.notes", 8)
+                .await
+                .is_err()
+        );
+        assert_eq!(limitedReadStarts(&state), 0);
+        assert_eq!(limitedReadCancellations(&state), 0);
+    }
+
+    #[wasm_bindgen_test]
+    async fn dropping_a_pending_local_file_read_cancels_its_content_stream() {
+        let state = limitedReadFolder(4, true);
+        let root = limitedReadHandle(&state);
+        let mut read = Box::pin(read_bytes_with_limit_typed(&root, "file.notes", 8));
+        let deadline = js_sys::Date::now() + 2000.0;
+        while limitedReadStarts(&state) == 0 {
+            assert!(futures::poll!(&mut read).is_pending());
+            assert!(
+                js_sys::Date::now() < deadline,
+                "File content stream did not start"
+            );
+            crate::util::yield_task().await;
+        }
+        drop(read);
+        crate::util::yield_task().await;
+        assert_eq!(limitedReadStarts(&state), 1);
+        assert_eq!(limitedReadCancellations(&state), 1);
+    }
+
+    #[wasm_bindgen_test]
+    async fn an_oversized_stream_chunk_is_rejected_and_cancelled() {
+        let state = limitedReadFolder(4, false);
+        let root = limitedReadHandle(&state);
+        assert!(
+            read_bytes_with_limit_typed(&root, "file.notes", 8)
+                .await
+                .is_err()
+        );
+        crate::util::yield_task().await;
+        assert_eq!(limitedReadStarts(&state), 1);
+        assert_eq!(limitedReadCancellations(&state), 1);
     }
 }

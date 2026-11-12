@@ -59,7 +59,7 @@ while True:
         stream.write(json.dumps({'method': method, 'params': params}) + '\n')
     result = None
     if method == 'initialize':
-        result = {'capabilities': {'textDocumentSync': 1, 'hoverProvider': True,
+        result = {'capabilities': {'textDocumentSync': 1, 'hoverProvider': True, 'definitionProvider': True,
             'documentSymbolProvider': True, 'diagnosticProvider': {'interFileDependencies': True, 'workspaceDiagnostics': False}}}
     elif method in ('textDocument/didOpen', 'textDocument/didChange'):
         document = params['textDocument']
@@ -68,7 +68,13 @@ while True:
         opened.pop(params['textDocument']['uri'], None)
     elif method == 'textDocument/hover':
         result = {'contents': json.dumps({Path(unquote(urlparse(uri).path)).name: source for uri, source in opened.items()})}
+    elif method == 'textDocument/definition':
+        result = [{'uri': (root / 'related.notes').as_uri(), 'range': {
+            'start': {'line': 0, 'character': 0}, 'end': {'line': 0, 'character': 1}}}]
     elif method == 'textDocument/documentSymbol':
+        if (root / 'fail-symbols').exists():
+            send({'id': message['id'], 'error': {'code': -32603, 'message': 'fixture symbol failure'}})
+            continue
         if (root / 'hold-symbols').exists():
             with pending_lock:
                 pending.add(message['id'])

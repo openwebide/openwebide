@@ -113,6 +113,15 @@ struct Entry {
     activity: Mutex<Activity>,
     failure: Mutex<Failure>,
 }
+struct ServiceUse(Arc<Entry>);
+impl Drop for ServiceUse {
+    fn drop(&mut self) {
+        self.0
+            .active_uses
+            .fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
+        *self.0.used.lock().unwrap() = Instant::now();
+    }
+}
 /// Sampling retains only original-process identity, never a service or its
 /// documents. The completion channel follows handoff and distinguishes PID reuse.
 #[derive(Clone)]
@@ -323,11 +332,12 @@ impl Host {
             tokio::select! {
                 biased;
                 _ = cancelled.changed() => Err("Language prefetch was superseded by interactive work".into()),
-                result = tokio::time::timeout(prefetch::TIMEOUT, self.query_selected(scope, input,sources.as_ref())) =>
+                result = tokio::time::timeout(prefetch::TIMEOUT, self.query_selected(scope, input,sources.as_ref(), Some(&permit))) =>
                     result.map_err(|_| "Language prefetch exceeded its time budget".to_string())?,
             }
         } else {
-            self.query_selected(scope, input, sources.as_ref()).await
+            self.query_selected(scope, input, sources.as_ref(), None)
+                .await
         }
     }
     async fn query_selected(
@@ -335,6 +345,7 @@ impl Host {
         mut scope: Scope,
         input: &Request,
         sources: Option<&ProjectFiles>,
+        permit: Option<&prefetch::Permit>,
     ) -> Result<Response, String> {
         input.validate()?;
         if !scope.server.role.is_language()
@@ -342,7 +353,8 @@ impl Host {
                 input.query,
                 Query::Synchronize
                     | Query::Prefetch {
-                        kind: protocol::PrefetchKind::Diagnostics
+                        kind: protocol::PrefetchKind::Diagnostics,
+                        ..
                     }
                     | Query::SynchronizeAction { .. }
                     | Query::PrepareAction { .. }
@@ -450,12 +462,13 @@ impl Host {
                 if input.query.is_prefetch() && !session.prefetch_enabled.load(std::sync::atomic::Ordering::Relaxed) {
                     return Err(prefetch::SUSPENDED.into());
                 }
-                let mut documents = session.documents.lock().await;
+                let documents = session.documents.clone().lock_owned().await;
                 // Close can race the last poll of initialize. Never publish an
                 // overlay after its close observed an uninitialized session.
                 if *current.borrow() || *entry.stopped.borrow() {
                     return Err("Language service request was closed or superseded".into());
                 }
+                let mut documents = prefetch::Documents::new(documents, entry.clone(), input, &path, permit)?;
                 if matches!(input.query, Query::ReleaseAction { .. }) {
                     commands::release_synchronization(session,input)?;
                     return documents.query(session,input,&path,&language).await.map(|(response,_)|response);
@@ -489,10 +502,11 @@ impl Host {
                 self.check_pending_action(&key,input)?;
                 let (mut response,affected)=result?;
                 if let Some(affected)=&affected {affected.ensure_current(&session.root)?;}
-                if input.query.produces_analysis() && let Some(before)=before {
+                if input.query.produces_analysis() && !input.query.closes_prefetch() && let Some(before)=before {
                     response.context=Some(session.analysis.issue_observed(&session.id,input,before,documents.overlay_revision(),&response.result,affected)?);
                 }
                 response.validate(input)?;
+                documents.finish().await?;
                 Ok(response)
             } => result,
         };
@@ -509,13 +523,10 @@ impl Host {
             .get()
             .is_some_and(|session| session.client.is_closed())
         {
-            let mut entries = self.inner.entries.lock().unwrap();
-            if entries
-                .get(&key)
-                .is_some_and(|current| Arc::ptr_eq(current, entry))
-            {
-                entries.remove(&key);
-            }
+            // Keep the source bank available to ordinary stopped-entry
+            // recovery. In particular, temporary-source retirement owns a
+            // clean backup while it is still releasing its documents mutex.
+            entry.stop();
         }
         // A returned error (for example, a changed source inventory) has still
         // completed its work. Only interruption/timeout leaves unknown native
@@ -776,11 +787,12 @@ impl Activity {
         if self.active.len() >= 32 && !self.active.contains_key(&input.document) {
             return Err("Too many concurrent language documents".into());
         }
-        if !self.watermarks.contains_key(&input.document) && self.watermarks.len() >= 128 {
+        let limit = prefetch::request_limit(input);
+        if !self.watermarks.contains_key(&input.document) && self.watermarks.len() >= limit {
             self.watermarks.retain(|id, (_, _, seen)| {
                 self.active.contains_key(id) || seen.elapsed() < 2 * REQUEST_TIMEOUT
             });
-            if self.watermarks.len() >= 128 {
+            if self.watermarks.len() >= limit {
                 return Err(
                     "Too many recent language documents; retry after current requests expire"
                         .into(),

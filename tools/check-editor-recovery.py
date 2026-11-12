@@ -147,6 +147,11 @@ def check(browser=False):
     )
     with tempfile.TemporaryDirectory(prefix="openwebide-recovery-") as directory, \
             tempfile.TemporaryDirectory(prefix="editor-recovery-probe-", dir=ROOT) as files:
+        if browser:
+            # Keep the real Rust server inside this disposable recovery project.
+            (Path(files) / "Cargo.toml").write_text(
+                '[package]\nname = "editor-recovery-fixture"\nversion = "0.0.0"\nedition = "2024"\n'
+                '[lib]\npath = "nested/a.rs"\n[workspace]\n')
         runtime = Runtime(directory, frontend=browser)
         host = ExecutionHost(runtime) if browser else None
         try:

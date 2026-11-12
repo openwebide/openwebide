@@ -66,7 +66,7 @@ fn prefetch_is_limited_to_read_only_diagnostics_and_symbols() {
         (PrefetchKind::Symbols, Query::Symbols),
     ] {
         let mut input = request();
-        input.query = Query::Prefetch { kind };
+        input.query = Query::Prefetch { kind, close: false };
         input.validate().unwrap();
         assert!(input.query.is_prefetch());
         assert_eq!(input.query.foreground_query(), Some(foreground.clone()));
@@ -86,6 +86,41 @@ fn prefetch_is_limited_to_read_only_diagnostics_and_symbols() {
     ] {
         assert!(serde_json::from_value::<Query>(value).is_err());
     }
+}
+
+#[test]
+fn closed_file_prefetch_is_explicit_and_open_prefetch_keeps_its_original_wire_shape() {
+    for (name, kind) in [
+        ("diagnostics", PrefetchKind::Diagnostics),
+        ("symbols", PrefetchKind::Symbols),
+    ] {
+        let legacy = serde_json::json!({"operation":"prefetch","kind":name});
+        let open: Query = serde_json::from_value(legacy.clone()).unwrap();
+        assert!(!open.closes_prefetch());
+        assert_eq!(serde_json::to_value(&open).unwrap(), legacy);
+        let closed = Query::Prefetch { kind, close: true };
+        assert!(closed.is_prefetch() && closed.closes_prefetch());
+        assert_eq!(closed.foreground_query(), open.foreground_query());
+        let wire = serde_json::to_value(&closed).unwrap();
+        assert_eq!(
+            wire,
+            serde_json::json!({"operation":"prefetch","kind":name,"close":true})
+        );
+        assert_eq!(serde_json::from_value::<Query>(wire).unwrap(), closed);
+        assert!(
+            serde_json::from_value::<Query>(serde_json::json!({
+                "operation":"prefetch","kind":name,"close":"true"
+            }))
+            .is_err()
+        );
+    }
+    assert!(!Query::Close.closes_prefetch());
+    assert!(
+        serde_json::from_value::<Query>(serde_json::json!({
+            "operation":"hover","position":{"line":0,"character":0},"close":true
+        }))
+        .is_err()
+    );
 }
 
 #[test]

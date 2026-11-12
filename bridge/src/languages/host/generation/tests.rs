@@ -227,6 +227,7 @@ async fn unmeasurable_speculative_inventory_preserves_ordinary_queries() {
     let speculative = Request {
         query: Query::Prefetch {
             kind: protocol::PrefetchKind::Symbols,
+            close: false,
         },
         ..input("A", "b.notes", "B", 3)
     };
@@ -339,6 +340,7 @@ async fn language_analysis_rejects_an_unobserved_dependency_aba_and_can_retry() 
             let input = Request {
                 query: Query::Prefetch {
                     kind: protocol::PrefetchKind::Symbols,
+                    close: false,
                 },
                 ..input("A", "b.notes", "unsaved 文😀", 2)
             };
@@ -393,6 +395,7 @@ async fn language_analysis_rejects_an_unobserved_dependency_aba_and_can_retry() 
         let next = Request {
             query: Query::Prefetch {
                 kind: protocol::PrefetchKind::Symbols,
+                close: false,
             },
             ..input("A", "b.notes", "unsaved 文😀", 3)
         };

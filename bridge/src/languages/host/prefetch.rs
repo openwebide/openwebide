@@ -2,20 +2,33 @@
 //! Admission never starts a cold process or evicts a service to make room.
 use super::*;
 
+/// Optional request fences share the existing bound, leaving half its capacity
+/// available for new foreground documents without forgetting recent requests.
+pub(super) fn request_limit(input: &Request) -> usize {
+    if input.query.is_prefetch() { 64 } else { 128 }
+}
+
+mod files;
+pub(super) use files::Documents;
+
 pub(super) const TIMEOUT: Duration = Duration::from_secs(2);
 pub(super) const SUSPENDED: &str =
     "Language prefetch is suspended for this process after an interrupted request";
 
 /// Count discovery as well as dispatched RPCs. Cancellation signals the owner;
 /// it never steals the slot before that owner's future has actually unwound.
-#[derive(Default)]
-pub(super) struct Queue(Mutex<Option<watch::Sender<bool>>>);
-pub(super) struct Permit<'a> {
-    queue: &'a Queue,
+#[derive(Clone, Default)]
+pub(super) struct Queue(Arc<Mutex<Option<watch::Sender<bool>>>>);
+struct Lease {
+    queue: Queue,
+}
+#[derive(Clone)]
+pub(super) struct Permit {
+    _lease: Arc<Lease>,
     pub cancelled: watch::Receiver<bool>,
 }
 impl Queue {
-    pub fn acquire(&self) -> Result<Permit<'_>, String> {
+    pub fn acquire(&self) -> Result<Permit, String> {
         let mut active = self.0.lock().unwrap();
         if active.is_some() {
             return Err(
@@ -25,7 +38,9 @@ impl Queue {
         let (cancel, cancelled) = watch::channel(false);
         *active = Some(cancel);
         Ok(Permit {
-            queue: self,
+            _lease: Arc::new(Lease {
+                queue: self.clone(),
+            }),
             cancelled,
         })
     }
@@ -35,7 +50,7 @@ impl Queue {
         }
     }
 }
-impl Drop for Permit<'_> {
+impl Drop for Lease {
     fn drop(&mut self) {
         self.queue.0.lock().unwrap().take();
     }

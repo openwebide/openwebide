@@ -192,6 +192,33 @@ impl Workspace {
                 .map_err(Into::into),
         }
     }
+    /// Limit admission before either adapter loads contents. UTF-8 and binary
+    /// rejection are shared above the HTTP and browser filesystem primitives.
+    pub async fn read_text_with_limit(
+        &self,
+        path: &str,
+        max: usize,
+    ) -> Result<String, WorkspaceError> {
+        let path = workspace_path(path)?;
+        let max = (max as u64).min(openwebide_core::vfs::MAX_READ_BYTES);
+        let bytes = match self {
+            Self::Remote { api, project_id } => api
+                .with_value(Clone::clone)
+                .read_file_bytes_with_limit(*project_id, &path, max)
+                .await
+                .map_err(WorkspaceError::from),
+            Self::Local { handle } => local_fs::read_bytes_with_limit_typed(handle, &path, max)
+                .await
+                .map_err(WorkspaceError::from),
+        }?;
+        if bytes.len() as u64 > max || bytes.contains(&0) {
+            return Err(VfsError::Io(
+                "File exceeds its read budget or contains binary data".into(),
+            )
+            .into());
+        }
+        String::from_utf8(bytes).map_err(|error| VfsError::Io(error.to_string()).into())
+    }
     pub async fn read_lossy(&self, path: &str) -> Result<String, WorkspaceError> {
         let path = workspace_path(path)?;
         match self {

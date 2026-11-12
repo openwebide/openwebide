@@ -323,7 +323,7 @@
       "A local candidate pass does not establish native Linux replay reliability."
     ]
   },
-  "current_published_followup": {
+  "historical_146c_published_followup": {
     "commit": "146c26b30322dbbe40b5cf8af6c2fc2fe00fbd88",
     "workflow_run": 43136388353,
     "native_linux_runtime": {
@@ -453,6 +453,51 @@
         "The first Cargo-driven attempt passed; its repeating controller was stopped after Cargo unexpectedly rebuilt dependencies on every invocation. The same verified binary was retained for these20 executions.",
         "No process lifecycle fix or cause is established."
       ]
+    }
+  },
+  "current_published_followup": {
+    "commit": "80d57c39f8e8c43000429d7d80d424d2d27d9584",
+    "workflow_run": 43166563768,
+    "jobs": {
+      "checks / editor-ui-tests (1/2)": {
+        "id": 131009756182,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43166563768/job/131009756182",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / editor-ui-tests (2/2)": {
+        "id": 131009755861,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43166563768/job/131009755861",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / bridge-windows": {
+        "id": 131009755860,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43166563768/job/131009755860",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / plugin-runtime": {
+        "id": 131009755932,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43166563768/job/131009755932",
+        "status": "completed",
+        "conclusion": "failure"
+      }
+    },
+    "evidence": "GitHub job metadata checked for this exact commit; no logs or native-runtime fixture pass inferred from pending steps.",
+    "limits": [
+      "Both automatic editor partitions pass in this run; earlier146c stalls retain an unresolved cause.",
+      "The native runtime still fails its separate shutdown assertion; packaging and sustained hosted reliability require separate results.",
+      "This published open-buffer scheduler predates the closed-source changes."
+    ],
+    "native_linux_runtime": {
+      "job": 131009755932,
+      "conclusion": "failure",
+      "log_sha256": "f8fba982ca6a9b131b4bdca278081d096dfb83be8ec9380f94da53bde9e46b02",
+      "memory_fixture_pass_line": "2026-11-12T07:08:21.0675510Z test languages::host::reuse::tests::process_memory_eviction_and_backoff_preserve_both_clients_complete_dirty_sources ... ok",
+      "separate_failure": "shutdown_waits_for_delayed_process_group_cleanup",
+      "failure_diagnostic": "2026-11-12T07:10:34.9545110Z Owned group after server shutdown: pgid=91806, signal_zero=0, ps_status=exit status: 0, members=[]",
+      "observation": "The original signal-zero result was0; the later process snapshot returned no group members. The snapshot is later than the assertion observation, so this does not establish a cause or fix."
     }
   }
 }

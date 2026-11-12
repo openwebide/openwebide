@@ -123,6 +123,11 @@ debug = "line-tables-only"
 [profile.dev.package."*"]
 debug = false
 
+# Keep Wasmtime's native test linkage below Mach-O's compact-unwind DWARF
+# offset limit while retaining normal panic unwinding and line-table backtraces.
+[profile.dev.package.wasmtime]
+opt-level = 1
+
 # Keep grammar lexers compact and responsive in native/browser test builds.
 # cc-rs uses each package profile's optimization level for its C sources too.
 [profile.dev.package."tree-sitter"]

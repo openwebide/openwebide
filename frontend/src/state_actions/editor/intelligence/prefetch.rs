@@ -32,6 +32,8 @@ pub(super) struct Ready {
 struct Candidate {
     provider: RegisteredLanguage,
     document: LanguageDocumentRequest,
+    close: bool,
+    retained: bool,
 }
 
 #[derive(Default)]
@@ -41,6 +43,7 @@ struct PrefetchHistory {
     recent: VecDeque<String>,
     related: VecDeque<String>,
     attempted: Vec<(String, PrefetchKind)>,
+    read: Vec<String>,
 }
 
 impl PrefetchHistory {
@@ -57,6 +60,7 @@ impl PrefetchHistory {
         }
         if self.context.as_ref() != Some(&context) {
             self.attempted.clear();
+            self.read.clear();
             // Related paths are bounded scheduling hints, never reusable results.
             // Keep them through edits; candidates still use the current sources.
             self.context = Some(context);
@@ -126,9 +130,29 @@ impl PrefetchHistory {
                     revision: ready.revision,
                     tab_width,
                 },
+                close: false,
+                retained: false,
             });
         }
         selected
+    }
+
+    fn closed_paths(&self, sources: &Sources) -> Vec<String> {
+        let mut paths = Vec::new();
+        for path in self.related.iter().chain(self.recent.iter()) {
+            if path == &sources.0.path
+                || sources.2.contains_key(path)
+                || !protocol::relative_path(path)
+                || paths.contains(path)
+            {
+                continue;
+            }
+            paths.push(path.clone());
+            if paths.len() == MAX_FILES {
+                break;
+            }
+        }
+        paths
     }
 
     fn remember_related(&mut self, targets: &[results::Target]) {
@@ -144,6 +168,32 @@ impl PrefetchHistory {
         }
         self.related.truncate(MAX_RECENT);
     }
+}
+
+/// Closed tabs can retain unsaved documents. Their current text always wins
+/// over a filesystem read; clean retained snapshots are not filesystem caches.
+fn retained_source(editor: EditorActions, project: i64, path: &str) -> Option<Arc<String>> {
+    let key = (project, path.to_string());
+    editor
+        .workspace
+        .editor_buffers
+        .with_untracked(|buffers| {
+            buffers
+                .get(&key)
+                .filter(|buffer| buffer.dirty)
+                .map(|buffer| buffer.content.shared())
+        })
+        .or_else(|| {
+            editor
+                .workspace
+                .editor_documents
+                .with_untracked(|documents| {
+                    documents
+                        .get(&key)
+                        .filter(|document| document.is_dirty())
+                        .map(openwebide_core::editor::Document::shared_text)
+                })
+        })
 }
 
 #[derive(Clone, Copy)]
@@ -226,6 +276,8 @@ impl Prefetch {
         sources: Memo<Option<Sources>>,
         allowed: Memo<bool>,
     ) {
+        let api = use_context::<Api>();
+        let projects = use_context::<crate::state::projects::ProjectsState>();
         Effect::new(move |_| {
             self.changed.track();
             identity.track();
@@ -259,7 +311,13 @@ impl Prefetch {
                     let Some(sources) = sources.try_get_untracked().flatten() else {
                         return;
                     };
-                    let candidates = self
+                    if self
+                        .history
+                        .with_value(|history| history.attempted.len() >= MAX_FILES * 2)
+                    {
+                        return;
+                    }
+                    let mut candidates = self
                         .history
                         .try_update_value(|history| {
                             history.candidates(
@@ -269,6 +327,99 @@ impl Prefetch {
                             )
                         })
                         .unwrap_or_default();
+                    let closed = self
+                        .history
+                        .with_value(|history| history.closed_paths(&sources));
+                    let mut bytes = candidates
+                        .iter()
+                        .map(|candidate| candidate.document.source.len())
+                        .sum::<usize>();
+                    let mut files = candidates.len();
+                    for path in closed {
+                        if !current() || files == MAX_FILES || bytes == MAX_SOURCE_BYTES {
+                            break;
+                        }
+                        if self.history.with_value(|history| {
+                            [PrefetchKind::Symbols, PrefetchKind::Diagnostics]
+                                .iter()
+                                .all(|kind| history.attempted.contains(&(path.clone(), *kind)))
+                        }) {
+                            continue;
+                        }
+                        // A failed read or provider rejection still consumes a
+                        // file admission; it cannot extend the batch with more
+                        // filesystem work than successful analysis would use.
+                        files += 1;
+                        let max = MAX_FILE_BYTES.min(MAX_SOURCE_BYTES - bytes);
+                        let retained = retained_source(editor, ready.scope.project, &path);
+                        let is_retained = retained.is_some();
+                        let source = if let Some(source) = retained {
+                            if source.len() > max {
+                                continue;
+                            }
+                            bytes += source.len();
+                            source
+                        } else {
+                            if self.history.with_value(|history| {
+                                history.read.len() >= MAX_FILES || history.read.contains(&path)
+                            }) {
+                                continue;
+                            }
+                            let Some(workspace) = api.zip(projects).and_then(|(api, projects)| {
+                                crate::workspace::Workspace::for_project(
+                                    api,
+                                    projects,
+                                    ready.scope.project,
+                                )
+                            }) else {
+                                break;
+                            };
+                            self.history
+                                .update_value(|history| history.read.push(path.clone()));
+                            // Reserve the complete read budget even if decoding,
+                            // permissions or provider matching later decline it.
+                            bytes += max;
+                            let read = Box::pin(workspace.read_text_with_limit(&path, max));
+                            let deadline = Box::pin(crate::util::sleep_ms(REQUEST_MS));
+                            let result = match futures::future::select(read, deadline).await {
+                                futures::future::Either::Left((result, _)) => result.ok(),
+                                futures::future::Either::Right(_) => None,
+                            };
+                            if !current() {
+                                return;
+                            }
+                            let Some(source) = result else {
+                                // Failed optional reads are bounded attempts too.
+                                self.satisfied(&path, PrefetchKind::Symbols);
+                                self.satisfied(&path, PrefetchKind::Diagnostics);
+                                continue;
+                            };
+                            Arc::new(source)
+                        };
+                        if source.len() > max || source.contains('\0') {
+                            continue;
+                        }
+                        let Ok(Some(provider)) = ready.scope.registry.server_document(
+                            &ready.scope.provider,
+                            &path,
+                            &source,
+                            &ready.scope.preferences,
+                        ) else {
+                            continue;
+                        };
+                        candidates.push(Candidate {
+                            provider: provider.clone(),
+                            document: LanguageDocumentRequest {
+                                document: openwebide_core::plugins::languages::source_digest(&path),
+                                path,
+                                source,
+                                revision: ready.revision,
+                                tab_width: editor.rules_untracked().indentation.tab_width(),
+                            },
+                            close: true,
+                            retained: is_retained,
+                        });
+                    }
                     for candidate in candidates {
                         let kinds = if ready
                             .scope
@@ -292,6 +443,18 @@ impl Prefetch {
                                 return;
                             }
                             let path = candidate.document.path.clone();
+                            if candidate.close {
+                                let retained = retained_source(editor, ready.scope.project, &path);
+                                if match retained {
+                                    Some(source) => {
+                                        !candidate.retained
+                                            || !Arc::ptr_eq(&source, &candidate.document.source)
+                                    }
+                                    None => candidate.retained,
+                                } {
+                                    continue;
+                                }
+                            }
                             if self.history.with_value(|history| {
                                 history.attempted.contains(&(path.clone(), kind))
                             }) {
@@ -308,7 +471,10 @@ impl Prefetch {
                             let query = Box::pin(service.intelligence(
                                 &ready.client,
                                 candidate.document.clone(),
-                                Query::Prefetch { kind },
+                                Query::Prefetch {
+                                    kind,
+                                    close: candidate.close,
+                                },
                             ));
                             let deadline = Box::pin(crate::util::sleep_ms(REQUEST_MS));
                             let response = match futures::future::select(query, deadline).await {

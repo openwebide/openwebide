@@ -908,6 +908,29 @@ impl BackendApi {
         resp.binary().await.map_err(|e| e.to_string())
     }
 
+    /// An explicit route lets older hosts decline without reading an unlimited
+    /// response. Cancellation also aborts the browser's active HTTP request.
+    pub async fn read_file_bytes_with_limit(
+        &self,
+        project: i64,
+        path: &str,
+        max: u64,
+    ) -> Result<Vec<u8>, String> {
+        let (response, _guard) = self
+            .request_response::<()>(
+                Method::GET,
+                &format!(
+                    "/projects/{project}/files/bounded?path={}&max_bytes={max}",
+                    urlenc(path)
+                ),
+                None,
+                true,
+            )
+            .await
+            .map_err(|error| error.message)?;
+        response.binary().await.map_err(|error| error.to_string())
+    }
+
     /// Write text to a file (raw text body, not JSON).
     pub async fn write_file(
         &self,
@@ -2397,6 +2420,7 @@ mod cancellation_tests {
                 source_digest: source_digest("unsaved 文😀"),
                 query: Query::Prefetch {
                     kind: PrefetchKind::Symbols,
+                    close: false,
                 },
             },
         };
@@ -2458,6 +2482,21 @@ mod cancellation_tests {
         let signal = captured_signal();
         assert!(!signal.aborted());
         drop(search);
+        assert!(signal.aborted());
+        restore_fetch();
+        owner.cleanup();
+    }
+
+    #[wasm_bindgen_test]
+    async fn dropping_bounded_file_reads_aborts_fetch() {
+        let owner = leptos::prelude::Owner::new();
+        let api = owner.with(BackendApi::from_location);
+        capture_fetch();
+        let mut read = Box::pin(api.read_file_bytes_with_limit(1, "dependency.notes", 256 * 1024));
+        assert!(futures::poll!(&mut read).is_pending());
+        let signal = captured_signal();
+        assert!(!signal.aborted());
+        drop(read);
         assert!(signal.aborted());
         restore_fetch();
         owner.cleanup();

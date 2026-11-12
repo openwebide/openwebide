@@ -2604,6 +2604,28 @@ impl Backend for FakeBackend {
             self.read(project, path).map(String::into_bytes)
         })
     }
+    fn read_file_bytes_with_limit<'a>(
+        &'a self,
+        project: i64,
+        path: &'a str,
+        max: u64,
+    ) -> LocalBoxFuture<'a, Result<Vec<u8>, String>> {
+        Box::pin(async move {
+            self.calls.borrow_mut().push(Call::Request {
+                method: "read_file_bytes_with_limit",
+            });
+            let pending = self.file_read_results.borrow_mut().pop_front();
+            let bytes = if let Some(pending) = pending {
+                pending.await.map_err(|_| "response dropped")??.into_bytes()
+            } else {
+                self.read_file_bytes(project, path).await?
+            };
+            if bytes.len() as u64 > max {
+                return Err("File exceeds its read budget".into());
+            }
+            Ok(bytes)
+        })
+    }
     fn write_file_bytes<'a>(
         &'a self,
         project: i64,

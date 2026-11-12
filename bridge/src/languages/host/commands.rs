@@ -256,13 +256,6 @@ pub(super) async fn prepare(
     Ok(review)
 }
 
-pub(super) struct ServiceUse(pub(super) Arc<Entry>);
-impl Drop for ServiceUse {
-    fn drop(&mut self) {
-        self.0.active_uses.fetch_sub(1, Ordering::Relaxed);
-        *self.0.used.lock().unwrap() = Instant::now();
-    }
-}
 impl Host {
     async fn command_entry(
         &self,

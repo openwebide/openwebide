@@ -1298,7 +1298,7 @@ Remaining work:
   a relocation its installed version does not support. Measure cold/warm latency,
   cache hits and resource cost before adding OpenWebIDE result caches. Installation
   settings and user preferences remain in the database.
-- Complete unopened dependency admission, reusable-result freshness and production
+- Complete reusable-result freshness and production
   resource/benefit measurements for optional language prefetch.
   The shared facade and native host now accept optional diagnostics/symbol queries
   through ordinary source and authority checks. One speculative request per host
@@ -1309,14 +1309,21 @@ Remaining work:
   associated-source, directory or alias changes; failed collections publish no
   partial generation. Completed analysis rejected for changed sources can retry
   on the same service. A default-off account preference now enables shared editor
-  scheduling in both modes: 750 ms idle delay, at most four current open buffers,
+  scheduling in both modes: 750 ms idle delay, at most four files,
   256 KiB per file, 512 KiB per batch and eight diagnostics/symbol attempts per
-  revision/service. Active text, related-path hints and recent open-buffer edits
-  determine candidates. Source/scope changes, foreground work, composition,
+  revision/service. Current open buffers take priority; known related unopened
+  files and recently closed files use remaining capacity. Retained unsaved text
+  overrides fresh bounded disk reads; failed reads consume the reserved budget.
+  Owned cleanup retires temporary overlays before releasing their source bank or
+  stops the original service, preserving other drafts. Shared request accounting
+  reserves room for new foreground documents while retaining stale-request fences.
+  Installed public-plugin checks cover both production editors and the actual
+  authenticated bounded-file endpoint; Local uses OPFS correspondence.
+  Source/scope changes, foreground work, composition,
   recovery, unmount and preference changes cancel pending work. Replies are
-  discarded rather than cached or published. Closed recent files and unopened
-  dependencies still need safe source admission and cleanup. A same-build native
-  128-module preference comparison found nearly unchanged median symbol latency
+  discarded rather than cached or published. Candidate hints do not recursively
+  discover a dependency graph. A same-build native 128-module preference comparison
+  of the earlier open-buffer scheduler found nearly unchanged median symbol latency
   and higher Remote p95 with warming on. In the combined 512-module workflow,
   Local optional watches reached the shared descriptor budget while foreground
   work continued; that warming comparison remains incomplete. Complete isolated
@@ -1466,16 +1473,19 @@ Remaining work:
   recovery verification beyond the selected notification and Git metadata contracts.
 - Run the same service/cache contracts against both adapters, including reconnect,
   concurrent overlays, cancellation, eviction, folder-access recovery and updates.
-  The published Linux memory-recovery fixture now passes within its 64 MiB
+  The `146c26b3` Linux memory-recovery fixture passed within its 64 MiB
   per-service / 64 MiB total test envelope, preserving the 96 MiB pressure
   allocation, backoff, source and process-continuity assertions. Production
-  limits are unchanged. That runtime job fails a separate process-group shutdown
+  limits are unchanged. That runtime job failed a separate process-group shutdown
   assertion; twenty Linux arm64 repeats pass without establishing its cause or
   a fix for the hosted x86-64 failure. Failure-only process-state diagnostics
   preserve the original assertion and deadline.
-  Earlier manual runs pass both complete editor partitions. On the latest
-  published commit, both automatic-release wrapped replay jobs fail after all
-  twenty geometry-oracle calls return and before final owner restoration.
+  Earlier manual runs pass both complete editor partitions. On `146c26b3`, both
+  automatic-release wrapped replay jobs failed after all twenty geometry-oracle
+  calls returned and before final owner restoration. Both automatic editor
+  partitions pass on the later published `80d57c39`; the earlier failure's cause
+  remains unproven. The `80d57c39` runtime job still fails the separate process-group
+  shutdown assertion; failure-state diagnostics and release packaging are tracked separately.
   Keep complete fixtures, assertions and existing deadlines while investigating
   these separate failures. Local passes do not establish reliable hosted replay
   completion ([hosted checkpoint](code-intelligence/hosted-checks.json)).

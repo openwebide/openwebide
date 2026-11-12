@@ -154,6 +154,26 @@ async fn server_termination_is_confirmed_by_its_independent_owner() {
 
 #[tokio::test]
 async fn a_completed_claim_releases_folder_descriptors_and_preserves_the_warm_server() {
+    // Concurrent native forks can briefly inherit an unrelated thread's flock
+    // before exec closes CLOEXEC descriptors. Create this fixture after exec in
+    // an isolated process; preserve the immediate-release assertion below.
+    if std::env::var_os("OPENWEBIDE_TEST_OWNER_RELEASE_ISOLATED").as_deref()
+        != Some(std::ffi::OsStr::new("1"))
+    {
+        let output = tokio::time::timeout(Duration::from_secs(5),
+            tokio::process::Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", "exec::process_owner::tests::a_completed_claim_releases_folder_descriptors_and_preserves_the_warm_server", "--nocapture"])
+                .env("OPENWEBIDE_TEST_OWNER_RELEASE_ISOLATED", "1")
+                .kill_on_drop(true).output(),
+        ).await.expect("Isolated owner release check timed out").unwrap();
+        assert!(
+            output.status.success(),
+            "Isolated owner release check failed: {}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return;
+    }
     let root = tempfile::tempdir().unwrap();
     let (owner, mut child, _) = Owner::spawn(
         Path::new("/bin/sh"),

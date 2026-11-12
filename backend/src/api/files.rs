@@ -196,20 +196,37 @@ pub(crate) async fn files_get(
                 &json!({ "path": rel, "content": content }),
             ))
         }
-        "files/raw" => {
+        "files/raw" | "files/bounded" => {
             let rel = params
                 .get("path")
                 .cloned()
                 .ok_or_else(|| ApiError::bad_request("missing ?path="))?;
             let (full, _) = remote_project_path(state, user_id, id, &rel).await?;
-            let bytes = crate::files::read_bytes(&full).await?;
+            let bounded = sub == "files/bounded";
+            let bytes = if bounded {
+                let max = params
+                    .get("max_bytes")
+                    .and_then(|value| value.parse::<u64>().ok())
+                    .filter(|max| *max <= crate::files::MAX_READ_BYTES)
+                    .ok_or_else(|| ApiError::bad_request("invalid ?max_bytes="))?;
+                crate::files::read_bytes_with_limit(&full, max).await?
+            } else {
+                crate::files::read_bytes(&full).await?
+            };
 
             let mut builder = Response::builder().status(200);
             for (k, v) in raw_headers(&rel) {
                 builder = builder.header(k, v);
             }
             let resp = builder
-                .header("cache-control", "private, max-age=300")
+                .header(
+                    "cache-control",
+                    if bounded {
+                        "no-store"
+                    } else {
+                        "private, max-age=300"
+                    },
+                )
                 .body(box_body(FullBody::new(Bytes::from(bytes))))
                 .map_err(|e| ApiError::internal(e.to_string()))?;
             Ok(resp)

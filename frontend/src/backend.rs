@@ -340,6 +340,15 @@ pub trait Backend {
         project_id: i64,
         path: &'a str,
     ) -> LocalBoxFuture<'a, Result<String, String>>;
+
+    fn read_file_bytes_with_limit<'a>(
+        &'a self,
+        _project: i64,
+        _path: &'a str,
+        _max: u64,
+    ) -> LocalBoxFuture<'a, Result<Vec<u8>, String>> {
+        Box::pin(async { Err("Bounded file reads are unavailable".into()) })
+    }
     fn write_file<'a>(
         &'a self,
         project_id: i64,
@@ -1488,6 +1497,16 @@ impl Backend for BackendApi {
         path: &'a str,
     ) -> LocalBoxFuture<'a, Result<Vec<u8>, String>> {
         Box::pin(BackendApi::read_file_bytes(self, project, path))
+    }
+    fn read_file_bytes_with_limit<'a>(
+        &'a self,
+        project: i64,
+        path: &'a str,
+        max: u64,
+    ) -> LocalBoxFuture<'a, Result<Vec<u8>, String>> {
+        Box::pin(BackendApi::read_file_bytes_with_limit(
+            self, project, path, max,
+        ))
     }
     fn read_file_lossy<'a>(
         &'a self,

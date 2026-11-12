@@ -69,6 +69,64 @@ fn file(path: &str) -> FileEntry {
         size: 8,
     }
 }
+
+#[wasm_bindgen_test]
+async fn bounded_workspace_reads_reject_oversize_binary_invalid_utf8_and_missing_files_in_both_modes()
+ {
+    for local in [false, true] {
+        let folder = if local {
+            Some(treeFolder().await.unwrap())
+        } else {
+            None
+        };
+        let (mounted, _) = fixture(folder.as_ref().map(treeHandle));
+        settle().await;
+        let files = Workspace::for_project(mounted.state.api, mounted.state.projects, 1).unwrap();
+        let source = "fresh 文😀";
+        files.write("text.txt", source).await.unwrap();
+        assert_eq!(
+            files
+                .read_text_with_limit("text.txt", source.len())
+                .await
+                .unwrap(),
+            source
+        );
+        assert!(
+            files
+                .read_text_with_limit("text.txt", source.len() - 1)
+                .await
+                .is_err()
+        );
+        files.write("text.txt", "new disk text").await.unwrap();
+        assert_eq!(
+            files.read_text_with_limit("text.txt", 32).await.unwrap(),
+            "new disk text"
+        );
+        for (path, bytes) in [
+            ("binary.bin", &[0_u8, 65][..]),
+            ("invalid.txt", &[255_u8, 128][..]),
+        ] {
+            files.write_bytes(path, bytes).await.unwrap();
+            assert!(files.read_text_with_limit(path, 32).await.is_err());
+        }
+        files.write("empty.txt", "").await.unwrap();
+        assert_eq!(
+            files.read_text_with_limit("empty.txt", 0).await.unwrap(),
+            ""
+        );
+        assert!(files.read_text_with_limit("missing.txt", 32).await.is_err());
+        assert!(
+            files
+                .read_text_with_limit("../escape.txt", 32)
+                .await
+                .is_err()
+        );
+        if let Some(folder) = folder {
+            treeCleanup(&folder).await.unwrap();
+        }
+        drop(mounted);
+    }
+}
 fn fixture(
     handle: Option<JsValue>,
 ) -> (

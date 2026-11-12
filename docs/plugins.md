@@ -646,7 +646,14 @@ command reviews are active, and never starts a cold service or evicts one merely
 to prefetch. A parked client retains its independent sources but cannot reclaim
 another client's current process for optional work. Valid interactive requests
 cancel speculation across documents and projects; the speculative owner retains
-its slot until its future unwinds.
+its slot through source retirement. Background request accounting leaves capacity
+for newly opened foreground documents without dropping recent stale-request fences.
+The optional `close: true` field admits a temporary source only when its document
+ID and physical path are not already open. Owned cleanup closes that overlay or
+stops the original service before releasing its source bank, preserving other
+unsaved documents through cancellation and recovery. These replies contain no
+reusable analysis context. The default `close: false` is omitted from the wire;
+older strict hosts reject the new field rather than retain a temporary overlay.
 An interrupted prefetch suspends further speculation on that original
 process, because a server may continue computing after cancellation. This state
 follows process handoff and resets on actual process restart. Interactive queries
@@ -655,15 +662,22 @@ on the same service.
 
 Settings → Editor includes **Warm language services while idle**, disabled by
 default and saved in the account's database settings. The shared editor scheduler
-waits 750 ms after ordinary work settles, then considers at most four open buffers
-using their current unsaved text. It prioritizes the active buffer, known related
-paths and recent edits. Each file is limited to 256 KiB and a batch to 512 KiB,
+waits 750 ms after ordinary work settles, then considers at most four files.
+Current open buffers take priority, followed by known related unopened files and
+recently closed files within the remaining budget. Retained unsaved text wins;
+clean files receive fresh bounded reads through `Workspace`, using cancellable
+Local streams or the Remote bounded-file endpoint. Failed reads also consume the
+file and reserved byte budget. There is no recursive dependency discovery.
+Each file is limited to 256 KiB and a batch to 512 KiB,
 with at most eight diagnostics/symbol attempts per source revision and service.
 A three-second client deadline also bounds authorization and transport waits.
 Foreground work, edits, composition, recovery, scope changes, unmounting or turning
 the option off cancel pending work. Speculative replies never enter editor results,
 errors or undo history; this prepares the server's own state without adding a
-result cache. Closed files and unopened dependencies are not admitted yet.
+result cache. Installed public-plugin checks cover fresh external edits, unopened
+related files, recently closed files, temporary-source retirement and preservation
+of the original service and other drafts in both production editors. The Local
+fixture uses OPFS correspondence, not a physical-folder permission prompt.
 
 Before and after analysis, both native routes collect the same bounded
 metadata inventory of associated source files, declared project inputs, directories
@@ -677,8 +691,8 @@ limits reject optional work and edit-producing queries while retaining ordinary
 read-only replies without a proof; read workers retain their concurrency slots
 until they actually exit. These sampled checks do not establish complete
 filesystem-event coverage, transitive toolchain invalidation or editor apply-time
-freshness. Unopened dependency admission and production resource/benefit
-measurements remain roadmap work. A same-build 128-module comparison found nearly
+freshness. Complete production resource/benefit measurements remain roadmap work.
+A same-build comparison of the earlier open-buffer scheduler in 128 modules found nearly
 unchanged median foreground-symbol latency and a higher Remote p95 with warming
 enabled. The combined 512-module workflow exhausted optional object-watch capacity
 in its Local phase while foreground work continued. Idle preparation remains

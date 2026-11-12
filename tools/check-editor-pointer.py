@@ -34,6 +34,12 @@ def check(mode, repeat, language, ending, wrap, source_path=None, target_line=2)
     source = row * repeat
     with tempfile.TemporaryDirectory(prefix='openwebide-pointer-') as state, \
             tempfile.TemporaryDirectory(prefix='editor-pointer-probe-', dir=ROOT) as folder:
+        if language == 'rs':
+            # This is a standalone paint/selection fixture, not the surrounding
+            # application's Cargo workspace.
+            (Path(folder) / 'Cargo.toml').write_text(
+                '[package]\nname = "editor-pointer-fixture"\nversion = "0.0.0"\nedition = "2024"\n'
+                '[lib]\npath = "pointer.rs"\n[workspace]\n')
         runtime, browser = Runtime(state, frontend=True), None
         host = ExecutionHost(runtime)
         try:

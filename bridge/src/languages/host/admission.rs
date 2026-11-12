@@ -5,7 +5,7 @@ use crate::folder_coordination::{Folder, Lease};
 use openwebide_core::workspace_transaction::{ResourceScope, WorkspaceTransactionState};
 
 pub(crate) struct ReviewGuard<'lease> {
-    service: commands::ServiceUse,
+    service: ServiceUse,
     affected: analysis::affected::Snapshot,
     _documents: tokio::sync::OwnedMutexGuard<documents::Documents>,
     folder: Folder,
@@ -108,7 +108,7 @@ impl Host {
             entry
                 .active_uses
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            commands::ServiceUse(entry.clone())
+            ServiceUse(entry.clone())
         };
         let entry = &service.0;
         let session = entry

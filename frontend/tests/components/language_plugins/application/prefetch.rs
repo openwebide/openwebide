@@ -28,6 +28,166 @@ fn hold(fixture: &Fixture) -> futures::channel::oneshot::Sender<Result<(), Strin
 }
 
 #[wasm_bindgen_test]
+async fn unopened_related_files_use_fresh_bounded_reads_and_never_publish_results_in_both_modes() {
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let fixture = Fixture::with_prefetch(mode, serde_json::json!([]), true).await;
+        let files = openwebide_frontend::workspace::Workspace::for_project(
+            fixture.mounted.state.api,
+            fixture.mounted.state.projects,
+            1,
+        )
+        .unwrap();
+        files
+            .write("unopened.notes", "first disk source 文😀")
+            .await
+            .unwrap();
+        *fixture
+            .mounted
+            .state
+            .fake
+            .native_language_result
+            .borrow_mut() = Some(serde_json::json!([{
+            "path":"unopened.notes", "resource":null,
+            "source_digest":openwebide_core::plugins::languages::source_digest("older source"),
+            "label":"Dependency", "range":{"start":{"line":0,"character":0},"end":{"line":0,"character":0}}
+        }]));
+        settle().await;
+        fixture.query(IntelligenceCommand::Definition).await;
+        *fixture
+            .mounted
+            .state
+            .fake
+            .native_language_result
+            .borrow_mut() = Some(serde_json::json!([]));
+        fixture.actions.dismiss.run(());
+        fixture.editor.insert_native_text("!", 1.0).unwrap();
+        wait_until("unopened related source is warmed and retired", || {
+            inputs(&fixture).iter().any(|input| {
+                input.path == "unopened.notes"
+                    && input.source == "first disk source 文😀"
+                    && input.query.closes_prefetch()
+            })
+        })
+        .await;
+        assert!(
+            !fixture.mounted.state.workspace.editor_tabs.get_untracked()[&1]
+                .contains(&"unopened.notes".into())
+        );
+        let before = inputs(&fixture).len();
+        files
+            .write("unopened.notes", "new external disk source 文😀")
+            .await
+            .unwrap();
+        fixture.editor.insert_native_text("?", 2.0).unwrap();
+        wait_until("next source context reads current disk contents", || {
+            inputs(&fixture).iter().skip(before).any(|input| {
+                input.path == "unopened.notes"
+                    && input.source == "new external disk source 文😀"
+                    && input.query.closes_prefetch()
+            })
+        })
+        .await;
+        assert!(fixture.actions.result.get_untracked().is_none());
+        assert_eq!(fixture.actions.error.get_untracked(), None);
+        assert_eq!(fixture.content(), "alpha!?");
+        assert_eq!(
+            files.read("unopened.notes").await.unwrap(),
+            "new external disk source 文😀"
+        );
+        fixture.finish().await;
+    }
+}
+
+#[wasm_bindgen_test]
+async fn recently_closed_files_prefer_retained_unsaved_text_over_disk_in_both_modes() {
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let fixture = Fixture::with_prefetch(mode, serde_json::json!([]), true).await;
+        let workspace = fixture.mounted.state.workspace;
+        workspace.editor_buffers.update(|buffers| {
+            buffers.insert(
+                (1, "dependency.notes".into()),
+                EditorBuffer {
+                    content: "retained unsaved dependency 文😀".into(),
+                    dirty: true,
+                    read_only: false,
+                },
+            );
+        });
+        wait_until("open dependency is observed before closing", || {
+            inputs(&fixture).iter().any(|input| {
+                input.path == "dependency.notes"
+                    && input.source == "retained unsaved dependency 文😀"
+                    && !input.query.closes_prefetch()
+            })
+        })
+        .await;
+        let before = inputs(&fixture).len();
+        workspace.editor_tabs.update(|tabs| {
+            tabs.get_mut(&1)
+                .unwrap()
+                .retain(|path| path != "dependency.notes");
+        });
+        fixture.editor.insert_native_text("!", 1.0).unwrap();
+        wait_until("closed recent file uses retained unsaved text", || {
+            inputs(&fixture).iter().skip(before).any(|input| {
+                input.path == "dependency.notes"
+                    && input.source == "retained unsaved dependency 文😀"
+                    && input.query.closes_prefetch()
+            })
+        })
+        .await;
+        assert_eq!(fixture.content(), "alpha!");
+        assert!(workspace.editor_buffers.get_untracked()[&(1, "dependency.notes".into())].dirty);
+        assert_eq!(fixture.actions.error.get_untracked(), None);
+        assert!(fixture.actions.result.get_untracked().is_none());
+        fixture.finish().await;
+    }
+}
+
+#[wasm_bindgen_test]
+async fn closed_clean_documents_do_not_reuse_retained_text_as_a_disk_cache_in_both_modes() {
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let fixture = Fixture::with_prefetch(mode, serde_json::json!([]), true).await;
+        let workspace = fixture.mounted.state.workspace;
+        let files = openwebide_frontend::workspace::Workspace::for_project(
+            fixture.mounted.state.api,
+            fixture.mounted.state.projects,
+            1,
+        )
+        .unwrap();
+        files
+            .write("dependency.notes", "fresh external source 文😀")
+            .await
+            .unwrap();
+        wait_until("clean open dependency is observed", || {
+            inputs(&fixture)
+                .iter()
+                .any(|input| input.path == "dependency.notes" && !input.query.closes_prefetch())
+        })
+        .await;
+        let before = inputs(&fixture).len();
+        workspace.editor_tabs.update(|tabs| {
+            tabs.get_mut(&1)
+                .unwrap()
+                .retain(|path| path != "dependency.notes");
+        });
+        fixture.editor.insert_native_text("!", 1.0).unwrap();
+        wait_until("closed clean document is read from disk", || {
+            inputs(&fixture).iter().skip(before).any(|input| {
+                input.path == "dependency.notes"
+                    && input.source == "fresh external source 文😀"
+                    && input.query.closes_prefetch()
+            })
+        })
+        .await;
+        assert_eq!(fixture.actions.error.get_untracked(), None);
+        assert!(fixture.actions.result.get_untracked().is_none());
+        assert_eq!(fixture.content(), "alpha!");
+        fixture.finish().await;
+    }
+}
+
+#[wasm_bindgen_test]
 async fn idle_prefetch_defaults_off_and_disabling_it_cancels_held_work_in_both_modes() {
     for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
         let fixture = Fixture::new(mode, serde_json::json!([])).await;

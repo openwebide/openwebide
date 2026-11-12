@@ -24,9 +24,247 @@ async fn marked(fixture: &Fixture, name: &str) {
 
 fn prefetch(path: &str, request: u64, kind: PrefetchKind) -> Request {
     Request {
-        query: Query::Prefetch { kind },
+        query: Query::Prefetch { kind, close: false },
         ..input("A", path, "unsaved 文😀", request)
     }
+}
+
+fn closed_prefetch(path: &str, request: u64, kind: PrefetchKind) -> Request {
+    Request {
+        query: Query::Prefetch { kind, close: true },
+        ..input("A", path, "current closed-file source 文😀", request)
+    }
+}
+
+#[tokio::test]
+async fn closed_file_prefetch_retains_foreground_request_capacity() {
+    let fixture = fixture();
+    for index in 0..128 {
+        std::fs::write(
+            fixture.root.path().join(format!("closed-{index}.notes")),
+            "closed disk source",
+        )
+        .unwrap();
+    }
+    fixture.query(&input("A", "a.notes", "A unsaved", 1)).await;
+    fixture.query(&input("A", "c.notes", "C unsaved", 2)).await;
+    let original = fixture
+        .host
+        .inner
+        .entries
+        .lock()
+        .unwrap()
+        .values()
+        .next()
+        .unwrap()
+        .process_identity()
+        .unwrap();
+    let (mut admitted, mut declined) = (0, 0);
+    for index in 0..128 {
+        let request = closed_prefetch(
+            &format!("closed-{index}.notes"),
+            index + 3,
+            PrefetchKind::Symbols,
+        );
+        if fixture
+            .host
+            .query(fixture.scope.clone(), &request)
+            .await
+            .is_ok()
+        {
+            admitted += 1;
+        } else {
+            declined += 1;
+        }
+    }
+    // All temporary sources have closed, but their stale-request fences remain.
+    // Background churn must leave room for a newly opened foreground document.
+    let (_, sources) = fixture
+        .query(&input("A", "b.notes", "B foreground unsaved", 1000))
+        .await;
+    assert_eq!(
+        sources,
+        json!({"a.notes":"A unsaved","b.notes":"B foreground unsaved","c.notes":"C unsaved"})
+    );
+    assert!(admitted > 0 && declined > 0);
+    let stale = fixture
+        .host
+        .query(
+            fixture.scope.clone(),
+            &closed_prefetch("closed-0.notes", 3, PrefetchKind::Symbols),
+        )
+        .await
+        .unwrap_err();
+    assert!(stale.contains("stale"), "{stale}");
+    assert_eq!(fixture.starts(), 1);
+    assert!(
+        fixture
+            .host
+            .inner
+            .entries
+            .lock()
+            .unwrap()
+            .values()
+            .next()
+            .unwrap()
+            .process_identity()
+            .unwrap()
+            .matches(&original)
+    );
+}
+
+#[tokio::test]
+async fn closed_file_prefetch_retires_its_overlay_and_preserves_open_drafts_and_process() {
+    let fixture = fixture();
+    fixture
+        .query(&input("A", "a.notes", "A unsaved 文😀", 1))
+        .await;
+    fixture.query(&input("A", "c.notes", "C unsaved", 2)).await;
+    let original = fixture
+        .host
+        .inner
+        .entries
+        .lock()
+        .unwrap()
+        .values()
+        .next()
+        .unwrap()
+        .process_identity()
+        .unwrap();
+    for (request, kind) in [(3, PrefetchKind::Symbols), (4, PrefetchKind::Diagnostics)] {
+        let response = fixture
+            .host
+            .query(
+                fixture.scope.clone(),
+                &closed_prefetch("b.notes", request, kind),
+            )
+            .await
+            .unwrap();
+        assert!(
+            response.context.is_none(),
+            "A retired source must not return a reusable context"
+        );
+        assert!(
+            fixture.host.inner.prefetch.acquire().is_ok(),
+            "Retirement must finish before acknowledging success"
+        );
+    }
+    let (_, sources) = fixture
+        .query(&input("A", "a.notes", "A unsaved 文😀", 5))
+        .await;
+    assert_eq!(
+        sources,
+        json!({"a.notes":"A unsaved 文😀","c.notes":"C unsaved"})
+    );
+    assert_eq!(fixture.starts(), 1);
+    assert!(
+        fixture
+            .host
+            .inner
+            .entries
+            .lock()
+            .unwrap()
+            .values()
+            .next()
+            .unwrap()
+            .process_identity()
+            .unwrap()
+            .matches(&original)
+    );
+}
+
+#[tokio::test]
+async fn closed_file_prefetch_declines_existing_documents_without_replacing_or_closing_them() {
+    let fixture = fixture();
+    fixture.query(&input("A", "a.notes", "A unsaved", 1)).await;
+    for (request, path) in [(2, "a.notes"), (3, "b.notes")] {
+        let mut closed = closed_prefetch(path, request, PrefetchKind::Symbols);
+        if path == "a.notes" {
+            closed.document = "another-document-id".into();
+        } else {
+            closed.document = openwebide_core::plugins::languages::source_digest("a.notes");
+        }
+        let error = fixture
+            .host
+            .query(fixture.scope.clone(), &closed)
+            .await
+            .unwrap_err();
+        assert!(error.contains("existing open document"), "{error}");
+    }
+    let (_, sources) = fixture.query(&input("A", "b.notes", "B unsaved", 4)).await;
+    assert_eq!(
+        sources,
+        json!({"a.notes":"A unsaved","b.notes":"B unsaved"})
+    );
+    assert_eq!(fixture.starts(), 1);
+}
+
+#[tokio::test]
+async fn closed_file_retirement_failure_recovers_only_the_original_drafts_on_a_replacement() {
+    let fixture = fixture();
+    fixture.query(&input("A", "a.notes", "A unsaved", 1)).await;
+    fixture.query(&input("A", "c.notes", "C unsaved", 2)).await;
+    std::fs::write(fixture.root.path().join("hold-symbols"), "hold").unwrap();
+    let (host, scope) = (fixture.host.clone(), fixture.scope.clone());
+    let pending = tokio::spawn(async move {
+        host.query(scope, &closed_prefetch("b.notes", 3, PrefetchKind::Symbols))
+            .await
+    });
+    marked(&fixture, "symbols-started").await;
+    let entry = fixture
+        .host
+        .inner
+        .entries
+        .lock()
+        .unwrap()
+        .values()
+        .next()
+        .unwrap()
+        .clone();
+    let original = entry.process_identity().unwrap();
+    entry.session.get().unwrap().client.close();
+    assert!(pending.await.unwrap().is_err());
+    std::fs::remove_file(fixture.root.path().join("hold-symbols")).unwrap();
+    let (_, sources) = fixture
+        .query(&input("A", "a.notes", "A after restart", 4))
+        .await;
+    assert_eq!(
+        sources,
+        json!({"a.notes":"A after restart","c.notes":"C unsaved"})
+    );
+    tokio::time::timeout(Duration::from_secs(5), original.completion.wait())
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(fixture.starts(), 2);
+    assert!(*entry.stopped.borrow());
+}
+
+#[tokio::test]
+async fn cancelled_closed_file_prefetch_retires_before_foreground_queries_and_handoff() {
+    let fixture = fixture();
+    fixture.query(&input("A", "a.notes", "A unsaved", 1)).await;
+    fixture.query(&input("A", "c.notes", "C unsaved", 2)).await;
+    std::fs::write(fixture.root.path().join("hold-symbols"), "hold").unwrap();
+    let (host, scope) = (fixture.host.clone(), fixture.scope.clone());
+    let task = tokio::spawn(async move {
+        host.query(scope, &closed_prefetch("b.notes", 3, PrefetchKind::Symbols))
+            .await
+    });
+    marked(&fixture, "symbols-started").await;
+    task.abort();
+    assert!(task.await.unwrap_err().is_cancelled());
+    let (_, a) = fixture.query(&input("A", "a.notes", "A after", 4)).await;
+    assert_eq!(a, json!({"a.notes":"A after","c.notes":"C unsaved"}));
+    fixture
+        .query(&input("B", "a.notes", "B independent", 1))
+        .await;
+    let (_, restored) = fixture.query(&input("A", "a.notes", "A restored", 5)).await;
+    assert_eq!(
+        restored,
+        json!({"a.notes":"A restored","c.notes":"C unsaved"})
+    );
+    assert_eq!(fixture.starts(), 1);
 }
 
 #[tokio::test]
@@ -58,6 +296,80 @@ async fn one_prefetch_slot_covers_discovery_and_cancellation_does_not_steal_it()
         .await
         .unwrap();
     assert_eq!(fixture.starts(), 1);
+}
+
+#[test]
+fn speculative_slot_is_retained_until_the_last_cleanup_owner_releases_it() {
+    let queue = Queue::default();
+    let permit = queue.acquire().unwrap();
+    let cleanup = permit.clone();
+    drop(permit);
+    queue.interrupt();
+    assert!(*cleanup.cancelled.borrow());
+    assert!(queue.acquire().is_err());
+    drop(cleanup);
+    assert!(queue.acquire().is_ok());
+}
+
+#[tokio::test]
+async fn reopened_unsaved_document_survives_cancelled_closed_file_prefetch() {
+    let fixture = fixture();
+    fixture.query(&input("A", "a.notes", "A unsaved", 1)).await;
+    std::fs::write(fixture.root.path().join("hold-symbols"), "hold").unwrap();
+    let (host, scope) = (fixture.host.clone(), fixture.scope.clone());
+    let pending = tokio::spawn(async move {
+        host.query(scope, &closed_prefetch("b.notes", 2, PrefetchKind::Symbols))
+            .await
+    });
+    marked(&fixture, "symbols-started").await;
+    let reopened = input("A", "b.notes", "reopened unsaved 文😀", 3);
+    let (_, sources) = fixture.query(&reopened).await;
+    assert_eq!(
+        sources,
+        json!({"a.notes":"A unsaved","b.notes":"reopened unsaved 文😀"})
+    );
+    assert!(pending.await.unwrap().unwrap_err().contains("superseded"));
+    let (_, sources) = fixture.query(&input("A", "a.notes", "A current", 4)).await;
+    assert_eq!(
+        sources,
+        json!({"a.notes":"A current","b.notes":"reopened unsaved 文😀"})
+    );
+    assert_eq!(fixture.starts(), 1);
+}
+
+#[tokio::test]
+async fn closed_file_prefetch_error_or_timeout_retires_sources_before_handoff() {
+    for marker in ["fail-symbols", "hold-symbols"] {
+        let fixture = fixture();
+        fixture.query(&input("A", "a.notes", "A unsaved", 1)).await;
+        fixture.query(&input("A", "c.notes", "C unsaved", 2)).await;
+        std::fs::write(fixture.root.path().join(marker), "fixture").unwrap();
+        let error = fixture
+            .host
+            .query(
+                fixture.scope.clone(),
+                &closed_prefetch("b.notes", 3, PrefetchKind::Symbols),
+            )
+            .await
+            .unwrap_err();
+        assert!(
+            error.contains(if marker == "fail-symbols" {
+                "fixture symbol failure"
+            } else {
+                "time budget"
+            }),
+            "{error}"
+        );
+        let (_, sources) = fixture.query(&input("A", "a.notes", "A after", 4)).await;
+        assert_eq!(sources, json!({"a.notes":"A after","c.notes":"C unsaved"}));
+        fixture.query(&input("B", "a.notes", "B separate", 1)).await;
+        let (_, restored) = fixture.query(&input("A", "a.notes", "A restored", 5)).await;
+        assert_eq!(
+            restored,
+            json!({"a.notes":"A restored","c.notes":"C unsaved"})
+        );
+        assert_eq!(fixture.starts(), 1);
+    }
 }
 
 #[tokio::test]

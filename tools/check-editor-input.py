@@ -94,6 +94,12 @@ def check(mode, ending, windowed, ascii_row=False):
     source = row if ascii_row else row * (1500 if windowed else 3)
     with tempfile.TemporaryDirectory(prefix='openwebide-input-') as state, \
             tempfile.TemporaryDirectory(prefix='editor-input-probe-', dir=ROOT) as folder:
+        # Keep Rust's project discovery inside this disposable input fixture.
+        # Without its own workspace, rust-analyzer can index/build the parent
+        # Open WebIDE workspace while an unrelated input test is tearing down.
+        (Path(folder) / 'Cargo.toml').write_text(
+            '[package]\nname = "editor-input-fixture"\nversion = "0.0.0"\nedition = "2024"\n'
+            '[lib]\npath = "input.rs"\n[workspace]\n')
         runtime, browser = Runtime(state, frontend=True), None
         host = ExecutionHost(runtime)
         try:

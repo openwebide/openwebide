@@ -9,7 +9,9 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
-- Add a default-off, account-saved option to warm language services while idle in both project modes. Bound diagnostics/symbol preparation to current open buffers, cancel it for foreground work and preference changes, and discard speculative replies. Require the client's own warm service so a parked window cannot reclaim another window's process. Unopened dependencies and production benefit/resource measurements remain unfinished.
+- Keep native debug builds within macOS compact-unwind encoding limits by optimizing the Wasmtime dependency, preserving panic unwinding, backtraces and the full test suite.
+
+- Add a default-off, account-saved option to warm language services while idle in both project modes. Bound diagnostics/symbol preparation to current open buffers, known related unopened files and recently closed files. Prefer retained unsaved text, read clean files freshly within cancellable byte limits, and retire temporary overlays without losing other drafts. Reserve request capacity for foreground work, cancel background work on edits or preference changes, and discard speculative replies. Require the client's own warm service so a parked window cannot reclaim another window's process. Complete production benefit/resource measurements remain unfinished.
 
 - Construct retained action and file menus once per mounted component, preserving live options and dialog callbacks while releasing subscriptions on unmount. Restore focus on reopening and reject stale detached control clicks.
 
@@ -89,7 +91,7 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 - Apply the compiler's visibility correction to the archived `proc-macro-error2` dependency, preserving its published macro re-export without suppressing Rust's future-incompatibility diagnostic.
 
-- Add native admission for optional source-bound diagnostics/symbol prefetch through the shared public language facade. Bound discovery and execution to one speculative request per host with a two-second deadline, preserve command pins, and cancel speculation for interactive work. Suspend further speculation on an interrupted original process through client handoff until restart; ordinary queries remain available. Unopened sources and complete production prefetch resource/benefit measurements remain unfinished.
+- Add native admission for optional source-bound diagnostics/symbol prefetch through the shared public language facade. Bound discovery and execution to one speculative request per host with a two-second deadline, preserve command pins, and cancel speculation for interactive work. Suspend further speculation on an interrupted original process through client handoff until restart; ordinary queries remain available. Complete production prefetch resource/benefit measurements remain unfinished.
 - Reject optional language prefetch spanning associated-source, directory or alias changes through both native transports. Publish bounded metadata inventories atomically, retain scan slots through cancellation and preserve ordinary queries when optional collection fails. Completed results discarded for changed sources can retry on the same service. Filesystem-event coverage and reusable-result freshness remain unfinished.
 
 - Observe native language-process memory without retaining service ownership during OS scans. Match readings to the original process across client handoff, reject stale samples after replacement or PID reuse, and retain startup pressure enforcement and confirmed cleanup.

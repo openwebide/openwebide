@@ -2,6 +2,40 @@
 use super::*;
 
 impl Documents {
+    pub(in crate::languages::host) fn require_closed_prefetch(
+        &self,
+        input: &Request,
+        path: &Path,
+    ) -> Result<(), String> {
+        if self.documents.contains_key(&input.document)
+            || self
+                .documents
+                .values()
+                .any(|document| document.path == path)
+        {
+            return Err(
+                "Closed-file prefetch cannot replace or close an existing open document".into(),
+            );
+        }
+        Ok(())
+    }
+
+    /// Called only while the admitting closed-file query still owns this bank.
+    /// Keep its request watermark; retirement is not another client request.
+    pub(in crate::languages::host) fn retire_prefetch(
+        &mut self,
+        document: &str,
+    ) -> Result<Option<String>, String> {
+        let Some(document) = self.documents.remove(document) else {
+            return Ok(None);
+        };
+        self.overlay_revision = self
+            .overlay_revision
+            .checked_add(1)
+            .ok_or("Language overlay revision exhausted during prefetch retirement")?;
+        Ok(Some(document.uri))
+    }
+
     pub(super) fn admit(&mut self, input: &Request) -> Result<(), String> {
         if let Some((request, revision, _)) = self.watermarks.get(&input.document)
             && (input.request <= *request || input.revision < *revision)
@@ -11,13 +45,12 @@ impl Documents {
                     .into(),
             );
         }
-        if !self.watermarks.contains_key(&input.document)
-            && self.watermarks.len() >= 2 * MAX_DOCUMENTS
-        {
+        let limit = prefetch::request_limit(input);
+        if !self.watermarks.contains_key(&input.document) && self.watermarks.len() >= limit {
             self.watermarks.retain(|id, (_, _, seen)| {
                 self.documents.contains_key(id) || seen.elapsed() < 2 * REQUEST_TIMEOUT
             });
-            if self.watermarks.len() >= 2 * MAX_DOCUMENTS {
+            if self.watermarks.len() >= limit {
                 return Err("Too many recently closed language documents; retry after current requests expire".into());
             }
         }
