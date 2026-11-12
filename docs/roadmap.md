@@ -1404,6 +1404,96 @@ Remaining execution-host work:
 
 ## Later
 
+### UI fit and finish
+
+Enable unattended visual inspection and improvement of the whole app, including
+its dialogs, menus and less frequently visited interfaces. Use the
+[design system](design-system.md) as the baseline for spacing, typography, density,
+alignment, hierarchy, contrast and interaction consistency. Schedule the app-wide
+pass after the ongoing editor enhancements settle.
+
+- **Preferred execution: headless Playwright with its own browser process.** Runs
+  must not require an unlocked desktop, foreground window, screen capture
+  permission or control of the user's mouse/keyboard. Verify a run completes while
+  the machine is locked and while the user works in other apps. Support a Linux
+  container or CI runner for runs independent of the workstation's availability;
+  a local run still requires the host to remain awake. See
+  [Playwright CI](https://playwright.dev/docs/ci). Save browser-rendered screenshots
+  for agent inspection without opening a visible browser.
+- Inventory every screen, dialog/tab, dropdown, popover, context menu, tooltip,
+  panel and phone sheet, including authentication/onboarding, Settings/model setup,
+  hosts/bridge, plugins, projects/files, Git/review, editor, chat/approvals, sessions,
+  memory/skills, schedules/monitors, output and About. Record a repeatable way to
+  reach each surface and cover empty, populated, loading, error, disabled and
+  overflow states, long labels and dense content. Report missing coverage explicitly.
+- Use Playwright as the preferred harness, with existing fixtures and a component
+  gallery as complementary options:
+  - **Extend existing Chrome/WebDriver tooling:** reuse the browser runner,
+    WASM component fixtures and screenshot capture patterns in
+    `tools/check-about.py` and `tools/check-panel-playground.py`. Lowest setup cost;
+    requires building the app-wide scenario inventory and comparison reports.
+  - **Playwright against the built app:** use isolated browser contexts,
+    scripted navigation, screenshot comparisons and failure traces for real
+    workflows. Adds tooling, but can operate the compiled Leptos/WASM app through
+    its browser interface. See [visual comparisons](https://playwright.dev/docs/test-snapshots)
+    and [authentication](https://playwright.dev/docs/auth).
+  - **Leptos component gallery:** mount production components with representative
+    fixture state for direct access to otherwise hard-to-reach dialogs and menus.
+    Reuse the real components, styles and stores; verify full-app navigation,
+    overlays and focus separately. Evaluate this alongside the headless harness.
+- Make scenarios reproducible without human setup: disposable app/database,
+  seeded authentication, projects, Git history, model/agent responses and failures,
+  isolated browser profiles and fixture bridge/workspace access. Exercise the same
+  scenarios in local and remote modes through the shared feature facades and thin
+  adapters. Separate controlled rendering fixtures from real transport checks;
+  explicitly track native folder-permission and other OS-prompt limitations.
+  Use a separate worktree and service ports so runs leave active development
+  sessions, personal data and another agent's services alone.
+- Capture both themes at desktop, narrow desktop, tablet and phone widths,
+  including resized panels, scroll extremes, nested overlays and keyboard focus.
+  Stabilize fonts, browser/OS, animations and volatile content for comparison.
+  Pair screenshots with overflow/clipping, focus order/restoration, accessible
+  names, contrast and touch-target checks.
+- Audit user guides and the [project website](project-site.md) for places where an
+  image helps explain a workflow, locate a control or show a feature's result.
+  Prioritize first-session setup, workspace layout, Git/diff review, agent
+  approvals, model configuration and schedules/monitors. Map each useful location
+  to a named capture scenario, with alt text/caption, theme, viewport and intended
+  full-workspace or dialog/panel crop; avoid decorative screenshots that repeat
+  nearby text without helping the reader.
+- Generate those documentation images as part of the site build pipeline from
+  the app built at the same source revision. Run headless capture before site
+  asset assembly, publish the generated images with that build, and validate every
+  declared screenshot reference. Fail the build for missing scenarios, failed
+  captures or mismatched revision metadata instead of silently publishing stale
+  images. Ensure workflow triggers cover the app, fixture and capture inputs.
+  Provide the same capture/export command for local previews, with stable
+  filenames, deliberate pixel density and a manifest recording scenario, theme,
+  dimensions and source revision. Wait for fonts and application readiness;
+  retain captures and reports as PR artifacts for visual review. Keep publication
+  assets separate from test baselines and temporary comparison artifacts.
+- Maintain canned but realistic, versioned demo data exclusively for screenshots:
+  fictional source code, Git history/diffs, conversations, tool results, approvals,
+  models, hosts and scheduled activity that demonstrate coherent workflows.
+  Capture against a disposable database/workspace and controlled service responses,
+  without mounting developer projects or importing personal accounts, sessions,
+  paths, credentials or production responses. Generate all visible data from the
+  fixtures, including errors and output; check exported images and metadata for
+  accidental sensitive content before publication. Reuse the fixtures for visual
+  review scenarios so the documentation and fit-and-finish checks exercise the
+  same production components.
+- Build a bounded agent loop: capture the named scenarios, visually inspect the
+  actual images, prioritize findings, improve shared components/tokens, rebuild
+  and recapture affected surfaces, then run the full visual matrix and relevant
+  behavioral contracts. Retain before/after images, findings, reproduction steps
+  and unresolved gaps for review. Screenshot diffs detect changes; they do not
+  judge design quality. Keep expected-image updates explicit so a regression
+  cannot pass merely by replacing its baseline.
+- Start with Settings and shared dialogs, menus and tooltips, then expand to the
+  full inventory. Completion requires reviewed visual evidence and passing
+  behavior in both modes. Emulation does not close the remaining physical-device,
+  IME, native permission or assistive-technology verification items.
+
 ### Plugins & Git marketplaces
 
 Extend agent and editor capabilities through versioned plugin packages that users
