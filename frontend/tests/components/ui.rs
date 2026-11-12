@@ -516,6 +516,134 @@ async fn shared_dropdowns_fit_the_viewport_skip_disabled_options_and_dismiss_bef
 }
 
 #[wasm_bindgen_test]
+async fn action_menu_reopening_keeps_one_subscription_and_releases_it_on_unmount() {
+    use openwebide_frontend::components::dropdown::ActionMenu;
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
+
+    for mode in [
+        openwebide_core::WorkspaceMode::Local,
+        openwebide_core::WorkspaceMode::Remote,
+    ] {
+        let revision = RwSignal::new(0);
+        let disabled = RwSignal::new(false);
+        let actions = Arc::new(AtomicUsize::new(0));
+        let invoked = actions.clone();
+        let reads = Arc::new(AtomicUsize::new(0));
+        let observed = reads.clone();
+        let mounted = mount_test(move |state| {
+            state.seed_project();
+            state
+                .projects
+                .projects
+                .update(|projects| projects[0].mode = mode);
+            let observed = observed.clone();
+            let invoked = invoked.clone();
+            view! {
+                <style>{include_str!("../../styles.css")}</style>
+                <ActionMenu aria_label="Repeated actions">
+                    {
+                        let observed = observed.clone();
+                        Effect::new(move |_| {
+                            revision.get();
+                            observed.fetch_add(1, Ordering::Relaxed);
+                        });
+                        let invoked = invoked.clone();
+                        view! { <button role="menuitem" class="observed-action" disabled=move || disabled.get() on:click:capture=move |_| { invoked.fetch_add(1, Ordering::Relaxed); }>"Action"</button> }
+                    }
+                </ActionMenu>
+            }
+        });
+        settle().await;
+        for _ in 0..12 {
+            mounted.click(".ui-dropdown-trigger");
+            settle().await;
+            assert!(
+                mounted
+                    .root
+                    .query_selector(".observed-action")
+                    .unwrap()
+                    .is_some()
+            );
+            assert!(
+                web_sys::window()
+                    .unwrap()
+                    .document()
+                    .unwrap()
+                    .active_element()
+                    .unwrap()
+                    .is_same_node(Some(mounted.element(".observed-action").as_ref())),
+                "Reopening must restore focus to the mounted action"
+            );
+            let action = mounted.element(".observed-action");
+            mounted.click(".ui-dropdown-backdrop");
+            settle().await;
+            action.click();
+            assert_eq!(
+                actions.load(Ordering::Relaxed),
+                0,
+                "Detached actions must be inert"
+            );
+            assert!(
+                mounted
+                    .root
+                    .query_selector(".ui-dropdown-menu")
+                    .unwrap()
+                    .is_none()
+            );
+        }
+        let before = reads.load(Ordering::Relaxed);
+        revision.update(|value| *value += 1);
+        settle().await;
+        assert_eq!(
+            reads.load(Ordering::Relaxed) - before,
+            1,
+            "Dismissed action menus must not accumulate subscriptions"
+        );
+        disabled.set(true);
+        settle().await;
+        mounted.click(".ui-dropdown-trigger");
+        settle().await;
+        assert!(
+            mounted
+                .element(".observed-action")
+                .has_attribute("disabled")
+        );
+        disabled.set(false);
+        settle().await;
+        let action = mounted.element(".observed-action");
+        action.click();
+        settle().await;
+        assert_eq!(actions.load(Ordering::Relaxed), 1);
+        assert!(
+            mounted
+                .root
+                .query_selector(".ui-dropdown-menu")
+                .unwrap()
+                .is_none()
+        );
+        drop(mounted);
+        settle().await;
+        action.click();
+        assert_eq!(
+            actions.load(Ordering::Relaxed),
+            1,
+            "Unmounted actions must be inert"
+        );
+        let before = reads.load(Ordering::Relaxed);
+        revision.update(|value| *value += 1);
+        settle().await;
+        assert_eq!(
+            reads.load(Ordering::Relaxed),
+            before,
+            "Unmount must release the retained menu's subscription"
+        );
+    }
+}
+
+#[wasm_bindgen_test]
 async fn overflow_actions_close_before_dialogs_and_keep_dialog_callbacks_alive() {
     use openwebide_frontend::{
         components::{PromptDialog, dropdown::ActionMenu},

@@ -35,6 +35,9 @@ pub fn Dropdown(
     #[prop(default = Callback::new(|()| ()))] on_open: Callback<()>,
     #[prop(default = false)] above: bool,
     #[prop(default = false)] hide_caret: bool,
+    /// Action handlers can outlive dismissal without rebuilding their owned state.
+    #[prop(default = false)]
+    retain_contents: bool,
     #[prop(default = 260.0)] preferred_width: f64,
     #[prop(default = 320.0)] max_height: f64,
     children: ChildrenFn,
@@ -50,6 +53,7 @@ pub fn Dropdown(
     });
     let trigger = NodeRef::<leptos::html::Button>::new();
     let menu = NodeRef::<leptos::html::Div>::new();
+    let menu_visibility = RwSignal::new(false);
     let content_id = format!(
         "dropdown-{}",
         NEXT_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
@@ -80,7 +84,10 @@ pub fn Dropdown(
         }
     });
     Effect::new(move |_| {
-        if !open.get() || ready.is_some_and(|ready| !ready.get()) {
+        if !open.get()
+            || ready.is_some_and(|ready| !ready.get())
+            || (retain_contents && !menu_visibility.get())
+        {
             return;
         }
         let (Some(trigger), Some(menu)) = (trigger.get(), menu.get()) else {
@@ -170,6 +177,50 @@ pub fn Dropdown(
         wheel.remove();
     });
     let children = std::sync::Arc::new(children);
+    let menu_owner = Owner::current().expect("Dropdown has an owner");
+    let menu_initialized = StoredValue::new(false);
+    let menu_content_id = content_id.clone();
+    let menu_view = move || {
+        view! {
+            <div class=format!("ui-dropdown-menu recent-menu {menu_class}") role=menu_role aria-label=aria_label id=menu_content_id.clone() node_ref=menu style="visibility:hidden"
+                on:click:capture=move |event| {
+                    // Retained controls must be inert after dismissal or unmount,
+                    // including direct clicks through a previously held DOM reference.
+                    if open.try_get_untracked() != Some(true)
+                        || !event.current_target().and_then(|target| target.dyn_into::<web_sys::Element>().ok()).is_some_and(|element| element.is_connected())
+                    {
+                        event.prevent_default();
+                        event.stop_immediate_propagation();
+                    }
+                }
+                on:click=move |event| { if menu_role != "dialog" { event.prevent_default(); } event.stop_propagation(); }>{children()}</div>
+        }
+    };
+    let menu_surface = if retain_contents {
+        leptos::either::Either::Left(move || {
+            let visible = open.get() && (displayed.get() || ready.is_none_or(|ready| ready.get()));
+            // A retained NodeRef does not reload when its DOM is reattached.
+            // Notify layout from this render so focus follows the attachment.
+            menu_visibility.set(visible);
+            let content = if visible && !menu_initialized.get_value() {
+                menu_initialized.set_value(true);
+                Some(menu_owner.with(menu_view.clone()))
+            } else {
+                None
+            };
+            leptos::tachys::view::either::EitherKeepAlive {
+                a: content,
+                b: Some(()),
+                show_b: !visible,
+            }
+        })
+    } else {
+        leptos::either::Either::Right(view! {
+            <Show when=move || open.get() && (displayed.get() || ready.is_none_or(|ready| ready.get()))>
+                {menu_view()}
+            </Show>
+        })
+    };
     view! {
         <span class=format!("ui-dropdown {class}") on:keydown=move |event: web_sys::KeyboardEvent| {
             if event.key() == "Escape" && open.get_untracked() { event.prevent_default(); event.stop_propagation(); close.run(()); return; }
@@ -196,9 +247,7 @@ pub fn Dropdown(
             <Show when=move || open.get()>
                 <div class="ui-dropdown-backdrop recent-backdrop" on:click=move |event| { event.stop_propagation(); event.prevent_default(); close.run(()); } />
             </Show>
-            <Show when=move || open.get() && (displayed.get() || ready.is_none_or(|ready| ready.get()))>
-                <div class=format!("ui-dropdown-menu recent-menu {menu_class}") role=menu_role aria-label=aria_label id=content_id.clone() node_ref=menu style="visibility:hidden" on:click=move |event| { if menu_role != "dialog" { event.prevent_default(); } event.stop_propagation(); }>{children()}</div>
-            </Show>
+            {menu_surface}
         </span>
     }
 }
@@ -278,7 +327,7 @@ pub fn ActionMenu(
     let children = std::sync::Arc::new(children);
     view! {
         <span class="ui-action-menu-context" node_ref=root>
-        <Dropdown aria_label=aria_label class="ui-action-menu" trigger_class=if context_only { "sr-only" } else { "icon-btn ui-icon" } hide_caret=true open=open pointer_anchor=anchor.into()
+        <Dropdown aria_label=aria_label class="ui-action-menu" trigger_class=if context_only { "sr-only" } else { "icon-btn ui-icon" } hide_caret=true retain_contents=true open=open pointer_anchor=anchor.into()
             on_open=Callback::new(move |()| anchor.set(None)) label=move || view! { <Icon name=icon /> }>
             <div class="ui-action-items" on:click=move |event| {
                 if event.target().and_then(|target| target.dyn_into::<web_sys::Element>().ok())

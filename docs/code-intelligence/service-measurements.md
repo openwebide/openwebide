@@ -249,3 +249,71 @@ or WASM memory stability, active-request or command-pressure behavior, derived
 cache hit rates, editor paint targets or a prefetch performance benefit. Local
 RSS still includes any idle Remote service. Sampling can miss short process peaks;
 the cgroup peak uses different accounting and includes pressure allocation.
+
+## Retained browser memory and natural residency
+
+`tools/measure-language-memory.py` repeats the installed TypeScript reload and
+independent-overlay handoff workflow in both modes. It records owned Spin,
+bridge/watcher/server and Chrome/driver RSS every 250 ms, and records retained
+V8 heap and live unshared WASM linear capacities in separate post-GC runs.
+
+```sh
+python3 tools/measure-language-memory.py --collection post-gc --samples 32 --modules 128 --idle-snapshots 16 --output /tmp/language-retained-128
+python3 tools/measure-language-memory.py --collection post-gc --samples 16 --modules 512 --output /tmp/language-retained-512
+python3 tools/measure-language-memory.py --collection natural --samples 16 --modules 512 --output /tmp/language-natural-512
+```
+
+The collector deduplicates V8 isolates and default execution realms. It enumerates
+live `WebAssembly.Memory` objects and cross-checks each app page against its actual
+Trunk-startup export. A disposable dedicated-worker calibration allocates and
+releases a 4 MiB ArrayBuffer and an 8 MiB WASM memory. Chrome's backing-storage
+counter omits that WASM allocation; the direct counter observes it and its release.
+The application workload does not use a dedicated worker for these language requests.
+
+[The full finite record](retained-memory-measurements.json) includes complete
+query-phase time series, block medians, artifact/source fingerprints and natural
+RSS peaks. Artifacts identify the actual measured bytes; the uncommitted source
+manifest does not assign the preserved release bridge/backend to a newer producer.
+Natural residency includes browser tooling and counts shared pages in each process;
+it is neither unique physical memory nor live native allocation. Sampling begins
+after authenticated browser preparation and can miss short peaks. Local-stage
+native residency includes the still-idle Remote service.
+
+| Modules | Mode | Alternating queries | Retained V8 first / last (MiB) | WASM capacity during handoff (MiB) |
+| --- | --- | ---: | ---: | ---: |
+| 128 | Remote | 64 | 8.23 / 8.41 | 37.56 |
+| 128 | Local | 64 | 8.32 / 8.49 | 37.50 |
+| 512 | Remote | 32 | 15.48 / 15.61 | 102.94 |
+| 512 | Local | 32 | 15.54 / 15.66 | 103.25 |
+
+The V8 values sum the owned browser isolates, including tooling realms. Two app
+pages remain open during handoff. The 128-module run then closes the second page
+and takes 16 idle snapshots per mode: Remote retained heap changes from 4,504,764
+to 4,504,836 bytes and Local from 4,519,604 to 4,521,836 bytes. Those snapshots
+record zero background language requests; they are a different one-page workload.
+
+| Natural 512-module run | Peak Spin + bridge/server RSS (MiB) | Peak browser/driver RSS (MiB) | Peak owned-process union RSS (MiB) |
+| --- | ---: | ---: | ---: |
+| Remote | 907 | 1982 | 2814 |
+| Local | 1205 | 2412 | 3612 |
+
+Columns peak independently; summing their maxima does not give a simultaneous
+process-union peak. The separate constrained Linux measurements above retain
+their own cgroup accounting and runtime provenance.
+
+Retaining action-menu controls once per mounted component fixes repeated
+parent-owned subscriptions while preserving dialog callbacks and reactive options.
+Controls detach on dismissal, restore focus on reopen and reject direct stale DOM
+clicks after dismissal or unmount. Browser regressions cover both modes and verify
+subscription disposal when the whole component unmounts. Isolated repeated menu and
+language-result-dialog tests also retain a bounded number of WASM browser references.
+
+The full DOM series warms up early and then levels off; a first/last comparison
+alone would incorrectly describe that bounded change as continuing growth. Retained
+JavaScript heap still shows a small increasing trend across the finite handoff
+series. Idle observations issue no UI queries and report any background language
+requests separately; they do not attribute all residual heap changes to the
+collector or app. These observations do not establish complete retained native/WASM
+allocator stability or explain every remaining heap increase. WASM
+linear capacity is not live Rust allocation. Active analysis/command pressure,
+other servers and devices, and a prefetch benefit remain unverified.

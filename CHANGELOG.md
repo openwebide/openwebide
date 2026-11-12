@@ -9,6 +9,12 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Construct retained action and file menus once per mounted component, preserving live options and dialog callbacks while releasing subscriptions on unmount. Restore focus on reopening and reject stale detached control clicks.
+
+- Add calibrated retained V8/WASM memory and separate natural RSS measurements for installed TypeScript reload and independent-client handoff in both modes. Record warmup and continuing small heap trends without claiming complete allocator stability.
+
+- Keep the memory-recovery fixture's unallocated replacement inside its unchanged 64 MiB total envelope while preserving the touched 96 MiB pressure allocation, retry backoff, PID continuity and draft assertions. Sample replacement residency freshly; production limits are unchanged.
+
 - Enable manual runs of the complete CI workflow during release packaging.
 
 - Retain driver logs and phase markers for long editor replay checks, and include native memory readings and stop reasons when the recovery reuse assertion fails. These diagnostics do not establish a fix for the remaining hosted failures.

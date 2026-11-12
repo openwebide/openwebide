@@ -682,7 +682,7 @@ pub(super) fn FileEntryMenu(
     view! { <span class="ui-action-menu-context" node_ref=root>
             {actions.map(move |actions| view! {
                 <Dropdown aria_label="File actions" class="ui-action-menu tree-entry-menu" trigger_class=if context_only { "sr-only" } else { "icon-btn ui-icon" } hide_caret=true
-                    open=open pointer_anchor=anchor.into() on_open=Callback::new(move |()| {anchor.set(None); load_changes.run(());})
+                    retain_contents=true open=open pointer_anchor=anchor.into() on_open=Callback::new(move |()| {anchor.set(None); load_changes.run(());})
                     label=|| view! {<Icon name=IconName::Ellipsis />}>
                     <div class="ui-action-items" on:click=move |event| {
                         if event.target().and_then(|target| target.dyn_into::<web_sys::Element>().ok())

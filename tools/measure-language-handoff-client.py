@@ -203,7 +203,8 @@ def pressure_recovery(browser, environment, residency, record, previous_children
             'container_process_pids': sorted(current)})
 
 
-def measure(samples, modules, output, environment_factory=None, exercise_pressure=False):
+def measure(samples, modules, output, environment_factory=None, exercise_pressure=False,
+            query_observer=None):
     report = {'format': 2, 'status': 'running', 'platform': {'os':os.uname().sysname,'release':platform.release(),'machine':platform.machine(),'cpu_count':os.cpu_count()},
               'samples_per_mode': samples, 'dependency_modules': modules, 'modes': [], 'limits': [
                   'Generated TypeScript dependency graph; not a whole-app 2CPU/2GiB Linux benchmark.',
@@ -305,6 +306,8 @@ def measure(samples, modules, output, environment_factory=None, exercise_pressur
                         record['reloads'].append({'index':index,'ready_ms':ready_ms,'hover_ms':hover_ms,
                             'hover_retries':events['hover_retries'],
                             'server':servers.pop(),'residency':sample,'mode_server_pids':[pid for pid in sample['server_pids'] if pid not in previous_children],'post_gc_js_heap':memory(browser)})
+                        if query_observer:
+                            query_observer(browser, 'reload', index)
                     # Two genuine page clients alternate the same server while each
                     # keeps a different unsaved overlay. Both windows remain alive.
                     first=browser.call('GET','/window')
@@ -335,6 +338,8 @@ def measure(samples, modules, output, environment_factory=None, exercise_pressur
                                 'hover_retries':script(browser,'return handoffEvidence.hover_retries.slice(arguments[0]);',retries_before),
                                 'residency':residency.sample()})
                             record['handoffs'][-1]['mode_server_pids']=[pid for pid in record['handoffs'][-1]['residency']['server_pids'] if pid not in previous_children]
+                            if query_observer:
+                                query_observer(browser, 'handoff', index)
                     if exercise_pressure:
                         print(json.dumps({'phase':'pressure_recovery','mode':mode}),flush=True)
                         pressure_recovery(browser,environment,residency,record,previous_children,first,second)
@@ -346,6 +351,8 @@ def measure(samples, modules, output, environment_factory=None, exercise_pressur
                         roots=set(sample['server_pids'])-previous_children
                         return sample if len(roots)==1 else None
                     record['settled_residency']=wait('one idle server after client overlap',settled,15)
+                    if query_observer:
+                        query_observer(browser, 'settled', None)
                     for path,text in files.items():assert (folder/path).read_bytes()==text.encode(),path+' written behind Save'
                     observed=residency.samples[start_index:]
                     record['summary']={'first_load_ms':record['reloads'][0]['ready_ms'],

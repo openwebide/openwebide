@@ -1270,6 +1270,13 @@ Remaining work:
   against the whole container at eviction and after both clients recover. All
   64 reloads and 128 alternating queries passed across native macOS and the
   constrained Linux app. Historical descendant-only observations remain separate.
+  Calibrated browser probes now separately record retained V8 heap, live unshared
+  WASM linear capacities and natural process RSS. Repeated retained menus build
+  their owned controls once, dispose subscriptions on unmount and reject stale
+  detached clicks. Full finite query series distinguish bounded DOM warmup from
+  remaining small JavaScript heap trends; complete native/WASM allocator stability
+  and active-work pressure remain open
+  ([retained measurements](code-intelligence/retained-memory-measurements.json)).
 - Finish persistent derived-cache adoption, active disk-growth bounds and resource measurements.
   Public API 9 cache declarations now bind native environment, argument and settings
   paths outside the opened project through both authenticated adapters. Namespaces
@@ -1447,12 +1454,20 @@ Remaining work:
 - Run the same service/cache contracts against both adapters, including reconnect,
   concurrent overlays, cancellation, eviction, folder-access recovery and updates.
   Investigate the earlier hosted Linux memory-recovery reuse failure. Both native
-  Linux editor partitions, including full Local and Remote wrapped replays, now
-  pass on the committed followup; the earlier renderer stall did not recur.
+  Linux editor partitions, including full Local and Remote wrapped replays, pass
+  on the recorded manual followup. A separate automatic-release job on that same
+  commit stalls during the final Remote owner restoration after all twenty
+  geometry-oracle calls return; its renderer/driver logs remain recorded.
   Keep complete fixtures, assertions and existing deadlines while collecting
   phase logs and native memory stop reasons
-  ([hosted checkpoint](code-intelligence/hosted-checks.json)). Passing reruns do not
-  establish the earlier failures' cause.
+  ([hosted checkpoint](code-intelligence/hosted-checks.json)). The diagnostic run
+  records an unallocated replacement exceeding the fixture's original 32 MiB
+  per-service limit. Its candidate now uses 64 MiB per service within the unchanged
+  64 MiB total test envelope, with fresh replacement sampling and the original
+  96 MiB pressure allocation, backoff and continuity assertions. Local macOS passes;
+  native Linux verification on the candidate commit remains required. Production
+  limits are unchanged. Passing editor reruns do not establish the stall cause
+  or reliable hosted replay completion.
   Benchmark resource use on a small homelab before claiming prefetch improvements.
 
 Extend the public [language contribution contract](plugins.md#language-support),

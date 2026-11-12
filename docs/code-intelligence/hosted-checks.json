@@ -3,7 +3,7 @@
   "checked_on": "2026-11-11",
   "application_commit": "9f16a87d3b8648cd3bea094703f177c0db7941ef",
   "release_workflow_run": 43065287802,
-  "status": "hosted_memory_reuse_failure_unresolved_selected_other_contracts_passed",
+  "status": "hosted_fixture_baseline_exceeds_original_test_limit_current_native_linux_followup_pending",
   "cases": [
     {
       "name": "Native Windows source notifications",
@@ -209,5 +209,118 @@
     "path": ".github/workflows/ci.yml",
     "manual_trigger": "workflow_dispatch",
     "scope": "Runs the complete existing CI job matrix independently of serialized release packaging. No job, assertion, fixture or deadline is removed."
+  },
+  "diagnostics_committed_followup": {
+    "commit": "b577a48db8279829291789ffce29da42cd9bc0cb",
+    "workflow_run": 43101503924,
+    "url": "https://github.com/openwebide/openwebide/actions/runs/43101503924",
+    "conclusion": "failure",
+    "native_linux_memory": {
+      "job": 130793858502,
+      "status": "failed_recovered_process_continuity",
+      "passed": 456,
+      "failed": 1,
+      "ignored": 1,
+      "log_sha256": "011abf3d92cd319ad06e029a730c6ba6434b4170bb0a4d6e964b34ebb05e627d",
+      "stopped_process_tree_resident_bytes": [
+        40681472,
+        141070336
+      ],
+      "original_service_limit_bytes": 33554432,
+      "original_total_limit_bytes": 67108864,
+      "deliberate_allocation_bytes": 100663296,
+      "observations": [
+        "Both recorded stop reasons exceed the per-service budget. The stop-reason list is client-key order, not chronological order.",
+        "The aggregate resumed usage was the last old-process OS sample; it did not establish replacement residency.",
+        "The fixture removes its allocation flag before restarting client A. After B returns, only A remains stopped at 40,681,472 bytes, above the original 32 MiB per-service budget."
+      ],
+      "candidate_fixture_followup": {
+        "service_limit_bytes": 67108864,
+        "total_limit_bytes": 67108864,
+        "deliberate_allocation_bytes": 100663296,
+        "backoff_ms": 5100,
+        "production_limits_changed": false,
+        "pid_overlay_and_start_count_assertions_preserved": true,
+        "new_assertions": [
+          "Fresh OS sampling observes the unallocated replacement before the reuse wait.",
+          "Replacement fits the unchanged total 64 MiB envelope and only the deliberately allocated tree has been evicted."
+        ],
+        "local_macos_status": "passed",
+        "local_fresh_replacement_resident_bytes": 28065792,
+        "native_linux_status": "awaiting_candidate_commit_ci"
+      }
+    },
+    "native_linux_editors": {
+      "status": "both_partitions_passed",
+      "passed": 259,
+      "failed": 0,
+      "ignored": 0,
+      "nonzero_browser_runs": 11,
+      "jobs": [
+        {
+          "job": 130793858311,
+          "passed": 160,
+          "runs": 6,
+          "log_sha256": "19a96b7cb0ea9dfea8321fc3ce05cad8876d5513951915347323fa0c2465f785"
+        },
+        {
+          "job": 130793869637,
+          "passed": 99,
+          "runs": 5,
+          "log_sha256": "1590fe7dfa711bd3683a10e295c5dc823c53c2f5a1dd5dd60006f91a975dfbbd"
+        }
+      ]
+    },
+    "other_jobs": {
+      "frontend_ui": "success",
+      "bridge_windows": "success",
+      "backend_and_crates": "success",
+      "plugin_panels": "success",
+      "docker": "success",
+      "frontend_aggregation": "skipped"
+    },
+    "limits": [
+      "The historical workflow remains failed; a local candidate pass does not establish native Linux x86-64 recovery.",
+      "The earlier editor stall did not recur. Passing complete editor partitions does not establish its cause.",
+      "Complete code-intelligence implementation remains open."
+    ]
+  },
+  "automatic_release_editor_followup": {
+    "commit": "b577a48db8279829291789ffce29da42cd9bc0cb",
+    "workflow_run": 43101337455,
+    "job": 130808235796,
+    "url": "https://github.com/openwebide/openwebide/actions/runs/43101337455/job/130808235796",
+    "status": "failed_remote_wrapped_replay_renderer_poll",
+    "test": "editor::wrapped_paragraph_edits_reuse_exact_source_owned_geometry_remote",
+    "job_log_sha256": "d57081be7999b9265287a803ca5e998501015a83b423b5bff19c914b4224fe68",
+    "driver_artifact": 13895673076,
+    "driver_artifact_zip_sha256": "89c833dd826ba2cc33f45c55c7a261eea512e7b5d35ff9cb95cbab4297851f9e",
+    "driver_log_sha256": "0fe12d2dc877307b6087e1a53d3a1ff0146e3a2d76e88fc7bda1277a844497eb",
+    "native_console_dir_markers": 144,
+    "phase_counts": {
+      "host-start": 1,
+      "scenario": 5,
+      "mounted": 5,
+      "provider-ready": 5,
+      "initial-geometry": 5,
+      "edit": 20,
+      "input-admitted": 20,
+      "edited-geometry": 20,
+      "complete-oracle": 20,
+      "complete-oracle-returned": 20,
+      "owner-restored": 19,
+      "scenario-finished": 4
+    },
+    "observations": [
+      "ChromeDriver reports a 30-second renderer message timeout, then ExecuteScript script timeout.",
+      "Official wasm-bindgen runner surfaces missing field chunk; cleanup SIGKILL does not establish OOM.",
+      "All twenty complete-oracle calls returned; last owner restoration and final scenario completion markers are absent.",
+      "Separate manual CI on the identical commit passes both editor partitions (259 tests/11 runs). The release job remains failed."
+    ],
+    "limits": [
+      "This failed automatic-release job and the passing manual CI on the same commit are separate observations.",
+      "The timeout cause remains unresolved; original fixtures, geometry assertions and deadlines are unchanged.",
+      "A local candidate pass does not establish native Linux replay reliability."
+    ]
   }
 }

@@ -79,7 +79,10 @@ pub(in crate::languages::host) fn input(
 async fn process_memory_eviction_and_backoff_preserve_both_clients_complete_dirty_sources() {
     let mut fixture = Fixture::new();
     fixture.host = Host::with_memory_limits(MemoryLimits {
-        service_bytes: 32 * 1024 * 1024,
+        // The hosted x86 debug watcher and unallocated Python peer exceed
+        // 32 MiB. Keep the complete host envelope at 64 MiB; the peer's
+        // touched 96 MiB allocation must still exceed both limits.
+        service_bytes: 64 * 1024 * 1024,
         total_bytes: 64 * 1024 * 1024,
         reserve_bytes: 0,
     })
@@ -111,12 +114,32 @@ async fn process_memory_eviction_and_backoff_preserve_both_clients_complete_dirt
             .entries
             .lock()
             .unwrap()
-            .values()
-            .filter(|entry| *entry.stopped.borrow())
-            .map(|entry| entry.failure.lock().unwrap().reason.clone())
+            .iter()
+            .filter(|(_, entry)| *entry.stopped.borrow())
+            .map(|(key, entry)| {
+                format!(
+                    "client={} {}",
+                    key.client,
+                    entry.failure.lock().unwrap().reason
+                )
+            })
             .collect::<Vec<_>>()
     };
+    // Usage is the last OS sample, which can still describe the retired hot
+    // process. Observe the unallocated replacement before testing its reuse.
+    resources::enforce(&fixture.host.inner).await;
     let resumed_usage = fixture.host.resource_usage();
+    assert!(
+        resumed_usage.resident_bytes > 0 && resumed_usage.resident_bytes <= 64 * 1024 * 1024,
+        "Recovered fixture must fit its unchanged total envelope: {resumed_usage:?}; stopped={:?}",
+        stopped_reasons()
+    );
+    assert_eq!(
+        resumed_usage.evictions,
+        1,
+        "Only the allocated process should be evicted: {resumed_usage:?}; stopped={:?}",
+        stopped_reasons()
+    );
     tokio::time::sleep(Duration::from_millis(5100)).await;
     let before_return_usage = fixture.host.resource_usage();
     let before_return_stopped = stopped_reasons();
