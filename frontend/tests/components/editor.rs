@@ -22940,6 +22940,7 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry(
             let mut plan = actions.prepare_wrapped_paragraph(&scope, 0).unwrap();
             let reused = actions.resume_paragraph_prefix_batch(&prefix, &mut plan);
             assert!(reused > 2 && reused <= openwebide_core::editor::MAX_MEASURE_BATCHES_PER_FRAME);
+            let original_account = mounted.state.auth.generation.get_untracked();
             mounted
                 .state
                 .auth
@@ -22952,14 +22953,25 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry(
             assert_eq!(actions.resume_paragraph_suffix(&suffix, &mut plan), 0);
             assert_eq!(actions.resume_paragraph_prefix_batch(&prefix, &mut plan), 0);
             assert!(plan.probe().is_some());
-            // Let the host observe revocation before restoring the owner;
-            // otherwise a delayed lifecycle transition races the next edit.
+            // Observe revocation before entering the next account generation.
+            // Production sign-in/logout never restores an earlier generation.
             openwebide_frontend::util::yield_task().await;
             mounted
                 .state
                 .auth
                 .generation
-                .update(|generation| *generation -= 1);
+                .update(|generation| *generation += 1);
+            assert_eq!(
+                mounted.state.auth.generation.get_untracked(),
+                original_account + 2
+            );
+            assert_eq!(
+                actions.resume_current_paragraph_batch(&scope, 0, &mut plan),
+                0
+            );
+            assert_eq!(actions.resume_paragraph_suffix(&suffix, &mut plan), 0);
+            assert_eq!(actions.resume_paragraph_prefix_batch(&prefix, &mut plan), 0);
+            assert!(plan.probe().is_some());
             assert_eq!(actions.source(), changed);
             // The stale-account probe also invalidates host preparation.
             // Settle that lifecycle and its current measurements before

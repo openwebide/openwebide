@@ -9,6 +9,8 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Use monotonically increasing account generations in the wrapped geometry replay fixture, matching sign-in/logout. Preserve its complete geometry checks and existing deadlines, with separate counter-restoration coverage unchanged.
+
 - Keep Linux/macOS foreground and agent command folder locks in an independent process watcher before dispatch and through bridge loss or cancellation cleanup. Enter the pinned original directory, preserve acknowledged background work while retaining exclusion, and block overlapping work when cleanup is unconfirmed. Escaped groups, PTY/Git lifetimes, Windows ownership and durable writer authority remain unfinished.
 - Require real authenticated command and descendant startup in disconnect checks, including paired browser access, before checking that delayed writes are prevented.
 - Cancel app HTTP commands when their connection reaches read EOF, through an explicit request option shared by Local and Remote command clients. Preserve intentional half-closed requests for clients that omit the option.

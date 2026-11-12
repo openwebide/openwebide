@@ -1496,9 +1496,19 @@ Remaining work:
   partitions pass on the later published `80d57c39`; the earlier failure's cause
   remains unproven. The `80d57c39` runtime job still fails the separate process-group
   shutdown assertion; failure-state diagnostics and release packaging are tracked separately.
+  On the later `f4a10bc7`, the backend pin-fetch, native shutdown and Local
+  wrapped-replay jobs failed separately. Published `1e02b234` passes all 34 local
+  CI cases and the actual push gate of 765 browser tests. Its recorded hosted backend,
+  non-editor UI, panel and Windows jobs pass; runtime, editor and release packaging
+  were still running at that observation.
+  The shared wrapped replay fixture now advances account generations monotonically,
+  matching production sign-in/logout. Both-mode original/candidate checks retain
+  all five scenarios, four edits each, complete geometry oracles and deadlines;
+  dedicated counter-restoration fixtures remain. Four exact local runs pass, with
+  one large runner wall-time outlier recorded separately from its browser duration.
   Keep complete fixtures, assertions and existing deadlines while investigating
-  these separate failures. Local passes do not establish reliable hosted replay
-  completion ([hosted checkpoint](code-intelligence/hosted-checks.json)).
+  hosted completion. These finite local checks establish no performance benefit
+  or hosted failure cause/fix ([hosted checkpoint](code-intelligence/hosted-checks.json)).
   Benchmark resource use on a small homelab before claiming prefetch improvements.
 
 Extend the public [language contribution contract](plugins.md#language-support),

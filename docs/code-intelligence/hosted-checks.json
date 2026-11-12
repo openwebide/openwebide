@@ -1,9 +1,9 @@
 {
   "format": 1,
-  "checked_on": "2026-11-11",
+  "checked_on": "2026-11-12",
   "application_commit": "9f16a87d3b8648cd3bea094703f177c0db7941ef",
   "release_workflow_run": 43065287802,
-  "status": "current_native_memory_fixture_passed_separate_shutdown_and_editor_failures",
+  "status": "historical_cases_with_separate_published_and_local_followups",
   "cases": [
     {
       "name": "Native Windows source notifications",
@@ -456,6 +456,110 @@
     }
   },
   "current_published_followup": {
+    "commit": "1e02b234340a77ada932735336a9ce1f9c080801",
+    "workflow_run": 43267197474,
+    "observed_at_utc": "2026-11-12T17:40:39.519983+00:00",
+    "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474",
+    "status_at_observation": "in_progress",
+    "jobs": {
+      "validate": {
+        "id": 131353835860,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353835860",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "macos-bridges (macos-15-intel, x86_64-apple-darwin)": {
+        "id": 131353969942,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353969942",
+        "status": "in_progress",
+        "conclusion": ""
+      },
+      "macos-bridges (macos-15, aarch64-apple-darwin)": {
+        "id": 131353970004,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970004",
+        "status": "in_progress",
+        "conclusion": ""
+      },
+      "checks / backend-and-crates": {
+        "id": 131353970629,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970629",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / frontend-ui-tests": {
+        "id": 131353970674,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970674",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / plugin-runtime": {
+        "id": 131353970675,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970675",
+        "status": "in_progress",
+        "conclusion": ""
+      },
+      "checks / editor-ui-tests (1/2)": {
+        "id": 131353970730,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970730",
+        "status": "in_progress",
+        "conclusion": ""
+      },
+      "checks / editor-ui-tests (2/2)": {
+        "id": 131353970889,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970889",
+        "status": "in_progress",
+        "conclusion": ""
+      },
+      "checks / plugin-panels": {
+        "id": 131353970904,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970904",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "images (ubuntu-24.04, amd64, x86_64-unknown-linux-gnu)": {
+        "id": 131353970936,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970936",
+        "status": "in_progress",
+        "conclusion": ""
+      },
+      "checks / bridge-windows": {
+        "id": 131353970962,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970962",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / docker": {
+        "id": 131353971105,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353971105",
+        "status": "in_progress",
+        "conclusion": ""
+      },
+      "images (ubuntu-24.04-arm, arm64, aarch64-unknown-linux-gnu)": {
+        "id": 131353979930,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353979930",
+        "status": "in_progress",
+        "conclusion": ""
+      }
+    },
+    "local_verification": {
+      "complete_precommit_cases": 34,
+      "actual_tracked_hook_passed": true,
+      "actual_hook_seconds": 2787.45,
+      "actual_hook_log_sha256": "a4373e1d1810dd49ec69788e07ba776d81be6b16d064e5147a68e34805cbb377",
+      "native_passes": 2333,
+      "native_batches": 40,
+      "real_server_integration_cases": 8,
+      "browser_passes": 765,
+      "positive_browser_runs": 18
+    },
+    "limits": [
+      "Job states describe this exact recorded observation. A running job is not a pass; full release and publication need separate final results.",
+      "The successful local hook does not establish reliable hosted replay completion or the cause of earlier failures."
+    ]
+  },
+  "initial_checked_on": "2026-11-11",
+  "initial_status": "current_native_memory_fixture_passed_separate_shutdown_and_editor_failures",
+  "historical_80d_published_followup": {
     "commit": "80d57c39f8e8c43000429d7d80d424d2d27d9584",
     "workflow_run": 43166563768,
     "jobs": {
@@ -499,5 +603,92 @@
       "failure_diagnostic": "2026-11-12T07:10:34.9545110Z Owned group after server shutdown: pgid=91806, signal_zero=0, ps_status=exit status: 0, members=[]",
       "observation": "The original signal-zero result was0; the later process snapshot returned no group members. The snapshot is later than the assertion observation, so this does not establish a cause or fix."
     }
+  },
+  "historical_f4_published_followup": {
+    "commit": "f4a10bc704bbf6f70b491ae247c403678c87d9f0",
+    "workflow_run": 43214582176,
+    "status": "completed",
+    "conclusion": "failure",
+    "html_url": "https://github.com/openwebide/openwebide/actions/runs/43214582176",
+    "failed_jobs": [
+      {
+        "databaseId": 131170539486,
+        "name": "checks / plugin-runtime",
+        "conclusion": "failure"
+      },
+      {
+        "databaseId": 131170539654,
+        "name": "checks / editor-ui-tests (2/2)",
+        "conclusion": "failure"
+      },
+      {
+        "databaseId": 131170539892,
+        "name": "checks / backend-and-crates",
+        "conclusion": "failure"
+      }
+    ],
+    "known_observations": [
+      "Backend tooling failed during the fifth sequential immutable-pin fetch with a shallow-file error. The exact Git cause remains unproven.",
+      "Native runtime failed the original process-group shutdown assertion; failure-state diagnostics are preserved.",
+      "Local wrapped replay hit its unchanged 300 s runner setting after all 20 geometry-oracle returns and 19 owner restorations. This does not establish an OOM or a root cause."
+    ]
+  },
+  "local_monotonic_account_replay": {
+    "checked_on": "2026-11-12",
+    "status": "passed_four_finite_exact_replay_runs",
+    "base_commit": "1e02b234340a77ada932735336a9ce1f9c080801",
+    "source_manifest_sha256": "21f10823d5601eda52187a009ccfc3be05d2f00af328dfc350dd559f062fafe6",
+    "working_tree": true,
+    "relevant_source_sha256": {
+      "frontend/tests/components/editor.rs": "5f1a5cffa187257724bac51a7a21804ba60d4a0f9b0cc6e081fbc7eef8452a22"
+    },
+    "diff_sha256": "ff24fead0da6e573ef6eca52a18cbd205c871beb9685332c051ed52e0d660d73",
+    "original_component_sha256": "e284a15da364c2c6a0fc77775a85f04f1a337f158430ac3576f07d7f970a9b80",
+    "candidate_component_sha256": "605a9f3891c4c7705620499214ad495b3bab3483725245bf0518a361b74ada92",
+    "tool_sha256": {
+      "runner": "6dcb994b3cd5dd6613cb4aa712c3dff7d8d182fbd98675551be26c47fe7f3379",
+      "chrome": "3336497800b2b2045f4b64d269319af2acf37778b132aac1d03789b4decbc7e6",
+      "driver": "dd74bfd4b23d4ce20814972f6a27e26315e2c05782d5b1a0bf4355ff3e5164ff",
+      "rustc": "766eda9d8f53afd6fc7f27b3cd2e444dd22afacb5afa710a5625fc8e45b8c941"
+    },
+    "runner_timeout_seconds": 300,
+    "compiled_readiness_timeout_seconds": 30,
+    "outer_cleanup_deadline_seconds": 480,
+    "runs": [
+      {
+        "case": "original-local",
+        "wall_seconds": 71.67,
+        "in_browser_reported_seconds": 68.23,
+        "log_sha256": "02058592caf586777cfab92e06dd797b9d4836c15fe1c87a44e74d58bd3ed5b1"
+      },
+      {
+        "case": "original-remote",
+        "wall_seconds": 79.35,
+        "in_browser_reported_seconds": 76.06,
+        "log_sha256": "15e6f1a9c492b4e8cf27016a4bebc66b9c9f9f8ee2e87ca31741cda40ac64515"
+      },
+      {
+        "case": "candidate-local",
+        "wall_seconds": 344.03,
+        "in_browser_reported_seconds": 70.7,
+        "log_sha256": "fee6ba50a95c07835ba5ead20aa39214c2bbe09caab5c4efb691e3e1d68d156a"
+      },
+      {
+        "case": "candidate-remote",
+        "wall_seconds": 82.92,
+        "in_browser_reported_seconds": 79.71,
+        "log_sha256": "2fe52ec232a4839d36daf0b29c93c886b223cc6dac47447404f256d14f8c35cc"
+      }
+    ],
+    "preserved_workload": "Five scenarios and four source edits each in both modes, with every complete geometry/glyph oracle, reuse bound and original stale-handle assertion retained. Extra stale-handle checks follow the new monotonic account transition. Dedicated other counter-round-trip fixtures remain unchanged.",
+    "change": "Advance the account generation again after revocation instead of restoring an earlier value, matching production set_user/logout transitions.",
+    "full_local_ci": false,
+    "published": false,
+    "limits": [
+      "Original complete geometry/workload assertions and compiled30s readiness checks retained; dedicated other ABA fixtures unchanged.",
+      "One observation per arm/mode, not a performance comparison or hosted root-cause/fix proof.",
+      "Local candidate wall344.03s versus reported browser70.7s leaves273.33s outside that reported interval. The untimestamped runner log does not assign it to preprocessing, navigation, startup, output transport or cleanup. Original300s runner setting unchanged;480s outer cleanup cap separately recorded.",
+      "Exact original C actual-push component and genuinely rebuilt N component remain preserved. C production40-artifact ledger unchanged."
+    ]
   }
 }
