@@ -88,5 +88,33 @@ async fn shutdown_waits_for_delayed_process_group_cleanup() {
         .unwrap()
         .unwrap();
     // SAFETY: signal zero only checks whether the test-owned process group remains alive.
-    assert_eq!(unsafe { libc::kill(-pid, 0) }, -1);
+    let remaining = unsafe { libc::kill(-pid, 0) };
+    if remaining != -1 {
+        let observed = std::process::Command::new("ps")
+            .args(["-eo", "pid=,ppid=,pgid=,stat=,comm="])
+            .output();
+        let observed = match observed {
+            Ok(observed) => observed,
+            Err(error) => {
+                eprintln!("Cannot snapshot owned group {pid}: {error}");
+                assert_eq!(remaining, -1);
+                return;
+            }
+        };
+        let rows = String::from_utf8_lossy(&observed.stdout)
+            .lines()
+            .filter(|line| {
+                line.split_whitespace()
+                    .nth(2)
+                    .and_then(|field| field.parse::<i32>().ok())
+                    == Some(pid)
+            })
+            .map(str::to_string)
+            .collect::<Vec<_>>();
+        eprintln!(
+            "Owned group after server shutdown: pgid={pid}, signal_zero={remaining}, ps_status={}, members={rows:?}",
+            observed.status
+        );
+    }
+    assert_eq!(remaining, -1);
 }

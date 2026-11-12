@@ -19,6 +19,7 @@ use std::sync::Arc;
 mod application;
 use application::{AnalysisResult, PreparedEdit};
 mod edits;
+mod prefetch;
 use edits::{ResourceContext, clear_workspace_review};
 pub use edits::{WorkspaceResourceReview, WorkspaceTextReview};
 
@@ -298,6 +299,7 @@ impl EditorActions {
         let ticket = StoredValue::new(0_u64);
         let settled = RwSignal::new(0_u64);
         let previous_dirty = StoredValue::new(None::<(Option<(i64, String)>, bool)>);
+        let prefetch = prefetch::Prefetch::new();
         let current = move |captured: &Snapshot| {
             untrack(|| self.presentation_scope()).as_ref() == Some(&captured.presentation)
                 && source_revision.try_get_untracked() == Some(captured.revision)
@@ -584,6 +586,7 @@ impl EditorActions {
             error.set(None);
         });
         let request = Callback::new(move |command: IntelligenceCommand| {
+            prefetch.interrupt();
             let mode = match &command {
                 IntelligenceCommand::Suggest => Presentation::Suggestions,
                 IntelligenceCommand::HoverAt(_) => Presentation::Hover,
@@ -921,7 +924,7 @@ impl EditorActions {
                     };
                     let history = state.intelligence_documents.get_value();
                     if matches!(query, Query::Synchronize | Query::Saved) {
-                        return client_service
+                        let reports = client_service
                             .diagnostics(
                                 scope.project,
                                 &client,
@@ -930,8 +933,36 @@ impl EditorActions {
                                 &history,
                                 matches!(query, Query::Saved),
                             )
-                            .await
-                            .map(IntelligenceReply::Diagnostics);
+                            .await?;
+                        if current(&captured)
+                            && ticket.try_get_value() == Some(request_ticket)
+                            && let Some(server) = reports
+                                .iter()
+                                .filter(|report| {
+                                    report.provider.shares_server(&scope.provider)
+                                        && report.error.is_none()
+                                })
+                                .find_map(|report| report.server.clone())
+                        {
+                            prefetch.ready(prefetch::Ready {
+                                scope: scope.clone(),
+                                service: client_service,
+                                client,
+                                revision: captured.revision,
+                                server,
+                            });
+                            if reports.iter().any(|report| {
+                                report.provider.shares_server(&scope.provider)
+                                    && report.ready
+                                    && report.error.is_none()
+                            }) {
+                                prefetch.satisfied(
+                                    &captured.presentation.path,
+                                    protocol::PrefetchKind::Diagnostics,
+                                );
+                            }
+                        }
+                        return Ok(IntelligenceReply::Diagnostics(reports));
                     }
                     let selected = if let Some(namespace) = &selected_provider {
                         client_service.diagnostic_service(
@@ -958,6 +989,31 @@ impl EditorActions {
                     let response = selected
                         .intelligence(&client, document.clone(), query.clone())
                         .await?;
+                    if current(&captured)
+                        && ticket.try_get_value() == Some(request_ticket)
+                        && selected.provider().shares_server(&scope.provider)
+                    {
+                        prefetch.ready(prefetch::Ready {
+                            scope: scope.clone(),
+                            service: client_service,
+                            client: client.clone(),
+                            revision: captured.revision,
+                            server: response.server.clone(),
+                        });
+                        if response.diagnostics_ready {
+                            prefetch.satisfied(
+                                &captured.presentation.path,
+                                protocol::PrefetchKind::Diagnostics,
+                            );
+                        }
+                        if matches!(query, Query::Symbols) {
+                            prefetch.satisfied(
+                                &captured.presentation.path,
+                                protocol::PrefetchKind::Symbols,
+                            );
+                        }
+                        prefetch.related(&query, &response);
+                    }
                     let analysis = AnalysisResult::capture(
                         &captured,
                         &query,
@@ -1268,6 +1324,25 @@ impl EditorActions {
                 }
             });
         });
+        let prefetch_allowed = Memo::new(move |_| {
+            state.prefetch_enabled.get()
+                && available.get()
+                && !busy.get()
+                && !popup_busy.get()
+                && !automatic_running.get()
+                && !rename_open.get()
+                && result.with(Option::is_none)
+                && popup.with(Option::is_none)
+                && review.with(Option::is_none)
+                && resources.with(Option::is_none)
+                && composition.get().is_none()
+                && !self.workspace.active_project.get().is_some_and(|project| {
+                    self.workspace.workspace_recovery.track();
+                    self.workspace.workspace_saves_blocked(project)
+                        || self.workspace.editor_operation_active(project)
+                })
+        });
+        prefetch.install(self, identity, source_revision, source, prefetch_allowed);
         Some(EditorIntelligence {
             available,
             primary_available,

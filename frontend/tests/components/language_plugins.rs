@@ -657,6 +657,29 @@ async fn language_settings_controls_persist_defaults_and_project_overrides_in_bo
             }
         });
         language_support::ready(&mounted.state).await;
+        let warming = mounted
+            .root
+            .query_selector(
+                ".ui-section[aria-label='Idle language analysis'] input[type='checkbox']",
+            )
+            .unwrap()
+            .unwrap()
+            .dyn_into::<web_sys::HtmlInputElement>()
+            .unwrap();
+        assert!(!warming.checked(), "Idle work must be opt-in");
+        warming.click();
+        wait_until("idle language analysis preference persists", || {
+            mounted.state.languages.prefetch_enabled.get_untracked()
+                && !mounted.state.languages.prefetch_saving.get_untracked()
+                && mounted
+                    .state
+                    .fake
+                    .settings
+                    .borrow()
+                    .get("language_prefetch")
+                    .is_some_and(|value| value == "true")
+        })
+        .await;
         // Find the provider by its visible language label, independently of row order.
         let fields = mounted
             .root
@@ -763,6 +786,22 @@ async fn language_settings_controls_persist_defaults_and_project_overrides_in_bo
                     settings.defaults.providers.get("rust") == Some(&ProviderPreference::Automatic)
                 })
         })
+        .await;
+        warming.click();
+        wait_until(
+            "idle analysis can be disabled independently of provider choices",
+            || {
+                !mounted.state.languages.prefetch_enabled.get_untracked()
+                    && !mounted.state.languages.prefetch_saving.get_untracked()
+                    && mounted
+                        .state
+                        .fake
+                        .settings
+                        .borrow()
+                        .get("language_prefetch")
+                        .is_some_and(|value| value == "false")
+            },
+        )
         .await;
         assert_eq!(mounted.state.workspace.content.get_untracked(), source);
         assert!(!mounted.state.workspace.dirty.get_untracked());

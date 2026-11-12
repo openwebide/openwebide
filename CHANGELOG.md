@@ -9,6 +9,8 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Add a default-off, account-saved option to warm language services while idle in both project modes. Bound diagnostics/symbol preparation to current open buffers, cancel it for foreground work and preference changes, and discard speculative replies. Require the client's own warm service so a parked window cannot reclaim another window's process. Unopened dependencies and production benefit/resource measurements remain unfinished.
+
 - Construct retained action and file menus once per mounted component, preserving live options and dialog callbacks while releasing subscriptions on unmount. Restore focus on reopening and reject stale detached control clicks.
 
 - Add calibrated retained V8/WASM memory and separate natural RSS measurements for installed TypeScript reload and independent-client handoff in both modes. Record warmup and continuing small heap trends without claiming complete allocator stability.
@@ -17,7 +19,7 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 - Enable manual runs of the complete CI workflow during release packaging.
 
-- Retain driver logs and phase markers for long editor replay checks, and include native memory readings and stop reasons when the recovery reuse assertion fails. These diagnostics do not establish a fix for the remaining hosted failures.
+- Retain driver logs and phase markers for long editor replay checks, and include native memory readings and stop reasons when the recovery reuse assertion fails. Capture owned-group process states if the original bridge shutdown assertion fails. These diagnostics do not establish a fix for the remaining hosted failures.
 
 - Distinguish Windows parent notifications for watched files and directories. Ignore directory timestamp notifications from unrelated child writes while retaining file writes, directory namespace changes, metadata observations and bounded I/O retirement. Native Windows source-generation, retirement and Git metadata checks now pass.
 
@@ -87,7 +89,7 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 - Apply the compiler's visibility correction to the archived `proc-macro-error2` dependency, preserving its published macro re-export without suppressing Rust's future-incompatibility diagnostic.
 
-- Add native admission for optional source-bound diagnostics/symbol prefetch through the shared public language facade. Bound discovery and execution to one speculative request per host with a two-second deadline, preserve command pins, and cancel speculation for interactive work. Suspend further speculation on an interrupted original process through client handoff until restart; ordinary queries remain available. Editor scheduling and production prefetch measurements remain unfinished.
+- Add native admission for optional source-bound diagnostics/symbol prefetch through the shared public language facade. Bound discovery and execution to one speculative request per host with a two-second deadline, preserve command pins, and cancel speculation for interactive work. Suspend further speculation on an interrupted original process through client handoff until restart; ordinary queries remain available. Unopened sources and complete production prefetch resource/benefit measurements remain unfinished.
 - Reject optional language prefetch spanning associated-source, directory or alias changes through both native transports. Publish bounded metadata inventories atomically, retain scan slots through cancellation and preserve ordinary queries when optional collection fails. Completed results discarded for changed sources can retry on the same service. Filesystem-event coverage and reusable-result freshness remain unfinished.
 
 - Observe native language-process memory without retaining service ownership during OS scans. Match readings to the original process across client handoff, reject stale samples after replacement or PID reuse, and retain startup pressure enforcement and confirmed cleanup.

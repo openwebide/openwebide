@@ -35,6 +35,10 @@ struct Fixture {
 
 impl Fixture {
     async fn new(mode: WorkspaceMode, result: serde_json::Value) -> Self {
+        Self::with_prefetch(mode, result, false).await
+    }
+
+    async fn with_prefetch(mode: WorkspaceMode, result: serde_json::Value, prefetch: bool) -> Self {
         let previous_token = openwebide_frontend::idb::get_bridge_pairing_token()
             .await
             .unwrap();
@@ -52,6 +56,9 @@ impl Fixture {
         let paired = plugin.prepared.clone();
         set_bridge_plugin(&http.0, &serde_json::to_string(&paired).unwrap());
         let fake = Rc::new(FakeBackend::default());
+        fake.settings
+            .borrow_mut()
+            .insert("language_prefetch".into(), prefetch.to_string());
         fake.project_plugin_entries
             .borrow_mut()
             .insert(1, vec![plugin]);
@@ -860,3 +867,6 @@ async fn automatic_completion_keeps_its_popup_until_validated_publication_in_bot
         }
     }
 }
+
+#[path = "application/prefetch.rs"]
+mod prefetch;

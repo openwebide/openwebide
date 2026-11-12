@@ -1,0 +1,323 @@
+{
+  "format": 1,
+  "checked_on": "2026-11-11",
+  "status": "128_module_comparison_passed_512_module_comparison_incomplete_after_local_watch_budget_declines",
+  "base_commit": "146c26b30322dbbe40b5cf8af6c2fc2fe00fbd88",
+  "measured_source_manifest_sha256": "2df37f507c503238627755fabd826332afae546cc6cdcaa8935c8b8d13e0e6ef",
+  "same_frontend_backend_bridge_in_both_arms": true,
+  "preference": {
+    "key": "language_prefetch",
+    "scope": "account database settings",
+    "default": false,
+    "off_value": "false",
+    "on_value": "true"
+  },
+  "workload": {
+    "modules": [
+      128,
+      512
+    ],
+    "samples_per_case_per_mode": {
+      "reloads": 4,
+      "alternating_queries": 8,
+      "added_symbol_observations": 12
+    },
+    "order": [
+      "off",
+      "on",
+      "on",
+      "off"
+    ],
+    "completed_128_cases": 4,
+    "completed_512_workflows": 2,
+    "completed_512_comparison": false,
+    "original_handoff_assertions_and_deadlines_preserved": true,
+    "additional_idle_seconds": 2
+  },
+  "measurements": [
+    {
+      "modules": 128,
+      "arm": "baseline",
+      "mode": "remote",
+      "cases": 2,
+      "tab_to_symbols": {
+        "samples": 24,
+        "median_ms": 259.6473334997427,
+        "p95_ms": 476.2543340038974,
+        "min_ms": 243.08183300308883,
+        "max_ms": 1043.5114589927252
+      },
+      "rss_peaks": [
+        {
+          "case": "128-1-baseline",
+          "simultaneous_bridge_tree_rss_peak_bytes": 783810560
+        },
+        {
+          "case": "128-4-baseline",
+          "simultaneous_bridge_tree_rss_peak_bytes": 816463872
+        }
+      ],
+      "observed_prefetch": [
+        {
+          "case": "128-1-baseline",
+          "observed_successful_prefetch": 0,
+          "observed_failed_prefetch": 0
+        },
+        {
+          "case": "128-4-baseline",
+          "observed_successful_prefetch": 0,
+          "observed_failed_prefetch": 0
+        }
+      ]
+    },
+    {
+      "modules": 128,
+      "arm": "baseline",
+      "mode": "local",
+      "cases": 2,
+      "tab_to_symbols": {
+        "samples": 24,
+        "median_ms": 377.14566648355685,
+        "p95_ms": 386.4957919868175,
+        "min_ms": 357.71287500392646,
+        "max_ms": 389.7695420018863
+      },
+      "rss_peaks": [
+        {
+          "case": "128-1-baseline",
+          "simultaneous_bridge_tree_rss_peak_bytes": 1041711104
+        },
+        {
+          "case": "128-4-baseline",
+          "simultaneous_bridge_tree_rss_peak_bytes": 1079328768
+        }
+      ],
+      "observed_prefetch": [
+        {
+          "case": "128-1-baseline",
+          "observed_successful_prefetch": 0,
+          "observed_failed_prefetch": 0
+        },
+        {
+          "case": "128-4-baseline",
+          "observed_successful_prefetch": 0,
+          "observed_failed_prefetch": 0
+        }
+      ]
+    },
+    {
+      "modules": 128,
+      "arm": "candidate",
+      "mode": "remote",
+      "cases": 2,
+      "tab_to_symbols": {
+        "samples": 24,
+        "median_ms": 260.7551039982354,
+        "p95_ms": 1471.5080409951042,
+        "min_ms": 249.3104999884963,
+        "max_ms": 1943.6207919789013
+      },
+      "rss_peaks": [
+        {
+          "case": "128-2-candidate",
+          "simultaneous_bridge_tree_rss_peak_bytes": 794296320
+        },
+        {
+          "case": "128-3-candidate",
+          "simultaneous_bridge_tree_rss_peak_bytes": 794066944
+        }
+      ],
+      "observed_prefetch": [
+        {
+          "case": "128-2-candidate",
+          "observed_successful_prefetch": 24,
+          "observed_failed_prefetch": 0
+        },
+        {
+          "case": "128-3-candidate",
+          "observed_successful_prefetch": 24,
+          "observed_failed_prefetch": 0
+        }
+      ]
+    },
+    {
+      "modules": 128,
+      "arm": "candidate",
+      "mode": "local",
+      "cases": 2,
+      "tab_to_symbols": {
+        "samples": 24,
+        "median_ms": 375.58883348538075,
+        "p95_ms": 397.4971249990631,
+        "min_ms": 358.09012499521486,
+        "max_ms": 472.577790991636
+      },
+      "rss_peaks": [
+        {
+          "case": "128-2-candidate",
+          "simultaneous_bridge_tree_rss_peak_bytes": 1055473664
+        },
+        {
+          "case": "128-3-candidate",
+          "simultaneous_bridge_tree_rss_peak_bytes": 1049608192
+        }
+      ],
+      "observed_prefetch": [
+        {
+          "case": "128-2-candidate",
+          "observed_successful_prefetch": 24,
+          "observed_failed_prefetch": 0
+        },
+        {
+          "case": "128-3-candidate",
+          "observed_successful_prefetch": 23,
+          "observed_failed_prefetch": 3
+        }
+      ]
+    },
+    {
+      "modules": 512,
+      "arm": "baseline",
+      "mode": "remote",
+      "cases": 1,
+      "tab_to_symbols": {
+        "samples": 12,
+        "median_ms": 498.5330210038228,
+        "p95_ms": 521.1391249904409,
+        "min_ms": 388.61016699229367,
+        "max_ms": 521.1391249904409
+      },
+      "rss_peaks": [
+        {
+          "case": "512-1-baseline",
+          "simultaneous_bridge_tree_rss_peak_bytes": 845545472
+        }
+      ],
+      "observed_prefetch": [
+        {
+          "case": "512-1-baseline",
+          "observed_successful_prefetch": 0,
+          "observed_failed_prefetch": 0
+        }
+      ]
+    },
+    {
+      "modules": 512,
+      "arm": "baseline",
+      "mode": "local",
+      "cases": 1,
+      "tab_to_symbols": {
+        "samples": 12,
+        "median_ms": 498.92181299219374,
+        "p95_ms": 544.0476249787025,
+        "min_ms": 426.6657499829307,
+        "max_ms": 544.0476249787025
+      },
+      "rss_peaks": [
+        {
+          "case": "512-1-baseline",
+          "simultaneous_bridge_tree_rss_peak_bytes": 1146880000
+        }
+      ],
+      "observed_prefetch": [
+        {
+          "case": "512-1-baseline",
+          "observed_successful_prefetch": 0,
+          "observed_failed_prefetch": 0
+        }
+      ]
+    },
+    {
+      "modules": 512,
+      "arm": "candidate",
+      "mode": "remote",
+      "cases": 1,
+      "tab_to_symbols": {
+        "samples": 12,
+        "median_ms": 492.00206249952316,
+        "p95_ms": 1504.6372499782592,
+        "min_ms": 379.91729099303484,
+        "max_ms": 1504.6372499782592
+      },
+      "rss_peaks": [
+        {
+          "case": "512-2-candidate",
+          "simultaneous_bridge_tree_rss_peak_bytes": 893140992
+        }
+      ],
+      "observed_prefetch": [
+        {
+          "case": "512-2-candidate",
+          "observed_successful_prefetch": 24,
+          "observed_failed_prefetch": 0
+        }
+      ]
+    },
+    {
+      "modules": 512,
+      "arm": "candidate",
+      "mode": "local",
+      "cases": 1,
+      "tab_to_symbols": {
+        "samples": 12,
+        "median_ms": 504.16687500546686,
+        "p95_ms": 517.9308750084601,
+        "min_ms": 474.4840000057593,
+        "max_ms": 517.9308750084601
+      },
+      "rss_peaks": [
+        {
+          "case": "512-2-candidate",
+          "simultaneous_bridge_tree_rss_peak_bytes": 1163542528
+        }
+      ],
+      "observed_prefetch": [
+        {
+          "case": "512-2-candidate",
+          "observed_successful_prefetch": 0,
+          "observed_failed_prefetch": 41
+        }
+      ]
+    }
+  ],
+  "512_local_declines": {
+    "error_counts_at_observed_phase_boundaries": {
+      "Project-source event descriptor budget is full": 41
+    },
+    "original_foreground_and_draft_workflows": "passed",
+    "context": "The same bridge still retains the earlier, distinct512-module Remote project while the Local project runs. Optional object watches use a bounded share of a host-wide descriptor budget.",
+    "production_limits_changed": false,
+    "successful_local_prefetch_observed": false
+  },
+  "decision": "Keep idle language warming default off. These finite observations do not establish a latency or memory benefit.",
+  "limits": [
+    "Latency includes WebDriver polling and normal synchronization, following an added2s idle window.",
+    "Prefetch counts are cumulative per-page maxima observed through the last symbols boundary, not full-workload RPC totals.",
+    "250ms RSS snapshots include bridge and descendants, count shared resident pages per process, exclude browser/Spin and miss short peaks. Local may include an idle Remote service.",
+    "Finite runs do not establish complete retained-memory stability, causal benefit, CPU cost or constrained Linux performance.",
+    "The512-module Local arm was not a successful warming comparison; the controller stopped and two planned cases did not run.",
+    "Separate bridge instances for each mode and constrained2CPU/2GiB Linux measurements remain.",
+    "Automated composition cancellation passed after the measured build. No physical IME test or full local CI completion is claimed here.",
+    "Unopened dependencies, closed recent files and reusable-result caching remain unfinished."
+  ],
+  "focused_verification": {
+    "scope": "automated shared frontend with both adapter contracts; not physical IME or full local CI",
+    "preference_browser_tests_passed": 6,
+    "language_plugin_browser_tests_passed": 18,
+    "prefetch_tests_included_in_that_group": 7,
+    "extended_context_cancellation_tests_passed": 1,
+    "extended_context_cancellation_runtime_seconds": 32.34,
+    "extended_contexts": [
+      "source",
+      "provider",
+      "account",
+      "project",
+      "composition",
+      "recovery",
+      "unmount"
+    ],
+    "strict_all_target_wasm_clippy_exit_code": 0,
+    "focused_source_manifest_sha256": "8d2e0480d453b50c63da43f0ef20f86b8e95dcead661b706c6506295d0642666",
+    "test_startup_observation": "Two support-script fetches in the successful extended run took245.97s and256.31s. The unmodified test then ran in32.34s; no cause or startup fix is established."
+  }
+}

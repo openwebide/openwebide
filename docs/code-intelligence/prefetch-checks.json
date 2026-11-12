@@ -203,9 +203,19 @@
     }
   ],
   "limits": [
-    "Automatic editor prefetch and reusable-result caching are not enabled. Candidate scheduling, dependencies, freshness and production benefit measurements remain.",
+    "At this original native-only checkpoint, automatic editor prefetch and reusable-result caching were not enabled. The later editor_followup records the default-off scheduler and remaining work.",
     "This scoped checkpoint is not the full mandatory local CI suite; browser tests and production verification remain.",
     "Process cancellation is advisory to an LSP server. Suspension bounds further speculation on that original process; it does not claim to halt the server's already-running computation.",
     "No performance improvement, complete memory accounting or full roadmap completion is established."
-  ]
+  ],
+  "editor_followup": {
+    "document": "idle-prefetch-measurements.json",
+    "status": "default_off_open_buffer_scheduler_implemented_in_both_modes",
+    "scope": "Current unsaved open buffers, bounded recent-edit/related-path hints, cancellation and account database opt-in. Speculative replies are discarded.",
+    "remaining": [
+      "Unopened dependency and closed recent-file source admission and cleanup.",
+      "Complete resource, CPU, retained-memory and constrained Linux measurements.",
+      "Reusable-result freshness and the remaining code-intelligence roadmap."
+    ]
+  }
 }

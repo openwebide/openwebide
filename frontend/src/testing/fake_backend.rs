@@ -272,6 +272,7 @@ pub struct FakeBackend {
         RefCell<Vec<openwebide_core::plugins::languages::intelligence::Call>>,
     pub native_language_result: RefCell<Option<serde_json::Value>>,
     pub native_completion_results: RefCell<VecDeque<Deferred<()>>>,
+    pub native_prefetch_results: RefCell<VecDeque<Deferred<()>>>,
     pub native_analysis_inputs:
         RefCell<Vec<openwebide_core::plugins::languages::intelligence::Request>>,
     pub native_analysis_results: RefCell<VecDeque<Deferred<()>>>,
@@ -327,6 +328,14 @@ impl FakeBackend {
                 .borrow()
                 .clone()
                 .ok_or("No native language response fixture")?;
+            if input.query.is_prefetch() {
+                let delayed = self.native_prefetch_results.borrow_mut().pop_front();
+                if let Some(delayed) = delayed {
+                    delayed
+                        .await
+                        .map_err(|_| "Prefetch cancelled".to_string())??;
+                }
+            }
             if matches!(input.query, Query::Completion { .. }) {
                 let delayed = self.native_completion_results.borrow_mut().pop_front();
                 if let Some(delayed) = delayed {
@@ -2328,7 +2337,7 @@ impl Backend for FakeBackend {
                     pending.await.map_err(|error| error.to_string())??;
                 }
             }
-            if key == "language_settings" {
+            if matches!(key, "language_settings" | "language_prefetch") {
                 let pending = self.language_save_results.borrow_mut().pop_front();
                 if let Some(pending) = pending {
                     pending.await.map_err(|error| error.to_string())??;

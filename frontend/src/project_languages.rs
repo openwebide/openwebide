@@ -11,7 +11,9 @@ use openwebide_core::plugins::languages::{
 };
 
 const SETTINGS_KEY: &str = "language_settings";
+const PREFETCH_SETTINGS_KEY: &str = "language_prefetch";
 mod lifecycle;
+mod prefetch_settings;
 mod previews;
 pub(crate) use previews::{preview_diff, preview_patch_syntax};
 
@@ -21,6 +23,7 @@ pub struct ProjectLanguageActions {
     pub registry: Memo<LanguageRegistry>,
     pub preferences: Memo<LanguagePreferences>,
     pub save: Callback<LanguageSettings>,
+    pub set_prefetch: Callback<bool>,
     pub reload: Callback<()>,
 }
 
@@ -110,6 +113,9 @@ impl ProjectLanguageActions {
             loaded_account.set(None);
             state.settings_error.set(None);
             state.settings_saving.set(false);
+            state.prefetch_enabled.set(false);
+            state.prefetch_saving.set(false);
+            state.prefetch_error.set(None);
             if !logged_in {
                 return;
             }
@@ -123,7 +129,10 @@ impl ProjectLanguageActions {
                         },
                     )?;
                     settings.validate()?;
-                    Ok(settings)
+                    let prefetch = values
+                        .get(PREFETCH_SETTINGS_KEY)
+                        .is_some_and(|value| value == "true");
+                    Ok((settings, prefetch))
                 });
                 if auth.generation.try_get_untracked() != Some(account)
                     || load_ticket.try_get_value() != Some(ticket)
@@ -131,9 +140,10 @@ impl ProjectLanguageActions {
                     return;
                 }
                 match result {
-                    Ok(settings) => {
+                    Ok((settings, prefetch)) => {
                         confirmed.set_value(settings.clone());
                         state.settings.set(settings);
+                        state.prefetch_enabled.set(prefetch);
                         loaded_account.set(Some(account));
                         state.settings_loaded.set(true);
                     }
@@ -191,7 +201,7 @@ impl ProjectLanguageActions {
             });
         });
         let reload = Callback::new(move |()| {
-            if !state.settings_saving.get_untracked() {
+            if !state.settings_saving.get_untracked() && !state.prefetch_saving.get_untracked() {
                 settings.refresh_values();
                 reload_revision.update(|revision| *revision = revision.wrapping_add(1));
             }
@@ -201,6 +211,7 @@ impl ProjectLanguageActions {
             registry,
             preferences,
             save,
+            set_prefetch: prefetch_settings::save(api, state, auth, settings, ready, load_ticket),
             reload,
         };
         if let Some(host) = use_context::<crate::project_host::ProjectHost>() {
@@ -390,14 +401,15 @@ mod tests {
                 .providers
                 .insert("notes".into(), ProviderPreference::Disabled);
             finish
-                .send(Ok([(
-                    SETTINGS_KEY.into(),
-                    serde_json::to_string(&old).unwrap(),
-                )]
+                .send(Ok([
+                    (SETTINGS_KEY.into(), serde_json::to_string(&old).unwrap()),
+                    (PREFETCH_SETTINGS_KEY.into(), "true".into()),
+                ]
                 .into()))
                 .unwrap();
             crate::util::yield_task().await;
             assert_eq!(state.settings.get_untracked(), LanguageSettings::default());
+            assert!(!state.prefetch_enabled.get_untracked());
             let (finish, pending) = futures::channel::oneshot::channel();
             fake.language_save_results.borrow_mut().push_back(pending);
             actions.save.run(old);
@@ -409,6 +421,79 @@ mod tests {
             crate::util::yield_task().await;
             assert_eq!(state.settings.get_untracked(), LanguageSettings::default());
             assert!(state.settings_error.get_untracked().is_none());
+        }
+    }
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    async fn idle_prefetch_defaults_off_coalesces_saves_reloads_and_rolls_back_failures_in_both_modes()
+     {
+        for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+            let (_owner, fake, _, state, actions) = fixture(mode);
+            until(|| actions.ready.get_untracked()).await;
+            assert!(!state.prefetch_enabled.get_untracked());
+            let (finish, pending) = futures::channel::oneshot::channel();
+            fake.language_save_results.borrow_mut().push_back(pending);
+            actions.set_prefetch.run(true);
+            crate::util::yield_task().await;
+            assert!(state.prefetch_enabled.get_untracked());
+            actions.set_prefetch.run(false);
+            assert!(!state.prefetch_enabled.get_untracked());
+            finish.send(Ok(())).unwrap();
+            until(|| !state.prefetch_saving.get_untracked()).await;
+            assert_eq!(fake.settings.borrow()[PREFETCH_SETTINGS_KEY], "false");
+            actions.set_prefetch.run(true);
+            until(|| !state.prefetch_saving.get_untracked()).await;
+            assert_eq!(fake.settings.borrow()[PREFETCH_SETTINGS_KEY], "true");
+            assert!(!fake.settings.borrow().contains_key(SETTINGS_KEY));
+            actions.reload.run(());
+            crate::util::yield_task().await;
+            until(|| actions.ready.get_untracked()).await;
+            assert!(state.prefetch_enabled.get_untracked());
+            let (finish, pending) = futures::channel::oneshot::channel();
+            fake.language_save_results.borrow_mut().push_back(pending);
+            actions.set_prefetch.run(false);
+            assert!(!state.prefetch_enabled.get_untracked());
+            finish.send(Err("offline".into())).unwrap();
+            until(|| !state.prefetch_saving.get_untracked()).await;
+            assert!(state.prefetch_enabled.get_untracked());
+            assert!(
+                state
+                    .prefetch_error
+                    .get_untracked()
+                    .unwrap()
+                    .contains("offline")
+            );
+            assert_eq!(fake.settings.borrow()[PREFETCH_SETTINGS_KEY], "true");
+            assert_eq!(state.settings.get_untracked(), LanguageSettings::default());
+        }
+    }
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    async fn late_idle_prefetch_saves_cannot_rollback_or_finish_another_accounts_pending_choice() {
+        for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+            let (_owner, fake, auth, state, actions) = fixture(mode);
+            until(|| actions.ready.get_untracked()).await;
+            let (old_finish, pending) = futures::channel::oneshot::channel();
+            fake.language_save_results.borrow_mut().push_back(pending);
+            actions.set_prefetch.run(true);
+            crate::util::yield_task().await;
+            user(auth, 2);
+            assert!(!actions.ready.get_untracked());
+            until(|| actions.ready.get_untracked()).await;
+            assert!(!state.prefetch_enabled.get_untracked());
+            let (new_finish, pending) = futures::channel::oneshot::channel();
+            fake.language_save_results.borrow_mut().push_back(pending);
+            actions.set_prefetch.run(true);
+            crate::util::yield_task().await;
+            old_finish.send(Err("old account offline".into())).unwrap();
+            crate::util::yield_task().await;
+            assert!(state.prefetch_enabled.get_untracked());
+            assert!(state.prefetch_saving.get_untracked());
+            assert!(state.prefetch_error.get_untracked().is_none());
+            new_finish.send(Ok(())).unwrap();
+            until(|| !state.prefetch_saving.get_untracked()).await;
+            assert!(state.prefetch_enabled.get_untracked());
+            assert!(state.prefetch_error.get_untracked().is_none());
         }
     }
 }

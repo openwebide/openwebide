@@ -3,7 +3,7 @@
   "checked_on": "2026-11-11",
   "application_commit": "9f16a87d3b8648cd3bea094703f177c0db7941ef",
   "release_workflow_run": 43065287802,
-  "status": "hosted_fixture_baseline_exceeds_original_test_limit_current_native_linux_followup_pending",
+  "status": "current_native_memory_fixture_passed_separate_shutdown_and_editor_failures",
   "cases": [
     {
       "name": "Native Windows source notifications",
@@ -322,5 +322,137 @@
       "The timeout cause remains unresolved; original fixtures, geometry assertions and deadlines are unchanged.",
       "A local candidate pass does not establish native Linux replay reliability."
     ]
+  },
+  "current_published_followup": {
+    "commit": "146c26b30322dbbe40b5cf8af6c2fc2fe00fbd88",
+    "workflow_run": 43136388353,
+    "native_linux_runtime": {
+      "status": "published_native_memory_fixture_passed_separate_lifecycle_failure",
+      "head": "146c26b30322dbbe40b5cf8af6c2fc2fe00fbd88",
+      "run": 43136388353,
+      "job": 130912686634,
+      "job_conclusion": "failure",
+      "log_sha256": "efb0238804b45dd4919e18e6268b81282137e7f065cc48e5a48346d42c9f839f",
+      "fixture": "languages::host::reuse::tests::process_memory_eviction_and_backoff_preserve_both_clients_complete_dirty_sources",
+      "fixture_pass_line": "2026-11-12T02:38:08.8372528Z test languages::host::reuse::tests::process_memory_eviction_and_backoff_preserve_both_clients_complete_dirty_sources ... ok",
+      "fixture_source_sha256": "29dd8b57d46a121ad7efec17a7c2fe3ccbff2cdcec27264f979d853578b7f435",
+      "native_library_summary": "457 passed;0 failed;1 ignored",
+      "separate_failure": {
+        "test": "shutdown_waits_for_delayed_process_group_cleanup",
+        "file": "bridge/tests/process_lifecycle.rs:91",
+        "assertion": "kill(-pid,0) expected-1, observed0 after run_server_until returns",
+        "integration_summary": "1passed,1failed",
+        "cause": "unproven. Existing direct exec termination returns after SIGKILL delivery, not confirmed descendant exit; need failure-state snapshot before causal claim."
+      },
+      "limits": [
+        "Native shared-host fixture, not a full authenticated-adapter or complete job success claim.",
+        "No production memory limit changes;64/64/96fixture envelope checked in published source."
+      ]
+    },
+    "native_linux_editors": {
+      "head": "146c26b30322dbbe40b5cf8af6c2fc2fe00fbd88",
+      "run": 43136388353,
+      "failed_jobs": [
+        130912686415,
+        130912686587
+      ],
+      "drivers": [
+        {
+          "driver": "P-release-editor-diagnostics-0/05-editor-wrapped_paragraph_edits_reuse_exact_source_owned_geometry_remote.log",
+          "sha256": "9a097dbba7b996ef7786f0b4680a20e0d8119b34e304207ceaaa71421512cfca",
+          "bytes": 1380012,
+          "native_phase_events": 144,
+          "phase_counts": {
+            "host-start": 1,
+            "scenario": 5,
+            "mounted": 5,
+            "provider-ready": 5,
+            "initial-geometry": 5,
+            "edit": 20,
+            "input-admitted": 20,
+            "edited-geometry": 20,
+            "complete-oracle": 20,
+            "complete-oracle-returned": 20,
+            "owner-restored": 19,
+            "scenario-finished": 4
+          },
+          "last_events": [
+            "wrapped replay phase=input-admitted mode=Remote styled=true reconnect=true width=264 change=2 now=1794449544316",
+            "wrapped replay phase=edited-geometry mode=Remote styled=true reconnect=true width=264 change=2 now=1794449565063",
+            "wrapped replay phase=complete-oracle mode=Remote styled=true reconnect=true width=264 change=2 now=1794449565063",
+            "wrapped replay phase=complete-oracle-returned mode=Remote styled=true reconnect=true width=264 change=2 now=1794449580555",
+            "wrapped replay phase=owner-restored mode=Remote styled=true reconnect=true width=264 change=2 now=1794449601888",
+            "wrapped replay phase=edit mode=Remote styled=true reconnect=true width=264 change=3 now=1794449601888",
+            "wrapped replay phase=input-admitted mode=Remote styled=true reconnect=true width=264 change=3 now=1794449601937",
+            "wrapped replay phase=edited-geometry mode=Remote styled=true reconnect=true width=264 change=3 now=1794449602451",
+            "wrapped replay phase=complete-oracle mode=Remote styled=true reconnect=true width=264 change=3 now=1794449602451",
+            "wrapped replay phase=complete-oracle-returned mode=Remote styled=true reconnect=true width=264 change=3 now=1794449617312"
+          ],
+          "script_timeouts": 1,
+          "notes": "Only native console.dir value events; SIGKILL cleanup does not prove OOM."
+        },
+        {
+          "driver": "P-release-editor-diagnostics-1/04-editor-wrapped_paragraph_edits_reuse_exact_source_owned_geometry_local.log",
+          "sha256": "c61b53d9d4e6b40f75ba38ab659beafa23e00ec00da00dff48a433d68d447126",
+          "bytes": 1733925,
+          "native_phase_events": 144,
+          "phase_counts": {
+            "host-start": 1,
+            "scenario": 5,
+            "mounted": 5,
+            "provider-ready": 5,
+            "initial-geometry": 5,
+            "edit": 20,
+            "input-admitted": 20,
+            "edited-geometry": 20,
+            "complete-oracle": 20,
+            "complete-oracle-returned": 20,
+            "owner-restored": 19,
+            "scenario-finished": 4
+          },
+          "last_events": [
+            "wrapped replay phase=input-admitted mode=Local styled=true reconnect=true width=264 change=2 now=1794449344601",
+            "wrapped replay phase=edited-geometry mode=Local styled=true reconnect=true width=264 change=2 now=1794449366629",
+            "wrapped replay phase=complete-oracle mode=Local styled=true reconnect=true width=264 change=2 now=1794449366630",
+            "wrapped replay phase=complete-oracle-returned mode=Local styled=true reconnect=true width=264 change=2 now=1794449384276",
+            "wrapped replay phase=owner-restored mode=Local styled=true reconnect=true width=264 change=2 now=1794449405355",
+            "wrapped replay phase=edit mode=Local styled=true reconnect=true width=264 change=3 now=1794449405356",
+            "wrapped replay phase=input-admitted mode=Local styled=true reconnect=true width=264 change=3 now=1794449405406",
+            "wrapped replay phase=edited-geometry mode=Local styled=true reconnect=true width=264 change=3 now=1794449426394",
+            "wrapped replay phase=complete-oracle mode=Local styled=true reconnect=true width=264 change=3 now=1794449426395",
+            "wrapped replay phase=complete-oracle-returned mode=Local styled=true reconnect=true width=264 change=3 now=1794449442452"
+          ],
+          "script_timeouts": 0,
+          "notes": "Only native console.dir value events; SIGKILL cleanup does not prove OOM."
+        }
+      ],
+      "limits": [
+        "Current published commit; P prefetch changes not published.",
+        "Do not relabel previous passing local/manual evidence as hosted success. Root cause unresolved."
+      ]
+    },
+    "windows_status": "success",
+    "site_status": "success",
+    "frontend_browser_status": "success",
+    "limits": [
+      "The current native memory fixture explicitly passed; the native runtime job failed a separate process-group shutdown integration test.",
+      "Both current wrapped editor replay jobs failed after the final oracle returned and before final owner restoration. Their cause remains unresolved.",
+      "Historical passing runs and current failures are separate observations."
+    ],
+    "shutdown_diagnostic_followup": {
+      "status": "twenty_direct_binary_linux_arm64_repeats_passed_cause_unresolved",
+      "source_manifest_sha256": "cf3a868622811c1d37a195fa8912e6e46f0e04f63307985fb78019a0820f1ad2",
+      "binary_sha256": "5b95e729d79ae7269997f4bc52cbf3afcf41b962ba90ed923bce4ac1060d13a9",
+      "passed": 20,
+      "failed": 0,
+      "original_assertion_and_six_second_server_deadline_unchanged": true,
+      "candidate_change": "Record owned-group PID, parent PID, group ID, state and executable name only if the existing shutdown assertion fails.",
+      "limits": [
+        "No failure-state snapshot was produced because all twenty repeats passed.",
+        "Linux arm64 in an8GiB diagnostic container is not hosted Linux x86-64 equivalence or a2GiB production measurement.",
+        "The first Cargo-driven attempt passed; its repeating controller was stopped after Cargo unexpectedly rebuilt dependencies on every invocation. The same verified binary was retained for these20 executions.",
+        "No process lifecycle fix or cause is established."
+      ]
+    }
   }
 }

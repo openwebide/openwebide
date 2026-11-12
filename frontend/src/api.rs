@@ -1459,7 +1459,13 @@ impl BackendApi {
         &self,
         request: &openwebide_core::plugins::execution::PluginGrantRequest,
     ) -> Result<std::collections::BTreeMap<String, String>, String> {
-        self.post("/plugins/execution-grants", request).await
+        self.request(
+            Method::POST,
+            "/plugins/execution-grants",
+            Some(request),
+            true,
+        )
+        .await
     }
     pub async fn plugin_context_host_request(
         &self,
@@ -1501,7 +1507,13 @@ impl BackendApi {
         &self,
         request: &openwebide_core::plugins::languages::intelligence::Call,
     ) -> Result<openwebide_core::plugins::languages::intelligence::Response, String> {
-        self.post("/plugins/languages/query", request).await
+        self.request(
+            Method::POST,
+            "/plugins/languages/query",
+            Some(request),
+            true,
+        )
+        .await
     }
     pub async fn language_action_request(
         &self,
@@ -1546,7 +1558,13 @@ impl BackendApi {
         &self,
         request: &openwebide_core::plugins::languages::intelligence::Call,
     ) -> Result<openwebide_core::plugins::languages::intelligence::Selection, String> {
-        self.post("/plugins/languages/authorize", request).await
+        self.request(
+            Method::POST,
+            "/plugins/languages/authorize",
+            Some(request),
+            true,
+        )
+        .await
     }
     pub async fn revoke_language_servers(
         &self,
@@ -2343,6 +2361,87 @@ mod cancellation_tests {
         #[wasm_bindgen(js_name = restoreFetch)]
         fn restore_fetch();
     }
+    #[wasm_bindgen_test]
+    async fn dropping_language_queries_and_authority_requests_aborts_fetch() {
+        use openwebide_core::plugins::{
+            execution::{PluginExecutionContext, PluginGrantRequest},
+            languages::{
+                intelligence::{Call, PrefetchKind, Query, Request, VERSION},
+                source_digest,
+            },
+        };
+        let owner = leptos::prelude::Owner::new();
+        let api = owner.with(BackendApi::from_location);
+        let prepared = serde_json::from_value(json!({
+            "source":{"repository":"https://example.test/notes.git","commit":"a".repeat(40),"path":"."},
+            "digest":"b".repeat(64),"host_id":"fixture-host",
+            "manifest":{"schemaVersion":1,"publisher":"example","name":"notes","version":"0.1.0",
+                "displayName":"Notes","description":"Language RPC fixture","license":"MIT",
+                "compatibility":{"pluginApi":9},"contributions":{"skills":[],"languages":[
+                    {"id":"notes","name":"Notes","extensions":["notes"],"features":{"languageServer":{"command":"notes-lsp"}}}
+                ]}}
+        })).unwrap();
+        let call = Call {
+            grant: "fixture-grant".into(),
+            session_id: None,
+            prepared,
+            input: Request {
+                version: VERSION,
+                client: "client".into(),
+                document: "document".into(),
+                request: 1,
+                revision: 1,
+                language: "notes".into(),
+                path: "main.notes".into(),
+                source: "unsaved 文😀".into(),
+                source_digest: source_digest("unsaved 文😀"),
+                query: Query::Prefetch {
+                    kind: PrefetchKind::Symbols,
+                },
+            },
+        };
+        call.input.validate().unwrap();
+        capture_fetch();
+        let mut query = Box::pin(api.language_server(&call));
+        assert!(futures::poll!(&mut query).is_pending());
+        let signal = captured_signal();
+        assert!(!signal.aborted());
+        drop(query);
+        assert!(
+            signal.aborted(),
+            "Abandoned Remote language RPCs must free their HTTP connection"
+        );
+        let mut authorization = Box::pin(api.authorize_language_server(&call));
+        assert!(futures::poll!(&mut authorization).is_pending());
+        let signal = captured_signal();
+        assert!(!signal.aborted());
+        drop(authorization);
+        assert!(
+            signal.aborted(),
+            "Abandoned Local authorization must free its HTTP connection"
+        );
+        let request = PluginGrantRequest {
+            context: PluginExecutionContext {
+                user_action: true,
+                project_id: Some(1),
+                session_id: None,
+                primary: None,
+            },
+            plugins: vec![call.prepared],
+        };
+        let mut grant = Box::pin(api.plugin_context_grants(&request));
+        assert!(futures::poll!(&mut grant).is_pending());
+        let signal = captured_signal();
+        assert!(!signal.aborted());
+        drop(grant);
+        assert!(
+            signal.aborted(),
+            "Abandoned authority requests must free their HTTP connection"
+        );
+        restore_fetch();
+        owner.cleanup();
+    }
+
     #[wasm_bindgen_test]
     async fn dropping_web_tool_requests_aborts_fetch() {
         let owner = leptos::prelude::Owner::new();

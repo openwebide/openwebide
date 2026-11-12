@@ -113,6 +113,63 @@ async fn cold_prefetch_never_allocates_starts_or_displaces_another_scope() {
 }
 
 #[tokio::test]
+async fn parked_client_prefetch_cannot_reclaim_the_current_clients_process_or_dirty_sources() {
+    let fixture = fixture();
+    fixture.query(&input("A", "a.notes", "A", 1)).await;
+    fixture
+        .query(&input("A", "b.notes", "A dependency", 2))
+        .await;
+    let original = fixture
+        .host
+        .inner
+        .entries
+        .lock()
+        .unwrap()
+        .values()
+        .next()
+        .unwrap()
+        .process_identity()
+        .unwrap();
+    let (server_b, second) = fixture.query(&input("B", "a.notes", "B", 1)).await;
+    assert_eq!(second, json!({"a.notes":"B"}));
+    let error = fixture
+        .host
+        .query(
+            fixture.scope.clone(),
+            &prefetch("b.notes", 3, PrefetchKind::Symbols),
+        )
+        .await
+        .unwrap_err();
+    assert!(error.contains("own warm service"), "{error}");
+    let (still_b, current_b) = fixture.query(&input("B", "a.notes", "B after", 2)).await;
+    assert_eq!(
+        still_b.server, server_b.server,
+        "Speculation must not replace the current client's service identity"
+    );
+    assert_eq!(current_b, json!({"a.notes":"B after"}));
+    let (_, restored_a) = fixture.query(&input("A", "a.notes", "A after", 4)).await;
+    assert_eq!(
+        restored_a,
+        json!({"a.notes":"A after","b.notes":"A dependency"})
+    );
+    assert!(
+        fixture
+            .host
+            .inner
+            .entries
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|(key, _)| key.client == "A")
+            .unwrap()
+            .1
+            .process_identity()
+            .is_some_and(|current| current.matches(&original))
+    );
+    assert_eq!(fixture.starts(), 1);
+}
+
+#[tokio::test]
 async fn warm_prefetch_uses_ordinary_source_bound_diagnostics_and_symbols() {
     let fixture = fixture();
     fixture.query(&input("A", "a.notes", "A", 1)).await;

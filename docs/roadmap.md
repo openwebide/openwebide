@@ -1298,19 +1298,32 @@ Remaining work:
   a relocation its installed version does not support. Measure cold/warm latency,
   cache hits and resource cost before adding OpenWebIDE result caches. Installation
   settings and user preferences remain in the database.
-- Add bounded, cancellable prefetching for open tabs, recent edits and dependencies.
+- Complete unopened dependency admission, reusable-result freshness and production
+  resource/benefit measurements for optional language prefetch.
   The shared facade and native host now accept optional diagnostics/symbol queries
   through ordinary source and authority checks. One speculative request per host
-  includes discovery, requires a compatible warm service and yields to interactive
+  includes discovery, requires the client's own warm service and yields to interactive
   work within a two-second budget. Interrupted speculation stays suspended on its
   original process through handoff until restart, without disabling interactive
   queries. Bounded source metadata inventories now reject speculation spanning
   associated-source, directory or alias changes; failed collections publish no
   partial generation. Completed analysis rejected for changed sources can retry
-  on the same service. Finish editor candidate scheduling, scope/source cancellation,
-  dependency admission, reusable-result freshness and production resource/benefit
-  measurements before enabling automatic prefetch. Context-sensitive completion
-  is excluded from speculation.
+  on the same service. A default-off account preference now enables shared editor
+  scheduling in both modes: 750 ms idle delay, at most four current open buffers,
+  256 KiB per file, 512 KiB per batch and eight diagnostics/symbol attempts per
+  revision/service. Active text, related-path hints and recent open-buffer edits
+  determine candidates. Source/scope changes, foreground work, composition,
+  recovery, unmount and preference changes cancel pending work. Replies are
+  discarded rather than cached or published. Closed recent files and unopened
+  dependencies still need safe source admission and cleanup. A same-build native
+  128-module preference comparison found nearly unchanged median symbol latency
+  and higher Remote p95 with warming on. In the combined 512-module workflow,
+  Local optional watches reached the shared descriptor budget while foreground
+  work continued; that warming comparison remains incomplete. Complete isolated
+  512-module and constrained 2 CPU / 2 GiB workloads, CPU cost and retained-memory
+  measurements before reconsidering the default
+  ([finite measurements and limits](code-intelligence/idle-prefetch-measurements.json)).
+  Context-sensitive completion is excluded from speculation.
 - Key reusable results by account/project/host, source, effective configuration,
   dependencies and plugin/server version. Verify external edits, branch changes,
   dependency/configuration changes, updates and host restarts invalidate affected
@@ -1453,21 +1466,19 @@ Remaining work:
   recovery verification beyond the selected notification and Git metadata contracts.
 - Run the same service/cache contracts against both adapters, including reconnect,
   concurrent overlays, cancellation, eviction, folder-access recovery and updates.
-  Investigate the earlier hosted Linux memory-recovery reuse failure. Both native
-  Linux editor partitions, including full Local and Remote wrapped replays, pass
-  on the recorded manual followup. A separate automatic-release job on that same
-  commit stalls during the final Remote owner restoration after all twenty
-  geometry-oracle calls return; its renderer/driver logs remain recorded.
-  Keep complete fixtures, assertions and existing deadlines while collecting
-  phase logs and native memory stop reasons
-  ([hosted checkpoint](code-intelligence/hosted-checks.json)). The diagnostic run
-  records an unallocated replacement exceeding the fixture's original 32 MiB
-  per-service limit. Its candidate now uses 64 MiB per service within the unchanged
-  64 MiB total test envelope, with fresh replacement sampling and the original
-  96 MiB pressure allocation, backoff and continuity assertions. Local macOS passes;
-  native Linux verification on the candidate commit remains required. Production
-  limits are unchanged. Passing editor reruns do not establish the stall cause
-  or reliable hosted replay completion.
+  The published Linux memory-recovery fixture now passes within its 64 MiB
+  per-service / 64 MiB total test envelope, preserving the 96 MiB pressure
+  allocation, backoff, source and process-continuity assertions. Production
+  limits are unchanged. That runtime job fails a separate process-group shutdown
+  assertion; twenty Linux arm64 repeats pass without establishing its cause or
+  a fix for the hosted x86-64 failure. Failure-only process-state diagnostics
+  preserve the original assertion and deadline.
+  Earlier manual runs pass both complete editor partitions. On the latest
+  published commit, both automatic-release wrapped replay jobs fail after all
+  twenty geometry-oracle calls return and before final owner restoration.
+  Keep complete fixtures, assertions and existing deadlines while investigating
+  these separate failures. Local passes do not establish reliable hosted replay
+  completion ([hosted checkpoint](code-intelligence/hosted-checks.json)).
   Benchmark resource use on a small homelab before claiming prefetch improvements.
 
 Extend the public [language contribution contract](plugins.md#language-support),

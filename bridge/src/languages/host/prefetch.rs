@@ -65,13 +65,10 @@ pub(super) fn admit(
         {
             return Err(SUSPENDED.into());
         }
-        // Warming optional data must not displace another account/project or
-        // start a server solely because an unopened candidate was suggested.
-        if !entries
-            .iter()
-            .any(|(candidate, entry)| reuse::compatible(candidate, key) && reuse::eligible(entry))
-        {
-            return Err("Language prefetch requires a compatible warm service".into());
+        // A parked client retains its sources, not a warm-process claim.
+        // Optional work must not take the process back from another window.
+        if !entries.get(key).is_some_and(|entry| reuse::eligible(entry)) {
+            return Err("Language prefetch requires the editing client's own warm service".into());
         }
         return Ok(());
     }

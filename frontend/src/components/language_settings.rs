@@ -25,6 +25,18 @@ pub fn LanguageProviderSettings() -> impl IntoView {
         }
     });
     view! {
+        <FormSection title="Idle language analysis" description="Prepare diagnostics and symbols while idle in all projects. Uses additional CPU and memory.">
+            <super::ui::CheckboxField label="Warm language services while idle"
+                checked=Signal::derive(move || state.prefetch_enabled.get())
+                disabled=Signal::derive(move || !actions.ready.get())
+                on_change=actions.set_prefetch />
+            <Show when=move || state.prefetch_error.with(Option::is_some)>
+                <p class="form-hint" role="alert">{move || state.prefetch_error.get()}</p>
+            </Show>
+            <Show when=move || state.prefetch_saving.get()>
+                <p class="form-hint" role="status">"Saving idle analysis preference…"</p>
+            </Show>
+        </FormSection>
         <FormSection title="Language providers" description="Choose installed language support. Project choices override your defaults on every device.">
             <FormField label="Apply choices to">
                 <DropdownSelect label="Language settings scope"
