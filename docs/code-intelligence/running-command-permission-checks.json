@@ -1,0 +1,52 @@
+{
+  "status": "passed_native_pwa_running_command_permission_recovery",
+  "source_sha256": "35ea446e122c1c7587a5966673d4f52bebdf6de16e09ecbc834c2b097449a40d",
+  "approval_epoch": 1794489643.255,
+  "native_permission_removed_epoch": 1794489658.348,
+  "native_ui_observations": [
+    "Reload retained page draft with five reviewed comments and unrelated unsaved tab while folder access was revoked.",
+    "Check command outcome retained timed-out uncertain result and manual acknowledgement control.",
+    "Native Allow prompt regranted the same original local folder; original tree returned.",
+    "Save after regrant remained blocked with command-outcome warning before acknowledgement.",
+    "Explicit Stop and acknowledge removed the command recovery controls.",
+    "Both exact Unicode drafts remained unsaved; folder-access banner absent and native permission icon present."
+  ],
+  "disk_metadata_unchanged": true,
+  "xattr_unchanged": true,
+  "hard_link_identity_unchanged": true,
+  "unrelated_disk_unchanged": true,
+  "exact_crlf_drafts_retained": true,
+  "folder_lock_released_after_acknowledgement": true,
+  "execute_command_count": 5,
+  "execute_command_count_before_revocation": 5,
+  "automatic_replay_count": 0,
+  "preparatory_attempts": 4,
+  "limits": [
+    "The first four explicit preparatory actions did not establish removal during execution; their failed/late observations remain preserved.",
+    "The fifth action establishes native macOS PWA recovery for this deterministic public HTML plugin command and folder. It does not establish all writers, escaped processes, native Windows, or complete durable compound authority.",
+    "The original approximately 30-second product request timeout and 60-second fixture command delay were unchanged."
+  ],
+  "format": 1,
+  "checked_on": "2026-11-12",
+  "platform": "Installed Chrome PWA on macOS arm64, native folder; public HTML language plugin and deterministic LSP peer.",
+  "raw_proof_sha256": "b1c7b0e98eaa5e7daa3423998bff927a690344aefa2801048d4876d272c0959c",
+  "receipt_sha256": {
+    "running-before-revocation.json": "b78ce9b08b1935d484e12dc8812adfababe370f09d1d9fc222f7c7d6e7b8fa5d",
+    "running-after-revocation.json": "5c5bea16f5a22e83054747d55acef0d11f645a37dc2b21281faa9c775e7e0eeb",
+    "lsp.jsonl": "7941937cdedfcb6a3afb1107e0c2df8d96413c4bba56ebf65d14954c1182a95b"
+  },
+  "before_removal": {
+    "observed_at": 1794489648.691402,
+    "command_phase": "running",
+    "physical_lock_excluded": true
+  },
+  "after_removal": {
+    "observed_at": 1794489661.669512,
+    "command_phase": "running",
+    "physical_lock_excluded": true
+  },
+  "final_command_phase": "acknowledged",
+  "retained_language_review_sha256": "2342a9973c2dc38c1936b47033b117798d2e1e0ce348d9c2d7e0e91f6a8be094",
+  "accepted_language_review_digest": "2342a9973c2dc38c1936b47033b117798d2e1e0ce348d9c2d7e0e91f6a8be094",
+  "complete_local_ci": false
+}

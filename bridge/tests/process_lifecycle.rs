@@ -5,49 +5,81 @@ mod common;
 
 use std::time::Duration;
 
-use common::{TestDir, start};
+use common::TestDir;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 
 #[tokio::test]
 async fn exec_client_disconnect_kills_group() {
+    disconnect_kills_group(false).await;
+}
+
+#[tokio::test]
+async fn paired_browser_disconnect_kills_the_started_command_group() {
+    disconnect_kills_group(true).await;
+}
+
+async fn disconnect_kills_group(paired: bool) {
+    use openwebide_bridge::{ServerConfig, run_server_until};
+    use tokio::net::TcpListener;
+
     let test_dir = TestDir::new();
-    let port = start(test_dir.path.clone()).await;
-    // `direct` alone proves nothing about a process-group kill: `kill_on_drop` on the immediate
-    // `sh` child would produce the same result. `grandchild` is only reachable by signalling the
-    // whole group (what `GroupGuard` does), since a plain child-kill never touches it.
+    let listener = TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let config = ServerConfig::new(
+        test_dir.path.clone(),
+        "dummy_secret".into(),
+        paired.then(|| "command-pairing-token".into()),
+    );
+    let (stop, stopped) = tokio::sync::oneshot::channel();
+    let server = tokio::spawn(run_server_until(listener, config, async {
+        let _ = stopped.await;
+    }));
     let direct = test_dir.path.join("direct");
     let grandchild = test_dir.path.join("grandchild");
+    let ready = test_dir.path.join("ready");
+    let grandchild_ready = test_dir.path.join("grandchild-ready");
     let payload = serde_json::json!({
-        "command": format!(
-            "(sleep 3; touch {}) & sleep 3; touch {}",
-            grandchild.display(),
-            direct.display()
-        ),
+        "command": "printf ready > ready; (printf ready > grandchild-ready; sleep 3; touch grandchild) & sleep 3; touch direct",
+        "cancel_on_disconnect": true,
     })
     .to_string();
-
-    let mut stream = TcpStream::connect(("127.0.0.1", port))
-        .await
-        .expect("failed to connect to bridge");
+    let credentials = if paired {
+        "Origin: http://localhost:8080\r\nAuthorization: Bearer command-pairing-token\r\n"
+    } else {
+        "Authorization: Bearer dummy_secret\r\n"
+    };
+    let mut stream = TcpStream::connect(("127.0.0.1", port)).await.unwrap();
     let req = format!(
-        "POST /exec HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{payload}",
+        "POST /exec HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\n{credentials}Content-Type: application/json\r\nContent-Length: {}\r\n\r\n{payload}",
         payload.len()
     );
-    stream
-        .write_all(req.as_bytes())
-        .await
-        .expect("failed to write request");
+    stream.write_all(req.as_bytes()).await.unwrap();
 
-    // Let the bridge accept the request and spawn the command, then disconnect mid-flight.
+    // Authentication rejection must not make a no-child test pass. Both the
+    // command and its real background descendant must start before disconnect.
+    tokio::time::timeout(Duration::from_secs(2), async {
+        while !ready.exists() || !grandchild_ready.exists() {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("The authenticated command and descendant did not start");
+    assert!(!direct.exists() && !grandchild.exists());
     tokio::time::sleep(Duration::from_millis(200)).await;
     drop(stream);
 
+    // Preserve the original delayed-write oracle and observation deadline.
     tokio::time::sleep(Duration::from_secs(6)).await;
     assert!(
         !direct.exists() && !grandchild.exists(),
         "disconnecting the /exec client should kill the command's whole process group"
     );
+    stop.send(()).unwrap();
+    tokio::time::timeout(Duration::from_secs(6), server)
+        .await
+        .unwrap()
+        .unwrap();
 }
 
 #[cfg(unix)]

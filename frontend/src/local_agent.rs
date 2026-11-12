@@ -379,6 +379,7 @@ impl BridgeClient for BrowserBridgeClient {
             "command": command,
             "cwd": self.cwd,
             "timeout_seconds": timeout_seconds,
+            "cancel_on_disconnect": true,
         })
         .to_string();
 

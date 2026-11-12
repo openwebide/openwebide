@@ -9,6 +9,12 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Keep Linux/macOS foreground and agent command folder locks in an independent process watcher before dispatch and through bridge loss or cancellation cleanup. Enter the pinned original directory, preserve acknowledged background work while retaining exclusion, and block overlapping work when cleanup is unconfirmed. Escaped groups, PTY/Git lifetimes, Windows ownership and durable writer authority remain unfinished.
+- Require real authenticated command and descendant startup in disconnect checks, including paired browser access, before checking that delayed writes are prevented.
+- Cancel app HTTP commands when their connection reaches read EOF, through an explicit request option shared by Local and Remote command clients. Preserve intentional half-closed requests for clients that omit the option.
+- Fetch all immutable bundled-plugin pins together and continue verifying every package snapshot and license against those exact Git objects.
+- Verify native macOS PWA folder-permission loss while an approved language command is running: retain its physical lock through revocation, preserve both drafts and disk metadata across reload/regrant, block saves until manual acknowledgement and avoid command replay.
+
 - Keep native debug builds within macOS compact-unwind encoding limits by optimizing the Wasmtime dependency, preserving panic unwinding, backtraces and the full test suite.
 
 - Add a default-off, account-saved option to warm language services while idle in both project modes. Bound diagnostics/symbol preparation to current open buffers, known related unopened files and recently closed files. Prefer retained unsaved text, read clean files freshly within cancellable byte limits, and retire temporary overlays without losing other drafts. Reserve request capacity for foreground work, cancel background work on edits or preference changes, and discard speculative replies. Require the client's own warm service so a parked window cannot reclaim another window's process. Complete production benefit/resource measurements remain unfinished.

@@ -82,10 +82,20 @@ To protect against DNS rebinding and malicious websites opened in the user's bro
 Every command the bridge spawns (`/exec`, `run_command`, PTY shells, Git subprocesses) starts in its own process group. Signals target that group; interactive shells can put background jobs into separate groups, which may survive shell cleanup:
 
 - **Kill semantics:** sending `Kill` with no signal (or `KILL`/`SIGKILL`) terminates the whole process group immediately. `TERM`/`SIGTERM` and `HUP`/`SIGHUP` signal the group directly. `INT`/`SIGINT` on a PTY session instead writes `^C` to the terminal, matching a real Ctrl+C — it interrupts whatever's in the foreground rather than killing the shell itself.
-- **Timeouts:** a `run_command`/`/exec` timeout, or the client disconnecting mid-request, terminates the command's process group (SIGTERM, then SIGKILL after a 2 s grace period) instead of leaving it (and any children) running.
+- **Timeouts and cancellation:** a `run_command`/`/exec` timeout or cancellation terminates the command's process group (SIGTERM, then SIGKILL after a 2 s grace period). App HTTP command requests set `cancel_on_disconnect: true`, so a read EOF also cancels their work. The flag defaults to false for clients that intentionally half-close their write side and still expect a response; EOF alone cannot distinguish them from a fully closed client. Connection resets drop the observer in either case.
 - **Output capping:** `/exec` keeps the first 256 KiB and last 768 KiB of each of stdout/stderr per stream, with an omission marker in between, so a runaway command can't exhaust memory.
 - **Session reaping:** exited terminal/process sessions are removed 30 minutes after they exit, freeing their output buffers; running sessions are never reaped, however long they've been open.
 - **Graceful shutdown:** on Ctrl+C or `SIGTERM`, the bridge stops accepting new connections and terminates every session's process group (with the same grace period) before exiting.
+
+On Linux and macOS, configured `/exec` and agent commands also acquire the shared
+physical folder gate. An independent watcher receives the original directory locks
+before starting the command, so bridge loss cannot release them while the managed
+group still runs. Cleanup retains the original unreaped child identity until the
+group is quiet, then waits for the group to disappear before releasing exclusion.
+Unconfirmed cleanup blocks overlapping native work. Successful acknowledged
+commands preserve background work; their watcher retains the locks until it ends.
+This covers the original managed group. Escaped groups, PTY/Git process ownership,
+Windows ownership and complete durable filesystem authority remain unfinished.
 
 
 [Back to the README](../README.md).

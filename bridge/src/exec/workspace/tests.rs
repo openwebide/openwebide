@@ -354,3 +354,6 @@ async fn native_git_scope_honors_inherited_git_environment() {
         String::from_utf8_lossy(&output.stderr)
     );
 }
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+mod commands;

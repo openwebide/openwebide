@@ -405,6 +405,30 @@ async fn http10_keep_alive_closes_and_half_closed_clients_receive_response() {
     assert!(response.contains("200 OK"));
 }
 
+#[cfg(unix)]
+#[tokio::test]
+async fn a_half_closed_command_without_cancellation_opt_in_still_completes() {
+    let dir = TestDir::new();
+    let port = start(dir.path.clone()).await;
+    let body = serde_json::json!({"command": "sleep .1; printf completed"}).to_string();
+    let mut client = TcpStream::connect(("127.0.0.1", port)).await.unwrap();
+    client.write_all(format!(
+        "POST /exec HTTP/1.1\r\nHost: localhost\r\nAuthorization: Bearer dummy_secret\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{body}",
+        body.len()
+    ).as_bytes()).await.unwrap();
+    client.shutdown().await.unwrap();
+    let mut response = String::new();
+    tokio::time::timeout(Duration::from_secs(2), client.read_to_string(&mut response))
+        .await
+        .unwrap()
+        .unwrap();
+    let response = HttpResponse::parse(&response);
+    assert_eq!(response.status, 200, "{}", response.body);
+    let outcome: openwebide_core::CommandOutcome = serde_json::from_str(&response.body).unwrap();
+    assert_eq!(outcome.exit_code, Some(0));
+    assert_eq!(outcome.stdout, "completed");
+}
+
 #[tokio::test]
 async fn websocket_rejects_oversized_message() {
     let dir = TestDir::new();

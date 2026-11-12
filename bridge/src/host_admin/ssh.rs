@@ -127,6 +127,7 @@ impl SshHost {
             env: Default::default(),
             timeout: Duration::from_secs(timeout_seconds),
             cancel: Box::pin(std::future::pending()),
+            folder: None,
         })
     }
     async fn remote(

@@ -52,8 +52,8 @@ def main():
         repo = args.repository or Path(temp)
         if args.repository is None:
             git(repo, 'init', '--bare', '--quiet')
-            for reference in sorted({lock['commit'], *lock.get('commits', {}).values()}):
-                git(repo, 'fetch', '--quiet', '--depth=1', '--no-tags', '--', lock['repository'], reference)
+            references = sorted({lock['commit'], *lock.get('commits', {}).values()})
+            git(repo, 'fetch', '--quiet', '--depth=1', '--no-tags', '--', lock['repository'], *references)
         snapshot, license_text = materialize(repo, lock)
         if args.check:
             assert OUTPUT.read_text() == snapshot, 'Bundled plugins differ; run tools/bundle_plugins.py'

@@ -111,6 +111,7 @@ pub(crate) struct Lease {
     shared: Arc<Shared>,
     id: u64,
     physical: Option<physical::Access>,
+    uncertain: std::sync::atomic::AtomicBool,
 }
 pub(crate) struct Worker {
     shared: Arc<Shared>,
@@ -118,18 +119,34 @@ pub(crate) struct Worker {
 impl Lease {
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     pub(crate) fn covers(&self, folder: &Folder) -> bool {
-        self.shared
-            .state
-            .lock()
-            .unwrap()
-            .active
-            .get(&self.id)
-            .is_some_and(|held| {
-                held.current()
-                    && folder.current()
-                    && (held.physical == folder.physical
-                        || folder.ancestors.contains(&held.physical))
-            })
+        !self.uncertain.load(std::sync::atomic::Ordering::Acquire)
+            && self
+                .shared
+                .state
+                .lock()
+                .unwrap()
+                .active
+                .get(&self.id)
+                .is_some_and(|held| {
+                    held.current()
+                        && folder.current()
+                        && (held.physical == folder.physical
+                            || folder.ancestors.contains(&held.physical))
+                })
+    }
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    pub(crate) fn command_descriptors(
+        &self,
+        root: &std::path::Path,
+    ) -> Result<Vec<std::os::fd::OwnedFd>, String> {
+        let folder = Folder::capture(root)?;
+        if !self.covers(&folder) {
+            return Err("The command no longer owns its original execution folder".into());
+        }
+        self.physical
+            .as_ref()
+            .ok_or("Native folder access is unavailable")?
+            .duplicate_descriptors()
     }
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     pub async fn watch_process(
@@ -145,19 +162,12 @@ impl Lease {
     }
     /// Failed process cleanup cannot make overlapping folders available again.
     /// Keep their physical identities until this execution host is restarted.
-    pub fn quarantine(mut self) {
-        let mut state = self.shared.state.lock().unwrap();
-        if let Some(folder) = state.active.remove(&self.id) {
-            state.uncertain.insert(
-                self.id,
-                Uncertain {
-                    folder,
-                    _physical: self.physical.take(),
-                },
-            );
-        }
-        drop(state);
-        self.shared.changed.notify_waiters();
+    pub fn quarantine(self) {
+        self.mark_uncertain();
+    }
+    pub(crate) fn mark_uncertain(&self) {
+        self.uncertain
+            .store(true, std::sync::atomic::Ordering::Release);
     }
 }
 impl Drop for Worker {
@@ -168,11 +178,23 @@ impl Drop for Worker {
 }
 impl Drop for Lease {
     fn drop(&mut self) {
-        // Release OS exclusion before notifying a local waiter, so its first
-        // attempt need not back off on a lease that has already completed.
-        #[cfg(unix)]
-        drop(self.physical.take());
-        self.shared.state.lock().unwrap().active.remove(&self.id);
+        if self.uncertain.load(std::sync::atomic::Ordering::Acquire) {
+            let mut state = self.shared.state.lock().unwrap();
+            if let Some(folder) = state.active.remove(&self.id) {
+                state.uncertain.insert(
+                    self.id,
+                    Uncertain {
+                        folder,
+                        _physical: self.physical.take(),
+                    },
+                );
+            }
+        } else {
+            // Release OS exclusion before notifying an ordinary local waiter.
+            #[cfg(unix)]
+            drop(self.physical.take());
+            self.shared.state.lock().unwrap().active.remove(&self.id);
+        }
         self.shared.changed.notify_waiters();
     }
 }
@@ -328,6 +350,7 @@ impl Coordinator {
                     shared: self.0.clone(),
                     id,
                     physical: Some(physical),
+                    uncertain: std::sync::atomic::AtomicBool::new(false),
                 });
             }
             tokio::select! {

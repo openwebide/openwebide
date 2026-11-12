@@ -404,7 +404,8 @@ async fn handle_connection(
     config: ServerConfig,
     permit: OwnedSemaphorePermit,
 ) {
-    let io = TokioIo::new(http::WriteTimeout::new(stream));
+    let (io, peer_closed) = http::connection_io(stream);
+    let io = TokioIo::new(io);
     let limits = config.limits;
     let permit_cell: PermitCell = Arc::new(Mutex::new(Some(permit)));
     let close = Arc::new(tokio::sync::Notify::new());
@@ -414,8 +415,10 @@ async fn handle_connection(
         let config = config.clone();
         let permit_cell = permit_cell.clone();
         let close = response_close.clone();
+        let peer_closed = peer_closed.clone();
         async move {
-            let response = routes::route(req, addr, sessions, config, permit_cell).await;
+            let response =
+                routes::route(req, addr, sessions, config, permit_cell, peer_closed).await;
             if response
                 .as_ref()
                 .is_ok_and(|response| response.status() != hyper::StatusCode::SWITCHING_PROTOCOLS)

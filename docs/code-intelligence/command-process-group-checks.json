@@ -1,0 +1,524 @@
+{
+  "format": 1,
+  "checked_on": "2026-11-12",
+  "status": "passed_focused_command_process_group_checkpoint",
+  "source_manifest_sha256": "53662a390b6cc21edc6608d29a5e0b90f84eb1587b63a37eef222df7444020b2",
+  "base_commit": "f4a10bc704bbf6f70b491ae247c403678c87d9f0",
+  "working_tree": true,
+  "relevant_source_sha256": {
+    "backend/src/bridge_client.rs": "03b35183ee46fbad529ff876cbbf12eaa3a21ae7262e55b9dfff9f693a340e0f",
+    "bridge/src/exec/host.rs": "3eefbbfc1ef51b7e43c5d9c546a7696db129e18be3d0b23ff70506818034b0c1",
+    "bridge/src/exec/host_info.rs": "9bd0ec29be3bb28a959d647186531e960d8ad73f600ef9f6f8b9e77c1496cfa4",
+    "bridge/src/exec/mod.rs": "880173b52e5909a0bcdf73e0c88dc5e8525ca8b643d37e9f643d1451f05b8388",
+    "bridge/src/exec/process_owner.rs": "68bc822c72e346277afebac58db7862716e7713bcb7ec3bb7d10a11750330523",
+    "bridge/src/exec/process_owner/commands.rs": "bf57126dd6baba3c5895cf53f8226a15fb8a445aea4db920160410d816f36439",
+    "bridge/src/exec/process_owner/wire.rs": "2e37af4920395b2753c067925991e16d36f9a3bd3f1b87a0416cdaf69799cb70",
+    "bridge/src/exec/workspace.rs": "095a66aafe8cc00750e6deaad59edd6131206806d6cf162a418d8876bde0f2c1",
+    "bridge/src/exec/workspace/tests.rs": "9e0dc23416ead5d30cd0010b3bb9e4d7c2403c15775c13fbce61fde6a95ed34e",
+    "bridge/src/exec/workspace/tests/commands.rs": "6cf92671ca7809fa8f9a955a428ece9748ed3349b0b69e98269d8ddfe83c3dd3",
+    "bridge/src/folder_coordination.rs": "b7cf4b1e892c943eec110b986d25d217f91401a6750abb10defd511ae74cd629",
+    "bridge/src/folder_coordination/tests.rs": "b6684082d13aadc95b8a24886bff1258a6ccaecf68f878d301c2efa40962d66f",
+    "bridge/src/host_admin/ssh.rs": "e55ae390ecb652b619a30ecd4ad2fe2181695c4ef9f57f756014d434b65d1841",
+    "bridge/src/languages/host/cache.rs": "42447b2fa722a14653f9a567b3dee92cd8af03802b5a49a3591dd20867764db0",
+    "bridge/src/server/http.rs": "f123354a23776ef4aefbd5027d902bf79f0f6fdf2e1acc24664d10b24e14c2b9",
+    "bridge/src/server/mod.rs": "5d1e75a9243fc5ea88c8d31431384875d336ef0c294310afc7f892a9da262033",
+    "bridge/src/server/routes.rs": "b86d09378ee42d70798a5a8478e84ac8a3869cce27472795e9966f0dca56555e",
+    "bridge/tests/http_parsing.rs": "d6bc576c281db5549d274f979ae84f7a4746e443ad69791416e8d2d43ef2d954",
+    "bridge/tests/process_lifecycle.rs": "79433e1575135d06426c99ddb7495cf0fca9adbb5b7c8561f692cdee539d300d",
+    "frontend/src/local_agent.rs": "97f913d2b14f3057e87387b1fdc009c6877803271a514873e3b8b0299b95fdba",
+    "tools/bundle_plugins.py": "be6c2e07ea6e72f12475b019fb8419635b98871b01cc904a5a3ef6e14f98cc4e"
+  },
+  "shared_implementation": "Configured HTTP and agent command execution use exec::workspace::Execution and the existing physical folder coordinator. The native HostExecution adapter passes the original directory lock set to the same bridge executable in private owner mode before child launch. Local browser and Remote Spin HTTP adapters request the same explicit read-EOF cancellation policy.",
+  "behavior": [
+    "The child enters the pinned original directory through fchdir, after complete descriptor/path identity validation. Directory aliases retain the same physical working directory.",
+    "The original unreaped command PID reserves its managed group identity through cleanup. Lost control, cancellation and bridge loss stop that group while the independent watcher retains directory locks. No signal is sent after reaping; remaining group disappearance is observed read-only.",
+    "Acknowledged command outcomes preserve intentional background work while a watcher and the live coordinator reservation retain exclusion until the group ends.",
+    "Known rejection before dispatch preserves ordinary folder access. Ambiguous dispatch, failed owners and unconfirmed cleanup quarantine access within the original host. A failed owner does not wait for a surviving child to close its output pipes.",
+    "Opted-in HTTP commands observe peer read closure independently of hyper polling, without consuming buffered bytes or opening another socket. Unflagged clients retain intentional half-close behavior."
+  ],
+  "bounds": {
+    "private_control_protocol": 2,
+    "accepted_control_body_bytes": 4194304,
+    "directory_descriptors_per_control_frame": 64,
+    "control_io_timeout_seconds": 2,
+    "command_cleanup_observer_timeout_seconds": 3,
+    "termination_grace_seconds": 2,
+    "physical_folder_and_descriptor_budgets": "Existing coordinator limits remain; successful background work retains its original descriptor reservation.",
+    "unexpected_buffered_pipeline_observation_milliseconds": 100,
+    "serialization_limit": "Accepted frame size is bounded; this is not a hard allocation bound for initial serialization."
+  },
+  "macos": {
+    "architecture": "arm64",
+    "kernel": "27.2.0",
+    "checks": [
+      {
+        "case": "format-and-diff",
+        "command": [
+          "bash",
+          "-euc",
+          "cargo fmt --all --check\ngit diff --check"
+        ],
+        "returncode": 0,
+        "seconds": 3.23,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "test_results": []
+      },
+      {
+        "case": "matching-native-helper-build",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--locked"
+        ],
+        "returncode": 0,
+        "seconds": 0.56,
+        "log_sha256": "3e43b255d4b20a7b309afeb5012d5088aa471e53c75606d9df8a98bab335f40e",
+        "test_results": []
+      },
+      {
+        "case": "strict-native-bridge-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 6.56,
+        "log_sha256": "c684d68e019178fc89cea3dfc76c4e52bc47839271e4eda0b4b73c12fe203feb",
+        "test_results": []
+      },
+      {
+        "case": "native-execution-and-owner-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "exec::",
+          "--locked",
+          "--",
+          "--nocapture"
+        ],
+        "returncode": 0,
+        "seconds": 10.5,
+        "log_sha256": "50c210342169578b864f337fbd04df1a7dbe896f624e4085db76e3af8f2df1d2",
+        "test_results": [
+          {
+            "passed": 79,
+            "failed": 0,
+            "ignored": 0
+          }
+        ]
+      },
+      {
+        "case": "physical-folder-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "folder_coordination::",
+          "--locked",
+          "--",
+          "--nocapture"
+        ],
+        "returncode": 0,
+        "seconds": 0.47,
+        "log_sha256": "56ca77976bcb5a2e30c67bc5b2e3fd4e9fb15f9ddb25ec955feb39a460636081",
+        "test_results": [
+          {
+            "passed": 17,
+            "failed": 0,
+            "ignored": 0
+          }
+        ]
+      },
+      {
+        "case": "connection-io-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "server::http::tests",
+          "--locked",
+          "--",
+          "--nocapture"
+        ],
+        "returncode": 0,
+        "seconds": 0.31,
+        "log_sha256": "8f1b275700b61a53e9b3eb2c557ec1dbe6f6fe3bee007fa5c73d0ec9be6df9d7",
+        "test_results": [
+          {
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          }
+        ]
+      },
+      {
+        "case": "authenticated-disconnect-and-http-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--test",
+          "process_lifecycle",
+          "--test",
+          "http_parsing",
+          "--test",
+          "http_security",
+          "--test",
+          "auth",
+          "--test",
+          "cwd_confinement",
+          "--locked",
+          "--",
+          "--nocapture"
+        ],
+        "returncode": 0,
+        "seconds": 51.61,
+        "log_sha256": "bceff26fa54fa86294d4a6ca16465daa2f1f2a8b5c288d795b68ad948657e089",
+        "test_results": [
+          {
+            "passed": 9,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 8,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 17,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 19,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 3,
+            "failed": 0,
+            "ignored": 0
+          }
+        ]
+      },
+      {
+        "case": "windows-cross-clippy-not-native-runtime",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 8.91,
+        "log_sha256": "153fd824dcf51428b1f524693aa7ed0a1bbc82fe099ef7e04423fbd9bf9a1fb9",
+        "test_results": []
+      },
+      {
+        "case": "strict-backend-wasi-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-backend",
+          "--target",
+          "wasm32-wasip2",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 0.72,
+        "log_sha256": "8ff208724cf0c04081c037b021a39dac4e914bed652a41bbea2f278fdd6433e0",
+        "test_results": []
+      },
+      {
+        "case": "strict-frontend-browser-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-frontend",
+          "--all-targets",
+          "--target",
+          "wasm32-unknown-unknown",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 0.74,
+        "log_sha256": "7ea9ff7442106040f95bc079f85de985b086e1fed897d88dec87dd8425c35ee1",
+        "test_results": []
+      }
+    ]
+  },
+  "linux": {
+    "runtime": {
+      "uid": 502,
+      "kernel": "7.0.14-linuxkit",
+      "architecture": "aarch64",
+      "pid1": "docker-init",
+      "rustdoc_version": "rustdoc 1.98.1 (48a229cea 2026-09-01)",
+      "filesystem": "overlayfs",
+      "source_filesystem": "UNKNOWN (0x6a656a63)",
+      "cpu.max": "200000 100000",
+      "memory.max": "4294967296",
+      "memory.swap.max": "0"
+    },
+    "checks": [
+      {
+        "case": "worktree-dev-cache-invalidation",
+        "command": [
+          "cargo",
+          "clean",
+          "-p",
+          "openwebide-core",
+          "-p",
+          "openwebide-agent",
+          "-p",
+          "openwebide-bridge",
+          "--profile",
+          "dev",
+          "--target-dir",
+          "/target"
+        ],
+        "returncode": 0,
+        "seconds": 0.62,
+        "log_sha256": "569f26699876503b1e0a627df8fb9059a32fc14321e3411f5933f3916f56dc4d",
+        "test_results": [],
+        "memory_peak_bytes": 695091200,
+        "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+      },
+      {
+        "case": "matching-native-helper-build",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--bin",
+          "openwebide-bridge",
+          "--locked",
+          "--offline"
+        ],
+        "returncode": 0,
+        "seconds": 58.24,
+        "log_sha256": "733c8d8097b32965546a37caf3757876981c3eb9a386917dd3cc7b1a71c78cef",
+        "test_results": [],
+        "memory_peak_bytes": 3081420800,
+        "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+      },
+      {
+        "case": "strict-native-bridge-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--locked",
+          "--offline",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 0,
+        "seconds": 29.59,
+        "log_sha256": "4589cdf33698a75208b36d1b2fee913bdff3363054e2e006d7f81fbc7b9ce4bf",
+        "test_results": [],
+        "memory_peak_bytes": 3081420800,
+        "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+      },
+      {
+        "case": "native-execution-and-owner-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "exec::",
+          "--locked",
+          "--offline",
+          "--",
+          "--nocapture"
+        ],
+        "returncode": 0,
+        "seconds": 60.99,
+        "log_sha256": "4f655f255e892a82d363536b2c458852601be7ddcbb6ad2e22488eb3ec5e841b",
+        "test_results": [
+          {
+            "passed": 79,
+            "failed": 0,
+            "ignored": 0
+          }
+        ],
+        "memory_peak_bytes": 4294967296,
+        "memory_events": "low 0\nhigh 0\nmax 5580\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+      },
+      {
+        "case": "physical-folder-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "folder_coordination::",
+          "--locked",
+          "--offline",
+          "--",
+          "--nocapture"
+        ],
+        "returncode": 0,
+        "seconds": 1.23,
+        "log_sha256": "9791f9eb7b375f1622ce081b0a3ae8151f13ddc3d81c18f920288c2e6f76d663",
+        "test_results": [
+          {
+            "passed": 17,
+            "failed": 0,
+            "ignored": 0
+          }
+        ],
+        "memory_peak_bytes": 4294967296,
+        "memory_events": "low 0\nhigh 0\nmax 5580\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+      },
+      {
+        "case": "original-process-lifecycle-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--test",
+          "process_lifecycle",
+          "--locked",
+          "--offline",
+          "--",
+          "--nocapture"
+        ],
+        "returncode": 0,
+        "seconds": 36.36,
+        "log_sha256": "5918b87f5a1ea9cde9b02915121f92403feb700929b8038e9e70bebebc14a4e2",
+        "test_results": [
+          {
+            "passed": 3,
+            "failed": 0,
+            "ignored": 0
+          }
+        ],
+        "memory_peak_bytes": 4294967296,
+        "memory_events": "low 0\nhigh 0\nmax 8116\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+      },
+      {
+        "case": "connection-io-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "server::http::tests",
+          "--locked",
+          "--offline",
+          "--",
+          "--nocapture"
+        ],
+        "returncode": 0,
+        "seconds": 1.02,
+        "log_sha256": "505f38591dd8f4eca0eb4cf03758bb9921cc0c606cf86dc2bd55917a4e585eea",
+        "test_results": [
+          {
+            "passed": 2,
+            "failed": 0,
+            "ignored": 0
+          }
+        ],
+        "memory_peak_bytes": 4294967296,
+        "memory_events": "low 0\nhigh 0\nmax 8116\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+      },
+      {
+        "case": "native-http-and-auth-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--test",
+          "http_parsing",
+          "--test",
+          "http_security",
+          "--test",
+          "auth",
+          "--locked",
+          "--offline",
+          "--",
+          "--nocapture"
+        ],
+        "returncode": 0,
+        "seconds": 68.67,
+        "log_sha256": "08c7c19bbd8a1fa0fbee40755490b66e46629f0cc9d2ebf55a062ff4b77ffdf5",
+        "test_results": [
+          {
+            "passed": 9,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 17,
+            "failed": 0,
+            "ignored": 0
+          },
+          {
+            "passed": 19,
+            "failed": 0,
+            "ignored": 0
+          }
+        ],
+        "memory_peak_bytes": 4294967296,
+        "memory_events": "low 0\nhigh 0\nmax 10320\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+      }
+    ],
+    "container_oom_killed": false,
+    "limits": "2 CPU/4 GiB/no-swap tooling container. Compilation reached the cgroup limit; no OOM kills were recorded. This is not a production memory measurement or a 2 GiB homelab result."
+  },
+  "limits": [
+    "Only original managed groups are covered. Escaped groups, PTY/Git process lifetimes, complete writer coverage and durable compound phase authority remain unfinished.",
+    "Quarantine excludes overlapping work while the original host or watcher retains its physical locks. Simultaneous loss of both owners and durable frozen-owner recovery are not established.",
+    "Windows cross compilation passed; native Windows command ownership is unfinished.",
+    "These focused checks do not establish actual browser cancellation, physical folder permission loss/regrant during an already-running command, production deployment, complete local CI or hosted/nightly reliability.",
+    "Retained native/WASM memory, CPU/active-work pressure, persistent cache enforcement, reusable-result freshness, prefetch benefit and independent-provider interleavings remain on the roadmap."
+  ],
+  "post_check_updates": [
+    "docs/code-intelligence/command-process-group-checks.json",
+    "docs/roadmap.md"
+  ]
+}

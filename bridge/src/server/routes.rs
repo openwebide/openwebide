@@ -24,6 +24,9 @@ const MAX_WS_MESSAGE: usize = 16 * 1024 * 1024;
 #[derive(Deserialize)]
 struct ExecPayload {
     command: String,
+    /// Opt in to cancelling on read EOF, which also ends intentional half-closes.
+    #[serde(default)]
+    cancel_on_disconnect: bool,
     #[serde(default = "default_timeout")]
     timeout_seconds: u64,
     #[serde(default)]
@@ -42,6 +45,7 @@ pub(super) async fn route(
     sessions: SessionManager,
     config: ServerConfig,
     permit_cell: PermitCell,
+    peer_closed: std::sync::Arc<tokio::net::tcp::OwnedReadHalf>,
 ) -> Result<Response<Full<Bytes>>, Infallible> {
     if req
         .headers()
@@ -867,7 +871,7 @@ pub(super) async fn route(
             ))
         }
         ("POST", "/exec") => Ok(execution_response(
-            handle_exec(req, &config).await,
+            handle_exec(req, &config, peer_closed).await,
             allowed_origin,
         )),
         (m, p) if (m == "GET" || m == "POST") && p.starts_with("/git/") => Ok(execution_response(
@@ -1055,7 +1059,11 @@ fn execution_response(
     }
 }
 
-async fn handle_exec(req: Request<Incoming>, config: &ServerConfig) -> Result<String, BridgeError> {
+async fn handle_exec(
+    req: Request<Incoming>,
+    config: &ServerConfig,
+    peer_closed: std::sync::Arc<tokio::net::tcp::OwnedReadHalf>,
+) -> Result<String, BridgeError> {
     let payload: ExecPayload = read_json(req.into_body(), config.limits.max_body).await?;
     let cwd = crate::paths::resolve_in_root(&config.workspace_root, payload.cwd.as_deref())
         .map_err(BridgeError::Validation)?;
@@ -1065,7 +1073,13 @@ async fn handle_exec(req: Request<Incoming>, config: &ServerConfig) -> Result<St
             payload.command,
             cwd,
             payload.timeout_seconds,
-            std::future::pending(),
+            async move {
+                if payload.cancel_on_disconnect {
+                    super::http::peer_closed(peer_closed).await;
+                } else {
+                    std::future::pending::<()>().await;
+                }
+            },
         ))
         .await?;
     serde_json::to_string(&output).map_err(|error| BridgeError::Execution(error.to_string()))

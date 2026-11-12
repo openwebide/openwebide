@@ -1188,8 +1188,14 @@ Remaining work:
   and cancellation that retains no partial lock set while waiting. Real process
   tests include suspended owners, quarantine, replacement and shutdown
   ([coordination checkpoint](code-intelligence/folder-coordination-checks.json)).
-  Non-LSP child processes still need crash-surviving ownership; durable actor
-  ownership and complete writer coverage remain unfinished.
+  On macOS/Linux, configured foreground and agent commands now dispatch under
+  independent process watchers that receive the original directory locks before
+  spawn. The child enters the pinned directory; cancellation and bridge loss retain
+  exclusion through original-group cleanup. Acknowledged background work retains
+  its watcher and folder claim until that group ends. Unconfirmed cleanup blocks
+  overlapping work. This [managed-group checkpoint](code-intelligence/command-process-group-checks.json) does not cover escaped groups,
+  PTY/Git lifetimes or native Windows ownership; durable actor ownership and complete
+  writer coverage remain unfinished.
   Native resource workers now obtain bounded owned recovery scope metadata and
   queue physical folders before taking the large-snapshot slot; full journals
   and folder identity are checked again after waiting. Database-generated record
@@ -1434,8 +1440,12 @@ Remaining work:
   accepted native execution. Replacement hosts restore original file metadata
   and both unsaved Unicode drafts without the original service; an unstarted
   approved command remains pending until explicit discard and is never replayed
-  ([physical followup](code-intelligence/physical-folder-checks.json)). These two
-  cases do not establish physical recovery for an already running command.
+  ([physical followup](code-intelligence/physical-folder-checks.json)). An additional
+  native PWA case removes folder access while the command is confirmed running
+  and its physical lock excludes competing work. Reload and regrant preserve both
+  exact CRLF/Unicode drafts and original disk metadata; saves remain paused until
+  manual acknowledgement, with no command replay
+  ([running-command recovery](code-intelligence/running-command-permission-checks.json)).
   Finish independent-provider and remaining interleaving coverage.
   Result normalization and initial native admission now retain affected-file
   identity/change-time evidence outside language associations. Ordinary validation

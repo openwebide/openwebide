@@ -97,9 +97,26 @@ pub(super) async fn execute_command_direct(spec: SpawnSpec) -> Result<CommandOut
     cmd.stderr(Stdio::piped());
     cmd.kill_on_drop(true);
 
-    let mut child = cmd.spawn().map_err(|e| {
-        BridgeError::Execution(format!("failed to spawn command '{display_cmd}': {e}"))
-    })?;
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    let (mut child, mut owner) = if let Some(folder) = &spec.folder {
+        let (owner, child) = super::process_owner::commands::Command::spawn(&spec, folder)
+            .map_err(BridgeError::Execution)?;
+        (child, Some(owner))
+    } else {
+        (
+            cmd.spawn().map_err(|e| {
+                BridgeError::Execution(format!("failed to spawn command '{display_cmd}': {e}"))
+            })?,
+            None,
+        )
+    };
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    let mut child = {
+        let _ = &spec.folder;
+        cmd.spawn().map_err(|e| {
+            BridgeError::Execution(format!("failed to spawn command '{display_cmd}': {e}"))
+        })?
+    };
 
     let pid = child.id().and_then(|id| i32::try_from(id).ok());
     // Armed for as long as this future can still be dropped mid-flight (e.g. hyper dropping the
@@ -108,7 +125,11 @@ pub(super) async fn execute_command_direct(spec: SpawnSpec) -> Result<CommandOut
     // `terminate_group`'s grace period. Disarmed once a controlled exit is reached, so a
     // successful command doesn't have its intentionally backgrounded/detached jobs killed.
     #[cfg(unix)]
-    let group_guard = pid.map(crate::exec::proc::GroupGuard::new);
+    let group_guard = {
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        let pid = pid.filter(|_| owner.is_none());
+        pid.map(crate::exec::proc::GroupGuard::new)
+    };
 
     let stdout = child.stdout.take().expect("stdout is piped");
     let stderr = child.stderr.take().expect("stderr is piped");
@@ -124,7 +145,19 @@ pub(super) async fn execute_command_direct(spec: SpawnSpec) -> Result<CommandOut
     // open (e.g. `sleep 20 &`) would otherwise hang `out_task`/`err_task` forever after `child`
     // exits, with neither the timer nor cancellation polled anymore.
     let run = async {
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        let status = if let Some(owner) = &owner {
+            owner.status().await.map_err(std::io::Error::other)
+        } else {
+            child.wait().await
+        };
+        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
         let status = child.wait().await;
+        if status.is_err() {
+            // A lost owner can leave a child holding its pipes open. Enter
+            // cleanup/quarantine now instead of waiting for unrelated EOF.
+            return (status, String::new(), String::new());
+        }
         let stdout = out_task.await.unwrap_or_default();
         let stderr = err_task.await.unwrap_or_default();
         (status, stdout, stderr)
@@ -132,33 +165,74 @@ pub(super) async fn execute_command_direct(spec: SpawnSpec) -> Result<CommandOut
 
     let result = tokio::select! {
         (status, stdout, stderr) = run => {
-            match status {
-                Ok(status) => Ok(CommandOutcome {
-                    exit_code: status.code(),
-                    stdout,
-                    stderr,
-                }),
-                Err(e) => Err(BridgeError::Execution(format!("execution error: {e}"))),
-            }
+            status.map(|status| CommandOutcome {
+                exit_code: status.code(),
+                stdout,
+                stderr,
+            }).map_err(|error| BridgeError::Execution(format!("execution error: {error}")))
         }
         () = tokio::time::sleep(timeout_duration) => {
-            // Reap the leader concurrently with signalling it: otherwise it sits as an unreaped
-            // zombie, `terminate_group`'s `kill(-pgid, 0)` liveness poll keeps seeing it, and
-            // every timeout pays the full grace period even when nothing else is left.
-            // `terminate_spawned_group` is a no-op on Windows (no process groups), so kill the
-            // direct child first there or `child.wait()` would just wait the command out.
-            #[cfg(windows)]
-            let _ = child.start_kill();
-            let _ = tokio::join!(terminate_spawned_group(pid), child.wait());
             Err(BridgeError::Execution(format!("command timed out after {}s", spec.timeout.as_secs())))
         }
         () = spec.cancel => {
-            #[cfg(windows)]
-            let _ = child.start_kill();
-            let _ = tokio::join!(terminate_spawned_group(pid), child.wait());
             Err(BridgeError::Execution("command cancelled".to_string()))
         }
     };
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    let result = match (result, owner.as_mut()) {
+        (Ok(outcome), Some(owner)) => owner
+            .complete()
+            .await
+            .map(|()| outcome)
+            .map_err(BridgeError::Execution),
+        (result, _) => result,
+    };
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    let mut cleanup_unconfirmed = false;
+    if result.is_err() {
+        #[cfg(windows)]
+        let _ = child.start_kill();
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        if let Some(owner) = &owner {
+            owner.stop();
+            // Signal delivery is not completion. A stuck helper retains its
+            // descriptors independently; an observation timeout cannot free them.
+            let confirmed = tokio::time::timeout(Duration::from_secs(3), child.wait()).await;
+            if !matches!(confirmed, Ok(Ok(status)) if status.success())
+                && let Some(folder) = &spec.folder
+            {
+                folder.mark_uncertain();
+                cleanup_unconfirmed = true;
+            }
+        } else {
+            // Reap the direct child concurrently with group termination.
+            let _ = tokio::join!(terminate_spawned_group(pid), child.wait());
+        }
+        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+        let _ = tokio::join!(terminate_spawned_group(pid), child.wait());
+    }
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    let result = if cleanup_unconfirmed {
+        result.map_err(|error| BridgeError::Execution(format!(
+            "{error}; native process cleanup is unconfirmed and the original folder remains blocked"
+        )))
+    } else {
+        result
+    };
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    if result.is_ok() && owner.is_some() {
+        // Keep the live coordinator claim and its descriptor reservation too;
+        // successful background commands cannot free the host's capacity early.
+        let folder = spec.folder.clone();
+        tokio::spawn(async move {
+            if !child.wait().await.is_ok_and(|status| status.success())
+                && let Some(folder) = &folder
+            {
+                folder.mark_uncertain();
+            }
+            drop(folder);
+        });
+    }
 
     #[cfg(unix)]
     if let Some(guard) = group_guard {

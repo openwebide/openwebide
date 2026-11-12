@@ -366,6 +366,16 @@ timeout, and cancellation; interactive terminals use it but stay outside the exe
 trait. `BridgeError` maps typed failures to HTTP status codes. Bridge logging uses
 `tracing`, with connection/run spans and `RUST_LOG` filtering (default `info`).
 
+Configured command and agent execution share the resource worker's physical folder
+coordinator. On Linux and macOS, a private mode of the matching bridge executable
+owns each command's original process group and directory locks before dispatch.
+The command enters the original directory through its open descriptor. Cancellation
+or lost control stops that group before releasing folder access; uncertain cleanup
+keeps the folder blocked. Acknowledged command completion preserves intentional
+background work, while the watcher retains exclusion until that group ends.
+Escaped process groups, Windows process ownership and complete durable writer
+authority remain on the roadmap.
+
 ## Roadmap
 
 What's left — grouped as Next / Later — lives in

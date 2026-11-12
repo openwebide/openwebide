@@ -1,7 +1,8 @@
-//! An independent parent owns the original language-server process group. It
+//! An independent parent owns an original language-server or command group. It
 //! retains passed folder descriptors until that group is confirmed stopped,
 //! including after the observing bridge disappears. Detached groups and other
 //! workspace writers still need the broader durable authority protocol.
+pub(crate) mod commands;
 mod groups;
 mod wire;
 
@@ -23,7 +24,7 @@ use std::{
     time::Duration,
 };
 
-const VERSION: u32 = 1;
+const VERSION: u32 = 2;
 const MODE: &str = "--internal-process-owner";
 static EXECUTABLE: OnceLock<PathBuf> = OnceLock::new();
 static STOP_REQUESTED: AtomicBool = AtomicBool::new(false);
@@ -57,6 +58,14 @@ enum Request {
         root: PathBuf,
         environment: BTreeMap<String, String>,
     },
+    StartCommand {
+        version: u32,
+        program: PathBuf,
+        args: Vec<String>,
+        root: PathBuf,
+        environment: BTreeMap<String, String>,
+    },
+    CompleteCommand,
     Retain {
         id: String,
     },
@@ -68,6 +77,9 @@ enum Request {
 #[serde(tag = "result", rename_all = "snake_case", deny_unknown_fields)]
 enum Reply {
     Started { version: u32, pid: u32 },
+    CommandExited { status: i32 },
+    CommandCompleted,
+    CommandRejected { reason: String },
     Retained { id: String },
     Released { id: String },
 }
@@ -166,13 +178,33 @@ impl Owner {
         root: &Path,
         environment: &BTreeMap<String, String>,
     ) -> Result<(Self, tokio::process::Child, u32), String> {
+        Self::start(
+            Request::Start {
+                version: VERSION,
+                program: program.to_owned(),
+                args: args.to_vec(),
+                root: root.to_owned(),
+                environment: environment.clone(),
+            },
+            vec![],
+            Stdio::piped(),
+            &mut false,
+        )
+    }
+    fn start(
+        request: Request,
+        descriptors: Vec<OwnedFd>,
+        stdin: Stdio,
+        may_have_dispatched: &mut bool,
+    ) -> Result<(Self, tokio::process::Child, u32), String> {
+        let mut frame = wire::prepare(&request, &descriptors).map_err(|e| e.to_string())?;
         let (mut stream, child_stream) = UnixStream::pair().map_err(|e| e.to_string())?;
         configure(&stream)?;
         configure(&child_stream)?;
         let child_fd = duplicate(child_stream.as_raw_fd())?;
         let mut command = helper_command(child_fd.as_raw_fd())?;
         command
-            .stdin(Stdio::piped())
+            .stdin(stdin)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
         command.process_group(0);
@@ -195,24 +227,19 @@ impl Owner {
         drop(child_stream);
         let stop = stream.try_clone().map_err(|e| e.to_string())?;
         let handshake = (|| {
-            wire::send(
-                &mut stream,
-                &Request::Start {
-                    version: VERSION,
-                    program: program.to_owned(),
-                    args: args.to_vec(),
-                    root: root.to_owned(),
-                    environment: environment.clone(),
-                },
-                &[],
-            )
-            .map_err(|e| e.to_string())?;
+            *may_have_dispatched = true;
+            wire::send_prepared(&mut stream, &mut frame, &descriptors)
+                .map_err(|e| e.to_string())?;
             let (reply, fds) = wire::receive::<Reply>(&mut stream).map_err(|e| e.to_string())?;
             match reply {
                 Reply::Started {
                     version: VERSION,
                     pid,
                 } if pid > 1 && fds.is_empty() => Ok(pid),
+                Reply::CommandRejected { reason } if fds.is_empty() => {
+                    *may_have_dispatched = false;
+                    Err(reason)
+                }
                 _ => Err("The native process owner has an incompatible protocol".into()),
             }
         })();
@@ -343,6 +370,18 @@ fn run(mut stream: UnixStream) -> Result<(), String> {
         return Err(io::Error::last_os_error().to_string());
     }
     let (request, fds) = wire::receive::<Request>(&mut stream).map_err(|e| e.to_string())?;
+    let request = match request {
+        Request::StartCommand {
+            version: VERSION,
+            program,
+            args,
+            root,
+            environment,
+        } => {
+            return commands::run(stream, program, args, root, environment, fds);
+        }
+        request => request,
+    };
     let Request::Start {
         version: VERSION,
         program,

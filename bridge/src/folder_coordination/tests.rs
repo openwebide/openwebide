@@ -191,3 +191,31 @@ fn captured_folder_rejects_replaced_ancestors_even_when_the_leaf_and_absolute_pa
     assert!(fresh.current());
     assert!(fresh.overlaps(&Folder::capture(&parent).unwrap()));
 }
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[tokio::test]
+async fn shared_command_uncertainty_keeps_the_original_gate_after_every_observer_drops() {
+    let directory = tempfile::tempdir().unwrap();
+    let coordinator = Coordinator::default();
+    let folder = Folder::capture(directory.path()).unwrap();
+    let active = Arc::new(coordinator.acquire(folder.clone()).await.unwrap());
+    let observer = active.clone();
+    active.mark_uncertain();
+    assert!(!active.covers(&folder));
+    drop(active);
+    let physical = std::fs::File::open(directory.path()).unwrap();
+    assert!(matches!(
+        physical.try_lock(),
+        Err(std::fs::TryLockError::WouldBlock)
+    ));
+    let mut queued = Box::pin(coordinator.acquire(folder.clone()));
+    assert!(queued.as_mut().now_or_never().is_none());
+    drop(observer);
+    assert!(queued.await.is_err());
+    assert!(coordinator.acquire(folder).await.is_err());
+    assert!(matches!(
+        physical.try_lock(),
+        Err(std::fs::TryLockError::WouldBlock)
+    ));
+    coordinator.shutdown().await;
+}

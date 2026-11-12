@@ -76,6 +76,7 @@ async fn probe(program: &str, args: &[&str]) -> Option<String> {
         env: Default::default(),
         timeout: Duration::from_secs(3),
         cancel: Box::pin(std::future::pending()),
+        folder: None,
     };
     let output = super::host::execute_command_direct(spec).await.ok()?;
     (output.exit_code == Some(0)).then_some(output.stdout)

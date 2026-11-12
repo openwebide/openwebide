@@ -108,6 +108,7 @@ impl Manager {
                 env: Default::default(),
                 timeout: Duration::from_secs(5),
                 cancel: Box::pin(std::future::pending()),
+                folder: None,
             })
             .await
             .map_err(|error| error.to_string())?;

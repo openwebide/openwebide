@@ -33,6 +33,9 @@ pub struct SpawnSpec {
     pub env: HashMap<String, String>,
     pub timeout: Duration,
     pub cancel: Pin<Box<dyn Future<Output = ()> + Send>>,
+    /// The shared coordinator supplies this original physical folder claim.
+    /// Transport processes and uncoordinated host probes leave it absent.
+    pub(crate) folder: Option<std::sync::Arc<crate::folder_coordination::Lease>>,
 }
 
 impl SpawnSpec {
@@ -53,6 +56,7 @@ impl SpawnSpec {
             env: HashMap::new(),
             timeout: Duration::from_secs(timeout_seconds),
             cancel: Box::pin(cancel),
+            folder: None,
         }
     }
 
@@ -70,6 +74,7 @@ impl SpawnSpec {
             env,
             timeout: Duration::from_secs(30),
             cancel: Box::pin(std::future::pending()),
+            folder: None,
         })
     }
 

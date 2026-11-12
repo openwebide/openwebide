@@ -68,12 +68,13 @@ impl ToolExecution for Execution {
                 let mut cancellation = Box::pin(async move {
                     tokio::select! { () = cancel => (), _ = abandoned => (), () = stopping.stopped() => () }
                 });
-                let _lease = tokio::select! {
+                let lease = tokio::select! {
                     biased;
                     () = &mut cancellation => return Err(BridgeError::Execution("command cancelled before folder access".into())),
                     lease = coordinator.acquire(folder.clone()) => lease.map_err(BridgeError::Validation)?,
                 };
-                inner
+                let lease = Arc::new(lease);
+                let outcome = inner
                     .run_command(SpawnSpec {
                         command,
                         args,
@@ -81,8 +82,13 @@ impl ToolExecution for Execution {
                         env,
                         timeout,
                         cancel: cancellation,
+                        folder: Some(lease.clone()),
                     })
-                    .await
+                    .await;
+                // An adapter may ignore its optional native claim. The shared
+                // worker still retains exclusion through the adapter's outcome.
+                drop(lease);
+                outcome
             });
             // Dropping this future signals cancellation, but never drops the
             // worker's lease before its process cleanup has finished.

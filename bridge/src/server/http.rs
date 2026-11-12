@@ -1,8 +1,8 @@
 //! HTTP head/body limits and response helpers for the bridge's hyper server.
 //!
-//! `run_server` drops a connection's service future when the peer disconnects mid-request
-//! (hyper stops polling it). Coordinated `/exec` workers observe that loss as
-//! cancellation and retain their folder lease until process-group cleanup ends.
+//! Reset connections drop their observer. Commands can additionally opt into
+//! cancellation on read EOF; ordinary half-closed HTTP clients remain supported.
+//! Coordinated workers retain their folder lease through process-group cleanup.
 
 use std::time::Duration;
 
@@ -171,10 +171,72 @@ impl<T: tokio::io::AsyncWrite + Unpin> tokio::io::AsyncWrite for WriteTimeout<T>
     }
 }
 
+type Peer = std::sync::Arc<tokio::net::tcp::OwnedReadHalf>;
+
+/// Sharing Tokio's owned read half permits non-consuming closure observation
+/// while hyper is waiting for a service response. No extra socket is opened.
+pub(super) fn connection_io(
+    stream: tokio::net::TcpStream,
+) -> (
+    impl tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
+    Peer,
+) {
+    let (read, write) = stream.into_split();
+    let read = std::sync::Arc::new(read);
+    (
+        WriteTimeout::new(tokio::io::join(SharedRead(read.clone()), write)),
+        read,
+    )
+}
+
+struct SharedRead(Peer);
+impl tokio::io::AsyncRead for SharedRead {
+    fn poll_read(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &mut tokio::io::ReadBuf<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        if buf.remaining() == 0 {
+            return std::task::Poll::Ready(Ok(()));
+        }
+        let stream: &tokio::net::TcpStream = self.0.as_ref().as_ref();
+        loop {
+            std::task::ready!(stream.poll_read_ready(cx))?;
+            match stream.try_read_buf(buf) {
+                Ok(_) => return std::task::Poll::Ready(Ok(())),
+                Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {}
+                Err(error) => return std::task::Poll::Ready(Err(error)),
+            }
+        }
+    }
+}
+
+pub(super) async fn peer_closed(peer: Peer) {
+    let stream: &tokio::net::TcpStream = peer.as_ref().as_ref();
+    let mut byte = [0];
+    loop {
+        let Ok(ready) = stream.ready(tokio::io::Interest::READABLE).await else {
+            return;
+        };
+        if ready.is_read_closed() || ready.is_error() {
+            return;
+        }
+        match stream.peek(&mut byte).await {
+            Ok(0) | Err(_) => return,
+            Ok(_) => {
+                // Only unexpected pipelined data reaches this branch after
+                // the complete body was decoded. Preserve it for hyper and
+                // bound observation work until the peer closes its write side.
+                tokio::time::sleep(Duration::from_millis(100)).await;
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio::io::AsyncWriteExt;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     #[tokio::test(start_paused = true)]
     async fn stalled_response_write_times_out_without_limiting_idle_reads() {
@@ -182,5 +244,25 @@ mod tests {
         let mut writer = WriteTimeout::new(writer);
         let error = writer.write_all(b"ab").await.unwrap_err();
         assert_eq!(error.kind(), std::io::ErrorKind::TimedOut);
+    }
+
+    #[tokio::test]
+    async fn peer_closure_is_observed_without_draining_buffered_bytes() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let mut writer = tokio::net::TcpStream::connect(listener.local_addr().unwrap())
+            .await
+            .unwrap();
+        let (stream, _) = listener.accept().await.unwrap();
+        let (mut reader, peer) = connection_io(stream);
+        let mut empty = [];
+        assert_eq!(reader.read(&mut empty).await.unwrap(), 0);
+        writer.write_all(b"x").await.unwrap();
+        writer.shutdown().await.unwrap();
+        tokio::time::timeout(Duration::from_secs(1), peer_closed(peer))
+            .await
+            .unwrap();
+        assert_eq!(reader.read_u8().await.unwrap(), b'x');
+        let mut byte = [0];
+        assert_eq!(reader.read(&mut byte).await.unwrap(), 0);
     }
 }

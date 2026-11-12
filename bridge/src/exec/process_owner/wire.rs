@@ -14,20 +14,48 @@ pub(super) const MAX_FDS: usize = 64;
 // JSON's six-byte escaping of control characters, plus launch paths and env.
 const MAX_BODY: usize = 4 * 1024 * 1024;
 
-pub(super) fn send(
-    stream: &mut UnixStream,
-    body: &impl Serialize,
-    descriptors: &[OwnedFd],
-) -> io::Result<()> {
+pub(super) struct Frame {
+    bytes: Vec<u8>,
+    descriptors: usize,
+}
+
+/// Validate and encode before starting a process or admitting dispatch. A local
+/// framing rejection is known to have sent no bytes and no descriptors.
+pub(super) fn prepare(body: &impl Serialize, descriptors: &[OwnedFd]) -> io::Result<Frame> {
     let body = serde_json::to_vec(body).map_err(io::Error::other)?;
     if body.len() > MAX_BODY || descriptors.len() > MAX_FDS {
         return Err(io::Error::other(
             "Native process control frame exceeds its limit",
         ));
     }
-    let mut frame = Vec::with_capacity(4 + body.len());
-    frame.extend_from_slice(&u32::try_from(body.len()).unwrap().to_be_bytes());
-    frame.extend_from_slice(&body);
+    let mut bytes = Vec::with_capacity(4 + body.len());
+    bytes.extend_from_slice(&u32::try_from(body.len()).unwrap().to_be_bytes());
+    bytes.extend_from_slice(&body);
+    Ok(Frame {
+        bytes,
+        descriptors: descriptors.len(),
+    })
+}
+
+pub(super) fn send(
+    stream: &mut UnixStream,
+    body: &impl Serialize,
+    descriptors: &[OwnedFd],
+) -> io::Result<()> {
+    send_prepared(stream, &mut prepare(body, descriptors)?, descriptors)
+}
+
+pub(super) fn send_prepared(
+    stream: &mut UnixStream,
+    frame: &mut Frame,
+    descriptors: &[OwnedFd],
+) -> io::Result<()> {
+    if frame.descriptors != descriptors.len() {
+        return Err(io::Error::other(
+            "Native control descriptors changed after framing",
+        ));
+    }
+    let frame = &mut frame.bytes;
     let mut control = [0usize; 80];
     let mut message: libc::msghdr = unsafe { std::mem::zeroed() };
     let mut vector = libc::iovec {

@@ -97,7 +97,7 @@ Instructions, conventions, and architectural principles for AI agents working on
   ```bash
   cargo build -p openwebide-bridge
   ```
-  Language-server process watchers run the same bridge executable in a private
+  Language-server and command process watchers run the same bridge executable in a private
   control mode. Build it before filtered native `--lib` tests or standalone
   language-host examples; an embedded native host must have the matching bridge
   executable beside it. The ordinary integration-test gate builds it automatically.
@@ -302,6 +302,11 @@ of GB, and agents running several copies at once have filled the disk before.
   `CARGO_TARGET_DIR=<repo>/target` (cargo locks it, so concurrent builds are safe). Never let a
   scratch copy create its own `target/`.
 - Prefer `git worktree add` over copying the repo, and remove copies and worktrees when done.
+- When switching between worktrees with different source in a shared target, invalidate the
+  affected workspace packages in that profile before building. Cargo's timestamp checks can
+  reuse an older worktree's crate even when a newer API exists in the current source. For native
+  dev builds, use `cargo clean -p <package> --profile dev --target-dir <physical-target>`;
+  include changed dependencies. Preserve production artifacts before cleaning their profile.
 - Dev builds keep only line tables (`[profile.dev] debug = "line-tables-only"`, and no debug info
   for dependencies) — don't turn full debug info back on in the workspace profile.
 - Wasmtime uses dev `opt-level = 1` to keep the native bridge test binary below macOS's

@@ -103,6 +103,7 @@ impl<
             "command": command,
             "timeout_seconds": timeout_seconds,
             "cwd": self.project_dir,
+            "cancel_on_disconnect": true,
         })
         .to_string();
 
