@@ -22,6 +22,7 @@ import urllib.error
 import urllib.request
 
 from language_host_support import ExecutionHost
+from language_review_support import assert_review_session as assert_original_review_session
 from language_server_client_support import ProbeMirror, click, close, command, insert, local_handle, script, wait
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -237,54 +238,6 @@ def open_action(browser, title):
     wait(title, lambda: click(browser, title))
 
 
-def assert_original_review_session(browser, mode, checkpoint):
-    timeline = script(browser, 'return resourceProbe.timeline.slice(arguments[0]);', checkpoint)
-    language = [row for row in timeline if row['kind'] == 'language'
-                and row['query']['operation'] != 'synchronize']
-    assert [row['query']['operation'] for row in language] == ['code_actions', 'review_action', 'validate_analysis'], language
-    assert all(row.get('status') == 200 for row in language), language
-    assert language[0]['server'] == language[1]['server'] == language[2]['server'], language
-    begins = [row for row in timeline if row['kind'] == 'transaction' and row['operation'] == 'begin']
-    assert len(begins) == 1 and begins[0].get('status') == 200, begins
-    begin = begins[0]
-    review = begin['body']['language_review']
-    assert review['input'] == language[1]['input'], review
-    assert review['context'] == language[1]['analysisContext'], review
-    assert review['result'] == language[1]['analysisResult'], review
-    assert review['binding_revision'] > 0 and len(review['transaction_digest']) == 64
-    context = review['context']
-    assert context['files'][0] == '' and context['identities'][0].startswith('u1.')
-    assert 0 < len(context['files']) == len(context['identities']) == len(context['revisions'])
-    assert all(isinstance(value, str) and value for value in context['revisions'])
-    assert language[-1]['completed'] < begin['began'], timeline
-    folders = [row for row in timeline if row['kind'] == 'folder']
-    executed = [row for row in timeline if row['kind'] in ('folder', 'transaction') and row.get('operation') == 'execute']
-    assert len(executed) == 1 and executed[0]['hasGrant'], executed
-    grants = [row for row in timeline if row['kind'] == 'grant' and row.get('status') == 200
-              and begin['completed'] < row['began'] < row['completed'] < executed[0]['began']]
-    assert any(row['context'].get('user_action') is True and row['context'].get('session_id') is None
-               and row['context'].get('project_id') is not None
-               and row['packages'] == [review['prepared']['digest']]
-               and row['grantDigests'] == [review['prepared']['digest']] for row in grants), grants
-    if mode == 'remote':
-        assert not folders, folders
-        return
-    opened = [row for row in folders if row['operation'] == 'open']
-    proved = [row for row in folders if row['operation'] == 'prove']
-    assert len(opened) == len(proved) == 1, folders
-    assert opened[0]['result'] == 'opened' and proved[0]['result'] == 'ready', folders
-    assert opened[0]['completed'] < proved[0]['began'] < proved[0]['completed'] < language[0]['began'], timeline
-    session = opened[0]['openedSession']
-    # Dropping the preceding rejected review can finish its asynchronous close
-    # after this checkpoint. It cannot contribute reads, proof or mutations.
-    assert session and all(row.get('session') == session or row['operation'] in ('open', 'close') for row in folders), folders
-    original = [row for row in folders if row.get('session') == session]
-    assert {'file', 'execute', 'close'} <= {row['operation'] for row in original}, folders
-    assert any(row.get('fileOperation') == 'bind' for row in original), folders
-    executed = [row for row in original if row['operation'] == 'execute']
-    assert len(executed) == 1 and language[-1]['completed'] < executed[0]['began'], timeline
-    assert not any(row['operation'] in ('admit', 'advance') or row.get('fileOperation') in ('create', 'transfer', 'remove_created', 'remove_retained') for row in original), folders
-    assert all(row.get('status') == 200 for row in [opened[0], *original]), folders
 
 
 def command_contract(runtime, host, browser, state, folder, project, files, proxy):

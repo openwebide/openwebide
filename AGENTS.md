@@ -171,6 +171,18 @@ Actions runs.
      and uses deterministic LSP peers to verify navigation after result dialogs
      close, UTF-16 locations, diagnostic traversal, owning-provider fixes and
      disablement/failure/recovery in both modes. Its local folder uses OPFS.
+   - Independent provider reviews have a production contract:
+     `python3 tools/check-language-reviews-client.py`. Build current release
+     backend/frontend artifacts and the release bridge with bundled defaults
+     first. It installs two public server-only packages and verifies original
+     review identity during independent diagnostics, revocation before validation
+     authorization and native admission, installed-version replacement,
+     untouched Prepared cancellation, identical-looking results, and late
+     replies in both modes. The same
+     resource/session assertions are shared with the workspace transaction check.
+     `--case` selects one family; `--evidence-dir` retains disposable failure
+     database snapshots and native/browser evidence. Local OPFS correspondence
+     does not establish physical folder permissions.
    - Idle language warming has a production contract:
      `python3 tools/check-language-prefetch-client.py`. Build current release
      backend/frontend artifacts and the release bridge with bundled defaults

@@ -9,6 +9,8 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Add production checks for retained reviews across independent provider refreshes, revoked authorization/admission, installed-version replacement, identical-looking results and late replies. Share the original resource/session assertions and retain disposable failure evidence.
+
 - Use monotonically increasing account generations in the wrapped geometry replay fixture, matching sign-in/logout. Preserve its complete geometry checks and existing deadlines, with separate counter-restoration coverage unchanged.
 
 - Keep Linux/macOS foreground and agent command folder locks in an independent process watcher before dispatch and through bridge loss or cancellation cleanup. Enter the pinned original directory, preserve acknowledged background work while retaining exclusion, and block overlapping work when cleanup is unconfirmed. Escaped groups, PTY/Git lifetimes, Windows ownership and durable writer authority remain unfinished.

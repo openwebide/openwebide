@@ -1,0 +1,332 @@
+{
+  "format": 1,
+  "checked_on": "2026-11-12",
+  "status": "passed_finite_tracked_provider_review_contracts",
+  "base_commit": "762a24e695000dd9d29b1f188d3399f466dcf330",
+  "source_snapshot_sha256": "0835498b33fab4db49e6ea8edf10e25392f60cf8341ac6bb100e56f0f62590cb",
+  "sources_sha256": {
+    "tools/check-language-reviews-client.py": "f89d817b453347bfc75ef71d7c53a8070ed3149d36a52f24b389a8b6601ae4c9",
+    "tools/fixtures/language_review_server.py": "8b8080f793b347109c661f367e109b6b124a092550c7314925410c4edb89595e",
+    "tools/language_review_support.py": "4eb7b3ce17971170b6ab727e54c9a97d96fb2bebdebb15ff2255c592044d89b1",
+    "tools/check-language-navigation-client.py": "6f69558588f00bf1a40c3d2d2375d40d81306539905734439213344f8d017a60",
+    "tools/check-workspace-transactions-client.py": "cb0c846eb794254ddaeb12dc81490bdddd5c7bb40c8b14f21959020104656956"
+  },
+  "command": "python3 tools/check-language-reviews-client.py",
+  "public_review_cases": 28,
+  "modes": [
+    "remote",
+    "local"
+  ],
+  "review_kinds": [
+    "resource",
+    "resource_and_command"
+  ],
+  "scenarios": [
+    "replace-authorization",
+    "replace-admission",
+    "refresh",
+    "authorization",
+    "admission",
+    "identical",
+    "late-reply"
+  ],
+  "shared_original_resource_session_assertions": 24,
+  "additional_command_oracles": 5,
+  "checks": [
+    "Independent diagnostic refresh preserves the retained original review and service.",
+    "Actual provider disablement and installed-version replacement reject old authority before backend validation authorization and at initial native worker admission.",
+    "Rejected initial admission leaves worker credentials and accepted-review digest absent; untouched Prepared state and unstarted commands can be cancelled without execution.",
+    "Fresh explicit retries use the current package and project binding.",
+    "Identical-looking results preserve selected provider, opaque command identity and exact stored LanguageReview digest.",
+    "An actual old successful reply delivered after a replacement review cannot replace its approved evidence.",
+    "Original disk sources, unrelated CRLF/Unicode drafts, original draft undo and command ownership remain checked."
+  ],
+  "cases": [
+    {
+      "case": "provider-review-replace-authorization",
+      "seconds": 163.43,
+      "deadline_seconds": 1800,
+      "log_sha256": "4cb2c983aea3c9817cae11e7f8f7b346d46987307d3f6adc8dfa54c1750e7409"
+    },
+    {
+      "case": "provider-review-replace-admission",
+      "seconds": 161.73,
+      "deadline_seconds": 1800,
+      "log_sha256": "4ca27ae962cddeb452acc0e5af477a5a8918f19937d40713f43fb13e43f49a0a"
+    },
+    {
+      "case": "provider-review-refresh",
+      "seconds": 149.52,
+      "deadline_seconds": 1800,
+      "log_sha256": "6a31fcd4ed3f9db9de889206c78017f7318122a357c0c28700b466fec218370c"
+    },
+    {
+      "case": "provider-review-authorization",
+      "seconds": 162.72,
+      "deadline_seconds": 1800,
+      "log_sha256": "0871bf7bac76bb2253300e9e44554f6f343087a4fca67e4402bf9b6fe2623599"
+    },
+    {
+      "case": "provider-review-admission",
+      "seconds": 159.06,
+      "deadline_seconds": 1800,
+      "log_sha256": "a9398257299b8ef08aa16f8b1393ab8a5c56602c938230c8ccf96e8342da9360"
+    },
+    {
+      "case": "provider-review-identical",
+      "seconds": 150.87,
+      "deadline_seconds": 1800,
+      "log_sha256": "d959a57a2ad9f9a54e4014bfdc70df7468c3bb887cb5c6bffffdbbcb25fd1aec"
+    },
+    {
+      "case": "provider-review-late-reply",
+      "seconds": 157.77,
+      "deadline_seconds": 1800,
+      "log_sha256": "0ff13a57b78c9a150f54bcb78fb5743ee64825810baf156522a25ca4d1a25801"
+    },
+    {
+      "case": "original-workspace-transactions",
+      "seconds": 140.71,
+      "deadline_seconds": 1800,
+      "log_sha256": "503e24addda8b1f1e1aa96b50dc5ce44f7e5c72587059a3b0ba20364b3d6357c"
+    },
+    {
+      "case": "original-language-navigation",
+      "seconds": 111.01,
+      "deadline_seconds": 1800,
+      "log_sha256": "ed9b866a4fa85f9acbcb428d401b94ff7677d939f36e301fb5fba33b9a4bc7b7"
+    }
+  ],
+  "affected_original_contracts": [
+    "tools/check-workspace-transactions-client.py",
+    "tools/check-language-navigation-client.py"
+  ],
+  "production_artifacts": {
+    "count": 40,
+    "native_bridge_sha256": "fd9b0d14e577bddd5043aee0419de7c14656922bcbe59bf08875360bec934d3b",
+    "wasi_backend_sha256": "b8d1316dfc29a665d1bc096d847e8e7440053b129657fe6eff0ea7fc5f4da2b0"
+  },
+  "full_current_source_ci_complete": true,
+  "limits": [
+    "Finite deterministic peers use actual public plugin installation, backend authorization, native workers, database acceptance and production editor; this is not every editor interleaving.",
+    "Local OPFS/native correspondence does not establish physical permission prompts.",
+    "The late-reply case abandons A before B approval; it does not claim A entered native mutation admission.",
+    "Browser-only Local saves remain available without the companion and are outside managed native physical-lock guarantees.",
+    "Durable compound authority, remaining participating writer coverage, escaped process groups, native Windows ownership and the wider code-intelligence roadmap remain unfinished.",
+    "Original required panel build failed from ENOSPC before commit/push. Two actual passed prefix stages were retained with source/tool/artifact evidence; failed3 and all remaining16 cases reran under original commands, assertions, environment and deadlines. No compiler warning was suppressed."
+  ],
+  "post_ci_change": "Only this verification JSON is updated after full CI; all runtime and test input hashes remain unchanged.",
+  "complete_local_ci": {
+    "source_snapshot_sha256": "2f7feeebf064ea4e6f897b7a92210613a8ba43ae92f307c25d13a0d9705dd286",
+    "local_cases": 16,
+    "required_cases": 19,
+    "all_passed": true,
+    "native_passes": 2333,
+    "native_batches": 40,
+    "existing_ignored_native_cases": [
+      "editor::structure::tests::measure_indexed_language_queries",
+      "first_party_component_owns_views_and_publishing_through_public_sdk",
+      "first_party_panels_publish_once_through_real_paired_and_backend_bridge_adapters",
+      "plugins::tests::official_marketplace_reference_package_installs_and_loads_on_both_host_scopes",
+      "scheduling_component_uses_shared_records_events_and_raw_runs_in_both_modes",
+      "ssh_administration_inspects_and_changes_the_target_and_handles_interactive_sudo",
+      "ssh_update_adapter_pins_both_deployments_and_survives_ssh_disconnect"
+    ],
+    "browser_passes": 765,
+    "positive_browser_runs": 18,
+    "editor_passes": 259,
+    "non_editor_passes": 506,
+    "runner_timeout_seconds": 300,
+    "public_review_cases_repeated_in_required_ci": 28,
+    "required_review_log_sha256": "366b7e3b9afece60f43e2f48650312cea5c009802a035575d114c8f8df36148e",
+    "tracked_precommit_hook_log_sha256": "125d3d253b9d1940e2cbce12221040b5e67fb3ab97c8302c2d592796542a70b6",
+    "checks": [
+      {
+        "case": "dev-disk-reserve-cleanup",
+        "returncode": 0,
+        "log_sha256": "0bdaeb2aa6a92a0fdfec2d2cc4d0ab71946de5d0654e08c526e4629130ae0f28"
+      },
+      {
+        "case": "format-and-focused-tooling",
+        "returncode": 0,
+        "log_sha256": "fadb96b8ad01197a0940e4095fdaa2f6ba1ff006ca503658210ddeb32d2eb3df"
+      },
+      {
+        "case": "windows-cross-clippy-not-native-runtime",
+        "returncode": 0,
+        "log_sha256": "8358006b6cb9a21f920bac6b8c91a2dd467966162ecf7bef88daf0ed60fe7ae6"
+      },
+      {
+        "case": "tracked-pre-push-hook",
+        "returncode": 0,
+        "log_sha256": "125d3d253b9d1940e2cbce12221040b5e67fb3ab97c8302c2d592796542a70b6"
+      },
+      {
+        "case": "genuine-offline-source-compiler",
+        "returncode": 0,
+        "log_sha256": "260222da308dd386662eb49995802f8c575decd1bfc8f13d59047bf63ace5698"
+      },
+      {
+        "case": "validate-release-tooling-and-install-configuration",
+        "returncode": 0,
+        "log_sha256": "259e1bf4be9fc775966ac4adf48e248ca65731fc7280c1527e5c479f5d364138"
+      },
+      {
+        "case": "clippy-editor-measurements",
+        "returncode": 0,
+        "log_sha256": "7487e8b5609263ac307b1db3ea8268456f5edf890a37fe3ac8e99e0b8e6ca32b"
+      },
+      {
+        "case": "tests-editor-storage-workloads",
+        "returncode": 0,
+        "log_sha256": "8f3e773fbb64b488ee63a4482f2b297a74a4e3d687bc5a23e837aa7b1fa5d2ed"
+      },
+      {
+        "case": "test-pwa-caching-and-installation",
+        "returncode": 0,
+        "log_sha256": "aaf9f1eba5e9b7c116c76417055f4f2dbdb13bce697b15eec7e8bef67b79d4eb"
+      },
+      {
+        "case": "check-production-client-artifacts-and-retained-parser-protocol",
+        "returncode": 0,
+        "log_sha256": "8dae7fcfe691d4019839955ce49f03b64104f7482a1ee0b0e0755266eb838f4e"
+      },
+      {
+        "case": "measure-shared-editor-storage-in-browser-wasm",
+        "returncode": 0,
+        "log_sha256": "248fb20e9d8bb1c69eab2c209f5a4a1445dd113356350fc349b14ffd30a88850"
+      },
+      {
+        "case": "test-container-supervisor",
+        "returncode": 0,
+        "log_sha256": "d965684346c46dbf06c135f1299cc3e819865d5255ec8f72035c1dce2d408538"
+      },
+      {
+        "case": "production-idle-prefetch-both-modes",
+        "returncode": 0,
+        "log_sha256": "d564aa9d42397ebe30a15abcd7b26bb238a69dcc927527988cde9943082ead9d"
+      },
+      {
+        "case": "site-navigation-tests",
+        "returncode": 0,
+        "log_sha256": "d1a3bdcaa925bbf92cc120237c5ab1078f911832e5f3bbdd16fd82aab85d59fa"
+      },
+      {
+        "case": "complete-site-and-playground-build",
+        "returncode": 0,
+        "log_sha256": "5e66fa6393bbcd2ee75bc29bbe7a6728c1a9cfb505d514636f9924181e4b259c"
+      },
+      {
+        "case": "production-panel-playground-browser",
+        "returncode": 0,
+        "log_sha256": "06926e0a45fb383e55ca86cec533d1f94b71c0ab478732fba9e9b46dd60100a2"
+      },
+      {
+        "case": "plugin-build-native-tests",
+        "returncode": 0,
+        "log_sha256": "9d548b5525bc6c3b578996840853591ffb732d443b5d4633befb6ae63a891739"
+      },
+      {
+        "case": "compile-and-verify-offline-executable-defaults",
+        "returncode": 0,
+        "log_sha256": "9c58c439fbfa2db094e313e23f08e64aa4561c18095d008860aa655874fcd28c"
+      },
+      {
+        "case": "build-and-verify-the-first-party-panel-reference",
+        "returncode": 0,
+        "log_sha256": "686dab8fabe9daf1cb13ab2963d7ebd685ddb0349f746090f07515be2a4eed83"
+      },
+      {
+        "case": "check-host-language-lifecycle-and-custom-marketplace-installation-in-both-modes",
+        "returncode": 0,
+        "log_sha256": "544d94b0ba8cb6d53fc696181d64d99ca5176418e7b85e41e3535f58008cb693"
+      },
+      {
+        "case": "check-production-rust-language-server-features-in-both-modes",
+        "returncode": 0,
+        "log_sha256": "d0fb8a993003fc72ec4c23381ac996301e92c2195a995fec71096d356b0a4f6e"
+      },
+      {
+        "case": "check-production-typescript-language-server-features-in-both-modes",
+        "returncode": 0,
+        "log_sha256": "f86cc237c7d3d40f1d554909f54a9e9f866dea4adc004699f2469f72832f891a"
+      },
+      {
+        "case": "check-production-python-language-server-features-in-both-modes",
+        "returncode": 0,
+        "log_sha256": "f20949bdbd21dee83d186a7286b54475d086f05405adbf160b709afa74ce6015"
+      },
+      {
+        "case": "check-production-go-language-server-features-in-both-modes",
+        "returncode": 0,
+        "log_sha256": "81ea83d85ee98b6265b4ca2d9deb28d25c24533b8e9562c67ebc148110fc9245"
+      },
+      {
+        "case": "check-production-c-c-language-server-features-in-both-modes",
+        "returncode": 0,
+        "log_sha256": "1d9e5f01c002f2e10caa0c80d50c8b957fabb1c0ce7ead17b2ab7b146acef50a"
+      },
+      {
+        "case": "check-production-c-language-server-features-in-both-modes",
+        "returncode": 0,
+        "log_sha256": "c4c98e5d25fcf49f6be6674a3ff5dc8370e680d41b93c82273e918fcb86db429"
+      },
+      {
+        "case": "check-production-html-css-and-json-language-server-features-in-both-modes",
+        "returncode": 0,
+        "log_sha256": "8d72a40cf5938822604daa3ec6cb16015242eba21e44940d8ea4cff543f54a59"
+      },
+      {
+        "case": "check-production-terraform-language-server-features-in-both-modes",
+        "returncode": 0,
+        "log_sha256": "65ffc2d948cc6e2a3ea3992799fc274960f596bcd7b071edb3b19fa8ef5dbbf2"
+      },
+      {
+        "case": "check-reviewed-workspace-operations-commands-and-interrupted-recovery-in-both-modes",
+        "returncode": 0,
+        "log_sha256": "503e24addda8b1f1e1aa96b50dc5ce44f7e5c72587059a3b0ba20364b3d6357c"
+      },
+      {
+        "case": "check-declared-project-inputs-and-reviewed-configuration-commands-in-both-modes",
+        "returncode": 0,
+        "log_sha256": "b0c9f12a3e9025f81fd3a11e8210ff95c2023de8daeee7fd2fbba32e50645ea1"
+      },
+      {
+        "case": "check-agent-language-tools-in-browser-bridge-and-backend-executors",
+        "returncode": 0,
+        "log_sha256": "83d2d4cb550d9523ebce1a20eeebf1e3c3b31acd6f50ff6783999623c684a705"
+      },
+      {
+        "case": "check-production-navigation-and-independent-diagnostics-in-both-modes",
+        "returncode": 0,
+        "log_sha256": "ed9b866a4fa85f9acbcb428d401b94ff7677d939f36e301fb5fba33b9a4bc7b7"
+      },
+      {
+        "case": "check-independent-provider-review-identity-and-authority-in-both-modes",
+        "returncode": 0,
+        "log_sha256": "366b7e3b9afece60f43e2f48650312cea5c009802a035575d114c8f8df36148e"
+      },
+      {
+        "case": "check-automatic-completion-and-pointer-information-in-both-modes",
+        "returncode": 0,
+        "log_sha256": "0abae846f1c2b8fe363119df7edb158af75ea5480d7b709bfb02cd84a3a32718"
+      },
+      {
+        "case": "check-production-editor-input-history-and-pointer-selection",
+        "returncode": 0,
+        "log_sha256": "01fca54f1efe3ef5d937f8ba9bdd938dc8951e609c7b09a4556db001b5c93d99"
+      }
+    ],
+    "platform_scope": "Native macOS and Windows cross-compilation. Actual hosted/native Windows and release results are separate.",
+    "completion_mode": "Verified composite after completed-output disk cleanup",
+    "adopted_actual_completed_prefix_cases": 2,
+    "failed_and_remaining_original_cases_rerun": 17,
+    "original_failed_case": {
+      "case": "build-and-verify-the-first-party-panel-reference",
+      "returncode": 101,
+      "log_sha256": "8658cbcfc0adec338488c53966a3744d44b96815081adc7d33e0aed42b73a486",
+      "observed_error": "ld write failed with errno28 No space left on device; original warnings/failure retained"
+    },
+    "successful_panel_retry_log_sha256": "686dab8fabe9daf1cb13ab2963d7ebd685ddb0349f746090f07515be2a4eed83"
+  }
+}

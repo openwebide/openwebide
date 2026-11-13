@@ -1157,9 +1157,11 @@ cover these workflows and provider lifecycle in both modes.
 
 Remaining work:
 
-- Finish durable phase authority and complete native/backend/browser-agent
-  filesystem coverage, multi-process/profile ownership, durable outcomes and
-  frozen-owner recovery. The installed macOS Chrome PWA checks now cover native
+- Finish durable phase authority for managed native operations, participating
+  native/backend/agent filesystem paths, multi-process/profile ownership,
+  durable outcomes and frozen-owner recovery. Keep ordinary browser-only Local
+  saves available without the companion; these saves are outside the physical
+  folder locking guarantee. The installed macOS Chrome PWA checks now cover native
   moves and reviewed commands, permission revocation/regrant, automatic remote
   rollback and manual Local rollback after an unacknowledged move before editor
   commit. Original inode/hard link/mode/ACL/extended attributes/CRLF bytes and
@@ -1404,7 +1406,7 @@ Remaining work:
   recovery, command non-replay and declared-input rejection/acceptance pass in
   both modes. Traces verify original-service validation and Local session reuse
   ([checkpoint](code-intelligence/review-capability-checks.json)). Finish
-  independent-provider and remaining editor interleaving coverage.
+  remaining editor interleaving coverage.
   Schema 66 now stores optional `LanguageReview` evidence bound to the exact plan
   and editor patch, with immutable retry identity, quota accounting, old-record
   recovery and migration replay checks in both modes
@@ -1446,7 +1448,13 @@ Remaining work:
   exact CRLF/Unicode drafts and original disk metadata; saves remain paused until
   manual acknowledgement, with no command replay
   ([running-command recovery](code-intelligence/running-command-permission-checks.json)).
-  Finish independent-provider and remaining interleaving coverage.
+  Independent-provider production contracts now cover source-neutral diagnostic
+  refresh, disablement and installed-version replacement before authorization and
+  at native admission, identical-looking results and late replies. All seven
+  families pass for resource-only and command-bearing reviews in both modes,
+  retaining original review/session, cancellation, disk/draft and undo assertions
+  ([provider review checkpoint](code-intelligence/provider-review-checks.json)).
+  Finish remaining editor interleaving coverage.
   Result normalization and initial native admission now retain affected-file
   identity/change-time evidence outside language associations. Ordinary validation
   shares the stateless signed path set and rechecks it after asynchronous context
@@ -1498,9 +1506,13 @@ Remaining work:
   shutdown assertion; failure-state diagnostics and release packaging are tracked separately.
   On the later `f4a10bc7`, the backend pin-fetch, native shutdown and Local
   wrapped-replay jobs failed separately. Published `1e02b234` passes all 34 local
-  CI cases and the actual push gate of 765 browser tests. Its recorded hosted backend,
-  non-editor UI, panel and Windows jobs pass; runtime, editor and release packaging
-  were still running at that observation.
+  CI cases and the actual push gate of 765 browser tests. Its hosted run finished
+  with a Local wrapped-replay timeout; the other fourteen executed jobs passed.
+  The later published `762a24e6` also passes the complete local gate, and both
+  hosted editor shards pass with their original workloads and deadlines. Its
+  Intel macOS bridge job failed dependency DNS resolution; ARM macOS hit the
+  existing plugin-build time limit. Complete reliable hosted packaging and
+  investigate the failures without inferring their cause from later passes.
   The shared wrapped replay fixture now advances account generations monotonically,
   matching production sign-in/logout. Both-mode original/candidate checks retain
   all five scenarios, four edits each, complete geometry oracles and deadlines;

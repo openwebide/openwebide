@@ -456,105 +456,143 @@
     }
   },
   "current_published_followup": {
-    "commit": "1e02b234340a77ada932735336a9ce1f9c080801",
-    "workflow_run": 43267197474,
-    "observed_at_utc": "2026-11-12T17:40:39.519983+00:00",
-    "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474",
-    "status_at_observation": "in_progress",
+    "commit": "762a24e695000dd9d29b1f188d3399f466dcf330",
+    "workflow_run": 43310664410,
+    "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410",
+    "status": "in_progress",
+    "conclusion": "",
+    "observed_at_utc": "2026-11-12T23:07:44.888208+00:00",
     "jobs": {
       "validate": {
-        "id": 131353835860,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353835860",
+        "id": 131505595230,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505595230",
         "status": "completed",
         "conclusion": "success"
       },
       "macos-bridges (macos-15-intel, x86_64-apple-darwin)": {
-        "id": 131353969942,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353969942",
-        "status": "in_progress",
-        "conclusion": ""
+        "id": 131505696782,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505696782",
+        "status": "completed",
+        "conclusion": "failure"
+      },
+      "images (ubuntu-24.04, amd64, x86_64-unknown-linux-gnu)": {
+        "id": 131505696800,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505696800",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "images (ubuntu-24.04-arm, arm64, aarch64-unknown-linux-gnu)": {
+        "id": 131505696804,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505696804",
+        "status": "completed",
+        "conclusion": "success"
       },
       "macos-bridges (macos-15, aarch64-apple-darwin)": {
-        "id": 131353970004,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970004",
-        "status": "in_progress",
-        "conclusion": ""
+        "id": 131505696856,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505696856",
+        "status": "completed",
+        "conclusion": "failure"
+      },
+      "checks / plugin-panels": {
+        "id": 131505697056,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505697056",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / editor-ui-tests (2/2)": {
+        "id": 131505697079,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505697079",
+        "status": "completed",
+        "conclusion": "success"
       },
       "checks / backend-and-crates": {
-        "id": 131353970629,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970629",
+        "id": 131505697097,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505697097",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / editor-ui-tests (1/2)": {
+        "id": 131505697114,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505697114",
         "status": "completed",
         "conclusion": "success"
       },
       "checks / frontend-ui-tests": {
-        "id": 131353970674,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970674",
-        "status": "completed",
-        "conclusion": "success"
-      },
-      "checks / plugin-runtime": {
-        "id": 131353970675,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970675",
-        "status": "in_progress",
-        "conclusion": ""
-      },
-      "checks / editor-ui-tests (1/2)": {
-        "id": 131353970730,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970730",
-        "status": "in_progress",
-        "conclusion": ""
-      },
-      "checks / editor-ui-tests (2/2)": {
-        "id": 131353970889,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970889",
-        "status": "in_progress",
-        "conclusion": ""
-      },
-      "checks / plugin-panels": {
-        "id": 131353970904,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970904",
-        "status": "completed",
-        "conclusion": "success"
-      },
-      "images (ubuntu-24.04, amd64, x86_64-unknown-linux-gnu)": {
-        "id": 131353970936,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970936",
-        "status": "in_progress",
-        "conclusion": ""
-      },
-      "checks / bridge-windows": {
-        "id": 131353970962,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970962",
+        "id": 131505697132,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505697132",
         "status": "completed",
         "conclusion": "success"
       },
       "checks / docker": {
-        "id": 131353971105,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353971105",
+        "id": 131505697332,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505697332",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / plugin-runtime": {
+        "id": 131505698929,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505698929",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / bridge-windows": {
+        "id": 131505704599,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505704599",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / frontend": {
+        "id": 131533799922,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131533799922",
         "status": "in_progress",
         "conclusion": ""
       },
-      "images (ubuntu-24.04-arm, arm64, aarch64-unknown-linux-gnu)": {
-        "id": 131353979930,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353979930",
-        "status": "in_progress",
-        "conclusion": ""
+      "assets": {
+        "id": 131539756496,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131539756496",
+        "status": "completed",
+        "conclusion": "skipped"
       }
+    },
+    "site": {
+      "workflow_run": 43310664457,
+      "status": "completed",
+      "conclusion": "success"
     },
     "local_verification": {
       "complete_precommit_cases": 34,
       "actual_tracked_hook_passed": true,
-      "actual_hook_seconds": 2787.45,
-      "actual_hook_log_sha256": "a4373e1d1810dd49ec69788e07ba776d81be6b16d064e5147a68e34805cbb377",
+      "actual_hook_seconds": 3203.14,
+      "actual_hook_log_sha256": "6f856a743ead5af6b09c3d4e76a52b0d1871f292c1ec58f02fe7ea5c7a87dc76",
       "native_passes": 2333,
       "native_batches": 40,
       "real_server_integration_cases": 8,
       "browser_passes": 765,
       "positive_browser_runs": 18
     },
+    "native_mac_failures": {
+      "intel": {
+        "job": 131505696782,
+        "log_sha256": "ed3891eaa6a4ffc6525ef39631810139467405070d132d22a8d492ed84de4618",
+        "observed": "Cargo Git dependency fetch could not resolve github.com; downstream revision-not-found is not proof of a bad pin."
+      },
+      "arm": {
+        "job": 131505696856,
+        "log_sha256": "137758075260bc331f2fb2d6142c81e40b372e0caf1567c14947040631c5f58d",
+        "observed": "After13 reported compiled packages through Go, a plugin compilation exceeded its original600s limit. The log does not identify the exact failing package or establish a cause."
+      }
+    },
+    "editor2_actual_log": {
+      "job": 131505697079,
+      "log_sha256": "3c3a017a9f8ab4901c92e6b23fc568b6e90b70bb79746cc604b45b8eae007c71",
+      "local_wrapped_replay_pass_seconds": 206.53,
+      "runner_timeout_seconds": 300
+    },
     "limits": [
-      "Job states describe this exact recorded observation. A running job is not a pass; full release and publication need separate final results.",
-      "The successful local hook does not establish reliable hosted replay completion or the cause of earlier failures."
+      "Job states describe the exact recorded observation; running jobs are not passes.",
+      "Both automatic editor shards pass for N, without establishing a speed benefit or the cause of previous failures.",
+      "Original macOS failures remain recorded. No retry or unproven timeout/network workaround has been applied.",
+      "Native Windows ownership, durable authority, resource/caching requirements and the rest of the roadmap remain unfinished."
     ]
   },
   "initial_checked_on": "2026-11-11",
@@ -690,5 +728,134 @@
       "Local candidate wall344.03s versus reported browser70.7s leaves273.33s outside that reported interval. The untimestamped runner log does not assign it to preprocessing, navigation, startup, output transport or cleanup. Original300s runner setting unchanged;480s outer cleanup cap separately recorded.",
       "Exact original C actual-push component and genuinely rebuilt N component remain preserved. C production40-artifact ledger unchanged."
     ]
+  },
+  "historical_1e02_published_followup": {
+    "commit": "1e02b234340a77ada932735336a9ce1f9c080801",
+    "workflow_run": 43267197474,
+    "observed_at_utc": "2026-11-12T17:40:39.519983+00:00",
+    "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474",
+    "status_at_observation": "in_progress",
+    "jobs": {
+      "validate": {
+        "id": 131353835860,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353835860",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "macos-bridges (macos-15-intel, x86_64-apple-darwin)": {
+        "id": 131353969942,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353969942",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "macos-bridges (macos-15, aarch64-apple-darwin)": {
+        "id": 131353970004,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970004",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / backend-and-crates": {
+        "id": 131353970629,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970629",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / frontend-ui-tests": {
+        "id": 131353970674,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970674",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / plugin-runtime": {
+        "id": 131353970675,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970675",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / editor-ui-tests (1/2)": {
+        "id": 131353970730,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970730",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / editor-ui-tests (2/2)": {
+        "id": 131353970889,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970889",
+        "status": "completed",
+        "conclusion": "failure"
+      },
+      "checks / plugin-panels": {
+        "id": 131353970904,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970904",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "images (ubuntu-24.04, amd64, x86_64-unknown-linux-gnu)": {
+        "id": 131353970936,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970936",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / bridge-windows": {
+        "id": 131353970962,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353970962",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / docker": {
+        "id": 131353971105,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353971105",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "images (ubuntu-24.04-arm, arm64, aarch64-unknown-linux-gnu)": {
+        "id": 131353979930,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131353979930",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / frontend": {
+        "id": 131384041367,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131384041367",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "assets": {
+        "id": 131452150529,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131452150529",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "publish-nightly": {
+        "id": 131452287785,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131452287785",
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      "publish": {
+        "id": 131452288678,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43267197474/job/131452288678",
+        "status": "completed",
+        "conclusion": "skipped"
+      }
+    },
+    "local_verification": {
+      "complete_precommit_cases": 34,
+      "actual_tracked_hook_passed": true,
+      "actual_hook_seconds": 2787.45,
+      "actual_hook_log_sha256": "a4373e1d1810dd49ec69788e07ba776d81be6b16d064e5147a68e34805cbb377",
+      "native_passes": 2333,
+      "native_batches": 40,
+      "real_server_integration_cases": 8,
+      "browser_passes": 765,
+      "positive_browser_runs": 18
+    },
+    "limits": [
+      "Original C Local300s replay failure and logs are retained; later N passes do not explain its cause.",
+      "Selected Windows jobs are not full native physical ownership/recovery proof."
+    ],
+    "status": "completed",
+    "conclusion": "failure",
+    "terminal_observation": "Only Local wrapped replay in editor shard2 failed under its original300s runner. The other14 executed jobs passed; two publication jobs were skipped. Cause unproven."
   }
 }

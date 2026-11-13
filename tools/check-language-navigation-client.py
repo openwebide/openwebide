@@ -100,7 +100,7 @@ def wait_saved_draft(runtime, project, expected):
     wait('exact draft persisted before reload', persisted)
 
 
-def install(runtime, repository, commit, name):
+def prepare_package(runtime, repository, commit, name):
     reference = {'repository': repository, 'commit': commit, 'path': name}
     progress = runtime.request('POST', '/api/plugins/preparation', {'action': 'start', 'source': reference})
     deadline = time.monotonic() + 60
@@ -112,9 +112,20 @@ def install(runtime, repository, commit, name):
     prepared = progress['prepared']
     assert prepared['source'] == reference
     package = runtime.request('POST', '/api/plugins/package', prepared)
+    assert package['prepared'] == prepared
+    return package
+
+
+def install_package(runtime, package, revision=None):
+    prepared = package['prepared']
     entries = runtime.request('POST', '/api/plugins', {'prepared': prepared, 'package': package,
-        'approved_capabilities': [], 'revision': None})
-    entry = next(entry for entry in entries if entry['prepared']['source'] == reference)
+        'approved_capabilities': [], 'revision': revision})
+    return next(entry for entry in entries if entry['prepared']['source'] == prepared['source'])
+
+
+def install(runtime, repository, commit, name):
+    package = prepare_package(runtime, repository, commit, name)
+    entry = install_package(runtime, package)
     return entry, package
 
 

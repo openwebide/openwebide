@@ -393,6 +393,13 @@ jobs:
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
         run: python3 tools/check-language-navigation-client.py
 
+      - name: Check independent-provider review identity and authority in both modes
+        timeout-minutes: 30
+        env:
+          CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: python3 tools/check-language-reviews-client.py --evidence-dir "$RUNNER_TEMP/language-review-evidence"
+
       - name: Check bounded idle language warming and source retirement in both modes
         timeout-minutes: 10
         env:
@@ -426,6 +433,7 @@ jobs:
           name: native-language-diagnostics-${{ github.run_attempt }}
           path: |
             ${{ runner.temp }}/language-host-diagnostics
+            ${{ runner.temp }}/language-review-evidence
             /tmp/openwebide-editor-input-diagnostics
             /tmp/openwebide-rust-lsp-client-*.log
             /tmp/openwebide-typescript-lsp-client-*.log
