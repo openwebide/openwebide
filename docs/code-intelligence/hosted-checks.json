@@ -456,144 +456,116 @@
     }
   },
   "current_published_followup": {
-    "commit": "762a24e695000dd9d29b1f188d3399f466dcf330",
-    "workflow_run": 43310664410,
-    "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410",
     "status": "in_progress",
-    "conclusion": "",
-    "observed_at_utc": "2026-11-12T23:07:44.888208+00:00",
-    "jobs": {
-      "validate": {
-        "id": 131505595230,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505595230",
+    "conclusion": null,
+    "html_url": "https://github.com/openwebide/openwebide/actions/runs/43356867555",
+    "observed_at_utc": "2026-11-13T06:01:28+00:00",
+    "jobs": [
+      {
+        "name": "validate",
+        "id": 131660851913,
         "status": "completed",
         "conclusion": "success"
       },
-      "macos-bridges (macos-15-intel, x86_64-apple-darwin)": {
-        "id": 131505696782,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505696782",
-        "status": "completed",
-        "conclusion": "failure"
-      },
-      "images (ubuntu-24.04, amd64, x86_64-unknown-linux-gnu)": {
-        "id": 131505696800,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505696800",
+      {
+        "name": "macos-bridges (macos-15, aarch64-apple-darwin)",
+        "id": 131660919818,
         "status": "completed",
         "conclusion": "success"
       },
-      "images (ubuntu-24.04-arm, arm64, aarch64-unknown-linux-gnu)": {
-        "id": 131505696804,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505696804",
+      {
+        "name": "images (ubuntu-24.04, amd64, x86_64-unknown-linux-gnu)",
+        "id": 131660919838,
         "status": "completed",
         "conclusion": "success"
       },
-      "macos-bridges (macos-15, aarch64-apple-darwin)": {
-        "id": 131505696856,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505696856",
-        "status": "completed",
-        "conclusion": "failure"
-      },
-      "checks / plugin-panels": {
-        "id": 131505697056,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505697056",
+      {
+        "name": "macos-bridges (macos-15-intel, x86_64-apple-darwin)",
+        "id": 131660919842,
         "status": "completed",
         "conclusion": "success"
       },
-      "checks / editor-ui-tests (2/2)": {
-        "id": 131505697079,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505697079",
+      {
+        "name": "images (ubuntu-24.04-arm, arm64, aarch64-unknown-linux-gnu)",
+        "id": 131660919861,
         "status": "completed",
         "conclusion": "success"
       },
-      "checks / backend-and-crates": {
-        "id": 131505697097,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505697097",
+      {
+        "name": "checks / editor-ui-tests (2/2)",
+        "id": 131660920101,
         "status": "completed",
         "conclusion": "success"
       },
-      "checks / editor-ui-tests (1/2)": {
-        "id": 131505697114,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505697114",
+      {
+        "name": "checks / plugin-runtime",
+        "id": 131660920112,
         "status": "completed",
         "conclusion": "success"
       },
-      "checks / frontend-ui-tests": {
-        "id": 131505697132,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505697132",
+      {
+        "name": "checks / plugin-panels",
+        "id": 131660920116,
         "status": "completed",
         "conclusion": "success"
       },
-      "checks / docker": {
-        "id": 131505697332,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505697332",
+      {
+        "name": "checks / editor-ui-tests (1/2)",
+        "id": 131660920126,
         "status": "completed",
         "conclusion": "success"
       },
-      "checks / plugin-runtime": {
-        "id": 131505698929,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505698929",
+      {
+        "name": "checks / bridge-windows",
+        "id": 131660920137,
         "status": "completed",
         "conclusion": "success"
       },
-      "checks / bridge-windows": {
-        "id": 131505704599,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505704599",
+      {
+        "name": "checks / backend-and-crates",
+        "id": 131660920140,
         "status": "completed",
         "conclusion": "success"
       },
-      "checks / frontend": {
-        "id": 131533799922,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131533799922",
+      {
+        "name": "checks / docker",
+        "id": 131660920142,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "checks / frontend-ui-tests",
+        "id": 131660920209,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "checks / frontend",
+        "id": 131682717254,
         "status": "in_progress",
-        "conclusion": ""
+        "conclusion": null
       },
-      "assets": {
-        "id": 131539756496,
-        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131539756496",
+      {
+        "name": "assets",
+        "id": 131700996239,
         "status": "completed",
-        "conclusion": "skipped"
+        "conclusion": "success"
       }
-    },
+    ],
+    "raw_sha256": "4a7d175ec5a329ff63b1ab405e62e03c88e88d4f71de6d00676fd7974c1af750",
     "site": {
-      "workflow_run": 43310664457,
+      "workflow_run": 43356867487,
       "status": "completed",
       "conclusion": "success"
     },
-    "local_verification": {
-      "complete_precommit_cases": 34,
-      "actual_tracked_hook_passed": true,
-      "actual_hook_seconds": 3203.14,
-      "actual_hook_log_sha256": "6f856a743ead5af6b09c3d4e76a52b0d1871f292c1ec58f02fe7ea5c7a87dc76",
-      "native_passes": 2333,
-      "native_batches": 40,
-      "real_server_integration_cases": 8,
-      "browser_passes": 765,
-      "positive_browser_runs": 18
-    },
-    "native_mac_failures": {
-      "intel": {
-        "job": 131505696782,
-        "log_sha256": "ed3891eaa6a4ffc6525ef39631810139467405070d132d22a8d492ed84de4618",
-        "observed": "Cargo Git dependency fetch could not resolve github.com; downstream revision-not-found is not proof of a bad pin."
-      },
-      "arm": {
-        "job": 131505696856,
-        "log_sha256": "137758075260bc331f2fb2d6142c81e40b372e0caf1567c14947040631c5f58d",
-        "observed": "After13 reported compiled packages through Go, a plugin compilation exceeded its original600s limit. The log does not identify the exact failing package or establish a cause."
-      }
-    },
-    "editor2_actual_log": {
-      "job": 131505697079,
-      "log_sha256": "3c3a017a9f8ab4901c92e6b23fc568b6e90b70bb79746cc604b45b8eae007c71",
-      "local_wrapped_replay_pass_seconds": 206.53,
-      "runner_timeout_seconds": 300
-    },
     "limits": [
-      "Job states describe the exact recorded observation; running jobs are not passes.",
-      "Both automatic editor shards pass for N, without establishing a speed benefit or the cause of previous failures.",
-      "Original macOS failures remain recorded. No retry or unproven timeout/network workaround has been applied.",
-      "Native Windows ownership, durable authority, resource/caching requirements and the rest of the roadmap remain unfinished."
-    ]
+      "Exact observation only; running jobs are not passes.",
+      "Prior N macOS DNS/compile failures remain separately retained.",
+      "This published run does not contain the uncommitted Mac build diagnostics below."
+    ],
+    "commit": "5145aa29201b2de8f8037c518491e363535ad3ee",
+    "workflow_run": 43356867555,
+    "observation_format": "JSON envelope containing observed_epoch, raw run and raw jobs API objects"
   },
   "initial_checked_on": "2026-11-11",
   "initial_status": "current_native_memory_fixture_passed_separate_shutdown_and_editor_failures",
@@ -857,5 +829,997 @@
     "status": "completed",
     "conclusion": "failure",
     "terminal_observation": "Only Local wrapped replay in editor shard2 failed under its original300s runner. The other14 executed jobs passed; two publication jobs were skipped. Cause unproven."
+  },
+  "historical_762a_published_followup": {
+    "commit": "762a24e695000dd9d29b1f188d3399f466dcf330",
+    "workflow_run": 43310664410,
+    "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410",
+    "status": "in_progress",
+    "conclusion": "",
+    "observed_at_utc": "2026-11-12T23:07:44.888208+00:00",
+    "jobs": {
+      "validate": {
+        "id": 131505595230,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505595230",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "macos-bridges (macos-15-intel, x86_64-apple-darwin)": {
+        "id": 131505696782,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505696782",
+        "status": "completed",
+        "conclusion": "failure"
+      },
+      "images (ubuntu-24.04, amd64, x86_64-unknown-linux-gnu)": {
+        "id": 131505696800,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505696800",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "images (ubuntu-24.04-arm, arm64, aarch64-unknown-linux-gnu)": {
+        "id": 131505696804,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505696804",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "macos-bridges (macos-15, aarch64-apple-darwin)": {
+        "id": 131505696856,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505696856",
+        "status": "completed",
+        "conclusion": "failure"
+      },
+      "checks / plugin-panels": {
+        "id": 131505697056,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505697056",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / editor-ui-tests (2/2)": {
+        "id": 131505697079,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505697079",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / backend-and-crates": {
+        "id": 131505697097,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505697097",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / editor-ui-tests (1/2)": {
+        "id": 131505697114,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505697114",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / frontend-ui-tests": {
+        "id": 131505697132,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505697132",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / docker": {
+        "id": 131505697332,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505697332",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / plugin-runtime": {
+        "id": 131505698929,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505698929",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / bridge-windows": {
+        "id": 131505704599,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131505704599",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "checks / frontend": {
+        "id": 131533799922,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131533799922",
+        "status": "in_progress",
+        "conclusion": ""
+      },
+      "assets": {
+        "id": 131539756496,
+        "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410/job/131539756496",
+        "status": "completed",
+        "conclusion": "skipped"
+      }
+    },
+    "site": {
+      "workflow_run": 43310664457,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    "local_verification": {
+      "complete_precommit_cases": 34,
+      "actual_tracked_hook_passed": true,
+      "actual_hook_seconds": 3203.14,
+      "actual_hook_log_sha256": "6f856a743ead5af6b09c3d4e76a52b0d1871f292c1ec58f02fe7ea5c7a87dc76",
+      "native_passes": 2333,
+      "native_batches": 40,
+      "real_server_integration_cases": 8,
+      "browser_passes": 765,
+      "positive_browser_runs": 18
+    },
+    "native_mac_failures": {
+      "intel": {
+        "job": 131505696782,
+        "log_sha256": "ed3891eaa6a4ffc6525ef39631810139467405070d132d22a8d492ed84de4618",
+        "observed": "Cargo Git dependency fetch could not resolve github.com; downstream revision-not-found is not proof of a bad pin."
+      },
+      "arm": {
+        "job": 131505696856,
+        "log_sha256": "137758075260bc331f2fb2d6142c81e40b372e0caf1567c14947040631c5f58d",
+        "observed": "After13 reported compiled packages through Go, a plugin compilation exceeded its original600s limit. The log does not identify the exact failing package or establish a cause."
+      }
+    },
+    "editor2_actual_log": {
+      "job": 131505697079,
+      "log_sha256": "3c3a017a9f8ab4901c92e6b23fc568b6e90b70bb79746cc604b45b8eae007c71",
+      "local_wrapped_replay_pass_seconds": 206.53,
+      "runner_timeout_seconds": 300
+    },
+    "limits": [
+      "Job states describe the exact recorded observation; running jobs are not passes.",
+      "Both automatic editor shards pass for N, without establishing a speed benefit or the cause of previous failures.",
+      "Original macOS failures remain recorded. No retry or unproven timeout/network workaround has been applied.",
+      "Native Windows ownership, durable authority, resource/caching requirements and the rest of the roadmap remain unfinished."
+    ],
+    "terminal_observation": {
+      "run_id": 43310664410,
+      "head_sha": "762a24e695000dd9d29b1f188d3399f466dcf330",
+      "status": "completed",
+      "conclusion": "failure",
+      "html_url": "https://github.com/openwebide/openwebide/actions/runs/43310664410",
+      "observed_at_utc": "2026-11-13T04:16:31.074354+00:00",
+      "jobs": [
+        {
+          "name": "validate",
+          "id": 131505595230,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "macos-bridges (macos-15-intel, x86_64-apple-darwin)",
+          "id": 131505696782,
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "name": "images (ubuntu-24.04, amd64, x86_64-unknown-linux-gnu)",
+          "id": 131505696800,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "images (ubuntu-24.04-arm, arm64, aarch64-unknown-linux-gnu)",
+          "id": 131505696804,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "macos-bridges (macos-15, aarch64-apple-darwin)",
+          "id": 131505696856,
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "name": "checks / plugin-panels",
+          "id": 131505697056,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "checks / editor-ui-tests (2/2)",
+          "id": 131505697079,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "checks / backend-and-crates",
+          "id": 131505697097,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "checks / editor-ui-tests (1/2)",
+          "id": 131505697114,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "checks / frontend-ui-tests",
+          "id": 131505697132,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "checks / docker",
+          "id": 131505697332,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "checks / plugin-runtime",
+          "id": 131505698929,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "checks / bridge-windows",
+          "id": 131505704599,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "checks / frontend",
+          "id": 131533799922,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "assets",
+          "id": 131539756496,
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "publish",
+          "id": 131580448353,
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "publish-nightly",
+          "id": 131580448564,
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ],
+      "raw_sha256": "beda940f80d688e21c7f9d2cd152e176c42519ca25fcf99f2b40af45d49e1bb9"
+    }
+  },
+  "local_mac_plugin_build_followup": {
+    "checked_on": "2026-11-13",
+    "status": "current_release8_all24_components_optimized_host_release_bridge_and_full_native_gate_passed_unpublished_checkpoint",
+    "base_commit": "5145aa29201b2de8f8037c518491e363535ad3ee",
+    "source_file": "crates/plugin-runtime/src/build.rs",
+    "source_file_sha256": "bc9279e11681c1acd66f305c53a4bc5a7d58e80ba9172e8f5f460f6e3b0203b2",
+    "published": false,
+    "new_regression": {
+      "name": "timeout_retains_available_stderr_when_another_writer_keeps_the_pipe_open",
+      "red_actual_returncode": 101,
+      "red_source_file_sha256": "7dd4bd4e18fdcf808d89b228551c35a9d9cc6de66e8d18cd9a6a4fa8768f2168",
+      "red_log_sha256": "0a3b44d34d2642e39bf451cf57afeb5bb0fbdf9f9da02f6a7107d18ffdbdbc55",
+      "observed_failure": "Already written stderr was lost because the original reader only delivered its retained bytes at EOF.",
+      "fixture": "The test keeps its own stderr write descriptor in an owned Unix socket queue. No escaped or unowned process is created."
+    },
+    "current_dev_checks": {
+      "native_process_tests_passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "other_runtime_tests_filtered": 13,
+      "commands": [
+        [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-plugin-runtime",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-plugin-runtime",
+          "--lib",
+          "--locked",
+          "build::process_tests",
+          "--",
+          "--test-threads=1"
+        ]
+      ],
+      "seconds": [
+        1.93,
+        9.06
+      ],
+      "log_sha256": [
+        "bbb7ac017b2827c5b5b8be34093e7e6c3affc4d018253433627937c11d74a2f3",
+        "64fbd3ebaeae98ffe991228acb3311345bc7e611b8c8c20361faf7c3566e40bc"
+      ],
+      "original7_assertions_unchanged": true,
+      "no_lint_suppression": true
+    },
+    "change": "Publish the bounded stderr prefix while reading. A snapshot requires neither EOF nor a reader-held mutex; timeout and cancellation keep available diagnostics under the existing drain limit.",
+    "original_budgets": {
+      "dependency_fetch_seconds": 180,
+      "compile_seconds": 600,
+      "stderr_bytes": 131072,
+      "drain_seconds": 1
+    },
+    "current_release_process_suite_passed": true,
+    "current24_bundle_and_components_passed": true,
+    "full_current_native_gate_passed": true,
+    "earlier_cohort": "historical_local_mac_plugin_build_followup",
+    "limits": [
+      "The current cohort passed eight release process/sandbox tests, all24 immutable packages,20 language packages/33 IDs, both optimized host tests, the matching release bridge and its help command, and the complete required native gate plus the standalone original source-compiler contract.",
+      "The native gate passed2337 tests in40 batches,26 with positive counts, retaining the original seven ignored cases and all eight required real-server examples. UI selection followed the unchanged tracked hook; no old browser count is attributed to this checkpoint.",
+      "Windows cross-Clippy verifies compilation only; native Windows process ownership is unfinished.",
+      "An outside stderr writer can still keep the reader thread alive until its descriptor closes. Available diagnostics are retained; escaped-process cleanup and complete allocator stability remain separate unfinished work.",
+      "All original limits, deadlines, compiler flags, profiles and original seven regression assertions remain unchanged. Historical red tests, lint rejection and earlier-source proofs remain retained.",
+      "This records the verified precommit cohort. Publication and subsequent hosted results are separate observations; a local pass does not establish a hosted failure cause or fix."
+    ],
+    "verification_source_sha256": "32f6ee6d995304df233ca68e5ad72d6e58b3688b21f7738448a9d03771ecfe6d",
+    "current_release_checks": [
+      {
+        "case": "invalidate-changed-runtime-release-cache",
+        "command": [
+          "cargo",
+          "clean",
+          "-p",
+          "openwebide-plugin-runtime",
+          "--profile",
+          "release",
+          "--target-dir",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 0.24,
+        "log_sha256": "0bdaeb2aa6a92a0fdfec2d2cc4d0ab71946de5d0654e08c526e4629130ae0f28"
+      },
+      {
+        "case": "format-and-whitespace",
+        "command": [
+          "bash",
+          "-euc",
+          "cargo fmt --all --check\ngit diff --check"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 2.92,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "native-eight-process-and-sandbox-regressions",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-plugin-runtime",
+          "--release",
+          "--lib",
+          "--locked",
+          "build::process_tests",
+          "--",
+          "--test-threads=1"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 155.63,
+        "log_sha256": "711c6d26b289de148f6af9e34a3ece32c405364a400fcc5ee61f58b630358342"
+      }
+    ],
+    "current_bundle_checks": [
+      {
+        "case": "immutable-source-and-license-check",
+        "command": [
+          "python3",
+          "tools/bundle_plugins.py",
+          "--check"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 2.69,
+        "log_sha256": "d2cb2d1e52e3c850a1a84ccfee550c112169ce50df5b531036b4adbd4456e098"
+      },
+      {
+        "case": "invalidate-changed-bridge-release-cache",
+        "command": [
+          "cargo",
+          "clean",
+          "-p",
+          "openwebide-bridge",
+          "--profile",
+          "release",
+          "--target-dir",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 0.18,
+        "log_sha256": "0f9e4d226ee1ec90f932dd0a8a48af9b317a89d349e1628c16f842beda0a59b6"
+      },
+      {
+        "case": "compile-and-verify-offline-executable-defaults",
+        "command": [
+          "bash",
+          "-euc",
+          "export OPENWEBIDE_BUNDLED_ARTIFACTS=\"/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/macos-available-stderr-bundle-1794547362/compiled-defaults.json\"\nexport WASI_SYSROOT=\"$WASI_SDK_PATH/share/wasi-sysroot\"\ncargo run -p openwebide-plugin-runtime --bin openwebide-bundle-plugins --release --locked -- bridge/bundled/plugins.json \"$OPENWEBIDE_BUNDLED_ARTIFACTS\"\ncargo build -p openwebide-plugin-runtime --example check_language --release --locked\npython3 tools/check-language-components.py \"$OPENWEBIDE_BUNDLED_ARTIFACTS\"\n# Validate all family components in the optimized host we distribute;\n# the ordinary native contract suite below still uses the debug host.\ncargo test -p openwebide-bridge --lib --release --features bundled-defaults bundled_tests\n"
+        ],
+        "deadline_seconds": 2400,
+        "returncode": 0,
+        "seconds": 1208.91,
+        "log_sha256": "4b4b615e111c0ac7b0f24136441dfc3d9421da658f7d90a545bc37ad68202acf"
+      }
+    ],
+    "current_bundle_inventory": {
+      "packages": 24,
+      "language_packages": 20,
+      "language_IDs": 33,
+      "optimized_host_tests_passed": 2,
+      "compiled_bundle_sha256": "b26dd732157e436815ac53c9d1855a9adb0b038bd662c18906a3f5cd709fe088"
+    },
+    "current_release_bridge_checks": [
+      {
+        "case": "format-and-whitespace",
+        "command": [
+          "bash",
+          "-euc",
+          "cargo fmt --all --check\ngit diff --check"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 3.12,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "release-native-bridge",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--release",
+          "--features",
+          "bundled-defaults",
+          "--locked"
+        ],
+        "deadline_seconds": 2400,
+        "returncode": 0,
+        "seconds": 177.91,
+        "log_sha256": "0db1ad8813a35b57fe051dd587e323e14bdc3f13a92de95f44d9c7efee592394"
+      },
+      {
+        "case": "release-bridge-help",
+        "command": [
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/release/openwebide-bridge",
+          "--help"
+        ],
+        "deadline_seconds": 15,
+        "returncode": 0,
+        "seconds": 1.24,
+        "log_sha256": "b2decd1fc61db52e908b8905be84547339c05c0d5875af819a5a05a2828da409"
+      }
+    ],
+    "current_release_bridge": {
+      "sha256": "e01149f1d7a27f4fff3f24e9035647a1e2ae5aa76ffc00cee6baf5eedfd66d60",
+      "bytes": 126334480,
+      "source_sha256": "32f6ee6d995304df233ca68e5ad72d6e58b3688b21f7738448a9d03771ecfe6d",
+      "verified_actual24_bundle_sha256": "b26dd732157e436815ac53c9d1855a9adb0b038bd662c18906a3f5cd709fe088"
+    },
+    "current_native_checks": [
+      {
+        "case": "invalidate-changed-runtime-and-bridge-dev-cache",
+        "command": [
+          "bash",
+          "-euc",
+          "cargo clean -p openwebide-plugin-runtime --profile dev --target-dir /Users/BWestnes/source/repos/openwebide/openwebide/target\ncargo clean -p openwebide-bridge --profile dev --target-dir /Users/BWestnes/source/repos/openwebide/openwebide/target"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 0.19,
+        "log_sha256": "bdbf18a2c8bb494ef1b17e8344ae210acfa808eb58bda7f50284903ec0476a34"
+      },
+      {
+        "case": "windows-cross-clippy-not-native-runtime",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "deadline_seconds": 2400,
+        "returncode": 0,
+        "seconds": 81.31,
+        "log_sha256": "c704f661326815426b66cb921575005df4b303c6fa0cb75bab52271a754fc4a0"
+      },
+      {
+        "case": "clear-completed-Windows-cross-check-cache",
+        "command": [
+          "cargo",
+          "clean",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--profile",
+          "dev",
+          "--target-dir",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 0.19,
+        "log_sha256": "9144f6cc78b9f148c6e0161d4edbb88f051995043ae872b174fbe451e30820fb"
+      },
+      {
+        "case": "tracked-pre-push-hook",
+        "command": [
+          "bash",
+          ".githooks/pre-push"
+        ],
+        "deadline_seconds": 14400,
+        "returncode": 0,
+        "seconds": 1298.88,
+        "log_sha256": "7d305f3525211a96446a9eb7f7402052858c260f249fcfee6109f7006e0c423c"
+      },
+      {
+        "case": "genuine-offline-source-compiler",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--features",
+          "openwebide-core/editor-parser",
+          "--lib",
+          "source_compilation_validates_tools_caches_offline_and_rejects_artifact_corruption",
+          "--locked"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 175.41,
+        "log_sha256": "c8306207d90c8f6aa7aa33c4c8ebf1dc13482fe72da7345aa325004624d085cb"
+      },
+      {
+        "case": "audit-actual-native-2337-and-original-inventory",
+        "command": [
+          "python3",
+          "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/audit-macos-available-stderr-native.py",
+          "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/macos-available-stderr-source-compiler-resumption-1794550254"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.04,
+        "log_sha256": "5d1eb61031c6f2748fb857266a70ede34b038ca3b1dea30978e8c4871b0a1a1d"
+      }
+    ],
+    "current_native_inventory": {
+      "status": "audited_actual_current_Mac_native_hook_inventory",
+      "source_sha256": "32f6ee6d995304df233ca68e5ad72d6e58b3688b21f7738448a9d03771ecfe6d",
+      "hook_log_sha256": "7d305f3525211a96446a9eb7f7402052858c260f249fcfee6109f7006e0c423c",
+      "native_passes": 2337,
+      "native_batches": 40,
+      "positive_native_batches": 26,
+      "existing_ignored_cases": [
+        "editor::structure::tests::measure_indexed_language_queries",
+        "first_party_component_owns_views_and_publishing_through_public_sdk",
+        "first_party_panels_publish_once_through_real_paired_and_backend_bridge_adapters",
+        "plugins::tests::official_marketplace_reference_package_installs_and_loads_on_both_host_scopes",
+        "scheduling_component_uses_shared_records_events_and_raw_runs_in_both_modes",
+        "ssh_administration_inspects_and_changes_the_target_and_handles_interactive_sudo",
+        "ssh_update_adapter_pins_both_deployments_and_survives_ssh_disconnect"
+      ],
+      "required_real_server_commands": [
+        "check_language_server",
+        "check_typescript_server",
+        "check_python_server",
+        "check_go_server",
+        "check_clangd_server",
+        "check_csharp_server",
+        "check_web_servers",
+        "check_terraform_server"
+      ],
+      "new_native_regressions": [
+        "build::process_tests::timed_out_build_retains_bounded_stderr_after_child_cleanup",
+        "build::process_tests::cancellation_retains_stderr_after_child_cleanup",
+        "build::process_tests::fetch_sandbox_reads_only_the_resolved_system_dns_file",
+        "build::process_tests::timeout_retains_available_stderr_when_another_writer_keeps_the_pipe_open"
+      ],
+      "limits": "Complete original hook inventory plus four native Mac regressions. Standalone source compiler and all24 component/optimized-host cases have separate actual receipts; native Windows runtime and hosted reliability remain separate."
+    },
+    "source_compiler_resumption": {
+      "original_link_returncode": 101,
+      "original_link_log_sha256": "02c117504f15ff34688a28dff8f88d37384cf8d05e012c130f28e62d45f9cd71",
+      "original_failure": "The linker reported ENOSPC before the standalone test executed. The complete preceding tracked hook had already passed.",
+      "recovery": "Retain all63 completed native executables; clear only completed own intermediates; re-encode those archives with exact byte/metadata checks and explicit inode/ctime/storage-flag transitions. Rerun only the independently failed original standalone command and deadline; retain and audit the earlier passing hook prefix.",
+      "shared_Docker_cache_pruned": false
+    },
+    "native_Windows_runtime_verified": false,
+    "full_unrelated_provider_review_and_editor_workloads_rerun": false
+  },
+  "historical_local_mac_plugin_build_followup": {
+    "checked_on": "2026-11-12",
+    "status": "actual7native_and24immutable_component_optimized_host_checks_passed_full_native_publication_gates_pending",
+    "base_commit": "5145aa29201b2de8f8037c518491e363535ad3ee",
+    "implementation_and_measurement_source_sha256": "68e3c69b1afd740161b7df734d4a3374695ca0e279ee6d1bc9fe586b819f3379",
+    "published": false,
+    "native_process_and_sandbox": {
+      "test_count": 7,
+      "passes": 7,
+      "failed": 0,
+      "ignored": 0,
+      "other_runtime_tests_filtered": 13,
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-plugin-runtime",
+        "--release",
+        "--lib",
+        "--locked",
+        "build::process_tests",
+        "--",
+        "--test-threads=1"
+      ],
+      "compile_and_test_seconds": 163.2,
+      "test_execution_seconds": 0.89,
+      "log_sha256": "afc1e5f1c1f432a0bc446caf0e62b656d9b00e67fa29029742078d16ec990141",
+      "new_regressions": [
+        "timed_out_build_retains_bounded_stderr_after_child_cleanup",
+        "cancellation_retains_stderr_after_child_cleanup",
+        "fetch_sandbox_reads_only_the_resolved_system_dns_file"
+      ],
+      "behavior": [
+        "A trusted resolved regular root-owned DNS file without group/other write permission is readable only during dependency fetch.",
+        "Offline compile and unrelated private-file reads remain denied.",
+        "Available stderr retention after timeout/cancellation is bounded to128KiB; original errors and existing cleanup/drain/cancellation ordering retained."
+      ]
+    },
+    "immutable_defaults": {
+      "packages": 24,
+      "language_packages": 20,
+      "language_IDs": 33,
+      "optimized_host_tests": 2,
+      "both_host_scopes_offline_preparation": true,
+      "same_original_component_commands_and_limits": true,
+      "case_deadline_seconds": 2400,
+      "case_seconds": 1514.55,
+      "case_log_sha256": "08d02e7005cc8177bce47b7f973041ef4bb5b649fa9a41189c787740d2165903",
+      "compiled_bundle_sha256": "02db0a29062e77cd171d6479433da1cc6f66afab219f73d53ef356715b0389ca",
+      "artifacts": [
+        {
+          "source": {
+            "repository": "https://github.com/openwebide/plugins.git",
+            "commit": "ad940bb96c6d656268b1b03df7a84e5478b31c4e",
+            "path": "plugins/web"
+          },
+          "packageDigest": "b15667123078a1ffcf7b90971cab80a8cd99248869c6985b3b2da2be57aba603",
+          "sdkDigest": "bcea8f44848024ed6a15653c5bc0fe9654aae48c727e686ecfef841f95408974",
+          "toolchain": "1.98.1",
+          "artifactDigest": "b02c07c00c68d76715d1b808a9708611e575153f14491e3308777bc8f5a8323a",
+          "component_bytes": 920445,
+          "announced_immutable_context_before_compile": true
+        },
+        {
+          "source": {
+            "repository": "https://github.com/openwebide/plugins.git",
+            "commit": "ad940bb96c6d656268b1b03df7a84e5478b31c4e",
+            "path": "plugins/memory"
+          },
+          "packageDigest": "90b31c479eca1a800d540060342d084dca4a8a091272afa4facaff472ee5bbc1",
+          "sdkDigest": "bcea8f44848024ed6a15653c5bc0fe9654aae48c727e686ecfef841f95408974",
+          "toolchain": "1.98.1",
+          "artifactDigest": "951bba765b5d29054989c559669a7520b65b136abde1b961fefcea32a1bbbd39",
+          "component_bytes": 535359,
+          "announced_immutable_context_before_compile": true
+        },
+        {
+          "source": {
+            "repository": "https://github.com/openwebide/plugins.git",
+            "commit": "ad940bb96c6d656268b1b03df7a84e5478b31c4e",
+            "path": "plugins/scheduling"
+          },
+          "packageDigest": "9f748dd2305ac251bfb85fbd7bf72bf988d743eba2a12440bfb509aaf17ee49b",
+          "sdkDigest": "bcea8f44848024ed6a15653c5bc0fe9654aae48c727e686ecfef841f95408974",
+          "toolchain": "1.98.1",
+          "artifactDigest": "d64d8e025124913421a44a54ebca9f95b7423f6dcfbe6c4cbecd68999c892254",
+          "component_bytes": 1869718,
+          "announced_immutable_context_before_compile": true
+        },
+        {
+          "source": {
+            "repository": "https://github.com/openwebide/plugins.git",
+            "commit": "ad940bb96c6d656268b1b03df7a84e5478b31c4e",
+            "path": "plugins/skill-authoring"
+          },
+          "packageDigest": "35846dd1286e76dbc07e0dacf2b2d3bb1fa5c2ce7ef745ff6ced0382a220cf1d",
+          "sdkDigest": "bcea8f44848024ed6a15653c5bc0fe9654aae48c727e686ecfef841f95408974",
+          "toolchain": "1.98.1",
+          "artifactDigest": "55f3eb6c91cf9b7fe33faa314b9535bd399bb44d064ee2ee90dd2ea88c7d3ca1",
+          "component_bytes": 613385,
+          "announced_immutable_context_before_compile": true
+        },
+        {
+          "source": {
+            "repository": "https://github.com/openwebide/plugins.git",
+            "commit": "37677a1de1a5f69c0362d328050133dbb9820b2c",
+            "path": "plugins/rust"
+          },
+          "packageDigest": "9fff6a502dcafa0fe2df0f50c4214f6bc050e8c64d0df93b5d05e05cbc1c6fa2",
+          "sdkDigest": "bcea8f44848024ed6a15653c5bc0fe9654aae48c727e686ecfef841f95408974",
+          "toolchain": "1.98.1",
+          "artifactDigest": "736f6d853d6f68ec04b4f7bf7d4c9a33c514545254b9535a67c57571f0e52eb6",
+          "component_bytes": 3633267,
+          "announced_immutable_context_before_compile": true
+        },
+        {
+          "source": {
+            "repository": "https://github.com/openwebide/plugins.git",
+            "commit": "a2ee289204a7fc277158c9356f6679b91429ae2c",
+            "path": "plugins/python"
+          },
+          "packageDigest": "41b7642e4618a0a3f02ed3a8940076a57b9766085d913a9c2e638e669737bb3b",
+          "sdkDigest": "bcea8f44848024ed6a15653c5bc0fe9654aae48c727e686ecfef841f95408974",
+          "toolchain": "1.98.1",
+          "artifactDigest": "4172dfe404ce04741edf8edd7f77712fdf12840f71709473ac4e58cf36c3fbf5",
+          "component_bytes": 2875016,
+          "announced_immutable_context_before_compile": true
+        },
+        {
+          "source": {
+            "repository": "https://github.com/openwebide/plugins.git",
+            "commit": "4d7e7c656579485d69aea556368a8b290b08f8bf",
+            "path": "plugins/javascript-typescript"
+          },
+          "packageDigest": "b57b46eb72a08c33c5f49a3a2552dc6fbd5b0d67dbf85adee4b1875d90caeb2d",
+          "sdkDigest": "bcea8f44848024ed6a15653c5bc0fe9654aae48c727e686ecfef841f95408974",
+          "toolchain": "1.98.1",
+          "artifactDigest": "371d822b7926ada8ca974de41ff340758c751416ce7e27ec2585fd7b51227864",
+          "component_bytes": 5776307,
+          "announced_immutable_context_before_compile": true
+        },
+        {
+          "source": {
+            "repository": "https://github.com/openwebide/plugins.git",
+            "commit": "ad940bb96c6d656268b1b03df7a84e5478b31c4e",
+            "path": "plugins/java"
+          },
+          "packageDigest": "5fe071d42be3ef4bb829589e0fa81dfdc021b8374703077feb07198b58f66ea7",
+          "sdkDigest": "bcea8f44848024ed6a15653c5bc0fe9654aae48c727e686ecfef841f95408974",
+          "toolchain": "1.98.1",
+          "artifactDigest": "11b07302f157e9be8cdbf1a34720715487c3b6cecc1e908997b4f047fa1fd714",
+          "component_bytes": 2837784,
+          "announced_immutable_context_before_compile": true
+        },
+        {
+          "source": {
+            "repository": "https://github.com/openwebide/plugins.git",
+            "commit": "53292ce1d6ca77295d397ee7516c4cb5d3f41947",
+            "path": "plugins/csharp"
+          },
+          "packageDigest": "1a58d46241a6c5346fea1e51c9d4f9f9efa0755f9791e3c688046dadc9bd14c5",
+          "sdkDigest": "bcea8f44848024ed6a15653c5bc0fe9654aae48c727e686ecfef841f95408974",
+          "toolchain": "1.98.1",
+          "artifactDigest": "62a7349df7158f530b75293f03bc6ea6b33916707fb1c256dd6ccb45395ebe1a",
+          "component_bytes": 7770333,
+          "announced_immutable_context_before_compile": true
+        },
+        {
+          "source": {
+            "repository": "https://github.com/openwebide/plugins.git",
+            "commit": "ca80902823d84808e1c6aa2175e6fe3329776704",
+            "path": "plugins/c-cpp"
+          },
+          "packageDigest": "0eeca40bab28b83e003473ec2728bed6ada837e2bc2ae482e208ba31d4213610",
+          "sdkDigest": "bcea8f44848024ed6a15653c5bc0fe9654aae48c727e686ecfef841f95408974",
+          "toolchain": "1.98.1",
+          "artifactDigest": "3d1c1b42ce2d484478bc8afbead367648185ac34f875c805a555010ab778e4a2",
+          "component_bytes": 6516504,
+          "announced_immutable_context_before_compile": true
+        },
+        {
+          "source": {
+            "repository": "https://github.com/openwebide/plugins.git",
+            "commit": "ad940bb96c6d656268b1b03df7a84e5478b31c4e",
+            "path": "plugins/php"
+          },
+          "packageDigest": "7f874d2add7a84365fab175bbe0eee8aea3b2f7ebd1c55e546f31ddfdaa2ec97",
+          "sdkDigest": "bcea8f44848024ed6a15653c5bc0fe9654aae48c727e686ecfef841f95408974",
+          "toolchain": "1.98.1",
+          "artifactDigest": "a8446159248bb7b34ba5e4da869cf749a40345e8f9b17b5ac6906a1207b69fac",
+          "component_bytes": 3503156,
+          "announced_immutable_context_before_compile": true
+        },
+        {
+          "source": {
+            "repository": "https://github.com/openwebide/plugins.git",
+            "commit": "ad940bb96c6d656268b1b03df7a84e5478b31c4e",
+            "path": "plugins/shell"
+          },
+          "packageDigest": "7ebe79cb776ed88d956f02f8985bd7449a320ce581744d6b3a028ba430f99a82",
+          "sdkDigest": "bcea8f44848024ed6a15653c5bc0fe9654aae48c727e686ecfef841f95408974",
+          "toolchain": "1.98.1",
+          "artifactDigest": "8b87678a1484dd04e77ff4362db7c6d3988a3b934ce55be31454760c7749e434",
+          "component_bytes": 3815258,
+          "announced_immutable_context_before_compile": true
+        },
+        {
+          "source": {
+            "repository": "https://github.com/openwebide/plugins.git",
+            "commit": "37677a1de1a5f69c0362d328050133dbb9820b2c",
+            "path": "plugins/go"
+          },
+          "packageDigest": "f85cb92be906bdf9a599cdc2799e5368ec561c3d2308071ce7cdc8a9653aaa46",
+          "sdkDigest": "bcea8f44848024ed6a15653c5bc0fe9654aae48c727e686ecfef841f95408974",
+          "toolchain": "1.98.1",
+          "artifactDigest": "8ba42e651f65b697cda06e01ad78cde9c8467d741c20f58144d059ff6a2d3f8d",
+          "component_bytes": 2716184,
+          "announced_immutable_context_before_compile": true
+        },
+        {
+          "source": {
+            "repository": "https://github.com/openwebide/plugins.git",
+            "commit": "37677a1de1a5f69c0362d328050133dbb9820b2c",
+            "path": "plugins/terraform"
+          },
+          "packageDigest": "600c10324c9d02118c25f9512067e59a0582952ab7f85619d01d240c34ba0c5c",
+          "sdkDigest": "bcea8f44848024ed6a15653c5bc0fe9654aae48c727e686ecfef841f95408974",
+          "toolchain": "1.98.1",
+          "artifactDigest": "7963dd21381afb68ace2624536288820531c9ba01a5bb5349c16d3c033fc11f9",
+          "component_bytes": 2665113,
+          "announced_immutable_context_before_compile": true
+        },
+        {
+          "source": {
+            "repository": "https://github.com/openwebide/plugins.git",
+            "commit": "b29aa4b6da3e29dc3ca3135ba7c5c3a8bc723f2e",
+            "path": "plugins/html"
+          },
+          "packageDigest": "66c15b17342219ce7ef4effbc878f75b51e99b2eee83ace50b1bf73130a4ea04",
+          "sdkDigest": "bcea8f44848024ed6a15653c5bc0fe9654aae48c727e686ecfef841f95408974",
+          "toolchain": "1.98.1",
+          "artifactDigest": "33e362e2f1e325e5113b1f56473c924ed86c7f5213b69a64f0bbd6f5fe6b05fa",
+          "component_bytes": 2856174,
+          "announced_immutable_context_before_compile": true
+        },
+        {
+          "source": {
+            "repository": "https://github.com/openwebide/plugins.git",
+            "commit": "b29aa4b6da3e29dc3ca3135ba7c5c3a8bc723f2e",
+            "path": "plugins/css"
+          },
+          "packageDigest": "f06bc4a6a55e7ab9e23eec547216f9e615b4274bc0d8ffcbdf5e56376715f76c",
+          "sdkDigest": "bcea8f44848024ed6a15653c5bc0fe9654aae48c727e686ecfef841f95408974",
+          "toolchain": "1.98.1",
+          "artifactDigest": "f2efd12b03219fddbc1d661d73efbc871eef48ddf267c90b08d2fc48320361cc",
+          "component_bytes": 2578761,
+          "announced_immutable_context_before_compile": true
+        },
+        {
+          "source": {
+            "repository": "https://github.com/openwebide/plugins.git",
+            "commit": "b29aa4b6da3e29dc3ca3135ba7c5c3a8bc723f2e",
+            "path": "plugins/json"
+          },
+          "packageDigest": "659c27986a130470999c8f34349d7a3a86f2e3f1cd7ce2f959770af1319b5ce3",
+          "sdkDigest": "bcea8f44848024ed6a15653c5bc0fe9654aae48c727e686ecfef841f95408974",
+          "toolchain": "1.98.1",
+          "artifactDigest": "1e12c62d3d65afedda0605932b204d96ee919e61634d994b70aa5104d8258545",
+          "component_bytes": 2437538,
+          "announced_immutable_context_before_compile": true
+        },
+        {
+          "source": {
+            "repository": "https://github.com/openwebide/plugins.git",
+            "commit": "ad940bb96c6d656268b1b03df7a84e5478b31c4e",
+            "path": "plugins/yaml"
+          },
+          "packageDigest": "b3dd1e2472fd77676012d4cc4ed1f8a16401e64530590b75157e37d3c888d872",
+          "sdkDigest": "bcea8f44848024ed6a15653c5bc0fe9654aae48c727e686ecfef841f95408974",
+          "toolchain": "1.98.1",
+          "artifactDigest": "bc1c09255eb9b2dd72d9fcda6d6a5049e4ab3f78e2e352530ada66cd5c5957d7",
+          "component_bytes": 2608042,
+          "announced_immutable_context_before_compile": true
+        },
+        {
+          "source": {
+            "repository": "https://github.com/openwebide/plugins.git",
+            "commit": "ad940bb96c6d656268b1b03df7a84e5478b31c4e",
+            "path": "plugins/toml"
+          },
+          "packageDigest": "2f0abc7bc81ff11edc28503567f613c923540d0038bc34be56bfbfb91af24127",
+          "sdkDigest": "bcea8f44848024ed6a15653c5bc0fe9654aae48c727e686ecfef841f95408974",
+          "toolchain": "1.98.1",
+          "artifactDigest": "32cae99853a36f0ef043a0198540e198c1b16dd45774c3af0ff5be1e84faa264",
+          "component_bytes": 2445332,
+          "announced_immutable_context_before_compile": true
+        },
+        {
+          "source": {
+            "repository": "https://github.com/openwebide/plugins.git",
+            "commit": "ad940bb96c6d656268b1b03df7a84e5478b31c4e",
+            "path": "plugins/ini"
+          },
+          "packageDigest": "26367e863e44393b6cd87ee93e1815b42571a9a27b225587eeccd11685608f28",
+          "sdkDigest": "bcea8f44848024ed6a15653c5bc0fe9654aae48c727e686ecfef841f95408974",
+          "toolchain": "1.98.1",
+          "artifactDigest": "fa882b6b8b3f18637bbcf0d2ad30d0772cff5923774a5a5e12ca389d73c5cab2",
+          "component_bytes": 2421604,
+          "announced_immutable_context_before_compile": true
+        },
+        {
+          "source": {
+            "repository": "https://github.com/openwebide/plugins.git",
+            "commit": "ad940bb96c6d656268b1b03df7a84e5478b31c4e",
+            "path": "plugins/xml"
+          },
+          "packageDigest": "2f04273fc480b971bd69dd4f70f6a27b5dd8c7d9d2c74e39ee9d8dcfad4d5a87",
+          "sdkDigest": "bcea8f44848024ed6a15653c5bc0fe9654aae48c727e686ecfef841f95408974",
+          "toolchain": "1.98.1",
+          "artifactDigest": "8abe98d3f0182e36ef24621fa0c83bd2a7924d589f30ac4f45cae0675e17d2ba",
+          "component_bytes": 2471840,
+          "announced_immutable_context_before_compile": true
+        },
+        {
+          "source": {
+            "repository": "https://github.com/openwebide/plugins.git",
+            "commit": "ad940bb96c6d656268b1b03df7a84e5478b31c4e",
+            "path": "plugins/markdown"
+          },
+          "packageDigest": "915594d8e606e446931f90de6021867cf871596433c8d769f73a61fcc582097d",
+          "sdkDigest": "bcea8f44848024ed6a15653c5bc0fe9654aae48c727e686ecfef841f95408974",
+          "toolchain": "1.98.1",
+          "artifactDigest": "2fdca95565798834054acbb8605b6b58383d1e9c161b45a173fb6c05b0089cc2",
+          "component_bytes": 3289083,
+          "announced_immutable_context_before_compile": true
+        },
+        {
+          "source": {
+            "repository": "https://github.com/openwebide/plugins.git",
+            "commit": "ad940bb96c6d656268b1b03df7a84e5478b31c4e",
+            "path": "plugins/sql"
+          },
+          "packageDigest": "a9d0d2d0e2a87c21e9d078ae1b17c1b88b4d465440fe7fe636a06585abb61d6b",
+          "sdkDigest": "bcea8f44848024ed6a15653c5bc0fe9654aae48c727e686ecfef841f95408974",
+          "toolchain": "1.98.1",
+          "artifactDigest": "46029ef6152b5cd330c6553bffd84feb51ae2c67df61e0df3c1a1dea02f12c47",
+          "component_bytes": 2406379,
+          "announced_immutable_context_before_compile": true
+        },
+        {
+          "source": {
+            "repository": "https://github.com/openwebide/plugins.git",
+            "commit": "ad940bb96c6d656268b1b03df7a84e5478b31c4e",
+            "path": "plugins/plain-text"
+          },
+          "packageDigest": "b3cc12b40ec68829b0ca1bccdfcee6605a23131b14db327614d7b45b73fbb4b7",
+          "sdkDigest": "bcea8f44848024ed6a15653c5bc0fe9654aae48c727e686ecfef841f95408974",
+          "toolchain": "1.98.1",
+          "artifactDigest": "c4e2924c1a5046fd608b959cf041aea693f6b2df385ba4db4ba1033c1033fda0",
+          "component_bytes": 2407973,
+          "announced_immutable_context_before_compile": true
+        }
+      ],
+      "immutable_source_and_license_check_log_sha256": "d2cb2d1e52e3c850a1a84ccfee550c112169ce50df5b531036b4adbd4456e098",
+      "immutable_package_context_before_compile": true
+    },
+    "original_budgets": {
+      "dependency_fetch_seconds": 180,
+      "compile_seconds": 600,
+      "stderr_bytes": 131072,
+      "drain_seconds": 1
+    },
+    "full_current_native_gate_passed": false,
+    "hosted_failure_root_causes_or_fixes_proven": false,
+    "limits": [
+      "These are actual local macOS checks for the candidate implementation, not current hosted Mac passes.",
+      "Original13other native runtime tests and complete native/cross checks still require the ordinary full gate.",
+      "Full-hook expected2336native passes includes three new regressions, but that total is not yet verified.",
+      "No compiler flags, build profiles, original assertions, warnings, limits or deadlines relaxed.",
+      "The only later source changes at this point are this documentation followup; keep source identities distinct."
+    ]
   }
 }

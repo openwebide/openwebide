@@ -182,6 +182,7 @@ jobs:
           wasi_sdk_path=$(python3 tools/install_wasi_sdk.py "$RUNNER_TEMP/openwebide-wasi-sdk")
           export WASI_SDK_PATH="$wasi_sdk_path"
           export WASI_SYSROOT="$wasi_sdk_path/share/wasi-sysroot"
+          cargo test -p openwebide-plugin-runtime --release --lib --locked build::process_tests -- --test-threads=1
           cargo run -p openwebide-plugin-runtime --bin openwebide-bundle-plugins --release --locked -- bridge/bundled/plugins.json "$OPENWEBIDE_BUNDLED_ARTIFACTS"
           cargo build -p openwebide-bridge --features bundled-defaults --release --locked
           "target/release/openwebide-bridge" --help

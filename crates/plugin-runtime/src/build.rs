@@ -4,7 +4,10 @@ use std::{
     io::Read,
     path::{Path, PathBuf},
     process::{Command, Stdio},
-    sync::atomic::{AtomicBool, Ordering},
+    sync::{
+        Arc,
+        atomic::{AtomicBool, AtomicU8, AtomicUsize, Ordering},
+    },
     time::{Duration, Instant},
 };
 
@@ -225,6 +228,8 @@ fn sandbox(
     network: bool,
     wasi: Option<&Path>,
 ) -> Result<Command> {
+    use std::os::unix::fs::MetadataExt;
+
     // Child processes inherit this profile, including build.rs and procedural macros.
     let quote = |path: &Path| serde_json::to_string(&path.to_string_lossy()).expect("path JSON");
     if !Path::new("/usr/bin/sandbox-exec").is_file() {
@@ -253,11 +258,28 @@ fn sandbox(
     } else {
         developer.as_path()
     };
-    let extra_read = wasi
+    let mut extra_read = wasi
         .map(|path| format!("(subpath {})", quote(path)))
         .unwrap_or_default();
+    // Seatbelt checks the resolved vnode. /etc/resolv.conf is normally a
+    // system-owned link into /private/var/run, outside the general reads.
+    // Add only this trusted file during fetch. A missing or unusual resolver
+    // grants no extra read; it need not prevent cached or system-resolver fetches.
+    if network
+        && let Ok(resolver) = Path::new("/etc/resolv.conf").canonicalize()
+        && matches!(
+            resolver.to_str(),
+            Some("/private/etc/resolv.conf" | "/private/var/run/resolv.conf")
+        )
+        && let Ok(metadata) = std::fs::metadata(&resolver)
+        && metadata.is_file()
+        && metadata.uid() == 0
+        && metadata.mode() & 0o022 == 0
+    {
+        extra_read.push_str(&format!("(literal {})", quote(&resolver)));
+    }
     let profile = format!(
-        "(version 1)(deny default)(allow process*)(allow file-read-metadata)(allow sysctl-read)(allow mach-lookup)(allow file-read* (literal \"/\") (literal \"/private/etc/ssl/openssl.cnf\") (literal \"/private/etc/ssl/cert.pem\") (literal \"/private/etc/resolv.conf\") (literal \"/private/etc/hosts\") (subpath \"/System\") (subpath \"/usr\") (subpath \"/Library\") (subpath \"/bin\") (subpath \"/dev\") (subpath {}) (subpath {}) (subpath {}) (subpath {}) (subpath {}){})(allow file-write* (subpath {}) (literal \"/dev/null\")){}",
+        "(version 1)(deny default)(allow process*)(allow file-read-metadata)(allow sysctl-read)(allow mach-lookup)(allow file-read* (literal \"/\") (literal \"/private/etc/ssl/openssl.cnf\") (literal \"/private/etc/ssl/cert.pem\") (literal \"/private/etc/hosts\") (subpath \"/System\") (subpath \"/usr\") (subpath \"/Library\") (subpath \"/bin\") (subpath \"/dev\") (subpath {}) (subpath {}) (subpath {}) (subpath {}) (subpath {}){})(allow file-write* (subpath {}) (literal \"/dev/null\")){}",
         quote(source),
         quote(staging),
         quote(rustup),
@@ -480,6 +502,42 @@ fn run(command: Command, timeout: Duration) -> Result<()> {
     run_cancellable(command, timeout, &AtomicBool::new(false))
 }
 
+struct BuildLog {
+    bytes: Box<[AtomicU8]>,
+    published: AtomicUsize,
+}
+impl BuildLog {
+    fn new() -> Self {
+        Self {
+            bytes: (0..128 * 1024).map(|_| AtomicU8::new(0)).collect(),
+            published: AtomicUsize::new(0),
+        }
+    }
+
+    /// One reader writes each prefix byte once. Publish only complete chunks so
+    /// a stopped reader cannot block a snapshot or expose an unfinished chunk.
+    fn record(&self, offset: usize, bytes: &[u8]) -> usize {
+        let count = bytes.len().min(self.bytes.len().saturating_sub(offset));
+        if count == 0 {
+            return offset;
+        }
+        for (target, byte) in self.bytes[offset..offset + count].iter().zip(bytes) {
+            target.store(*byte, Ordering::Relaxed);
+        }
+        let end = offset + count;
+        self.published.store(end, Ordering::Release);
+        end
+    }
+
+    fn snapshot(&self) -> Vec<u8> {
+        let count = self.published.load(Ordering::Acquire);
+        self.bytes[..count]
+            .iter()
+            .map(|byte| byte.load(Ordering::Relaxed))
+            .collect()
+    }
+}
+
 fn run_cancellable(mut command: Command, timeout: Duration, cancelled: &AtomicBool) -> Result<()> {
     check_cancelled(cancelled)?;
     command
@@ -491,43 +549,49 @@ fn run_cancellable(mut command: Command, timeout: Duration, cancelled: &AtomicBo
         use std::os::unix::process::CommandExt;
         command.process_group(0);
     }
+    let retained = Arc::new(BuildLog::new());
     let child = command
         .spawn()
         .context("Unable to start isolated plugin build; check host prerequisites")?;
     let mut child = BuildProcess(child);
     let stderr = child.0.stderr.take().expect("piped build log");
     let (logs, completed) = std::sync::mpsc::channel();
+    let reader_log = retained.clone();
     std::thread::spawn(move || {
-        let mut retained = Vec::new();
+        let mut written = 0;
         let mut buffer = [0u8; 8192];
         let mut stream = stderr;
         while let Ok(count) = stream.read(&mut buffer) {
             if count == 0 {
                 break;
             }
-            let remaining = (128 * 1024usize).saturating_sub(retained.len());
-            retained.extend_from_slice(&buffer[..count.min(remaining)]);
+            written = reader_log.record(written, &buffer[..count]);
         }
-        let _ = logs.send(retained);
+        let _ = logs.send(());
     });
-    let started = Instant::now();
-    let status = loop {
-        check_cancelled(cancelled)?;
-        if let Some(status) = child.0.try_wait()? {
-            break status;
-        }
-        if started.elapsed() > timeout {
-            bail!("Plugin build exceeded its time limit");
-        }
-        std::thread::sleep(Duration::from_millis(50));
-    };
+    let outcome = wait_for_build(&mut child.0, timeout, cancelled);
     // A successful Cargo exit does not authorize background build-script work.
     // Stop remaining descendants before waiting for their inherited log pipe.
     drop(child);
-    let log = completed
-        .recv_timeout(Duration::from_secs(1))
-        .unwrap_or_default();
-    check_cancelled(cancelled)?;
+    let _ = completed.recv_timeout(Duration::from_secs(1));
+    let log = retained.snapshot();
+    drop(retained);
+    let status = outcome
+        .and_then(|status| {
+            check_cancelled(cancelled)?;
+            Ok(status)
+        })
+        .map_err(|error| {
+            if log.is_empty() {
+                error
+            } else {
+                let context = format!(
+                    "{error}\nRetained plugin build stderr (at most 128 KiB): {}",
+                    String::from_utf8_lossy(&log)
+                );
+                error.context(context)
+            }
+        })?;
     if !status.success() {
         bail!(
             "Plugin preparation failed ({status}): {}",
@@ -535,6 +599,24 @@ fn run_cancellable(mut command: Command, timeout: Duration, cancelled: &AtomicBo
         );
     }
     Ok(())
+}
+
+fn wait_for_build(
+    child: &mut std::process::Child,
+    timeout: Duration,
+    cancelled: &AtomicBool,
+) -> Result<std::process::ExitStatus> {
+    let started = Instant::now();
+    loop {
+        check_cancelled(cancelled)?;
+        if let Some(status) = child.try_wait()? {
+            return Ok(status);
+        }
+        if started.elapsed() > timeout {
+            bail!("Plugin build exceeded its time limit");
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
 }
 
 struct BuildProcess(std::process::Child);
@@ -577,6 +659,159 @@ mod process_tests {
                 .contains("time limit")
         );
         assert!(started.elapsed() < Duration::from_secs(3));
+    }
+
+    #[test]
+    fn timed_out_build_retains_bounded_stderr_after_child_cleanup() {
+        let directory = tempfile::tempdir().unwrap();
+        let written = directory.path().join("stderr-written");
+        let mut command = Command::new("/bin/sh");
+        command
+            .args([
+                "-c",
+                "printf 'compiler-timeout-marker' >&2; i=0; \
+             while [ \"$i\" -lt 4096 ]; do printf '%064d' 0 >&2; i=$((i+1)); done; \
+             printf 'omitted-tail-marker' >&2; : > \"$1\"; sleep 30 & wait",
+                "compiler-log-test",
+            ])
+            .arg(&written);
+        let started = Instant::now();
+        let error = run(command, Duration::from_millis(500)).unwrap_err();
+        assert!(started.elapsed() < Duration::from_secs(3));
+        assert!(
+            written.exists(),
+            "Fixture did not fill the retained log budget"
+        );
+        let error = error.to_string();
+        assert!(error.contains("time limit"));
+        assert!(error.contains("compiler-timeout-marker"));
+        assert!(!error.contains("omitted-tail-marker"));
+        assert!(error.len() < 128 * 1024 + 1024);
+    }
+
+    #[test]
+    fn cancellation_retains_stderr_after_child_cleanup() {
+        let cancelled = AtomicBool::new(false);
+        let directory = tempfile::tempdir().unwrap();
+        let ready = directory.path().join("stderr-written");
+        std::thread::scope(|scope| {
+            scope.spawn(|| {
+                let started = Instant::now();
+                while !ready.exists() && started.elapsed() < Duration::from_secs(2) {
+                    std::thread::sleep(Duration::from_millis(5));
+                }
+                cancelled.store(true, Ordering::Release);
+            });
+            let mut command = Command::new("/bin/sh");
+            command
+                .args([
+                    "-c",
+                    "printf 'compiler-cancel-marker' >&2; : > \"$1\"; sleep 30 & wait",
+                    "compiler-log-test",
+                ])
+                .arg(&ready);
+            let started = Instant::now();
+            let error = run_cancellable(command, Duration::from_secs(30), &cancelled)
+                .unwrap_err()
+                .to_string();
+            assert!(started.elapsed() < Duration::from_secs(3));
+            assert!(error.contains("cancelled"));
+            assert!(error.contains("compiler-cancel-marker"));
+            assert!(ready.exists());
+        });
+    }
+
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    #[test]
+    fn timeout_retains_available_stderr_when_another_writer_keeps_the_pipe_open() {
+        use std::os::fd::AsRawFd;
+        use std::os::unix::{net::UnixDatagram, process::CommandExt};
+
+        let (retained_writer, sender) = UnixDatagram::pair().unwrap();
+        let bytes = u32::try_from(std::mem::size_of::<libc::c_int>()).unwrap();
+        // SAFETY: these macros only calculate the space for one descriptor.
+        let (length, space) = unsafe { (libc::CMSG_LEN(bytes), libc::CMSG_SPACE(bytes)) };
+        assert!(usize::try_from(space).unwrap() <= 8 * std::mem::size_of::<usize>());
+        #[cfg(target_os = "linux")]
+        let (length, space) = (
+            usize::try_from(length).unwrap(),
+            usize::try_from(space).unwrap(),
+        );
+        let mut command = Command::new("/bin/sh");
+        command.args(["-c", "printf 'retained-pipe-marker' >&2; sleep 30"]);
+        // SAFETY: after fork this callback uses only stack buffers and sendmsg.
+        // Passing the child's configured stderr into our own socket queue keeps
+        // one writer open without spawning an escaped or unowned process.
+        unsafe {
+            command.pre_exec(move || {
+                let mut control = [0usize; 8];
+                let mut payload = *b"x";
+                let mut vector = libc::iovec {
+                    iov_base: payload.as_mut_ptr().cast(),
+                    iov_len: payload.len(),
+                };
+                let mut message: libc::msghdr = std::mem::zeroed();
+                message.msg_iov = &raw mut vector;
+                message.msg_iovlen = 1;
+                message.msg_control = control.as_mut_ptr().cast();
+                message.msg_controllen = space;
+                let header = libc::CMSG_FIRSTHDR(&message);
+                (*header).cmsg_level = libc::SOL_SOCKET;
+                (*header).cmsg_type = libc::SCM_RIGHTS;
+                (*header).cmsg_len = length;
+                libc::CMSG_DATA(header)
+                    .cast::<libc::c_int>()
+                    .write_unaligned(libc::STDERR_FILENO);
+                if libc::sendmsg(sender.as_raw_fd(), &message, 0) != 1 {
+                    return Err(std::io::Error::last_os_error());
+                }
+                Ok(())
+            });
+        }
+        let started = Instant::now();
+        let error = run(command, Duration::from_millis(500))
+            .unwrap_err()
+            .to_string();
+        assert!(started.elapsed() >= Duration::from_secs(1));
+        assert!(started.elapsed() < Duration::from_secs(3));
+        assert!(error.contains("time limit"));
+        assert!(error.contains("retained-pipe-marker"));
+        drop(retained_writer);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn fetch_sandbox_reads_only_the_resolved_system_dns_file() {
+        let directory = tempfile::tempdir().unwrap();
+        let allowed = directory.path().join("compiler");
+        std::fs::create_dir(&allowed).unwrap();
+        let private = directory.path().join("private");
+        std::fs::write(&private, "private-build-test").unwrap();
+        let resolver = Path::new("/etc/resolv.conf").canonicalize().unwrap();
+        let expected = std::fs::read(&resolver).unwrap();
+        assert!(!expected.is_empty());
+        let cat = |path: &Path, network| {
+            let mut command = sandbox(
+                Path::new("/bin/cat"),
+                &allowed,
+                &allowed,
+                &allowed,
+                &allowed,
+                network,
+                None,
+            )
+            .unwrap();
+            command.arg(path).output().unwrap()
+        };
+        let fetch = cat(Path::new("/etc/resolv.conf"), true);
+        assert!(fetch.status.success());
+        assert!(
+            fetch.stdout == expected,
+            "Fetch sandbox did not read the original DNS configuration"
+        );
+        assert!(!cat(&resolver, false).status.success());
+        assert!(!cat(&private, true).status.success());
+        assert!(!cat(&private, false).status.success());
     }
 
     #[test]

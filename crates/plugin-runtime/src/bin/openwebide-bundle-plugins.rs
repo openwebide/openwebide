@@ -92,8 +92,22 @@ fn main() -> Result<()> {
             }
             let staging = workspace.path().join("build");
             std::fs::create_dir(&staging)?;
-            let bytes = build::compile(&directory, &executable.library, &staging)?;
-            runtime.validate_exports(&bytes, &manifest)?;
+            let context = format!(
+                "{} / {} {} from {}@{}:{} (package {})",
+                manifest.publisher,
+                manifest.name,
+                manifest.version,
+                source.repository,
+                source.commit,
+                source.path,
+                package_digest(&files)
+            );
+            eprintln!("Compiling {context}");
+            let bytes = build::compile(&directory, &executable.library, &staging)
+                .with_context(|| format!("Build bundled plugin {context}"))?;
+            runtime
+                .validate_exports(&bytes, &manifest)
+                .with_context(|| format!("Validate bundled plugin {context}"))?;
             eprintln!(
                 "Compiled {} {} ({} bytes)",
                 manifest.display_name,

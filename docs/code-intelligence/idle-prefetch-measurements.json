@@ -1,7 +1,7 @@
 {
   "format": 1,
-  "checked_on": "2026-11-11",
-  "status": "128_module_comparison_passed_512_module_comparison_incomplete_after_local_watch_budget_declines",
+  "checked_on": "2026-11-12",
+  "status": "historical_samples_retained_constrained_linux_512_isolated_comparison_passed_no_general_benefit",
   "base_commit": "146c26b30322dbbe40b5cf8af6c2fc2fe00fbd88",
   "measured_source_manifest_sha256": "2df37f507c503238627755fabd826332afae546cc6cdcaa8935c8b8d13e0e6ef",
   "same_frontend_backend_bridge_in_both_arms": true,
@@ -319,5 +319,1670 @@
     "strict_all_target_wasm_clippy_exit_code": 0,
     "focused_source_manifest_sha256": "8d2e0480d453b50c63da43f0ef20f86b8e95dcead661b706c6506295d0642666",
     "test_startup_observation": "Two support-script fetches in the successful extended run took245.97s and256.31s. The unmodified test then ran in32.34s; no cause or startup fix is established."
+  },
+  "historical_status": "128_module_comparison_passed_512_module_comparison_incomplete_after_local_watch_budget_declines",
+  "historical_checked_on": "2026-11-11",
+  "constrained_linux_isolated_512": {
+    "checked_on": "2026-11-12",
+    "status": "all_eight_original_arms_passed",
+    "runtime_producer_commit": "762a24e695000dd9d29b1f188d3399f466dcf330",
+    "driver_source_sha256": "99590190f5638106ba3844380aa27d5ed243a84badbeebec189ed9f51edfb96b",
+    "runtime_image": "ghcr.io/openwebide/openwebide@sha256:3a330f82abc0c08b871aac0921e6244804b9908d5660d34a029427d8192b9aef",
+    "image_identity": {
+      "image": "ghcr.io/openwebide/openwebide@sha256:3a330f82abc0c08b871aac0921e6244804b9908d5660d34a029427d8192b9aef",
+      "manifest_digest": "sha256:3a330f82abc0c08b871aac0921e6244804b9908d5660d34a029427d8192b9aef",
+      "config_digest": "sha256:3b2230e385a7c207b2025cee69717439048dc02871763e596eccc12680981623",
+      "engine_image_id": "sha256:3a330f82abc0c08b871aac0921e6244804b9908d5660d34a029427d8192b9aef",
+      "producer": "762a24e695000dd9d29b1f188d3399f466dcf330",
+      "os": "linux",
+      "architecture": "arm64",
+      "engine_version": "29.9.3",
+      "all_image_execution_config_fields_match": true,
+      "execution_config_sha256": "sha256:2664c6473e4569940d41103326b12ef54d377ac3870b794f291839aa54353d8f",
+      "execution_config_field_names": [
+        "ArgsEscaped",
+        "Entrypoint",
+        "Env",
+        "ExposedPorts",
+        "Labels",
+        "Volumes",
+        "WorkingDir"
+      ],
+      "ordered_diff_ids_sha256": "sha256:22d1ab39f2cb6b987c1ce7498b1f556b19d7009ecb85da45a8bc2d8ab8f3ea91",
+      "layer_count": 40,
+      "raw_manifest_and_config_sha_verified": true,
+      "limits": "Engine is trusted to enforce pulled manifest/layer content digests; exact config plus ordered uncompressed layer IDs checked locally. Runtime binary/tool and quota contracts remain separate."
+    },
+    "image_binary_and_tool_preflight": {
+      "os": "Linux",
+      "machine": "aarch64",
+      "hashes": {
+        "/usr/local/bin/openwebide-bridge": "45e5b8f91884fe672e9e6c6a797f828ffc9123ddc1fe8b59598594352b9d567d",
+        "/app/target/wasm32-wasip2/release/openwebide_backend.wasm": "e14956da1579368b6a4af3b3b9fd28f087edf90bbe34bcd959d3acdac08c86ac",
+        "/app/frontend/dist/openwebide-frontend-7c30de268421f6d7_bg.wasm": "8305b2902a51c551a35f1dd45bf0ee2c70eb8a5f6ec56d4ceee76c1473c20735"
+      },
+      "node_version": "v24.22.2",
+      "server_version": "6.0.3",
+      "typescript_version": "6.0.3",
+      "cgroup": {
+        "cpu.max": "200000 100000",
+        "memory.max": "2147483648",
+        "memory.swap.max": "0"
+      }
+    },
+    "controller_sha256": "6d37e8e2af2f3fb3f3d474507fef452841f712627ec33cf0167251d0de8cac76",
+    "terminal_sha256": "f6f0119b25c5e11c5809288070a92a4adc4d4c70ade7267a32e311e325f3552c",
+    "workload": {
+      "mode_order": [
+        "remote",
+        "local"
+      ],
+      "arm_order_per_mode": [
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline"
+      ],
+      "modules": 512,
+      "fresh_whole_app_container_per_arm": true,
+      "cpus": 2,
+      "memory_bytes": 2147483648,
+      "memory_plus_swap_bytes": 2147483648,
+      "reloads_per_arm": 4,
+      "alternating_queries_per_arm": 8,
+      "symbol_observations_per_arm": 12,
+      "cpu_checkpoints_per_arm": 6,
+      "arm_deadline_seconds": 1800,
+      "original_measure_assertions_preserved": 16,
+      "original_probe_assertions_preserved": 9
+    },
+    "arms": [
+      {
+        "case": "remote-512-1-baseline",
+        "mode": "remote",
+        "arm": "baseline",
+        "command_wall_seconds": 86.77,
+        "observed_cgroup_core_seconds": 41.989656,
+        "observed_cgroup_wall_seconds": 81.401219622,
+        "observed_mean_cores": 0.515835711000227,
+        "own_fairclass_throttled_usec": 1236030,
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "cgroup_lifetime_peak_bytes": 1110372352,
+        "cgroup_current_bytes_first": 363335680,
+        "cgroup_current_bytes_last": 1108643840,
+        "first_ready_ms": 2712.331290997099,
+        "subsequent_reload_ready_median_ms": 1176.178,
+        "handoff_hover_median_ms": 790.063,
+        "tab_to_symbols_median_ms": 372.621,
+        "prefetch_complete_identity_groups": 0,
+        "prefetch_successful_reply_groups": 0,
+        "prefetch_partial_snapshot_observations": 0,
+        "prefetch_error_snapshot_observations": {},
+        "log_sha256": "ff4e78233ce7377b69bb9b890ff154e9ff542d9382b30d5fdafbfa923a6e43fc",
+        "phase_costs": [
+          {
+            "from": "runtime-start-returned",
+            "to": "remote:before-reloads",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 351,
+              "nr_throttled": 0,
+              "system_usec": 373429,
+              "throttled_usec": 0,
+              "usage_usec": 29670245,
+              "user_usec": 29296816
+            },
+            "core_seconds": 29.670245,
+            "guest_wall_seconds_estimate": 36.2108280175,
+            "memory_current_before": 363335680,
+            "memory_current_after": 698466304,
+            "cgroup_lifetime_memory_peak_after": 819838976,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "remote:before-reloads",
+            "to": "remote:after-reloads",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 151,
+              "nr_throttled": 15,
+              "system_usec": 1580224,
+              "throttled_usec": 1236030,
+              "usage_usec": 7670172,
+              "user_usec": 6089949
+            },
+            "core_seconds": 7.670172,
+            "guest_wall_seconds_estimate": 16.9970959455,
+            "memory_current_before": 698466304,
+            "memory_current_after": 1086107648,
+            "cgroup_lifetime_memory_peak_after": 1086107648,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "remote:after-reloads",
+            "to": "remote:before-handoffs",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 6,
+              "nr_throttled": 0,
+              "system_usec": 172161,
+              "throttled_usec": 0,
+              "usage_usec": 414489,
+              "user_usec": 242328
+            },
+            "core_seconds": 0.414489,
+            "guest_wall_seconds_estimate": 0.6761787915,
+            "memory_current_before": 1086107648,
+            "memory_current_after": 1086631936,
+            "cgroup_lifetime_memory_peak_after": 1086631936,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "remote:before-handoffs",
+            "to": "remote:after-handoffs",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 229,
+              "nr_throttled": 0,
+              "system_usec": 1622564,
+              "throttled_usec": 0,
+              "usage_usec": 4067469,
+              "user_usec": 2444905
+            },
+            "core_seconds": 4.067469,
+            "guest_wall_seconds_estimate": 26.533837158,
+            "memory_current_before": 1086631936,
+            "memory_current_after": 1110003712,
+            "cgroup_lifetime_memory_peak_after": 1110372352,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "remote:after-handoffs",
+            "to": "after-all-foreground",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 9,
+              "nr_throttled": 0,
+              "system_usec": 51746,
+              "throttled_usec": 0,
+              "usage_usec": 167281,
+              "user_usec": 115534
+            },
+            "core_seconds": 0.167281,
+            "guest_wall_seconds_estimate": 0.9832797095,
+            "memory_current_before": 1110003712,
+            "memory_current_after": 1108643840,
+            "cgroup_lifetime_memory_peak_after": 1110372352,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          }
+        ]
+      },
+      {
+        "case": "remote-512-2-candidate",
+        "mode": "remote",
+        "arm": "candidate",
+        "command_wall_seconds": 87.23,
+        "observed_cgroup_core_seconds": 44.420494,
+        "observed_cgroup_wall_seconds": 81.8561031845,
+        "observed_mean_cores": 0.5426656323949137,
+        "own_fairclass_throttled_usec": 1081949,
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "cgroup_lifetime_peak_bytes": 1026818048,
+        "cgroup_current_bytes_first": 277200896,
+        "cgroup_current_bytes_last": 1024262144,
+        "first_ready_ms": 2723.100874980446,
+        "subsequent_reload_ready_median_ms": 1290.254,
+        "handoff_hover_median_ms": 801.214,
+        "tab_to_symbols_median_ms": 369.332,
+        "prefetch_complete_identity_groups": 24,
+        "prefetch_successful_reply_groups": 24,
+        "prefetch_partial_snapshot_observations": 0,
+        "prefetch_error_snapshot_observations": {},
+        "log_sha256": "a06d7aed23c6c66421d7444c763980adf81360fcf30df2ed044dce8a62352d64",
+        "phase_costs": [
+          {
+            "from": "runtime-start-returned",
+            "to": "remote:before-reloads",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 357,
+              "nr_throttled": 0,
+              "system_usec": 296329,
+              "throttled_usec": 0,
+              "usage_usec": 31109954,
+              "user_usec": 30813626
+            },
+            "core_seconds": 31.109954,
+            "guest_wall_seconds_estimate": 35.966420892,
+            "memory_current_before": 277200896,
+            "memory_current_after": 634208256,
+            "cgroup_lifetime_memory_peak_after": 763617280,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "remote:before-reloads",
+            "to": "remote:after-reloads",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 165,
+              "nr_throttled": 13,
+              "system_usec": 1712357,
+              "throttled_usec": 1081949,
+              "usage_usec": 7993654,
+              "user_usec": 6281297
+            },
+            "core_seconds": 7.993654,
+            "guest_wall_seconds_estimate": 17.6129865085,
+            "memory_current_before": 634208256,
+            "memory_current_after": 994656256,
+            "cgroup_lifetime_memory_peak_after": 1006936064,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "remote:after-reloads",
+            "to": "remote:before-handoffs",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 6,
+              "nr_throttled": 0,
+              "system_usec": 166867,
+              "throttled_usec": 0,
+              "usage_usec": 411134,
+              "user_usec": 244267
+            },
+            "core_seconds": 0.411134,
+            "guest_wall_seconds_estimate": 0.6756076255,
+            "memory_current_before": 994656256,
+            "memory_current_after": 998895616,
+            "cgroup_lifetime_memory_peak_after": 1006936064,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "remote:before-handoffs",
+            "to": "remote:after-handoffs",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 226,
+              "nr_throttled": 0,
+              "system_usec": 1966570,
+              "throttled_usec": 0,
+              "usage_usec": 4727326,
+              "user_usec": 2760756
+            },
+            "core_seconds": 4.727326,
+            "guest_wall_seconds_estimate": 26.5605583245,
+            "memory_current_before": 998895616,
+            "memory_current_after": 1024319488,
+            "cgroup_lifetime_memory_peak_after": 1024319488,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "remote:after-handoffs",
+            "to": "after-all-foreground",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 9,
+              "nr_throttled": 0,
+              "system_usec": 58974,
+              "throttled_usec": 0,
+              "usage_usec": 178426,
+              "user_usec": 119452
+            },
+            "core_seconds": 0.178426,
+            "guest_wall_seconds_estimate": 1.040529834,
+            "memory_current_before": 1024319488,
+            "memory_current_after": 1024262144,
+            "cgroup_lifetime_memory_peak_after": 1026818048,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          }
+        ]
+      },
+      {
+        "case": "remote-512-3-candidate",
+        "mode": "remote",
+        "arm": "candidate",
+        "command_wall_seconds": 86.69,
+        "observed_cgroup_core_seconds": 43.676219,
+        "observed_cgroup_wall_seconds": 81.3289897245,
+        "observed_mean_cores": 0.5370313727977213,
+        "own_fairclass_throttled_usec": 767536,
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "cgroup_lifetime_peak_bytes": 1034526720,
+        "cgroup_current_bytes_first": 276541440,
+        "cgroup_current_bytes_last": 1034526720,
+        "first_ready_ms": 2581.6871660063043,
+        "subsequent_reload_ready_median_ms": 1175.252,
+        "handoff_hover_median_ms": 792.765,
+        "tab_to_symbols_median_ms": 369.097,
+        "prefetch_complete_identity_groups": 24,
+        "prefetch_successful_reply_groups": 24,
+        "prefetch_partial_snapshot_observations": 0,
+        "prefetch_error_snapshot_observations": {},
+        "log_sha256": "c7319f60fb893a14f2da1e6bc76840b16ee75a39bb0f95239985a10f9fd865a8",
+        "phase_costs": [
+          {
+            "from": "runtime-start-returned",
+            "to": "remote:before-reloads",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 350,
+              "nr_throttled": 0,
+              "system_usec": 283274,
+              "throttled_usec": 0,
+              "usage_usec": 30449017,
+              "user_usec": 30165743
+            },
+            "core_seconds": 30.449017,
+            "guest_wall_seconds_estimate": 35.4260553695,
+            "memory_current_before": 276541440,
+            "memory_current_after": 616685568,
+            "cgroup_lifetime_memory_peak_after": 758173696,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "remote:before-reloads",
+            "to": "remote:after-reloads",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 160,
+              "nr_throttled": 4,
+              "system_usec": 1649226,
+              "throttled_usec": 767536,
+              "usage_usec": 7835974,
+              "user_usec": 6186749
+            },
+            "core_seconds": 7.835974,
+            "guest_wall_seconds_estimate": 17.553492175,
+            "memory_current_before": 616685568,
+            "memory_current_after": 1005817856,
+            "cgroup_lifetime_memory_peak_after": 1005817856,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "remote:after-reloads",
+            "to": "remote:before-handoffs",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 6,
+              "nr_throttled": 0,
+              "system_usec": 176476,
+              "throttled_usec": 0,
+              "usage_usec": 395787,
+              "user_usec": 219310
+            },
+            "core_seconds": 0.395787,
+            "guest_wall_seconds_estimate": 0.6702075835,
+            "memory_current_before": 1005817856,
+            "memory_current_after": 1006936064,
+            "cgroup_lifetime_memory_peak_after": 1006936064,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "remote:before-handoffs",
+            "to": "remote:after-handoffs",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 223,
+              "nr_throttled": 0,
+              "system_usec": 2001814,
+              "throttled_usec": 0,
+              "usage_usec": 4821537,
+              "user_usec": 2819723
+            },
+            "core_seconds": 4.821537,
+            "guest_wall_seconds_estimate": 26.557759304,
+            "memory_current_before": 1006936064,
+            "memory_current_after": 1031778304,
+            "cgroup_lifetime_memory_peak_after": 1031778304,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "remote:after-handoffs",
+            "to": "after-all-foreground",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 10,
+              "nr_throttled": 0,
+              "system_usec": 59102,
+              "throttled_usec": 0,
+              "usage_usec": 173904,
+              "user_usec": 114803
+            },
+            "core_seconds": 0.173904,
+            "guest_wall_seconds_estimate": 1.1214752925,
+            "memory_current_before": 1031778304,
+            "memory_current_after": 1034526720,
+            "cgroup_lifetime_memory_peak_after": 1034526720,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          }
+        ]
+      },
+      {
+        "case": "remote-512-4-baseline",
+        "mode": "remote",
+        "arm": "baseline",
+        "command_wall_seconds": 87.24,
+        "observed_cgroup_core_seconds": 42.667008,
+        "observed_cgroup_wall_seconds": 81.603821683,
+        "observed_mean_cores": 0.5228555124016765,
+        "own_fairclass_throttled_usec": 1310083,
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "cgroup_lifetime_peak_bytes": 1017139200,
+        "cgroup_current_bytes_first": 275042304,
+        "cgroup_current_bytes_last": 1017139200,
+        "first_ready_ms": 3100.9545839915518,
+        "subsequent_reload_ready_median_ms": 1189.997,
+        "handoff_hover_median_ms": 816.774,
+        "tab_to_symbols_median_ms": 372.799,
+        "prefetch_complete_identity_groups": 0,
+        "prefetch_successful_reply_groups": 0,
+        "prefetch_partial_snapshot_observations": 0,
+        "prefetch_error_snapshot_observations": {},
+        "log_sha256": "38f93a2ed237a6c069eaaa55803e4dbd7d8de225af0aeb032bd5731f82445f62",
+        "phase_costs": [
+          {
+            "from": "runtime-start-returned",
+            "to": "remote:before-reloads",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 350,
+              "nr_throttled": 0,
+              "system_usec": 327438,
+              "throttled_usec": 0,
+              "usage_usec": 30321707,
+              "user_usec": 29994269
+            },
+            "core_seconds": 30.321707,
+            "guest_wall_seconds_estimate": 35.044521203,
+            "memory_current_before": 275042304,
+            "memory_current_after": 637947904,
+            "cgroup_lifetime_memory_peak_after": 761954304,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "remote:before-reloads",
+            "to": "remote:after-reloads",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 160,
+              "nr_throttled": 9,
+              "system_usec": 1547898,
+              "throttled_usec": 1310083,
+              "usage_usec": 7532334,
+              "user_usec": 5984436
+            },
+            "core_seconds": 7.532334,
+            "guest_wall_seconds_estimate": 18.07034255,
+            "memory_current_before": 637947904,
+            "memory_current_after": 997527552,
+            "cgroup_lifetime_memory_peak_after": 1009766400,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "remote:after-reloads",
+            "to": "remote:before-handoffs",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 7,
+              "nr_throttled": 0,
+              "system_usec": 172577,
+              "throttled_usec": 0,
+              "usage_usec": 413095,
+              "user_usec": 240518
+            },
+            "core_seconds": 0.413095,
+            "guest_wall_seconds_estimate": 0.666927334,
+            "memory_current_before": 997527552,
+            "memory_current_after": 991416320,
+            "cgroup_lifetime_memory_peak_after": 1009766400,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "remote:before-handoffs",
+            "to": "remote:after-handoffs",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 233,
+              "nr_throttled": 0,
+              "system_usec": 1620456,
+              "throttled_usec": 0,
+              "usage_usec": 4167215,
+              "user_usec": 2546759
+            },
+            "core_seconds": 4.167215,
+            "guest_wall_seconds_estimate": 26.777129054,
+            "memory_current_before": 991416320,
+            "memory_current_after": 1016819712,
+            "cgroup_lifetime_memory_peak_after": 1016819712,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "remote:after-handoffs",
+            "to": "after-all-foreground",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 10,
+              "nr_throttled": 0,
+              "system_usec": 89777,
+              "throttled_usec": 0,
+              "usage_usec": 232657,
+              "user_usec": 142880
+            },
+            "core_seconds": 0.232657,
+            "guest_wall_seconds_estimate": 1.044901542,
+            "memory_current_before": 1016819712,
+            "memory_current_after": 1017139200,
+            "cgroup_lifetime_memory_peak_after": 1017139200,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          }
+        ]
+      },
+      {
+        "case": "local-512-1-baseline",
+        "mode": "local",
+        "arm": "baseline",
+        "command_wall_seconds": 87.21,
+        "observed_cgroup_core_seconds": 39.842387,
+        "observed_cgroup_wall_seconds": 81.405073016,
+        "observed_mean_cores": 0.4894337112401958,
+        "own_fairclass_throttled_usec": 178422,
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "cgroup_lifetime_peak_bytes": 966012928,
+        "cgroup_current_bytes_first": 270991360,
+        "cgroup_current_bytes_last": 966012928,
+        "first_ready_ms": 3787.206957989838,
+        "subsequent_reload_ready_median_ms": 992.753,
+        "handoff_hover_median_ms": 699.175,
+        "tab_to_symbols_median_ms": 280.19,
+        "prefetch_complete_identity_groups": 0,
+        "prefetch_successful_reply_groups": 0,
+        "prefetch_partial_snapshot_observations": 0,
+        "prefetch_error_snapshot_observations": {},
+        "log_sha256": "2aabf5a68bddc59f3597537352361ea8625f82deb7863be3fed728ca70f2e881",
+        "phase_costs": [
+          {
+            "from": "runtime-start-returned",
+            "to": "local:before-reloads",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 352,
+              "nr_throttled": 0,
+              "system_usec": 302170,
+              "throttled_usec": 0,
+              "usage_usec": 30530040,
+              "user_usec": 30227871
+            },
+            "core_seconds": 30.53004,
+            "guest_wall_seconds_estimate": 35.91471637,
+            "memory_current_before": 270991360,
+            "memory_current_after": 608878592,
+            "cgroup_lifetime_memory_peak_after": 750080000,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "local:before-reloads",
+            "to": "local:after-reloads",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 165,
+              "nr_throttled": 5,
+              "system_usec": 1098742,
+              "throttled_usec": 178422,
+              "usage_usec": 6343353,
+              "user_usec": 5244611
+            },
+            "core_seconds": 6.343353,
+            "guest_wall_seconds_estimate": 18.4525745505,
+            "memory_current_before": 608878592,
+            "memory_current_after": 937132032,
+            "cgroup_lifetime_memory_peak_after": 939331584,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "local:after-reloads",
+            "to": "local:before-handoffs",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 6,
+              "nr_throttled": 0,
+              "system_usec": 81267,
+              "throttled_usec": 0,
+              "usage_usec": 188995,
+              "user_usec": 107728
+            },
+            "core_seconds": 0.188995,
+            "guest_wall_seconds_estimate": 0.6661662085,
+            "memory_current_before": 937132032,
+            "memory_current_after": 941404160,
+            "cgroup_lifetime_memory_peak_after": 941404160,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "local:before-handoffs",
+            "to": "local:after-handoffs",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 217,
+              "nr_throttled": 0,
+              "system_usec": 1035348,
+              "throttled_usec": 0,
+              "usage_usec": 2602190,
+              "user_usec": 1566841
+            },
+            "core_seconds": 2.60219,
+            "guest_wall_seconds_estimate": 25.4380507195,
+            "memory_current_before": 941404160,
+            "memory_current_after": 965152768,
+            "cgroup_lifetime_memory_peak_after": 965152768,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "local:after-handoffs",
+            "to": "after-all-foreground",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 9,
+              "nr_throttled": 0,
+              "system_usec": 78814,
+              "throttled_usec": 0,
+              "usage_usec": 177809,
+              "user_usec": 98995
+            },
+            "core_seconds": 0.177809,
+            "guest_wall_seconds_estimate": 0.9335651675,
+            "memory_current_before": 965152768,
+            "memory_current_after": 966012928,
+            "cgroup_lifetime_memory_peak_after": 966012928,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          }
+        ]
+      },
+      {
+        "case": "local-512-2-candidate",
+        "mode": "local",
+        "arm": "candidate",
+        "command_wall_seconds": 87.84,
+        "observed_cgroup_core_seconds": 41.898096,
+        "observed_cgroup_wall_seconds": 82.095155078,
+        "observed_mean_cores": 0.5103601541429809,
+        "own_fairclass_throttled_usec": 177200,
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "cgroup_lifetime_peak_bytes": 959070208,
+        "cgroup_current_bytes_first": 277221376,
+        "cgroup_current_bytes_last": 959070208,
+        "first_ready_ms": 3790.8959170163143,
+        "subsequent_reload_ready_median_ms": 1004.295,
+        "handoff_hover_median_ms": 703.563,
+        "tab_to_symbols_median_ms": 322.597,
+        "prefetch_complete_identity_groups": 24,
+        "prefetch_successful_reply_groups": 24,
+        "prefetch_partial_snapshot_observations": 0,
+        "prefetch_error_snapshot_observations": {},
+        "log_sha256": "f7a2508b7aba4002beef69fe5f47ebcd9201a05c70ca4e218a9c4bf8d7380a5d",
+        "phase_costs": [
+          {
+            "from": "runtime-start-returned",
+            "to": "local:before-reloads",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 354,
+              "nr_throttled": 0,
+              "system_usec": 381392,
+              "throttled_usec": 0,
+              "usage_usec": 30608116,
+              "user_usec": 30226724
+            },
+            "core_seconds": 30.608116,
+            "guest_wall_seconds_estimate": 35.986167453,
+            "memory_current_before": 277221376,
+            "memory_current_after": 611078144,
+            "cgroup_lifetime_memory_peak_after": 750116864,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "local:before-reloads",
+            "to": "local:after-reloads",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 179,
+              "nr_throttled": 5,
+              "system_usec": 1296072,
+              "throttled_usec": 177200,
+              "usage_usec": 7613735,
+              "user_usec": 6317664
+            },
+            "core_seconds": 7.613735,
+            "guest_wall_seconds_estimate": 19.166931322,
+            "memory_current_before": 611078144,
+            "memory_current_after": 935657472,
+            "cgroup_lifetime_memory_peak_after": 938897408,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "local:after-reloads",
+            "to": "local:before-handoffs",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 6,
+              "nr_throttled": 0,
+              "system_usec": 80689,
+              "throttled_usec": 0,
+              "usage_usec": 190710,
+              "user_usec": 110021
+            },
+            "core_seconds": 0.19071,
+            "guest_wall_seconds_estimate": 0.65629175,
+            "memory_current_before": 935657472,
+            "memory_current_after": 936579072,
+            "cgroup_lifetime_memory_peak_after": 938897408,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "local:before-handoffs",
+            "to": "local:after-handoffs",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 218,
+              "nr_throttled": 0,
+              "system_usec": 1373084,
+              "throttled_usec": 0,
+              "usage_usec": 3314143,
+              "user_usec": 1941059
+            },
+            "core_seconds": 3.314143,
+            "guest_wall_seconds_estimate": 25.2683928235,
+            "memory_current_before": 936579072,
+            "memory_current_after": 958189568,
+            "cgroup_lifetime_memory_peak_after": 958189568,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "local:after-handoffs",
+            "to": "after-all-foreground",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 10,
+              "nr_throttled": 0,
+              "system_usec": 61652,
+              "throttled_usec": 0,
+              "usage_usec": 171392,
+              "user_usec": 109740
+            },
+            "core_seconds": 0.171392,
+            "guest_wall_seconds_estimate": 1.0173717295,
+            "memory_current_before": 958189568,
+            "memory_current_after": 959070208,
+            "cgroup_lifetime_memory_peak_after": 959070208,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          }
+        ]
+      },
+      {
+        "case": "local-512-3-candidate",
+        "mode": "local",
+        "arm": "candidate",
+        "command_wall_seconds": 86.35,
+        "observed_cgroup_core_seconds": 40.496939,
+        "observed_cgroup_wall_seconds": 79.47895114,
+        "observed_mean_cores": 0.5095303651990293,
+        "own_fairclass_throttled_usec": 349731,
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "cgroup_lifetime_peak_bytes": 938233856,
+        "cgroup_current_bytes_first": 280535040,
+        "cgroup_current_bytes_last": 936030208,
+        "first_ready_ms": 3665.142791986,
+        "subsequent_reload_ready_median_ms": 1007.276,
+        "handoff_hover_median_ms": 697.667,
+        "tab_to_symbols_median_ms": 362.127,
+        "prefetch_complete_identity_groups": 24,
+        "prefetch_successful_reply_groups": 24,
+        "prefetch_partial_snapshot_observations": 0,
+        "prefetch_error_snapshot_observations": {},
+        "log_sha256": "ca226ede2b4caa98ec6e79f72769a54e2d6a8a1f76c420f23ddd4167a33261f6",
+        "phase_costs": [
+          {
+            "from": "runtime-start-returned",
+            "to": "local:before-reloads",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 350,
+              "nr_throttled": 0,
+              "system_usec": 306393,
+              "throttled_usec": 0,
+              "usage_usec": 30323820,
+              "user_usec": 30017428
+            },
+            "core_seconds": 30.32382,
+            "guest_wall_seconds_estimate": 35.430272723,
+            "memory_current_before": 280535040,
+            "memory_current_after": 612925440,
+            "cgroup_lifetime_memory_peak_after": 734953472,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "local:before-reloads",
+            "to": "local:after-reloads",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 159,
+              "nr_throttled": 8,
+              "system_usec": 1285296,
+              "throttled_usec": 349731,
+              "usage_usec": 6490350,
+              "user_usec": 5205053
+            },
+            "core_seconds": 6.49035,
+            "guest_wall_seconds_estimate": 16.94975805,
+            "memory_current_before": 612925440,
+            "memory_current_after": 911253504,
+            "cgroup_lifetime_memory_peak_after": 915922944,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "local:after-reloads",
+            "to": "local:before-handoffs",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 6,
+              "nr_throttled": 0,
+              "system_usec": 75375,
+              "throttled_usec": 0,
+              "usage_usec": 169320,
+              "user_usec": 93945
+            },
+            "core_seconds": 0.16932,
+            "guest_wall_seconds_estimate": 0.650114605,
+            "memory_current_before": 911253504,
+            "memory_current_after": 914485248,
+            "cgroup_lifetime_memory_peak_after": 915922944,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "local:before-handoffs",
+            "to": "local:after-handoffs",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 225,
+              "nr_throttled": 0,
+              "system_usec": 1380430,
+              "throttled_usec": 0,
+              "usage_usec": 3339577,
+              "user_usec": 1959147
+            },
+            "core_seconds": 3.339577,
+            "guest_wall_seconds_estimate": 25.509311178,
+            "memory_current_before": 914485248,
+            "memory_current_after": 934588416,
+            "cgroup_lifetime_memory_peak_after": 934588416,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "local:after-handoffs",
+            "to": "after-all-foreground",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 10,
+              "nr_throttled": 0,
+              "system_usec": 71382,
+              "throttled_usec": 0,
+              "usage_usec": 173872,
+              "user_usec": 102491
+            },
+            "core_seconds": 0.173872,
+            "guest_wall_seconds_estimate": 0.939494584,
+            "memory_current_before": 934588416,
+            "memory_current_after": 936030208,
+            "cgroup_lifetime_memory_peak_after": 938233856,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          }
+        ]
+      },
+      {
+        "case": "local-512-4-baseline",
+        "mode": "local",
+        "arm": "baseline",
+        "command_wall_seconds": 86.86,
+        "observed_cgroup_core_seconds": 39.628093,
+        "observed_cgroup_wall_seconds": 81.317630454,
+        "observed_mean_cores": 0.4873247385438381,
+        "own_fairclass_throttled_usec": 295165,
+        "memory_events": {
+          "high": 0,
+          "low": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0,
+          "sock_throttled": 0
+        },
+        "cgroup_lifetime_peak_bytes": 974241792,
+        "cgroup_current_bytes_first": 276672512,
+        "cgroup_current_bytes_last": 972431360,
+        "first_ready_ms": 4031.2222499924246,
+        "subsequent_reload_ready_median_ms": 1024.346,
+        "handoff_hover_median_ms": 698.143,
+        "tab_to_symbols_median_ms": 269.072,
+        "prefetch_complete_identity_groups": 0,
+        "prefetch_successful_reply_groups": 0,
+        "prefetch_partial_snapshot_observations": 0,
+        "prefetch_error_snapshot_observations": {},
+        "log_sha256": "32c4404c5ee4c04b266c35430597b04e596ea5ea22d72ba94bdf533ef80a531c",
+        "phase_costs": [
+          {
+            "from": "runtime-start-returned",
+            "to": "local:before-reloads",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 352,
+              "nr_throttled": 0,
+              "system_usec": 323560,
+              "throttled_usec": 0,
+              "usage_usec": 30296720,
+              "user_usec": 29973161
+            },
+            "core_seconds": 30.29672,
+            "guest_wall_seconds_estimate": 35.604402683,
+            "memory_current_before": 276672512,
+            "memory_current_after": 614191104,
+            "cgroup_lifetime_memory_peak_after": 754028544,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "local:before-reloads",
+            "to": "local:after-reloads",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 172,
+              "nr_throttled": 3,
+              "system_usec": 1111282,
+              "throttled_usec": 295165,
+              "usage_usec": 6384901,
+              "user_usec": 5273618
+            },
+            "core_seconds": 6.384901,
+            "guest_wall_seconds_estimate": 18.9332203835,
+            "memory_current_before": 614191104,
+            "memory_current_after": 948617216,
+            "cgroup_lifetime_memory_peak_after": 948617216,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "local:after-reloads",
+            "to": "local:before-handoffs",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 7,
+              "nr_throttled": 0,
+              "system_usec": 68611,
+              "throttled_usec": 0,
+              "usage_usec": 180489,
+              "user_usec": 111879
+            },
+            "core_seconds": 0.180489,
+            "guest_wall_seconds_estimate": 0.6802142085,
+            "memory_current_before": 948617216,
+            "memory_current_after": 949841920,
+            "cgroup_lifetime_memory_peak_after": 949841920,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "local:before-handoffs",
+            "to": "local:after-handoffs",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 208,
+              "nr_throttled": 0,
+              "system_usec": 1014337,
+              "throttled_usec": 0,
+              "usage_usec": 2611821,
+              "user_usec": 1597484
+            },
+            "core_seconds": 2.611821,
+            "guest_wall_seconds_estimate": 25.116752449,
+            "memory_current_before": 949841920,
+            "memory_current_after": 969986048,
+            "cgroup_lifetime_memory_peak_after": 969986048,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          },
+          {
+            "from": "local:after-handoffs",
+            "to": "after-all-foreground",
+            "cpu_counter_deltas": {
+              "burst_usec": 0,
+              "nice_usec": 0,
+              "nr_bursts": 0,
+              "nr_periods": 9,
+              "nr_throttled": 0,
+              "system_usec": 57893,
+              "throttled_usec": 0,
+              "usage_usec": 154162,
+              "user_usec": 96269
+            },
+            "core_seconds": 0.154162,
+            "guest_wall_seconds_estimate": 0.98304073,
+            "memory_current_before": 969986048,
+            "memory_current_after": 972431360,
+            "cgroup_lifetime_memory_peak_after": 974241792,
+            "memory_event_deltas": {
+              "high": 0,
+              "low": 0,
+              "max": 0,
+              "oom": 0,
+              "oom_group_kill": 0,
+              "oom_kill": 0,
+              "sock_throttled": 0
+            }
+          }
+        ]
+      }
+    ],
+    "groups": [
+      {
+        "mode": "remote",
+        "arm": "baseline",
+        "independent_fresh_runs": 2,
+        "arm_values": {
+          "observed_cgroup_core_seconds": [
+            41.989656,
+            42.667008
+          ],
+          "cgroup_lifetime_peak_bytes": [
+            1110372352,
+            1017139200
+          ],
+          "subsequent_reload_ready_median_ms": [
+            1176.178,
+            1189.997
+          ],
+          "handoff_hover_median_ms": [
+            790.063,
+            816.774
+          ],
+          "tab_to_symbols_median_ms": [
+            372.621,
+            372.799
+          ]
+        },
+        "successful_reply_groups": [
+          0,
+          0
+        ]
+      },
+      {
+        "mode": "remote",
+        "arm": "candidate",
+        "independent_fresh_runs": 2,
+        "arm_values": {
+          "observed_cgroup_core_seconds": [
+            44.420494,
+            43.676219
+          ],
+          "cgroup_lifetime_peak_bytes": [
+            1026818048,
+            1034526720
+          ],
+          "subsequent_reload_ready_median_ms": [
+            1290.254,
+            1175.252
+          ],
+          "handoff_hover_median_ms": [
+            801.214,
+            792.765
+          ],
+          "tab_to_symbols_median_ms": [
+            369.332,
+            369.097
+          ]
+        },
+        "successful_reply_groups": [
+          24,
+          24
+        ]
+      },
+      {
+        "mode": "local",
+        "arm": "baseline",
+        "independent_fresh_runs": 2,
+        "arm_values": {
+          "observed_cgroup_core_seconds": [
+            39.842387,
+            39.628093
+          ],
+          "cgroup_lifetime_peak_bytes": [
+            966012928,
+            974241792
+          ],
+          "subsequent_reload_ready_median_ms": [
+            992.753,
+            1024.346
+          ],
+          "handoff_hover_median_ms": [
+            699.175,
+            698.143
+          ],
+          "tab_to_symbols_median_ms": [
+            280.19,
+            269.072
+          ]
+        },
+        "successful_reply_groups": [
+          0,
+          0
+        ]
+      },
+      {
+        "mode": "local",
+        "arm": "candidate",
+        "independent_fresh_runs": 2,
+        "arm_values": {
+          "observed_cgroup_core_seconds": [
+            41.898096,
+            40.496939
+          ],
+          "cgroup_lifetime_peak_bytes": [
+            959070208,
+            938233856
+          ],
+          "subsequent_reload_ready_median_ms": [
+            1004.295,
+            1007.276
+          ],
+          "handoff_hover_median_ms": [
+            703.563,
+            697.667
+          ],
+          "tab_to_symbols_median_ms": [
+            322.597,
+            362.127
+          ]
+        },
+        "successful_reply_groups": [
+          24,
+          24
+        ]
+      }
+    ],
+    "descriptive_cpu_comparison": {
+      "remote": {
+        "baseline_mean_core_seconds": 42.328332,
+        "candidate_mean_core_seconds": 44.0483565,
+        "observed_mean_increase_percent": 4.06,
+        "inferential_or_causal_claim": false
+      },
+      "local": {
+        "baseline_mean_core_seconds": 39.735240000000005,
+        "candidate_mean_core_seconds": 41.197517500000004,
+        "observed_mean_increase_percent": 3.68,
+        "inferential_or_causal_claim": false
+      }
+    },
+    "benefit_established": false,
+    "full_allocator_stability_established": false,
+    "default_changed": false,
+    "retained_evidence": {
+      "stopped_owned_containers": 8,
+      "separate_stopped_read_only_preflight_container": 1,
+      "snapshots_and_images_preserved": true
+    },
+    "prior_identity_guard_failure": {
+      "stage": "after successful image pull, before first preflight or workload",
+      "cause": "Verification harness incorrectly equated Engine image ID with OCI config digest. Raw manifest/config, full execution configuration and all40 ordered DiffIDs were then verified independently; observed Engine ID was pinned separately.",
+      "workload_retried": false
+    },
+    "limits": [
+      "Two fresh runs per arm/mode with ABBA order are finite observations, not an inferential significance or general benefit claim.",
+      "Observed whole-cgroup CPU includes control/provenance collection and app descendants, excludes startup before first checkpoint and browser outside cgroup.",
+      "2CPU quota is a ceiling, not a reservation; own fair-class throttle excludes possible ancestor throttling.",
+      "Lifetime cgroup memory peak includes allocations and page cache; no allocator accounting, retained-memory stability or post-GC flatness proof.",
+      "Original12 observed editor phases per arm are correlated within each fresh run; do not pool them as independent repetitions.",
+      "Successful HTTP replies establish completed matching prefetch operations, not cache-hit rate or causal interactive benefit.",
+      "No cache drops, configuration changes, relaxed deadlines, pruning or retries. All owned containers stopped and retained."
+    ]
   }
 }

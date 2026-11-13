@@ -9,6 +9,10 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Record the isolated 512-module language-prefetch comparison in both modes under verified Linux 2 CPU / 2 GiB limits. All eight original runs pass; measured CPU cost increases and mixed latency results keep warming opt-in. Complete allocator stability and general benefit remain unproven.
+
+- Allow macOS plugin dependency fetches to read the trusted resolved system DNS file. Preserve available bounded compiler stderr after timeout or cancellation even while another writer keeps its pipe open, identify immutable bundled packages before compilation, and run native sandbox/process regressions in both macOS release jobs. Keep the existing build deadlines and deny network access during compilation.
+
 - Add production checks for retained reviews across independent provider refreshes, revoked authorization/admission, installed-version replacement, identical-looking results and late replies. Share the original resource/session assertions and retain disposable failure evidence.
 
 - Use monotonically increasing account generations in the wrapped geometry replay fixture, matching sign-in/logout. Preserve its complete geometry checks and existing deadlines, with separate counter-restoration coverage unchanged.

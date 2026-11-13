@@ -1334,9 +1334,14 @@ Remaining work:
   of the earlier open-buffer scheduler found nearly unchanged median symbol latency
   and higher Remote p95 with warming on. In the combined 512-module workflow,
   Local optional watches reached the shared descriptor budget while foreground
-  work continued; that warming comparison remains incomplete. Complete isolated
-  512-module and constrained 2 CPU / 2 GiB workloads, CPU cost and retained-memory
-  measurements before reconsidering the default
+  work continued; that historical combined comparison remains incomplete.
+  Separate isolated 512-module Remote and Local ABBA runs now pass in the complete
+  Linux arm64 app under verified 2 CPU / 2 GiB / no-swap limits. Each enabled arm
+  records 24 successful matching warming replies. Observed mean whole-cgroup CPU
+  cost increased about 4% in each mode; latency was mixed, including slower Local
+  symbol observations. Two fresh runs per arm/mode do not establish a general
+  benefit, and retained-memory/allocator stability remains open. Keep prefetch
+  default-off while completing broader resource and benefit measurements
   ([finite measurements and limits](code-intelligence/idle-prefetch-measurements.json)).
   Context-sensitive completion is excluded from speculation.
 - Key reusable results by account/project/host, source, effective configuration,
@@ -1513,6 +1518,12 @@ Remaining work:
   Intel macOS bridge job failed dependency DNS resolution; ARM macOS hit the
   existing plugin-build time limit. Complete reliable hosted packaging and
   investigate the failures without inferring their cause from later passes.
+  The native builder now grants the trusted resolved system DNS file only during
+  dependency fetch, identifies immutable packages before compilation and retains
+  available bounded stderr on timeout or cancellation without requiring pipe EOF. Native macOS release jobs
+  run the sandbox/process regressions before building bundled packages. The
+  original fetch, compilation and log-drain budgets remain; these changes do not
+  establish a fix for either hosted failure.
   The shared wrapped replay fixture now advances account generations monotonically,
   matching production sign-in/logout. Both-mode original/candidate checks retain
   all five scenarios, four edits each, complete geometry oracles and deadlines;
