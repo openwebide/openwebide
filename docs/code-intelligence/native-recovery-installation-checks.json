@@ -1,0 +1,1040 @@
+{
+  "status": "Native namespace installation persistence checkpoint; owner enrollment and phase authority remain open",
+  "verified_code_source_sha256": "00339811d0cc35e7085b63eb0ddbddff5fb34bfad3c79c2a56d57c1c2cf12ec6",
+  "shared_entry": "Native Namespace::open with common Folder original-object observation; normal execution capture retains private-root rejection",
+  "installation": {
+    "policy": "/etc/openwebide/native-recovery/<effective-uid>.json",
+    "trust": "Root-owned non-writable-by-group/others directory chain and single-link regular file; strict bounded versioned JSON. Missing policy uses getpwuid_r; malformed/unsafe policy fails without fallback.",
+    "default_container_directory": "/app/.spin/native-principal",
+    "persistence": "Existing openwebide-data:/app/.spin volume; both database and external namespace identity remain here",
+    "profile_independence": "No HOME/XDG/CLI/settings override; passwd and SSH/tool home unchanged",
+    "existing_state": "Reject unsafe owner/mode/symlink state; do not reset or chmod existing objects"
+  },
+  "actual_private_data_red": {
+    "source_sha256": "41d5407e7c569d14a54699c845bab9b08294f3bee31a910e56d190550928bbe7",
+    "observation": "The unchanged private .spin regression returned101 on the intended execution-root guard error before internal state capture was added.",
+    "cases": [
+      {
+        "case": "format-and-whitespace",
+        "command": [
+          "bash",
+          "-euc",
+          "cargo fmt --all --check\ngit diff --check"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 2.83,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "matching-debug-bridge",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--locked"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 100.08,
+        "log_sha256": "c9398c8d6183f5c0f1939960e8ffcb91c89998639da57ef9bd77a00917a1dd61"
+      },
+      {
+        "case": "private-data-installation-regression",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "native_recovery::tests::installation_state_can_live_below_private_application_data",
+          "--",
+          "--exact",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 101,
+        "seconds": 63.63,
+        "log_sha256": "98b987bc67c3338dd62cecc807608e4cd8d7c8fb91d23eb5182572acfe4dc4dd"
+      },
+      {
+        "case": "installation-policy-contract",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "native_recovery::location::tests::",
+          "--",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.88,
+        "log_sha256": "44feb330fa795ec773a1b3ed3ad4d20f05323edb4a7c8d7ea3af0a531468e5b3"
+      }
+    ]
+  },
+  "macOS": {
+    "distinct_cases": 167,
+    "case_executions": 185,
+    "cases": [
+      {
+        "case": "format-and-whitespace",
+        "command": [
+          "bash",
+          "-euc",
+          "cargo fmt --all --check\ngit diff --check"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 2.99,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "matching-debug-bridge",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--locked"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 100.05,
+        "log_sha256": "d3e6ad39b86ddb76bcba2ba03e4d7147ba2b5c601a43fd818d78a2606dcaf9b6"
+      },
+      {
+        "case": "private-data-installation-regression",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "native_recovery::tests::installation_state_can_live_below_private_application_data",
+          "--",
+          "--exact",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 62.98,
+        "log_sha256": "5319acc397ce7bed7e9ce1e41ec18ace726b809876a7229125c87238d78abb4e"
+      },
+      {
+        "case": "installation-policy-contract",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "native_recovery::location::tests::",
+          "--",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.4,
+        "log_sha256": "0ed438647a9f88bb4aea22c4d2f3b2d0cf910629537c02992625e1c1fb6b34d7"
+      },
+      {
+        "case": "exact-private-fifo-regression",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "native_recovery::tests::private_metadata_fifos_are_rejected_without_waiting_for_a_peer",
+          "--",
+          "--exact",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.44,
+        "log_sha256": "801157b490121e7a0824f7498f1b7d30e186a92c9652b2028fdc74fc1dd2b83d"
+      },
+      {
+        "case": "exact-namespace-admission",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "workspace_transactions::tests::paired::namespace::namespace_loss_and_identical_copies_cannot_admit_file_workers_in_either_mode",
+          "--",
+          "--exact",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 1.09,
+        "log_sha256": "0cc20aa90caa118c3b70259e427d65fd24c5e7897f8115f65521f7040bf53ca6"
+      },
+      {
+        "case": "namespace-primitives-contract",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "native_recovery::tests::",
+          "--",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.52,
+        "log_sha256": "ad656634a7c5101340dfc9df2f3c7638e562d063606bd76748d99336d7024c91"
+      },
+      {
+        "case": "namespace-post-claim-contract",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "workspace_transactions::tests::paired::namespace_after_claim::namespace_replacement_during_claim_rejects_files_until_the_original_object_is_restored",
+          "--",
+          "--exact",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.56,
+        "log_sha256": "06b7d74b7a44c7ef5e6acc7fe21c0eb2bb44198dc71870ae5bd9b0ae3c8e9a1b"
+      },
+      {
+        "case": "exact-runtime-regression",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "runs::native_vfs::workspace::tests::runtime::blocked_native_file_io_keeps_its_folder_gate_after_runtime_shutdown",
+          "--",
+          "--exact",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.41,
+        "log_sha256": "492d958fa4c31a9dc97bf7f45df5a3684e45fb990c99271a6afeb4a708f6bc21"
+      },
+      {
+        "case": "exact-root-regression",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "runs::native_vfs::workspace::tests::root::admitted_mutations_use_the_original_directory_after_its_path_is_replaced",
+          "--",
+          "--exact",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.42,
+        "log_sha256": "66ccb8d4e0eb3840aefb3b69eb9ca66215bc90f309f069663a2868ad46f542bf"
+      },
+      {
+        "case": "all-workspace-writer-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "runs::native_vfs::workspace::tests::"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.47,
+        "log_sha256": "ee5376c216be8ea61c15aa14a56a417cad4238635300df2e98271d57e05a6c7e"
+      },
+      {
+        "case": "all-native-agent-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "runs::registry::tests::"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 33.02,
+        "log_sha256": "1a367d3db09c231736601d416df7b4541da82c1a2a411f24f528d318bdbcd1ae"
+      },
+      {
+        "case": "all-native-filesystem-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "runs::native_vfs::"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 44.86,
+        "log_sha256": "ce2207ae7517e2cd778280555e0589c974837c28f923e7a22ff3348d129eb0ae"
+      },
+      {
+        "case": "both-native-transaction-adapters",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "workspace_transactions::"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 2.66,
+        "log_sha256": "1bf30d2d4e2883487db1b274e8b1ad373219c63fd4e8b2b89be19d21b4323946"
+      },
+      {
+        "case": "all-native-folder-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "folder_coordination::"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.57,
+        "log_sha256": "081629597864edc540bbd585cae5c3187a6b695d98db70aecfa1d0c3642f7d8a"
+      },
+      {
+        "case": "git-private-workspace-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "exec::git::workspace::tests::"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 2.49,
+        "log_sha256": "d64d556fb58d0b302c36d16f5b8450565bbbbe2adeb8a506fce70f2176c67e30"
+      },
+      {
+        "case": "core-private-path-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-core",
+          "--lib",
+          "--locked",
+          "--features",
+          "editor-parser",
+          "vfs::private::",
+          "--",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 39.83,
+        "log_sha256": "c2cb7768dc6541be48efb775db1886aa9e427c92a377b4f2b68293bd7776bfbd"
+      },
+      {
+        "case": "core-all-target-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-core",
+          "--all-targets",
+          "--features",
+          "editor-parser",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 18.52,
+        "log_sha256": "68eb04929199a6151c71a2cf441034fbb9919b4ef48e08c32a74899269c71a85"
+      },
+      {
+        "case": "bridge-all-target-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 37.0,
+        "log_sha256": "065f361afa62afea9350b6df0440dda4736a7284d62d65de3ac87904c7b4a8c2"
+      },
+      {
+        "case": "captured-directory-durability",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "native_directory::tests::",
+          "--",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.45,
+        "log_sha256": "3d033dc60dc6bae05016a9acf8b55c342876339c9157c6721ff68f6cd1025f71"
+      }
+    ]
+  },
+  "cross_compile_only": {
+    "Windows_native_runtime_executed": false,
+    "cases": [
+      {
+        "case": "invalidate-changed-Windows-runtime-cache",
+        "command": [
+          "cargo",
+          "clean",
+          "-p",
+          "openwebide-plugin-runtime",
+          "--profile",
+          "dev",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--target-dir",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 0.16,
+        "log_sha256": "0bdaeb2aa6a92a0fdfec2d2cc4d0ab71946de5d0654e08c526e4629130ae0f28"
+      },
+      {
+        "case": "invalidate-changed-Windows-bridge-cache",
+        "command": [
+          "cargo",
+          "clean",
+          "-p",
+          "openwebide-bridge",
+          "--profile",
+          "dev",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--target-dir",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 0.1,
+        "log_sha256": "0bdaeb2aa6a92a0fdfec2d2cc4d0ab71946de5d0654e08c526e4629130ae0f28"
+      },
+      {
+        "case": "windows-cross-clippy-not-native-runtime",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "deadline_seconds": 2400,
+        "returncode": 0,
+        "seconds": 83.7,
+        "log_sha256": "aac9b75bc2720eae111c7858bd65ab483bae111f4df5ba6cdd13208dd4626548"
+      },
+      {
+        "case": "clear-completed-Windows-cross-cache",
+        "command": [
+          "cargo",
+          "clean",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--profile",
+          "dev",
+          "--target-dir",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 0.19,
+        "log_sha256": "9144f6cc78b9f148c6e0161d4edbb88f051995043ae872b174fbe451e30820fb"
+      },
+      {
+        "case": "wasi-backend-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-backend",
+          "--target",
+          "wasm32-wasip2",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 39.51,
+        "log_sha256": "97d81e6ac247b1d43aa0972fecfee9c58e548b1180e88cc2d41a6eb628d6785a"
+      },
+      {
+        "case": "clear-completed-WASI-cross-cache",
+        "command": [
+          "cargo",
+          "clean",
+          "--target",
+          "wasm32-wasip2",
+          "--profile",
+          "dev",
+          "--target-dir",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 0.14,
+        "log_sha256": "2ae41489562ed7dafef18927d0124f40fb2fa10555a60daa7492179cb14beaf9"
+      }
+    ],
+    "actual_cross_source_sha256": "7fbccdd457034ccdea95fc139e04d07d2d3326dcf426b18c0e98fbcad722fb70",
+    "current_source_sha256": "00339811d0cc35e7085b63eb0ddbddff5fb34bfad3c79c2a56d57c1c2cf12ec6",
+    "fresh_current_full_source_cross_executed": false,
+    "compiled_code_scope_audit": {
+      "task": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/native-recovery-durability-cross-audit-1794574036",
+      "terminal": true,
+      "returncode": 0,
+      "source_sha256": "00339811d0cc35e7085b63eb0ddbddff5fb34bfad3c79c2a56d57c1c2cf12ec6",
+      "previous_actual_cross_source_sha256": "7fbccdd457034ccdea95fc139e04d07d2d3326dcf426b18c0e98fbcad722fb70",
+      "previous_actual_cross_terminal": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/native-recovery-installation-windows-cross-1794571889/terminal.json",
+      "changed_files": [
+        "Dockerfile",
+        "bridge/src/lib.rs",
+        "bridge/src/native_directory.rs",
+        "bridge/src/native_recovery.rs",
+        "bridge/src/native_recovery/location.rs",
+        "bridge/src/runs/native_vfs/mutation.rs",
+        "bridge/src/runs/native_vfs/transfer.rs"
+      ],
+      "authenticated_reconstructed_prior_hashes": {
+        "bridge/src/lib.rs": "36ee1808ca5c8bd34fad44aa66ac9340c08c87b7aef22aa58bd1b8c1686c58cc",
+        "bridge/src/runs/native_vfs/mutation.rs": "304f037cc0a98e865b7e1beecf2b15fda4c89c3d6b0dfd1905a83941346ce1fa",
+        "bridge/src/runs/native_vfs/transfer.rs": "32574b647ce2623f2ae77d53626c54d3320a3c2ccca7522f51bc5071931f7ebf"
+      },
+      "Windows_scope": "New native_directory module is cfg(unix); namespace and its location module are cfg(linux|macos). The ONLY changes in mutation.rs are in cfg(unix) method/statement; the ONLY changes in transfer.rs are in cfg(linux|macos) publish. Reversing exactly these fragments reproduces the actual prior full-file hashes. All remaining code and configuration inputs are byte-identical.",
+      "WASI_backend_workspace_dependencies": [
+        "openwebide-agent",
+        "openwebide-auth",
+        "openwebide-backend",
+        "openwebide-core",
+        "openwebide-language-grammars",
+        "openwebide-llm",
+        "openwebide-plugin-sdk",
+        "openwebide-storage"
+      ],
+      "WASI_scope": "Backend workspace dependency graph excludes bridge; all backend and reachable workspace source, build scripts, lock/config and vendor inputs remain byte-identical.",
+      "fresh_final_source_cross_executed": false,
+      "native_Windows_runtime_executed": false,
+      "previous_commands_and_deadlines_unchanged": true,
+      "full_required_CI_or_goal_complete": false
+    }
+  },
+  "Linux": {
+    "cases": [
+      {
+        "case": "exact-packaged-runtime-state",
+        "command": [
+          "docker",
+          "build",
+          "--target",
+          "runtime-state",
+          "--tag",
+          "openwebide:recovery-state-1794573399",
+          "."
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 2.33,
+        "log_sha256": "2fa1495549dd150c3b9edc1bc277b96eaada9e10a8f0d8d81560db408f126076"
+      },
+      {
+        "case": "matching-linux-bridge-and-libtest",
+        "command": [
+          "docker",
+          "run",
+          "--name",
+          "openwebide-recovery-build-1794573399",
+          "--volume",
+          "/Users/BWestnes/source/repos/openwebide/native-folder-recovery:/src:ro",
+          "--volume",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target:/shared-target",
+          "--volume",
+          "/Users/BWestnes/.cargo/registry:/usr/local/cargo/registry",
+          "--volume",
+          "/Users/BWestnes/.cargo/git:/usr/local/cargo/git",
+          "--env",
+          "CARGO_TARGET_DIR=/shared-target",
+          "--workdir",
+          "/src",
+          "--entrypoint",
+          "sh",
+          "sha256:ff521445a372125ed4f76e1453a1f8098f2d05332d1601d30db1c1f62757e730",
+          "-ec",
+          "set -eu\ntimeout 1800s cargo build -p openwebide-bridge --locked --target aarch64-unknown-linux-gnu\ntimeout 600s cargo test -p openwebide-bridge --lib --locked --features openwebide-core/editor-parser --target aarch64-unknown-linux-gnu --no-run --message-format=json"
+        ],
+        "deadline_seconds": 2400,
+        "returncode": 0,
+        "seconds": 129.2,
+        "log_sha256": "089e67887bb5a73e480550a15ca9e61d1768cdd7352cb45d248aa978062d0814"
+      },
+      {
+        "case": "fresh-containers-same-volume-fault-restoration",
+        "command": [
+          "python3",
+          "docker/native-recovery/check.py",
+          "openwebide:recovery-state-1794573399",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/aarch64-unknown-linux-gnu/debug/deps/openwebide_bridge-446653d62892d95f",
+          "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/native-recovery-linux-installation-1794573399/packaged-containers"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 1.74,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "linux-namespace-primitives",
+        "command": [
+          "docker",
+          "run",
+          "--name",
+          "openwebide-recovery-build-1794573399-primitives",
+          "--network",
+          "none",
+          "--volume",
+          "openwebide-recovery-754802dccb2e-data:/app/.spin",
+          "--volume",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/aarch64-unknown-linux-gnu/debug/deps/openwebide_bridge-446653d62892d95f:/recovery-test:ro",
+          "--entrypoint",
+          "/recovery-test",
+          "openwebide:recovery-state-1794573399",
+          "native_recovery::",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.18,
+        "log_sha256": "5a3bd5b92c30ceb501432bc52ac54c116181987125280f4537e654af92f62afc"
+      },
+      {
+        "case": "linux-directory-mutation",
+        "command": [
+          "docker",
+          "run",
+          "--name",
+          "openwebide-recovery-build-1794573399-directory-mutation",
+          "--network",
+          "none",
+          "--volume",
+          "openwebide-recovery-754802dccb2e-data:/app/.spin",
+          "--volume",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/aarch64-unknown-linux-gnu/debug/deps/openwebide_bridge-446653d62892d95f:/recovery-test:ro",
+          "--entrypoint",
+          "/recovery-test",
+          "openwebide:recovery-state-1794573399",
+          "runs::native_vfs::workspace::tests::root::directory_bound_mutations_preserve_alias_and_entry_kind_contracts",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.29,
+        "log_sha256": "1de7760feb484cb07373b392c98f43c0ff4f333aecf6ee5a044a09220f3b4525"
+      },
+      {
+        "case": "linux-captured-directory-sync",
+        "command": [
+          "docker",
+          "run",
+          "--name",
+          "openwebide-recovery-build-1794573399-captured-directory-sync",
+          "--network",
+          "none",
+          "--volume",
+          "openwebide-recovery-754802dccb2e-data:/app/.spin",
+          "--volume",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/aarch64-unknown-linux-gnu/debug/deps/openwebide_bridge-446653d62892d95f:/recovery-test:ro",
+          "--entrypoint",
+          "/recovery-test",
+          "openwebide:recovery-state-1794573399",
+          "native_directory::tests::",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.11,
+        "log_sha256": "180d0bcf442a055eb6717cd59cd69cd34e89a854d956fa352426bceec54d0d3f"
+      },
+      {
+        "case": "linux-all-native-writers",
+        "command": [
+          "docker",
+          "run",
+          "--name",
+          "openwebide-recovery-build-1794573399-all-native-writers",
+          "--network",
+          "none",
+          "--volume",
+          "openwebide-recovery-754802dccb2e-data:/app/.spin",
+          "--volume",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/aarch64-unknown-linux-gnu/debug/deps/openwebide_bridge-446653d62892d95f:/recovery-test:ro",
+          "--entrypoint",
+          "/recovery-test",
+          "openwebide:recovery-state-1794573399",
+          "runs::native_vfs::workspace::tests::",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.14,
+        "log_sha256": "a619365a66ea44e6c88365be488b02185f4d272be9f5b59d748da2d2d98a362c"
+      },
+      {
+        "case": "linux-admission",
+        "command": [
+          "docker",
+          "run",
+          "--name",
+          "openwebide-recovery-build-1794573399-admission",
+          "--network",
+          "none",
+          "--volume",
+          "openwebide-recovery-754802dccb2e-data:/app/.spin",
+          "--volume",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/aarch64-unknown-linux-gnu/debug/deps/openwebide_bridge-446653d62892d95f:/recovery-test:ro",
+          "--entrypoint",
+          "/recovery-test",
+          "openwebide:recovery-state-1794573399",
+          "--exact",
+          "workspace_transactions::tests::paired::namespace::namespace_loss_and_identical_copies_cannot_admit_file_workers_in_either_mode",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.51,
+        "log_sha256": "45fc178de03c4c500e88bd13c0eb37d45c3744f3e26638e28c811ee82861276b"
+      },
+      {
+        "case": "linux-after-claim",
+        "command": [
+          "docker",
+          "run",
+          "--name",
+          "openwebide-recovery-build-1794573399-after-claim",
+          "--network",
+          "none",
+          "--volume",
+          "openwebide-recovery-754802dccb2e-data:/app/.spin",
+          "--volume",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/aarch64-unknown-linux-gnu/debug/deps/openwebide_bridge-446653d62892d95f:/recovery-test:ro",
+          "--entrypoint",
+          "/recovery-test",
+          "openwebide:recovery-state-1794573399",
+          "--exact",
+          "workspace_transactions::tests::paired::namespace_after_claim::namespace_replacement_during_claim_rejects_files_until_the_original_object_is_restored",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.21,
+        "log_sha256": "d872ae627ff66d215d68d76684e677cb0c78e8b2c75f1f8e434570c72dce5b05"
+      }
+    ],
+    "runtime_stage": "Exact Dockerfile runtime-state inherited by runtime-tools and final image; full app image was not rebuilt.",
+    "container_image": "sha256:6797472401180f33b974b8f421a4c772a8bc476b831c5641d99fb34b34001378",
+    "actual_libtest_sha256": "dbc942febafe7d1cdd1838c8345592dfc22beadc9898f79849c1eaef0283d95a",
+    "faults": "Fresh containers with different HOME/XDG values retain original namespace objects on the same named volume; missing or byte-identical copied DB is rejected; moving back the SAME original DB permits reopening.",
+    "additional_runtime": "Actual Linux namespace primitive tests and native service/paired journal admission and post-claim contracts",
+    "retained_container_prefix": "openwebide-recovery-754802dccb2e",
+    "retained_volume": "openwebide-recovery-754802dccb2e-data"
+  },
+  "limits": [
+    "Namespace metadata only: no durable transaction-owner rows, private owner enrollment or compound phase authority.",
+    "Different containers without a shared physical authority volume are not established as one native writer domain.",
+    "Only cooperating native writers can share this locking guarantee; browser-only Local saves remain available.",
+    "Linux namespace tests use the real bridge libtest against the packaged runtime-state stage; full packaged app startup and full required CI/publication remain pending.",
+    "Windows has compile evidence only and no namespace adapter.",
+    "Windows/WASI compiler runs are from the prior source; authenticated reconstruction and target/dependency scope show that their compiled code is unchanged. Full required CI before publication remains mandatory.",
+    "Crash-safe provisioning retry, private owner enrollment and phase recovery still require further work before durable mutation authority is complete."
+  ],
+  "directory_durability": {
+    "implementation": "Reopen the same captured directory with openat dot, read-only directory/no-follow/close-on-exec flags, then perform real fsync. Shared by installation provisioning, namespace initialization, ordinary native mutation and atomic transfer. No ambient pathname recapture.",
+    "actual_Linux_baseline": {
+      "task": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/native-recovery-linux-capability-contracts-1794572360",
+      "terminal": true,
+      "returncode": 0,
+      "source_sha256": "7fbccdd457034ccdea95fc139e04d07d2d3326dcf426b18c0e98fbcad722fb70",
+      "cases": [
+        {
+          "case": "original-directory-mutation-contract",
+          "command": [
+            "docker",
+            "run",
+            "--name",
+            "openwebide-capability-contract-original-directory-mutation-contract-1794572360",
+            "--network",
+            "none",
+            "--volume",
+            "openwebide-recovery-8ad154b082bf-data:/app/.spin",
+            "--volume",
+            "/Users/BWestnes/source/repos/openwebide/openwebide/target/aarch64-unknown-linux-gnu/debug/deps/openwebide_bridge-446653d62892d95f:/recovery-test:ro",
+            "--entrypoint",
+            "/recovery-test",
+            "openwebide:recovery-state-1794572059",
+            "runs::native_vfs::workspace::tests::root::directory_bound_mutations_preserve_alias_and_entry_kind_contracts",
+            "--nocapture"
+          ],
+          "deadline_seconds": 600,
+          "returncode": 101,
+          "seconds": 0.1362602080043871,
+          "stdout_sha256": "69e8c1d671d412ca382d3b5ef7663d97806a59724e24d4116f2a098e8a030404",
+          "stderr_sha256": "77cbb789f28174e00429f390e8fe4b7173aeb6fb26ee8cf41b79112ba18d9548"
+        },
+        {
+          "case": "namespace-primitives",
+          "command": [
+            "docker",
+            "run",
+            "--name",
+            "openwebide-capability-contract-namespace-primitives-1794572360",
+            "--network",
+            "none",
+            "--volume",
+            "openwebide-recovery-8ad154b082bf-data:/app/.spin",
+            "--volume",
+            "/Users/BWestnes/source/repos/openwebide/openwebide/target/aarch64-unknown-linux-gnu/debug/deps/openwebide_bridge-446653d62892d95f:/recovery-test:ro",
+            "--entrypoint",
+            "/recovery-test",
+            "openwebide:recovery-state-1794572059",
+            "native_recovery::",
+            "--nocapture"
+          ],
+          "deadline_seconds": 600,
+          "returncode": 101,
+          "seconds": 0.13102808297844604,
+          "stdout_sha256": "920d9785adf45706ac8b1e2e119e248a3daccde89733e7d020580b06b0aef0d8",
+          "stderr_sha256": "5935e403b666eae53ded70520c112f6d8cf62a620c42186e6b2314fb35c10620"
+        }
+      ]
+    },
+    "old_regression_file_sha256": "27803c8b27bc6ee032cbfa61f58ed9f28657f30f1dfaa5e7114d52e69ef7d382",
+    "observation": "The unchanged stationary directory mutation contract returned101 with EBADF on Linux O_PATH capability handles; the same test and all12 native writer contracts pass with the shared flush primitive.",
+    "new_contract": "Captured-directory flushing still succeeds after its old pathname is replaced by a regular file; syncing a regular-file handle is rejected."
+  },
+  "supervisor_and_compose": {
+    "cases": [
+      {
+        "case": "supervisor",
+        "command": [
+          "bash",
+          "docker/entrypoint-test.sh"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 2.1082477919990197,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/native-recovery-installation-supervisor-1794572630/supervisor.log",
+        "log_sha256": "fee8bf4f5b6afb5a50c29e6c91edce4f6457553acf30adfc36eb1d4e245d77c6"
+      },
+      {
+        "case": "ssh-init",
+        "command": [
+          "bash",
+          "docker/ssh-init-test.sh"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.2746176660002675,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/native-recovery-installation-supervisor-1794572630/ssh-init.log",
+        "log_sha256": "6b84c7e2d0854246d94b6685dea07c174f2b8fe9c255366ee1d01295707d566f"
+      },
+      {
+        "case": "release-compose",
+        "command": [
+          "docker",
+          "compose",
+          "-f",
+          "docker-compose.release.yml",
+          "config",
+          "--quiet"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.11257387499790639,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/native-recovery-installation-supervisor-1794572630/release-compose.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "ssh-compose",
+        "command": [
+          "docker",
+          "compose",
+          "-f",
+          "docker-compose.release.yml",
+          "-f",
+          "docker-compose.ssh.yml",
+          "config",
+          "--quiet"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.06555595900863409,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/native-recovery-installation-supervisor-1794572630/ssh-compose.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "https-compose",
+        "command": [
+          "docker",
+          "compose",
+          "-f",
+          "docker-compose.https.yml",
+          "config",
+          "--quiet"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.05817412500618957,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/native-recovery-installation-supervisor-1794572630/https-compose.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ],
+    "scope": "These checks do not replace native Rust tests or full packaged-app verification."
+  },
+  "policy_permissions": {
+    "cases": [
+      {
+        "case": "runtime-state",
+        "command": [
+          "docker",
+          "build",
+          "--target",
+          "runtime-state",
+          "-t",
+          "openwebide:recovery-policy-0033981",
+          "."
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "e1e3ec3fbe3fb8ba210650e8f2f20615dcb97014d23540b65e5d890786d9ed9e"
+      },
+      {
+        "case": "policy-permissions",
+        "command": [
+          "docker",
+          "run",
+          "--name",
+          "openwebide-policy-permissions-0033981",
+          "--network",
+          "none",
+          "--read-only",
+          "--user",
+          "12345:12345",
+          "--entrypoint",
+          "/bin/sh",
+          "openwebide:recovery-policy-0033981",
+          "-ec",
+          "test \"$(stat -c %a /etc/openwebide)\" = 755; test \"$(stat -c %a /etc/openwebide/native-recovery)\" = 755; test \"$(stat -c %a /etc/openwebide/native-recovery/0.json)\" = 644; cat /etc/openwebide/native-recovery/0.json"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "stdout_sha256": "e628a883576a2e9d19601c5fb2831563ddab970326dccb202c2156163ae51698",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ],
+    "scope": "These checks do not replace native Rust tests or full packaged-app verification."
+  },
+  "persistence_followup": {
+    "checks": "native-recovery-persistence-checks.json",
+    "scope": "Later matching-source Mac/Linux verification also checks the original committed head across fresh containers; missing/copied heads reject and original restoration succeeds."
+  }
+}

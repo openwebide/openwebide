@@ -40,32 +40,12 @@ async fn created_at(mode: WorkspaceMode, directory: bool, receipt: bool) -> Acce
         .validate_workspace_review(fixture.scope.clone(), &state, &lease)
         .await
         .unwrap();
-    let scope = backend
-        .store
-        .workspace_transaction_scope(user, command.project, &command.request.id)
-        .await
-        .unwrap()
-        .unwrap();
-    let digest = state
-        .language_review
-        .as_ref()
-        .unwrap()
-        .fingerprint()
-        .unwrap();
     let worker = WorkspaceTransactionWorker {
         id: "e".repeat(32),
         secret: "f".repeat(32),
     };
     backend
-        .store
-        .claim_workspace_transaction_worker_reviewed(
-            user,
-            command.project,
-            &scope,
-            &worker,
-            Some((&digest, command.request.language_grant.as_deref().unwrap())),
-            101,
-        )
+        .admit_fixture(&fixture, &state, &worker, &command)
         .await
         .unwrap();
     guard.ensure_current().unwrap();
@@ -145,6 +125,7 @@ async fn created_at(mode: WorkspaceMode, directory: bool, receipt: bool) -> Acce
         .unwrap();
     command.request.language_grant = None;
     Accepted {
+        server: tokio::sync::OnceCell::new(),
         host,
         fixture,
         state,

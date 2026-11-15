@@ -9,7 +9,7 @@ mod prefetch;
 #[path = "plugins/reuse.rs"]
 mod reuse;
 use common::{HttpResponse, http, post};
-use openwebide_bridge::{ServerConfig, plugins::NativePluginInstaller, run_server};
+use openwebide_bridge::{plugins::NativePluginInstaller, run_server};
 use openwebide_core::plugins::{
     PreparedPlugin, content_digest,
     preparation::{PluginPreparation, PreparationState},
@@ -172,7 +172,7 @@ async fn native_language_routes_check_account_package_and_path_before_launch() {
     }
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
-    let mut config = ServerConfig::new(
+    let mut config = common::server_config(
         workspace.path().into(),
         "dummy_secret".into(),
         Some("paired-token".into()),
@@ -618,7 +618,7 @@ async fn local_pairing_and_remote_backend_install_the_same_package_without_works
     }
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
-    let mut config = ServerConfig::new(
+    let mut config = common::server_config(
         workspace.path().into(),
         "dummy_secret".into(),
         Some("paired-token".into()),

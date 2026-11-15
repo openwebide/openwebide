@@ -1,0 +1,493 @@
+{
+  "status": "original-directory mutation checkpoint; full code-intelligence roadmap remains open",
+  "shared_entry": "WorkspaceFiles::mutate -> NativeMutations; raw NativeFsVfs uses the same mutation policy with a per-operation directory capture",
+  "implementation": [
+    "Admitted native writers reopen dot relative to the actual Folder handle. They never recapture the execution folder through its pathname.",
+    "The actual blocking worker owns the original directory and real outer lease through I/O and cleanup. Changed-root outcomes are rejected after the original-object effect.",
+    "Write, create, copy, deletion, entry removal and atomic replacement use cap-std directory primitives. Exclusive atomic moves reuse the existing descriptor-relative primitive.",
+    "Allowed relative and absolute in-root aliases remain supported; final symlink handling follows each original operation contract. Outside targets are rejected.",
+    "Temporary files retain the existing tempfile name generator and bounded retry policy. Creation, publication and cleanup use the captured directory; the suggested absolute path has cleanup disabled. Unix creation starts private before original destination permissions are restored.",
+    "Raw atomic move and replacement remain synchronous and non-yielding. No second mode-specific orchestration or public plugin endpoint was added."
+  ],
+  "dependencies": {
+    "cap-std": "=3.4.6, already present transitively in Cargo.lock; now a direct bridge dependency",
+    "tempfile": "existing locked Builder policy retained"
+  },
+  "actual_red": {
+    "source_sha256": "0d9674f427e4808b8a10861ce379219aa07611d87e81648bc1788fae8fd860c2",
+    "terminal_receipt": "native-file-root-red-1794563789/terminal.json",
+    "cases": [
+      {
+        "case": "format-and-whitespace",
+        "command": [
+          "bash",
+          "-euc",
+          "cargo fmt --all --check\ngit diff --check"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 2.83,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "matching-debug-bridge",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--locked"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 99.13,
+        "log_sha256": "b088a41f091765d5e7c8386f3ca6fd71a817c905c34d8327cde9ca5a57ced118"
+      },
+      {
+        "case": "exact-root-regression",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "runs::native_vfs::workspace::tests::root::admitted_mutations_use_the_original_directory_after_its_path_is_replaced",
+          "--",
+          "--exact",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 101,
+        "seconds": 73.71,
+        "log_sha256": "bd94f41a00a9adc9962649ab8c11edbaa4a50d378cfe5f70e0a0f768aeb1e5ed"
+      }
+    ]
+  },
+  "actual_red_observation": "A write admitted before root replacement modified the lookalike source. Actual regression returned101 with the intended replacement-folder assertion.",
+  "first_candidate_failure": {
+    "source_sha256": "f80323e3450b82223883f4de5d11950148456130061c0995820cd2603ec9010b",
+    "terminal_receipt": "native-file-root-green-1794564062/terminal.json",
+    "cases": [
+      {
+        "case": "format-and-whitespace",
+        "command": [
+          "bash",
+          "-euc",
+          "cargo fmt --all --check\ngit diff --check"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 2.92,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "invalidate-changed-dev-cache",
+        "command": [
+          "cargo",
+          "clean",
+          "-p",
+          "openwebide-core",
+          "-p",
+          "openwebide-auth",
+          "-p",
+          "openwebide-bridge",
+          "--profile",
+          "dev",
+          "--target-dir",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.17,
+        "log_sha256": "0bdaeb2aa6a92a0fdfec2d2cc4d0ab71946de5d0654e08c526e4629130ae0f28"
+      },
+      {
+        "case": "matching-debug-bridge",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--locked"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 96.68,
+        "log_sha256": "b9bfe9be1b387d440fe427a3fad6f895531abc360fa1b90721001a3dc33a6959"
+      },
+      {
+        "case": "exact-runtime-regression",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "runs::native_vfs::workspace::tests::runtime::blocked_native_file_io_keeps_its_folder_gate_after_runtime_shutdown",
+          "--",
+          "--exact",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 72.44,
+        "log_sha256": "2528d528a1be07ae0b7898fff0d684f0a41360f18b026d20e6f09eb665e4ce50"
+      },
+      {
+        "case": "exact-root-regression",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "runs::native_vfs::workspace::tests::root::admitted_mutations_use_the_original_directory_after_its_path_is_replaced",
+          "--",
+          "--exact",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.76,
+        "log_sha256": "aef72a7e15400394045c98f4c162dd3ad1d603e83d37bc37efb765a65bfebb42"
+      },
+      {
+        "case": "all-workspace-writer-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "runs::native_vfs::workspace::tests::"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 101,
+        "seconds": 0.48,
+        "log_sha256": "984b70c5996d95549aa322743ae197c410f254bec61cb088f436c4b4112d10c9"
+      }
+    ]
+  },
+  "first_candidate_observation": "Root-replacement and runtime tests passed; existing writer contract failed11pass/1fail because flushing a top-level entry used an empty relative parent. Corrected to dot. Failure logs and three final executables retained.",
+  "macOS_focused": {
+    "source_sha256": "1e1a256a4f3672150ac067c16874e16c1ab54293105faf9283d1144096377ba7",
+    "terminal_receipt": "native-file-root-green-1794564704/terminal.json",
+    "cases": [
+      {
+        "case": "format-and-whitespace",
+        "command": [
+          "bash",
+          "-euc",
+          "cargo fmt --all --check\ngit diff --check"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 2.87,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "invalidate-changed-dev-cache",
+        "command": [
+          "cargo",
+          "clean",
+          "-p",
+          "openwebide-core",
+          "-p",
+          "openwebide-auth",
+          "-p",
+          "openwebide-bridge",
+          "--profile",
+          "dev",
+          "--target-dir",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.21,
+        "log_sha256": "0bdaeb2aa6a92a0fdfec2d2cc4d0ab71946de5d0654e08c526e4629130ae0f28"
+      },
+      {
+        "case": "matching-debug-bridge",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--locked"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 99.96,
+        "log_sha256": "257ce3b852ccbcb4f37776a5e053112fe7dd44b61674e9499b9909f13ff40fbf"
+      },
+      {
+        "case": "exact-runtime-regression",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "runs::native_vfs::workspace::tests::runtime::blocked_native_file_io_keeps_its_folder_gate_after_runtime_shutdown",
+          "--",
+          "--exact",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 73.98,
+        "log_sha256": "ed4c0c9ade18ec2e07b1f24557ad4e8934e7ad4af86070f97691dc92f3a42a57"
+      },
+      {
+        "case": "exact-root-regression",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "runs::native_vfs::workspace::tests::root::admitted_mutations_use_the_original_directory_after_its_path_is_replaced",
+          "--",
+          "--exact",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.75,
+        "log_sha256": "4410b82b8a392c8f2f5213ef7addaf2e5ea2370f9142dc083c4faf9d256eb895"
+      },
+      {
+        "case": "all-workspace-writer-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "runs::native_vfs::workspace::tests::"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.5,
+        "log_sha256": "25ecbe18c141e4ba2efc61331908db90e31891eb9bf1080bc49988b0608a4c6a"
+      },
+      {
+        "case": "all-native-agent-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "runs::registry::tests::"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 32.9,
+        "log_sha256": "bc038d01a066f3257bc0bd45cad114e8b938fea21edf224e48135f91bf383536"
+      },
+      {
+        "case": "all-native-filesystem-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "runs::native_vfs::"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 44.45,
+        "log_sha256": "af850971e9a49432ce4dbe24e9441a1738119aeb562a22b8745178f34e156915"
+      },
+      {
+        "case": "both-native-transaction-adapters",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "workspace_transactions::"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 2.01,
+        "log_sha256": "f5d536d6a5cbd4b47a3e0c2f7ae131892cfdc8aef56e9a951070ce133e1c7483"
+      },
+      {
+        "case": "all-native-folder-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "folder_coordination::"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.56,
+        "log_sha256": "342a5c0489dc3f8389ee517a3db3d98451487bd80e20562e136e40cc562de831"
+      },
+      {
+        "case": "bridge-all-target-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 40.75,
+        "log_sha256": "93b7615f325a3492e239ab1e61259010833f84c5eae94c6b4faed4b124526343"
+      }
+    ]
+  },
+  "macOS_distinct_tests": 138,
+  "macOS_case_executions": 152,
+  "windows_cross_compile_only": {
+    "source_sha256": "1e1a256a4f3672150ac067c16874e16c1ab54293105faf9283d1144096377ba7",
+    "terminal_receipt": "native-file-root-windows-cross-1794565075/terminal.json",
+    "cases": [
+      {
+        "case": "invalidate-changed-Windows-runtime-cache",
+        "command": [
+          "cargo",
+          "clean",
+          "-p",
+          "openwebide-plugin-runtime",
+          "--profile",
+          "dev",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--target-dir",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 0.16,
+        "log_sha256": "0bdaeb2aa6a92a0fdfec2d2cc4d0ab71946de5d0654e08c526e4629130ae0f28"
+      },
+      {
+        "case": "invalidate-changed-Windows-bridge-cache",
+        "command": [
+          "cargo",
+          "clean",
+          "-p",
+          "openwebide-bridge",
+          "--profile",
+          "dev",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--target-dir",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 0.1,
+        "log_sha256": "0bdaeb2aa6a92a0fdfec2d2cc4d0ab71946de5d0654e08c526e4629130ae0f28"
+      },
+      {
+        "case": "windows-cross-clippy-not-native-runtime",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "deadline_seconds": 2400,
+        "returncode": 0,
+        "seconds": 82.26,
+        "log_sha256": "52bca5a0c5aa1b76c17441838c2314d1bb926f1d00cb8680bcff1384173c51fa"
+      },
+      {
+        "case": "clear-completed-Windows-cross-cache",
+        "command": [
+          "cargo",
+          "clean",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--profile",
+          "dev",
+          "--target-dir",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 0.2,
+        "log_sha256": "9144f6cc78b9f148c6e0161d4edbb88f051995043ae872b174fbe451e30820fb"
+      }
+    ]
+  },
+  "final_native_artifacts": "native-file-root-green-output-reserve-1794565013/preserved-final-native/manifest.json",
+  "contract_notes": [
+    "The original eight-operation root-replacement regression body and its600s command are unchanged between red and final green; each internal wait remains2s.",
+    "Original writer contracts and the actual4MiB FIFO runtime-shutdown regression remain unchanged.",
+    "The alias contract runs both raw and captured adapter constructors. Existing agent and transaction contracts exercise both native project adapters.",
+    "A full local CI run, current production/browser build and publication are still required before commit or push."
+  ],
+  "limits": [
+    "Focused runtime checks ran on macOS. The Windows check is compilation, not native Windows execution. No new Linux runtime claim.",
+    "This binds the original directory capability; it is not a retained identity for every ordinary descendant or an enduring recovery owner.",
+    "Reads still use the existing before/after original-folder observations.",
+    "Browser-only Local saves remain available outside the companion physical locking guarantee.",
+    "Durable global ownership, compound phase authority, backend/WASI and other participating writer paths remain unfinished."
+  ],
+  "full_required_CI_complete": false,
+  "published": false,
+  "whole_goal_complete": false,
+  "native_namespace_followup": "native-recovery-namespace-checks.json",
+  "Linux_directory_mutation_followup": {
+    "checkpoint": "backend-writer-checks.json",
+    "evidence_id": "backend-writer-linux-qualified-1794758613",
+    "native_filesystem_tests": 48,
+    "authenticated_HTTP_tests": 2,
+    "historical_limits_above_apply_to_original_checkpoint": true
+  }
+}

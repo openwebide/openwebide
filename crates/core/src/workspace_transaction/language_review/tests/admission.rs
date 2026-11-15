@@ -10,6 +10,7 @@ fn original_compact_admission_envelopes_remain_readable_and_grants_stay_out_of_r
     assert!(matches!(
         admit,
         DelegatedWorkspaceJournalOperation::Admit {
+            command: None,
             review_digest: None,
             language_grant: None
         }

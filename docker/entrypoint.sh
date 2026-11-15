@@ -24,6 +24,9 @@ if [[ ${OPENWEBIDE_BRIDGE:-1} != 0 ]]; then
     OPENWEBIDE_APP_CONTAINER=1 openwebide-bridge --host "${OPENWEBIDE_BRIDGE_HOST:-0.0.0.0}" --port 3001 --workspace /workspace \
         --backend-url http://127.0.0.1:3000/api --secret-file /app/.spin/bridge-secret &
     children+=("$!")
+else
+    # Explicit opt-out preserves SSE file tools, outside native lock guarantees.
+    export SPIN_VARIABLE_WORKSPACE_WRITE_POLICY=${SPIN_VARIABLE_WORKSPACE_WRITE_POLICY:-direct}
 fi
 
 spin up --listen "${OPENWEBIDE_APP_HOST:-0.0.0.0}:3000" --direct-mounts --allow-transient-write "$@" &

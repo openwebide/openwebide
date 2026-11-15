@@ -276,7 +276,7 @@ where
         .get("path")
         .cloned()
         .ok_or_else(|| ApiError::bad_request("missing ?path="))?;
-    let (full, _) = remote_project_path(state, user_id, id, &rel).await?;
+    let (_, base) = remote_project_path(state, user_id, id, &rel).await?;
     let binary = req
         .headers()
         .get("content-type")
@@ -291,7 +291,13 @@ where
         return Err(ApiError::bad_request("request body is not valid UTF-8"));
     }
     ensure_idle(state, user_id, id).await?;
-    crate::files::write(&full, &content).await?;
+    openwebide_core::Vfs::write_bytes(
+        &crate::files::HostFsVfs::with_store(base, &state.store),
+        &rel,
+        &content,
+    )
+    .await
+    .map_err(crate::files::FsError::from)?;
     Ok(json_response(200, &json!({ "path": rel })))
 }
 
@@ -323,9 +329,20 @@ where
                 .ok_or_else(|| ApiError::bad_request("missing ?path="))?;
             let kind = params.get("type").cloned().unwrap_or_else(|| "file".into());
             let is_dir = kind == "dir";
-            let (full, _) = remote_project_path(state, user_id, id, &rel).await?;
+            let (_, base) = remote_project_path(state, user_id, id, &rel).await?;
             ensure_idle(state, user_id, id).await?;
-            crate::files::create(&full, is_dir).await?;
+            let kind = if is_dir {
+                openwebide_core::vfs::VfsEntryKind::Directory
+            } else {
+                openwebide_core::vfs::VfsEntryKind::File
+            };
+            openwebide_core::Vfs::create(
+                &crate::files::HostFsVfs::with_store(base, &state.store),
+                &rel,
+                kind,
+            )
+            .await
+            .map_err(crate::files::FsError::from)?;
             Ok(json_response(
                 201,
                 &json!({ "path": rel, "is_dir": is_dir }),
@@ -334,10 +351,16 @@ where
         "files/copy" => {
             let body = read_body(req, JSON_BODY_LIMIT).await?;
             let args: CopyBody = parse_json(body)?;
-            let (full_from, _) = remote_project_path(state, user_id, id, &args.from).await?;
-            let (full_to, _) = remote_project_path(state, user_id, id, &args.to).await?;
+            let (_, base) = remote_project_path(state, user_id, id, &args.from).await?;
+            remote_project_path(state, user_id, id, &args.to).await?;
             ensure_idle(state, user_id, id).await?;
-            crate::files::copy(&full_from, &full_to).await?;
+            openwebide_core::Vfs::copy(
+                &crate::files::HostFsVfs::with_store(base, &state.store),
+                &args.from,
+                &args.to,
+            )
+            .await
+            .map_err(crate::files::FsError::from)?;
             Ok(json_response(
                 200,
                 &json!({ "from": args.from, "to": args.to }),
@@ -368,8 +391,13 @@ where
         .get("path")
         .cloned()
         .ok_or_else(|| ApiError::bad_request("missing ?path="))?;
-    let (full, _) = remote_project_path(state, user_id, id, &rel).await?;
+    let (_, base) = remote_project_path(state, user_id, id, &rel).await?;
     ensure_idle(state, user_id, id).await?;
-    crate::files::delete(&full).await?;
+    openwebide_core::Vfs::delete(
+        &crate::files::HostFsVfs::with_store(base, &state.store),
+        &rel,
+    )
+    .await
+    .map_err(crate::files::FsError::from)?;
     Ok(json_response(200, &json!({ "path": rel })))
 }

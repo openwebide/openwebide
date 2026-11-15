@@ -52,14 +52,16 @@ async fn observing_bridge_peer() {
     wait(&root.join("grandchild-ready")).await;
     let watcher = i32::try_from(child.id().unwrap()).unwrap();
     // SAFETY: our live direct child is not reaped and cannot reuse its PID.
-    // Its stopped process group will receive SIGHUP/SIGCONT when this peer dies.
+    // The supervisor resumes the original Linux watcher explicitly after this
+    // peer dies; a container reaper need not orphan its stopped process group.
     assert_eq!(unsafe { libc::kill(watcher, libc::SIGSTOP) }, 0);
     std::fs::write(
-        root.join("bridge-ready"),
+        root.join("bridge-ready.tmp"),
         serde_json::to_vec(&serde_json::json!({"watcher":child.id().unwrap(),"server":pid}))
             .unwrap(),
     )
     .unwrap();
+    std::fs::rename(root.join("bridge-ready.tmp"), root.join("bridge-ready")).unwrap();
     tokio::time::sleep(Duration::from_secs(15)).await;
     // SAFETY: bounded fixture cleanup if the controlling test never kills us.
     unsafe {
@@ -94,6 +96,17 @@ async fn abrupt_bridge_loss_keeps_folder_locked_until_the_original_group_is_stop
             .unwrap(),
     );
     wait(&root.path().join("bridge-ready")).await;
+    #[cfg(target_os = "linux")]
+    let original_watcher = {
+        let original: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(root.path().join("bridge-ready")).unwrap())
+                .unwrap();
+        let pid = original["watcher"].as_u64().unwrap();
+        // The peer still owns its stopped, unreaped child. A proc-directory
+        // descriptor pins that original process for pidfd_send_signal, even
+        // if its numeric PID is later reused.
+        std::fs::File::open(format!("/proc/{pid}")).unwrap()
+    };
     let file = std::fs::File::open(root.path()).unwrap();
     assert!(matches!(
         file.try_lock(),
@@ -101,6 +114,26 @@ async fn abrupt_bridge_loss_keeps_folder_locked_until_the_original_group_is_stop
     ));
     peer.0.kill().unwrap();
     peer.0.wait().unwrap();
+    #[cfg(target_os = "linux")]
+    {
+        // SAFETY: this descriptor refers only to the original stopped watcher;
+        // null siginfo and zero flags send SIGCONT to that process. ESRCH means
+        // it already exited. Never signal its numeric PID after peer loss.
+        let resumed = unsafe {
+            libc::syscall(
+                libc::SYS_pidfd_send_signal,
+                original_watcher.as_raw_fd(),
+                libc::SIGCONT,
+                std::ptr::null::<libc::siginfo_t>(),
+                0,
+            )
+        };
+        assert!(
+            resumed == 0
+                || (resumed == -1
+                    && std::io::Error::last_os_error().raw_os_error() == Some(libc::ESRCH))
+        );
+    }
     tokio::time::timeout(Duration::from_secs(5), async {
         loop {
             match file.try_lock() {
@@ -128,6 +161,22 @@ async fn abrupt_bridge_loss_keeps_folder_locked_until_the_original_group_is_stop
             .is_none_or(|process| process.status() == sysinfo::ProcessStatus::Zombie),
         "original child is still live"
     );
+    #[cfg(target_os = "linux")]
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            system.refresh_processes_specifics(
+                sysinfo::ProcessesToUpdate::Some(&[pid]),
+                true,
+                sysinfo::ProcessRefreshKind::nothing().without_tasks(),
+            );
+            if system.process(pid).is_none() {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("the independent owner left an adopted managed child unreaped");
     std::fs::write(root.path().join("allow-write"), "allow").unwrap();
     tokio::time::sleep(Duration::from_millis(150)).await;
     assert!(!root.path().join("late-write").exists());
@@ -152,28 +201,38 @@ async fn server_termination_is_confirmed_by_its_independent_owner() {
     assert!(status.success(), "{status}");
 }
 
+// Create the fixture only after exec: parallel tests may otherwise fork while
+// its CLOEXEC descriptors are open and temporarily inherit an unrelated lock.
+async fn isolated_case(name: &str, key: &str) -> bool {
+    if std::env::var_os(key).as_deref() == Some(std::ffi::OsStr::new("1")) {
+        return false;
+    }
+    let output = tokio::time::timeout(
+        Duration::from_secs(5),
+        tokio::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", name, "--nocapture"])
+            .env(key, "1")
+            .kill_on_drop(true)
+            .output(),
+    )
+    .await
+    .expect("Isolated process-owner check timed out")
+    .unwrap();
+    assert!(
+        output.status.success(),
+        "Isolated process-owner check failed: {}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    true
+}
+
 #[tokio::test]
 async fn a_completed_claim_releases_folder_descriptors_and_preserves_the_warm_server() {
-    // Concurrent native forks can briefly inherit an unrelated thread's flock
-    // before exec closes CLOEXEC descriptors. Create this fixture after exec in
-    // an isolated process; preserve the immediate-release assertion below.
-    if std::env::var_os("OPENWEBIDE_TEST_OWNER_RELEASE_ISOLATED").as_deref()
-        != Some(std::ffi::OsStr::new("1"))
-    {
-        let output = tokio::time::timeout(Duration::from_secs(5),
-            tokio::process::Command::new(std::env::current_exe().unwrap())
-                .args(["--exact", "exec::process_owner::tests::a_completed_claim_releases_folder_descriptors_and_preserves_the_warm_server", "--nocapture"])
-                .env("OPENWEBIDE_TEST_OWNER_RELEASE_ISOLATED", "1")
-                .kill_on_drop(true).output(),
-        ).await.expect("Isolated owner release check timed out").unwrap();
-        assert!(
-            output.status.success(),
-            "Isolated owner release check failed: {}{}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-        return;
-    }
+    if isolated_case(
+        "exec::process_owner::tests::a_completed_claim_releases_folder_descriptors_and_preserves_the_warm_server",
+        "OPENWEBIDE_TEST_OWNER_RELEASE_ISOLATED",
+    ).await { return; }
     let root = tempfile::tempdir().unwrap();
     let (owner, mut child, _) = Owner::spawn(
         Path::new("/bin/sh"),
@@ -207,50 +266,65 @@ async fn a_completed_claim_releases_folder_descriptors_and_preserves_the_warm_se
     );
 }
 
-#[tokio::test]
-async fn a_cancelled_folder_handoff_closes_control_before_a_claim_is_acknowledged() {
+#[test]
+fn a_cancelled_folder_handoff_closes_control_before_a_claim_is_acknowledged() {
     use std::io::Read;
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    if runtime.block_on(isolated_case(
+        "exec::process_owner::tests::a_cancelled_folder_handoff_closes_control_before_a_claim_is_acknowledged",
+        "OPENWEBIDE_TEST_OWNER_CANCELLED_RELEASE_ISOLATED",
+    )) { return; }
     let root = tempfile::tempdir().unwrap();
-    let file = std::fs::File::open(root.path()).unwrap();
-    file.try_lock().unwrap();
-    let descriptors = vec![duplicate(file.as_raw_fd()).unwrap()];
-    let (stream, mut peer) = UnixStream::pair().unwrap();
-    configure(&stream).unwrap();
-    configure(&peer).unwrap();
-    let owner = Owner {
-        stop: Arc::new(stream.try_clone().unwrap()),
-        stream: Arc::new(Mutex::new(stream)),
-    };
-    let (received, ready) = tokio::sync::oneshot::channel();
-    let observer = std::thread::spawn(move || {
-        let (request, descriptors) = wire::receive::<Request>(&mut peer).unwrap();
-        assert!(matches!(request, Request::Retain { .. }));
-        assert_eq!(descriptors.len(), 1);
-        received.send(()).unwrap();
-        // Simulate a watcher that holds the loan but has not acknowledged it.
-        // Cancellation must close control even while exchange awaits its reply.
-        assert_eq!(peer.read(&mut [0u8; 1]).unwrap(), 0);
-        drop(descriptors);
+    let independent = runtime.block_on(async {
+        let file = std::fs::File::open(root.path()).unwrap();
+        file.try_lock().unwrap();
+        let descriptors = vec![duplicate(file.as_raw_fd()).unwrap()];
+        let (stream, mut peer) = UnixStream::pair().unwrap();
+        configure(&stream).unwrap();
+        configure(&peer).unwrap();
+        let owner = Owner {
+            stop: Arc::new(stream.try_clone().unwrap()),
+            stream: Arc::new(Mutex::new(stream)),
+        };
+        let (received, ready) = tokio::sync::oneshot::channel();
+        let observer = std::thread::spawn(move || {
+            let (request, descriptors) = wire::receive::<Request>(&mut peer).unwrap();
+            assert!(matches!(request, Request::Retain { .. }));
+            assert_eq!(descriptors.len(), 1);
+            received.send(()).unwrap();
+            // Simulate a watcher that holds the loan but has not acknowledged it.
+            // Cancellation must close control even while exchange awaits its reply.
+            assert_eq!(peer.read(&mut [0u8; 1]).unwrap(), 0);
+            drop(descriptors);
+        });
+        let retaining = owner.clone();
+        let task = tokio::spawn(async move { retaining.retain(descriptors).await });
+        tokio::time::timeout(Duration::from_secs(2), ready)
+            .await
+            .unwrap()
+            .unwrap();
+        drop(file);
+        let independent = std::fs::File::open(root.path()).unwrap();
+        assert!(matches!(
+            independent.try_lock(),
+            Err(std::fs::TryLockError::WouldBlock)
+        ));
+        task.abort();
+        match task.await {
+            Err(error) => assert!(error.is_cancelled()),
+            Ok(_) => panic!("The unacknowledged handoff completed before cancellation"),
+        }
+        tokio::task::spawn_blocking(move || observer.join().unwrap())
+            .await
+            .unwrap();
+        independent
     });
-    let retaining = owner.clone();
-    let task = tokio::spawn(async move { retaining.retain(descriptors).await });
-    tokio::time::timeout(Duration::from_secs(2), ready)
-        .await
-        .unwrap()
-        .unwrap();
-    drop(file);
-    let independent = std::fs::File::open(root.path()).unwrap();
-    assert!(matches!(
-        independent.try_lock(),
-        Err(std::fs::TryLockError::WouldBlock)
-    ));
-    task.abort();
-    match task.await {
-        Err(error) => assert!(error.is_cancelled()),
-        Ok(_) => panic!("The unacknowledged handoff completed before cancellation"),
-    }
-    tokio::task::spawn_blocking(move || observer.join().unwrap())
-        .await
-        .unwrap();
+    // Aborting retain cancels its async observer, not the blocking exchange.
+    // Control EOF was observed above while this runtime was still running.
+    // Await its blocking workers before asserting their last FD copies closed.
+    runtime.shutdown_timeout(Duration::from_secs(2));
     independent.try_lock().unwrap();
 }

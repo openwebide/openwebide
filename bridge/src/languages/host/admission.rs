@@ -35,6 +35,32 @@ impl ReviewGuard<'_> {
     }
 }
 impl Host {
+    /// Retain the same private preparation later used by command/prepare and
+    /// Start. This neither claims the backend command nor sends an LSP request.
+    pub(crate) async fn prepare_workspace_command(
+        &self,
+        scope: Scope,
+        state: &WorkspaceTransactionState,
+        recovery: &openwebide_core::workspace_transaction::WorkspaceCommandRecovery,
+    ) -> Result<openwebide_core::workspace_transaction::WorkspaceTransactionWorker, String> {
+        let review = state
+            .language_review
+            .as_ref()
+            .ok_or("The original command review is unavailable")?;
+        let approval = protocol::actions::ActionApproval {
+            id: state.journal.id.clone(),
+            prepared: review.prepared.clone(),
+            binding_revision: review.binding_revision,
+            input: review.input.clone(),
+            review: serde_json::from_value(review.result.clone())
+                .map_err(|_| "Invalid original command review")?,
+        };
+        let invocation = approval.command_invocation()?;
+        if recovery.command.invocation != invocation {
+            return Err("The original command differs from the retained file review".into());
+        }
+        self.native_command_worker(scope, &invocation).await
+    }
     pub(crate) async fn validate_workspace_review<'lease>(
         &self,
         scope: Scope,

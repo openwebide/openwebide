@@ -1,0 +1,229 @@
+{
+  "status": "Built browser, production WASI entry point and current native HTTP host verify genuine command dispatch, a lost committed settlement reply, authenticated project deletion, retained fencing and explicit recovery in both project modes. OS-default CLI in this sequence, optimized native/WASI distributions and the full roadmap remain unfinished.",
+  "source_sha256": "7751476ab3168d44f8ee7eb12d953fb3e7be926d63d0061f64b28c643c8590e6",
+  "unresolved_prior_observation": {
+    "terminal": "deleted-project-app-1794743026/terminal.json",
+    "detail": "An earlier Local run reopened the SPA instead of ending page polling and failed exact folder equality after real retirement/writing. No file difference was captured then. This checkpoint navigates to about:blank before deletion; recovery with the page left open remains unverified.",
+    "later_evidence": "See original_page_followup: original and reloaded documents now pass complete staged equality in both modes. The precise file difference in the earlier failed fixture was never captured, so no precise old cause is asserted."
+  },
+  "contract": [
+    "Approve a command in the built browser through the public HTML plugin and dispatch it once to a deterministic LSP peer. Backend outcome, cleanup receipt and settlement are genuine; no SQLite row or protocol reply fabricates completion.",
+    "Forward native journal traffic to the actual Spin backend. Keep browser callback candidates on that same forwarding transport so normal reconnection cannot bypass the fault. Close exactly the native command-journal connection whose real successful reply changes pending settlement from 1 to 0, with cleanup already confirmed.",
+    "Stop browser polling, observe the original Completed result through the authenticated production API, deny an actual ordinary write, then delete the project through the real WASI DELETE endpoint and observe GET404.",
+    "Restart native against its same isolated namespace. Its genuine original-private callback receives 404 from the still-running backend; the missing project does not release its native fence or permit ordinary writing.",
+    "Stop the retry host and run the shared CLI parser/executor through the test-support helper against the exact existing namespace. Inspect original account/project/mode/transaction and exact result, require known cleanup, retire the inspected ID/digest with a review note and repeat idempotently.",
+    "Start a third distinct native process and successfully write/read an ordinary file. Preserve original source bytes, the one-dispatch log and the exact audit; no command replay occurs."
+  ],
+  "implementation": {
+    "verifier": "tools/check-deleted-project-client.py",
+    "helper": "bridge/examples/check_recorded_command_host.rs --recovery is available only in the test-support helper. The normal bridge gains no namespace-selection flag. It calls bridge/src/recovery.rs execute_in_test_home, using the same parser/executor and shared retirement policy.",
+    "transport": "Only test primitives redirect Local journal URLs and both browser callback candidates to a real forwarding proxy; native proof/issuer checks and backend Store policy remain unchanged. The proxy returns503 for an upstream that has not started yet.",
+    "compiled_app_reuse": "Frontend/backend/shared compiler inputs match the earlier retained built-app artifacts byte for byte; current bundled native helper rebuilt from this source."
+  },
+  "verification": {
+    "terminal": "deleted-project-app-1794743957/terminal.json",
+    "artifacts": "deleted-project-app-1794743957/artifacts.json",
+    "matched_frontend_backend_shared_inputs": 764,
+    "checks": [
+      {
+        "case": "format",
+        "command": [
+          "bash",
+          "-euc",
+          "cargo fmt --all --check\ngit diff --check\npython3 -c \"from pathlib import Path; p=Path('tools/check-deleted-project-client.py'); compile(p.read_text(),str(p),'exec')\""
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 3.33,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/deleted-project-app-1794743957/format.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "native-example-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--example",
+          "check_recorded_command_host",
+          "--features",
+          "test-support,bundled-defaults",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 0.92,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/deleted-project-app-1794743957/native-example-clippy.log",
+        "log_sha256": "37bb159a3394c6c17ec27f4903c7b544677276d6ae4f3d547760cfd063a9baea"
+      },
+      {
+        "case": "matching-bundled-example",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--example",
+          "check_recorded_command_host",
+          "--features",
+          "test-support,bundled-defaults",
+          "--locked"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 0.45,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/deleted-project-app-1794743957/matching-bundled-example.log",
+        "log_sha256": "dd621e9ff7c9eac161c730aa8a79332dd68698435a7a84d044d9ad39dfa1f5d2"
+      },
+      {
+        "case": "application-remote",
+        "command": [
+          "python3",
+          "tools/check-deleted-project-client.py",
+          "--backend-wasm",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-wasip2/debug/openwebide_backend.wasm",
+          "--host-binary",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/debug/examples/check_recorded_command_host",
+          "--evidence-dir",
+          "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/deleted-project-app-1794743957/app",
+          "--mode",
+          "remote"
+        ],
+        "deadline_seconds": 1500,
+        "returncode": 0,
+        "seconds": 375.58,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/deleted-project-app-1794743957/application-remote.log",
+        "log_sha256": "621a70718008db81c4850c253a9a093663503169e815d06c398cb1ea497200cf"
+      },
+      {
+        "case": "application-local",
+        "command": [
+          "python3",
+          "tools/check-deleted-project-client.py",
+          "--backend-wasm",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-wasip2/debug/openwebide_backend.wasm",
+          "--host-binary",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/debug/examples/check_recorded_command_host",
+          "--evidence-dir",
+          "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/deleted-project-app-1794743957/app",
+          "--mode",
+          "local"
+        ],
+        "deadline_seconds": 1500,
+        "returncode": 0,
+        "seconds": 390.19,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/deleted-project-app-1794743957/application-local.log",
+        "log_sha256": "4a1785c412e63b9ac9d67cca5361194d9e37f1473e5df93f06f189f37cdbf258"
+      }
+    ],
+    "results": {
+      "remote": {
+        "mode": "remote",
+        "real_browser_command_approval": true,
+        "real_WASI_project_deletion": true,
+        "settlement_reply_lost_after_commit": true,
+        "native_processes": [
+          35932,
+          41251,
+          41255
+        ],
+        "single_command_dispatch": true,
+        "original_outcome_preserved": true,
+        "missing_project_did_not_release_claim": true,
+        "actual_ordinary_file_write_after_explicit_retirement": true,
+        "shared_CLI_executor_test_home": true,
+        "OS_default_CLI_in_this_sequence": false,
+        "optimized_native_WASI_distribution": false,
+        "physical_folder_permissions": false,
+        "whole_goal_complete": false
+      },
+      "local": {
+        "mode": "local",
+        "real_browser_command_approval": true,
+        "real_WASI_project_deletion": true,
+        "settlement_reply_lost_after_commit": true,
+        "native_processes": [
+          41264,
+          48139,
+          48144
+        ],
+        "single_command_dispatch": true,
+        "original_outcome_preserved": true,
+        "missing_project_did_not_release_claim": true,
+        "actual_ordinary_file_write_after_explicit_retirement": true,
+        "shared_CLI_executor_test_home": true,
+        "OS_default_CLI_in_this_sequence": false,
+        "optimized_native_WASI_distribution": false,
+        "physical_folder_permissions": false,
+        "whole_goal_complete": false
+      }
+    },
+    "observed_facts": {
+      "remote": {
+        "lost_reply": {
+          "path": "/api/language-commands/original-private",
+          "status": 200,
+          "before": [
+            1,
+            1
+          ],
+          "after": [
+            0,
+            1
+          ],
+          "reply_lost": true,
+          "reply_sha256": "cda80575c5c1755395f2fe11e287d185fa0c979edfbd16db28924d9e837a485e"
+        },
+        "real_missing_original_callbacks": 1,
+        "single_LSP_execution": true,
+        "audit_preserved": true
+      },
+      "local": {
+        "lost_reply": {
+          "path": "/api/language-commands/delegated",
+          "status": 200,
+          "before": [
+            1,
+            1
+          ],
+          "after": [
+            0,
+            1
+          ],
+          "reply_lost": true,
+          "reply_sha256": "b1eb25266ccb1f927a302760fb4a0582ee46f3c4768a0895ebc5f9c642c55dbf"
+        },
+        "real_missing_original_callbacks": 1,
+        "single_LSP_execution": true,
+        "audit_preserved": true
+      }
+    }
+  },
+  "limits": {
+    "deterministic_LSP_peer": true,
+    "test_selected_native_home": true,
+    "Local_OPFS_native_correspondence": true,
+    "project_deletion_through_authenticated_API_not_UI_control": true,
+    "OS_default_CLI_in_this_sequence": false,
+    "deleted_account": false,
+    "unknown_cleanup_attestation": false,
+    "optimized_native_WASI_distribution": false,
+    "physical_folder_permissions": false,
+    "installed_PWA": false,
+    "native_Windows_runtime": false,
+    "full_CI_complete": false,
+    "whole_goal_complete": false
+  },
+  "reload_followup": {
+    "checkpoint": "browser-reload-deletion-checks.json",
+    "scope": "Both modes now pass after reloading and leaving the approval page active, preserving the native address and exact file observations through deletion and native restarts. The original page without reload remains unqualified."
+  },
+  "original_page_followup": {
+    "checkpoint": "original-page-deletion-checks.json",
+    "scope": "Both modes now verify the original approval document remaining active, including actual file writing after explicit recovery and exact source observations."
+  }
+}

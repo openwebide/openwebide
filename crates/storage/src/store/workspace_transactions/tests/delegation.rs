@@ -73,6 +73,7 @@ fn mutation_authority_requires_a_durable_execution_phase_and_stops_at_terminal()
                     &token,
                     &actor,
                     Operation::Admit {
+                        command: None,
                         review_digest: None,
                         language_grant: None,
                     },
@@ -153,6 +154,7 @@ fn a_full_active_grant_quota_still_allows_one_bounded_recovery_bootstrap() {
                     &original_grant,
                     &first,
                     Operation::Admit {
+                        command: None,
                         review_digest: None,
                         language_grant: None,
                     },
@@ -223,6 +225,7 @@ fn a_full_active_grant_quota_still_allows_one_bounded_recovery_bootstrap() {
                         &token,
                         &actor,
                         Operation::Admit {
+                            command: None,
                             review_digest: None,
                             language_grant: None,
                         },
@@ -300,6 +303,7 @@ fn a_full_active_grant_quota_still_allows_one_bounded_recovery_bootstrap() {
                         &token,
                         &recovery,
                         Operation::Admit {
+                            command: None,
                             review_digest: None,
                             language_grant: None
                         }
@@ -315,6 +319,7 @@ fn a_full_active_grant_quota_still_allows_one_bounded_recovery_bootstrap() {
                     &retry,
                     &recovery,
                     Operation::Admit {
+                        command: None,
                         review_digest: None,
                         language_grant: None,
                     },
@@ -348,6 +353,7 @@ fn terminal_grants_are_revoked_without_claiming_their_workers_are_quiescent() {
                     &token,
                     &actor,
                     Operation::Admit {
+                        command: None,
                         review_digest: None,
                         language_grant: None,
                     },
@@ -484,6 +490,7 @@ fn local_delegation_requires_account_and_private_worker_then_fences_every_succes
                 &delegation,
                 &first,
                 Operation::Admit {
+                    command: None,
                     review_digest: None,
                     language_grant: None,
                 },
@@ -499,6 +506,7 @@ fn local_delegation_requires_account_and_private_worker_then_fences_every_succes
             &delegation,
             &first,
             Operation::Admit {
+                command: None,
                 review_digest: None,
                 language_grant: None,
             },
@@ -509,6 +517,7 @@ fn local_delegation_requires_account_and_private_worker_then_fences_every_succes
             &delegation,
             &first,
             Operation::Admit {
+                command: None,
                 review_digest: None,
                 language_grant: None,
             },
@@ -522,6 +531,7 @@ fn local_delegation_requires_account_and_private_worker_then_fences_every_succes
                         &delegation,
                         &first,
                         Operation::Admit {
+                            command: None,
                             review_digest: None,
                             language_grant: None
                         }
@@ -565,6 +575,7 @@ fn local_delegation_requires_account_and_private_worker_then_fences_every_succes
                     &successor,
                     &second,
                     Operation::Admit {
+                        command: None,
                         review_digest: None,
                         language_grant: None,
                     },
@@ -575,6 +586,7 @@ fn local_delegation_requires_account_and_private_worker_then_fences_every_succes
             .unwrap();
         for operation in [
             Operation::Admit {
+                command: None,
                 review_digest: None,
                 language_grant: None,
             },
@@ -613,6 +625,7 @@ fn local_delegation_requires_account_and_private_worker_then_fences_every_succes
                         &successor,
                         &second,
                         Operation::Admit {
+                            command: None,
                             review_digest: None,
                             language_grant: None
                         }
@@ -660,6 +673,7 @@ fn expired_changed_replaced_and_wrong_mode_bootstraps_never_acquire_a_worker() {
                             &expired,
                             &first,
                             Operation::Admit {
+                                command: None,
                                 review_digest: None,
                                 language_grant: None
                             }
@@ -678,6 +692,7 @@ fn expired_changed_replaced_and_wrong_mode_bootstraps_never_acquire_a_worker() {
                             &replaced,
                             &first,
                             Operation::Admit {
+                                command: None,
                                 review_digest: None,
                                 language_grant: None
                             }
@@ -702,6 +717,7 @@ fn expired_changed_replaced_and_wrong_mode_bootstraps_never_acquire_a_worker() {
                             &latest,
                             &first,
                             Operation::Admit {
+                                command: None,
                                 review_digest: None,
                                 language_grant: None
                             }
@@ -746,6 +762,7 @@ fn delegation_activation_is_durable_bounded_and_independent_of_large_snapshots()
                         &delegation,
                         &first,
                         Operation::Admit {
+                            command: None,
                             review_digest: None,
                             language_grant: None,
                         },
@@ -837,6 +854,7 @@ fn worker_admission_and_bootstrap_activation_commit_or_rollback_together() {
                         &delegation,
                         &first,
                         Operation::Admit {
+                            command: None,
                             review_digest: None,
                             language_grant: None
                         }
@@ -878,6 +896,7 @@ fn worker_admission_and_bootstrap_activation_commit_or_rollback_together() {
                     &delegation,
                     &first,
                     Operation::Admit {
+                        command: None,
                         review_digest: None,
                         language_grant: None,
                     },

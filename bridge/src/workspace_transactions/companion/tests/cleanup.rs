@@ -83,7 +83,7 @@ async fn sweeping_an_unrelated_folder_never_borrows_its_gate_for_old_proof_clean
         .unwrap()
         .touched = Instant::now() - PROOF_TTL;
     let unrelated = Transactions::capture_root(&case.root(), "other", 1, 1).unwrap();
-    let fence = case.host.exclude(&unrelated).await.unwrap();
+    let fence = case.host.exclude(&unrelated, None).await.unwrap();
     assert!(path.exists());
     queued(&case.host).await;
     assert!(path.exists());

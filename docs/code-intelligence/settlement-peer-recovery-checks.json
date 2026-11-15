@@ -1,0 +1,283 @@
+{
+  "status": "Original settlement retries survive later folder failures and retire after peer settlement in both modes; complete command recovery remains in progress.",
+  "source_sha256": "e1f5526b9c7879946e499015ba42b96816137c41b1b9cfc138bdc803afbb66da",
+  "builds_on": "recorded-command-restart-checks.json",
+  "shared_implementation": {
+    "presence": "Namespace.has_original_command validates the original namespace key, owner binding, invocation and private worker independently of optional callback context.",
+    "retry": "Journal.wait_for_settlement checks original presence before observation and again under the complete folder lease. A retired record ends only that local publisher; read errors preserve the original pending state.",
+    "lifecycle": "Later folder/issuer failures retry with the original anchored objects. Preparatory scope observations use Coordinator.prepare so shutdown can abandon observation without cancelling accepted publication.",
+    "adapters": "Both original service and paired callback adapters continue through the same journal policy and native interpreter; no LSP command is replayed."
+  },
+  "behavioral_tests": [
+    "The native intent/result/settlement contract now runs in both modes without a callback URL. It checks ownership before and after reopen, wrong worker and namespace rejection, local retirement after settlement, and continued writer fencing by a newer owner.",
+    "The ten SIGKILL/successor cases include a real scope reply held after a publisher enters settlement waiting. The original root is replaced, the reply resumes, and a later observation proves retry while the root remains invalid. Restoring the same original root and acknowledging the result permits eventual native writing without another command/language wakeup.",
+    "Two additional peer cases hold the first process on an older scope observation while another real process settles the original native record. Delivering the older response causes no new callbacks; both processes stay alive and ordinary native writing succeeds without RPC replay.",
+    "All prior authentication, original result/file assertions, callback outage, root substitution, lost committed HTTP settlement reply, Git freshness, capacity and persistence assertions remain enabled with their original deadlines."
+  ],
+  "verification": {
+    "terminal": "settlement-peer-recovery-qualified-1794702366/terminal.json",
+    "input_qualification": "settlement-peer-recovery-qualified-1794702366/input-qualification.json",
+    "artifacts": "settlement-peer-recovery-final-outputs-1794702366/manifest.json",
+    "qualification": "All twelve affected native/example/HTTP/profile cases rerun on the final code. Eight shared package/cross-target cases retain identical inputs and immutable executable provenance; their own source hashes remain in each case.",
+    "cases": [
+      {
+        "case": "format",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "inputs_verified_from_source_sha256": "e1f5526b9c7879946e499015ba42b96816137c41b1b9cfc138bdc803afbb66da"
+      },
+      {
+        "case": "storage-all-unit",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "456385016a6b60b115d27e47cac455fe5ec3a1e22e64253abb4cc9ae63e3aa18",
+        "inputs_verified_from_source_sha256": "e74f17f581c3cb994f655ae56a59ce93229ac90f9c2815200cb865a4b7f4d982"
+      },
+      {
+        "case": "core-workspace-contracts",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "e8be1a2e98e7af20347bc7564e85f3595976d44fc6155a8e4f517c80cf0bd840",
+        "inputs_verified_from_source_sha256": "e74f17f581c3cb994f655ae56a59ce93229ac90f9c2815200cb865a4b7f4d982"
+      },
+      {
+        "case": "core-command-contracts",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "8e9f48b55dec557686dc2ccd9a01cb121a1ca61e5409e0e38adcf79da25eef04",
+        "inputs_verified_from_source_sha256": "e74f17f581c3cb994f655ae56a59ce93229ac90f9c2815200cb865a4b7f4d982"
+      },
+      {
+        "case": "backend-all-unit",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "75b8fd5ef65e7af26240370ad7fc493e36cdb0e8a830c899716cacdaebd1da34",
+        "inputs_verified_from_source_sha256": "e74f17f581c3cb994f655ae56a59ce93229ac90f9c2815200cb865a4b7f4d982"
+      },
+      {
+        "case": "agent-command-actions",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "a84efe636a198b187c799355faeeb8e9d34cd6bf69661c786f4e0d22078839c8",
+        "inputs_verified_from_source_sha256": "e74f17f581c3cb994f655ae56a59ce93229ac90f9c2815200cb865a4b7f4d982"
+      },
+      {
+        "case": "frontend-native-unit",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "ec19914dffbb1c9c1a532c43a8f19e41cd45f6db76861615b5aa9343c4e8c7ae",
+        "inputs_verified_from_source_sha256": "e74f17f581c3cb994f655ae56a59ce93229ac90f9c2815200cb865a4b7f4d982"
+      },
+      {
+        "case": "native-all-target-clippy",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "4750a0cd632a3cb9e2c264f9e32d38bfed6d2577cf7e909f65766ce00c2b00fe",
+        "inputs_verified_from_source_sha256": "e1f5526b9c7879946e499015ba42b96816137c41b1b9cfc138bdc803afbb66da"
+      },
+      {
+        "case": "WASI-backend-clippy",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "0674b29b50c3dec56646820dd880f72135797e8fbae612e62ca8370ee4ddce1c",
+        "inputs_verified_from_source_sha256": "e74f17f581c3cb994f655ae56a59ce93229ac90f9c2815200cb865a4b7f4d982"
+      },
+      {
+        "case": "WASM-frontend-all-target-clippy",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "a7642a0867425c6137f6fda230ee0c5445d5148745ccd7b4f5b0b4f2b4540d91",
+        "inputs_verified_from_source_sha256": "e74f17f581c3cb994f655ae56a59ce93229ac90f9c2815200cb865a4b7f4d982"
+      },
+      {
+        "case": "matching-debug-bridge",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "f06c82f1fe2ab886d75084c98bfce599e15deb603564f106ab3b11d9759c83eb",
+        "inputs_verified_from_source_sha256": "e1f5526b9c7879946e499015ba42b96816137c41b1b9cfc138bdc803afbb66da"
+      },
+      {
+        "case": "namespace-fair-publisher",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "699a7fc37a4590144fd0001af6ba76fe1cda30b3864f243cf6acd2ec7c55bef1",
+        "inputs_verified_from_source_sha256": "e1f5526b9c7879946e499015ba42b96816137c41b1b9cfc138bdc803afbb66da"
+      },
+      {
+        "case": "owned-producer-compound-admission",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "9f1c5d130fc655591bd5b999ff009503d0b3efbc10c28d62c71826f52118ade2",
+        "inputs_verified_from_source_sha256": "e1f5526b9c7879946e499015ba42b96816137c41b1b9cfc138bdc803afbb66da"
+      },
+      {
+        "case": "bridge-all-unit",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "2a7d0e038388ea4caf10b209fe99efae826e83fc39c65a3248423d207873ec5c",
+        "inputs_verified_from_source_sha256": "e1f5526b9c7879946e499015ba42b96816137c41b1b9cfc138bdc803afbb66da"
+      },
+      {
+        "case": "marketplace-published-smoke",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "264ffac00643e212076380a1927dfb5ca26582100fb18f7b21718ae09600da00",
+        "inputs_verified_from_source_sha256": "e1f5526b9c7879946e499015ba42b96816137c41b1b9cfc138bdc803afbb66da"
+      },
+      {
+        "case": "native-recovery-host-example",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "2d609e4622f417d6504767b903b22f7c8970f4430da0ce4e115f87ddbe81ae9f",
+        "inputs_verified_from_source_sha256": "e1f5526b9c7879946e499015ba42b96816137c41b1b9cfc138bdc803afbb66da"
+      },
+      {
+        "case": "command-http-complete",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "5eca29bbee8541e2f1b50adaf8485e88af0241c6f7df7b5f346e64cf1b1f9886",
+        "inputs_verified_from_source_sha256": "e1f5526b9c7879946e499015ba42b96816137c41b1b9cfc138bdc803afbb66da"
+      },
+      {
+        "case": "bridge-default-bin-clippy",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "af560c15a8d59068b0500c4fe2896971ac992623a5bc49fe64d27fb75ec59578",
+        "inputs_verified_from_source_sha256": "e1f5526b9c7879946e499015ba42b96816137c41b1b9cfc138bdc803afbb66da"
+      },
+      {
+        "case": "windows-cross-clippy-not-native-runtime",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "481b3bb0a065a313cb036011bcf9e695e0a19062f7922bf187cb8dbe33b7d2bc",
+        "inputs_verified_from_source_sha256": "e1f5526b9c7879946e499015ba42b96816137c41b1b9cfc138bdc803afbb66da"
+      },
+      {
+        "case": "production-feature-inventory",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "51a70955c82feadb08bcaf685eec7550c14e8cf35436c8f256347155c7578b04",
+        "inputs_verified_from_source_sha256": "e1f5526b9c7879946e499015ba42b96816137c41b1b9cfc138bdc803afbb66da"
+      }
+    ],
+    "counts": {
+      "storage-all-unit": 238,
+      "core-workspace-contracts": 53,
+      "core-command-contracts": 1,
+      "backend-all-unit": 135,
+      "agent-command-actions": 3,
+      "frontend-native-unit": 143,
+      "namespace-fair-publisher": 1,
+      "owned-producer-compound-admission": 1,
+      "bridge-all-unit": 535,
+      "marketplace-published-smoke": 1,
+      "command-http-complete": 4
+    },
+    "distinct_tests": 1113,
+    "test_executions": 1115,
+    "native_library_all_declared_passed": 536,
+    "HTTP_declared_tests": 4,
+    "HTTP_command_lifecycle_scenarios": 24,
+    "HTTP_authentication_requests": 6,
+    "actual_SIGKILL_scenarios": [
+      {
+        "paired": false,
+        "fault": "None",
+        "killed_pid": 53147,
+        "successor_pid": 53167,
+        "original_exit_signal": 9
+      },
+      {
+        "paired": false,
+        "fault": "Callback",
+        "killed_pid": 53177,
+        "successor_pid": 53178,
+        "original_exit_signal": 9
+      },
+      {
+        "paired": false,
+        "fault": "Folder",
+        "killed_pid": 53195,
+        "successor_pid": 53198,
+        "original_exit_signal": 9
+      },
+      {
+        "paired": false,
+        "fault": "LateFolder",
+        "killed_pid": 53658,
+        "successor_pid": 53671,
+        "original_exit_signal": 9
+      },
+      {
+        "paired": false,
+        "fault": "SettlementAck",
+        "killed_pid": 54179,
+        "successor_pid": 54181,
+        "original_exit_signal": 9
+      },
+      {
+        "paired": true,
+        "fault": "None",
+        "killed_pid": 54193,
+        "successor_pid": 54220,
+        "original_exit_signal": 9
+      },
+      {
+        "paired": true,
+        "fault": "Callback",
+        "killed_pid": 54230,
+        "successor_pid": 54231,
+        "original_exit_signal": 9
+      },
+      {
+        "paired": true,
+        "fault": "Folder",
+        "killed_pid": 54614,
+        "successor_pid": 54687,
+        "original_exit_signal": 9
+      },
+      {
+        "paired": true,
+        "fault": "LateFolder",
+        "killed_pid": 54920,
+        "successor_pid": 55056,
+        "original_exit_signal": 9
+      },
+      {
+        "paired": true,
+        "fault": "SettlementAck",
+        "killed_pid": 55218,
+        "successor_pid": 55219,
+        "original_exit_signal": 9
+      }
+    ],
+    "actual_peer_scenarios": [
+      {
+        "paired": false,
+        "first_pid": 53149,
+        "peer_pid": 53181
+      },
+      {
+        "paired": true,
+        "first_pid": 53674,
+        "peer_pid": 54162
+      }
+    ],
+    "normal_bridge_features": [
+      "default",
+      "tls"
+    ],
+    "native_Windows_runtime": false,
+    "fresh_current_Linux_runtime": false,
+    "fresh_current_browser_or_installed_app_runtime": false,
+    "full_CI_complete": false,
+    "whole_goal_complete": false
+  },
+  "limits": [
+    "The peer contract observes correct native retirement and callback quiescence; it does not establish complete process/allocator/descriptor stability under sustained load.",
+    "Abrupt-process cases still cover positive no-dispatch outcomes. Dispatched/uncertain-command crashes and durable original watcher receipts remain unfinished.",
+    "Early Cancel without an invented public result, history-pruned final acknowledgements and callback rebinding with original-scope proof remain open.",
+    "All original participating-writer/platform/cache/resource/full-CI and current application requirements remain active; compilation checks do not establish native Windows or fresh Linux/runtime support."
+  ]
+}

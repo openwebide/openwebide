@@ -1,0 +1,148 @@
+{
+  "status": "Verified compact original command metadata and private issuance/transport; native command dispatch and cleanup integration remain incomplete",
+  "verified_production_source_sha256": "767b051b984872d3cb3fe665d15aef56a4d77e3e675f5e964444f54c5ae5cead",
+  "schema_upgrade_test_source_sha256": "5bab40221d61e597f406fac3d5815dee05c77183e20e1d309a53f8b9b0e5f406",
+  "shared_entry": "Store::workspace_command_recovery uses the shared original-journal metadata query; backend issue_command validates the full compact observation before deriving the existing original credential. Both native transport decoders use WorkspaceJournalResponse::command_recovery.",
+  "behavior": [
+    "Schema69 retains original command invocation and outcome fingerprint separately from approval/source/outcome payloads. New approvals bind once; subsequent phase writes preserve the invocation.",
+    "One SQL statement reads the original workspace scope, both recovery flags and command identity/revision/phase/outcome fingerprint. It neither deserializes provider/source payloads nor treats missing command metadata as empty ownership.",
+    "Private issuer rereads and compares the complete authenticated observation. It derives the same original file/command credential from the existing independent persistent issuer, never from an old caller-supplied secret.",
+    "Service and paired native decoders reject wrong account/project/journal or inconsistent phase/credential, missing metadata and oversized replies before accepting the observation. Paired requests additionally retain original generation/root binding.",
+    "Paired command metadata uses the existing private worker preimage; browser-origin calls and released-worker credentials remain rejected. This operation never grants dispatch or filesystem permission.",
+    "Actual schema68 fixtures upgrade and replay without replacing their original file scope or payloads. Readable archived actions can populate a missing command binding once during authorization. Missing/unreadable legacy command metadata fails closed and keeps pending recovery."
+  ],
+  "bounds": {
+    "invocation_read_bytes": 4096,
+    "private_reply_bytes": 65536,
+    "outcome_fingerprint": "Existing validated command outcome serialized canonically, then hashed; no outcome payload in the compact reply"
+  },
+  "native_checks": {
+    "terminal": "command-recovery-metadata-1794674757/terminal.json",
+    "cases": [
+      {
+        "case": "format",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "storage-all-unit",
+        "returncode": 0,
+        "deadline_seconds": 1200,
+        "log_sha256": "e560858022fa38ed50c5d375aa910acaeba2dc5ad619450ef29d782867e318ba"
+      },
+      {
+        "case": "core-transactions",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "5d2ea0bf200883571acc3c536c4c72f14c7b6d336592c01104cd4f0f87c44d1d"
+      },
+      {
+        "case": "core-command-recovery",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "ce039efd40b4c3585e9790cf720b411503252db564ac010462df9d7911bfda86"
+      },
+      {
+        "case": "backend-all-unit",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "9f0ce1e5f48f632c2dab529fa4d6b848e76da178bd6a828f0faa000bdb765a53"
+      },
+      {
+        "case": "native-all-target-clippy",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "fbbebd8f219bc88e029ab01e297f3cc0a7bb2763a7be8e36619c5160f28899a0"
+      },
+      {
+        "case": "matching-debug-bridge",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "f480e3f740543ffc1a5cfa8f1c8a83e0829dac9e680601125eeb2b0ea7af868c"
+      },
+      {
+        "case": "native-command-recovery-transports",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "115ddd94bd757edb451f89e3556b09732dcbf79e57cdd4135c9714283173cf66"
+      },
+      {
+        "case": "all-native-transaction-hosts",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "1da8800940031d3f45b280c5c851020e4d29e5b723a80f7d897016699c20e07c"
+      },
+      {
+        "case": "service-recovery-scope-transport",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "cd4a1e3b962bee6eeded19ed8fa8065210731606a741957c6bfe9720a3976f9d"
+      },
+      {
+        "case": "wasi-backend-clippy",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "33a9f50bd10b5da0f38a9db9a5a42b999fc69938580f9ff6bbebf8af3e738e75"
+      },
+      {
+        "case": "frontend-wasm-all-target-clippy",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "c17c08c03e9217088ff01437215bb8b66466a14baf039bf2bb3b15236124a0ef"
+      },
+      {
+        "case": "windows-cross-clippy-not-native-runtime",
+        "returncode": 0,
+        "deadline_seconds": 2400,
+        "log_sha256": "a22e4af316894a41c029f9a0afe19fe2cfd3a3ca62acf46d9fe010e002505ad3"
+      }
+    ],
+    "test_executions": 464,
+    "distinct_tests": 461,
+    "storage_tests_before_upgrade_followup": 224,
+    "backend_tests": 131,
+    "native_transaction_and_companion_tests": 50,
+    "WASI_backend_clippy": true,
+    "WASM_frontend_all_target_clippy": true,
+    "Windows_bridge_all_target_cross_clippy": true,
+    "native_Windows_runtime": false
+  },
+  "schema_upgrade_followup": {
+    "terminal": "command-recovery-schema-upgrade-1794675445/terminal.json",
+    "cases": [
+      {
+        "case": "format",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "storage-all-unit-with-schema68-upgrade",
+        "returncode": 0,
+        "deadline_seconds": 1200,
+        "log_sha256": "5f424a499dc3d21145d8946e78c4938b915673322aa791fb2f7b6fee25bf006f"
+      },
+      {
+        "case": "storage-all-target-clippy",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "9c0c710c43f7022ecc755945b9e474f98ea825a172316de795c7de94342aa391"
+      }
+    ],
+    "storage_tests": 225,
+    "only_changed_source": "crates/storage/src/store/language_actions/tests/recovery.rs",
+    "production_inputs_unchanged": true
+  },
+  "remaining": [
+    "Qualify callback recovery with the current optimized native/WASI release distribution and installed app, including original OS-selected private namespace and physical browser folder permission/device checks. The built-app checkpoint uses optimized frontend, unoptimized production WASI entry point and the same native HTTP host with an isolated test-support namespace.",
+    "Finish frozen-owner application recovery beyond the native OS-owner CLI: deleted original projects/accounts, legacy command owners without verifiable cleanup, actual process interruptions and current packaged/native platform contracts. Never infer cleanup from missing public rows, failed requests or 404 replies.",
+    "Finish remaining admission/watcher-enrollment and outcome/context interruptions, including escaped-process cleanup beyond the verified managed-group cases.",
+    "Finish every participating writer, Git/PTY and escaped-process lifetime; implement and verify native Windows ownership and fresh packaged Linux runtime.",
+    "Complete all original packaged application/browser, cache/resource/RSS/prefetch/homelab and full-CI requirements."
+  ],
+  "command_dispatch_integration_complete": false,
+  "full_CI_complete": false,
+  "whole_goal_complete": false,
+  "followup": "retired-command-worker-checks.json"
+}

@@ -57,6 +57,7 @@ struct Session {
     scope: Option<ResourceScope>,
     worker: Option<WorkspaceTransactionWorker>,
     journal: Option<PairedJournal>,
+    permit: Option<crate::native_recovery::Permit>,
     sequence: u64,
     last: Option<(String, Option<Result<FileValue, String>>)>,
 }
@@ -70,12 +71,59 @@ pub(super) struct ProvenFolder {
     project: i64,
 }
 impl Session {
+    fn recovery_journal(&self, action: &FolderAction) -> Result<Option<PairedJournal>, String> {
+        if let FolderAction::Admit {
+            api_url,
+            delegation,
+            ..
+        } = action
+        {
+            if self.status != Status::Active
+                || delegation.scope.root_identity != self.root.identity
+                || self
+                    .scope
+                    .as_ref()
+                    .is_some_and(|scope| scope.transaction != delegation.scope.id)
+            {
+                return Err(
+                    "The delegated journal does not match this proven folder session".into(),
+                );
+            }
+            if let Some(journal) = &self.journal {
+                if !journal.matches(api_url, delegation) {
+                    return Err("The folder session already owns another journal".into());
+                }
+                return Ok(Some(journal.clone()));
+            }
+            return PairedJournal::new(
+                api_url.clone(),
+                &self.root.identity,
+                delegation.clone(),
+                self.worker
+                    .clone()
+                    .ok_or("The paired worker is unavailable")?,
+            )
+            .map(Some);
+        }
+        Ok(
+            if matches!(
+                action,
+                FolderAction::Advance { .. } | FolderAction::Close { .. }
+            ) || matches!(action, FolderAction::File { action, .. } if action.mutates())
+            {
+                self.journal.clone()
+            } else {
+                None
+            },
+        )
+    }
     fn retire(&mut self) {
         self.status = Status::Closed;
         self.challenge.take();
         self.last = None;
         self.worker = None;
         self.journal = None;
+        self.permit = None;
     }
     fn expired(&self) -> bool {
         self.touched.elapsed()
@@ -115,7 +163,7 @@ impl State {
 /// Holding this guard excludes paired calls during native transaction execution.
 pub(super) struct FolderFence {
     guard: OwnedMutexGuard<State>,
-    lease: Lease,
+    lease: Arc<Lease>,
     selected: Option<String>,
 }
 impl Drop for FolderFence {
@@ -128,6 +176,9 @@ impl Drop for FolderFence {
     }
 }
 impl FolderFence {
+    pub(super) fn shared_lease(&self) -> Arc<Lease> {
+        self.lease.clone()
+    }
     pub(super) fn lease(&self) -> &Lease {
         &self.lease
     }
@@ -145,21 +196,34 @@ impl Host {
             reaping: Default::default(),
         }
     }
-    pub(super) async fn exclude(&self, root: &CapturedRoot) -> Result<FolderFence, String> {
-        self.exclude_selected(root, None).await
+    pub(super) async fn exclude(
+        &self,
+        root: &CapturedRoot,
+        permit: Option<crate::native_recovery::Permit>,
+    ) -> Result<FolderFence, String> {
+        self.exclude_selected(root, None, permit).await
     }
     pub(super) async fn exclude_proven(
         &self,
         selected: &ProvenFolder,
+        permit: Option<crate::native_recovery::Permit>,
     ) -> Result<FolderFence, String> {
-        self.exclude_selected(&selected.root, Some(selected)).await
+        self.exclude_selected(&selected.root, Some(selected), permit)
+            .await
     }
     async fn exclude_selected(
         &self,
         root: &CapturedRoot,
         selected: Option<&ProvenFolder>,
+        permit: Option<crate::native_recovery::Permit>,
     ) -> Result<FolderFence, String> {
-        let lease = self.coordinator.acquire(root.folder.clone()).await?;
+        let lease = if let Some(permit) = permit {
+            self.coordinator
+                .acquire_recovery(root.folder.clone(), permit)
+                .await?
+        } else {
+            self.coordinator.acquire(root.folder.clone()).await?
+        };
         let mut state = self.state.clone().lock_owned().await;
         state.sweep();
         if let Some(selected) = selected {
@@ -191,7 +255,7 @@ impl Host {
         }
         Ok(FolderFence {
             guard: state,
-            lease,
+            lease: Arc::new(lease),
             selected: selected.map(|selected| selected.session.clone()),
         })
     }
@@ -322,8 +386,8 @@ impl Host {
         } else {
             None
         };
-        let folder = if let Some(root) = &opened {
-            root.folder.clone()
+        let (folder, recovery_journal, retained_permit) = if let Some(root) = &opened {
+            (root.folder.clone(), None, None)
         } else {
             let state = self.coordinator.prepare(self.state.lock()).await?;
             let id = match &request.action {
@@ -340,9 +404,43 @@ impl Host {
                 .get(id)
                 .ok_or("The folder session expired; reconnect the selected folder")?;
             session.authorize(&request, &owner)?;
-            session.root.folder.clone()
+            (
+                session.root.folder.clone(),
+                session.recovery_journal(&request.action)?,
+                session.permit.clone(),
+            )
         };
-        let lease = self.coordinator.acquire(folder).await?;
+        // The browser has only a worker commitment. Fetch original private
+        // authority natively, before waiting for the physical folder gate.
+        let recovery = if let Some(journal) = &recovery_journal {
+            let namespace = self.coordinator.recovery_namespace()?;
+            let permit = if let Some(permit) = retained_permit {
+                // Accepted per-file work must enter the folder queue before
+                // network waits can let a newer proof retire its session.
+                permit
+            } else {
+                let (scope, authority, activity) = journal.recovery().await?;
+                namespace.permit(&folder, &authority, &scope, activity)?
+            };
+            Some((namespace, permit))
+        } else {
+            None
+        };
+        let proof_only = matches!(
+            &request.action,
+            FolderAction::Open { .. } | FolderAction::Prove { .. } | FolderAction::Close { .. }
+        ) || matches!(&request.action,FolderAction::File{action,..} if !action.mutates());
+        let lease = if let Some((_, permit)) = &recovery {
+            self.coordinator
+                .acquire_recovery(folder.clone(), permit.clone())
+                .await?
+        } else if proof_only {
+            self.coordinator.acquire_proof(folder.clone()).await?
+        } else if matches!(&request.action, FolderAction::File { .. }) {
+            self.coordinator.acquire_ordinary(folder.clone()).await?
+        } else {
+            self.coordinator.acquire(folder.clone()).await?
+        };
         let mut state = self.state.lock().await;
         state.sweep();
         if let FolderAction::Open { expected, .. } = &request.action {
@@ -380,6 +478,7 @@ impl Host {
                     scope: None,
                     worker: None,
                     journal: None,
+                    permit: None,
                     sequence: 0,
                     last: None,
                 },
@@ -401,8 +500,16 @@ impl Host {
             .get(id)
             .ok_or("The folder session expired; reconnect the selected folder")?;
         session.authorize(&request, &owner)?;
+        if let Some((namespace, _)) = &recovery {
+            namespace.ensure_current()?;
+        }
         if let FolderAction::Close { .. } = request.action {
             let session = state.sessions.get_mut(id).unwrap();
+            let final_owner = if let Some(journal) = &session.journal {
+                Some(journal.recovery().await)
+            } else {
+                None
+            };
             let released = match session.journal.take() {
                 Some(journal) => journal.release().await,
                 None => Ok(()),
@@ -414,6 +521,15 @@ impl Host {
             }
             session.retire();
             released?;
+            // Account cancellation can revoke the paired read before closing.
+            // Closing still retires/releases that session; only a positively
+            // observed original owner can clear the durable folder protection.
+            if let (Some((namespace, _)), Some(Ok((scope, authority, activity)))) =
+                (&recovery, final_owner)
+            {
+                let permit = namespace.permit(&folder, &authority, &scope, activity)?;
+                namespace.finish_files(&folder, &lease, &permit, activity)?;
+            }
             return Ok(FolderReply::Closed);
         }
         if let FolderAction::Prove { proof, .. } = &request.action {
@@ -483,7 +599,6 @@ impl Host {
                 if !journal.matches(api_url, delegation) {
                     return Err("The folder session already owns another journal".into());
                 }
-                journal.admit().await?;
             } else {
                 let journal = PairedJournal::new(
                     api_url.clone(),
@@ -498,8 +613,18 @@ impl Host {
                 // Retain the exact client even if admission's reply is lost.
                 // Repeating admission is safe under the same physical gate.
                 session.journal = Some(journal);
-                session.journal.as_ref().unwrap().admit().await?;
             }
+            let journal = session.journal.as_ref().unwrap();
+            let (scope, authority, activity) = journal.recovery().await?;
+            let (namespace, _) = recovery
+                .as_ref()
+                .ok_or("Original private recovery authority is missing")?;
+            let permit = namespace.permit(&folder, &authority, &scope, activity)?;
+            // The same global publisher used by complete native execution
+            // records intent before the backend worker CAS can take effect.
+            namespace.enroll(&folder, &lease, &permit)?;
+            session.permit = Some(permit);
+            journal.admit().await?;
             session.touched = Instant::now();
             return Ok(FolderReply::Admitted);
         }
@@ -543,6 +668,11 @@ impl Host {
                 return Err("Bind the admitted resource transaction before mutation".into());
             }
             journal.mutation_scope().await?;
+            recovery
+                .as_ref()
+                .ok_or("Original private recovery authority is missing")?
+                .0
+                .ensure_current()?;
         }
         let fingerprint = openwebide_core::plugins::content_digest(
             &serde_json::to_vec(action).map_err(|error| error.to_string())?,
@@ -593,7 +723,11 @@ impl Host {
             let files = session.files(id)?;
             files::execute(&files, session.scope.as_ref(), action).await
         };
-        let result = if session.root.current() {
+        let result = if session.root.current()
+            && recovery
+                .as_ref()
+                .is_none_or(|(namespace, _)| namespace.ensure_current().is_ok())
+        {
             result
         } else {
             Err("The physical folder changed during its filesystem call".into())

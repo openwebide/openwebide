@@ -101,6 +101,14 @@ Instructions, conventions, and architectural principles for AI agents working on
   control mode. Build it before filtered native `--lib` tests or standalone
   language-host examples; an embedded native host must have the matching bridge
   executable beside it. The ordinary integration-test gate builds it automatically.
+  Filtered `language_commands` HTTP tests also need the disposable process fixture:
+  `cargo build -p openwebide-bridge --example check_recorded_command_host --features test-support`.
+  It runs the same native HTTP host in an isolated test-only private home so the
+  contract can kill a recorded outcome's owner and verify successor recovery.
+  Integration servers on Linux/macOS must use `common::server_config` or
+  `ServerConfig::new_for_test` with a disposable private home. Ordinary
+  `ServerConfig::new` discovers recovery records in the real OS account namespace.
+  Keep reconnecting test servers in the same disposable namespace.
 
 ### Required Pre-Commit / Pre-Push Verification & Tooling Gate
 
@@ -221,6 +229,37 @@ Actions runs.
      server queries, formatting/undo and lifecycle in both production editors.
      Its Local OPFS correspondence does not prove physical folder permissions.
 
+   - Command recovery after project deletion has a built application check:
+     `python3 tools/check-deleted-project-client.py --help`. Pass matching backend,
+     frontend and native helper paths plus a fresh evidence directory. Build
+     `check_recorded_command_host` with `test-support,bundled-defaults` and the
+     compiled defaults first. It verifies browser approval, real WASI API deletion,
+     loss of a committed settlement reply and explicit native recovery in both
+     modes. Its isolated home and Local OPFS correspondence do not establish
+     OS-default CLI selection or physical folder permissions.
+     Use `--page-after-settlement reload` to leave a reloaded page active through
+     deletion and native restarts; the helper preserves its actual address and
+     the verifier retains complete file snapshots at each lifecycle boundary.
+     `--page-after-settlement keep` leaves the original approval document running
+     without reload; both modes retain separate runtime evidence for this case.
+     `--check-backend-writers` adds positive binary file API operations and a
+     distinct project alias to the same physical folder. After genuine backend
+     settlement with a lost reply, all mutation APIs must preserve the native
+     fence through project/account deletion and explicit retirement.
+     `python3 tools/check-backend-file-writers.py --help` runs native, unavailable
+     native and explicit direct write contracts. Pass `--container-image` to also
+     exercise the actual disabled-bridge entrypoint and explicit coordinated
+     override with the candidate backend mounted into the runtime image. This
+     does not qualify a complete rebuilt distribution.
+     `--decommission-account` adds administrative removal of only the stopped,
+     guarded fixture account after real API project deletion, retaining foreign
+     keys, a database backup, actual cascade checks and old-cookie rejection.
+     `--native-container-image IMAGE` selects Docker process/filesystem primitives
+     for the same workflow, using a normal Linux binary built with bundled defaults
+     and without test-support. The image must include Python 3 for the deterministic
+     LSP fixture. The shipped root-owned policy selects the native namespace;
+     actual CLI calls use the normal `recovery` entry point in fresh containers.
+
    Quick check:
    ```bash
    command -v cargo rustfmt cargo-clippy clang trunk spin wasm-bindgen-test-runner google-chrome chromedriver
@@ -321,8 +360,9 @@ of GB, and agents running several copies at once have filled the disk before.
   include changed dependencies. Preserve production artifacts before cleaning their profile.
 - Dev builds keep only line tables (`[profile.dev] debug = "line-tables-only"`, and no debug info
   for dependencies) — don't turn full debug info back on in the workspace profile.
-- Wasmtime uses dev `opt-level = 1` to keep the native bridge test binary below macOS's
-  compact-unwind DWARF offset limit. Keep normal panic unwinding and all tests enabled.
+- Wasmtime and the native bridge use dev `opt-level = 1` to keep the native test binary
+  below macOS's compact-unwind DWARF offset limit as recovery code grows. Keep normal
+  panic unwinding and all tests enabled.
 - Run `cargo clean` after finishing a feature, once it's pushed, and also whenever free space
   drops under ~50 GB between batches. Never run it while a build is running.
 

@@ -100,6 +100,12 @@ struct Inner {
     resources: Mutex<ResourceUsage>,
     entries: Mutex<BTreeMap<Key, Arc<Entry>>>,
     outcomes: Mutex<commands::Outcomes>,
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    command_recoveries: commands::Recoveries,
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    command_observations: commands::Recoveries,
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    command_callbacks: commands::CallbackConnections,
     reaping: std::sync::atomic::AtomicBool,
 }
 struct Entry {

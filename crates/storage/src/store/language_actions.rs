@@ -10,11 +10,38 @@ use openwebide_core::{
     workspace_transaction::{TransactionPhase, WorkspaceTransactionState, valid_id},
 };
 
+// Shared by project-wide and original-transaction recovery observations.
+pub(super) const RESOLVED_PHASES: &str = "'completed','acknowledged','cancelled'";
+/// Trusted SQL aliases only. Keep every writer/retention gate on one predicate.
+pub(super) fn pending_predicate(alias: &str) -> String {
+    let prefix = if alias.is_empty() {
+        String::new()
+    } else {
+        format!("{alias}.")
+    };
+    format!("({prefix}phase NOT IN ({RESOLVED_PHASES}) OR {prefix}native_settlement_pending=1)")
+}
 const SELECT: &str = "SELECT approval,revision,phase,outcome,acknowledgement FROM language_actions WHERE user_id=? AND project_id=?";
 const QUOTA: usize = 64 * 1024 * 1024;
+mod command_delegation;
+mod recovery;
 mod requests;
+mod settlements;
+mod worker;
+
+pub(super) fn prunable_predicate(alias: &str) -> String {
+    let a = if alias.is_empty() {
+        "language_actions"
+    } else {
+        alias
+    };
+    format!(
+        "NOT {} AND ({a}.command_worker_id='' OR {a}.command_settlement_acknowledged=1 OR EXISTS(SELECT 1 FROM language_command_settlements s WHERE s.user_id={a}.user_id AND s.project_id={a}.project_id AND s.id={a}.id))",
+        pending_predicate(alias)
+    )
+}
 const OUTCOME_RESERVE: usize =
-    openwebide_core::plugins::languages::intelligence::actions::MAX_COMMAND_BYTES + 4096;
+    openwebide_core::plugins::languages::intelligence::actions::MAX_COMMAND_BYTES + 8192 + 64 + 96;
 
 fn decode_action(row: &crate::db::QueryRow) -> Result<ActionRecord, StorageError> {
     let record = ActionRecord {
@@ -60,7 +87,7 @@ impl<D: Db> Store<D> {
             format!("{SELECT} AND id=?")
         } else {
             format!(
-                "{SELECT} ORDER BY CASE WHEN phase IN ('completed','acknowledged','cancelled') THEN 1 ELSE 0 END, updated_at DESC, rowid DESC LIMIT 1"
+                "{SELECT} ORDER BY CASE WHEN phase IN ('completed','acknowledged','cancelled') AND native_settlement_pending=0 THEN 1 ELSE 0 END, updated_at DESC, rowid DESC LIMIT 1"
             )
         };
         let result = self.db.execute(&query, &params).await?;
@@ -142,6 +169,12 @@ impl<D: Db> Store<D> {
         approval.validate().map_err(StorageError::InvalidRequest)?;
         let encoded =
             serde_json::to_string(approval).map_err(|e| StorageError::Db(e.to_string()))?;
+        let invocation = serde_json::to_string(
+            &approval
+                .command_invocation()
+                .map_err(StorageError::InvalidRequest)?,
+        )
+        .map_err(|e| StorageError::Db(e.to_string()))?;
         let reserved = encoded.len().saturating_add(OUTCOME_RESERVE);
         self.db.transaction(|tx| async move {
             let store = Store::new(tx);
@@ -156,8 +189,7 @@ impl<D: Db> Store<D> {
             if workspace.journal.progress.phase != TransactionPhase::Prepared {
                 return Err(StorageError::Conflict("Approve the complete language action before applying any edits".into()));
             }
-            let existing = store.language_action(user, project, None).await?;
-            if existing.is_some_and(|record| !record.phase.terminal()) {
+            if store.workspace_activity(user, project).await?.language_command {
                 return Err(StorageError::Conflict("Review the pending language command before approving another".into()));
             }
             let command = approval.review.command.as_ref().ok_or_else(|| StorageError::InvalidRequest("This action has no server command".into()))?;
@@ -166,14 +198,14 @@ impl<D: Db> Store<D> {
             ]).await?.rows.is_empty() {
                 return Err(StorageError::Conflict("This reviewed server command already has an approval; load its outcome".into()));
             }
-            store.db.execute("DELETE FROM language_actions WHERE user_id=? AND phase IN ('completed','acknowledged','cancelled') AND updated_at<?",&[DbValue::Int(user.get()),DbValue::Int(now.saturating_sub(300))]).await?;
+            store.db.execute(&format!("DELETE FROM language_actions WHERE user_id=? AND {} AND updated_at<?", prunable_predicate("")),&[DbValue::Int(user.get()),DbValue::Int(now.saturating_sub(300))]).await?;
             let quota = store.db.execute("SELECT COALESCE(SUM(bytes),0),COUNT(*) FROM language_actions WHERE user_id=?",&[DbValue::Int(user.get())]).await?;
             let retained = usize::try_from(quota.rows[0].get_int(0)?).map_err(|e| StorageError::Db(e.to_string()))?;
             if retained.saturating_add(reserved) > QUOTA || quota.rows[0].get_int(1)? >= 256 {
                 return Err(StorageError::Conflict("Language action recovery storage is full; review pending outcomes first".into()));
             }
-            store.db.execute("INSERT INTO language_actions (user_id,project_id,id,revision,server,command_id,approval,phase,bytes,created_at,updated_at) VALUES (?,?,?,1,?,?,?,'approved',?,?,?)",&[
-                DbValue::Int(user.get()),DbValue::Int(project),DbValue::Text(approval.id.clone()),DbValue::Text(command.server.clone()),DbValue::Text(command.id.clone()),DbValue::Text(encoded.clone()),DbValue::Int(i64::try_from(reserved).map_err(|e| StorageError::InvalidRequest(e.to_string()))?),DbValue::Int(now),DbValue::Int(now),
+            store.db.execute("INSERT INTO language_actions (user_id,project_id,id,revision,server,command_id,approval,phase,bytes,created_at,updated_at,invocation) VALUES (?,?,?,1,?,?,?,'approved',?,?,?,?)",&[
+                DbValue::Int(user.get()),DbValue::Int(project),DbValue::Text(approval.id.clone()),DbValue::Text(command.server.clone()),DbValue::Text(command.id.clone()),DbValue::Text(encoded.clone()),DbValue::Int(i64::try_from(reserved).map_err(|e| StorageError::InvalidRequest(e.to_string()))?),DbValue::Int(now),DbValue::Int(now),DbValue::Text(invocation.clone()),
             ]).await?;
             Ok(ActionRecord {approval:approval.clone(),revision:1,phase:ActionPhase::Approved,outcome:None,acknowledgement:None})
         }).await
@@ -283,8 +315,18 @@ impl<D: Db> Store<D> {
             .map_err(|e| StorageError::Db(e.to_string()))?
             .len()
             .saturating_add(OUTCOME_RESERVE);
-        self.db.execute("UPDATE language_actions SET revision=?,phase=?,outcome=?,acknowledgement=?,bytes=?,updated_at=? WHERE user_id=? AND project_id=? AND id=? AND revision=?",&[
-            DbValue::Int(i64::try_from(next.revision).map_err(|e| StorageError::InvalidRequest(e.to_string()))?),DbValue::Text(phase_text(next.phase)?),outcome.map_or(DbValue::Null,DbValue::Text),next.acknowledgement.clone().map_or(DbValue::Null,DbValue::Text),DbValue::Int(i64::try_from(bytes).map_err(|e| StorageError::InvalidRequest(e.to_string()))?),DbValue::Int(now),DbValue::Int(user.get()),DbValue::Int(project),DbValue::Text(next.approval.id.clone()),DbValue::Int(i64::try_from(revision).map_err(|e| StorageError::InvalidRequest(e.to_string()))?),
+        let outcome_digest = outcome
+            .as_deref()
+            .map(|value| openwebide_core::plugins::content_digest(value.as_bytes()));
+        let invocation = serde_json::to_string(
+            &next
+                .approval
+                .command_invocation()
+                .map_err(StorageError::InvalidRequest)?,
+        )
+        .map_err(|e| StorageError::Db(e.to_string()))?;
+        self.db.execute("UPDATE language_actions SET revision=?,phase=?,outcome=?,acknowledgement=?,bytes=?,updated_at=?,outcome_digest=?,invocation=COALESCE(invocation,?) WHERE user_id=? AND project_id=? AND id=? AND revision=?",&[
+            DbValue::Int(i64::try_from(next.revision).map_err(|e| StorageError::InvalidRequest(e.to_string()))?),DbValue::Text(phase_text(next.phase)?),outcome.map_or(DbValue::Null,DbValue::Text),next.acknowledgement.clone().map_or(DbValue::Null,DbValue::Text),DbValue::Int(i64::try_from(bytes).map_err(|e| StorageError::InvalidRequest(e.to_string()))?),DbValue::Int(now),outcome_digest.map_or(DbValue::Null,DbValue::Text),DbValue::Text(invocation),DbValue::Int(user.get()),DbValue::Int(project),DbValue::Text(next.approval.id.clone()),DbValue::Int(i64::try_from(revision).map_err(|e| StorageError::InvalidRequest(e.to_string()))?),
         ]).await?;
         Ok(())
     }
@@ -302,27 +344,15 @@ impl<D: Db> Store<D> {
         self.db
             .transaction(|tx| async move {
                 let store = Store::new(tx);
-                let current = store
+                store
+                    .finish_action_recovery(user, project, id, revision, outcome, now)
+                    .await?;
+                store
                     .language_action(user, project, Some(id))
                     .await?
                     .ok_or_else(|| {
                         StorageError::Conflict("Language action approval is missing".into())
-                    })?;
-                if current.outcome.as_ref() == Some(outcome) {
-                    return Ok(current); // Lost outcome acknowledgements never rerun work.
-                }
-                if current.revision != revision {
-                    return Err(StorageError::Conflict(
-                        "Language action outcome changed".into(),
-                    ));
-                }
-                let next = current
-                    .finish(outcome.clone())
-                    .map_err(StorageError::Conflict)?;
-                store
-                    .persist_language_action(user, project, revision, &next, now)
-                    .await?;
-                Ok(next)
+                    })
             })
             .await
     }
@@ -373,39 +403,15 @@ impl<D: Db> Store<D> {
         self.db
             .transaction(|tx| async move {
                 let store = Store::new(tx);
-                let current = store
+                store
+                    .acknowledge_action_recovery(user, project, id, revision, note, now)
+                    .await?;
+                store
                     .language_action(user, project, Some(id))
                     .await?
                     .ok_or_else(|| {
                         StorageError::Conflict("Language action approval is missing".into())
-                    })?;
-                if current.revision != revision {
-                    return Err(StorageError::Conflict(
-                        "Language action changed while reviewing its outcome".into(),
-                    ));
-                }
-                let workspace = store
-                    .workspace_transaction(user, project, Some(id))
-                    .await?
-                    .ok_or_else(|| {
-                        StorageError::Conflict("Workspace recovery is missing".into())
-                    })?;
-                if !matches!(
-                    workspace.journal.progress.phase,
-                    TransactionPhase::Committed | TransactionPhase::Restored
-                ) {
-                    return Err(StorageError::Conflict(
-                        "Recover the pending file operation before acknowledging its command"
-                            .into(),
-                    ));
-                }
-                let next = current
-                    .acknowledge(note.into())
-                    .map_err(StorageError::InvalidRequest)?;
-                store
-                    .persist_language_action(user, project, revision, &next, now)
-                    .await?;
-                Ok(next)
+                    })
             })
             .await
     }

@@ -38,6 +38,10 @@ fn private_names() -> Vec<String> {
     let mut names = vec![
         ".ſpin/secret".into(),
         ".spin/secret".into(),
+        ".openwebide-native-recovery/recovery.sqlite3".into(),
+        ".openwebide-native-recovery-owner".into(),
+        "nested/.OPENWEBIDE-NATIVE-RECOVERY/recovery.sqlite3".into(),
+        "nested/.OpenWebIde-Native-Recovery-Owner".into(),
         format!("nested/.OPENWEBIDE-PROOF-{}", "C".repeat(32)),
         format!(
             "nested/.OpenWebIde/ReCoVeRy-{}.OwNeR.PaRt",
@@ -65,6 +69,8 @@ async fn bulk_stage_and_commit_exclude_exact_runtime_names_at_every_depth() {
     let public = [
         "normal.txt".into(),
         ".openwebide/recovery-notes".into(),
+        ".openwebide-native-recovery-notes".into(),
+        ".openwebide-native-recovery-owner-notes".into(),
         ".openwebide-proof-notes".into(),
         format!(".openwebide-create-{id}-01"),
         format!(".openwebide-create-{id}-1024"),

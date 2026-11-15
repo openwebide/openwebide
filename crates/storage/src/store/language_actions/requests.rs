@@ -2,7 +2,9 @@
 use super::*;
 use openwebide_core::plugins::languages::intelligence::{
     Selection,
-    actions::{ActionJournalRequest, AuthorizedCommand, CommandDispatch, CommandOperation},
+    actions::{
+        ActionJournalRequest, AuthorizedCommand, CommandDispatch, CommandOperation, CommandProgress,
+    },
 };
 
 impl<D: Db> Store<D> {
@@ -63,9 +65,30 @@ impl<D: Db> Store<D> {
     ) -> Result<AuthorizedCommand, StorageError> {
         self.db.transaction(|tx| async move {
             let store = Store::new(tx);
+            if request.operation != CommandOperation::Start {
+                let recovery = store.read_action_recovery(user,project,Some(&request.id)).await?
+                    .ok_or_else(||StorageError::Conflict("Original command recovery is unavailable".into()))?;
+                if request.operation == CommandOperation::Cancel {
+                    if recovery.command.phase != ActionPhase::Cancelled {
+                        return Err(StorageError::Conflict("Cancel only an already cancelled unstarted action".into()));
+                    }
+                    let progress = (!recovery.command.native_settlement_pending).then_some(CommandProgress::Cancelled);
+                    return Ok(AuthorizedCommand {user:user.get(),project,selection:None,invocation:recovery.command.invocation,operation:request.operation,progress});
+                }
+                if matches!(recovery.command.phase,ActionPhase::Approved|ActionPhase::Cancelled)
+                    && !(recovery.command.phase==ActionPhase::Approved && recovery.command.native_settlement_pending) {
+                    return Err(StorageError::Conflict("The approved command was not claimed".into()));
+                }
+                let progress=recovery.outcome.filter(|_| request.operation==CommandOperation::Status || recovery.command.command_cleanup_confirmed)
+                    .map(|outcome|CommandProgress::Finished {outcome});
+                return Ok(AuthorizedCommand {user:user.get(),project,selection:None,invocation:recovery.command.invocation,operation:request.operation,progress});
+            }
             let record = store.language_action(user, project, Some(&request.id)).await?
                 .ok_or_else(|| StorageError::Conflict("The approved language action is unavailable".into()))?;
-            let invocation = record.invocation().map_err(StorageError::Conflict)?;
+            // A readable archived action can acquire its compact recovery
+            // binding once. Never replace an existing original binding.
+            store.preserve_command_recovery(user, project, &record).await?;
+            let invocation = request.operation.invocation(&record).map_err(StorageError::Conflict)?;
             if request.operation == CommandOperation::Start {
                 if record.phase!=ActionPhase::Running {return Err(StorageError::Conflict("A command with an uncertain outcome cannot be restarted".into()));}
                 let call = request.call.as_ref().ok_or_else(|| StorageError::Conflict("Starting a language command requires fresh manual authority".into()))?;
@@ -77,9 +100,11 @@ impl<D: Db> Store<D> {
                 store.validate_action_editors(user,project,&workspace).await?;
             }
             Ok(AuthorizedCommand {
-                selection: Selection { user: user.get(), project, prepared: record.approval.prepared, input: record.approval.input },
+                user: user.get(), project,
+                selection: Some(Selection { user: user.get(), project, prepared: record.approval.prepared, input: record.approval.input }),
                 invocation,
                 operation: request.operation,
+                progress: None,
             })
         }).await
     }

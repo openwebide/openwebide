@@ -7,11 +7,13 @@ use tokio::io::AsyncReadExt;
 
 use crate::paths::resolve_file_in_root;
 
+mod mutation;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 pub(crate) mod resources;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 pub(crate) mod rooted;
 mod transfer;
+pub(crate) mod workspace;
 
 #[derive(Clone, Debug)]
 pub struct NativeFsVfs {
@@ -27,9 +29,17 @@ fn io_error(error: std::io::Error, path: &str) -> VfsError {
     }
 }
 
+fn workspace_root(path: &std::path::Path) -> Result<(), VfsError> {
+    if openwebide_core::vfs::private_workspace_path(&path.to_string_lossy().replace('\\', "/")) {
+        return Err(VfsError::PathEscape("Private runtime folder".into()));
+    }
+    Ok(())
+}
+
 impl NativeFsVfs {
     fn canonical_relative(&self, path: &str) -> Result<String, VfsError> {
         let root = std::fs::canonicalize(&self.root).map_err(|e| io_error(e, path))?;
+        workspace_root(&root)?;
         let lexical = openwebide_core::vfs::workspace_path(path)?;
         let mut full = if lexical.is_empty() {
             root.clone()
@@ -82,14 +92,6 @@ impl NativeFsVfs {
             self.resolve(&rel)
         }
     }
-    async fn parents(&self, path: &std::path::Path) -> Result<(), VfsError> {
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)
-                .await
-                .map_err(|e| io_error(e, &parent.to_string_lossy()))?;
-        }
-        Ok(())
-    }
 }
 
 impl Vfs for NativeFsVfs {
@@ -99,11 +101,10 @@ impl Vfs for NativeFsVfs {
         to: &'a str,
         kind: openwebide_core::vfs::VfsEntryKind,
     ) -> VfsFuture<'a, ()> {
-        // Keep descriptor acquisition, exclusive rename and directory sync in
-        // one non-yielding primitive. Cancelling an awaited caller cannot leave
-        // a detached move which publishes after recovery has started.
-        Box::pin(async move { transfer::transfer(&self.root, from, to, kind) })
+        // Preserve the non-yielding raw primitive for already-owned interpreters.
+        Box::pin(async move { self.move_atomic_sync(from, to, kind) })
     }
+
     fn canonicalize<'a>(&'a self, path: &'a str) -> VfsFuture<'a, String> {
         Box::pin(async move { self.canonical_relative(path) })
     }
@@ -135,92 +136,30 @@ impl Vfs for NativeFsVfs {
     }
     fn write_bytes<'a>(&'a self, path: &'a str, content: &'a [u8]) -> VfsFuture<'a, ()> {
         Box::pin(async move {
-            let full = self.resolve(path)?;
-            self.parents(&full).await?;
-            fs::write(full, content)
-                .await
-                .map_err(|e| io_error(e, path))
+            let files = self.clone();
+            let path = path.to_string();
+            let content = content.to_vec();
+            mutation::blocking(move || files.write_bytes_sync(&path, &content)).await
         })
     }
+
     fn replace_atomic<'a>(&'a self, path: &'a str, content: &'a [u8]) -> VfsFuture<'a, ()> {
-        Box::pin(async move {
-            use std::io::Write;
-            let destination = self.resolve(path)?;
-            let metadata =
-                std::fs::symlink_metadata(&destination).map_err(|e| io_error(e, path))?;
-            if !metadata.is_file() {
-                return Err(VfsError::Io(
-                    "Atomic replacement requires an existing regular file".into(),
-                ));
-            }
-            // This bounded critical section does not yield or spawn a detached
-            // write: dropping its caller cannot publish a replacement later.
-            // Root-level temporary files stay outside every affected subtree.
-            let mut temporary = tempfile::Builder::new()
-                .prefix(".openwebide-replace-")
-                .tempfile_in(&self.root)
-                .map_err(|e| io_error(e, path))?;
-            temporary
-                .as_file()
-                .set_permissions(metadata.permissions())
-                .map_err(|e| io_error(e, path))?;
-            temporary
-                .write_all(content)
-                .map_err(|e| io_error(e, path))?;
-            temporary
-                .as_file()
-                .sync_all()
-                .map_err(|e| io_error(e, path))?;
-            temporary
-                .persist(&destination)
-                .map_err(|e| io_error(e.error, path))?;
-            #[cfg(unix)]
-            {
-                std::fs::File::open(destination.parent().unwrap())
-                    .and_then(|dir| dir.sync_all())
-                    .map_err(|e| io_error(e, path))?;
-                std::fs::File::open(&self.root)
-                    .and_then(|dir| dir.sync_all())
-                    .map_err(|e| io_error(e, path))?;
-            }
-            Ok(())
-        })
+        // A raw journaled replacement still completes before yielding.
+        Box::pin(async move { self.replace_atomic_sync(path, content) })
     }
+
     fn remove_entry<'a>(
         &'a self,
         path: &'a str,
         kind: openwebide_core::vfs::VfsEntryKind,
     ) -> VfsFuture<'a, ()> {
         Box::pin(async move {
-            let full = self.resolve(path)?;
-            let metadata = fs::symlink_metadata(&full)
-                .await
-                .map_err(|e| io_error(e, path))?;
-            if metadata.file_type().is_symlink()
-                || metadata.is_dir() != kind.is_dir()
-                || (!kind.is_dir() && !metadata.is_file())
-            {
-                return Err(VfsError::Io("Workspace entry kind changed".into()));
-            }
-            if kind.is_dir() {
-                fs::remove_dir(&full).await
-            } else {
-                fs::remove_file(&full).await
-            }
-            .map_err(|e| io_error(e, path))?;
-            #[cfg(unix)]
-            {
-                let parent = full.parent().unwrap().to_path_buf();
-                tokio::task::spawn_blocking(move || {
-                    std::fs::File::open(parent).and_then(|dir| dir.sync_all())
-                })
-                .await
-                .map_err(|e| VfsError::Io(e.to_string()))?
-                .map_err(|e| io_error(e, path))?;
-            }
-            Ok(())
+            let files = self.clone();
+            let path = path.to_string();
+            mutation::blocking(move || files.remove_entry_sync(&path, kind)).await
         })
     }
+
     fn list<'a>(&'a self, dir: &'a str) -> VfsFuture<'a, Vec<FileEntry>> {
         Box::pin(async move {
             let canonical = self.canonical_relative(dir)?;
@@ -264,47 +203,25 @@ impl Vfs for NativeFsVfs {
         kind: openwebide_core::vfs::VfsEntryKind,
     ) -> VfsFuture<'a, ()> {
         Box::pin(async move {
-            let full = self.resolve(path)?;
-            self.parents(&full).await?;
-            if kind.is_dir() {
-                fs::create_dir_all(full)
-                    .await
-                    .map_err(|e| io_error(e, path))
-            } else {
-                fs::OpenOptions::new()
-                    .write(true)
-                    .create_new(true)
-                    .open(full)
-                    .await
-                    .map(|_| ())
-                    .map_err(|e| io_error(e, path))
-            }
+            let files = self.clone();
+            let path = path.to_string();
+            mutation::blocking(move || files.create_sync(&path, kind)).await
         })
     }
+
     fn delete<'a>(&'a self, path: &'a str) -> VfsFuture<'a, ()> {
         Box::pin(async move {
-            let full = self.resolve(path)?;
-            let metadata = fs::symlink_metadata(&full)
-                .await
-                .map_err(|e| io_error(e, path))?;
-            if metadata.is_dir() {
-                fs::remove_dir_all(full)
-                    .await
-                    .map_err(|e| io_error(e, path))
-            } else {
-                fs::remove_file(full).await.map_err(|e| io_error(e, path))
-            }
+            let files = self.clone();
+            let path = path.to_string();
+            mutation::blocking(move || files.delete_sync(&path)).await
         })
     }
+
     fn copy<'a>(&'a self, from: &'a str, to: &'a str) -> VfsFuture<'a, ()> {
         Box::pin(async move {
-            let from = self.resolve(from)?;
-            let to = self.resolve(to)?;
-            self.parents(&to).await?;
-            fs::copy(from, to)
-                .await
-                .map(|_| ())
-                .map_err(|e| io_error(e, "copy"))
+            let files = self.clone();
+            let (from, to) = (from.to_string(), to.to_string());
+            mutation::blocking(move || files.copy_sync(&from, &to)).await
         })
     }
 }

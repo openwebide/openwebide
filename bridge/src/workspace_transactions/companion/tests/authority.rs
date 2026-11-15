@@ -2,6 +2,7 @@
 //! the shared interpreter contract in journal.rs. Their journal inventories are
 //! not an assertion that arbitrary test primitives form a complete transaction.
 use super::*;
+use crate::workspace_transactions::JournalBackend;
 use bytes::Bytes;
 use http_body_util::{BodyExt, Full};
 use openwebide_core::{
@@ -16,6 +17,7 @@ pub(super) struct Authority {
     pub backend: Arc<super::super::super::tests::Backend>,
     pub url: String,
     task: tokio::task::JoinHandle<()>,
+    original: Option<(String, String)>,
 }
 impl Drop for Authority {
     fn drop(&mut self) {
@@ -24,17 +26,26 @@ impl Drop for Authority {
 }
 impl Authority {
     pub async fn serve(backend: Arc<super::super::super::tests::Backend>) -> Self {
+        Self::serve_checked(backend, || Ok(())).await
+    }
+    pub async fn serve_checked(
+        backend: Arc<super::super::super::tests::Backend>,
+        before_admission: impl Fn() -> Result<(), String> + Send + Sync + 'static,
+    ) -> Self {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let url = format!("http://{}/api", listener.local_addr().unwrap());
         let server = backend.clone();
+        let before_admission = Arc::new(before_admission);
         let task = tokio::spawn(async move {
             loop {
                 let (stream, _) = listener.accept().await.unwrap();
                 let backend = server.clone();
+                let before_admission = before_admission.clone();
                 tokio::spawn(async move {
                     let service = hyper::service::service_fn(
                         move |request: hyper::Request<hyper::body::Incoming>| {
                             let backend = backend.clone();
+                            let before_admission = before_admission.clone();
                             async move {
                                 assert_eq!(
                                     request.uri().path(),
@@ -48,9 +59,46 @@ impl Authority {
                                         &request.into_body().collect().await.unwrap().to_bytes(),
                                     )
                                     .unwrap();
-                                let result = futures::executor::block_on(
-                                    backend.store.delegated_workspace_journal(&request, 101),
-                                );
+                                let admission = if matches!(
+                                    request.operation,
+                                    transaction::DelegatedWorkspaceJournalOperation::Admit { .. }
+                                ) {
+                                    before_admission()
+                                } else {
+                                    Ok(())
+                                };
+                                let mut result = match admission {
+                                    Ok(()) => futures::executor::block_on(
+                                        backend.store.delegated_workspace_journal(&request, 101),
+                                    )
+                                    .map_err(|error| error.to_string()),
+                                    Err(error) => Err(error),
+                                };
+                                if matches!(
+                                    request.operation,
+                                    transaction::DelegatedWorkspaceJournalOperation::RecoveryScope
+                                ) && let Ok(transaction::WorkspaceJournalResponse::Scope {
+                                    scope: Some(expected),
+                                }) = &result
+                                {
+                                    let expected = expected.clone();
+                                    result = backend.request(&transaction::WorkspaceJournalRequest {
+                                        user: request.delegation.user,
+                                        project: request.delegation.project,
+                                        id: request.delegation.scope.id.clone(),
+                                        operation: transaction::WorkspaceJournalOperation::RecoveryScope,
+                                    }).await;
+                                    if let Ok(
+                                        transaction::WorkspaceJournalResponse::RecoveryScope {
+                                            scope,
+                                            ..
+                                        },
+                                    ) = &result
+                                        && *scope != expected
+                                    {
+                                        result = Err("Original recovery changed".into());
+                                    }
+                                }
                                 let (status, body) = match result {
                                     Ok(response) => (200, serde_json::to_vec(&response).unwrap()),
                                     Err(error) => (
@@ -76,7 +124,12 @@ impl Authority {
                 });
             }
         });
-        Self { backend, url, task }
+        Self {
+            backend,
+            url,
+            task,
+            original: None,
+        }
     }
     async fn primitive(root: &str, id: &str) -> Self {
         let fixture =
@@ -127,7 +180,9 @@ impl Authority {
             )
             .await
             .unwrap();
-        Self::serve(fixture.backend).await
+        let mut authority = Self::serve(fixture.backend).await;
+        authority.original = Some((root.into(), id.into()));
+        authority
     }
     pub async fn grant(
         &self,
@@ -165,7 +220,22 @@ impl Case {
         scope: ResourceScope,
     ) -> Result<(), String> {
         files.bind(scope.clone()).await?;
-        let authority = Authority::primitive(files.root_identity(), &scope.transaction).await;
+        let original = (files.root_identity().to_owned(), scope.transaction.clone());
+        let existing = self
+            .authorities
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|authority| authority.original.as_ref() == Some(&original))
+            .cloned();
+        let authority = if let Some(authority) = existing {
+            authority
+        } else {
+            let authority =
+                Arc::new(Authority::primitive(files.root_identity(), &scope.transaction).await);
+            self.authorities.lock().unwrap().push(authority.clone());
+            authority
+        };
         let grant = authority.grant(&scope.transaction, files.worker()).await;
         let scope = grant.scope.clone();
         files.admit(authority.url.clone(), grant).await?;
@@ -180,7 +250,6 @@ impl Case {
                 },
             )
             .await?;
-        self.authorities.lock().unwrap().push(authority);
         Ok(())
     }
     pub async fn admit_session(&self, id: &str, scope: &ResourceScope) {
@@ -222,7 +291,7 @@ impl Case {
             .unwrap(),
             FolderReply::Advanced { .. }
         ));
-        self.authorities.lock().unwrap().push(authority);
+        self.authorities.lock().unwrap().push(Arc::new(authority));
     }
 }
 

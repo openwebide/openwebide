@@ -1,0 +1,200 @@
+{
+  "status": "Both reload cases retain exact staged file equality. The original-page follow-up below adds verified cases without reload. Account decommissioning, OS-default CLI in this sequence, platform/distribution/resource/CI and the full roadmap remain unfinished.",
+  "source_sha256": "3f999488570b5bee59856eb709f0baf5e2848ddebdc529e784165fe56d80d3bc",
+  "contract": [
+    "Approve and dispatch the real command once through the public HTML plugin/deterministic LSP. Lose the real native settlement reply only after backend commit; preserve its exact original outcome.",
+    "Reload the actual application and leave its polling/reconnection alive while deleting the project through the authenticated production WASI API. Keep callback candidates on the real forwarding test transport; no reply or issuer proof is fabricated.",
+    "Preserve the actual native listener address across three distinct process lifetimes, so the open page can reach the replacement companion. The same server must deny an ordinary write while the native owner remains, despite the original private callback receiving404.",
+    "Stop native before explicit shared CLI executor retirement. Require the inspected original ID/digest, original positive cleanup and review note; preserve the original result/context and repeat idempotently.",
+    "Compare the complete three-file baseline at seven lifecycle stages. Before final ordinary writing, no added, removed or modified file is observed; afterward only the requested file appears. Keep the original final equality assertion and one-execution log.",
+    "Synchronize the fixture baseline after initial pairing markers drain. Record file names, lengths and hashes at each stage; do not exclude private markers or silently relax source equality."
+  ],
+  "implementation": {
+    "facade": "Existing production language/transaction/recovery policy is unchanged. tools/check-deleted-project-client.py selects page behavior and records native file observations.",
+    "adapters": "Only the disposable helper adds --port; IsolatedHost can pass it, and RecoveryHost checks the actual bound address on every restart. Normal bridge arguments and OS namespace selection are unchanged.",
+    "default_behavior": "close, keep and reload each have two-mode built-application runtime evidence, retained in their respective checkpoints."
+  },
+  "verification": {
+    "terminal": "open-browser-deletion-1794745145/terminal.json",
+    "artifacts": "open-browser-deletion-1794745145/artifacts.json",
+    "checks": [
+      {
+        "case": "format",
+        "command": [
+          "bash",
+          "-euc",
+          "cargo fmt --all --check\ngit diff --check\npython3 -c \"from pathlib import Path; [compile(p.read_text(),str(p),'exec') for p in [Path('tools/check-deleted-project-client.py'),Path('tools/check-command-callback-client.py')]]\""
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 3.09,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/open-browser-deletion-1794745145/format.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "native-example-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--example",
+          "check_recorded_command_host",
+          "--features",
+          "test-support,bundled-defaults",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 11.51,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/open-browser-deletion-1794745145/native-example-clippy.log",
+        "log_sha256": "c1f52963b8765f091d26c0eaefe7c84a1d580b0d5653491489d3a661e61a7927"
+      },
+      {
+        "case": "matching-bundled-example",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--example",
+          "check_recorded_command_host",
+          "--features",
+          "test-support,bundled-defaults",
+          "--locked"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 79.85,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/open-browser-deletion-1794745145/matching-bundled-example.log",
+        "log_sha256": "2d609e4622f417d6504767b903b22f7c8970f4430da0ce4e115f87ddbe81ae9f"
+      },
+      {
+        "case": "application-local",
+        "command": [
+          "python3",
+          "tools/check-deleted-project-client.py",
+          "--backend-wasm",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-wasip2/debug/openwebide_backend.wasm",
+          "--host-binary",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/debug/examples/check_recorded_command_host",
+          "--evidence-dir",
+          "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/open-browser-deletion-1794745145/app",
+          "--mode",
+          "local",
+          "--page-after-settlement",
+          "reload"
+        ],
+        "deadline_seconds": 1500,
+        "returncode": 0,
+        "seconds": 386.84,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/open-browser-deletion-1794745145/application-local.log",
+        "log_sha256": "60f8886f3b9a05f213765d43b507d0c0a39b1a0f1eac4aa4d929989d0c7885d1"
+      },
+      {
+        "case": "application-remote",
+        "command": [
+          "python3",
+          "tools/check-deleted-project-client.py",
+          "--backend-wasm",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-wasip2/debug/openwebide_backend.wasm",
+          "--host-binary",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/debug/examples/check_recorded_command_host",
+          "--evidence-dir",
+          "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/open-browser-deletion-1794745145/app",
+          "--mode",
+          "remote",
+          "--page-after-settlement",
+          "reload"
+        ],
+        "deadline_seconds": 1500,
+        "returncode": 0,
+        "seconds": 373.92,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/open-browser-deletion-1794745145/application-remote.log",
+        "log_sha256": "dae349d5f7c8e118c8ea24fd16c54154fe2b7a0f0e5b83166a3759c78efeed34"
+      }
+    ],
+    "facts": {
+      "local": {
+        "result": {
+          "mode": "local",
+          "real_browser_command_approval": true,
+          "page_after_settlement": "reload",
+          "native_address_preserved": true,
+          "real_WASI_project_deletion": true,
+          "settlement_reply_lost_after_commit": true,
+          "native_processes": [
+            50077,
+            55223,
+            55227
+          ],
+          "single_command_dispatch": true,
+          "original_outcome_preserved": true,
+          "missing_project_did_not_release_claim": true,
+          "actual_ordinary_file_write_after_explicit_retirement": true,
+          "shared_CLI_executor_test_home": true,
+          "OS_default_CLI_in_this_sequence": false,
+          "optimized_native_WASI_distribution": false,
+          "physical_folder_permissions": false,
+          "whole_goal_complete": false
+        },
+        "lost_reply_path": "/api/language-commands/delegated",
+        "all_source_stages_exact": true,
+        "original_private_callback404": true,
+        "audit_preserved": true
+      },
+      "remote": {
+        "result": {
+          "mode": "remote",
+          "real_browser_command_approval": true,
+          "page_after_settlement": "reload",
+          "native_address_preserved": true,
+          "real_WASI_project_deletion": true,
+          "settlement_reply_lost_after_commit": true,
+          "native_processes": [
+            55233,
+            59611,
+            59616
+          ],
+          "single_command_dispatch": true,
+          "original_outcome_preserved": true,
+          "missing_project_did_not_release_claim": true,
+          "actual_ordinary_file_write_after_explicit_retirement": true,
+          "shared_CLI_executor_test_home": true,
+          "OS_default_CLI_in_this_sequence": false,
+          "optimized_native_WASI_distribution": false,
+          "physical_folder_permissions": false,
+          "whole_goal_complete": false
+        },
+        "lost_reply_path": "/api/language-commands/original-private",
+        "all_source_stages_exact": true,
+        "original_private_callback404": true,
+        "audit_preserved": true
+      }
+    }
+  },
+  "earlier_observation": {
+    "terminal": "deleted-project-app-1794743026/terminal.json",
+    "status": "The earlier Local mismatch is not reproduced with synchronized baseline, a stable native address and staged observations. That failed run did not retain the actual difference, so no precise cause or production data-loss fix is claimed."
+  },
+  "limits": {
+    "original_page_without_reload": false,
+    "real_OS_default_CLI_in_this_sequence": false,
+    "test_selected_native_home": true,
+    "Local_OPFS_correspondence": true,
+    "physical_folder_permissions": false,
+    "installed_PWA": false,
+    "deleted_account": false,
+    "optimized_native_WASI_distribution": false,
+    "native_Windows_runtime": false,
+    "full_CI_complete": false,
+    "whole_goal_complete": false
+  },
+  "original_page_followup": {
+    "checkpoint": "original-page-deletion-checks.json",
+    "scope": "The original page without reload now passes in both modes, with the same native address, exact staged source equality, one execution, positive original cleanup and the exact audit. This does not qualify remaining platform/distribution or account cases."
+  }
+}

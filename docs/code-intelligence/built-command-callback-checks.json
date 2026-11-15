@@ -1,0 +1,97 @@
+{
+  "status": "The current built browser/WASI/native application passes original-command callback reconnection through the actual recovery UI in both modes. Packaged release, installed-app and physical-device verification and the original roadmap remain unfinished.",
+  "runtime_source_sha256": "2497e64e4f21f792659f51e789c0a483268b02875e589e746f9ead2a8fbd26da",
+  "strengthened_harness_source_sha256": "915c57a830d4a05e81d9145a10dfea91953547f314f7006cb79284df18d7e504",
+  "builds_on": "browser-command-callback-checks.json",
+  "artifacts": {
+    "backend": "Current production WASI entry point in dev profile, without test substitutions in backend routes or Store policy. This is not a release latency measurement.",
+    "frontend": "Current optimized Trunk HTML/WASM/CSS/PWA bundle.",
+    "native": "Current native HTTP host, built with bundled-defaults and test-support. Its explicit disposable namespace is the only native ownership substitution; the OS-selected production namespace remains a separate gate.",
+    "plugins": "24 bundled public packages from the retained producer whose complete compiler/SDK/bundled-source inputs match current source. The published HTML package executes against a deterministic stdio LSP peer.",
+    "primary_artifacts_retained": 41,
+    "all40_original_production_artifacts_unchanged": true
+  },
+  "contract": [
+    "Create the disposable account, projects and saved drafts through real authenticated APIs; open the editor and approve a real server code action through the production UI. Lose Start transport after durable command approval but before any LSP command. Preserve a real native owner and command reservation.",
+    "Move Spin to another address while preserving its SQLite account/project/transaction/original-issuer state and keeping the same native process. The newly loaded browser offers its current backend address. Remote uses its authenticated project backend route and real service forwarding; Local uses authenticated paired native HTTP. No reconnect request or reply is mocked.",
+    "Only the original native owner origin changes after the verified reply. Namespace key, command data, authority and other owner fields remain exact; native writers stay fenced. Use the actual Stop and manual acknowledgement buttons, then observe owner/command/outbox retirement and a successful ordinary native writer. Preserve source files and never dispatch or replay the LSP command.",
+    "For Local, the old origin uses the existing bounded OPFS/native discovery correspondence to establish initial file access. Remove that correspondence before the move. The new origin has only the pairing token in IndexedDB, with no folder handle, and still completes original command recovery. This is not physical browser permission or installed-PWA evidence.",
+    "Both retained actual LSP logs contain one code-action request and zero executeCommand requests. The no-replay gate was strengthened after the runtime run to reject absent/empty logs and require a real review request; it was replayed successfully against both actual logs, with missing-log/empty-log/executed-command rejection also checked. No production code, runtime action or artifact changed for that strengthening.",
+    "The initial preliminary run reached a real retained Running command but the state observer incorrectly expected the lazily created metadata acknowledgement table before first settlement. Correct the observer to accept its absence only as an empty metadata outbox, retain the original active owner/command, and rerun the complete workflow. No private state was repaired or fabricated.",
+    "The native fixture accepts optional approved browser origins, while preserving its prior three-argument invocation. The original configured-callback/process-loss HTTP case passes against the new fixture in both modes; its preserved test binary has byte-identical production-library and HTTP-test source inputs. The enabled test-support/bundled-defaults host also passes Clippy."
+  ],
+  "verification": {
+    "terminal": "app-callback-qualified-1794729779/terminal.json",
+    "runtime_cases": [
+      {
+        "case": "format",
+        "returncode": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "WASI-backend-current",
+        "returncode": 0,
+        "log_sha256": "a8dd5b4f852b782842253d071162bc7c3c44c3a9a07131cd1159e45bbb802a10"
+      },
+      {
+        "case": "optimized-frontend-current",
+        "returncode": 0,
+        "log_sha256": "401d2ce0e7e8832ed536c211cecaafdbb41b9ce7dc59af845028dde382360f73"
+      },
+      {
+        "case": "isolated-native-current",
+        "returncode": 0,
+        "log_sha256": "bd21d4caa519e61f33e237137943fe8f0d39230ffa782f1f076a2e48394d549b"
+      },
+      {
+        "case": "application-remote-reconnect",
+        "returncode": 0,
+        "log_sha256": "92d66b1d900a22ce2fd7f8261d990d0c8c1fb7b60b86296dca835c90e84c0322"
+      },
+      {
+        "case": "application-local-reconnect",
+        "returncode": 0,
+        "log_sha256": "55a284439c53d8b106300849e8ef3f24ae54fe270fd2cf60273da78cd0e08830"
+      }
+    ],
+    "workflow_results": {
+      "remote": {
+        "path": "app-callback-qualified-1794729779/app/remote/result.json",
+        "sha256": "d52059ec3a59882a2e92c8be16cee855d0cd2bd741f3c0a94172c065e59c042b"
+      },
+      "local": {
+        "path": "app-callback-qualified-1794729779/app/local/result.json",
+        "sha256": "53496c8459f5f76195d49e1d010a1b07fe08df6cfe45257ff7f7f85dceb90cae"
+      }
+    },
+    "primary_artifacts": "app-callback-qualified-1794729779/artifacts.json",
+    "maintenance": "app-callback-qualified-1794729779/maintenance.json",
+    "strict_peer_log_audit": "app-callback-qualified-1794729779/strict-peer-log-audit.json",
+    "fixture_Clippy_log_sha256": "64398695bdaa66e87c5bbc9b1b97c627c5f44c5b6758b1aac699f7e7a1be465b",
+    "legacy_fixture_case": "app-callback-qualified-1794729779/legacy-three-argument-fixture.json",
+    "built_app_workflows": 2,
+    "native_pid_unchanged_both_modes": true,
+    "real_authenticated_Remote_forwarding": true,
+    "real_paired_Local_transport": true,
+    "Local_new_origin_without_folder_handle": true,
+    "prior_915_tests_reexecuted_this_checkpoint": false,
+    "complete_release_distribution": false,
+    "physical_folder_permissions": false,
+    "installed_PWA": false,
+    "native_Windows_runtime": false,
+    "fresh_Linux_runtime": false
+  },
+  "remaining": [
+    "Qualify callback recovery with the current optimized native/WASI release distribution and installed app, including original OS-selected private namespace and physical browser folder permission/device checks. The built-app checkpoint uses optimized frontend, unoptimized production WASI entry point and the same native HTTP host with an isolated test-support namespace.",
+    "Finish frozen-owner application recovery beyond the native OS-owner CLI: deleted original projects/accounts, legacy command owners without verifiable cleanup, actual process interruptions and current packaged/native platform contracts. Never infer cleanup from missing public rows, failed requests or 404 replies.",
+    "Finish remaining admission/watcher-enrollment and outcome/context interruptions, including escaped-process cleanup beyond the verified managed-group cases.",
+    "Finish every participating writer, Git/PTY and escaped-process lifetime; implement and verify native Windows ownership and fresh packaged Linux runtime.",
+    "Complete all original packaged application/browser, cache/resource/RSS/prefetch/homelab and full-CI requirements."
+  ],
+  "built_app_callback_workflows_verified": true,
+  "general_callback_reconnection_complete": false,
+  "command_recovery_complete": false,
+  "full_CI_complete": false,
+  "whole_goal_complete": false,
+  "followup": "retired-command-worker-checks.json"
+}

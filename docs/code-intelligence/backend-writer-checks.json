@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "status": "backend_API_native_gate_and_explicit_direct_policy_verified_full_goal_pending",
+  "runtime_source_sha256": "5a63e5c9a84163e2f4a481106651897840003e554787cb34f6432dca33c0756e",
+  "shared_implementation": "core FileMutation dispatch; native WorkspaceFiles/coordinator. Backend HostFsVfs supplies transport; explicit direct mode supplies WASI primitives.",
+  "default_policy": "coordinated; no direct fallback after rejection or unknown native outcome",
+  "explicit_direct_policy": "outside native locking; selected by disabled-container entrypoint unless explicitly overridden",
+  "application": {
+    "local": {
+      "positive_API_operations": 6,
+      "fenced_API_operations": 4,
+      "separate_project_same_physical_folder": {
+        "original_project": 1,
+        "alias_project": 2,
+        "distinct_paths_same_physical_folder": true
+      },
+      "backend_settled_native_fence_retained": true,
+      "source_stages": 8,
+      "original_result_and_retirement_audit_exact": true,
+      "single_actual_LSP_command": true,
+      "account_removed_old_cookie_rejected": true,
+      "ordinary_write_after_retirement": true,
+      "seconds": 387.12
+    },
+    "remote": {
+      "positive_API_operations": 6,
+      "fenced_API_operations": 4,
+      "separate_project_same_physical_folder": {
+        "original_project": 1,
+        "alias_project": 2,
+        "distinct_paths_same_physical_folder": true
+      },
+      "backend_settled_native_fence_retained": true,
+      "source_stages": 8,
+      "original_result_and_retirement_audit_exact": true,
+      "single_actual_LSP_command": true,
+      "account_removed_old_cookie_rejected": true,
+      "ordinary_write_after_retirement": true,
+      "seconds": 383.19
+    }
+  },
+  "policy_cases": [
+    "native",
+    "native-unreachable",
+    "direct",
+    "entrypoint-direct",
+    "entrypoint-required-override"
+  ],
+  "commands": [
+    "python3 tools/check-deleted-project-client.py --help",
+    "python3 tools/check-backend-file-writers.py --help"
+  ],
+  "evidence_id": "backend-writer-final-1794757561",
+  "evidence_sha256": {
+    "terminal.json": "7d1616d935b8b387db3634997bb44e1ceeb1670d8214fc533a8ff9ae6092d630",
+    "independent-audit.json": "ac82e9f95424ef18144be3ec37a8ac9208883e085b86647f67c4a7b3b8d2c236",
+    "policy-contracts.json": "9a954b2e83c5a3755ac4daef220d10ab869434dd969363406727e5a0aa7b31a1"
+  },
+  "limits": [
+    "Actual macOS browser and optimized frontend with development WASI/backend and isolated test-support native helper; not an optimized full distribution.",
+    "Local uses OPFS/native correspondence; these runs do not establish physical permission prompts.",
+    "Container policy cases mount candidate backend and entrypoint into an existing Linux runtime image, without rebuilding the complete application.",
+    "Explicit direct writes and browser-only Local saves are outside physical folder locking.",
+    "Other writer/process lifetimes, native Windows directory mutation runtime checks, original resource/cache/prefetch requirements and full CI remain unfinished."
+  ],
+  "full_CI_complete": false,
+  "whole_goal_complete": false,
+  "Linux_followup": {
+    "evidence_id": "backend-writer-linux-qualified-1794758613",
+    "source_sha256": "98a1d2ea068ee65af77efbc875d977c8556c213e1c776b86ece359194a0ceca9",
+    "same_test_binaries_as_initial_attempt": true,
+    "native_filesystem_tests": 48,
+    "native_HTTP_tests": 2,
+    "test_filesystem": "Persistent Linux volume; all ACL/xattr assertions retained. Initial tmpfs run passed46 and rejected ACL installation in2 cases.",
+    "normal_default_main_features": [
+      "default",
+      "tls"
+    ],
+    "normal_main_sha256": "e65137749e8950552c34aa980da6acb796a4c0b15e98efe36329690bc9f55c2f",
+    "receipt_sha256": "079222c30739207d78f0f0a112750b7374f4367ebb0e96b900dd1d0108cde049",
+    "native_filesystem_log_sha256": "d3a10a17de4491ff385087a2d03e54add7f869e235cde871b122f2e413daafec",
+    "HTTP_log_sha256": "2f481c8c612274d8dc8371bde92c5375c8b87ad4b2642cf66e6f97e6ea8c49ae",
+    "limits": "Focused dev-profile native tests in an existing Linux runtime image, using isolated native homes. No new complete Linux application/distribution or native Windows proof."
+  },
+  "ordinary_background_save_regression": {
+    "evidence_id": "background-file-writes-1794758860",
+    "native_binary_sha256": "e65137749e8950552c34aa980da6acb796a4c0b15e98efe36329690bc9f55c2f",
+    "acknowledged_background_command": true,
+    "save_queued_while_background_live": true,
+    "save_completed_after_release": true,
+    "measured_write_seconds": 2.115,
+    "container_init_enabled": true,
+    "scope": "Historical normal-daemon regression before the ordinary admission fix. The current proof and remaining limits are in ordinary-admission-checks.json.",
+    "required_behavior": "Ordinary commands and saves can coexist while reviewed resource/command work retains exclusive folder admission."
+  },
+  "ordinary_admission_followup": "ordinary-admission-checks.json"
+}

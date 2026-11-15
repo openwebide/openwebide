@@ -1,0 +1,155 @@
+{
+  "status": "Backend acknowledgement of cancelled reserved-command cleanup verified in both modes; native cancellation recovery remains unfinished.",
+  "source_sha256": "71d74e8fe3c030c17afc49886ee95dcb1bceee829f56253acbc69c56aaec6536",
+  "builds_on": "settlement-peer-recovery-checks.json",
+  "shared_implementation": {
+    "policy": "CommandWorkerOperation::ConfirmCancellation uses Store::native_language_command_inner for the original reserved worker. It requires exact original scope/invocation/revision, Cancelled phase, completed file recovery and no dispatch permission.",
+    "receipt": "Positive cleanup changes only private cleanup metadata. Cancelled keeps no CommandOutcome or acknowledgement note and retains its public revision. Existing Settle clears the worker and pending fence; repeated original callbacks join the same cleanup and settlement receipts.",
+    "validation": "The shared recovery metadata and mutation acknowledgement validators accept cleaned/settled cancellation without an outcome and reject mismatched scope, worker, phase or missing cleanup.",
+    "adapters": "Original recovery-only callbacks use the same policy in Local and Remote modes, independently of provider configuration, expired grants and released file credentials. No new command dispatch authority is granted."
+  },
+  "behavioral_tests": [
+    "Both modes: first compound file admission reserves the original worker; cancellation before file restoration fails; after restoration cancellation retains the write fence until original positive cleanup and settlement.",
+    "Forged worker secrets/IDs, generation, command revision, invocation and mutation replies are rejected. A contradictory persisted dispatch permit fails closed. Invented Rejected, Uncertain and Completed outcomes cannot replace cancellation.",
+    "Database reopen, revoked provider configuration, expired authority, repeated cleanup/final acknowledgements, public compact recovery without an outcome, eventual idle state and delayed claim rejection.",
+    "Both-mode backend original-callback coverage retains the original issuer through transport credential rotation, unreadable provider payloads and repeated cleanup/settlement HTTP handler replies.",
+    "All prior native library, actual SIGKILL/successor, callback/folder faults, stale peer publisher, command authentication and HTTP lifecycle checks rerun unchanged."
+  ],
+  "verification": {
+    "terminal": "cancelled-command-contract-1794703338/terminal.json",
+    "artifacts": "cancelled-command-contract-outputs-1794704201/manifest.json",
+    "all_affected_shared_cases_rerun": true,
+    "cases": [
+      {
+        "case": "format",
+        "returncode": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "storage-all-unit",
+        "returncode": 0,
+        "log_sha256": "db29e5d1e073b75f3b43842325ba3c324f9a25f7e89cd8b5ea923c38c73e1132"
+      },
+      {
+        "case": "core-workspace-contracts",
+        "returncode": 0,
+        "log_sha256": "5ea61677152b26de0d1ccc9cedb57477c37fc074049601d515793a9e3def4aca"
+      },
+      {
+        "case": "core-command-contracts",
+        "returncode": 0,
+        "log_sha256": "51e7e364880e3edf7aa8f6bf28af757f3c49f6669013c38241d81bbfc39609da"
+      },
+      {
+        "case": "backend-all-unit",
+        "returncode": 0,
+        "log_sha256": "a30d41f9c5ccd7b222f861cb7a8f66c19edf788922bfd7c20d76f46b8be90f05"
+      },
+      {
+        "case": "agent-command-actions",
+        "returncode": 0,
+        "log_sha256": "0e747c81b669e54408ce34fe323451323f2ef049652cd75c53e64b2d6714dc0b"
+      },
+      {
+        "case": "frontend-native-unit",
+        "returncode": 0,
+        "log_sha256": "7afbd28a15dbefb081dfa43adbfbee5a6b3e71649f6f94777717bee1c3db4bf9"
+      },
+      {
+        "case": "native-all-target-clippy",
+        "returncode": 0,
+        "log_sha256": "60249798d48793d684a350215bc60a7dfa004e7a2bac49794b7fa7eee8a4ba8a"
+      },
+      {
+        "case": "WASI-backend-clippy",
+        "returncode": 0,
+        "log_sha256": "4394c9d61b829fd46675dbbc9c4b6c94e8c4b196638fdd003242ae8a39220713"
+      },
+      {
+        "case": "WASM-frontend-all-target-clippy",
+        "returncode": 0,
+        "log_sha256": "ea171322ccae41cef66bc4e84888d45953be2138af97d2835f5e60625fc43d9b"
+      },
+      {
+        "case": "matching-debug-bridge",
+        "returncode": 0,
+        "log_sha256": "e9ef183ef97b16699c4e2cb2c5d0b51daa0b6b4935b9ef79165df9ce1bbe911a"
+      },
+      {
+        "case": "owned-producer-compound-admission",
+        "returncode": 0,
+        "log_sha256": "bcf5bd9bbd18286ffa2d889a3b5e747b3ca32f3c51e5c1692e77e1ca493b46a9"
+      },
+      {
+        "case": "bridge-all-unit",
+        "returncode": 0,
+        "log_sha256": "3ca57e461b54f8e255e24981f085b723204dee30d68479ecc658ae9dce75d074"
+      },
+      {
+        "case": "marketplace-published-smoke",
+        "returncode": 0,
+        "log_sha256": "2b712daa9bd1a430d8d9ab082eece84b4ef64ed245bfa308e57e3ce6704131dd"
+      },
+      {
+        "case": "native-recovery-host-example",
+        "returncode": 0,
+        "log_sha256": "a7bd4a5160c6c042347551b7467ff78346c6728a3c6e385d4b780c1ba5ea9e43"
+      },
+      {
+        "case": "command-http-complete",
+        "returncode": 0,
+        "log_sha256": "0d072ff11ab2e6504d9dd6bd0f34d729dbb28d0f1f2882a4ac983862351fd14a"
+      },
+      {
+        "case": "bridge-default-bin-clippy",
+        "returncode": 0,
+        "log_sha256": "e4390e942d40dee3ab99ca30d301379c0e9e01eca92c13fe21708ef30f1bfee2"
+      },
+      {
+        "case": "windows-cross-clippy-not-native-runtime",
+        "returncode": 0,
+        "log_sha256": "98103f4432e6b085b126eae6fe6a5a836e6c5b93a6d381a6e66265550625d3cf"
+      },
+      {
+        "case": "production-feature-inventory",
+        "returncode": 0,
+        "log_sha256": "51a70955c82feadb08bcaf685eec7550c14e8cf35436c8f256347155c7578b04"
+      }
+    ],
+    "counts": {
+      "storage-all-unit": 239,
+      "core-workspace-contracts": 53,
+      "core-command-contracts": 1,
+      "backend-all-unit": 135,
+      "agent-command-actions": 3,
+      "frontend-native-unit": 143,
+      "owned-producer-compound-admission": 1,
+      "bridge-all-unit": 535,
+      "marketplace-published-smoke": 1,
+      "command-http-complete": 4
+    },
+    "distinct_tests": 1114,
+    "test_executions": 1115,
+    "native_library_all_declared_passed": 536,
+    "existing_HTTP_lifecycle_scenarios": 24,
+    "existing_SIGKILL_scenarios": 10,
+    "existing_peer_scenarios": 2,
+    "HTTP_authentication_scenarios": 6,
+    "native_WASI_WASM_Windows_cross_Clippy_passed": true,
+    "native_Windows_runtime_verified": false,
+    "fresh_current_Linux_runtime_verified": false,
+    "current_browser_or_installed_application_verified": false,
+    "native_cancellation_retirement_implemented": false,
+    "unadmitted_cancellation_implemented": false
+  },
+  "remaining": [
+    "Qualify callback recovery with the current optimized native/WASI release distribution and installed app, including original OS-selected private namespace and physical browser folder permission/device checks. The built-app checkpoint uses optimized frontend, unoptimized production WASI entry point and the same native HTTP host with an isolated test-support namespace.",
+    "Finish frozen-owner application recovery beyond the native OS-owner CLI: deleted original projects/accounts, legacy command owners without verifiable cleanup, actual process interruptions and current packaged/native platform contracts. Never infer cleanup from missing public rows, failed requests or 404 replies.",
+    "Finish remaining admission/watcher-enrollment and outcome/context interruptions, including escaped-process cleanup beyond the verified managed-group cases.",
+    "Finish every participating writer, Git/PTY and escaped-process lifetime; implement and verify native Windows ownership and fresh packaged Linux runtime.",
+    "Complete all original packaged application/browser, cache/resource/RSS/prefetch/homelab and full-CI requirements."
+  ],
+  "full_CI_complete": false,
+  "whole_goal_complete": false,
+  "followup": "retired-command-worker-checks.json"
+}

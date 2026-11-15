@@ -154,7 +154,7 @@ impl From<crate::files::FsError> for ApiError {
         use crate::files::FsError;
         let status = match &err {
             FsError::Reserved(_) | FsError::PathEscape(_) | FsError::TooLarge { .. } => 400,
-            FsError::AlreadyExists(_) => 409,
+            FsError::AlreadyExists(_) | FsError::Conflict(_) => 409,
             FsError::NotFound(_) => 404,
             FsError::PermissionDenied(_) => 403,
             FsError::Io(_) => 500,

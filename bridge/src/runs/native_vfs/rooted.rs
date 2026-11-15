@@ -5,63 +5,16 @@ use openwebide_core::{
     vfs::{MAX_READ_BYTES, VfsEntryKind, normalize_vfs_path},
 };
 use rustix::fs::{self, AtFlags, FileType, Mode, OFlags};
-use serde::{Deserialize, Serialize};
 use std::{
     fs::File,
     io::{self, Read, Write},
-    time::SystemTime,
 };
 
 pub(crate) struct Rooted(pub File);
 
 pub(crate) mod revision;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(crate) struct Identity {
-    device: u64,
-    inode: u64,
-    created: Option<SystemTime>,
-}
-impl Identity {
-    pub fn of(file: &File) -> io::Result<Self> {
-        use std::os::unix::fs::MetadataExt;
-        let metadata = file.metadata()?;
-        Ok(Self {
-            device: metadata.dev(),
-            inode: metadata.ino(),
-            created: metadata.created().ok(),
-        })
-    }
-    pub fn fingerprint(&self) -> String {
-        let mut bytes = Vec::with_capacity(40);
-        bytes.extend_from_slice(&self.device.to_le_bytes());
-        bytes.extend_from_slice(&self.inode.to_le_bytes());
-        match self.created {
-            None => bytes.push(0),
-            Some(time) => {
-                let (sign, duration) = match time.duration_since(std::time::UNIX_EPOCH) {
-                    Ok(duration) => (1, duration),
-                    Err(error) => (2, error.duration()),
-                };
-                bytes.push(sign);
-                bytes.extend_from_slice(&duration.as_secs().to_le_bytes());
-                bytes.extend_from_slice(&duration.subsec_nanos().to_le_bytes());
-            }
-        }
-        let version = if self.has_birth_time() { "u1" } else { "u0" };
-        format!(
-            "{version}.{}",
-            openwebide_core::plugins::content_digest(&bytes)
-        )
-    }
-    pub fn same_device(&self, other: &Self) -> bool {
-        self.device == other.device
-    }
-    pub fn has_birth_time(&self) -> bool {
-        self.created.is_some()
-    }
-}
+pub(crate) use crate::file_identity::Identity;
 
 fn invalid(message: impl Into<String>) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidInput, message.into())
@@ -262,24 +215,5 @@ impl Rooted {
         let (destination, target) = other.parent(to)?;
         fs::linkat(&source.0, name, &destination.0, target, AtFlags::empty())?;
         destination.0.sync_all()
-    }
-}
-
-#[cfg(test)]
-mod identity_tests {
-    use super::*;
-    #[test]
-    fn birthless_identity_is_distinct_and_never_claims_persistent_original_capability() {
-        let mut object = Identity {
-            device: 17,
-            inode: 42,
-            created: None,
-        };
-        let birthless = object.fingerprint();
-        assert!(birthless.starts_with("u0."));
-        object.created = Some(std::time::UNIX_EPOCH + std::time::Duration::from_secs(1));
-        let persistent = object.fingerprint();
-        assert!(persistent.starts_with("u1."));
-        assert_ne!(birthless, persistent);
     }
 }

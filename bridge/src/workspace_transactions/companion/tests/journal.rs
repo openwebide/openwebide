@@ -60,13 +60,7 @@ async fn prepared_account_cancellation_revokes_native_calls_without_releasing_th
     let fixture =
         super::super::super::tests::fixture_mode(2, openwebide_core::WorkspaceMode::Local).await;
     let root = fixture.directory.path().join("project");
-    let case = Case {
-        directory: fixture.directory,
-        host: Host::default(),
-        authorities: Default::default(),
-        requests: Default::default(),
-        lose_advance: Arc::new(AtomicBool::new(false)),
-    };
+    let case = Case::at(fixture.directory);
     let journal = Journal {
         backend: fixture.backend,
         user: fixture.user,
@@ -109,10 +103,14 @@ async fn prepared_account_cancellation_revokes_native_calls_without_releasing_th
         .is_err()
     );
     assert!(!root.join("before-intent").exists());
+    let permit = case.host.state.lock().await.sessions[&id]
+        .permit
+        .clone()
+        .unwrap();
     let physical = case
         .host
         .coordinator
-        .acquire(Folder::capture(&root).unwrap())
+        .acquire_recovery(Folder::capture(&root).unwrap(), permit)
         .await
         .unwrap();
     let mut pending =
@@ -133,7 +131,7 @@ async fn prepared_account_cancellation_revokes_native_calls_without_releasing_th
             journal.project,
             &transaction::AdvanceWorkspaceTransaction {
                 id: journal.id.clone(),
-                generation: state.journal.generation,
+                generation: state.journal.generation.clone(),
                 revision: state.journal.revision,
                 progress: TransactionProgress::prepared_cancellation(),
             },
@@ -152,6 +150,21 @@ async fn prepared_account_cancellation_revokes_native_calls_without_releasing_th
         "disk 文😀\r\n".as_bytes()
     );
     files.close().await.unwrap();
+    let namespace = case.host.coordinator.recovery_namespace().unwrap();
+    let folder = Folder::capture(&root).unwrap();
+    assert!(namespace.admit(&folder, None).is_err());
+    // A fresh original bootstrap can positively observe the cancelled record
+    // and retire protection; closing a revoked session cannot assert that fact.
+    let mut recovered = case
+        .files_at("project", Arc::new(AtomicBool::new(false)))
+        .await;
+    recovered.bind(scope.clone()).await.unwrap();
+    let grant = authority
+        .grant(&scope.transaction, recovered.worker())
+        .await;
+    recovered.admit(authority.url.clone(), grant).await.unwrap();
+    recovered.close().await.unwrap();
+    namespace.admit(&folder, None).unwrap();
 }
 
 #[tokio::test]
@@ -171,13 +184,8 @@ async fn paired_files_run_the_same_sqlite_editor_decision_and_restore_after_a_lo
         .unwrap();
         let original = same_file::Handle::from_path(root.join("before.rs")).unwrap();
         let overwritten = same_file::Handle::from_path(root.join("after.rs")).unwrap();
-        let case = Case {
-            directory: fixture.directory,
-            host: Host::default(),
-            authorities: Default::default(),
-            lose_advance: Arc::new(AtomicBool::new(lost_cursor)),
-            requests: Default::default(),
-        };
+        let mut case = Case::at(fixture.directory);
+        case.lose_advance = Arc::new(AtomicBool::new(lost_cursor));
         let journal = Journal {
             backend: fixture.backend,
             user: fixture.user,
@@ -367,4 +375,153 @@ async fn paired_files_run_the_same_sqlite_editor_decision_and_restore_after_a_lo
                 .exists()
         );
     }
+}
+
+#[tokio::test]
+async fn rejected_paired_claim_keeps_the_original_owner_until_a_fresh_host_finishes_it() {
+    use crate::{folder_coordination::Folder, runs::native_vfs::workspace::WorkspaceFiles};
+    let fixture =
+        super::super::super::tests::fixture_mode(2, openwebide_core::WorkspaceMode::Local).await;
+    let case = Case::at(fixture.directory);
+    let home = (*case.recovery_home).clone();
+    let root = case.root().join("project");
+    let journal = Journal {
+        backend: fixture.backend,
+        user: fixture.user,
+        project: fixture.project,
+        id: fixture.command.request.id,
+    };
+    let original = journal.state().await;
+    let scope = ResourceScope {
+        transaction: journal.id.clone(),
+        fingerprint: original.journal.plan.fingerprint().unwrap(),
+    };
+    let calls = Arc::new(AtomicUsize::new(0));
+    let reject = Arc::new(AtomicBool::new(true));
+    let check_calls = calls.clone();
+    let check_reject = reject.clone();
+    let check_root = root.clone();
+    let check_coordinator = case.host.coordinator.clone();
+    let authority =
+        super::authority::Authority::serve_checked(journal.backend.clone(), move || {
+            let namespace = check_coordinator.recovery_namespace().unwrap();
+            assert!(
+                namespace
+                    .admit(&Folder::capture(&check_root).unwrap(), None)
+                    .unwrap_err()
+                    .contains("Recover the original native workspace operation")
+            );
+            check_calls.fetch_add(1, Ordering::SeqCst);
+            if check_reject.swap(false, Ordering::SeqCst) {
+                Err("Injected paired claim rejection".into())
+            } else {
+                Ok(())
+            }
+        })
+        .await;
+    let mut files = case
+        .files_at("project", Arc::new(AtomicBool::new(false)))
+        .await;
+    files.bind(scope.clone()).await.unwrap();
+    let grant = authority.grant(&journal.id, files.worker()).await;
+    assert!(
+        files
+            .admit(authority.url.clone(), grant)
+            .await
+            .unwrap_err()
+            .contains("Injected paired claim rejection")
+    );
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+    assert!(
+        journal
+            .backend
+            .store
+            .workspace_transaction_scope(journal.user, journal.project, &journal.id)
+            .await
+            .unwrap()
+            .unwrap()
+            .worker
+            .is_none()
+    );
+    assert_eq!(
+        serde_json::to_value(journal.state().await).unwrap(),
+        serde_json::to_value(&original).unwrap()
+    );
+    drop(files);
+    let peer = Host::default();
+    peer.coordinator.set_recovery_home(Arc::new(home.clone()));
+    let ordinary = WorkspaceFiles::new(root.clone(), peer.coordinator.clone());
+    assert!(
+        ordinary
+            .write("denied.txt", "no")
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("Recover the original native workspace operation")
+    );
+    assert!(!root.join("denied.txt").exists());
+    let original_key = journal
+        .backend
+        .store
+        .get_setting("test_recovery_issuer")
+        .await
+        .unwrap()
+        .unwrap();
+    journal
+        .backend
+        .store
+        .set_setting("test_recovery_issuer", "a different private issuer")
+        .await
+        .unwrap();
+    let mut foreign = case
+        .files_on(&peer, "project", Arc::new(AtomicBool::new(false)))
+        .await;
+    foreign.bind(scope.clone()).await.unwrap();
+    let grant = authority.grant(&journal.id, foreign.worker()).await;
+    assert!(
+        foreign
+            .admit(authority.url.clone(), grant)
+            .await
+            .unwrap_err()
+            .contains("Recover the original native workspace operation")
+    );
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+    journal
+        .backend
+        .store
+        .set_setting("test_recovery_issuer", &original_key)
+        .await
+        .unwrap();
+    let mut recovered = case
+        .files_on(&peer, "project", Arc::new(AtomicBool::new(false)))
+        .await;
+    recovered.bind(scope).await.unwrap();
+    let grant = authority.grant(&journal.id, recovered.worker()).await;
+    recovered.admit(authority.url.clone(), grant).await.unwrap();
+    assert_eq!(calls.load(Ordering::SeqCst), 2);
+    let result = transaction::execute(
+        &recovered,
+        &recovered.journal(&journal),
+        journal.state().await.journal,
+        transaction::WorkspaceTransactionAction::Apply,
+        || true,
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        result.progress.phase,
+        transaction::TransactionPhase::Committed
+    );
+    assert!(ordinary.write("still-denied.txt", "no").await.is_err());
+    recovered.close().await.unwrap();
+    ordinary.write("allowed.txt", "resolved").await.unwrap();
+    assert_eq!(
+        std::fs::read(root.join("allowed.txt")).unwrap(),
+        b"resolved"
+    );
+    println!(
+        "retained_paired_owner_home={} workspace={}",
+        home.display(),
+        case.directory.keep().display()
+    );
 }

@@ -20,13 +20,13 @@ async fn paired_browser_disconnect_kills_the_started_command_group() {
 }
 
 async fn disconnect_kills_group(paired: bool) {
-    use openwebide_bridge::{ServerConfig, run_server_until};
+    use openwebide_bridge::run_server_until;
     use tokio::net::TcpListener;
 
     let test_dir = TestDir::new();
     let listener = TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
     let port = listener.local_addr().unwrap().port();
-    let config = ServerConfig::new(
+    let config = common::server_config(
         test_dir.path.clone(),
         "dummy_secret".into(),
         paired.then(|| "command-pairing-token".into()),
@@ -85,12 +85,13 @@ async fn disconnect_kills_group(paired: bool) {
 #[cfg(unix)]
 #[tokio::test]
 async fn shutdown_waits_for_delayed_process_group_cleanup() {
-    use openwebide_bridge::{ServerConfig, run_server_until};
+    use openwebide_bridge::run_server_until;
     use tokio::net::TcpListener;
     let dir = TestDir::new();
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
-    let config = ServerConfig::new(dir.path.clone(), std::sync::Arc::from("dummy_secret"), None);
+    let config =
+        common::server_config(dir.path.clone(), std::sync::Arc::from("dummy_secret"), None);
     let (stop, stopped) = tokio::sync::oneshot::channel();
     let server = tokio::spawn(async move {
         run_server_until(listener, config, async {

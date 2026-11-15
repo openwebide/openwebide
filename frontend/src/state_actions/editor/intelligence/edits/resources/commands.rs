@@ -148,6 +148,7 @@ pub(super) async fn complete(
                 };
             }
             CommandProgress::Ready=>return Err("The approved command was not dispatched. Review its pending outcome before continuing.".into()),
+            CommandProgress::Cancelled=>return Err("The language action was cancelled before execution.".into()),
             CommandProgress::Running=>{},
         }
         if js_sys::Date::now() > deadline {
@@ -188,14 +189,14 @@ pub(super) async fn refresh(
             .await
             .map_err(|e| e.to_string())?;
         let action = backend
-            .language_action_request(
+            .language_action_recovery(
                 review.project.id,
-                &ActionJournalRequest::Load {
+                &openwebide_core::plugins::languages::intelligence::actions::ActionRecoveryRequest::Load {
                     id: Some(review.id.clone()),
                 },
             )
             .await?;
-        Ok::<_, String>(WorkspaceRecoveryStatus::from_records(
+        Ok::<_, String>(WorkspaceRecoveryStatus::from_recovery(
             workspace.as_ref(),
             action.as_ref(),
         ))

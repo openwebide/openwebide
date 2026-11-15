@@ -1,0 +1,108 @@
+{
+  "status": "Complete macOS bridge HTTP transport cases and native library inventory verified; original compound early-stop/restart/platform/application work remains unfinished",
+  "source_sha256": "a1bab5a1702e2b62dfb6c43fb764170efae34ef4bbe3019136a65d07bb8451a6",
+  "shared_entry": "Production Store approval/grant/CAS policy, one native owned command producer and the same coordinator namespace for file/command work; service and paired transports remain thin adapters.",
+  "fixture": [
+    "Real LSP review and retained LanguageReview reproduced through the native workspace planner. Real storage installs the provider, issues manual grants, approves the complete edit and durably claims the attached command.",
+    "Remote file admission uses /workspace/execute and service journal callbacks; Local proves/binds the original folder and uses /workspace/files plus a real file delegation.",
+    "Both modes call native command preparation over HTTP. Local obtains a distinct command-purpose delegation tied to the returned native worker commitment. Original scope/issuer validation remains in production code.",
+    "Keep all original success, stop-before-start, Git branch and restored-HEAD/mtime round-trip assertions in both modes. Preserve results across process/document-cache revocation and repeated Start without RPC replay.",
+    "For admitted cases, acknowledge no-RPC rejection separately, wait for native/backend settlement and confirm backend writer/deletion activity is idle. The stop-before-initial-admission case retains its transport assertions; its durable early ownership reconciliation is still unfinished."
+  ],
+  "test_isolation": {
+    "entry": "ServerConfig::new_for_test (test-support feature via self dev-dependency)",
+    "scope": "Trusted Rust test constructor selects a temporary private ownership namespace before services start. Configured file, language and execution services share the same coordinator.",
+    "production": "Ordinary builds/constructors use the OS account namespace. No command-line, environment, profile or wire API selects another namespace. Normal Cargo feature inventory is recorded in the verification log.",
+    "unsupported_platform": "The constructor explicitly reports unsupported native recovery namespaces; cross-compilation is not native Windows execution."
+  },
+  "verification": {
+    "terminal": "command-http-fixture-1794687954/terminal.json",
+    "artifacts": "command-http-verified-outputs-1794688548/manifest.json",
+    "cases": [
+      {
+        "case": "format",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "matching-debug-bridge",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "d4d72a62335e1df4153c457d842f26a9be632ba35e5e5d68e239613ca8b6e13e"
+      },
+      {
+        "case": "bridge-all-unit",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "277f1cbf8c60c6eba1e84967906800c4f5f7bb15155c6f472f2f9c75a9fc4c98"
+      },
+      {
+        "case": "marketplace-published-smoke",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "5dd52c0bcb8b54164f783b6ea8dc36018431766a48ae856f8061e50b0f8069af"
+      },
+      {
+        "case": "command-http-complete",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "f4ea3197e5dae34e91fbe7a1abf9327282f98e8129a00d98b962fe2d206d235f"
+      },
+      {
+        "case": "bridge-all-target-clippy",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "47e76299254af998d2d277fc5f09cc1c94bdd3b06cea9b904735345853657cd9"
+      },
+      {
+        "case": "bridge-default-bin-clippy",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "a61416438b06c37d097f5a070afbae926ac9a1075855d626df1dc1578a52164c"
+      },
+      {
+        "case": "windows-cross-clippy-not-native-runtime",
+        "returncode": 0,
+        "deadline_seconds": 2400,
+        "log_sha256": "086ac6065a1a6192bc198832ab3d4a3ad6d92ef7f2d1ef3f6da842cce2aa42a5"
+      },
+      {
+        "case": "production-feature-inventory",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "51a70955c82feadb08bcaf685eec7550c14e8cf35436c8f256347155c7578b04"
+      }
+    ],
+    "native_library_passed": 531,
+    "native_library_detail": "Default run: 530 pass, 1 preexisting published-marketplace smoke ignored. Explicit network run: that same smoke passes for both host scopes. All 531 declared native library tests execute successfully across the two runs.",
+    "HTTP_tests": 2,
+    "HTTP_command_scenarios": 8,
+    "HTTP_authentication_credential_scenarios": 6,
+    "distinct_tests": 533,
+    "test_executions": 533
+  },
+  "cache_cleanup": {
+    "receipt": "command-http-verified-outputs-1794688548/terminal.json",
+    "preserved_available_dev_executables": 15,
+    "cleared": "Completed bridge development build cache only, after confirming no compiler or tests were live. All available development executables were retained first; the matching native main was restored and --help passed.",
+    "free_bytes_before": 52273463296,
+    "free_bytes_after": 55144898560,
+    "frozen_release_and_other39_artifacts_unchanged": true
+  },
+  "previous_exploration": {
+    "terminal": "command-http-fixture-1794687344/terminal.json",
+    "passed_runtime_artifacts": "command-http-first-passed-outputs-1794687916/manifest.json",
+    "outcome": "530 native tests and both HTTP tests passed, but the normal-only Clippy check caught unused self in namespace selection. Moving the existing shutdown check into the shared location helper corrected both profiles; current checks pass without suppressing the lint."
+  },
+  "remaining": [
+    "Qualify callback recovery with the current optimized native/WASI release distribution and installed app, including original OS-selected private namespace and physical browser folder permission/device checks. The built-app checkpoint uses optimized frontend, unoptimized production WASI entry point and the same native HTTP host with an isolated test-support namespace.",
+    "Finish frozen-owner application recovery beyond the native OS-owner CLI: deleted original projects/accounts, legacy command owners without verifiable cleanup, actual process interruptions and current packaged/native platform contracts. Never infer cleanup from missing public rows, failed requests or 404 replies.",
+    "Finish remaining admission/watcher-enrollment and outcome/context interruptions, including escaped-process cleanup beyond the verified managed-group cases.",
+    "Finish every participating writer, Git/PTY and escaped-process lifetime; implement and verify native Windows ownership and fresh packaged Linux runtime.",
+    "Complete all original packaged application/browser, cache/resource/RSS/prefetch/homelab and full-CI requirements."
+  ],
+  "full_CI_complete": false,
+  "whole_goal_complete": false,
+  "followup": "retired-command-worker-checks.json"
+}

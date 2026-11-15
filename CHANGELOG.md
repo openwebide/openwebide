@@ -9,6 +9,169 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Keep ordinary file saves, commands and Git work available alongside healthy
+  background jobs. Preserve exclusive reviewed resource/command operations across
+  nested folders and aliases, waiting-review priority and accepted I/O ownership.
+  Quarantine overlapping work after uncertain cleanup across native processes.
+  Upgrade native recovery state to schema 11 in place and preserve its version
+  through explicit retirement; older companions must upgrade.
+
+- Route backend file API and SSE-agent mutations through the shared native folder
+  and recovery gate. Preserve binary contents and reject writes from another
+  project alias while original native recovery remains pending, even after the
+  backend settles. Verify the real browser/WASI workflow in both modes through
+  project/account deletion and explicit recovery. Keep explicitly disabled-bridge
+  saves available through directory-bound WASI primitives outside native locking;
+  never fall back to direct writes after an uncertain native reply.
+
+- Add native OS-owner recovery inspection and explicit retirement for abandoned
+  original workspace records and final settlement metadata. Require the inspected
+  digest, a review note, original physical exclusion and positive command cleanup;
+  retain a bounded audit and fence retired transaction credentials. Preserve that
+  audit when later commands settle. Verify the actual CLI across fresh Linux
+  runtimes with the installed OS policy and ordinary HTTP writing after retirement.
+  Native HTTP/SQLite checks also verify a real command followed by project deletion
+  after a lost settlement acknowledgement in both modes: preserve the original
+  result and require explicit retirement before ordinary writing resumes.
+  Built-browser/WASI checks now verify real approval followed by page closure and
+  API project deletion, an original callback 404, explicit recovery and actual
+  file writing after native restarts in both modes. OS-default CLI, optimized distribution and remaining
+  platform verification for this application sequence remain unfinished. Also
+  verify recovery with reloaded pages left active, a stable companion address and
+  exact source-file snapshots across native restarts in both modes, and with the
+  original approval page kept running without reload. Verify the same recovery
+  after guarded administrative removal of the fixture account, real cascades and
+  rejection of its old login, preserving the original native result and files.
+  Exercise that same two-mode application recovery with the normal Linux companion
+  and CLI using the shipped OS installation policy across fresh containers.
+
+- Check private native recovery-state continuity before and throughout reviewed
+  file work. Keep its location independent of bridge profiles and protect its
+  names through shared filesystem/Git filters. Persist original transaction
+  ownership before complete-worker admission and reject overlapping native
+  writers across restarts. Resume only with the original private authority;
+  keep attached-command ownership after file completion. Per-file companion calls
+  share this admission and retain protection after revoked access until original
+  recovery. Compound command phase recovery remains in progress.
+  Retain original callback credentials and file completion before releasing the
+  file worker, so early Stop can publish and, after acknowledgement, settle a
+  never-dispatched command from a fresh native host. Recovery-only callbacks reject
+  command starts. Namespace lock attempts queue behind waiting publishers within
+  the existing wait budget.
+  Resume recorded native outcomes at startup and on controls through their
+  original private owner. Keep results readable through callback outages and
+  folder replacement and retain exclusion through a lost settlement reply.
+  Recover a recorded no-dispatch result without replaying an LSP command after
+  its owner's process is killed.
+  Keep settlement retries through later folder loss, retire stale publishers
+  after peer settlement, and preserve legacy/no-origin and newer-owner fences.
+  Verify registered original retries end after peer retirement with the folder
+  absent, covering retained no-dispatch results, admitted/unadmitted cancellation
+  and real received completed/uncertain results in both native transports. Keep
+  original results and single execution through retirement; uncertain effects
+  still require manual review. Reject a regression that stops callbacks while
+  retaining the worker.
+  Persist native cancellation without a command outcome, then retire its original
+  reservation after exact backend cleanup and settlement. Retry through callback
+  and folder loss and process restart, including reservations whose first file
+  admission never committed. Reject unknown file effects and dispatched intents;
+  cancelled records cannot acquire a result or new dispatch permission.
+  Enroll original process cleanup receipts before LSP command dispatch. Persist
+  received outcomes before watcher release and keep the original folder descriptors
+  through durable managed-group cleanup. Recover an interrupted dispatched command
+  as uncertain from a distinct native successor without replay, retaining manual
+  acknowledgement and settlement. Further interruption, escaped-process and
+  application verification remains in progress.
+  Recover a pre-dispatch native intent interrupted before backend Claim or after
+  its commit but before ACK, using the original completed-file and folder proof.
+  Preserve the exact rejection, manual acknowledgement and late-worker fences
+  without replaying the command.
+  Keep received completed and uncertain command results exact through owner loss,
+  watcher cleanup, temporary namespace/folder loss and lost settlement replies,
+  including concurrent recovery hosts. Retain physical fencing until original
+  cleanup can be saved, and preserve review before acknowledging uncertain effects.
+  Preserve final command settlement after public history pruning. Persist bounded
+  native metadata acknowledgements across restart, release ordinary writers after
+  exact settlement, and drain metadata without reopening the retired folder.
+  Keep disposal retries working after deletion of an already-settled project.
+  Authenticate and encrypt original command callbacks with the enduring native
+  proof. Reconnect a configured backend address only after its original-scope
+  reply, and persist the verified move without changing command or folder
+  ownership. Keep recovery working after another native process loss.
+  Offer the current browser backend address through shared scoped recovery
+  adapters without requiring folder permission or restarting a running host.
+  Reject replacement issuers and replayed private replies. Follow verified moves
+  during warm publication and drain metadata-only retries after public pruning,
+  backend receipt disposal and a lost acknowledgement. Verify current browser,
+  real WASI forwarding/paired transport and recovery controls after an address
+  move without restarting the native host, including Local without a saved folder
+  handle. Packaged release and installed-app verification remain in progress.
+  Reject special files without blocking private recovery-state reads.
+  Persist the container namespace and external identity on its existing data
+  volume through root-owned per-UID installation policy; preserve SSH/tool home
+  lookup and ordinary private-workspace exclusion.
+  Flush captured directories through a read-capable handle on Linux and macOS,
+  preserving original-object binding for namespace state and native mutations.
+  Recover interrupted private database updates from original validated snapshots;
+  retain a permanent external marker that prevents resetting to empty state.
+  Observe original file and command recovery together in private native replies;
+  reject stale scope authorization and incomplete recovery observations.
+  Retain original command identity and outcome fingerprints independently of
+  provider/source payloads, with bounded private reads in both transports and
+  conservative upgrades for archived commands. Keep separate backend command
+  workers and retain protection through positive cleanup and settlement, with
+  shared outcome acknowledgement validation for service and paired callbacks.
+  Run the shared native command producer under its original recovery permit,
+  preallocate bounded results and record dispatch before one RPC. Publish and
+  settle independently of browser lifetime; preserve warm services after success
+  and retain rejected/uncertain protection until manual review. Keep final-outcome
+  status/stop controls available without new dispatch permission. Return stored
+  outcomes without contacting the old host; Stop still requires the original host
+  until native cleanup is positively confirmed. Read and acknowledge bounded
+  command recovery without decoding archived provider/source payloads. Resolve
+  native controls from the original session and keep saves paused through pending
+  settlement, including completed and acknowledged outcomes. Require normal
+  bridge authentication for command preparation in both transports. Native restart
+  cleanup for dispatched commands and application verification remain in progress.
+  Discard an unstarted command while keeping committed edits through shared native
+  Stop/cleanup and acknowledgement. Recover already-recorded backend rejections
+  with their exact retained outcome, without fresh provider authority or dispatch.
+  Preserve original Rejected/Cancelled decisions on warm and retired controls.
+  Exercise complete command HTTP flows with real approvals/grants and isolated
+  native ownership, preserving stop, Git change and cached-outcome checks.
+  Reserve attached-command result space and its original private worker atomically
+  with folder ownership before the first file claim. A full result ledger leaves
+  no newly enrolled folder owner. Promote the reservation once, using the same
+  worker after file completion; reconnect does not renew a dispatched intent.
+  Retain that command worker in the same backend transaction as file admission,
+  without granting dispatch permission. Require fresh manual authority to start
+  it; keep paired cleanup callbacks valid if Start authorization fails.
+  Preserve recovery of legacy file workers and accepted intents without renewing
+  provider permissions or granting command dispatch.
+
+- Bind admitted native file mutations to the original open directory through
+  traversal, publication and cleanup. Preserve supported aliases, entry-kind
+  checks, exclusive moves and bounded temporary-file creation under shared policy.
+
+- Keep native file leases inside the actual blocking I/O operation through
+  runtime shutdown. Reuse the real outer lease for version-1 transaction files
+  without recursive admission, and preserve non-yielding raw atomic operations.
+
+- Route native agent, child-task and plugin-management file writes through the
+  shared live folder gate. Keep admitted file I/O owned after observer loss,
+  cancel queued writes before I/O and reject a changed queued root. Keep existing
+  outer leases for reviewed transactions without recursively acquiring them.
+
+- Add private recovery credential issuance through both native journal transports.
+  Bind the original account, project, journal and root to a separate persistent
+  backend key; preserve credentials across worker release, transport-secret
+  rotation and database reopen. Durable native mutation enforcement remains open.
+
+- Retain Unix folder creation-time observations for roots and ancestors during
+  native admission, using the same original-object identity as resource recovery.
+  Reject changed observations before native access; preserve existing recovery
+  identity formats and live file-ID locking.
+
 - Record the isolated 512-module language-prefetch comparison in both modes under verified Linux 2 CPU / 2 GiB limits. All eight original runs pass; measured CPU cost increases and mixed latency results keep warming opt-in. Complete allocator stability and general benefit remain unproven.
 
 - Allow macOS plugin dependency fetches to read the trusted resolved system DNS file. Preserve available bounded compiler stderr after timeout or cancellation even while another writer keeps its pipe open, identify immutable bundled packages before compilation, and run native sandbox/process regressions in both macOS release jobs. Keep the existing build deadlines and deny network access during compilation.
@@ -18,6 +181,7 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 - Use monotonically increasing account generations in the wrapped geometry replay fixture, matching sign-in/logout. Preserve its complete geometry checks and existing deadlines, with separate counter-restoration coverage unchanged.
 
 - Keep Linux/macOS foreground and agent command folder locks in an independent process watcher before dispatch and through bridge loss or cancellation cleanup. Enter the pinned original directory, preserve acknowledged background work while retaining exclusion, and block overlapping work when cleanup is unconfirmed. Escaped groups, PTY/Git lifetimes, Windows ownership and durable writer authority remain unfinished.
+- Reap adopted managed descendants in Linux process watchers so completed background commands release their folder locks when the daemon runs as PID 1 without a container init process. Preserve ordinary saves during background work and reviewed exclusion until cleanup completes.
 - Require real authenticated command and descendant startup in disconnect checks, including paired browser access, before checking that delayed writes are prevented.
 - Cancel app HTTP commands when their connection reaches read EOF, through an explicit request option shared by Local and Remote command clients. Preserve intentional half-closed requests for clients that omit the option.
 - Fetch all immutable bundled-plugin pins together and continue verifying every package snapshot and license against those exact Git objects.

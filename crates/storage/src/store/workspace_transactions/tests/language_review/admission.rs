@@ -414,6 +414,7 @@ fn paired_initial_admission_and_recovery_share_the_same_atomic_review_acceptance
             delegation,
             worker: worker(1),
             operation: Operation::Admit {
+                command: None,
                 review_digest: None,
                 language_grant: None,
             },
@@ -439,6 +440,7 @@ fn paired_initial_admission_and_recovery_share_the_same_atomic_review_acceptance
             0
         );
         request.operation = Operation::Admit {
+            command: None,
             review_digest: Some(digest.clone()),
             language_grant: Some(token),
         };
@@ -480,6 +482,7 @@ fn paired_initial_admission_and_recovery_share_the_same_atomic_review_acceptance
             delegation: next,
             worker: worker(2),
             operation: Operation::Admit {
+                command: None,
                 review_digest: None,
                 language_grant: None,
             },

@@ -118,6 +118,54 @@ impl ProjectHost {
         }
         Ok(openwebide_core::scheduled::HostBinding::new(host.id, path))
     }
+    /// Reconnection is independent of folder access and provider admission.
+    pub async fn reconnect_language_commands(
+        self,
+        project: i64,
+        current: impl Fn() -> bool,
+    ) -> Result<bool, String> {
+        let revision = self.revision();
+        let account = self
+            .auth
+            .generation
+            .try_get_untracked()
+            .ok_or("Command recovery context changed")?;
+        let guarded = || {
+            current()
+                && self.revision() == revision
+                && self.auth.generation.try_get_untracked() == Some(account)
+        };
+        if !guarded() {
+            return Err("Command recovery context changed".into());
+        }
+        let user = self
+            .auth
+            .user
+            .try_get_untracked()
+            .flatten()
+            .ok_or("Sign in before reconnecting command recovery")?
+            .id
+            .get();
+        let backend = self
+            .api
+            .try_with_value(Clone::clone)
+            .ok_or("Command recovery context changed")?;
+        let request =
+            openwebide_core::plugins::languages::intelligence::actions::CommandCallbackRequest {
+                user: Some(user),
+                project,
+                callback: backend.command_callback_url()?,
+            };
+        request.validate()?;
+        let changed = self
+            .plugin_host(Some(project), guarded)?
+            .reconnect_language_commands(&request)
+            .await?;
+        if !guarded() {
+            return Err("Command recovery context changed".into());
+        }
+        Ok(changed)
+    }
     pub async fn discover_servers(self) -> Result<Vec<openwebide_core::ServerDiscovery>, String> {
         let local = self
             .projects
@@ -435,6 +483,26 @@ pub enum PluginExecutionHost {
     Local(crate::plugin_bridge::PluginBridgeClient),
 }
 impl PluginExecutionHost {
+    pub async fn reconnect_language_commands(
+        &self,
+        request:&openwebide_core::plugins::languages::intelligence::actions::CommandCallbackRequest,
+    ) -> Result<bool, String> {
+        match self {
+            Self::Remote { api, .. } => {
+                api.with_value(Clone::clone)
+                    .reconnect_language_commands(request)
+                    .await
+            }
+            Self::Local(client) => {
+                client
+                    .plugin_request(
+                        "languages/command/reconnect",
+                        serde_json::to_value(request).map_err(|error| error.to_string())?,
+                    )
+                    .await
+            }
+        }
+    }
     pub async fn revoke_language_servers(
         &self,
         request: &openwebide_core::plugins::languages::intelligence::Revoke,

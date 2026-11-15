@@ -1,0 +1,109 @@
+{
+  "status": "Exact received Completed and Uncertain results survive actual owner loss before watcher cleanup acknowledgement in both adapters. Command recovery and the complete roadmap remain unfinished.",
+  "source_sha256": "5b3d8d10a8fc2dd56a47126fa3e4c3749afc91dd0a748b21f2141a8539bf16d1",
+  "builds_on": "prepared-command-checks.json",
+  "production_implementation_changed": false,
+  "changed_test_paths": [
+    "bridge/tests/common/command_case.rs",
+    "bridge/tests/language_commands.rs",
+    "bridge/tests/language_commands/retained.rs",
+    "tools/fixtures/commands_server.py"
+  ],
+  "shared_implementation": "The existing owned command producer, original managed-group watcher receipts, shared recovery facade and original callback Store CAS supply this behavior. Test adapters only control their owned processes, real replies and callback availability; no application fault hooks, fabricated results or weakened validation were added.",
+  "contract": [
+    "Sixteen actual SIGKILL scenarios: both adapters x received Completed/Uncertain x watcher handoff, original namespace loss/restoration, original folder loss/restoration, or lost real final settlement ACK with another native successor.",
+    "Pause only the verified original watcher before allowing the LSP reply. Observe a stable Committed head, database digest and original namespace key through an in-memory SQLite copy. Retain the exact validated result before killing its owner; never write test outcomes into native state.",
+    "The original managed descendant stops. Missing-namespace cases retain the original physical folder lock through confirmed group quiescence until receipt persistence becomes possible; a successor cannot initialize replacement state.",
+    "Exact large Unicode/quoted/backslash/CRLF Completed JSON and valid Unicode Uncertain messages survive. Revoked providers, callback outages and temporary folder/namespace loss require no fresh provider grant or LSP replay.",
+    "Ordinary writers stay rejected or queued while cleanup/publication is pending, then remain rejected until required manual acknowledgement and exact settlement. Successful ordinary execution follows retirement. Uncertain requires review; Completed settles without manual acknowledgement.",
+    "Lost settlement replies occur after the real Store commits. Both successors preserve the original fence until reconciliation, retire, and stop further original callbacks. Files, editor recovery, namespace key and exact backend outcome remain intact, with exactly one mutating LSP RPC."
+  ],
+  "verification": {
+    "focused_terminal": "retained-outcome-focused-1794717475/terminal.json",
+    "terminal": "retained-outcome-qualified-1794717661/terminal.json",
+    "artifacts": "retained-outcome-qualified-outputs-1794718181/manifest.json",
+    "checks": [
+      {
+        "case": "format",
+        "returncode": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "native-all-target-clippy",
+        "returncode": 0,
+        "log_sha256": "9c73735a1033f44f00ea48e15c38d73843ff5a391557aac653bd81d564a34b5f"
+      },
+      {
+        "case": "Windows-cross-all-target-clippy",
+        "returncode": 0,
+        "log_sha256": "b2c020f27a01faabb96e5d55c11fd219cf7c484c9cf34b3342bfc8444d934c89"
+      },
+      {
+        "case": "matching-main",
+        "returncode": 0,
+        "log_sha256": "ebe3cd8c4dd2b52d6853bf7f2ee77dad38b6515b452bcdbf5863ed00820def6f"
+      },
+      {
+        "case": "matching-process-example",
+        "returncode": 0,
+        "log_sha256": "b09bf342386f1c7e8571895b01457a0ffa9c390f3e69465d9fbf32893380a0f4"
+      },
+      {
+        "case": "all-command-HTTP",
+        "returncode": 0,
+        "log_sha256": "ac865e9d613aff4e34ce1c53e5eae5bf00b021ec74349e5e79687aba08d6a458"
+      },
+      {
+        "case": "native-command-fixture-consumers",
+        "returncode": 0,
+        "log_sha256": "ad361361d67a2c68aaa62ddeb0540f7d2df0440c893d625a1cb82ac33d7fce81"
+      },
+      {
+        "case": "native-admission-fixture-consumers",
+        "returncode": 0,
+        "log_sha256": "d4c8952be8999c9d9fd6baa7d7bf61a03bb3bd46de9fa261a7294a6858dd5d97"
+      },
+      {
+        "case": "default-bin-clippy",
+        "returncode": 0,
+        "log_sha256": "b23791f0fd27a6b74e505d5486b9ff0573010a77d5f5911071985e767940259b"
+      },
+      {
+        "case": "production-feature-inventory",
+        "returncode": 0,
+        "log_sha256": "51a70955c82feadb08bcaf685eec7550c14e8cf35436c8f256347155c7578b04"
+      }
+    ],
+    "fresh_test_counts": {
+      "all-command-HTTP": 11,
+      "native-command-fixture-consumers": 24,
+      "native-admission-fixture-consumers": 45
+    },
+    "distinct_native_HTTP_tests": 80,
+    "qualified_test_executions": 80,
+    "additional_focused_duplicate_test_executions": 1,
+    "HTTP_lifecycle_scenarios": 88,
+    "HTTP_SIGKILL_scenarios": 46,
+    "new_received_result_SIGKILL_scenarios": 16,
+    "additional_focused_duplicate_SIGKILL_scenarios": 16,
+    "actual_peer_scenarios": 6,
+    "macOS_runtime_both_adapters": true,
+    "Windows_cross_Clippy": true,
+    "Windows_native_runtime": false,
+    "fresh_Linux_runtime": false,
+    "current_browser_or_installed_app": false,
+    "scope": "All three Rust include_str consumers of commands_server.py rerun: the complete language_commands HTTP target and both native commands/admission test modules. The production project-inputs browser checker also uses the fixture in its unchanged inputs mode and was not freshly rerun. Other native/shared suites retain prior checkpoint evidence; the full native library, full CI and browser suites were not freshly rerun for this test-only change."
+  },
+  "harness_corrections": "Earlier focused runs exposed test assumptions: awaiting a writer while withholding namespace restoration; sharing the fixture callback connection with supervisor reads; and an error fixture containing controls rejected by the existing outcome contract. Those test assumptions were corrected without application changes. Failed source/binaries and the one owned-fixture restoration intervention are retained in verification evidence.",
+  "remaining": [
+    "Qualify callback recovery with the current optimized native/WASI release distribution and installed app, including original OS-selected private namespace and physical browser folder permission/device checks. The built-app checkpoint uses optimized frontend, unoptimized production WASI entry point and the same native HTTP host with an isolated test-support namespace.",
+    "Finish frozen-owner application recovery beyond the native OS-owner CLI: deleted original projects/accounts, legacy command owners without verifiable cleanup, actual process interruptions and current packaged/native platform contracts. Never infer cleanup from missing public rows, failed requests or 404 replies.",
+    "Finish remaining admission/watcher-enrollment and outcome/context interruptions, including escaped-process cleanup beyond the verified managed-group cases.",
+    "Finish every participating writer, Git/PTY and escaped-process lifetime; implement and verify native Windows ownership and fresh packaged Linux runtime.",
+    "Complete all original packaged application/browser, cache/resource/RSS/prefetch/homelab and full-CI requirements."
+  ],
+  "command_recovery_complete": false,
+  "full_CI_complete": false,
+  "whole_goal_complete": false,
+  "followup": "retired-command-worker-checks.json"
+}

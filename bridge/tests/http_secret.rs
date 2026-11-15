@@ -1,7 +1,7 @@
+mod common;
 use bytes::Bytes;
 use http_body_util::BodyExt;
 use hyper::{Method, Request};
-use openwebide_bridge::ServerConfig;
 use std::sync::Arc;
 use tokio::net::{TcpListener, TcpStream};
 
@@ -13,7 +13,7 @@ async fn start_server() -> (u16, Arc<str>) {
 
     // In these tests we just use a dummy secret
     let secret: Arc<str> = Arc::from("this_is_a_very_long_dummy_secret_32_bytes_min");
-    let config = ServerConfig::new(workspace, secret.clone(), None);
+    let config = common::server_config(workspace, secret.clone(), None);
 
     tokio::spawn(openwebide_bridge::run_server(listener, config));
     (port, secret)

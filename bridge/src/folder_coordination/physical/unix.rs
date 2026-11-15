@@ -1,8 +1,10 @@
 //! Lock real directory objects, not replaceable sentinel paths. Shared ancestor
 //! locks and an exclusive selected-root lock exclude nested physical projects.
-//! These descriptors are currently owned by the bridge process; they do not yet
-//! establish exclusion against descendants surviving a crashed bridge.
-use super::super::{Folder, identity};
+//! Command watchers may retain these descriptors through bridge loss. They do
+//! not establish durable recovery authority after all owners disappear.
+use super::super::{Folder, WorkspaceUse, identity};
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+use std::os::fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd};
 use std::{
     fs::TryLockError,
     path::PathBuf,
@@ -45,6 +47,7 @@ fn budget() -> &'static Budget {
 struct Directory {
     path: PathBuf,
     handle: same_file::Handle,
+    original: crate::file_identity::Identity,
 }
 #[derive(Debug)]
 pub(in super::super) struct Access {
@@ -62,10 +65,29 @@ impl Access {
             })
             .collect()
     }
-    pub fn try_acquire(folder: &Folder) -> Result<Option<Self>, String> {
-        Self::with_budget(folder, budget())
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    pub(crate) fn quarantine(&self) -> Result<(), String> {
+        quarantine(
+            self.directories
+                .iter()
+                .map(|directory| directory.handle.as_file().as_fd()),
+        )
     }
+    pub fn try_acquire(folder: &Folder) -> Result<Option<Self>, String> {
+        Self::for_use(folder, WorkspaceUse::Reviewed)
+    }
+    pub fn for_use(folder: &Folder, workspace_use: WorkspaceUse) -> Result<Option<Self>, String> {
+        Self::with_usage(folder, budget(), workspace_use)
+    }
+    #[cfg(test)]
     fn with_budget(folder: &Folder, budget: &Budget) -> Result<Option<Self>, String> {
+        Self::with_usage(folder, budget, WorkspaceUse::Reviewed)
+    }
+    fn with_usage(
+        folder: &Folder,
+        budget: &Budget,
+        workspace_use: WorkspaceUse,
+    ) -> Result<Option<Self>, String> {
         if !folder.current() {
             return Err("The physical execution folder changed while waiting".into());
         }
@@ -84,10 +106,11 @@ impl Access {
             .path
             .ancestors()
             .zip(std::iter::once(&folder.physical).chain(&folder.ancestors))
+            .zip(std::iter::once(&folder.original).chain(&folder.original_ancestors))
             .collect::<Vec<_>>();
         selected.reverse();
         let mut directories = Vec::with_capacity(count);
-        for (path, expected) in selected {
+        for ((path, expected), original) in selected {
             let handle = same_file::Handle::from_path(path).map_err(|error| error.to_string())?;
             if !handle
                 .as_file()
@@ -95,19 +118,32 @@ impl Access {
                 .map_err(|error| error.to_string())?
                 .is_dir()
                 || identity(&handle) != *expected
+                || crate::file_identity::Identity::of(handle.as_file())
+                    .map_err(|error| error.to_string())?
+                    != *original
             {
                 return Err("The execution folder ancestry changed before native access".into());
             }
-            let lock = if path == folder.path {
+            let selected_root = path == folder.path;
+            let lock = if selected_root
+                && (workspace_use == WorkspaceUse::Reviewed
+                    || !cfg!(any(target_os = "linux", target_os = "macos")))
+            {
                 handle.as_file().try_lock()
             } else {
-                handle.as_file().try_lock_shared()
+                shared_directory(handle.as_file())
             };
             match lock {
-                Ok(()) => directories.push(Directory {
-                    path: path.to_owned(),
-                    handle,
-                }),
+                Ok(()) => {
+                    if !compatible_use(handle.as_file(), selected_root, workspace_use)? {
+                        return Ok(None);
+                    }
+                    directories.push(Directory {
+                        path: path.to_owned(),
+                        handle,
+                        original: original.clone(),
+                    });
+                }
                 Err(TryLockError::WouldBlock) => return Ok(None),
                 Err(TryLockError::Error(error)) => {
                     return Err(format!("Cannot coordinate native folder access: {error}"));
@@ -115,7 +151,11 @@ impl Access {
             }
         }
         if directories.iter().any(|held| {
-            !same_file::Handle::from_path(&held.path).is_ok_and(|current| current == held.handle)
+            !same_file::Handle::from_path(&held.path).is_ok_and(|current| {
+                current == held.handle
+                    && crate::file_identity::Identity::of(current.as_file())
+                        .is_ok_and(|identity| identity == held.original)
+            })
         }) {
             return Err(
                 "The execution folder ancestry changed while acquiring native access".into(),
@@ -126,6 +166,136 @@ impl Access {
             _permits: permits,
         }))
     }
+}
+
+// Darwin reports a flock shared lock to OFD queries, including queries on the
+// same descriptor. Its shared ancestry therefore uses range 2. Linux also keeps
+// its independent flock for compatibility with older directory-lock owners.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn shared_directory(file: &std::fs::File) -> Result<(), TryLockError> {
+    #[cfg(target_os = "linux")]
+    file.try_lock_shared()?;
+    read_range(file.as_fd(), 2, 1).map_err(|error| {
+        if matches!(error.raw_os_error(), Some(libc::EACCES | libc::EAGAIN)) {
+            TryLockError::WouldBlock
+        } else {
+            TryLockError::Error(error)
+        }
+    })
+}
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+fn shared_directory(file: &std::fs::File) -> Result<(), TryLockError> {
+    file.try_lock_shared()
+}
+
+// Purpose ranges: ordinary root=0, reviewed ancestor=1, shared ancestry=2.
+// Quarantine extends ancestry to 3 on ancestors and 4 on the selected root.
+// Every new user checks root quarantine on its complete path, and checks for
+// quarantined descendants at its selected root. Siblings remain independent.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn compatible_use(
+    file: &std::fs::File,
+    selected_root: bool,
+    workspace_use: WorkspaceUse,
+) -> Result<bool, String> {
+    // The complete exclusive flock already excludes every shared description;
+    // Darwin would also report that same flock in this descriptor's queries.
+    if selected_root && workspace_use == WorkspaceUse::Reviewed {
+        return Ok(true);
+    }
+    if !range_free(file.as_fd(), 4)? || (selected_root && !range_free(file.as_fd(), 3)?) {
+        return Ok(false);
+    }
+    let own = match (selected_root, workspace_use) {
+        (true, WorkspaceUse::Ordinary) => 0,
+        (false, WorkspaceUse::Reviewed) => 1,
+        _ => return Ok(true),
+    };
+    // Publish before observing the incompatible purpose. Racing purposes cannot
+    // both enter; the existing waiter releases the complete partial set on retry.
+    read_range(file.as_fd(), own, 1)
+        .map_err(|error| format!("Cannot coordinate ordinary workspace access: {error}"))?;
+    range_free(file.as_fd(), 1 - own)
+}
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+fn compatible_use(
+    _file: &std::fs::File,
+    _selected_root: bool,
+    _workspace_use: WorkspaceUse,
+) -> Result<bool, String> {
+    Ok(true)
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn lock_type(value: impl TryInto<libc::c_short>) -> libc::c_short {
+    value
+        .try_into()
+        .unwrap_or_else(|_| unreachable!("OS lock types fit the native flock field"))
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn read_range(
+    file: BorrowedFd<'_>,
+    start: libc::off_t,
+    length: libc::off_t,
+) -> std::io::Result<()> {
+    // SAFETY: flock consists only of integer fields.
+    let mut range: libc::flock = unsafe { std::mem::zeroed() };
+    range.l_type = lock_type(libc::F_RDLCK);
+    range.l_whence = libc::SEEK_SET.try_into().unwrap();
+    range.l_start = start;
+    range.l_len = length;
+    loop {
+        // SAFETY: the borrowed descriptor and initialized flock stay live.
+        if unsafe { libc::fcntl(file.as_raw_fd(), libc::F_OFD_SETLK, &range) } != -1 {
+            return Ok(());
+        }
+        let error = std::io::Error::last_os_error();
+        if error.kind() != std::io::ErrorKind::Interrupted {
+            return Err(error);
+        }
+    }
+}
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn range_free(file: BorrowedFd<'_>, start: libc::off_t) -> Result<bool, String> {
+    // SAFETY: flock consists only of integer fields.
+    let mut range: libc::flock = unsafe { std::mem::zeroed() };
+    range.l_type = lock_type(libc::F_WRLCK);
+    range.l_whence = libc::SEEK_SET.try_into().unwrap();
+    range.l_start = start;
+    range.l_len = 1;
+    loop {
+        // SAFETY: fcntl writes into this live, initialized flock.
+        if unsafe { libc::fcntl(file.as_raw_fd(), libc::F_OFD_GETLK, &raw mut range) } != -1 {
+            return Ok(range.l_type == lock_type(libc::F_UNLCK));
+        }
+        let error = std::io::Error::last_os_error();
+        if error.kind() != std::io::ErrorKind::Interrupted {
+            return Err(format!(
+                "Cannot observe workspace quarantine or review: {error}"
+            ));
+        }
+    }
+}
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn quarantine<'a>(
+    directories: impl ExactSizeIterator<Item = BorrowedFd<'a>>,
+) -> Result<(), String> {
+    let count = directories.len();
+    if count == 0 || count > MAX_DIRECTORIES {
+        return Err("Quarantine requires the original complete directory claim".into());
+    }
+    for (index, descriptor) in directories.enumerate() {
+        // Extend existing read-lock ranges on the same original descriptions.
+        // Duplicates held by an independent watcher retain these changes too.
+        read_range(descriptor, 2, if index + 1 == count { 3 } else { 2 })
+            .map_err(|error| format!("Cannot retain ordinary workspace quarantine: {error}"))?;
+    }
+    Ok(())
+}
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+pub(crate) fn quarantine_descriptors(descriptors: &[OwnedFd]) -> Result<(), String> {
+    quarantine(descriptors.iter().map(AsFd::as_fd))
 }
 
 #[cfg(test)]

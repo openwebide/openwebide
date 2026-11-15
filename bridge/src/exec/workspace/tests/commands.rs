@@ -79,6 +79,48 @@ async fn successful_background_commands_keep_the_original_folder_excluded_until_
     );
 }
 
+#[tokio::test]
+async fn acknowledged_background_work_allows_saves_but_still_excludes_reviewed_changes() {
+    use crate::runs::native_vfs::workspace::WorkspaceFiles;
+    use openwebide_core::Vfs;
+    let root = tempfile::tempdir().unwrap();
+    std::fs::create_dir(root.path().join("child")).unwrap();
+    let config = crate::ServerConfig::new(root.path().into(), "secret".into(), None);
+    let coordinator = config.workspace_transactions.coordinator.clone();
+    let host = config.guarded_execution();
+    let result = host.run_command(SpawnSpec::shell(
+        "(n=0; while [ ! -e continue ] && [ \"$n\" -lt 500 ]; do sleep .02; n=$((n+1)); done; printf finished > outcome) >/dev/null 2>&1 & printf acknowledged".into(),
+        root.path().into(), 5, std::future::pending(),
+    )).await.unwrap();
+    assert_eq!(result.exit_code, Some(0));
+    assert_eq!(result.stdout, "acknowledged");
+    let files = WorkspaceFiles::new(root.path().into(), coordinator.clone());
+    let saved =
+        tokio::time::timeout(Duration::from_secs(2), files.write("saved", "editor draft")).await;
+    let mut review =
+        Box::pin(coordinator.acquire(Folder::capture(&root.path().join("child")).unwrap()));
+    let review_waited = review.as_mut().now_or_never().is_none();
+    // Always let the real group finish before asserting, including on a red.
+    std::fs::write(root.path().join("continue"), "").unwrap();
+    exists(&root.path().join("outcome")).await;
+    let review = tokio::time::timeout(Duration::from_secs(5), review)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(
+        review_waited,
+        "A live ordinary process admitted reviewed changes"
+    );
+    saved
+        .expect("An ordinary background job blocked a save")
+        .unwrap();
+    assert_eq!(
+        std::fs::read_to_string(root.path().join("saved")).unwrap(),
+        "editor draft"
+    );
+    drop(review);
+}
+
 const SCRIPT: &str = r#"
 import os,pathlib,signal,subprocess,sys,time
 root=pathlib.Path(sys.argv[1])

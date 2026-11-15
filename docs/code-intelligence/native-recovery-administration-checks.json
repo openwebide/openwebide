@@ -1,0 +1,133 @@
+{
+  "status": "Native OS-owner inspection and audited retirement pass native metadata/folder-gate contracts in both workspace modes, with the full affected native and HTTP suites. Frozen-owner application/process/platform verification and the complete roadmap remain unfinished.",
+  "source_sha256": "cda95b27c4e8c8bb65e0e834ffdbe5d87ec31992d258ba3ea85bf17ea077f2e8",
+  "builds_on": "retired-command-worker-checks.json",
+  "implementation": {
+    "facade": "bridge/src/recovery.rs parses OS-owner inspect/retire commands once and selects the existing OS namespace. Shared retirement policy is in bridge/src/native_recovery/owners/administration.rs, above the original physical folder lock and anchored persistence primitives. Both project modes use the same native policy; no HTTP endpoint, backend credential or user-selected namespace is added.",
+    "persistence": "Native schema 10 atomically replaces an original owner/command or non-fencing settlement outbox with a bounded audit and immutable original-scope fence. Ordinary settlement raises older schemas without downgrading a later schema.",
+    "operator_guide": "../execution-bridge.md#native-recovery-after-an-issuer-is-decommissioned"
+  },
+  "contract": [
+    "Inspect only an existing OS-selected namespace. Exclude native authority and worker credentials; retain original user/project/mode, folder, file/command stage and received result in the operator view. Inspection cannot initialize an absent namespace.",
+    "Retirement requires the exact inspected original ID and digest plus a nonempty bounded review note. Changed native file/command state rejects stale approval. The private namespace nonce and complete original record bind the digest; no new backend authority is issued.",
+    "A fencing owner requires its same original physical folder and complete exclusive directory gate. An active file worker, retained process descriptors or a same-path folder replacement prevents retirement. A legacy file-only owner can be explicitly reviewed; a legacy command without an original cleanup record remains blocked.",
+    "Unconfirmed dispatched command cleanup cannot be invented by administration. The private original cleanup capability must confirm it, and retained physical descriptors still prevent retirement. Preserve the exact original outcome in the durable audit instead of synthesizing a new command result.",
+    "Retain inspected context, exact result or final result digest, review note and time in the bounded private audit. Repeating the same request is idempotent. Fence the original immutable transaction binding across stale or changed credentials, while ordinary writers and genuinely new transactions can proceed. No fence is automatically evicted.",
+    "A final settlement outbox is already non-fencing and can be explicitly retired without folder access or backend contact. It cannot certify cleanup of a live command or settle original backend records. Its old metadata retry sees absence; its credentials are not exposed in the audit.",
+    "After outbox retirement, restore the same folder and run a distinct native command through intent, outcome and settlement. Reopen native state, retain the original audit and new pending metadata ACK, reject the old outbox capability and prove an ordinary writer succeeds. Verify behavior rather than assert a schema setting.",
+    "Keep cancellation control EOF before an unacknowledged handoff reply. Isolate descriptor fixtures from unrelated parallel forks; await the isolated runtime blocking worker before the unchanged final immediate OS-lock assertion. Production cancellation policy is unchanged."
+  ],
+  "verification": {
+    "terminal": "frozen-owner-qualified-1794738287/terminal.json",
+    "outputs": "frozen-owner-qualified-outputs-1794738992/manifest.json",
+    "checks": [
+      {
+        "case": "format",
+        "returncode": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "native-clippy",
+        "returncode": 0,
+        "log_sha256": "45d8f7d972875790a6cec7ca48e9acc17c5af68372da1940633becec3b4cd60a"
+      },
+      {
+        "case": "Windows-cross-clippy",
+        "returncode": 0,
+        "log_sha256": "9c73735a1033f44f00ea48e15c38d73843ff5a391557aac653bd81d564a34b5f"
+      },
+      {
+        "case": "matching-main",
+        "returncode": 0,
+        "log_sha256": "beed191cf5cd39a57477a6d66e9acb53f3b4efe7566a30e0ada805357a0fe6ff"
+      },
+      {
+        "case": "matching-example",
+        "returncode": 0,
+        "log_sha256": "0b53209db424367e80c52cd8cde8b75e37af110438a0efde777104a1463956de"
+      },
+      {
+        "case": "OS-owner-contract",
+        "returncode": 0,
+        "log_sha256": "1e007f215e09c049a2d9b1a775f20492b6dd1bd93849f6e48540fb7792772f94"
+      },
+      {
+        "case": "CLI-contract",
+        "returncode": 0,
+        "log_sha256": "2d7592394ea9b4565a2eaee6480df591a93d03d88bc0a94fb179f4099b2282b1"
+      },
+      {
+        "case": "all-native-library",
+        "returncode": 0,
+        "log_sha256": "08b460b6ec2af3d2d1394e4d98f5971b22c6dd2d304745f28476121dc1c20811"
+      },
+      {
+        "case": "explicit-marketplace-smoke",
+        "returncode": 0,
+        "log_sha256": "a88fbde99870f9707894d130e015e1b80aa1969b10d96c13122159334f71664a"
+      },
+      {
+        "case": "all-command-HTTP",
+        "returncode": 0,
+        "log_sha256": "a0cbd4bd4f63a7f23313629fd5481f162f5d991023d13528198ab456aa35e9b2"
+      },
+      {
+        "case": "default-bin-clippy",
+        "returncode": 0,
+        "log_sha256": "8bfe438c8610556b5bf3b574a63214e9d021aaf89d12a287f2d33312847b6990"
+      },
+      {
+        "case": "production-feature-inventory",
+        "returncode": 0,
+        "log_sha256": "51a70955c82feadb08bcaf685eec7550c14e8cf35436c8f256347155c7578b04"
+      }
+    ],
+    "test_counts": {
+      "native_library": 549,
+      "explicit_marketplace": 1,
+      "command_HTTP": 15
+    },
+    "distinct_native_HTTP_tests": 565,
+    "additional_current_focused_executions": {
+      "OS_owner_contract": 3,
+      "CLI_and_existing_namespace_contracts": 10
+    },
+    "new_native_tests": 5,
+    "native_owner_workflows": 8,
+    "modes": [
+      "local",
+      "remote"
+    ],
+    "migration_regression": "frozen-owner-migration-focused-1794736414/terminal.json",
+    "cancellation_lifetime_contract": "frozen-owner-handoff-focused-1794737990/terminal.json",
+    "prior_failed_full_run": "frozen-owner-qualified-1794736906/terminal.json",
+    "prior_failure": "Cancellation test checked the final lock after joining its peer but before its detached blocking exchange necessarily finished. Parallel fork inheritance could also keep CLOEXEC descriptors alive. The test now isolates its fixture and positively awaits that worker before asserting release.",
+    "native_and_Windows_cross_Clippy": true,
+    "actual_default_CLI_help_and_malformed_requests": "frozen-owner-qualified-1794738287/actual-cli.json",
+    "actual_real_namespace_inspected_or_changed": false,
+    "all40_original_production_artifacts_unchanged": true,
+    "new_administration_tests_dispatch_a_real_LSP_command": false,
+    "real_deleted_project_account_application_flow": false,
+    "native_Windows_runtime": false,
+    "fresh_Linux_runtime": true,
+    "installed_app_and_physical_permissions_reexecuted": false,
+    "full_CI_complete": false,
+    "fresh_Linux_runtime_scope": "Native metadata contracts in both modes, actual file-owner CLI across fresh containers and ordinary HTTP writing; current dev normal bridge mounted into packaged runtime-state policy. Not optimized full-app or dispatched-command administration.",
+    "fresh_Linux_runtime_checkpoint": "linux-recovery-administration-checks.json"
+  },
+  "remaining": [
+    "Qualify callback recovery with the current optimized native/WASI release distribution and installed app, including original OS-selected private namespace and physical browser folder permission/device checks. The built-app checkpoint uses optimized frontend, unoptimized production WASI entry point and the same native HTTP host with an isolated test-support namespace.",
+    "Finish frozen-owner application recovery beyond the native OS-owner CLI: deleted original projects/accounts, legacy command owners without verifiable cleanup, actual process interruptions and current packaged/native platform contracts. Never infer cleanup from missing public rows, failed requests or 404 replies.",
+    "Finish remaining admission/watcher-enrollment and outcome/context interruptions, including escaped-process cleanup beyond the verified managed-group cases.",
+    "Finish every participating writer, Git/PTY and escaped-process lifetime; implement and verify native Windows ownership and fresh packaged Linux runtime.",
+    "Complete all original packaged application/browser, cache/resource/RSS/prefetch/homelab and full-CI requirements."
+  ],
+  "frozen_owner_recovery_complete": false,
+  "command_recovery_complete": false,
+  "full_CI_complete": false,
+  "whole_goal_complete": false,
+  "deleted_project_followup": {
+    "checkpoint": "deleted-project-command-checks.json",
+    "scope": "Both-mode native HTTP/SQLite dispatched Completed command, real Store deletion, lost settlement acknowledgement, explicit shared CLI executor retirement and fresh-host writing; packaged built-app and OS-default CLI sequence remain unverified."
+  }
+}

@@ -1,5 +1,6 @@
 //! Required real-server probe, run explicitly where rust-analyzer is installed.
 //! Production browser/host checks exercise the facade separately.
+use anyhow::Context;
 use openwebide_bridge::languages::process::Process;
 use openwebide_core::plugins::languages::{LanguageServer, intelligence};
 use serde_json::{Value, json};
@@ -130,7 +131,9 @@ async fn main() -> anyhow::Result<()> {
     );
     process.shutdown().await;
     pump.abort();
-    check_project_service(root.path(), server).await?;
+    check_project_service(root.path(), server)
+        .await
+        .context("Checking the native Rust project service")?;
     Ok(())
 }
 
@@ -198,7 +201,8 @@ async fn check_project_service(
             let result = host
                 .query(scope.clone(), &input)
                 .await
-                .map_err(anyhow::Error::msg)?;
+                .map_err(anyhow::Error::msg)
+                .context("Requesting the initial native Rust hover")?;
             input.request += 1;
             if !result.result.is_null() {
                 break Ok::<_, anyhow::Error>(result);
@@ -216,11 +220,18 @@ async fn check_project_service(
     let cached = cache::wait_for(storage.path(), |path| {
         path.file_name().is_some_and(|name| name == "build-count")
     })
-    .await?;
+    .await
+    .context("Waiting for Rust build-script cache output")?;
     let counts: Vec<_> = cached
         .keys()
         .filter(|path| path.file_name().is_some_and(|name| name == "build-count"))
-        .map(|path| Ok((path.clone(), std::fs::read_to_string(path)?)))
+        .map(|path| {
+            Ok((
+                path.clone(),
+                std::fs::read_to_string(path)
+                    .with_context(|| format!("Reading Rust build count in {}", path.display()))?,
+            ))
+        })
         .collect::<anyhow::Result<_>>()?;
     anyhow::ensure!(
         !root.join("target").exists(),

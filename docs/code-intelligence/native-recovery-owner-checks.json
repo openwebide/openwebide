@@ -1,0 +1,216 @@
+{
+  "status": "Original native file owner admission verified for complete workers and per-file companion calls; compound command authority remains incomplete",
+  "source_sha256": "50fd7987f61cb604a0a44b2bd673ac2cdf5dc272a53f90290e37d39ddb77b554",
+  "implementation": [
+    "Bounded owner rows use the original crash-safe SQLite publisher. Private issuer credentials are stored only as digests bound to immutable account/project/journal/generation claims.",
+    "The common native owner publisher persists intent before the backend worker CAS for complete workers and per-file companion calls. Both native transports reuse Journal private response validation. A lost/rejected claim retains intent.",
+    "The common Coordinator rejects ordinary overlapping writers, including physical aliases, ancestors/descendants, moved original roots and lexical replacement paths. Fresh private original permits are required to recover.",
+    "File-only ownership is removed only under the original physical lease, after observing original compound inactivity and acknowledging worker release. A stored command owner cannot be cleared by file completion.",
+    "Private Local proof/read access can reconnect a pending owner but cannot construct a mutation VFS or acquire process descriptors.",
+    "Original root and same-filesystem ancestor identities persist across container recreation. Enclosing runtime mount identities are retained for overlap observations but do not change original-owner equality.",
+    "Per-file native sessions retain their original private permit so accepted writes enter the physical queue before network waits. Current backend worker authority is rechecked under the gate before mutation.",
+    "Closing a session whose account cancellation revoked private reads can release/retire the session but cannot clear its durable owner. A fresh original bootstrap can positively observe cancellation and clear file-only protection."
+  ],
+  "limits": {
+    "max_owners": 128,
+    "max_owner_record_bytes": 65536,
+    "max_database_bytes": 16777216,
+    "schema": "Existing schema2 namespace migrates to schema3 on first owner enrollment; no empty reset or age takeover"
+  },
+  "evidence": {
+    "macOS": {
+      "terminal": "native-owner-focused-1794673280/terminal.json",
+      "source_sha256": "50fd7987f61cb604a0a44b2bd673ac2cdf5dc272a53f90290e37d39ddb77b554",
+      "cases": [
+        {
+          "case": "format",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "case": "matching-bridge",
+          "returncode": 0,
+          "deadline_seconds": 1800,
+          "log_sha256": "57bcdf8fbdad4529b29d74839a73c59a27c793a90195e6279bcd8763621ab49b"
+        },
+        {
+          "case": "original-owner-ledger",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "fa7d975a8a10ef42b52e0e111cd439f32842cc5a68578c33c06e8cf49a709d4e"
+        },
+        {
+          "case": "both-native-hosts",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "9320e30d153107c422b6cd57de464e17ebc7238313eaf7757d2556c997ef313b"
+        },
+        {
+          "case": "namespace-and-durable-publication",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "c7af0a9e64cdb569d1f6e146f25468e0a367927306427ce358a714971e441a8b"
+        },
+        {
+          "case": "all-native-folders",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "7fa8b4620a0c650a25993ee62b498a5aae44a7e962b03f97b632112574b059d3"
+        },
+        {
+          "case": "all-native-writers",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "856558f79020892547658088e8f0f274503f76120f836503a986dfa26af03351"
+        },
+        {
+          "case": "native-agent-writers",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "b60b507ae4071de4484eab2280bec1b1adb069335249022d3a78e048df267171"
+        },
+        {
+          "case": "git-private-workspaces",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "d70a2876fc7aa57052e066aef2d884dff72bc17ca11e61769df6d22e5d8a3761"
+        },
+        {
+          "case": "directory-durability",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "35ed293b330eeeb1d94ae8ebd64f449fed3b08da371f5618f4dcc8bb198e4591"
+        },
+        {
+          "case": "bridge-all-target-clippy",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "28c96ef757f7520fa0a641ad6b7cb20afdd72db57b12aab0d741ddaa94f0b43a"
+        }
+      ]
+    },
+    "linux": {
+      "terminal": "native-owner-linux-1794673614/terminal.json",
+      "source_sha256": "50fd7987f61cb604a0a44b2bd673ac2cdf5dc272a53f90290e37d39ddb77b554",
+      "cases": [
+        {
+          "case": "exact-packaged-runtime-state",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "345abde879094648bc78a0b38486468a9ed800d165c0fa24554e7bbae9bb4fd6"
+        },
+        {
+          "case": "matching-linux-bridge-and-libtest",
+          "returncode": 0,
+          "deadline_seconds": 2400,
+          "log_sha256": "f68e450d34afe8aa473c9e4689d880943742cbe31d11d7483872469f6f1aedc0"
+        },
+        {
+          "case": "fresh-containers-same-volume-fault-restoration",
+          "returncode": 0,
+          "deadline_seconds": 1800,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "case": "fresh-containers-original-owner-recovery",
+          "returncode": 0,
+          "deadline_seconds": 1800,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "case": "linux-namespace-primitives",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "3e03a694d8c7f3fe7fb1e929cc0a1458f031d2cbbe0aa88db285bb9aacb39c0a"
+        },
+        {
+          "case": "linux-directory-mutation",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "0aa5b824211941444afb1894d998e1992c8e6f4d5ac472a2a665ffb16d7ad90b"
+        },
+        {
+          "case": "linux-captured-directory-sync",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "602d56bf5bd87c4997dabf5101aaba10a5447346ff79cae0986718808dc437b2"
+        },
+        {
+          "case": "linux-all-native-writers",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "9c82713967a385ed3a28bce6b0bfd4e5417f5ebb4bca3f099a93004f509d5418"
+        },
+        {
+          "case": "linux-paired-companion-owners",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "32edfa3838b7491808b3693a7ecde59953aaf1da80ee12b88173e0e6d6383644"
+        },
+        {
+          "case": "linux-admission",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "354b35b1f2222c97f94949ecd13b1b05d0093d41e734b531ba44b3663b44211d"
+        },
+        {
+          "case": "linux-after-claim",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "33b665d4cdc30d0dea3df9e21ec66c83db77cda41878d49bb8adf9a39200259f"
+        }
+      ]
+    },
+    "cross_compile": {
+      "terminal": "native-owner-cross-1794673698/terminal.json",
+      "source_sha256": "50fd7987f61cb604a0a44b2bd673ac2cdf5dc272a53f90290e37d39ddb77b554",
+      "cases": [
+        {
+          "case": "wasi-backend-clippy",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "3fb4c357e099ce4d60cdc4fe4308b22f751bb05485809f35137528350af48811"
+        },
+        {
+          "case": "windows-cross-clippy-not-native-runtime",
+          "returncode": 0,
+          "deadline_seconds": 2400,
+          "log_sha256": "cd3a5bba63ddaa6370827056470aca5a150642c5a22a19693988328558c9962f"
+        }
+      ]
+    },
+    "linux_container_owner_cases": {
+      "terminal": "native-owner-linux-1794673614/packaged-owners/terminal.json",
+      "five_fresh_containers": [
+        "initialize",
+        "ordinary denied",
+        "original recovery",
+        "ordinary still denied",
+        "resolve and ordinary writer succeeds"
+      ],
+      "persistent_volumes": 2,
+      "fixture_private_issuer": "Native policy fixture; actual private issuance/transport verified separately",
+      "containers_and_volumes_retained": true
+    },
+    "companion_contract": {
+      "linux_tests": 29,
+      "macOS_and_linux_cases": [
+        "Rejected backend CAS retains original native owner before any filesystem effects.",
+        "An independent issuer cannot resume an identical public scope; a fresh host with the original issuer can finish it.",
+        "Ordinary writes remain denied until terminal file recovery and acknowledged release.",
+        "Lost/timed-out observers cannot let a newer proof overtake accepted writes.",
+        "Prepared account cancellation revokes calls but closing alone retains durable protection; original regrant clears it."
+      ],
+      "test_isolation": "Each independent test machine has a separate registry. All participating hosts, accounts and projects within a test share its original registry."
+    }
+  },
+  "remaining": [
+    "Original-owner command admission, durable dispatch/outcome/process reconciliation and frozen-owner administration.",
+    "Direct backend/WASI, all Git/PTY/escaped-process paths and affected subtree/runtime ancestry participation.",
+    "Native Windows runtime namespace and ownership adapter. Windows cross Clippy proves compilation only.",
+    "Full packaged app startup and complete mandatory CI. Runtime-state container checks do not establish full app or compound command behavior."
+  ],
+  "whole_goal_complete": false,
+  "full_CI_complete": false
+}

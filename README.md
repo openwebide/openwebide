@@ -85,9 +85,22 @@ docker run -d --name openwebide \
 The workspace mount is accessible to file tools and the agent; choose its scope
 accordingly. `.spin/` is excluded from file access. The bundled bridge persists
 its secret at `/app/.spin/bridge-secret`; set `OPENWEBIDE_BRIDGE=0` to disable it
-and use SSE chat instead. If overriding the container command, retain
+and use SSE chat instead. This explicitly disabled mode keeps direct WASI file
+saves available outside native folder locking. Normal deployments use
+`SPIN_VARIABLE_WORKSPACE_WRITE_POLICY=coordinated`; unavailable or uncertain native
+replies block writes without falling back. An explicit `coordinated` setting also
+overrides the disabled-bridge default. See [file write policy](docs/execution-bridge.md#file-writes).
+If overriding the container command, retain
 `spin up --direct-mounts --allow-transient-write` so edits reach the mounted files.
 Legacy remote paths are migrated automatically on startup.
+
+The container keeps the bridge's private recovery namespace at
+`/app/.spin/native-principal` on the same data volume. Its root-owned per-UID
+installation policy is independent of `HOME` and bridge profile settings.
+The database, update records and external identity file must stay together on
+that persistent authority filesystem. See the [recovery persistence checks](docs/code-intelligence/native-recovery-persistence-checks.json)
+for publication behavior and the [original owner checks](docs/code-intelligence/native-recovery-owner-checks.json)
+for verified restart protection and remaining compound command recovery work.
 
 For Linux services, see the [Podman quadlet guide](docs/podman-quadlet.md).
 For private HTTPS access from phones and other devices, the recommended approach
@@ -147,6 +160,14 @@ Open <http://localhost:3000/>. The bridge workspace must match the backend's
 filesystem access: launching them inside a coding agent's sandbox can prevent
 writes to other projects. Keep the Spin flags above to avoid editing a temporary
 copy of the workspace.
+
+The current browser connection offers its backend address to native command
+recovery without requiring folder access. Recovery verifies the original private
+proof before saving a move; an unavailable or unrelated backend leaves the
+original owner pending. With browsers closed, update the bridge `--backend-url`
+and restart it. Update the backend and bridge together for the private callback
+transport. Built-browser recovery checks pass in both modes; packaged release,
+installed-app and physical-permission verification remain in progress.
 
 ## Open a project
 

@@ -9,6 +9,19 @@ use serde_json::Value;
 
 mod transport;
 pub use transport::*;
+mod callback;
+pub use callback::{
+    COMMAND_RECOVERY_MESSAGE_LIMIT, COMMAND_RECOVERY_PLAINTEXT_LIMIT,
+    COMMAND_RECOVERY_REPLY_DOMAIN, COMMAND_RECOVERY_REQUEST_DOMAIN, CommandCallbackRequest,
+    CommandRecoveryMessage, CommandRecoveryReply,
+};
+mod recovery;
+pub use recovery::{ActionRecovery, ActionRecoveryRequest, CommandRecoveryScope};
+mod worker;
+pub use worker::{
+    CommandAdmission, CommandAuthority, CommandDelegationRequest, CommandJournalOperation,
+    CommandReservation, CommandWorkerOperation, DelegatedCommandRequest, OriginalCommandRequest,
+};
 
 pub const MAX_COMMAND_BYTES: usize = 256 * 1024;
 pub const MAX_APPROVAL_BYTES: usize = 8 * 1024 * 1024;
@@ -102,6 +115,7 @@ impl CommandInvocation {
 pub enum CommandProgress {
     Ready,
     Running,
+    Cancelled,
     Finished { outcome: CommandOutcome },
 }
 
@@ -176,6 +190,27 @@ pub struct ActionApproval {
     pub review: ActionReview,
 }
 impl ActionApproval {
+    /// The immutable original command identity is also needed after completion
+    /// or cancellation, when starting the command is no longer permitted.
+    pub fn command_invocation(&self) -> Result<CommandInvocation, String> {
+        self.validate()?;
+        let command = self
+            .review
+            .command
+            .as_ref()
+            .ok_or("No reviewed server command")?;
+        let invocation = CommandInvocation {
+            id: self.id.clone(),
+            client: self.input.client.clone(),
+            command: command.id.clone(),
+            server: command.server.clone(),
+            origin: origin_fingerprint(&self.input)?,
+            review: self.review.fingerprint()?,
+            approval: self.fingerprint()?,
+        };
+        invocation.validate()?;
+        Ok(invocation)
+    }
     pub fn validate(&self) -> Result<(), String> {
         self.prepared
             .validate()
@@ -231,6 +266,23 @@ pub enum ActionPhase {
     Cancelled,
 }
 impl ActionPhase {
+    pub fn finish(&mut self, outcome: &CommandOutcome) -> Result<(), String> {
+        outcome.validate()?;
+        if *self != Self::Running {
+            return Err("Only the claimed language action can record a command outcome".into());
+        }
+        *self = outcome.phase();
+        Ok(())
+    }
+    pub fn acknowledge(&mut self, note: &str) -> Result<(), String> {
+        if !matches!(self, Self::Rejected | Self::Uncertain) || !super::super::text(note, 4096) {
+            return Err(
+                "Review an interrupted command's effects before acknowledging its outcome".into(),
+            );
+        }
+        *self = Self::Acknowledged;
+        Ok(())
+    }
     pub fn terminal(self) -> bool {
         matches!(self, Self::Completed | Self::Acknowledged | Self::Cancelled)
     }
@@ -303,21 +355,7 @@ impl ActionRecord {
         if !matches!(self.phase, ActionPhase::Running | ActionPhase::Uncertain) {
             return Err("Claim the approved action durably before native command execution".into());
         }
-        let command = self
-            .approval
-            .review
-            .command
-            .as_ref()
-            .ok_or("No reviewed server command")?;
-        Ok(CommandInvocation {
-            id: self.approval.id.clone(),
-            client: self.approval.input.client.clone(),
-            command: command.id.clone(),
-            server: command.server.clone(),
-            origin: origin_fingerprint(&self.approval.input)?,
-            review: self.approval.review.fingerprint()?,
-            approval: self.approval.fingerprint()?,
-        })
+        self.approval.command_invocation()
     }
     pub fn claim(mut self) -> Result<Self, String> {
         self.validate()?;
@@ -333,32 +371,21 @@ impl ActionRecord {
     }
     pub fn finish(mut self, outcome: CommandOutcome) -> Result<Self, String> {
         self.validate()?;
-        outcome.validate()?;
-        if self.phase != ActionPhase::Running {
-            return Err("Only the claimed language action can record a command outcome".into());
-        }
+        self.phase.finish(&outcome)?;
         self.revision = self
             .revision
             .checked_add(1)
             .ok_or("Language action revision exhausted")?;
-        self.phase = outcome.phase();
         self.outcome = Some(outcome);
         Ok(self)
     }
     pub fn acknowledge(mut self, note: String) -> Result<Self, String> {
         self.validate()?;
-        if !matches!(self.phase, ActionPhase::Rejected | ActionPhase::Uncertain)
-            || !super::super::text(&note, 4096)
-        {
-            return Err(
-                "Review an interrupted command's effects before acknowledging its outcome".into(),
-            );
-        }
+        self.phase.acknowledge(&note)?;
         self.revision = self
             .revision
             .checked_add(1)
             .ok_or("Language action revision exhausted")?;
-        self.phase = ActionPhase::Acknowledged;
         self.acknowledgement = Some(note);
         Ok(self)
     }

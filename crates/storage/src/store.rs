@@ -758,7 +758,7 @@ impl<D: Db> Store<D> {
                 // is still running or awaiting explicit outcome recovery. Keep
                 // both journals until that command reaches a terminal phase.
                 if !tx.execute(
-                    "SELECT 1 FROM language_actions WHERE user_id = ? AND project_id = ? AND phase NOT IN ('completed','acknowledged','cancelled')",
+                    &format!("SELECT 1 FROM language_actions WHERE user_id = ? AND project_id = ? AND {}", language_actions::pending_predicate("")),
                     &[DbValue::Int(user_id.get()), DbValue::Int(id)],
                 ).await?.rows.is_empty() {
                     return Err(StorageError::Conflict("Review the pending language command before deleting this project".into()));

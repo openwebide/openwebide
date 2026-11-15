@@ -76,8 +76,29 @@ export WASI_SYSROOT="${WASI_SYSROOT:-$WASI_SDK_PATH/share/wasi-sysroot}"
 # disk reserve only at stage boundaries, after every compiler/test has exited.
 clean_completed_dev_artifacts_if_needed() {
   if python3 -c 'import shutil, sys; sys.exit(0 if shutil.disk_usage(".").free < 50 * 1024**3 else 1)'; then
-    echo "[pre-push] Cleaning completed dev artifacts before the next verification stage..."
-    cargo clean --profile dev
+    if [[ "${1:-}" == "--libraries-only" ]]; then
+      echo "[pre-push] Clearing completed native compiler libraries before the next checks..."
+      python3 - <<'PY'
+import json
+from pathlib import Path
+import subprocess
+
+metadata = json.loads(subprocess.check_output(
+    ["cargo", "metadata", "--no-deps", "--locked", "--format-version=1"], text=True
+))
+directory = Path(metadata["target_directory"]).resolve() / "debug" / "deps"
+removed = 0
+if directory.is_dir():
+    for path in directory.iterdir():
+        if path.suffix in {".rlib", ".rmeta"} and path.is_file() and not path.is_symlink():
+            removed += path.stat().st_size
+            path.unlink()
+print(f"[pre-push] Cleared {removed} native compiler-library bytes; retained executable outputs.")
+PY
+    else
+      echo "[pre-push] Cleaning completed dev artifacts before the next verification stage..."
+      cargo clean --profile dev
+    fi
   fi
 }
 
@@ -101,7 +122,9 @@ cargo clippy -p openwebide-bridge --all-targets -- -D warnings
 echo "[pre-push] 3/4 Running native unit & integration tests..."
 clean_completed_dev_artifacts_if_needed
 cargo test -p openwebide-storage -p openwebide-core -p openwebide-auth -p openwebide-agent -p openwebide-llm -p openwebide-bridge -p openwebide-backend -p openwebide-plugin-sdk -p openwebide-plugin-runtime -p openwebide-language-syntax --features openwebide-core/editor-parser -- --skip source_compilation_validates_tools_caches_offline_and_rejects_artifact_corruption
+clean_completed_dev_artifacts_if_needed --libraries-only
 cargo test -p openwebide-frontend --lib
+clean_completed_dev_artifacts_if_needed --libraries-only
 cargo run -p openwebide-bridge --example check_language_server --locked
 cargo run -p openwebide-bridge --example check_typescript_server --locked
 cargo run -p openwebide-bridge --example check_python_server --locked

@@ -58,10 +58,11 @@ impl ExecutionFolder {
         &self,
         companion: &companion::Host,
         root: &CapturedRoot,
+        permit: crate::native_recovery::Permit,
     ) -> Result<companion::FolderFence, String> {
         match self {
-            Self::Remote(_) => companion.exclude(root).await,
-            Self::Paired(folder) => companion.exclude_proven(folder).await,
+            Self::Remote(_) => companion.exclude(root, Some(permit)).await,
+            Self::Paired(folder) => companion.exclude_proven(folder, Some(permit)).await,
         }
     }
     #[cfg(any(target_os = "linux", target_os = "macos"))]

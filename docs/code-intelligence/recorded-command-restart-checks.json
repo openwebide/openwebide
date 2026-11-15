@@ -1,0 +1,266 @@
+{
+  "status": "Recorded native outcomes resume at startup and on controls; both-mode SIGKILL, original-context restoration and lost HTTP settlement ACK checks pass. Complete command recovery remains in progress.",
+  "source_sha256": "12d2139a3a0836ef279e347d7403b6be649ff5ab126365f16f1b9a50df793eb6",
+  "production_implementation_source_sha256": "a94f671d502ebb25a92162d5fdfebab56788c8d8afed7d794b849df915b0e078",
+  "builds_on": "original-command-cleanup-checks.json",
+  "shared_implementation": {
+    "facade": "Host.recover_pending is shared by controls and the startup inventory; Journal.reconcile_original reuses complete, publish and settle.",
+    "ownership": "Normal command producers and recovery share bounded per-host original-authority claims. The claim lives through registered publication/settlement tasks and drops with the last owner.",
+    "native_inventory": "Read bounded original command records with invocation, durable outcome and positive cleanup state; select requested records before copying their payloads. Preserve the anchored namespace across retries.",
+    "adapters": "OriginalCommandJournal supplies pinned HTTP primitives for the same service/paired outcome policy. No provider selection, source reload, LSP restart or command dispatch occurs.",
+    "startup": "run_server_until registers a private inventory worker before accepting requests. It retries unavailable original state, resumes only recorded outcomes and honors coordinator shutdown."
+  },
+  "behavior": [
+    "Return an already-recorded native result even when the original folder or callback is temporarily unavailable; do not use that result as permission to mutate a replacement folder.",
+    "Reopen and acquire the original full physical folder gate, reread its native record, verify the enduring issuer, and publish only the original result/cleanup receipt.",
+    "Retry initial callback/folder failures in an owned task without a browser wakeup. Keep the original claim through later manual acknowledgement and exact backend/native settlement.",
+    "After an accepted backend settlement reply is lost, preserve the native owner. Join the exact terminal worker/outcome receipt and retire the native record only after an acknowledged repeat.",
+    "Known outcomes with no positive cleanup proof remain pending; missing legacy credentials/origins do not become new execution or cleanup authority."
+  ],
+  "verification": {
+    "terminal": "recorded-command-process-qualified-1794700751/terminal.json",
+    "input_qualification": "recorded-command-process-qualified-1794700751/input-qualification.json",
+    "artifacts": "recorded-command-restart-final-outputs-1794700751/manifest.json",
+    "qualification": "The production implementation passed the complete native suite before only one test-support example and two integration-fixture files changed. Final all-target/default/Windows profiles and all HTTP cases reran on those stronger process tests. Earlier shared checks retain identical package/build inputs and immutable executable provenance.",
+    "cases": [
+      {
+        "case": "format",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "inputs_verified_from_source_sha256": "12d2139a3a0836ef279e347d7403b6be649ff5ab126365f16f1b9a50df793eb6"
+      },
+      {
+        "case": "storage-all-unit",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "456385016a6b60b115d27e47cac455fe5ec3a1e22e64253abb4cc9ae63e3aa18",
+        "inputs_verified_from_source_sha256": "e74f17f581c3cb994f655ae56a59ce93229ac90f9c2815200cb865a4b7f4d982"
+      },
+      {
+        "case": "core-workspace-contracts",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "e8be1a2e98e7af20347bc7564e85f3595976d44fc6155a8e4f517c80cf0bd840",
+        "inputs_verified_from_source_sha256": "e74f17f581c3cb994f655ae56a59ce93229ac90f9c2815200cb865a4b7f4d982"
+      },
+      {
+        "case": "core-command-contracts",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "8e9f48b55dec557686dc2ccd9a01cb121a1ca61e5409e0e38adcf79da25eef04",
+        "inputs_verified_from_source_sha256": "e74f17f581c3cb994f655ae56a59ce93229ac90f9c2815200cb865a4b7f4d982"
+      },
+      {
+        "case": "backend-all-unit",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "75b8fd5ef65e7af26240370ad7fc493e36cdb0e8a830c899716cacdaebd1da34",
+        "inputs_verified_from_source_sha256": "e74f17f581c3cb994f655ae56a59ce93229ac90f9c2815200cb865a4b7f4d982"
+      },
+      {
+        "case": "agent-command-actions",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "a84efe636a198b187c799355faeeb8e9d34cd6bf69661c786f4e0d22078839c8",
+        "inputs_verified_from_source_sha256": "e74f17f581c3cb994f655ae56a59ce93229ac90f9c2815200cb865a4b7f4d982"
+      },
+      {
+        "case": "frontend-native-unit",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "ec19914dffbb1c9c1a532c43a8f19e41cd45f6db76861615b5aa9343c4e8c7ae",
+        "inputs_verified_from_source_sha256": "e74f17f581c3cb994f655ae56a59ce93229ac90f9c2815200cb865a4b7f4d982"
+      },
+      {
+        "case": "native-all-target-clippy",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "1cdd39b8808e187f2cf6d5fa118d56ddb2f236334a7fd6e515c14c2a79c7e99f",
+        "inputs_verified_from_source_sha256": "12d2139a3a0836ef279e347d7403b6be649ff5ab126365f16f1b9a50df793eb6"
+      },
+      {
+        "case": "WASI-backend-clippy",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "0674b29b50c3dec56646820dd880f72135797e8fbae612e62ca8370ee4ddce1c",
+        "inputs_verified_from_source_sha256": "e74f17f581c3cb994f655ae56a59ce93229ac90f9c2815200cb865a4b7f4d982"
+      },
+      {
+        "case": "WASM-frontend-all-target-clippy",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "a7642a0867425c6137f6fda230ee0c5445d5148745ccd7b4f5b0b4f2b4540d91",
+        "inputs_verified_from_source_sha256": "e74f17f581c3cb994f655ae56a59ce93229ac90f9c2815200cb865a4b7f4d982"
+      },
+      {
+        "case": "matching-debug-bridge",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "beed191cf5cd39a57477a6d66e9acb53f3b4efe7566a30e0ada805357a0fe6ff",
+        "inputs_verified_from_source_sha256": "12d2139a3a0836ef279e347d7403b6be649ff5ab126365f16f1b9a50df793eb6"
+      },
+      {
+        "case": "namespace-fair-publisher",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "f0dae97c7e9d7f11a3bca3b619886d8966fb58959501ead3398ce029c456964e",
+        "inputs_verified_from_source_sha256": "a94f671d502ebb25a92162d5fdfebab56788c8d8afed7d794b849df915b0e078"
+      },
+      {
+        "case": "owned-producer-compound-admission",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "31a53682601999a74b8222170165bda06b04263dab0511ecb01b580759971d2e",
+        "inputs_verified_from_source_sha256": "a94f671d502ebb25a92162d5fdfebab56788c8d8afed7d794b849df915b0e078"
+      },
+      {
+        "case": "bridge-all-unit",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "63eef6c6a4354ff84f4b99c860723ff7a7ca30a9775bafcef679f8725c20c411",
+        "inputs_verified_from_source_sha256": "a94f671d502ebb25a92162d5fdfebab56788c8d8afed7d794b849df915b0e078"
+      },
+      {
+        "case": "marketplace-published-smoke",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "5ea26725658d54a9254b0049af1db30307d3a8d9fa00cd4044e3d5243111c198",
+        "inputs_verified_from_source_sha256": "a94f671d502ebb25a92162d5fdfebab56788c8d8afed7d794b849df915b0e078"
+      },
+      {
+        "case": "native-recovery-host-example",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "4dd47d03f0954eaf39d6e97c2b2b9304807a17a81dbf54fb646bd16fae60dc80",
+        "inputs_verified_from_source_sha256": "12d2139a3a0836ef279e347d7403b6be649ff5ab126365f16f1b9a50df793eb6"
+      },
+      {
+        "case": "command-http-complete",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "61a1807021de9fce828818978e2faf63c457df181e7520197f24d8afbfbb1265",
+        "inputs_verified_from_source_sha256": "12d2139a3a0836ef279e347d7403b6be649ff5ab126365f16f1b9a50df793eb6"
+      },
+      {
+        "case": "bridge-default-bin-clippy",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "c2ccae29be8ebbd8973f3201e5f6646ec32bdad22fe9c3866ff8d1618ed74896",
+        "inputs_verified_from_source_sha256": "12d2139a3a0836ef279e347d7403b6be649ff5ab126365f16f1b9a50df793eb6"
+      },
+      {
+        "case": "windows-cross-clippy-not-native-runtime",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "c96b101134f32f268ef4041cd99f7871ce427566369fd1e8940f1f32fbbea52d",
+        "inputs_verified_from_source_sha256": "12d2139a3a0836ef279e347d7403b6be649ff5ab126365f16f1b9a50df793eb6"
+      },
+      {
+        "case": "production-feature-inventory",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "51a70955c82feadb08bcaf685eec7550c14e8cf35436c8f256347155c7578b04",
+        "inputs_verified_from_source_sha256": "12d2139a3a0836ef279e347d7403b6be649ff5ab126365f16f1b9a50df793eb6"
+      }
+    ],
+    "counts": {
+      "storage-all-unit": 238,
+      "core-workspace-contracts": 53,
+      "core-command-contracts": 1,
+      "backend-all-unit": 135,
+      "agent-command-actions": 3,
+      "frontend-native-unit": 143,
+      "namespace-fair-publisher": 1,
+      "owned-producer-compound-admission": 1,
+      "bridge-all-unit": 535,
+      "marketplace-published-smoke": 1,
+      "command-http-complete": 3
+    },
+    "distinct_tests": 1112,
+    "test_executions": 1114,
+    "native_library_all_declared_passed": 536,
+    "HTTP_declared_tests": 3,
+    "HTTP_command_lifecycle_scenarios": 20,
+    "HTTP_authentication_requests": 6,
+    "actual_SIGKILL_scenarios": [
+      {
+        "paired": false,
+        "fault": "None",
+        "killed_pid": 44468,
+        "successor_pid": 44473,
+        "original_exit_signal": 9
+      },
+      {
+        "paired": false,
+        "fault": "Callback",
+        "killed_pid": 44478,
+        "successor_pid": 44479,
+        "original_exit_signal": 9
+      },
+      {
+        "paired": false,
+        "fault": "Folder",
+        "killed_pid": 44489,
+        "successor_pid": 44490,
+        "original_exit_signal": 9
+      },
+      {
+        "paired": false,
+        "fault": "SettlementAck",
+        "killed_pid": 44951,
+        "successor_pid": 44952,
+        "original_exit_signal": 9
+      },
+      {
+        "paired": true,
+        "fault": "None",
+        "killed_pid": 45409,
+        "successor_pid": 45410,
+        "original_exit_signal": 9
+      },
+      {
+        "paired": true,
+        "fault": "Callback",
+        "killed_pid": 45438,
+        "successor_pid": 45439,
+        "original_exit_signal": 9
+      },
+      {
+        "paired": true,
+        "fault": "Folder",
+        "killed_pid": 45457,
+        "successor_pid": 45458,
+        "original_exit_signal": 9
+      },
+      {
+        "paired": true,
+        "fault": "SettlementAck",
+        "killed_pid": 45473,
+        "successor_pid": 45474,
+        "original_exit_signal": 9
+      }
+    ],
+    "normal_bridge_features": [
+      "default",
+      "tls"
+    ],
+    "native_Windows_runtime": false,
+    "fresh_current_Linux_runtime": false,
+    "fresh_current_browser_or_installed_app_runtime": false,
+    "full_CI_complete": false,
+    "whole_goal_complete": false
+  },
+  "process_contract": [
+    "The disposable example uses the existing test-support private-home constructor and otherwise runs the production native HTTP host and managed-command helper. The normal bridge gains no private-home CLI or environment override.",
+    "A real child process receives Stop, persists and returns the no-dispatch result, then is killed with SIGKILL and reaped. A distinct successor process reads the same original namespace and completes recovery after acknowledgement.",
+    "Each mode checks normal startup, callback outage, original-root substitution/restoration and an actual connection failure after the real Store commits settlement. The latter blocks further callbacks while the test proves backend idle does not release the native folder.",
+    "No command control or language request wakes final recovery. An ordinary native writer eventually succeeds; the original root/source and replacement sentinel survive, and the LSP execution marker is absent."
+  ],
+  "limits": [
+    "The process-crash matrix covers positive no-dispatch rejections. Completed/uncertain dispatched-command crash cases and original watcher completion receipts still need verification and implementation.",
+    "Concurrent peer-producer retirement and failures that begin after an existing publisher enters its settlement wait loop still need work. Original record disappearance must stop a stale local publisher without granting mutation authority.",
+    "History-pruned final-ACK recovery, early Cancel retirement without an invented public outcome, and callback rebinding with original-scope proof remain unfinished.",
+    "The backend in this HTTP fixture uses real Store CAS and a private original issuer, not a fresh deployed Spin/browser run. All original writer/platform/cache/resource/full-CI/application requirements remain active."
+  ]
+}

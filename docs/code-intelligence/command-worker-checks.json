@@ -1,0 +1,144 @@
+{
+  "status": "Historical verified backend/transport prerequisite; live producer progress and current remaining work are qualified separately",
+  "source_sha256": "608206a9ae64f80fac4d1afc9b5d2672675d03225760d2c74bae3620e3288090",
+  "shared_policy": [
+    "Store::native_language_command_inner owns claim, original outcome publication, positive cleanup and settlement. Both native endpoint adapters call it.",
+    "WorkspaceJournalResponse::command_worker validates mutation acknowledgements in both native HTTP clients.",
+    "One pending-command SQL predicate includes native_settlement_pending across activity, admission, pruning and project deletion."
+  ],
+  "adapters": [
+    "BackendClient::workspace_journal_service uses the authenticated command service for mutations.",
+    "PairedCommandJournal translates the shared journal primitives to a command-purpose bootstrap plus native worker preimage; no deployment-wide service secret is sent."
+  ],
+  "verified_behavior": [
+    "A command claim survives terminal file recovery and file-worker release. Admitted command credentials do not expire by age.",
+    "Start requires original committed file/edit state and fresh manual authority; recovery does not authorize a new dispatch.",
+    "Native outcomes are immutable. Identical retries can monotonically add positive cleanup. Browser Finish can join an identical result but cannot replace an owned native result.",
+    "Uncertain/rejected outcomes require positive cleanup and manual acknowledgement before terminal settlement. Backend activity, retention and project deletion remain protected until settlement.",
+    "Original callbacks work from compact metadata with unreadable approval/source/outcome payloads. New producer admission still validates the original readable approval and installed provider.",
+    "Actual schema69 upgrade and replay preserve immutable metadata and admitted credentials, including completed-but-unsettled commands with unreadable archived payloads.",
+    "File and command grants cannot substitute for each other. Released command credentials cannot inspect; duplicate final acknowledgements disclose only compact metadata.",
+    "Both native mutation transports reject wrong original generation/root/invocation/worker, changed outcome fingerprints, regressed revisions, missing or inconsistent cleanup/settlement and malformed or oversized replies.",
+    "Both HTTP adapters transmit a valid outcome larger than64KiB while keeping replies bounded to64KiB. Paired requests do not inherit cookie, origin or deployment authorization headers."
+  ],
+  "bounds": {
+    "command_outcome_bytes": 262144,
+    "request_bytes": 327680,
+    "recovery_reply_bytes": 65536,
+    "paired_bootstrap_seconds": 45,
+    "admitted_grant_lifetime": "Bound to original ownership, not elapsed time"
+  },
+  "verification": {
+    "terminal": "command-worker-transports-1794678107/terminal.json",
+    "artifacts": "command-worker-transports-outputs-1794678444/manifest.json",
+    "cases": [
+      {
+        "case": "format",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "storage-all-unit",
+        "returncode": 0,
+        "deadline_seconds": 1200,
+        "log_sha256": "530e4213f78201dbe6a6c04be05668728c0af14b6bcd0920e0b5d331c5075f15"
+      },
+      {
+        "case": "core-transactions",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "1ed94bbd4bfb627218fd407416f0a2ffb224ee701e0b6a7472abb689b0e9fc3b"
+      },
+      {
+        "case": "core-command-recovery",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "bd80707716e2ae6a877fd837592362ac6894f27a3e895c4a0bfcef7f26b359c9"
+      },
+      {
+        "case": "backend-all-unit",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "4dc24529ab19cdc56bdc0b89b5c756d9dd14139059d7a2f8e31c5b1e1ae86691"
+      },
+      {
+        "case": "native-all-target-clippy",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "38c8f0e0c773b015e00fbbea08d9ca7221d6f2e5c14d0327d8a8b0c6cf97864a"
+      },
+      {
+        "case": "matching-debug-bridge",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "84bee0299f9ee1dc15453b30ec1e57488164f00ef5e73393f3452c8193a369f9"
+      },
+      {
+        "case": "native-command-recovery-transports",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "b16afe88684609a24cd92416de9ffc06c3badc7290ee14dbca78e9a1f3ad1a40"
+      },
+      {
+        "case": "all-native-transaction-hosts",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "94f447703527f26363be7a66585805f9697f0ff37ea9b9572825bb47482b7ee7"
+      },
+      {
+        "case": "service-recovery-scope-transport",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "509204d54c9ce9b2ab810cfc62c333fe3cb459eca970b0e3b4d05dcf1582d5e5"
+      },
+      {
+        "case": "wasi-backend-clippy",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "f8a9505b44fcc56fb46f45ab6930b5e33a69289107ba32fd3b7a93ae539b2db7"
+      },
+      {
+        "case": "frontend-wasm-all-target-clippy",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "7a9d5453b5de1554fb2c88700d2b20c30eb94d9b323a88ca8ff9c6261c96d464"
+      },
+      {
+        "case": "windows-cross-clippy-not-native-runtime",
+        "returncode": 0,
+        "deadline_seconds": 2400,
+        "log_sha256": "754dc14aeafd4f2e2db1afdcd835ed2b02fae62d24fdfdbf3fa10df8acbdbe94"
+      }
+    ],
+    "test_counts": {
+      "backend-all-unit": 132,
+      "all-native-transaction-hosts": 52,
+      "core-transactions": 53,
+      "core-command-recovery": 1,
+      "storage-all-unit": 230,
+      "service-recovery-scope-transport": 4,
+      "native-command-recovery-transports": 1
+    },
+    "distinct_tests": 470,
+    "test_executions": 473
+  },
+  "prior_backend_checkpoint": {
+    "source_sha256": "8cee61d6583bf5166f24b25b61d4691867bf79edd527a97b31f02f3aa62f95e6",
+    "terminal": "command-worker-callbacks-1794677422/terminal.json",
+    "artifacts": "command-worker-callbacks-outputs-1794677791/manifest.json"
+  },
+  "qualification": {
+    "WASI_backend_compilation": true,
+    "frontend_WASM_all_target_compilation": true,
+    "Windows_bridge_all_target_cross_compilation": true,
+    "native_Windows_runtime": false,
+    "fresh_Linux_runtime_at_this_source": false,
+    "full_CI_complete": false,
+    "whole_goal_complete": false
+  },
+  "remaining": [
+    "See native-command-producer-checks.json for the now-verified live producer and the still-unfinished restart/control/reservation/platform/application work."
+  ],
+  "superseded_by": "native-command-producer-checks.json"
+}

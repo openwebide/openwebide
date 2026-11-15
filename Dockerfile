@@ -100,8 +100,17 @@ RUN cargo build -p openwebide-plugin-build -p openwebide-plugin-runtime --bin op
     OPENWEBIDE_BUNDLED_ARTIFACTS=/src/target/bundled-plugins.json \
     cargo build -p openwebide-bridge --features bundled-defaults --release --locked
 
+# --- OS installation policy, shared by runtime and persistence checks ---
+FROM ghcr.io/spinframework/spin:v4.1.0 AS runtime-state
+# This root-owned policy is global for the container OS account. It keeps both
+# recovery namespace objects on the existing data volume without changing HOME
+# or passwd (SSH and ordinary tools retain their normal home lookup).
+RUN mkdir -p /etc/openwebide/native-recovery && \
+    chmod 755 /etc/openwebide /etc/openwebide/native-recovery
+COPY --chmod=644 docker/native-recovery/0.json /etc/openwebide/native-recovery/0.json
+
 # --- public execution tools, independently smoke-testable ---
-FROM ghcr.io/spinframework/spin:v4.1.0 AS runtime-tools
+FROM runtime-state AS runtime-tools
 
 # SSH client is included for Git and app-configured host administration.
 RUN apt-get update && \

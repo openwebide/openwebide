@@ -80,6 +80,81 @@ pub(in crate::languages::host) struct Outcomes {
     records: BTreeMap<OutcomeKey, Receipt>,
 }
 impl Outcomes {
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    pub(super) fn retain_control(
+        &mut self,
+        scope: &CommandScope,
+        invocation: &CommandInvocation,
+        progress: &CommandProgress,
+    ) -> Result<(), String> {
+        match progress {
+            CommandProgress::Finished {
+                outcome: outcome @ CommandOutcome::Rejected { .. },
+            } => outcome.validate()?,
+            CommandProgress::Cancelled => {}
+            _ => return Err("An original unstarted command decision is required".into()),
+        }
+        let Some(receipt) = self
+            .records
+            .get_mut(&OutcomeKey::new(scope.clone(), invocation))
+        else {
+            return Ok(());
+        };
+        let previous = receipt.progress.borrow().clone();
+        let compatible = previous == *progress
+            || matches!(
+                (&previous, progress),
+                (
+                    CommandProgress::Ready,
+                    CommandProgress::Cancelled
+                        | CommandProgress::Finished {
+                            outcome: CommandOutcome::Rejected { .. }
+                        }
+                ) | (
+                    CommandProgress::Finished {
+                        outcome: CommandOutcome::Rejected { .. }
+                    },
+                    CommandProgress::Finished {
+                        outcome: CommandOutcome::Rejected { .. }
+                    }
+                )
+            );
+        if receipt.invocation != *invocation || !compatible {
+            return Err("The retained original command decision changed".into());
+        }
+        // The existing full-result reservation covers this bounded rejection.
+        // Keep no process or document handle when its original sender is gone.
+        receipt.progress = watch::channel(progress.clone()).1;
+        Ok(())
+    }
+    pub(super) fn control_scope(
+        &mut self,
+        owner: &str,
+        project: i64,
+        invocation: &CommandInvocation,
+    ) -> Result<Option<Scope>, String> {
+        self.prune();
+        let Some((key, receipt)) = self.records.iter().find(|(key, _)| {
+            key.scope.owner == owner
+                && key.scope.project == project
+                && key.server == invocation.server
+                && key.command == invocation.command
+                && key.scope.client == invocation.client
+        }) else {
+            return Ok(None);
+        };
+        if receipt.invocation != *invocation {
+            return Err("Language command receipt belongs to another approval".into());
+        }
+        Ok(Some(Scope {
+            owner: key.scope.owner.clone(),
+            project,
+            root: PathBuf::new(),
+            provider: key.scope.provider.clone(),
+            digest: key.scope.digest.clone(),
+            server: serde_json::from_str(&key.scope.server).map_err(|error| error.to_string())?,
+        }))
+    }
     pub(in crate::languages::host) fn prune(&mut self) {
         self.records.retain(|_, receipt| {
             receipt.created.elapsed() < COMMAND_LIFETIME

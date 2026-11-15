@@ -25,6 +25,17 @@ pub trait PluginActionHost: PluginTransport + GrantedHost {
     > + Send {
         async { Err("Language action recovery is unavailable".into()) }
     }
+    fn language_action_recovery(
+        &self,
+        _request:&openwebide_core::plugins::languages::intelligence::actions::ActionRecoveryRequest,
+    ) -> impl Future<
+        Output = Result<
+            Option<openwebide_core::plugins::languages::intelligence::actions::ActionRecovery>,
+            String,
+        >,
+    > + Send {
+        async { Err("Language action recovery is unavailable".into()) }
+    }
     fn language_command(
         &self,
         _request: &openwebide_core::plugins::languages::intelligence::actions::CommandDispatch,

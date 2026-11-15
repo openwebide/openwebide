@@ -164,7 +164,7 @@ impl Context {
             let backend = self.api.with_value(Clone::clone);
             let result=async {
                 let workspace=backend.workspace_transaction(id,None).await.map_err(|e|e.to_string())?;
-                let action=backend.language_action_request(id,&openwebide_core::plugins::languages::intelligence::actions::ActionJournalRequest::Load {id:None}).await?;
+                let action=backend.language_action_recovery(id,&openwebide_core::plugins::languages::intelligence::actions::ActionRecoveryRequest::Load {id:None}).await?;
                 if !self.current(&project, &root, account, ticket) {
                     return Err("The workspace changed while checking recovery".into());
                 }
@@ -228,12 +228,13 @@ impl Context {
                     ids.insert(id);
                 }
             });
+            let reconnect = result.is_ok();
             self.status(
                 id,
                 match result {
                     Ok((state, action)) => {
                         let mut status =
-                            WorkspaceRecoveryStatus::from_records(state.as_ref(), action.as_ref());
+                            WorkspaceRecoveryStatus::from_recovery(state.as_ref(), action.as_ref());
                         if let (Err(error), WorkspaceRecoveryStatus::Pending { error: issue, .. }) =
                             (access, &mut status)
                         {
@@ -244,6 +245,15 @@ impl Context {
                     Err(error) => WorkspaceRecoveryStatus::Unavailable(error.to_string()),
                 },
             );
+            if reconnect && let Some(host) = self.host {
+                spawn_local(async move {
+                    let current = move || self.current(&project, &root, account, ticket);
+                    if host.reconnect_language_commands(id, &current).await == Ok(true) && current()
+                    {
+                        self.check(id);
+                    }
+                });
+            }
         });
     }
     fn grant(self, id: i64) {

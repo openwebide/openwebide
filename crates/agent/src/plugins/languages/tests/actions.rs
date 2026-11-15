@@ -63,8 +63,41 @@ impl PluginActionHost for ActionHost {
         }
         Ok(record.clone())
     }
+    async fn language_action_recovery(
+        &self,
+        _request: &server_protocol::actions::ActionRecoveryRequest,
+    ) -> Result<Option<server_protocol::actions::ActionRecovery>, String> {
+        let record = self.record.lock().unwrap().clone();
+        record
+            .map(|record| {
+                Ok(server_protocol::actions::ActionRecovery {
+                    command: server_protocol::actions::CommandRecoveryScope {
+                        invocation: record.approval.command_invocation()?,
+                        revision: record.revision,
+                        phase: record.phase,
+                        outcome_digest: record
+                            .outcome
+                            .as_ref()
+                            .map(serde_json::to_vec)
+                            .transpose()
+                            .map_err(|e| e.to_string())?
+                            .map(|bytes| openwebide_core::plugins::content_digest(&bytes)),
+                        worker: None,
+                        native_settlement_pending: false,
+                        command_cleanup_confirmed: false,
+                    },
+                    outcome: record.outcome,
+                    acknowledgement: record.acknowledgement,
+                })
+            })
+            .transpose()
+    }
     async fn language_command(&self, request: &CommandDispatch) -> Result<CommandProgress, String> {
         self.commands.lock().unwrap().push(request.clone());
+        if request.operation == CommandOperation::Cancel {
+            assert!(request.call.is_none());
+            return Ok(CommandProgress::Cancelled);
+        }
         if request.operation == CommandOperation::Start {
             assert_eq!(request.call.as_ref().unwrap().grant, "authority");
             Err("Dispatch response lost".into())
@@ -198,6 +231,33 @@ fn action_client_does_not_retry_lost_claims_or_dispatch_and_keeps_read_only_reco
                         CommandProgress::Running
                     );
                 }
+                let compact = recovery
+                    .recovery(&server_protocol::actions::ActionRecoveryRequest::Load {
+                        id: Some(record.approval.id.clone()),
+                    })
+                    .await
+                    .unwrap()
+                    .unwrap();
+                assert!(
+                    recovery
+                        .recovery(&server_protocol::actions::ActionRecoveryRequest::Load {
+                            id: Some("f".repeat(32))
+                        })
+                        .await
+                        .is_err()
+                );
+                assert!(
+                    recovery
+                        .recover_command(&compact, CommandOperation::Start)
+                        .await
+                        .is_err()
+                );
+                for operation in [CommandOperation::Status, CommandOperation::Stop] {
+                    assert_eq!(
+                        recovery.recover_command(&compact, operation).await.unwrap(),
+                        CommandProgress::Running
+                    );
+                }
                 assert_eq!(host.grants.load(Ordering::Relaxed), grants);
                 assert!(
                     adapter
@@ -213,6 +273,12 @@ fn action_client_does_not_retry_lost_claims_or_dispatch_and_keeps_read_only_reco
                 assert!(
                     recovery
                         .command(&record, CommandOperation::Stop)
+                        .await
+                        .is_err()
+                );
+                assert!(
+                    recovery
+                        .recover_command(&compact, CommandOperation::Stop)
                         .await
                         .is_err()
                 );
@@ -427,7 +493,11 @@ fn durable_discard_releases_only_its_action_and_cleanup_failure_preserves_cancel
                         matches!(&call.input.query,Query::ReleaseAction {action} if action.command==approval.review.command.as_ref().unwrap().id && action.origin==origin_fingerprint(&approval.input).unwrap())
                     );
                 }
-                assert!(adapter.commands.lock().unwrap().is_empty());
+                let commands = adapter.commands.lock().unwrap();
+                assert_eq!(commands.len(), 1);
+                assert_eq!(commands[0].operation, CommandOperation::Cancel);
+                assert_eq!(commands[0].id, approval.id);
+                assert!(commands[0].call.is_none());
             }
         }
     });

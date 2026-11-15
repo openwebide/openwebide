@@ -71,7 +71,7 @@ impl ToolExecution for Execution {
                 let lease = tokio::select! {
                     biased;
                     () = &mut cancellation => return Err(BridgeError::Execution("command cancelled before folder access".into())),
-                    lease = coordinator.acquire(folder.clone()) => lease.map_err(BridgeError::Validation)?,
+                    lease = coordinator.acquire_ordinary(folder.clone()) => lease.map_err(BridgeError::Validation)?,
                 };
                 let lease = Arc::new(lease);
                 let outcome = inner
@@ -118,7 +118,7 @@ impl ToolExecution for Execution {
                 let _lease = tokio::select! {
                     biased;
                     _ = &mut abandoned => return Err(BridgeError::Execution("Git operation cancelled before folder access".into())),
-                    lease = coordinator.acquire(root.clone()) => lease.map_err(BridgeError::Validation)?,
+                    lease = coordinator.acquire_ordinary(root.clone()) => lease.map_err(BridgeError::Validation)?,
                 };
                 if !cwd.current()
                     || Folder::capture(&inner.git_root(cwd.path.clone()).await?)

@@ -19,8 +19,35 @@ use openwebide_core::{
 use serde::Serialize;
 use std::sync::atomic::Ordering;
 mod outcomes;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+mod owned;
 use outcomes::CommandScope;
 pub(super) use outcomes::Outcomes;
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[derive(Default, Clone)]
+pub(super) struct Recoveries(Arc<Mutex<std::collections::BTreeSet<String>>>);
+
+#[cfg(all(
+    feature = "test-support",
+    any(target_os = "linux", target_os = "macos")
+))]
+impl Host {
+    /// Observe actual registered native jobs in isolated lifecycle contracts.
+    /// This is not exposed by the host's wire protocol or distribution API.
+    pub fn registered_workspace_workers(&self) -> usize {
+        self.inner.coordinator.workers()
+    }
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+pub(super) struct CallbackConnections(Arc<tokio::sync::Semaphore>);
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+impl Default for CallbackConnections {
+    fn default() -> Self {
+        Self(Arc::new(tokio::sync::Semaphore::new(2)))
+    }
+}
 
 pub(super) const COMMAND_LIFETIME: Duration = Duration::from_secs(300);
 const MAX_COMMANDS: usize = 128;
@@ -35,6 +62,10 @@ struct Slot {
     bytes: usize,
     created: Instant,
     invocation: Option<(String, String)>,
+    preparation: Option<(
+        CommandInvocation,
+        openwebide_core::workspace_transaction::WorkspaceTransactionWorker,
+    )>,
     progress: watch::Sender<CommandProgress>,
     synchronizing: Option<Instant>,
     input_revision: u64,
@@ -47,7 +78,8 @@ impl Commands {
             .all(|slot| match &*slot.progress.borrow() {
                 CommandProgress::Finished {
                     outcome: CommandOutcome::Completed { .. } | CommandOutcome::Rejected { .. },
-                } => true,
+                }
+                | CommandProgress::Cancelled => true,
                 CommandProgress::Ready => slot.created.elapsed() >= COMMAND_LIFETIME,
                 CommandProgress::Running
                 | CommandProgress::Finished {
@@ -214,7 +246,9 @@ pub(super) async fn prepare(
     let bytes = serde_json::to_vec(&data)
         .map_err(|e| e.to_string())?
         .len()
-        .saturating_add(protocol::actions::MAX_COMMAND_BYTES);
+        .saturating_add(protocol::actions::MAX_COMMAND_BYTES)
+        // Include the future native worker/preparation and opaque invocation.
+        .saturating_add(4096);
     let input_revision = session.inputs.revision().await;
     let mut cache = session.commands.lock().unwrap();
     cache.slots.retain(|_, slot| {
@@ -247,6 +281,7 @@ pub(super) async fn prepare(
             bytes,
             created,
             invocation: None,
+            preparation: None,
             progress: watch::channel(CommandProgress::Ready).0,
             synchronizing: None,
             input_revision,
@@ -257,6 +292,178 @@ pub(super) async fn prepare(
 }
 
 impl Host {
+    /// Resolve controls from the original native session/receipt. No provider
+    /// payload, replacement service or filesystem access is needed to fence it.
+    fn command_control_scope(
+        &self,
+        owner: &str,
+        project: i64,
+        invocation: &CommandInvocation,
+    ) -> Result<Option<Scope>, String> {
+        let scope = {
+            let entries = self.inner.entries.lock().unwrap();
+            entries
+                .iter()
+                .find(|(key, entry)| {
+                    key.owner == owner
+                        && key.project == project
+                        && key.client == invocation.client
+                        && entry
+                            .session
+                            .get()
+                            .is_some_and(|session| session.id == invocation.server)
+                })
+                .map(|(key, _)| {
+                    Ok::<_, String>(Scope {
+                        owner: key.owner.clone(),
+                        project,
+                        root: PathBuf::new(),
+                        provider: key.provider.clone(),
+                        digest: key.digest.clone(),
+                        server: serde_json::from_str(&key.server)
+                            .map_err(|error| error.to_string())?,
+                    })
+                })
+                .transpose()?
+        };
+        let scope = match scope {
+            Some(scope) => Some(scope),
+            None => self
+                .inner
+                .outcomes
+                .lock()
+                .unwrap()
+                .control_scope(owner, project, invocation)?,
+        };
+        Ok(scope)
+    }
+    pub async fn control_command(
+        &self,
+        owner: &str,
+        project: i64,
+        invocation: &CommandInvocation,
+        operation: protocol::actions::CommandOperation,
+    ) -> Result<CommandProgress, String> {
+        invocation.validate()?;
+        if owner.is_empty()
+            || project <= 0
+            || operation == protocol::actions::CommandOperation::Start
+        {
+            return Err("Original command controls cannot start execution".into());
+        }
+        if operation == protocol::actions::CommandOperation::Cancel {
+            #[cfg(any(target_os = "linux", target_os = "macos"))]
+            return self
+                .cancel_original_control(owner, project, invocation)
+                .await;
+            #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+            return Err("Original native cancellation recovery is unavailable on this host".into());
+        }
+        let scope = self.command_control_scope(owner, project, invocation)?;
+        let Some(scope) = scope else {
+            #[cfg(any(target_os = "linux", target_os = "macos"))]
+            if let Some(progress) = self
+                .recover_original_control(
+                    owner,
+                    project,
+                    invocation,
+                    operation == protocol::actions::CommandOperation::Stop,
+                    None,
+                )
+                .await?
+            {
+                return Ok(progress);
+            }
+            return Ok(unavailable());
+        };
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        let original_scope = scope.clone();
+        let progress = match operation {
+            protocol::actions::CommandOperation::Status => {
+                self.command_progress(scope, invocation).await
+            }
+            protocol::actions::CommandOperation::Stop => self.stop_command(scope, invocation).await,
+            protocol::actions::CommandOperation::Start => {
+                Err("Original command controls cannot start execution".into())
+            }
+            protocol::actions::CommandOperation::Cancel => unreachable!(),
+        }?;
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        if operation == protocol::actions::CommandOperation::Stop
+            && let CommandProgress::Finished {
+                outcome: outcome @ CommandOutcome::Rejected { .. },
+            } = &progress
+            && let Some(recovered) = self
+                .recover_original_control(owner, project, invocation, true, Some(outcome.clone()))
+                .await?
+        {
+            self.retain_original_control(original_scope, invocation, &recovered)
+                .await?;
+            return Ok(recovered);
+        }
+        Ok(progress)
+    }
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    async fn retain_original_control(
+        &self,
+        scope: Scope,
+        invocation: &CommandInvocation,
+        progress: &CommandProgress,
+    ) -> Result<(), String> {
+        if !matches!(
+            progress,
+            CommandProgress::Cancelled
+                | CommandProgress::Finished {
+                    outcome: CommandOutcome::Rejected { .. }
+                }
+        ) {
+            return Ok(());
+        }
+        let (context, entry) = self.command_entry(scope, invocation, false).await?;
+        if let Some(entry) = entry
+            && let Some(session) = entry.session.get()
+        {
+            let mut commands = session.commands.lock().unwrap();
+            if let Some(slot) = commands.slots.get_mut(&invocation.command) {
+                let previous = slot.progress.borrow().clone();
+                let bound = slot.invocation.as_ref()
+                    == Some(&(invocation.id.clone(), invocation.approval.clone()))
+                    || (slot.invocation.is_none()
+                        && slot
+                            .preparation
+                            .as_ref()
+                            .is_some_and(|prepared| prepared.0 == *invocation));
+                if bound
+                    && slot.data.origin == invocation.origin
+                    && slot.data.review == invocation.review
+                    && matches!(
+                        previous,
+                        CommandProgress::Ready
+                            | CommandProgress::Finished {
+                                outcome: CommandOutcome::Rejected { .. }
+                            }
+                    )
+                {
+                    if slot.invocation.is_none() {
+                        let _ = self.inner.outcomes.lock().unwrap().record(
+                            &context,
+                            invocation,
+                            &entry,
+                            &slot.progress,
+                        )?;
+                        slot.invocation =
+                            Some((invocation.id.clone(), invocation.approval.clone()));
+                    }
+                    slot.progress.send_replace(progress.clone());
+                }
+            }
+        }
+        self.inner
+            .outcomes
+            .lock()
+            .unwrap()
+            .retain_control(&context, invocation, progress)
+    }
     async fn command_entry(
         &self,
         mut scope: Scope,
@@ -288,14 +495,223 @@ impl Host {
         }
         Ok((context, entry))
     }
-    /// Trusted adapters call this only after a durable claim. No raw executable,
-    /// command name or arguments are accepted. Duplicate dispatch joins the same
-    /// native outcome, including while its original HTTP response is lost.
+    pub(super) async fn native_command_worker(
+        &self,
+        scope: Scope,
+        invocation: &CommandInvocation,
+    ) -> Result<openwebide_core::workspace_transaction::WorkspaceTransactionWorker, String> {
+        let (_, entry) = self.command_entry(scope, invocation, true).await?;
+        let entry = entry.ok_or("The original language service is unavailable")?;
+        let _guard = ServiceUse(entry.clone());
+        let session = entry
+            .session
+            .get()
+            .ok_or("The original language service was lost")?;
+        let mut commands = session.commands.lock().unwrap();
+        let slot = commands
+            .slots
+            .get_mut(&invocation.command)
+            .ok_or("The original command review is unavailable")?;
+        if slot.data.origin != invocation.origin
+            || slot.data.review != invocation.review
+            || slot.created.elapsed() >= COMMAND_LIFETIME
+        {
+            return Err("The original native command review changed or expired".into());
+        }
+        if let Some((prepared, worker)) = &slot.preparation {
+            if prepared != invocation {
+                return Err("The native command preparation belongs to another approval".into());
+            }
+            return Ok(worker.clone());
+        }
+        let worker = openwebide_core::workspace_transaction::WorkspaceTransactionWorker {
+            id: format!("{:032x}", rand::random::<u128>()),
+            secret: format!("{:032x}", rand::random::<u128>()),
+        };
+        slot.preparation = Some((invocation.clone(), worker.clone()));
+        Ok(worker)
+    }
+    pub async fn prepare_command(
+        &self,
+        scope: Scope,
+        invocation: &CommandInvocation,
+    ) -> Result<
+        openwebide_core::plugins::languages::intelligence::actions::CommandPreparation,
+        String,
+    > {
+        use openwebide_core::plugins::languages::intelligence::actions::CommandPreparation;
+        let context = CommandScope::new(&scope, invocation)?;
+        if let Some(progress) = self
+            .inner
+            .outcomes
+            .lock()
+            .unwrap()
+            .get(&context, invocation, false)?
+        {
+            return Ok(CommandPreparation::Existing { progress });
+        }
+        let worker = self.native_command_worker(scope, invocation).await?;
+        Ok(CommandPreparation::Worker {
+            worker: worker.delegation_key(),
+        })
+    }
+    pub(crate) async fn start_owned_command(
+        &self,
+        scope: Scope,
+        request: openwebide_core::plugins::languages::intelligence::actions::HostCommandRequest,
+        backend: Option<Arc<crate::runs::backend_client::BackendClient>>,
+    ) -> Result<CommandProgress, String> {
+        let selected = request
+            .command
+            .selection
+            .as_ref()
+            .ok_or("Starting a command requires its complete approved provider")?;
+        if request.command.operation != protocol::actions::CommandOperation::Start
+            || selected.user != request.command.user
+            || selected.project != request.command.project
+            || scope.project != request.command.project
+        {
+            return Err("Language command start scope changed".into());
+        }
+        let invocation = request.command.invocation;
+        let context = CommandScope::new(&scope, &invocation)?;
+        if let Some(progress) =
+            self.inner
+                .outcomes
+                .lock()
+                .unwrap()
+                .get(&context, &invocation, false)?
+        {
+            return Ok(progress);
+        }
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        if let Some(progress) = self
+            .recover_original_control(&scope.owner, scope.project, &invocation, false, None)
+            .await?
+        {
+            return Ok(progress);
+        }
+        let worker = self
+            .native_command_worker(scope.clone(), &invocation)
+            .await?;
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        {
+            let origin = request
+                .journal
+                .as_ref()
+                .map(|j| j.api_url.as_str())
+                .or_else(|| backend.as_ref().map(|b| b.recovery_origin()));
+            if let Some(origin) = origin {
+                self.inner
+                    .coordinator
+                    .recovery_namespace()?
+                    .check_command_origin(
+                        request.command.user,
+                        scope.project,
+                        if request.journal.is_some() {
+                            openwebide_core::WorkspaceMode::Local
+                        } else {
+                            openwebide_core::WorkspaceMode::Remote
+                        },
+                        &invocation,
+                        origin,
+                    )?;
+            }
+            let authority = request
+                .authority
+                .ok_or("A fresh manual command grant is required")?;
+            let user = request.command.user;
+            let project = scope.project;
+            if let Some(journal) = request.journal {
+                if journal.delegation.user != user
+                    || journal.delegation.project != project
+                    || journal.delegation.scope.id != invocation.id
+                {
+                    return Err("The paired command journal changed identity".into());
+                }
+                let backend =
+                    crate::workspace_transactions::command_delegation::PairedCommandJournal::new(
+                        journal.api_url,
+                        &journal.delegation.scope.root_identity.clone(),
+                        journal.delegation,
+                        worker.clone(),
+                    )?;
+                let journal = owned::Journal {
+                    backend: Arc::new(backend),
+                    user,
+                    project,
+                    invocation: invocation.clone(),
+                    worker,
+                    recoveries: self.inner.command_recoveries.clone(),
+                };
+                self.start_command_with(
+                    scope,
+                    invocation,
+                    move |coordinator, entry, data, revision| {
+                        journal.execute(coordinator, entry, data, revision, authority)
+                    },
+                )
+                .await
+            } else {
+                let journal = owned::Journal {
+                    backend: backend.ok_or("The original native backend is unavailable")?,
+                    user,
+                    project,
+                    invocation: invocation.clone(),
+                    worker,
+                    recoveries: self.inner.command_recoveries.clone(),
+                };
+                self.start_command_with(
+                    scope,
+                    invocation,
+                    move |coordinator, entry, data, revision| {
+                        journal.execute(coordinator, entry, data, revision, authority)
+                    },
+                )
+                .await
+            }
+        }
+        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+        {
+            let _ = (worker, backend, request.authority, request.journal, scope);
+            Err("Native command recovery is unavailable on this platform".into())
+        }
+    }
+    /// Standalone embedding primitive; its caller owns approval persistence.
+    /// Ordinary folder admission cannot resume a pending original native owner.
+    /// Application transports use the owned journal path. Both paths join a
+    /// duplicate invocation rather than send its RPC again.
     pub async fn start_command(
         &self,
         scope: Scope,
         invocation: CommandInvocation,
     ) -> Result<CommandProgress, String> {
+        self.start_command_with(
+            scope,
+            invocation,
+            |coordinator, entry, data, revision| async move {
+                coordinated_execute(&coordinator, &entry, &data, revision).await
+            },
+        )
+        .await
+    }
+    async fn start_command_with<F, Fut>(
+        &self,
+        scope: Scope,
+        invocation: CommandInvocation,
+        run: F,
+    ) -> Result<CommandProgress, String>
+    where
+        F: FnOnce(
+                crate::folder_coordination::Coordinator,
+                Arc<Entry>,
+                Arc<CommandData>,
+                u64,
+            ) -> Fut
+            + Send
+            + 'static,
+        Fut: std::future::Future<Output = CommandOutcome> + Send + 'static,
+    {
         let (context, entry) = self.command_entry(scope, &invocation, true).await?;
         let guard = entry.as_ref().map(|entry| ServiceUse(entry.clone()));
         if let Some(progress) =
@@ -378,7 +794,7 @@ impl Host {
         let coordinator = self.inner.coordinator.clone();
         tokio::spawn(async move {
             let _registration = registration;
-            let outcome = coordinated_execute(&coordinator, &entry, &data, input_revision).await;
+            let outcome = run(coordinator, entry, data, input_revision).await;
             completion.finish(outcome);
             drop(guard);
         });
@@ -542,7 +958,7 @@ fn pending(slot: &Slot) -> bool {
                     .synchronizing
                     .is_some_and(|since| since.elapsed() < COMMAND_LIFETIME)
         }
-        CommandProgress::Finished { .. } => false,
+        CommandProgress::Finished { .. } | CommandProgress::Cancelled => false,
     }
 }
 pub(super) fn has_pending_action(session: &Session) -> bool {
@@ -794,62 +1210,196 @@ async fn coordinated_execute(
     let lease = tokio::select! {
         biased;
         _ = stopped.changed() => return CommandOutcome::Rejected { message: "The original service stopped before folder access".into() },
-        lease = coordinator.acquire(folder) => match lease {
+        lease = coordinator.acquire(folder.clone()) => match lease {
             Ok(lease) => lease,
             Err(message) => return CommandOutcome::Rejected { message },
         },
     };
+    leased_execute(
+        coordinator,
+        entry,
+        data,
+        input_revision,
+        &folder,
+        &lease,
+        None,
+    )
+    .await
+    .into_outcome()
+}
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+use owned::Dispatch;
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+struct Dispatch<'a>(&'a std::convert::Infallible);
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+impl Dispatch<'_> {
+    fn outcome(&self, _: &CommandOutcome) -> Result<(), String> {
+        match *self.0 {}
+    }
+    fn stopped(&self) -> Result<(), String> {
+        match *self.0 {}
+    }
+    fn record(&self) -> Result<(), String> {
+        match *self.0 {}
+    }
+}
+struct ExecutionResult {
+    outcome: CommandOutcome,
+    cleaned: bool,
+}
+impl ExecutionResult {
+    fn into_outcome(self) -> CommandOutcome {
+        if !self.cleaned && !matches!(self.outcome, CommandOutcome::Uncertain { .. }) {
+            CommandOutcome::Uncertain {
+                message: "Native command cleanup is unconfirmed".into(),
+            }
+        } else {
+            self.outcome
+        }
+    }
+}
+async fn leased_execute(
+    coordinator: &crate::folder_coordination::Coordinator,
+    entry: &Entry,
+    data: &CommandData,
+    input_revision: u64,
+    folder: &crate::folder_coordination::Folder,
+    lease: &crate::folder_coordination::Lease,
+    dispatch: Option<&Dispatch<'_>>,
+) -> ExecutionResult {
+    if entry.session.get().is_none() {
+        return ExecutionResult {
+            outcome: CommandOutcome::Rejected {
+                message: "The original service is unavailable".into(),
+            },
+            cleaned: true,
+        };
+    };
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     let watcher = {
+        let session = entry
+            .session
+            .get()
+            .expect("The original session is retained by its entry");
         let owner = { session.process.lock().unwrap().owner() };
         let retained = match owner {
-            Some(owner) => lease.watch_process(&owner).await,
+            Some(owner) => match dispatch {
+                Some(dispatch) => match dispatch.process_cleanup() {
+                    Ok(cleanup) => lease.watch_command_process(&owner, cleanup).await,
+                    Err(message) => Err(message),
+                },
+                None => lease.watch_process(&owner).await,
+            },
             None => Err("The original process owner is unavailable".to_string()),
         };
         match retained {
             Ok(watcher) => watcher,
             Err(message) => {
                 if let Err(cleanup) = entry.stop_and_wait().await {
-                    lease.quarantine();
-                    return CommandOutcome::Uncertain {
-                        message: format!("{message}. Native cleanup is unconfirmed: {cleanup}"),
+                    lease.mark_uncertain();
+                    return ExecutionResult {
+                        outcome: CommandOutcome::Uncertain {
+                            message: format!("{message}. Native cleanup is unconfirmed: {cleanup}"),
+                        },
+                        cleaned: false,
                     };
                 }
-                return CommandOutcome::Rejected { message };
+                if let Some(dispatch) = dispatch
+                    && let Err(cleanup) = dispatch.stopped()
+                {
+                    lease.mark_uncertain();
+                    return ExecutionResult {
+                        outcome: CommandOutcome::Uncertain {
+                            message: format!(
+                                "{message}. Original cleanup publication is pending: {cleanup}"
+                            ),
+                        },
+                        cleaned: false,
+                    };
+                }
+                return ExecutionResult {
+                    outcome: CommandOutcome::Rejected { message },
+                    cleaned: true,
+                };
             }
         }
     };
     // Context, overlays and affected-file verification occur AFTER queued waits.
     // Panic must stop the original process before releasing its physical lease.
     use futures::FutureExt;
-    let work = std::panic::AssertUnwindSafe(execute(entry, data, input_revision)).catch_unwind();
+    let work =
+        std::panic::AssertUnwindSafe(execute(entry, data, input_revision, dispatch)).catch_unwind();
     let mut outcome = tokio::select! {
         biased;
         () = coordinator.stopped() => CommandOutcome::Uncertain { message: "Execution host stopped during command preparation or execution; review effects before continuing".into() },
         result = work => result.unwrap_or_else(|_| CommandOutcome::Uncertain { message: "The native command worker failed; review effects before continuing".into() }),
     };
-    if matches!(outcome, CommandOutcome::Uncertain { .. }) || *entry.stopped.borrow() {
-        if let Err(message) = entry.stop_and_wait().await {
-            lease.quarantine();
-            outcome = CommandOutcome::Uncertain {
-                message: format!("Native command cleanup could not be confirmed: {message}"),
-            };
+    if !lease.covers(folder) && matches!(outcome, CommandOutcome::Completed { .. }) {
+        outcome = CommandOutcome::Uncertain {
+            message: "The original command folder changed during execution; review its effects"
+                .into(),
+        };
+    }
+    if let Err(message) = outcome.validate() {
+        outcome = CommandOutcome::Uncertain { message };
+    }
+    // The exact result precedes either watcher release or process cleanup. A
+    // lost acknowledgement must not replace a completed result with uncertainty.
+    let recorded = dispatch.map_or(Ok(()), |dispatch| dispatch.outcome(&outcome));
+    if recorded.is_err()
+        || matches!(outcome, CommandOutcome::Uncertain { .. })
+        || *entry.stopped.borrow()
+        || !lease.covers(folder)
+    {
+        let cleaned = match entry.stop_and_wait().await {
+            Ok(()) => dispatch.is_none_or(|dispatch| dispatch.stopped().is_ok()),
+            Err(message) => {
+                lease.mark_uncertain();
+                if dispatch.is_none() {
+                    outcome = CommandOutcome::Uncertain {
+                        message: format!(
+                            "Native command cleanup could not be confirmed: {message}"
+                        ),
+                    };
+                }
+                false
+            }
+        };
+        if !cleaned {
+            lease.mark_uncertain();
         }
-        return outcome;
+        return ExecutionResult { outcome, cleaned };
     }
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     if let Err(message) = watcher.finish().await {
-        if entry.stop_and_wait().await.is_err() {
-            lease.quarantine();
+        let cleaned = entry.stop_and_wait().await.is_ok()
+            && dispatch.is_none_or(|dispatch| dispatch.stopped().is_ok());
+        if !cleaned {
+            lease.mark_uncertain();
         }
-        return CommandOutcome::Uncertain {
-            message: format!("Native folder release could not be confirmed: {message}"),
+        return ExecutionResult {
+            outcome: if dispatch.is_some() {
+                outcome
+            } else {
+                CommandOutcome::Uncertain {
+                    message: format!("Native folder release could not be confirmed: {message}"),
+                }
+            },
+            cleaned,
         };
     }
-    outcome
+    ExecutionResult {
+        outcome,
+        cleaned: true,
+    }
 }
 
-async fn execute(entry: &Entry, data: &CommandData, input_revision: u64) -> CommandOutcome {
+async fn execute(
+    entry: &Entry,
+    data: &CommandData,
+    input_revision: u64,
+    dispatch: Option<&Dispatch<'_>>,
+) -> CommandOutcome {
     let Some(session) = entry.session.get() else {
         return CommandOutcome::Rejected {
             message: "The original service is unavailable".into(),
@@ -862,7 +1412,7 @@ async fn execute(entry: &Entry, data: &CommandData, input_revision: u64) -> Comm
     if let Err(message) = verify_sources(session, &documents, data, input_revision).await {
         return CommandOutcome::Rejected { message };
     }
-    dispatch(entry, session, data, input_revision).await
+    send_command(entry, session, data, input_revision, dispatch).await
 }
 
 async fn verify_inputs(session: &Session, data: &CommandData, revision: u64) -> Result<(), String> {
@@ -873,11 +1423,12 @@ async fn verify_inputs(session: &Session, data: &CommandData, revision: u64) -> 
     Ok(())
 }
 
-async fn dispatch(
+async fn send_command(
     entry: &Entry,
     session: &Session,
     data: &CommandData,
     input_revision: u64,
+    dispatch: Option<&Dispatch<'_>>,
 ) -> CommandOutcome {
     // Verifying a bounded workspace can still yield for many filesystem reads.
     // Recheck native context after those reads, immediately before the mutating
@@ -894,6 +1445,13 @@ async fn dispatch(
         return CommandOutcome::Rejected {
             message: "The original service stopped before the command was sent".into(),
         };
+    }
+    if let Some(dispatch) = dispatch
+        && let Err(message) = dispatch.record()
+    {
+        // The native admission write may have committed before its local
+        // acknowledgement failed. Never contradict a durable dispatch boundary.
+        return CommandOutcome::Uncertain { message };
     }
     // Mutations are NEVER sent through request_current's automatic read retry.
     let result = tokio::select! {

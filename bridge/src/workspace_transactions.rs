@@ -1,9 +1,11 @@
 //! Native runtime and persistence adapters for the shared transaction engine.
 //! A worker owns the complete operation, including its lock, after disconnect.
+#[cfg(test)]
+use crate::runs::native_vfs::NativeFsVfs;
 use crate::{
     folder_coordination::{Coordinator, FileIdentity, Folder},
     paths::resolve_in_root,
-    runs::{backend_client::BackendClient, native_vfs::NativeFsVfs},
+    runs::{backend_client::BackendClient, native_vfs::workspace::WorkspaceFiles},
 };
 #[cfg(test)]
 use openwebide_core::workspace_transaction::TransactionPhase;
@@ -24,20 +26,40 @@ use std::{
     sync::{Arc, Mutex},
 };
 use tokio::sync::Mutex as AsyncMutex;
+pub mod command_delegation;
 pub mod delegation;
 mod folder;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+pub(crate) mod original_command;
 use folder::ExecutionFolder;
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 pub mod companion;
 
 pub trait JournalBackend: Send + Sync + 'static {
+    fn command_outcome(
+        &self,
+        _expected: &transaction::WorkspaceCommandRecovery,
+    ) -> impl Future<
+        Output = Result<
+            openwebide_core::plugins::languages::intelligence::actions::CommandOutcome,
+            String,
+        >,
+    > + Send {
+        async { Err("Original retained command outcomes are unavailable on this transport".into()) }
+    }
+    fn recovery_origin(&self) -> Option<&str> {
+        None
+    }
     fn request(
         &self,
         request: &WorkspaceJournalRequest,
     ) -> impl Future<Output = Result<WorkspaceJournalResponse, String>> + Send;
 }
 impl JournalBackend for BackendClient {
+    fn recovery_origin(&self) -> Option<&str> {
+        Some(self.recovery_origin())
+    }
     async fn request(
         &self,
         request: &WorkspaceJournalRequest,
@@ -55,10 +77,70 @@ struct Journal<B> {
     mode: WorkspaceMode,
 }
 impl<B: JournalBackend> Journal<B> {
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    async fn command_recovery(
+        &self,
+    ) -> Result<
+        (
+            transaction::WorkspaceCommandRecovery,
+            transaction::RecoveryAuthority,
+        ),
+        String,
+    > {
+        let reply = self
+            .backend
+            .request(&WorkspaceJournalRequest {
+                user: self.user,
+                project: self.project,
+                id: self.id.clone(),
+                operation: WorkspaceJournalOperation::CommandRecoveryScope,
+            })
+            .await?;
+        let (recovery, authority) = reply.command_recovery(self.user, self.project, &self.id)?;
+        Ok((recovery.clone(), authority.clone()))
+    }
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    async fn recovery(
+        &self,
+    ) -> Result<
+        (
+            WorkspaceTransactionScope,
+            transaction::RecoveryAuthority,
+            transaction::WorkspaceActivity,
+        ),
+        String,
+    > {
+        match self
+            .backend
+            .request(&WorkspaceJournalRequest {
+                user: self.user,
+                project: self.project,
+                id: self.id.clone(),
+                operation: WorkspaceJournalOperation::RecoveryScope,
+            })
+            .await?
+        {
+            WorkspaceJournalResponse::RecoveryScope {
+                scope,
+                authority,
+                activity,
+            } if scope.id == self.id
+                && scope.generation == self.generation
+                && scope.root.mode == self.mode
+                && authority.matches_scope(self.user, self.project, &scope) =>
+            {
+                Ok((scope, *authority, activity))
+            }
+            _ => Err("The original private workspace recovery scope is unavailable".into()),
+        }
+    }
     async fn claim(
         &self,
         scope: &WorkspaceTransactionScope,
         review: Option<(&str, &str)>,
+        command: Option<
+            Box<openwebide_core::plugins::languages::intelligence::actions::CommandReservation>,
+        >,
     ) -> Result<(), String> {
         let response = self
             .backend
@@ -67,6 +149,7 @@ impl<B: JournalBackend> Journal<B> {
                 project: self.project,
                 id: self.id.clone(),
                 operation: WorkspaceJournalOperation::ClaimWorker {
+                    command,
                     scope: scope.clone(),
                     worker: self.worker.clone(),
                     review_digest: review.map(|(digest, _)| digest.into()),
@@ -205,6 +288,8 @@ impl<B: JournalBackend> WorkspaceJournal for Journal<B> {
 type Locks = BTreeMap<(i64, i64), Arc<AsyncMutex<()>>>;
 #[derive(Clone)]
 pub struct Host {
+    #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
+    recovery_home: Arc<PathBuf>,
     locks: Arc<Mutex<Locks>>,
     slots: Arc<tokio::sync::Semaphore>,
     pub(crate) coordinator: Coordinator,
@@ -231,11 +316,24 @@ impl Host {
     pub fn new() -> Self {
         let coordinator = Coordinator::default();
         Self {
+            #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
+            recovery_home: crate::native_recovery::testing_home(),
             locks: Default::default(),
             slots: Arc::new(tokio::sync::Semaphore::new(1)),
             #[cfg(any(target_os = "linux", target_os = "macos"))]
             companion: companion::Host::new(coordinator.clone()),
             coordinator,
+        }
+    }
+    #[cfg(all(
+        any(test, feature = "test-support"),
+        any(target_os = "linux", target_os = "macos")
+    ))]
+    pub(crate) fn set_test_recovery_home(&mut self, home: Arc<PathBuf>) {
+        self.coordinator.set_recovery_home(home.clone());
+        #[cfg(test)]
+        {
+            self.recovery_home = home;
         }
     }
     fn capture_root(
@@ -403,8 +501,14 @@ impl Host {
         let registration = self.coordinator.worker()?;
         let coordinator = self.coordinator.clone();
         let slots = self.slots.clone();
+        #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
+        let recovery_home = self.recovery_home.clone();
+        #[cfg(all(not(test), any(target_os = "linux", target_os = "macos")))]
+        let recovery_home = coordinator.recovery_home()?;
         #[cfg(any(target_os = "linux", target_os = "macos"))]
         let companion = self.companion.clone();
+        #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
+        coordinator.set_recovery_home(recovery_home.clone());
         tokio::spawn(async move {
             let _registration = registration;
             let _guard = coordinator.prepare(lock.lock_owned()).await?;
@@ -428,9 +532,19 @@ impl Host {
                 );
             }
             #[cfg(any(target_os = "linux", target_os = "macos"))]
-            let fence = folder.exclude(&companion, &root).await?;
+            let native_namespace = crate::native_recovery::Namespace::open(&recovery_home)?;
+            #[cfg(any(target_os="linux",target_os="macos"))]
+            let (private_scope, authority, activity)=coordinator.prepare(journal.recovery()).await??;
+            #[cfg(any(target_os="linux",target_os="macos"))]
+            if private_scope!=scope {return Err("Workspace recovery changed before native admission".into());}
+            #[cfg(any(target_os="linux",target_os="macos"))]
+            let permit=native_namespace.permit(&root.folder,&authority,&scope,activity)?;
+            #[cfg(any(target_os="linux",target_os="macos"))]
+            let fence = folder.exclude(&companion, &root, permit.clone()).await?;
             #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-            let _fence = coordinator.acquire(root.folder.clone()).await?;
+            let fence = Arc::new(coordinator.acquire(root.folder.clone()).await?);
+            #[cfg(any(target_os = "linux", target_os = "macos"))]
+            native_namespace.ensure_current()?;
             // Queue the physical folder before retaining the one large snapshot
             // slot. A busy folder must not prevent independent roots from loading.
             let _slot = coordinator
@@ -449,7 +563,17 @@ impl Host {
             #[cfg(any(target_os = "linux", target_os = "macos"))]
             if !folder.matches_state(&state)? { return Err("The loaded plan differs from the original proven review".into()); }
             #[cfg(any(target_os = "linux", target_os = "macos"))]
-            let review_guard = if let Some(review) = &state.language_review
+            let language_scope = state.language_review.as_ref().filter(|_| current_scope.accepted_language_review_digest.is_none()
+                && state.journal.progress != TransactionProgress::prepared_cancellation()).map(|review| {
+                Ok::<_, String>(crate::languages::host::Scope {
+                    owner: folder.owner(command.user), project: command.project,
+                    root: root.path.clone(), provider: review.prepared.storage_namespace(),
+                    digest: review.prepared.digest.clone(),
+                    server: openwebide_core::plugins::languages::intelligence::declared_server(&review.prepared, &review.input.language)?.clone(),
+                })
+            }).transpose()?;
+            #[cfg(any(target_os = "linux", target_os = "macos"))]
+            let review_guard = if state.language_review.is_some()
                 && current_scope.accepted_language_review_digest.is_none()
                 && state.journal.progress != TransactionProgress::prepared_cancellation() {
                 if command.request.language_grant.as_deref().is_none_or(|grant| !valid_id(grant)) {
@@ -457,12 +581,7 @@ impl Host {
                 }
                 let languages = languages.as_ref().ok_or("The original language service is unavailable for native admission")?;
                 Some(coordinator.prepare(languages.validate_workspace_review(
-                    crate::languages::host::Scope {
-                        owner: folder.owner(command.user), project: command.project,
-                        root: root.path.clone(), provider: review.prepared.storage_namespace(),
-                        digest: review.prepared.digest.clone(),
-                        server: openwebide_core::plugins::languages::intelligence::declared_server(&review.prepared, &review.input.language)?.clone(),
-                    }, &state, fence.lease(),
+                    language_scope.clone().ok_or("The original language scope is unavailable")?, &state, fence.lease(),
                 )).await??)
             } else { None };
             #[cfg(not(any(target_os = "linux", target_os = "macos")))]
@@ -488,8 +607,42 @@ impl Host {
                     Ok::<_, String>((review.fingerprint()?, command.request.language_grant.clone().ok_or("Fresh manual language authority is required for first admission")?))
                 }).transpose()?
             } else { None };
-            journal.claim(&current_scope, admission.as_ref().map(|(digest, grant)| (digest.as_str(), grant.as_str()))).await?;
+            #[cfg(any(target_os = "linux", target_os = "macos"))]
+            native_namespace.ensure_current()?;
+            #[cfg(any(target_os="linux",target_os="macos"))]
+            let command_reservation = {
+                let (private_scope, authority, activity)=coordinator.prepare(journal.recovery()).await??;
+                if private_scope!=current_scope {return Err("Original recovery changed before enrollment".into());}
+                let fresh=native_namespace.permit(&root.folder,&authority,&current_scope,activity)?.with_origin(journal.backend.recovery_origin())?;
+                if fence.lease().recovery().is_none() {return Err("Native recovery requires its original permit".into());}
+                if activity.language_command && admission.is_some() {
+                    let (recovery, command_authority) = coordinator.prepare(journal.command_recovery()).await??;
+                    if recovery.scope != current_scope || recovery.activity != activity || command_authority != authority {
+                        return Err("The original command changed before file admission".into());
+                    }
+                    let languages = languages.as_ref().ok_or("The original language service is unavailable")?;
+                    let worker = coordinator.prepare(languages.prepare_workspace_command(
+                        language_scope.ok_or("The original language scope is unavailable")?, &state, &recovery,
+                    )).await??;
+                    native_namespace.reserve_command(&root.folder, fence.lease(), &fresh, crate::native_recovery::CommandIntent {
+                        recovery: &recovery, worker: &worker,
+                    })?;
+                    Some(Box::new(openwebide_core::plugins::languages::intelligence::actions::CommandReservation {
+                        expected: Box::new(recovery), worker,
+                    }))
+                } else {
+                    native_namespace.enroll(&root.folder,fence.lease(),&fresh)?;
+                    None
+                }
+            };
+            #[cfg(not(any(target_os="linux",target_os="macos")))]
+            let command_reservation = None;
+            journal.claim(&current_scope, admission.as_ref().map(|(digest, grant)| (digest.as_str(), grant.as_str())), command_reservation).await?;
             let result = async {
+                #[cfg(any(target_os = "linux", target_os = "macos"))]
+                native_namespace.ensure_current()?;
+                #[cfg(any(target_os = "linux", target_os = "macos"))]
+                native_namespace.files_admitted(&root.folder, fence.lease(), &permit)?;
                 #[cfg(any(target_os = "linux", target_os = "macos"))]
                 if let Some(review) = &review_guard { review.ensure_current()?; }
                 if !root.current() {
@@ -497,6 +650,11 @@ impl Host {
                         "The physical project folder changed during worker admission".into(),
                     );
                 }
+                let current = || {
+                    #[cfg(any(target_os = "linux", target_os = "macos"))]
+                    if native_namespace.ensure_current().is_err() { return false; }
+                    root.current()
+                };
                 let result = if state.journal.plan.version == 2 {
                     #[cfg(any(target_os = "linux", target_os = "macos"))]
                     {
@@ -515,7 +673,7 @@ impl Host {
                             &journal,
                             state.journal,
                             command.request.action,
-                            || root.current(),
+                            &current,
                         )
                         .await
                     }
@@ -526,9 +684,12 @@ impl Host {
                         );
                     }
                 } else {
-                    let vfs = NativeFsVfs {
-                        root: root.path.clone(),
-                    };
+                    #[cfg(any(target_os = "linux", target_os = "macos"))]
+                    let lease = fence.shared_lease();
+                    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+                    let lease = fence.clone();
+                    let vfs = WorkspaceFiles::with_lease(root.folder.clone(), lease)
+                        .map_err(|error| error.to_string())?;
                     let files = VfsTransactionFiles {
                         vfs: &vfs,
                         identity: &root.identity,
@@ -538,10 +699,12 @@ impl Host {
                         &journal,
                         state.journal,
                         command.request.action,
-                        || root.current(),
+                        &current,
                     )
                     .await
                 };
+                #[cfg(any(target_os = "linux", target_os = "macos"))]
+                native_namespace.ensure_current()?;
                 match result {
                     Ok(record) => Ok(WorkspaceTransactionOutcome {
                         generation: journal.generation.clone(),
@@ -564,7 +727,28 @@ impl Host {
                 }
             }
             .await;
-            match (result, journal.release().await) {
+            // Paired access is revoked by release. Observe the exact original
+            // compound state while still admitted and physically fenced.
+            #[cfg(any(target_os="linux",target_os="macos"))]
+            let final_owner = if root.current() {Some(journal.recovery().await)} else {None};
+            #[cfg(any(target_os="linux",target_os="macos"))]
+            let receipt = (|| -> Result<(), String> {
+                if let Some(Ok((scope, authority, activity))) = &final_owner {
+                    let fresh = native_namespace.permit(&root.folder, authority, scope, *activity)?;
+                    native_namespace.files_finished(&root.folder, fence.lease(), &fresh, *activity)?;
+                }
+                Ok(())
+            })();
+            let released = journal.release().await;
+            #[cfg(any(target_os="linux",target_os="macos"))]
+            receipt?;
+            #[cfg(any(target_os="linux",target_os="macos"))]
+            if released.is_ok() && let Some(proof)=final_owner {
+                let (scope,authority,activity)=proof?;
+                let fresh=native_namespace.permit(&root.folder,&authority,&scope,activity)?;
+                native_namespace.finish_files(&root.folder,fence.lease(),&fresh,activity)?;
+            }
+            match (result, released) {
                 (result, Ok(())) => result,
                 (Ok(mut outcome), Err(error)) => {
                     if let Some(original) = outcome.error.as_mut() {

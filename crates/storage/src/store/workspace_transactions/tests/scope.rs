@@ -221,3 +221,122 @@ fn replaced_records_reject_stale_phase_updates_even_when_id_and_revision_repeat(
         }
     });
 }
+
+#[test]
+fn original_activity_keeps_command_recovery_after_files_finish_and_excludes_other_journals() {
+    block_on(async {
+        for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+            let store = Store::new(RusqliteDb::open_in_memory().unwrap());
+            let fixture = fixture(&store, mode).await;
+            let adapter = journal(&store, &fixture);
+            adapter.prepare(&fixture.plan).await.unwrap();
+            let (scope, activity) = store
+                .workspace_transaction_activity(fixture.user, fixture.project.id, &adapter.id)
+                .await
+                .unwrap()
+                .unwrap();
+            assert!(activity.file_recovery);
+            assert!(!activity.language_command);
+            adapter
+                .advance(
+                    &adapter.id,
+                    &scope.generation,
+                    scope.revision,
+                    &TransactionProgress::prepared_cancellation(),
+                )
+                .await
+                .unwrap();
+            let finished = store
+                .workspace_transaction_scope(fixture.user, fixture.project.id, &adapter.id)
+                .await
+                .unwrap()
+                .unwrap();
+            // Metadata reads must stay independent of file/editor snapshots and
+            // opaque command approval payloads, including revoked providers.
+            store
+                .db
+                .execute(
+                    "UPDATE workspace_transactions SET plan='invalid',editor='invalid'",
+                    &[],
+                )
+                .await
+                .unwrap();
+            store.db.execute("INSERT INTO language_actions (user_id,project_id,id,revision,server,command_id,approval,phase,bytes,created_at,updated_at) VALUES (?,?,?,1,'server','command','invalid','approved',0,0,0)", &[DbValue::Int(fixture.user.get()),DbValue::Int(fixture.project.id),DbValue::Text(adapter.id.clone())]).await.unwrap();
+            for (phase, pending) in [
+                ("approved", true),
+                ("running", true),
+                ("rejected", true),
+                ("uncertain", true),
+                ("completed", false),
+                ("acknowledged", false),
+                ("cancelled", false),
+            ] {
+                store
+                    .db
+                    .execute(
+                        "UPDATE language_actions SET phase=?",
+                        &[DbValue::Text(phase.into())],
+                    )
+                    .await
+                    .unwrap();
+                let (current, activity) = store
+                    .workspace_transaction_activity(fixture.user, fixture.project.id, &adapter.id)
+                    .await
+                    .unwrap()
+                    .unwrap();
+                assert_eq!(current, finished);
+                assert_eq!(
+                    activity,
+                    openwebide_core::workspace_transaction::WorkspaceActivity {
+                        file_recovery: false,
+                        language_command: pending
+                    },
+                    "{mode:?} {phase}"
+                );
+                assert_eq!(
+                    activity,
+                    store
+                        .workspace_activity(fixture.user, fixture.project.id)
+                        .await
+                        .unwrap()
+                );
+            }
+            // Another pending journal must affect project-wide admission while
+            // leaving this exact owner's completed compound observation alone.
+            store.db.execute("INSERT INTO workspace_transactions (user_id,project_id,id,revision,plan,editor,progress,editor_revision,terminal,bytes,created_at,updated_at,generation,root_identity,editor_root,worker_id,worker_digest) SELECT user_id,project_id,?,revision,plan,editor,progress,editor_revision,0,bytes,created_at,updated_at,lower(hex(randomblob(16))),root_identity,editor_root,'','' FROM workspace_transactions WHERE id=?", &[DbValue::Text("f".repeat(32)),DbValue::Text(adapter.id.clone())]).await.unwrap();
+            assert!(
+                store
+                    .workspace_activity(fixture.user, fixture.project.id)
+                    .await
+                    .unwrap()
+                    .file_recovery
+            );
+            assert_eq!(
+                store
+                    .workspace_transaction_activity(fixture.user, fixture.project.id, &adapter.id)
+                    .await
+                    .unwrap()
+                    .unwrap()
+                    .1,
+                openwebide_core::workspace_transaction::WorkspaceActivity::default()
+            );
+            assert!(
+                store
+                    .workspace_transaction_activity(fixture.other, fixture.project.id, &adapter.id)
+                    .await
+                    .is_err()
+            );
+            assert!(
+                store
+                    .workspace_transaction_activity(
+                        fixture.user,
+                        fixture.project.id,
+                        &"e".repeat(32)
+                    )
+                    .await
+                    .unwrap()
+                    .is_none()
+            );
+        }
+    });
+}

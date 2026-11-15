@@ -1,0 +1,552 @@
+{
+  "status": "Focused live producer, compact frozen-provider controls and settlement visibility verified in both modes; complete restart/early reservation/application contracts remain unfinished",
+  "source_sha256": "069bb71d6765d7c6ddf3db2a1bc5f7d3c0f8890456eb79925677c2b32f8a4e15",
+  "shared_entry": "Host::start_owned_command selects a journal primitive, then one Journal::execute producer uses the same slot admission, lease-owned executor, original invocation and backend mutation policy in both modes.",
+  "adapters": [
+    "BackendClient service callbacks",
+    "PairedCommandJournal command-purpose callbacks"
+  ],
+  "implemented": [
+    "Reacquire the original private recovery permit under the complete physical folder lease, refresh original identity after queued waits and persist a native intent before command-worker admission.",
+    "Schema4 anchored native command slots physically reserve a complete bounded result and ownership metadata before any RPC. Prepared, Admitted, Dispatched and Finished transitions never infer permission to replay from a reconnect.",
+    "Persist the single dispatch boundary immediately before the mutating RPC. Keep the original service and lease through cleanup, native outcome publication, backend Finish/Settle and native owner retirement.",
+    "Publish original command outcomes independently of the browser. Successful cleanup/settlement retires the compound owner and preserves the warm language server. Duplicate starts join the same native result.",
+    "A definitely unadmitted native intent can publish a no-dispatch rejection without a new manual grant. No command RPC is sent; the separate manual acknowledgement precedes background settlement.",
+    "Original retained physical leases may publish private uncertainty after pathname loss or quarantine, while current workspace mutation, redispatch and retirement remain denied.",
+    "A changed original execution folder after RPC becomes uncertainty and stops the original service. Missing positive cleanup never restores write access.",
+    "Core CommandOperation invocation validation is shared by the action client and backend: Status/Stop can inspect recorded outcome phases without fresh dispatch authority; Start remains forbidden after a recorded outcome.",
+    "Shared backend command authorization returns a stored outcome for Status without contacting the original host. Stop resolves from that outcome only after positive native cleanup; Start never uses a cached result. Paired frontend context checks precede its early return.",
+    "Public ActionRecovery snapshots validate immutable original invocation, result fingerprints and native settlement flags without decoding archived provider/source payloads. Legacy readable approvals gain original metadata once; unreadable records without that metadata remain pending.",
+    "Public compact Finish/Acknowledge and existing full record calls share storage phase/outcome/CAS policy. Owned native results cannot be replaced; acknowledgement requires positive cleanup and retains the independent settlement fence.",
+    "Recover controls from the actual original native session or receipt, without client-supplied provider configuration or folder access. Start alone requires complete approval/provider/source and fresh manual authority.",
+    "The frontend recovery facade does not enumerate installed providers. Reload retains completed/acknowledged pending settlements and blocks disk saves until native settlement clears.",
+    "Native command preparation is included in the standard bridge authentication inventory. Missing/invalid service or paired credentials fail before entering the preparation handler."
+  ],
+  "bounds": {
+    "native_database_bytes": 16777216,
+    "outstanding_command_slots": 32,
+    "slot_bytes": 278528,
+    "outcome_bytes": 262144,
+    "private_reply_bytes": 65536,
+    "preparation_metadata_reserve_bytes": 4096
+  },
+  "actual_contracts": [
+    "Real retained LSP review/preparation, native file application, independent file-worker release, post-edit synchronization, native command once, backend publication/settlement, ordinary folder admission and warm-service retention in both modes.",
+    "The same real producer in both modes rejects a bad native manual grant without RPC, keeps protection pending, accepts the distinct user acknowledgement and settles in a detached bounded worker.",
+    "After actual producer settlement, public backend Status/Stop authorization returns the original invocation without a fresh grant; a new Start is denied.",
+    "A full Unicode outcome persists without increasing the preallocated SQLite image size. Reopening preserves the original intent/result and duplicate dispatch or replacement outcome is rejected.",
+    "After root replacement and lease quarantine, the actual retained original handle can persist uncertainty but cannot regain workspace writes or redispatch.",
+    "Native review/admission fixtures use a persistent original test issuer and real storage CAS over service/paired HTTP primitives; no successful LSP verification is synthesized.",
+    "Real backend HTTP dispatch/authorization in both modes returns Completed, Rejected and Uncertain outcomes without an installed provider, manual grant or connected host. Other-account access fails. Stop without positive cleanup still requires the host.",
+    "Both-mode storage native-worker transitions keep uncertain Stop unresolved until an original worker positively upgrades cleanup. The pending settlement fence remains intact.",
+    "The real both-mode native producer ignores a client-echoed forged progress result and continues enforcing original dispatch/admission, once-only RPC and persisted publication.",
+    "Both-mode public storage recovery reads unreadable original provider/source and file payloads, validates outcome fingerprints/bounds and forbids another account or a new Start. Cleanup then manual acknowledgement keeps activity/deletion blocked until the original worker settles.",
+    "Real backend HTTP freezes the stored approval and still returns compact authorization/recovery and acknowledgement in both modes; account isolation and no-store responses remain enforced.",
+    "Actual browser cases cover completed/acknowledged settlement save blocking, five reload/recovery cases and two late-response cases across accounts and workspace ownership.",
+    "A separate actual HTTP regression first reproduced unauthenticated command preparation reaching its handler, then verifies 401 for missing/invalid credentials and authenticated handler access for both service and paired transports. The older complete command-dispatch HTTP fixture is retained and still needs real backend/bootstrap state.",
+    "The complete original native HTTP join/stop/Git/round-trip/cache-removal fixture now runs against real approvals, file admission, native command preparation and both callback transports in an isolated test namespace. See command-http-checks.json for admitted settlement coverage and the remaining early-stop lifecycle limitation."
+  ],
+  "verification": {
+    "source_sha256": "8e4e3335470e0d2644af4fdacb3fd751a0bb94987ef0a6bf3363f354139f3051",
+    "terminal": "compact-action-recovery-1794685117/terminal.json",
+    "artifacts": "compact-action-recovery-outputs-1794685916/manifest.json",
+    "cases": [
+      {
+        "case": "format",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "storage-all-unit",
+        "returncode": 0,
+        "deadline_seconds": 1200,
+        "log_sha256": "406c11841ec914b258516a2fd12f925b85122765b9a65647351e354d8a740a2a"
+      },
+      {
+        "case": "core-transactions",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "1f87b637be4bb3debaca5613a69da35d68f71230b693e8dc9c4b0ae1d412be0d"
+      },
+      {
+        "case": "core-command-recovery",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "c9973cb81a727da01f81bfc7a8711e693e40d18873cae1e8e3e973486e1737f1"
+      },
+      {
+        "case": "backend-all-unit",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "93a7671c744e081b27a8f77d6074626cbc7ed94ad8f6e4823b26bfdd4cc6b61d"
+      },
+      {
+        "case": "agent-command-actions",
+        "returncode": 0,
+        "deadline_seconds": 1200,
+        "log_sha256": "fdfe40b8572c82b6bcab24030967b8137c0e79e9942723396ae7ee027db343c3"
+      },
+      {
+        "case": "frontend-native-unit",
+        "returncode": 0,
+        "deadline_seconds": 1200,
+        "log_sha256": "3638d97237f5c5164963e8f70152eeca5a95460ba8c5a6e66cbbf0a5319aac0c"
+      },
+      {
+        "case": "native-all-target-clippy",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "5fbb41d23c136c383b1a254d26829086c2bc1f67d593c4a173b2776676b3c043"
+      },
+      {
+        "case": "matching-debug-bridge",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "5cf0c8dd786701f4447ea3ab127ecb3473eb191a0173889bde3a53e1d68b14ad"
+      },
+      {
+        "case": "native-command-slots",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "1dea539f76936ee28c91b425b17fa2ee69e986c7844d65022390ad95e7369f26"
+      },
+      {
+        "case": "owned-command-producer",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "3994edebb996e73f2de85f2133d9e44ce52595ae66cdc98368af3b4c369b9bea"
+      },
+      {
+        "case": "native-review-admission",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "5be081465c49e5c6dd3887e4afa1b3cfac589acf38269b83973bc0d78c48cf5b"
+      },
+      {
+        "case": "native-command-lifetime",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "c2c992e58e313228342e0cd535c7982e6e58690f4d63e0bf3132b5649a553b2b"
+      },
+      {
+        "case": "native-command-recovery-transports",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "90a7932773b76cc2d10b2d94243dbba091bcdda7267f135d5481e2f47f968a05"
+      },
+      {
+        "case": "all-native-transaction-hosts",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "d0f8391268543582ee8635025554dfee1488db1dacd8edb73f1066d557986189"
+      },
+      {
+        "case": "service-recovery-scope-transport",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "a4667814b7f39f7056925f6dce60dfef22285435ff03d0fad5d1614c7e0252c0"
+      },
+      {
+        "case": "wasi-backend-clippy",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "142b30ebab8bbf0c5a5d3dd26417289e585ee06859b06ef77aaca4d3c8881e51"
+      },
+      {
+        "case": "frontend-wasm-all-target-clippy",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "39346f91dca7371adca8e0a2040004f7669a8382f3876e6824e9dcb3d5f8841a"
+      },
+      {
+        "case": "windows-cross-clippy-not-native-runtime",
+        "returncode": 0,
+        "deadline_seconds": 2400,
+        "log_sha256": "921ac11c87f2ca456e0bf216a873fe4d5b813190bc67fc518f22db9ab027a3b2"
+      },
+      {
+        "case": "browser-settlement-status",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "198f1213252dc45a9523d59270f80b272e7780d9d668f1e46bc2251e8b227c0e"
+      },
+      {
+        "case": "browser-workspace-recovery",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "63d5d94ebf7f04dd59ff773eb4673828d43c9faca36d32b27c9446ca8a8fc5cd"
+      },
+      {
+        "case": "browser-late-discovery",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "34913810541d1597e3cf4ca2948733bb1ab9ac45bb2ee9ccec016d31add48afa"
+      }
+    ],
+    "test_counts": {
+      "storage-all-unit": 235,
+      "core-transactions": 53,
+      "core-command-recovery": 1,
+      "backend-all-unit": 133,
+      "agent-command-actions": 3,
+      "frontend-native-unit": 143,
+      "native-command-slots": 2,
+      "owned-command-producer": 1,
+      "native-review-admission": 30,
+      "native-command-lifetime": 27,
+      "native-command-recovery-transports": 1,
+      "all-native-transaction-hosts": 52,
+      "service-recovery-scope-transport": 4,
+      "browser-settlement-status": 1,
+      "browser-workspace-recovery": 5,
+      "browser-late-discovery": 2
+    },
+    "distinct_executable_test_pairs": 688,
+    "test_executions": 693,
+    "browser_unique_tests": 7,
+    "browser_test_executions": 8,
+    "scope": "Focused native, backend and actual browser recovery contracts. Native/WASM copies of the same function count separately by executable; repeated filters do not. No full installed application or full CI claim."
+  },
+  "previous_producer_checkpoint": {
+    "source_sha256": "68f8e1329e3e09b28d44082b52e6087c79ad17f2192bc2e166e2c7d2ef24cd5b",
+    "terminal": "native-command-producer-verified-1794680511/terminal.json",
+    "artifacts": "native-command-producer-outputs-1794681309/manifest.json"
+  },
+  "qualification": {
+    "WASI_backend_clippy": true,
+    "frontend_WASM_all_target_clippy": true,
+    "Windows_bridge_all_target_cross_clippy": true,
+    "native_Windows_execution": false,
+    "Windows_owned_command_adapter_available": false,
+    "fresh_Linux_runtime_at_this_source": false,
+    "full_packaged_browser_workflow_verified": false,
+    "full_CI_complete": false,
+    "whole_goal_complete": false
+  },
+  "remaining": [
+    "Qualify callback recovery with the current optimized native/WASI release distribution and installed app, including original OS-selected private namespace and physical browser folder permission/device checks. The built-app checkpoint uses optimized frontend, unoptimized production WASI entry point and the same native HTTP host with an isolated test-support namespace.",
+    "Finish frozen-owner application recovery beyond the native OS-owner CLI: deleted original projects/accounts, legacy command owners without verifiable cleanup, actual process interruptions and current packaged/native platform contracts. Never infer cleanup from missing public rows, failed requests or 404 replies.",
+    "Finish remaining admission/watcher-enrollment and outcome/context interruptions, including escaped-process cleanup beyond the verified managed-group cases.",
+    "Finish every participating writer, Git/PTY and escaped-process lifetime; implement and verify native Windows ownership and fresh packaged Linux runtime.",
+    "Complete all original packaged application/browser, cache/resource/RSS/prefetch/homelab and full-CI requirements."
+  ],
+  "previous_controls_checkpoint": {
+    "source_sha256": "0f6ad946b2823f498dcacb7cc27770dffc39a012fb1c74e58a5979061d6eac1c",
+    "verification": {
+      "terminal": "native-command-producer-controls-1794681646/terminal.json",
+      "artifacts": "native-command-producer-final-outputs-1794683018/manifest.json",
+      "cases": [
+        {
+          "case": "format",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "case": "storage-all-unit",
+          "returncode": 0,
+          "deadline_seconds": 1200,
+          "log_sha256": "ab636b38d35500a5c8abc19521cab9ca2bd2bbc1d4af56f917ebdfda6e874e1d"
+        },
+        {
+          "case": "core-transactions",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "f56dc85ae86e92ac3e94a6305b7059663017937c21ebdd1d1381b19722e622a4"
+        },
+        {
+          "case": "core-command-recovery",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "aa0966f889f8745f34715c5c215342bfbc0639c79b000e94f8671dcc58f238b9"
+        },
+        {
+          "case": "backend-all-unit",
+          "returncode": 0,
+          "deadline_seconds": 1800,
+          "log_sha256": "40b4cc8c46d3e183e4d9d7798ee15a913cf743a541c13a4878bcedb7cbc62639"
+        },
+        {
+          "case": "agent-command-actions",
+          "returncode": 0,
+          "deadline_seconds": 1200,
+          "log_sha256": "7ef1bd4d9e5f8eba6faafc5582186e14955131f18e44d1bdfb961a3b567cca39"
+        },
+        {
+          "case": "native-all-target-clippy",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "f48b683bebe04c4722f33361bede374fdb5b8720919a09a74137912a51c47217"
+        },
+        {
+          "case": "matching-debug-bridge",
+          "returncode": 0,
+          "deadline_seconds": 1800,
+          "log_sha256": "2aecec9366287217a40e471d3ee567fb1173c0f7558f55ba7216ffc1dea79372"
+        },
+        {
+          "case": "native-command-slots",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "56293e74400a003606100bc173cc7f98ddce26179a07f87e57f6a4685aaa201e"
+        },
+        {
+          "case": "owned-command-producer",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "0ff6f8cfbb0e2005932a64f3547bb74e009e5c720308466a1e75bf65b5931581"
+        },
+        {
+          "case": "native-review-admission",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "5dbcde08eeaa344b549c3e8900960c226c86d6d6a11f265743236f631602d90a"
+        },
+        {
+          "case": "native-command-lifetime",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "32266ee92863a3685a4d37d3f864d30cc4474fc3b912332d07af44daa69e93e2"
+        },
+        {
+          "case": "native-command-recovery-transports",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "f681e6417085e400e28d7d7ca82938f7c62be052fe78691c9120ad8a9c4eabc4"
+        },
+        {
+          "case": "all-native-transaction-hosts",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "5b81d8a6acafc29faf5fea10c021f55ed352c0a33a893d992712f7d6a23a5eac"
+        },
+        {
+          "case": "service-recovery-scope-transport",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "9ffa7985dccd039defbc4dd63b71d8a0ac974c57060f78db25a51cac236b53a1"
+        },
+        {
+          "case": "wasi-backend-clippy",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "65759e7171a265106bab0a7aef062f521fcff19db3e8725bb222444fdc46bfae"
+        },
+        {
+          "case": "frontend-wasm-all-target-clippy",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "f349f7139bb606231e3052f88dac9909d3ba7425bdc8eca43ebbf4c06f82b152"
+        },
+        {
+          "case": "windows-cross-clippy-not-native-runtime",
+          "returncode": 0,
+          "deadline_seconds": 2400,
+          "log_sha256": "494bfb81c873a255dd7ea413aea231d71434d31450ee8835ef39ce9d1ad3fb13"
+        }
+      ],
+      "test_counts": {
+        "backend-all-unit": 132,
+        "all-native-transaction-hosts": 52,
+        "native-command-slots": 2,
+        "native-review-admission": 30,
+        "core-transactions": 53,
+        "core-command-recovery": 1,
+        "storage-all-unit": 232,
+        "agent-command-actions": 3,
+        "native-command-lifetime": 27,
+        "service-recovery-scope-transport": 4,
+        "native-command-recovery-transports": 1,
+        "owned-command-producer": 1
+      },
+      "distinct_tests": 534,
+      "test_executions": 538
+    }
+  },
+  "previous_recorded_outcome_checkpoint": {
+    "source_sha256": "9b47135e7d24ce0e83067d80285ab7f4efea48b5c44b27ebef30fd5df6db51bd",
+    "verification": {
+      "terminal": "native-command-producer-controls-1794683500/terminal.json",
+      "artifacts": "recorded-command-controls-outputs-1794684093/manifest.json",
+      "cases": [
+        {
+          "case": "format",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "case": "storage-all-unit",
+          "returncode": 0,
+          "deadline_seconds": 1200,
+          "log_sha256": "8380db634d7e0466722beb9bde76e960299b2c68c821b6582438c948e1594edf"
+        },
+        {
+          "case": "core-transactions",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "3a7ec4b229c980dda0a2aa7e50078cb386bd27267ed3e17c2da46b6c99cf4e17"
+        },
+        {
+          "case": "core-command-recovery",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "aa0966f889f8745f34715c5c215342bfbc0639c79b000e94f8671dcc58f238b9"
+        },
+        {
+          "case": "backend-all-unit",
+          "returncode": 0,
+          "deadline_seconds": 1800,
+          "log_sha256": "134b07444c0d3e191765b75731fa9128f3b02b860e0225c32515af02c498c115"
+        },
+        {
+          "case": "agent-command-actions",
+          "returncode": 0,
+          "deadline_seconds": 1200,
+          "log_sha256": "1fd549cb08ab9b42c4a9e152bd92650f0c56cea20fe1bbcafbad458c001270ed"
+        },
+        {
+          "case": "native-all-target-clippy",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "8b271f32754aa79b02cdbf827170c834c40cbec8fc0a7d7c8657b8db93407fec"
+        },
+        {
+          "case": "matching-debug-bridge",
+          "returncode": 0,
+          "deadline_seconds": 1800,
+          "log_sha256": "792072b6aef9c5b39733218c769c77e096b0041f40f358ee4f9c555aa03af777"
+        },
+        {
+          "case": "native-command-slots",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "1f6ccd6a6b8b4a361354f8882bd338d81ed9b97ec86f72bd7620180e2f8073f1"
+        },
+        {
+          "case": "owned-command-producer",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "8c6d90a06d19995878e107c6622c7c11208a206c8cc245ceb0540dc70ff6121d"
+        },
+        {
+          "case": "native-review-admission",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "96dde1e68d0d1046546145f0dffa24135f4d76baeca7ccbb988bda887206182a"
+        },
+        {
+          "case": "native-command-lifetime",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "4dcfe9d0ea6fb84f34ecf5e879ee4903f3b1329d77cfb76f00d0418dd3b54b6d"
+        },
+        {
+          "case": "native-command-recovery-transports",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "91d6a6c248daaca101e9fd58f4b9747fdcd247449d612b0583040d79352adeaf"
+        },
+        {
+          "case": "all-native-transaction-hosts",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "95c97bf6de7ecd5dbbc1f7366de3ee6633e958cf691ac308889b24b2117af811"
+        },
+        {
+          "case": "service-recovery-scope-transport",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "df644feee02032c12e9f5fba9209c6757d07044a467384456204ca7f2c7beb25"
+        },
+        {
+          "case": "wasi-backend-clippy",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "64bebe20d44d61ac9decc8ab3989c3e19d4e6167ef63df700ce748e5c041553b"
+        },
+        {
+          "case": "frontend-wasm-all-target-clippy",
+          "returncode": 0,
+          "deadline_seconds": 600,
+          "log_sha256": "b9ab9d3bc997c30c525faff3065a963c339bed725780a012f8e99cf7683b577f"
+        },
+        {
+          "case": "windows-cross-clippy-not-native-runtime",
+          "returncode": 0,
+          "deadline_seconds": 2400,
+          "log_sha256": "9edcc1d97757d0be8cd64aac2f974ec530ac70684f3e1795b0bf0e83c545657a"
+        }
+      ],
+      "test_counts": {
+        "storage-all-unit": 233,
+        "core-transactions": 53,
+        "core-command-recovery": 1,
+        "backend-all-unit": 133,
+        "agent-command-actions": 3,
+        "native-command-slots": 2,
+        "owned-command-producer": 1,
+        "native-review-admission": 30,
+        "native-command-lifetime": 27,
+        "native-command-recovery-transports": 1,
+        "all-native-transaction-hosts": 52,
+        "service-recovery-scope-transport": 4
+      },
+      "distinct_tests": 536,
+      "test_executions": 540
+    }
+  },
+  "preparation_authentication_followup": {
+    "source_sha256": "069bb71d6765d7c6ddf3db2a1bc5f7d3c0f8890456eb79925677c2b32f8a4e15",
+    "terminal": "command-prepare-auth-1794686274/terminal.json",
+    "artifacts": "command-prepare-auth-outputs-1794686364/manifest.json",
+    "source_qualification": "compact-action-route-followup-qualification.json",
+    "cases": [
+      {
+        "case": "format",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "prepare-auth-http",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "dcce737512d536d4e9652fc44651bb0018bf1b7e2cd680da1de755aff2082aa5"
+      },
+      {
+        "case": "bridge-all-target-clippy",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "9c73735a1033f44f00ea48e15c38d73843ff5a391557aac653bd81d564a34b5f"
+      },
+      {
+        "case": "matching-debug-bridge",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "c2ccae29be8ebbd8973f3201e5f6646ec32bdad22fe9c3866ff8d1618ed74896"
+      },
+      {
+        "case": "windows-cross-clippy-not-native-runtime",
+        "returncode": 0,
+        "deadline_seconds": 2400,
+        "log_sha256": "45f75b19e5718ce74d75d27dc949e2b0cc21908a1e53dca4d31c24e03ebe8e09"
+      }
+    ],
+    "HTTP_tests": 1,
+    "HTTP_credential_scenarios": 6,
+    "red_log": "command-prepare-auth-red.log",
+    "red_artifacts": "command-prepare-auth-red-outputs-1794686065/manifest.json"
+  },
+  "full_HTTP_transport_checkpoint": {
+    "source_sha256": "a1bab5a1702e2b62dfb6c43fb764170efae34ef4bbe3019136a65d07bb8451a6",
+    "details": "command-http-checks.json",
+    "terminal": "command-http-fixture-1794687954/terminal.json",
+    "artifacts": "command-http-verified-outputs-1794688548/manifest.json",
+    "full_native_library_passed": 531,
+    "HTTP_command_scenarios": 8,
+    "HTTP_authentication_scenarios": 6
+  },
+  "followup": "retired-command-worker-checks.json"
+}

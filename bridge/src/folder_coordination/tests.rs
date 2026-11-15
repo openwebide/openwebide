@@ -4,6 +4,99 @@ use futures::FutureExt;
 #[cfg(unix)]
 mod processes;
 
+#[cfg(target_os = "macos")]
+#[test]
+fn changed_directory_birth_invalidates_admission_without_changing_file_ids() {
+    use std::os::fd::AsRawFd;
+
+    let directory = tempfile::tempdir().unwrap();
+    let parent = directory.path().join("parent");
+    let selected = parent.join("project");
+    std::fs::create_dir_all(&selected).unwrap();
+    for path in [&selected, &parent] {
+        let folder = Folder::capture(&selected).unwrap();
+        assert!(folder.current());
+        let handle = same_file::Handle::from_path(path).unwrap();
+        let physical = identity(&handle);
+        let before = handle.as_file().metadata().unwrap().created().unwrap();
+        let mut creation = libc::timespec {
+            tv_sec: 946_684_800,
+            tv_nsec: 0,
+        };
+        let mut wanted = std::time::UNIX_EPOCH
+            + std::time::Duration::from_secs(u64::try_from(creation.tv_sec).unwrap());
+        if before == wanted {
+            creation.tv_sec += 1;
+            wanted += std::time::Duration::from_secs(1);
+        }
+        let mut attributes = libc::attrlist {
+            bitmapcount: libc::ATTR_BIT_MAP_COUNT,
+            reserved: 0,
+            commonattr: libc::ATTR_CMN_CRTIME,
+            volattr: 0,
+            dirattr: 0,
+            fileattr: 0,
+            forkattr: 0,
+        };
+        // SAFETY: the owned directory descriptor is live; the declared attribute
+        // selects exactly one initialized timespec with the supplied buffer size.
+        let status = unsafe {
+            libc::fsetattrlist(
+                handle.as_file().as_raw_fd(),
+                (&raw mut attributes).cast(),
+                (&raw mut creation).cast(),
+                std::mem::size_of_val(&creation),
+                0,
+            )
+        };
+        assert_eq!(status, 0, "{}", std::io::Error::last_os_error());
+        let observed = same_file::Handle::from_path(path).unwrap();
+        assert_eq!(identity(&observed), physical);
+        assert_eq!(
+            observed.as_file().metadata().unwrap().created().unwrap(),
+            wanted
+        );
+        assert!(!folder.current());
+        assert!(physical::Access::try_acquire(&folder).is_err());
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn original_birth_mismatch_rejects_admission_while_all_live_file_ids_match() {
+    let directory = tempfile::tempdir().unwrap();
+    for ancestor in [false, true] {
+        let mut folder = Folder::capture(directory.path()).unwrap();
+        let physical = folder.physical.clone();
+        let ancestors = folder.ancestors.clone();
+        assert!(folder.current());
+        // Model an earlier object with the same physical IDs. No filesystem
+        // inode-reuse stress or assumption about birth-time support is needed.
+        let selected = if ancestor {
+            &mut folder.original_ancestors[0]
+        } else {
+            &mut folder.original
+        };
+        let mut fields = serde_json::to_value(&*selected).unwrap();
+        let first = serde_json::to_value(std::time::UNIX_EPOCH + std::time::Duration::from_secs(1))
+            .unwrap();
+        fields["created"] = if fields["created"] == first {
+            serde_json::to_value(std::time::UNIX_EPOCH + std::time::Duration::from_secs(2)).unwrap()
+        } else {
+            first
+        };
+        *selected = serde_json::from_value(fields).unwrap();
+        assert_eq!(folder.physical, physical);
+        assert_eq!(folder.ancestors, ancestors);
+        assert_eq!(
+            same_file::Handle::from_path(directory.path()).unwrap(),
+            *folder.handle
+        );
+        assert!(!folder.current());
+        assert!(physical::Access::try_acquire(&folder).is_err());
+    }
+}
+
 #[tokio::test]
 async fn unconfirmed_cleanup_rejects_overlapping_recovery_without_blocking_independent_work_or_shutdown()
  {

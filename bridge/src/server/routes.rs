@@ -97,6 +97,7 @@ pub(super) async fn route(
         || path == "/workspace/root"
         || path == "/workspace/inspect"
         || path == "/workspace/files"
+        || path == "/workspace/write"
         || path == "/environment"
         || path == "/scheduler/host"
         || path == "/host/info"
@@ -118,6 +119,8 @@ pub(super) async fn route(
                 | "/plugins/cancel"
                 | "/plugins/languages/query"
                 | "/plugins/languages/command"
+                | "/plugins/languages/command/prepare"
+                | "/plugins/languages/command/reconnect"
                 | "/plugins/languages/revoke"
         )
         || path.starts_with("/git/")
@@ -157,6 +160,7 @@ pub(super) async fn route(
         }
     }
 
+    let browser_request = origin.is_some();
     match (method.as_str(), path.as_str()) {
         ("OPTIONS", _) => Ok(preflight_response(req.headers(), allowed_origin)),
         ("POST", "/mcp/open" | "/mcp/call" | "/mcp/close") => {
@@ -293,6 +297,37 @@ pub(super) async fn route(
             .await;
             Ok(execution_response(result, allowed_origin))
         }
+        ("POST", "/workspace/write") => {
+            let result = async {
+                // This is a backend filesystem primitive, not a browser grant.
+                // Paired/user browser callers retain their existing capabilities.
+                if principal.is_some() || browser_request {
+                    return Err(BridgeError::Unauthorized(
+                        "Backend filesystem access required".into(),
+                    ));
+                }
+                let request: openwebide_core::vfs::FileMutationRequest = read_json(
+                    req.into_body(),
+                    openwebide_core::vfs::FileMutationRequest::limit(),
+                )
+                .await?;
+                let workspace = crate::paths::canonical_root(&config.workspace_root)
+                    .map_err(BridgeError::Validation)?;
+                let root = crate::paths::resolve_in_root(&workspace, Some(&request.root))
+                    .map_err(BridgeError::Validation)?;
+                let files = crate::runs::native_vfs::workspace::WorkspaceFiles::in_workspace(
+                    root,
+                    &workspace,
+                    config.workspace_transactions.coordinator.clone(),
+                )
+                .map_err(|error| BridgeError::Validation(error.to_string()))?;
+                let outcome = request.mutation.apply(&files).await;
+                serde_json::to_string(&outcome)
+                    .map_err(|error| BridgeError::Execution(error.to_string()))
+            }
+            .await;
+            Ok(execution_response(result, allowed_origin))
+        }
         ("POST", "/workspace/execute") => {
             let result = async {
                 if principal.is_some() {
@@ -371,7 +406,28 @@ pub(super) async fn route(
             .await;
             Ok(execution_response(result, allowed_origin))
         }
-        ("POST", "/plugins/languages/command") => {
+        ("POST", "/plugins/languages/command/reconnect") => {
+            let result = async {
+                let request: openwebide_core::plugins::languages::intelligence::actions::CommandCallbackRequest =
+                    read_json(req.into_body(), 8192).await?;
+                request.validate().map_err(BridgeError::Validation)?;
+                let user=request.user.ok_or_else(||BridgeError::Validation("An execution host account is required".into()))?;
+                #[cfg(any(target_os = "linux", target_os = "macos"))]
+                let paired=matches!(principal,Some(crate::auth::Principal::Paired));
+                execution_owner(principal,request.user,user)?;
+                #[cfg(any(target_os = "linux", target_os = "macos"))]
+                {
+                    let changed=config.language_servers.reconnect_command_scope(user,request.project,
+                        if paired {openwebide_core::WorkspaceMode::Local} else {openwebide_core::WorkspaceMode::Remote},
+                        &request.callback).await.map_err(BridgeError::Validation)?;
+                    serde_json::to_string(&changed).map_err(|error|BridgeError::Execution(error.to_string()))
+                }
+                #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+                {Err(BridgeError::Validation("Native command callback recovery is unavailable on this platform".into()))}
+            }.await;
+            Ok(execution_response(result, allowed_origin))
+        }
+        ("POST", "/plugins/languages/command" | "/plugins/languages/command/prepare") => {
             let result = async {
                 use openwebide_core::plugins::languages::intelligence::{
                     self,
@@ -382,9 +438,42 @@ pub(super) async fn route(
                 };
                 let request: HostCommandRequest =
                     read_json(req.into_body(), MAX_APPROVAL_BYTES).await?;
-                let command = request.command;
-                let selection = command.selection;
-                let (_, owner) = execution_owner(principal, request.user, selection.user)?;
+                let command = request.command.clone();
+                let (_, owner) = execution_owner(principal.clone(), request.user, command.user)?;
+                if command.project <= 0 {
+                    return Err(BridgeError::Validation(
+                        "Language command scope changed".into(),
+                    ));
+                }
+                if command.operation != CommandOperation::Start {
+                    if path.ends_with("/prepare") {
+                        return Err(BridgeError::Validation(
+                            "Only command start has a native preparation".into(),
+                        ));
+                    }
+                    let progress = config
+                        .language_servers
+                        .control_command(
+                            &owner,
+                            command.project,
+                            &command.invocation,
+                            command.operation,
+                        )
+                        .await
+                        .map_err(BridgeError::Validation)?;
+                    return serde_json::to_string(&progress)
+                        .map_err(|error| BridgeError::Execution(error.to_string()));
+                }
+                let selection = command.selection.clone().ok_or_else(|| {
+                    BridgeError::Validation(
+                        "Starting a command requires its complete approved provider".into(),
+                    )
+                })?;
+                if selection.user != command.user || selection.project != command.project {
+                    return Err(BridgeError::Validation(
+                        "Language command scope changed".into(),
+                    ));
+                }
                 if selection.project <= 0
                     || origin_fingerprint(&selection.input).map_err(BridgeError::Validation)?
                         != command.invocation.origin
@@ -397,14 +486,9 @@ pub(super) async fn route(
                     intelligence::declared_server(&selection.prepared, &selection.input.language)
                         .map_err(BridgeError::Validation)?
                         .clone();
-                let root = if command.operation == CommandOperation::Start {
+                let root =
                     crate::paths::resolve_in_root(&config.workspace_root, Some(&request.root))
-                        .map_err(BridgeError::Validation)?
-                } else {
-                    // Status and stop address only an existing authenticated
-                    // session. Losing folder access must not prevent fencing it.
-                    config.workspace_root.clone()
-                };
+                        .map_err(BridgeError::Validation)?;
                 let scope = crate::languages::host::Scope {
                     owner,
                     project: selection.project,
@@ -413,27 +497,33 @@ pub(super) async fn route(
                     digest: selection.prepared.digest,
                     server,
                 };
-                let progress = match command.operation {
-                    CommandOperation::Start => {
-                        config
-                            .language_servers
-                            .start_command(scope, command.invocation)
-                            .await
-                    }
-                    CommandOperation::Status => {
-                        config
-                            .language_servers
-                            .command_progress(scope, &command.invocation)
-                            .await
-                    }
-                    CommandOperation::Stop => {
-                        config
-                            .language_servers
-                            .stop_command(scope, &command.invocation)
-                            .await
-                    }
+                if path.ends_with("/prepare") {
+                    let prepared = config
+                        .language_servers
+                        .prepare_command(scope, &command.invocation)
+                        .await
+                        .map_err(BridgeError::Validation)?;
+                    return serde_json::to_string(&prepared)
+                        .map_err(|e| BridgeError::Execution(e.to_string()));
                 }
-                .map_err(BridgeError::Validation)?;
+                let paired = matches!(principal, Some(crate::auth::Principal::Paired));
+                if paired != request.journal.is_some() {
+                    return Err(BridgeError::Validation(
+                        "Reconnect the original command journal transport".into(),
+                    ));
+                }
+                let backend = (!paired).then(|| {
+                    std::sync::Arc::new(crate::runs::backend_client::BackendClient::new(
+                        config.backend_url.clone(),
+                        config.secret.clone(),
+                        crate::runs::http_client::ReqwestHttpClient::default(),
+                    ))
+                });
+                let progress = config
+                    .language_servers
+                    .start_owned_command(scope, request, backend)
+                    .await
+                    .map_err(BridgeError::Validation)?;
                 serde_json::to_string(&progress).map_err(|e| BridgeError::Execution(e.to_string()))
             }
             .await;

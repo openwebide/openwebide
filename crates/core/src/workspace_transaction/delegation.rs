@@ -75,12 +75,22 @@ impl WorkspaceJournalDelegation {
 pub enum DelegatedWorkspaceJournalOperation {
     /// Private native preflight, before worker acceptance. Never grants writes.
     Inspect,
+    /// Same private-worker proof as Inspect; the backend adds an enduring
+    /// original-owner credential after validating the current journal.
+    RecoveryScope,
+    CommandRecoveryScope,
     Load,
     Admit {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         review_digest: Option<String>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         language_grant: Option<String>,
+        #[serde(
+            default,
+            rename = "command_reservation",
+            skip_serializing_if = "Option::is_none"
+        )]
+        command: Option<Box<crate::plugins::languages::intelligence::actions::CommandReservation>>,
     },
     Scope,
     MutationScope,
@@ -105,9 +115,20 @@ impl DelegatedWorkspaceJournalRequest {
         if let DelegatedWorkspaceJournalOperation::Admit {
             review_digest,
             language_grant,
+            command,
         } = &self.operation
         {
             super::language_review_admission(review_digest.as_deref(), language_grant.as_deref())?;
+            if let Some(command) = command {
+                command.validate()?;
+                if command.expected.scope != self.delegation.scope
+                    || command.worker.id == self.worker.id
+                {
+                    return Err(
+                        "The original command reservation changed its file scope or worker".into(),
+                    );
+                }
+            }
         }
         if self.delegation.scope.root.mode != crate::WorkspaceMode::Local
             || !super::companion::fingerprint(&self.delegation.scope.root_identity)

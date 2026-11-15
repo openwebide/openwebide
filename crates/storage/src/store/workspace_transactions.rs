@@ -163,12 +163,13 @@ impl<D: Db> Store<D> {
             if !store.db.execute("SELECT 1 FROM workspace_transactions WHERE user_id = ? AND project_id = ? AND terminal = 0",&[DbValue::Int(user.get()),DbValue::Int(project)]).await?.rows.is_empty() {
                 return Err(StorageError::Conflict("Recover the pending workspace operation before starting another".into()));
             }
-            if !store.db.execute("SELECT 1 FROM language_actions WHERE user_id=? AND project_id=? AND phase NOT IN ('completed','acknowledged','cancelled')",&[DbValue::Int(user.get()),DbValue::Int(project)]).await?.rows.is_empty() {
+            if !store.db.execute(&format!("SELECT 1 FROM language_actions WHERE user_id=? AND project_id=? AND {}", super::language_actions::pending_predicate("")),&[DbValue::Int(user.get()),DbValue::Int(project)]).await?.rows.is_empty() {
                 return Err(StorageError::Conflict("Review the pending language command before starting another workspace operation".into()));
             }
             // Keep terminal records for the complete request/retry window. A
             // pending operation is never evicted to make room for another one.
-            store.db.execute("DELETE FROM workspace_transactions WHERE user_id = ? AND terminal = 1 AND updated_at < ? AND NOT EXISTS (SELECT 1 FROM language_actions a WHERE a.user_id=workspace_transactions.user_id AND a.project_id=workspace_transactions.project_id AND a.id=workspace_transactions.id AND a.phase NOT IN ('completed','acknowledged','cancelled'))",&[DbValue::Int(user.get()),DbValue::Int(now.saturating_sub(300))]).await?;
+            store.ensure_command_identity_available(user, project, &input.id).await?;
+            store.db.execute(&format!("DELETE FROM workspace_transactions WHERE user_id = ? AND terminal = 1 AND updated_at < ? AND NOT EXISTS (SELECT 1 FROM language_actions a WHERE a.user_id=workspace_transactions.user_id AND a.project_id=workspace_transactions.project_id AND a.id=workspace_transactions.id AND NOT ({}))", super::language_actions::prunable_predicate("a")),&[DbValue::Int(user.get()),DbValue::Int(now.saturating_sub(300))]).await?;
             let quota=store.db.execute("SELECT COALESCE(SUM(bytes),0) FROM workspace_transactions WHERE user_id = ?",&[DbValue::Int(user.get())]).await?;
             let retained=usize::try_from(quota.rows[0].get_int(0)?).map_err(|_|StorageError::Db("Invalid workspace recovery quota".into()))?;
             if retained.saturating_add(bytes)>JOURNAL_QUOTA {return Err(StorageError::Conflict("Workspace recovery storage is full; recover pending operations or wait for completed records to expire".into()));}

@@ -7,7 +7,7 @@ use openwebide_agent::plugins::{
     execution::{GrantedHost, PluginTransport},
     panels::{PanelActionHost, invoke_panel},
 };
-use openwebide_bridge::{ServerConfig, plugins::NativePluginInstaller, run_server};
+use openwebide_bridge::{plugins::NativePluginInstaller, run_server};
 use openwebide_core::{
     NewProject, UserId, UserRole, WorkspaceMode,
     plugins::{
@@ -339,7 +339,7 @@ async fn first_party_panels_publish_once_through_real_paired_and_backend_bridge_
         let bindings = store.project_plugins(user, project).await.unwrap();
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let port = listener.local_addr().unwrap().port();
-        let mut config = ServerConfig::new(
+        let mut config = common::server_config(
             workspace.path().into(),
             "dummy_secret".into(),
             Some("paired-panel-token".into()),

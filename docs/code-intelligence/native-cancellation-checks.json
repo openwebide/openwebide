@@ -1,0 +1,158 @@
+{
+  "status": "Cancelled-state native command recovery verified in both modes, including reservations before first backend admission. Broader command recovery remains unfinished.",
+  "source_sha256": "c863efdea72f245986f79e5f32bb4414139d14f403db17dfdcd465cb4c24f26d",
+  "builds_on": "cancelled-command-contract-checks.json",
+  "shared_implementation": {
+    "facade": "LanguageActionClient sends a recovery-only Cancel control without a fresh grant, preserves durable metadata cancellation when cleanup fails, and accepts Cancelled progress without a CommandOutcome. Compact recovery can retry the same control.",
+    "native": "Journal::reconcile_cancelled requires the original issuer, invocation, worker, full original folder lease and positive file/no-dispatch proof. Namespace::command_cancelled persists a Cancelled record before backend cleanup and settlement; command_settled removes only that exact original receipt.",
+    "unadmitted": "An original private issuer may observe unadmitted metadata or confirm cancellation without acquiring dispatch rights. Native Reserved file state plus an original terminal backend observation with no file/command worker proves that first admission never committed. Unknown/unfinished effects remain protected.",
+    "persistence": "Schema 7 adds format-2 cancelled command records, with no outcome and fixed reserved capacity. Existing records remain readable. Earlier schema interpretation rejects the new receipt, and cancelled native records reject admission, dispatch and every attempted outcome.",
+    "lifecycle": "The native host periodically discovers original records. Independently bounded observations do not claim producer ownership for Approved work; accepted cancellation retries keep their original context through callback/folder loss and process restart. Retired records stop making callbacks.",
+    "adapters": "Local paired and Remote service entry points use the same facade, original journal adapter, backend worker policy and native interpreter."
+  },
+  "behavioral_tests": [
+    "Native proof contract in both modes covers never-admitted and positively finished files, rejects unknown/unfinished effects and dispatched commands, persists cancellation through reopen, rejects outcome replacement and retires only after matching backend settlement.",
+    "Twenty new authenticated HTTP scenarios: both modes, admitted and never-committed file admission, direct controls, callback outage, lookalike-folder substitution/restoration, lost real cleanup ACK and lost real settlement ACK. Eight scenarios SIGKILL the process after its durable receipt and start a distinct successor.",
+    "Every cancellation scenario revokes provider configuration and the original live service, checks no execution marker, unchanged source, outcome-free public cancellation, final ordinary native writing and callback quiescence.",
+    "Shared client tests preserve cancellation after fresh authority disappears and send no new Start; Store contracts reject claims through original cleanup, bind the first cancellation worker once, retain cleanup fences and join lost acknowledgements.",
+    "All prior native library, original stop, callback/root faults, 10 SIGKILL and two peer-publisher scenarios rerun. The complete command authentication fixture now explicitly isolates its native private state."
+  ],
+  "verification": {
+    "terminal": "native-cancellation-verified-1794705877/terminal.json",
+    "artifacts": "native-cancellation-outputs-1794706573/manifest.json",
+    "cases": [
+      {
+        "case": "format",
+        "returncode": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "storage-all-unit",
+        "returncode": 0,
+        "log_sha256": "f99fd66841580ed8b5e46e25ef8520186b0926dcbd405917ac4d16efe2f45449"
+      },
+      {
+        "case": "core-workspace-contracts",
+        "returncode": 0,
+        "log_sha256": "131a593c5365521ce0490c9f93462b0e4c42304b3d0743e9ba09c4b5a7b3fdd0"
+      },
+      {
+        "case": "core-command-contracts",
+        "returncode": 0,
+        "log_sha256": "bd80707716e2ae6a877fd837592362ac6894f27a3e895c4a0bfcef7f26b359c9"
+      },
+      {
+        "case": "backend-all-unit",
+        "returncode": 0,
+        "log_sha256": "f0ceb2b0c9c67f2651b1db84ac3e1d758a349a16a63cefd74d8e68e6d48be2ff"
+      },
+      {
+        "case": "agent-command-actions",
+        "returncode": 0,
+        "log_sha256": "9433e0190a6b369127fc4d1cc7787a83290d5fb7c5674f3f23aaed461d3e7379"
+      },
+      {
+        "case": "frontend-native-unit",
+        "returncode": 0,
+        "log_sha256": "72b1d4c66720b0d2f79f4cef04180ec3f2e42c61b743aefdbe03a44eee1ad5c1"
+      },
+      {
+        "case": "native-all-target-clippy",
+        "returncode": 0,
+        "log_sha256": "5637aa7323aeed5e7c4e08defaea4b45d4a91a6f685f0538dc16e18b491e10a1"
+      },
+      {
+        "case": "WASI-backend-clippy",
+        "returncode": 0,
+        "log_sha256": "560b38322b4be424f81eaff7e9a40fe1522c7635655ba725f21b4ffc8c93c2a0"
+      },
+      {
+        "case": "WASM-frontend-all-target-clippy",
+        "returncode": 0,
+        "log_sha256": "b71b1013d5a2f4672711db46649f30fc2a38a56b28ef0431edca4c7808f1081e"
+      },
+      {
+        "case": "matching-debug-bridge",
+        "returncode": 0,
+        "log_sha256": "29162d76fb109d9c6005d8544d63a4a438d15235d4f9b8e73d51adc9ba6e95d7"
+      },
+      {
+        "case": "owned-producer-compound-admission",
+        "returncode": 0,
+        "log_sha256": "b14cf6aeb329dbb765d6a4e72d445f8a643e1d98e2d6fb971b63c8ad782c1921"
+      },
+      {
+        "case": "bridge-all-unit",
+        "returncode": 0,
+        "log_sha256": "1f156246991262a353f285fafc5852149fcac35e70832b619477b7e6a1114e35"
+      },
+      {
+        "case": "marketplace-published-smoke",
+        "returncode": 0,
+        "log_sha256": "dfd16f4b9a5d0bdbde3415d26da6ba1e6262e30aa0040b24e07d8fe5fe91bf32"
+      },
+      {
+        "case": "native-recovery-host-example",
+        "returncode": 0,
+        "log_sha256": "32d47f791eadf1ea833d9f8c84fbfea5cab1f438e113e93be05bd5b908e1c2ac"
+      },
+      {
+        "case": "command-http-complete",
+        "returncode": 0,
+        "log_sha256": "97f7c4aa8849fdb6b01f6551c03ecdcd68935a491f734233af51711ce308b60b"
+      },
+      {
+        "case": "bridge-default-bin-clippy",
+        "returncode": 0,
+        "log_sha256": "7e0aae8744fc257f437557b6ba522567d6b3d73d37116308162b6cdccb12fea5"
+      },
+      {
+        "case": "windows-cross-clippy-not-native-runtime",
+        "returncode": 0,
+        "log_sha256": "5c7695910da878a565dffb2401a215aee41e8baff06668c88a065375c2e06b39"
+      },
+      {
+        "case": "production-feature-inventory",
+        "returncode": 0,
+        "log_sha256": "51a70955c82feadb08bcaf685eec7550c14e8cf35436c8f256347155c7578b04"
+      }
+    ],
+    "counts": {
+      "storage-all-unit": 240,
+      "core-workspace-contracts": 53,
+      "core-command-contracts": 1,
+      "backend-all-unit": 135,
+      "agent-command-actions": 3,
+      "frontend-native-unit": 143,
+      "owned-producer-compound-admission": 1,
+      "bridge-all-unit": 536,
+      "marketplace-published-smoke": 1,
+      "command-http-complete": 5
+    },
+    "distinct_tests": 1117,
+    "test_executions": 1118,
+    "native_library_all_declared_passed": 537,
+    "HTTP_tests": 5,
+    "HTTP_lifecycle_scenarios": 44,
+    "new_cancellation_HTTP_scenarios": 20,
+    "actual_SIGKILL_scenarios": 18,
+    "actual_peer_scenarios": 2,
+    "HTTP_authentication_scenarios": 6,
+    "native_WASI_WASM_Windows_cross_Clippy_passed": true,
+    "all_affected_shared_cases_rerun": true,
+    "native_Windows_runtime_verified": false,
+    "fresh_current_Linux_runtime_verified": false,
+    "current_browser_or_installed_application_verified": false,
+    "actual_production_release_rebuilt": false
+  },
+  "remaining": [
+    "Qualify callback recovery with the current optimized native/WASI release distribution and installed app, including original OS-selected private namespace and physical browser folder permission/device checks. The built-app checkpoint uses optimized frontend, unoptimized production WASI entry point and the same native HTTP host with an isolated test-support namespace.",
+    "Finish frozen-owner application recovery beyond the native OS-owner CLI: deleted original projects/accounts, legacy command owners without verifiable cleanup, actual process interruptions and current packaged/native platform contracts. Never infer cleanup from missing public rows, failed requests or 404 replies.",
+    "Finish remaining admission/watcher-enrollment and outcome/context interruptions, including escaped-process cleanup beyond the verified managed-group cases.",
+    "Finish every participating writer, Git/PTY and escaped-process lifetime; implement and verify native Windows ownership and fresh packaged Linux runtime.",
+    "Complete all original packaged application/browser, cache/resource/RSS/prefetch/homelab and full-CI requirements."
+  ],
+  "full_CI_complete": false,
+  "whole_goal_complete": false,
+  "followup": "retired-command-worker-checks.json"
+}

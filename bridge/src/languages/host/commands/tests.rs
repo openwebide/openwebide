@@ -225,7 +225,7 @@ async fn changed_context_after_source_verification_rejects_the_mutating_rpc() {
                 .unwrap();
             assert!(status.success());
         }
-        let outcome = dispatch(&entry, session, &data, input_revision).await;
+        let outcome = send_command(&entry, session, &data, input_revision, None).await;
         let expected = if replace_program {
             "executable changed"
         } else {

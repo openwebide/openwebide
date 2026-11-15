@@ -1,0 +1,461 @@
+{
+  "format": 1,
+  "checked_on": "2026-11-13",
+  "status": "focused_native_blocking_io_lifetime_verified_durable_phase_authority_and_full_ci_pending",
+  "base_commit": "44b642b489ed56137f8f9c67a3db59b1e5e7f0e2",
+  "published": false,
+  "shared_implementation": [
+    "bridge/src/runs/native_vfs/mutation.rs",
+    "bridge/src/runs/native_vfs/workspace.rs",
+    "bridge/src/workspace_transactions.rs",
+    "bridge/src/workspace_transactions/companion.rs"
+  ],
+  "change": [
+    "Native mutation primitives are shared by the raw and lease-owning adapters.",
+    "The actual blocking closure owns the Write and its Arc<Lease>, rather than an async observer or a future awaiting another blocking task.",
+    "Ordinary writes queue normally. An existing transaction capability is checked and reused without recursively acquiring its own folder gate.",
+    "Version-1 native transaction files share the outer fence through I/O completion. Version-2 synchronous Rooted primitives remain unchanged.",
+    "Raw atomic move/replacement operations still complete before yielding; the replacement primitive body is unchanged apart from relocation/formatting."
+  ],
+  "actual_regression": {
+    "implementation_before_test": "The prior unpublished native writer checkpoint7d418e4c/8ed97 plus the new fixture only, not pristine44b production code.",
+    "native_operation": "A real4MiB write to an owned FIFO saturates its pipe while a nonblocking reader observes FIONREAD. The runtime then shuts down with zero wait. Reader drains the complete payload before the assertion.",
+    "payload_bytes": 4194304,
+    "dispatched_bytes": 8192,
+    "writer_open_after_runtime_shutdown": true,
+    "buffered_bytes_after_runtime_shutdown": 8192,
+    "fully_drained_bytes_before_assertion": 4194304,
+    "baseline_premature_gate_grant": true,
+    "candidate_premature_gate_grant": false,
+    "baseline_actual_test_returncode": 101,
+    "candidate_actual_test_returncode": 0,
+    "same_case_body_command_workload_and_deadline": true,
+    "regression_file_sha256": "94669354436ad7ab2029cb9e346900b86477db25055c1de789a1f193a8d44d2a"
+  },
+  "baseline": {
+    "source_sha256": "7fb5e26b4c60d6ab9786d396364b39cbb46569be77f30e5b50305eb0a72f6bc6",
+    "evidence_id": "native-file-runtime-red-1794561405",
+    "controller_returncode": 0,
+    "cases": [
+      {
+        "case": "invalidate-changed-bridge-dev-cache",
+        "command": [
+          "cargo",
+          "clean",
+          "-p",
+          "openwebide-bridge",
+          "--profile",
+          "dev",
+          "--target-dir",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.09,
+        "log_sha256": "0bdaeb2aa6a92a0fdfec2d2cc4d0ab71946de5d0654e08c526e4629130ae0f28"
+      },
+      {
+        "case": "matching-native-bridge",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--locked"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 99.11,
+        "log_sha256": "cdb2f51b31684d431830d602c69843584b36879d24cf9da68914d626e4046c63"
+      },
+      {
+        "case": "actual-baseline-regression",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "runs::native_vfs::workspace::tests::runtime::blocked_native_file_io_keeps_its_folder_gate_after_runtime_shutdown",
+          "--",
+          "--exact",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 101,
+        "seconds": 74.53,
+        "log_sha256": "a9adf6d257cc0772b7ceba0fdfb664d481dc1c2aa68ccb8767bd0f1e3e49d348"
+      }
+    ]
+  },
+  "candidate": {
+    "source_sha256": "a37afadcb656806e9c40415b8e62ae3efef8568ef594546e52cb08486ba749d0",
+    "evidence_id": "native-file-runtime-green-1794562113",
+    "controller_returncode": 0,
+    "cases": [
+      {
+        "case": "format-and-whitespace",
+        "command": [
+          "bash",
+          "-euc",
+          "cargo fmt --all --check\ngit diff --check"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 2.84,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "invalidate-changed-dev-cache",
+        "command": [
+          "cargo",
+          "clean",
+          "-p",
+          "openwebide-core",
+          "-p",
+          "openwebide-auth",
+          "-p",
+          "openwebide-bridge",
+          "--profile",
+          "dev",
+          "--target-dir",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.17,
+        "log_sha256": "0bdaeb2aa6a92a0fdfec2d2cc4d0ab71946de5d0654e08c526e4629130ae0f28"
+      },
+      {
+        "case": "matching-debug-bridge",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--locked"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 98.34,
+        "log_sha256": "831a622171bad1df44b38c06b4202c95c8df28327565a375e8bcc079ebc9fe23"
+      },
+      {
+        "case": "exact-runtime-regression",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "runs::native_vfs::workspace::tests::runtime::blocked_native_file_io_keeps_its_folder_gate_after_runtime_shutdown",
+          "--",
+          "--exact",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 72.86,
+        "log_sha256": "2bb0d8d55a8cf12c3c8e65117cb199475118649f1558b7627de53f0e63440983"
+      },
+      {
+        "case": "all-workspace-writer-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "runs::native_vfs::workspace::tests::"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.79,
+        "log_sha256": "72f45992e574cab39562f0d96d02784576295e35e3133566d935237e8db35796"
+      },
+      {
+        "case": "all-native-agent-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "runs::registry::tests::"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 32.88,
+        "log_sha256": "6e059ba552fac84ccc1b540ab2010caefdeafb1b59068b235e717af53188afe1"
+      },
+      {
+        "case": "all-native-filesystem-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "runs::native_vfs::"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 44.46,
+        "log_sha256": "6945610c1e52caaa3e8e85fb04c628648f2e504fe711fd5ece0014d579b8a9a6"
+      },
+      {
+        "case": "both-native-transaction-adapters",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "workspace_transactions::"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 2.02,
+        "log_sha256": "fab2d7a56e8242085c26cdf803cb26db53d41c8d3597f495858c72d40a447705"
+      },
+      {
+        "case": "all-native-folder-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "folder_coordination::"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.58,
+        "log_sha256": "0f1af0dbd9595c06c90cea55d3a9b9c3af5bac3fc91db7730b9d9d722aae0d8a"
+      },
+      {
+        "case": "bridge-all-target-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 40.64,
+        "log_sha256": "ec8bc52f52d48bb1f091a63cdeb43e3a479109f36c69427810461e3853e8eaed"
+      }
+    ]
+  },
+  "windows_compile_only": {
+    "source_sha256": "a37afadcb656806e9c40415b8e62ae3efef8568ef594546e52cb08486ba749d0",
+    "evidence_id": "native-file-runtime-windows-cross-1794562744",
+    "controller_returncode": 0,
+    "cases": [
+      {
+        "case": "invalidate-changed-Windows-runtime-cache",
+        "command": [
+          "cargo",
+          "clean",
+          "-p",
+          "openwebide-plugin-runtime",
+          "--profile",
+          "dev",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--target-dir",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 0.23,
+        "log_sha256": "0bdaeb2aa6a92a0fdfec2d2cc4d0ab71946de5d0654e08c526e4629130ae0f28"
+      },
+      {
+        "case": "invalidate-changed-Windows-bridge-cache",
+        "command": [
+          "cargo",
+          "clean",
+          "-p",
+          "openwebide-bridge",
+          "--profile",
+          "dev",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--target-dir",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 0.09,
+        "log_sha256": "0bdaeb2aa6a92a0fdfec2d2cc4d0ab71946de5d0654e08c526e4629130ae0f28"
+      },
+      {
+        "case": "windows-cross-clippy-not-native-runtime",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "deadline_seconds": 2400,
+        "returncode": 0,
+        "seconds": 82.33,
+        "log_sha256": "4b6d27a10fa752ecd574804ace73c69f902c2401e4913bb20b961c44ba780f33"
+      },
+      {
+        "case": "clear-completed-Windows-cross-cache",
+        "command": [
+          "cargo",
+          "clean",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--profile",
+          "dev",
+          "--target-dir",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 0.2,
+        "log_sha256": "9144f6cc78b9f148c6e0161d4edbb88f051995043ae872b174fbe451e30820fb"
+      }
+    ]
+  },
+  "original_contract_audit": {
+    "runtime_regression_byte_identical": true,
+    "original_writer_contracts": {
+      "queued": {
+        "original_assertions": 0,
+        "unchanged_assertions_and_deadlines": true
+      },
+      "every_file_mutator_waits_for_the_same_gate_while_reads_remain_available": {
+        "original_assertions": 12,
+        "unchanged_assertions_and_deadlines": true
+      },
+      "cancelled_queued_file_write_never_starts_after_access_becomes_available": {
+        "original_assertions": 3,
+        "unchanged_assertions_and_deadlines": true
+      },
+      "admitted_file_write_retains_exclusion_after_its_observer_disappears": {
+        "original_assertions": 4,
+        "unchanged_assertions_and_deadlines": true
+      },
+      "queued_file_writer_rejects_a_replacement_root_without_touching_either_folder": {
+        "original_assertions": 4,
+        "unchanged_assertions_and_deadlines": true
+      },
+      "known_file_errors_release_access_for_a_followup_write": {
+        "original_assertions": 2,
+        "unchanged_assertions_and_deadlines": true
+      },
+      "file_worker_panic_quarantines_its_physical_claim": {
+        "original_assertions": 3,
+        "unchanged_assertions_and_deadlines": true
+      },
+      "shutdown_cancels_queued_writes_and_waits_for_the_admitted_file_worker": {
+        "original_assertions": 5,
+        "unchanged_assertions_and_deadlines": true
+      }
+    },
+    "raw_atomic_replace_body_normalized_identical": true,
+    "raw_atomic_move_and_replace_remain_inline_non_yielding": true,
+    "fixture_changes": "Async test pause controls replaced by synchronous channels for the actual blocking adapter. All existing assertions and deadlines preserved."
+  },
+  "test_groups": {
+    "exact-runtime-regression": {
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0
+    },
+    "all-workspace-writer-contracts": {
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0
+    },
+    "all-native-agent-contracts": {
+      "passed": 30,
+      "failed": 0,
+      "ignored": 0
+    },
+    "all-native-filesystem-contracts": {
+      "passed": 44,
+      "failed": 0,
+      "ignored": 0
+    },
+    "both-native-transaction-adapters": {
+      "passed": 43,
+      "failed": 0,
+      "ignored": 0
+    },
+    "all-native-folder-contracts": {
+      "passed": 19,
+      "failed": 0,
+      "ignored": 0
+    }
+  },
+  "distinct_native_tests": 136,
+  "total_case_executions": 147,
+  "repeated_case_executions": 11,
+  "repetition_explanation": "The exact FIFO case is repeated in writer/native filesystem groups, and all10 writer cases appear in the filesystem group.",
+  "retained_fixture_compile_failure": {
+    "evidence_id": "native-file-runtime-red-1794561043",
+    "source_sha256": "9e174b2830d773ec484d72423a6883970a76ef31d24110cd2a2708eb2820cc2a",
+    "actual_compile_returncode": 101,
+    "actual_test_executed": false,
+    "reason": "Pinned rustix lacks mkfifoat. Fixture corrected to libc mkfifo; owned path,4MiB payload and deadlines remain unchanged.",
+    "log_sha256": "fd058da39a30cff925ae8b21759fba11e753259025a4a536144c21a150f704ec"
+  },
+  "retention": "Actual baseline/candidate binaries, logs and source manifests are retained outside Git. Archived copies may use verified lossless compression/COW storage; every logical path/byte and checked metadata field is retained while archive inode/ctime/storage flags change explicitly. Earlier frozen44b production artifacts remain unchanged.",
+  "limits": [
+    "Runtime-loss ownership of admitted native file I/O is established here on macOS. Process/host death still requires durable phase ownership and recovery.",
+    "No native global registry or additional backend/WASI writer integration is implemented by this checkpoint.",
+    "Ordinary file primitives still use pathnames. Descriptor-bound access against root replacement during an admitted operation remains open.",
+    "Escaped processes, PTY/Git lifetimes and native Windows ownership remain unfinished. Windows results here are cross compilation, not native execution.",
+    "Browser-only Local saves remain available without the companion and outside the physical locking guarantee.",
+    "Full required local native/browser/production CI and publication remain pending. These focused groups and older published main/release artifacts cannot establish full completion."
+  ],
+  "full_required_local_ci_passed": false,
+  "durable_native_mutation_authority_complete": false,
+  "whole_code_intelligence_goal_complete": false,
+  "original_directory_followup": "native-file-root-checks.json",
+  "Linux_directory_mutation_followup": {
+    "checkpoint": "backend-writer-checks.json",
+    "evidence_id": "backend-writer-linux-qualified-1794758613",
+    "native_filesystem_tests": 48,
+    "authenticated_HTTP_tests": 2,
+    "historical_limits_above_apply_to_original_checkpoint": true
+  }
+}

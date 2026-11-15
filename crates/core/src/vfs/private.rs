@@ -1,4 +1,7 @@
 //! Runtime names shared by filesystem views and Git path selection.
+pub const NATIVE_RECOVERY_DIRECTORY: &str = ".openwebide-native-recovery";
+pub const NATIVE_RECOVERY_OWNER: &str = ".openwebide-native-recovery-owner";
+
 const PROOF_PREFIX: &str = ".openwebide-proof-";
 const CREATE_PREFIX: &str = ".openwebide-create-";
 const RECOVERY_PREFIX: &str = "recovery-";
@@ -23,7 +26,11 @@ pub fn private_workspace_path(path: &str) -> bool {
     let mut previous = "";
     for part in path.split('/') {
         // U+017F folds to ASCII s on case-folding filesystems, including APFS.
-        if part.eq_ignore_ascii_case(".spin") || part.eq_ignore_ascii_case(".ſpin") {
+        if part.eq_ignore_ascii_case(".spin")
+            || part.eq_ignore_ascii_case(".ſpin")
+            || part.eq_ignore_ascii_case(NATIVE_RECOVERY_DIRECTORY)
+            || part.eq_ignore_ascii_case(NATIVE_RECOVERY_OWNER)
+        {
             return true;
         }
         if prefix(part, PROOF_PREFIX).is_some_and(id) {
@@ -75,6 +82,8 @@ pub fn private_workspace_globs() -> Vec<String> {
         // It still matches exactly one dot, for both files and directories.
         "[.]spin".to_string(),
         "[.]ſpin".to_string(),
+        NATIVE_RECOVERY_DIRECTORY.to_string(),
+        NATIVE_RECOVERY_OWNER.to_string(),
         format!("{PROOF_PREFIX}{id}"),
     ];
     names.extend(
@@ -219,6 +228,8 @@ mod aliases {
         let id = "ABCDEF0123456789ABCDEF0123456789";
         for path in [
             ".SPIN/secret".to_string(),
+            ".OPENWEBIDE-NATIVE-RECOVERY/recovery.sqlite3".to_string(),
+            "nested/.OpenWebIde-Native-Recovery-Owner".to_string(),
             ".ſpin/secret".to_string(),
             format!("nested/.OPENWEBIDE-PROOF-{id}"),
             format!("nested/.OPENWEBIDE-CREATE-{id}-1023"),
@@ -229,6 +240,8 @@ mod aliases {
         }
         for path in [
             ".OpenWebIde/RECOVERY-NOTES".to_string(),
+            ".openwebide-native-recovery-notes".to_string(),
+            ".openwebide-native-recovery-owner-notes".to_string(),
             format!(".OPENWEBIDE-CREATE-{id}-01"),
             format!(".OPENWEBIDE-CREATE-{id}-1024"),
         ] {

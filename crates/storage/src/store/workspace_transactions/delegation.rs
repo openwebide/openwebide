@@ -124,6 +124,7 @@ impl<D: Db> Store<D> {
         now: i64,
     ) -> Result<WorkspaceJournalResponse, StorageError> {
         if let Operation::Admit {
+            command,
             review_digest,
             language_grant,
         } = &request.operation
@@ -135,14 +136,20 @@ impl<D: Db> Store<D> {
             .map_err(StorageError::InvalidRequest)?;
             return self.db.transaction(|tx| async move {
                 let store=Store::new(tx);let context=store.delegation_context(request,now).await?;
-                let scope=store.claim_workspace_transaction_worker_inner(context.user,context.project,&context.expected,&request.worker,review,now).await?;
+                let scope=store.claim_workspace_transaction_worker_compound_inner(context.user,context.project,&context.expected,&request.worker,(review,command.as_deref()),now).await?;
                 store.db.execute("UPDATE workspace_transaction_delegations SET admitted=1 WHERE id=?",&[DbValue::Text(request.delegation.id.clone())]).await?;
                 store.db.execute("DELETE FROM workspace_transaction_delegations WHERE user_id=? AND project_id=? AND transaction_id=? AND id<>?",&[DbValue::Int(context.user.get()),DbValue::Int(context.project),DbValue::Text(context.expected.id),DbValue::Text(request.delegation.id.clone())]).await?;
                 Ok(WorkspaceJournalResponse::WorkerClaimed {scope})
             }).await;
         }
         let context = self.delegation_context(request, now).await?;
-        let preflight = matches!(request.operation, Operation::Inspect | Operation::Load);
+        let preflight = matches!(
+            request.operation,
+            Operation::Inspect
+                | Operation::RecoveryScope
+                | Operation::CommandRecoveryScope
+                | Operation::Load
+        );
         if !context.admitted && (!preflight || context.current != context.expected) {
             return Err(denied());
         }
@@ -162,7 +169,21 @@ impl<D: Db> Store<D> {
             return Err(denied());
         }
         match &request.operation {
-            Operation::Inspect => Ok(WorkspaceJournalResponse::Scope {
+            Operation::CommandRecoveryScope => {
+                let recovery = self
+                    .workspace_command_recovery(context.user, context.project, &context.expected.id)
+                    .await?;
+                if recovery
+                    .as_ref()
+                    .is_some_and(|value| value.scope != context.current)
+                {
+                    return Err(denied());
+                }
+                Ok(WorkspaceJournalResponse::CommandScope {
+                    recovery: recovery.map(Box::new),
+                })
+            }
+            Operation::Inspect | Operation::RecoveryScope => Ok(WorkspaceJournalResponse::Scope {
                 scope: Some(context.current),
             }),
             Operation::Load => {

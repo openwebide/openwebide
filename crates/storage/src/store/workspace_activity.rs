@@ -9,10 +9,14 @@ impl<D: Db> Store<D> {
         user: UserId,
         project: i64,
     ) -> Result<WorkspaceActivity, StorageError> {
-        let result = self.db.execute(
-            "SELECT EXISTS(SELECT 1 FROM workspace_transactions w WHERE w.user_id=p.user_id AND w.project_id=p.id AND w.terminal=0), EXISTS(SELECT 1 FROM language_actions a WHERE a.user_id=p.user_id AND a.project_id=p.id AND a.phase NOT IN ('completed','acknowledged','cancelled')) FROM projects p WHERE p.user_id=? AND p.id=?",
-            &[DbValue::Int(user.get()), DbValue::Int(project)],
-        ).await?;
+        let query = format!(
+            "SELECT EXISTS(SELECT 1 FROM workspace_transactions w WHERE w.user_id=p.user_id AND w.project_id=p.id AND w.terminal=0), EXISTS(SELECT 1 FROM language_actions a WHERE a.user_id=p.user_id AND a.project_id=p.id AND {}) FROM projects p WHERE p.user_id=? AND p.id=?",
+            super::language_actions::pending_predicate("a")
+        );
+        let result = self
+            .db
+            .execute(&query, &[DbValue::Int(user.get()), DbValue::Int(project)])
+            .await?;
         let row = result
             .rows
             .first()

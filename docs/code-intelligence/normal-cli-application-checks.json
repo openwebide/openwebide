@@ -1,0 +1,501 @@
+{
+  "status": "Both Local and Remote built-browser/WASI application sequences now recover with the actual normal Linux companion and normal recovery CLI, using the shipped root-owned installation policy. Actual command dispatch, committed lost reply, API project deletion, guarded administrative account removal, old-cookie401, original callback404, retained native fencing and explicit audited retirement precede real ordinary writing. No test-support feature or helper-selected native namespace is used. Optimized full distributions, physical permissions, other platform/process/writer/resource/full-CI and original roadmap requirements remain unfinished.",
+  "source_sha256": "a4762abccf1fe0104c89dee1090713fc4f100ce7f87f2298efaa26ba4c76bf4a",
+  "shared_workflow": "tools/check-deleted-project-client.py",
+  "adapter": "tools/language_recovery_container_support.py supplies Docker process/HTTP/filesystem primitives only. The same shared browser/backend recovery workflow and native production policy serve both modes.",
+  "verification": {
+    "terminal": "normal-cli-application-1794748972/terminal.json",
+    "checks": [
+      {
+        "case": "format-and-syntax",
+        "arguments": [
+          "bash",
+          "-euc",
+          "cargo fmt --all --check\ngit diff --check\npython3 -c \"from pathlib import Path; [compile(p.read_text(),str(p),'exec') for p in map(Path,['tools/check-deleted-project-client.py','tools/language_recovery_container_support.py'])]\"\npython3 tools/check-deleted-project-client.py --help"
+        ],
+        "returncode": 0,
+        "seconds": 3.37,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/normal-cli-application-1794748972/format-and-syntax.log",
+        "sha256": "52072a0e6553cca496c65cdfdff090bb68470edd642e144f63bfb62d61e6bd3c"
+      },
+      {
+        "case": "matching-normal-linux-companion",
+        "arguments": [
+          "docker",
+          "run",
+          "--name",
+          "openwebide-normal-command-build-1794748974",
+          "--volume",
+          "/Users/BWestnes/source/repos/openwebide/native-folder-recovery:/src:ro",
+          "--volume",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target:/shared-target",
+          "--volume",
+          "/Users/BWestnes/.cargo/registry:/usr/local/cargo/registry",
+          "--volume",
+          "/Users/BWestnes/.cargo/git:/usr/local/cargo/git",
+          "--volume",
+          "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/macos-available-stderr-bundle-1794547362/compiled-defaults.json:/bundle.json:ro",
+          "--env",
+          "CARGO_TARGET_DIR=/shared-target",
+          "--env",
+          "OPENWEBIDE_BUNDLED_ARTIFACTS=/bundle.json",
+          "--workdir",
+          "/src",
+          "--entrypoint",
+          "sh",
+          "sha256:ff521445a372125ed4f76e1453a1f8098f2d05332d1601d30db1c1f62757e730",
+          "-ec",
+          "set -eu\ncargo clean -p openwebide-bridge --target aarch64-unknown-linux-gnu --profile dev\ntimeout 1800s cargo clippy -p openwebide-bridge --bin openwebide-bridge --features bundled-defaults --locked --target aarch64-unknown-linux-gnu -- -D warnings\ntimeout 1800s cargo build -p openwebide-bridge --bin openwebide-bridge --features bundled-defaults --locked --target aarch64-unknown-linux-gnu --message-format=json"
+        ],
+        "returncode": 0,
+        "seconds": 73.12,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/normal-cli-application-1794748972/matching-normal-linux-companion.log",
+        "sha256": "390e270f7d40b568fdc0224a9166e52a0db73098e8ea0c55b97a53800a581c4a"
+      },
+      {
+        "case": "application-local",
+        "arguments": [
+          "python3",
+          "tools/check-deleted-project-client.py",
+          "--backend-wasm",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-wasip2/debug/openwebide_backend.wasm",
+          "--host-binary",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/aarch64-unknown-linux-gnu/debug/openwebide-bridge",
+          "--evidence-dir",
+          "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/normal-cli-application-1794748972/app",
+          "--mode",
+          "local",
+          "--page-after-settlement",
+          "keep",
+          "--decommission-account",
+          "--native-container-image",
+          "sha256:9dffaf115e62eadee40a819ca98116bf496b563fe6484e0dd4931927b14d2b7d"
+        ],
+        "returncode": 0,
+        "seconds": 450.87,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/normal-cli-application-1794748972/application-local.log",
+        "sha256": "b98da975e4d81c5d15239a9f3542bbcff9698e5b0ace525f6c2bec487665ae58"
+      },
+      {
+        "case": "application-remote",
+        "arguments": [
+          "python3",
+          "tools/check-deleted-project-client.py",
+          "--backend-wasm",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-wasip2/debug/openwebide_backend.wasm",
+          "--host-binary",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/aarch64-unknown-linux-gnu/debug/openwebide-bridge",
+          "--evidence-dir",
+          "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/normal-cli-application-1794748972/app",
+          "--mode",
+          "remote",
+          "--page-after-settlement",
+          "keep",
+          "--decommission-account",
+          "--native-container-image",
+          "sha256:9dffaf115e62eadee40a819ca98116bf496b563fe6484e0dd4931927b14d2b7d"
+        ],
+        "returncode": 0,
+        "seconds": 440.08,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/normal-cli-application-1794748972/application-remote.log",
+        "sha256": "8b74a3efeadf00d95efcd88d2af8fef7b1113c4b7de2484193487515d72673aa"
+      }
+    ],
+    "native": {
+      "binary": "/Users/BWestnes/source/repos/openwebide/openwebide/target/aarch64-unknown-linux-gnu/debug/openwebide-bridge",
+      "retained": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/normal-cli-application-1794748972/binaries/openwebide-bridge",
+      "sha256": "b5ad5c3167fc4399e02a3df7a371206e3e19aaacd6d92fcb0de6f2fb2dd41cbb",
+      "compilation": [
+        {
+          "target": "build-script-build",
+          "features": [
+            "bundled-defaults",
+            "default",
+            "tls"
+          ]
+        },
+        {
+          "target": "openwebide_bridge",
+          "features": [
+            "bundled-defaults",
+            "default",
+            "tls"
+          ]
+        },
+        {
+          "target": "openwebide-bridge",
+          "features": [
+            "bundled-defaults",
+            "default",
+            "tls"
+          ]
+        }
+      ],
+      "test_support_absent": true
+    },
+    "facts": {
+      "local": {
+        "result": {
+          "mode": "local",
+          "real_browser_command_approval": true,
+          "page_after_settlement": "keep",
+          "native_address_preserved": true,
+          "account_decommissioning": {
+            "method": "Administrative SQLite deletion after real API project deletion",
+            "fixture_user": 1,
+            "only_guarded_fixture_account_removed": true,
+            "owned_projects_and_chat_sessions_absent_before_removal": true,
+            "installed_records_before": 1,
+            "installed_records_cascaded": true,
+            "foreign_key_check_clean": true,
+            "before_database": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/normal-cli-application-1794748972/app/local/before-account-removal.sqlite3",
+            "public_account_deletion_API": false,
+            "old_authentication_rejected_after_restart": true
+          },
+          "real_WASI_project_deletion": true,
+          "settlement_reply_lost_after_commit": true,
+          "native_processes": [
+            4382,
+            5272,
+            5587
+          ],
+          "single_command_dispatch": true,
+          "original_outcome_preserved": true,
+          "missing_project_did_not_release_claim": true,
+          "actual_ordinary_file_write_after_explicit_retirement": true,
+          "shared_CLI_executor_test_home": false,
+          "OS_default_CLI_in_this_sequence": true,
+          "native_container": {
+            "image": "sha256:9dffaf115e62eadee40a819ca98116bf496b563fe6484e0dd4931927b14d2b7d",
+            "binary_sha256": "b5ad5c3167fc4399e02a3df7a371206e3e19aaacd6d92fcb0de6f2fb2dd41cbb",
+            "policy_sha256": "e628a883576a2e9d19601c5fb2831563ddab970326dccb202c2156163ae51698",
+            "normal_entry_point": true,
+            "processes": [
+              {
+                "container": "openwebide-command-recovery-2ff954271432-native-0",
+                "native_pid": 4382,
+                "container_init_pid": 4358,
+                "container_id": "279b260cfb6484352851cf567afd9a19d1854bd28c63e951070efbe0ef7deaf0"
+              },
+              {
+                "container": "openwebide-command-recovery-2ff954271432-native-1",
+                "native_pid": 5272,
+                "container_init_pid": 5248,
+                "container_id": "1fabed24e2b1245080188a92766f632e30e5ee113ee65cd9b3e943a4342f4363"
+              },
+              {
+                "container": "openwebide-command-recovery-2ff954271432-native-2",
+                "native_pid": 5587,
+                "container_init_pid": 5562,
+                "container_id": "f0db5ecb333bd9fccdce5868210d277aecdbdecc986d206b8716d17462bda405"
+              }
+            ],
+            "administration": [
+              {
+                "container": "openwebide-command-recovery-2ff954271432-inspect-original",
+                "arguments": [
+                  "recovery",
+                  "inspect"
+                ],
+                "returncode": 0
+              },
+              {
+                "container": "openwebide-command-recovery-2ff954271432-retire-original",
+                "arguments": [
+                  "recovery",
+                  "retire",
+                  "8efe72c62b3c760aea0996129b77125de2238d99ede12e332d0b48039452a52f",
+                  "--expected",
+                  "34d222a58c87813ae46a8c02572eac3d0cc6a867a8da460ba9ecb01e237a9433",
+                  "--note",
+                  "Reviewed the actual command and files after deleting this fixture project and decommissioning its account"
+                ],
+                "returncode": 0
+              },
+              {
+                "container": "openwebide-command-recovery-2ff954271432-retire-again",
+                "arguments": [
+                  "recovery",
+                  "retire",
+                  "8efe72c62b3c760aea0996129b77125de2238d99ede12e332d0b48039452a52f",
+                  "--expected",
+                  "34d222a58c87813ae46a8c02572eac3d0cc6a867a8da460ba9ecb01e237a9433",
+                  "--note",
+                  "Reviewed the actual command and files after deleting this fixture project and decommissioning its account"
+                ],
+                "returncode": 0
+              },
+              {
+                "container": "openwebide-command-recovery-2ff954271432-inspect-final",
+                "arguments": [
+                  "recovery",
+                  "inspect"
+                ],
+                "returncode": 0
+              }
+            ]
+          },
+          "optimized_native_WASI_distribution": false,
+          "physical_folder_permissions": false,
+          "whole_goal_complete": false
+        },
+        "database_observations": {
+          "before": {
+            "users": 1,
+            "projects": 0,
+            "sessions": 0,
+            "plugin_records": 1,
+            "user_settings": 9,
+            "workspace_transactions": 0,
+            "language_command_settlements": 0
+          },
+          "after": {
+            "users": 0,
+            "projects": 0,
+            "sessions": 0,
+            "plugin_records": 0,
+            "user_settings": 0,
+            "workspace_transactions": 0,
+            "language_command_settlements": 0
+          }
+        },
+        "all_eight_file_stages_exact": true,
+        "original_context_result_audit_retained": true,
+        "lost_reply_path": "/api/language-commands/delegated",
+        "original_private_callback404": true,
+        "stopped_container_observations": [
+          {
+            "container": "openwebide-command-recovery-2ff954271432-native-0",
+            "exit_code": 0,
+            "actual_binary_and_policy_readonly": true,
+            "same_private_storage": true
+          },
+          {
+            "container": "openwebide-command-recovery-2ff954271432-native-1",
+            "exit_code": 0,
+            "actual_binary_and_policy_readonly": true,
+            "same_private_storage": true
+          },
+          {
+            "container": "openwebide-command-recovery-2ff954271432-native-2",
+            "exit_code": 0,
+            "actual_binary_and_policy_readonly": true,
+            "same_private_storage": true
+          },
+          {
+            "container": "openwebide-command-recovery-2ff954271432-inspect-original",
+            "exit_code": 0,
+            "actual_binary_and_policy_readonly": true,
+            "same_private_storage": true
+          },
+          {
+            "container": "openwebide-command-recovery-2ff954271432-retire-original",
+            "exit_code": 0,
+            "actual_binary_and_policy_readonly": true,
+            "same_private_storage": true
+          },
+          {
+            "container": "openwebide-command-recovery-2ff954271432-retire-again",
+            "exit_code": 0,
+            "actual_binary_and_policy_readonly": true,
+            "same_private_storage": true
+          },
+          {
+            "container": "openwebide-command-recovery-2ff954271432-inspect-final",
+            "exit_code": 0,
+            "actual_binary_and_policy_readonly": true,
+            "same_private_storage": true
+          }
+        ]
+      },
+      "remote": {
+        "result": {
+          "mode": "remote",
+          "real_browser_command_approval": true,
+          "page_after_settlement": "keep",
+          "native_address_preserved": true,
+          "account_decommissioning": {
+            "method": "Administrative SQLite deletion after real API project deletion",
+            "fixture_user": 1,
+            "only_guarded_fixture_account_removed": true,
+            "owned_projects_and_chat_sessions_absent_before_removal": true,
+            "installed_records_before": 1,
+            "installed_records_cascaded": true,
+            "foreign_key_check_clean": true,
+            "before_database": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/normal-cli-application-1794748972/app/remote/before-account-removal.sqlite3",
+            "public_account_deletion_API": false,
+            "old_authentication_rejected_after_restart": true
+          },
+          "real_WASI_project_deletion": true,
+          "settlement_reply_lost_after_commit": true,
+          "native_processes": [
+            5771,
+            6365,
+            6680
+          ],
+          "single_command_dispatch": true,
+          "original_outcome_preserved": true,
+          "missing_project_did_not_release_claim": true,
+          "actual_ordinary_file_write_after_explicit_retirement": true,
+          "shared_CLI_executor_test_home": false,
+          "OS_default_CLI_in_this_sequence": true,
+          "native_container": {
+            "image": "sha256:9dffaf115e62eadee40a819ca98116bf496b563fe6484e0dd4931927b14d2b7d",
+            "binary_sha256": "b5ad5c3167fc4399e02a3df7a371206e3e19aaacd6d92fcb0de6f2fb2dd41cbb",
+            "policy_sha256": "e628a883576a2e9d19601c5fb2831563ddab970326dccb202c2156163ae51698",
+            "normal_entry_point": true,
+            "processes": [
+              {
+                "container": "openwebide-command-recovery-1ecf77a8339b-native-0",
+                "native_pid": 5771,
+                "container_init_pid": 5748,
+                "container_id": "440f967e182c1bf1275d21336b6ed1c98ea7807ceef3ec596aee2765c042b804"
+              },
+              {
+                "container": "openwebide-command-recovery-1ecf77a8339b-native-1",
+                "native_pid": 6365,
+                "container_init_pid": 6341,
+                "container_id": "488cce546e9daf88c19d25cffcac20289964e4ab5d6563d9bac96bf1a9a45ee7"
+              },
+              {
+                "container": "openwebide-command-recovery-1ecf77a8339b-native-2",
+                "native_pid": 6680,
+                "container_init_pid": 6657,
+                "container_id": "972c4e908e15f815cdd49588f02c71a495908b4bb9bda5535df3a0a29714b73d"
+              }
+            ],
+            "administration": [
+              {
+                "container": "openwebide-command-recovery-1ecf77a8339b-inspect-original",
+                "arguments": [
+                  "recovery",
+                  "inspect"
+                ],
+                "returncode": 0
+              },
+              {
+                "container": "openwebide-command-recovery-1ecf77a8339b-retire-original",
+                "arguments": [
+                  "recovery",
+                  "retire",
+                  "3a69a33274ffaa5399c02c6be03c7db370dade1262664357ccc0cbfaec353bd3",
+                  "--expected",
+                  "9aa13a1a19a9974b3d2959f09ee40dd7cf205f6a610fc2f52f2c48d04f2eb7b8",
+                  "--note",
+                  "Reviewed the actual command and files after deleting this fixture project and decommissioning its account"
+                ],
+                "returncode": 0
+              },
+              {
+                "container": "openwebide-command-recovery-1ecf77a8339b-retire-again",
+                "arguments": [
+                  "recovery",
+                  "retire",
+                  "3a69a33274ffaa5399c02c6be03c7db370dade1262664357ccc0cbfaec353bd3",
+                  "--expected",
+                  "9aa13a1a19a9974b3d2959f09ee40dd7cf205f6a610fc2f52f2c48d04f2eb7b8",
+                  "--note",
+                  "Reviewed the actual command and files after deleting this fixture project and decommissioning its account"
+                ],
+                "returncode": 0
+              },
+              {
+                "container": "openwebide-command-recovery-1ecf77a8339b-inspect-final",
+                "arguments": [
+                  "recovery",
+                  "inspect"
+                ],
+                "returncode": 0
+              }
+            ]
+          },
+          "optimized_native_WASI_distribution": false,
+          "physical_folder_permissions": false,
+          "whole_goal_complete": false
+        },
+        "database_observations": {
+          "before": {
+            "users": 1,
+            "projects": 0,
+            "sessions": 0,
+            "plugin_records": 1,
+            "user_settings": 8,
+            "workspace_transactions": 0,
+            "language_command_settlements": 0
+          },
+          "after": {
+            "users": 0,
+            "projects": 0,
+            "sessions": 0,
+            "plugin_records": 0,
+            "user_settings": 0,
+            "workspace_transactions": 0,
+            "language_command_settlements": 0
+          }
+        },
+        "all_eight_file_stages_exact": true,
+        "original_context_result_audit_retained": true,
+        "lost_reply_path": "/api/language-commands/original-private",
+        "original_private_callback404": true,
+        "stopped_container_observations": [
+          {
+            "container": "openwebide-command-recovery-1ecf77a8339b-native-0",
+            "exit_code": 0,
+            "actual_binary_and_policy_readonly": true,
+            "same_private_storage": true
+          },
+          {
+            "container": "openwebide-command-recovery-1ecf77a8339b-native-1",
+            "exit_code": 0,
+            "actual_binary_and_policy_readonly": true,
+            "same_private_storage": true
+          },
+          {
+            "container": "openwebide-command-recovery-1ecf77a8339b-native-2",
+            "exit_code": 0,
+            "actual_binary_and_policy_readonly": true,
+            "same_private_storage": true
+          },
+          {
+            "container": "openwebide-command-recovery-1ecf77a8339b-inspect-original",
+            "exit_code": 0,
+            "actual_binary_and_policy_readonly": true,
+            "same_private_storage": true
+          },
+          {
+            "container": "openwebide-command-recovery-1ecf77a8339b-retire-original",
+            "exit_code": 0,
+            "actual_binary_and_policy_readonly": true,
+            "same_private_storage": true
+          },
+          {
+            "container": "openwebide-command-recovery-1ecf77a8339b-retire-again",
+            "exit_code": 0,
+            "actual_binary_and_policy_readonly": true,
+            "same_private_storage": true
+          },
+          {
+            "container": "openwebide-command-recovery-1ecf77a8339b-inspect-final",
+            "exit_code": 0,
+            "actual_binary_and_policy_readonly": true,
+            "same_private_storage": true
+          }
+        ]
+      }
+    }
+  },
+  "limits": {
+    "Mac_browser_and_WASI_backend": true,
+    "Linux_normal_native_dev_profile": true,
+    "Local_OPFS_correspondence": true,
+    "deterministic_LSP_peer": true,
+    "public_account_delete_API_added": false,
+    "unknown_cleanup_attestation": false,
+    "physical_folder_permissions": false,
+    "installed_PWA": false,
+    "optimized_native_WASI_distribution": false,
+    "native_Windows_runtime": false,
+    "full_CI_complete": false,
+    "whole_goal_complete": false
+  }
+}

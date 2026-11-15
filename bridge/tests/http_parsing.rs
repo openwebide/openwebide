@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use common::{HttpResponse, TestDir, http, post, start, ws_with_headers};
 use futures::{SinkExt, StreamExt};
 use openwebide_bridge::http::Limits;
-use openwebide_bridge::{ServerConfig, run_server};
+use openwebide_bridge::run_server;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::tungstenite::Message;
@@ -35,7 +35,8 @@ async fn start_with_limits(workspace_root: std::path::PathBuf, limits: Limits) -
         .await
         .expect("failed to bind 127.0.0.1:0");
     let port = listener.local_addr().expect("local_addr failed").port();
-    let mut config = ServerConfig::new(workspace_root, std::sync::Arc::from("dummy_secret"), None);
+    let mut config =
+        common::server_config(workspace_root, std::sync::Arc::from("dummy_secret"), None);
     config.limits = limits;
     tokio::spawn(async move {
         run_server(listener, config).await;

@@ -262,14 +262,23 @@ async fn scoped_action_host(
     if !current() {
         return Err("Plugin action context changed".into());
     }
-    let execution = host.plugin_host(project, current.clone())?;
-    let transport = match execution {
+    let adapter = action_host(api, host, project, current)?;
+    Ok((adapter, bindings))
+}
+
+fn action_host(
+    api: Api,
+    host: ProjectHost,
+    project: Option<i64>,
+    current: impl Fn() -> bool + 'static,
+) -> Result<ActionHost, String> {
+    let transport = match host.plugin_host(project, &current)? {
         PluginExecutionHost::Remote {
             api, project_id, ..
         } => Transport::Remote(api, project_id),
         PluginExecutionHost::Local(client) => Transport::Local(client),
     };
-    let adapter = ActionHost {
+    Ok(ActionHost {
         project_host: SendWrapper::new(host),
         api: SendWrapper::new(api),
         transport: SendWrapper::new(transport),
@@ -281,8 +290,26 @@ async fn scoped_action_host(
         },
         current: SendWrapper::new(Rc::new(current)),
         grants: Arc::default(),
-    };
-    Ok((adapter, bindings))
+        recovery_connection_checked: Arc::default(),
+    })
+}
+
+pub(crate) fn project_language_recovery(
+    api: Api,
+    host: ProjectHost,
+    project: i64,
+    current: impl Fn() -> bool + 'static,
+) -> Result<ProjectLanguageActions, String> {
+    let revision = host.revision();
+    let adapter = action_host(api, host, Some(project), move || {
+        current() && host.revision() == revision
+    })?;
+    openwebide_agent::plugins::languages::LanguageActionClient::new(
+        adapter,
+        vec![],
+        Default::default(),
+    )
+    .map(ProjectLanguageActions)
 }
 
 #[derive(Clone)]
@@ -307,12 +334,31 @@ impl ProjectLanguageActions {
         operation: openwebide_core::plugins::languages::intelligence::actions::CommandOperation,
     ) -> Result<openwebide_core::plugins::languages::intelligence::actions::CommandProgress, String>
     {
-        let request = Box::pin(self.0.command(record, operation));
-        let deadline = Box::pin(crate::util::sleep_ms(30_000));
-        match futures::future::select(request,deadline).await {
-            futures::future::Either::Left((result,_))=>result,
-            futures::future::Either::Right(_)=>Err("The command response was lost or timed out. Check its pending outcome; do not run it again.".into()),
-        }
+        command_response(self.0.command(record, operation)).await
+    }
+    pub async fn recover_command(
+        &self,
+        record: &openwebide_core::plugins::languages::intelligence::actions::ActionRecovery,
+        operation: openwebide_core::plugins::languages::intelligence::actions::CommandOperation,
+    ) -> Result<openwebide_core::plugins::languages::intelligence::actions::CommandProgress, String>
+    {
+        command_response(self.0.recover_command(record, operation)).await
+    }
+}
+
+async fn command_response(
+    request: impl std::future::Future<
+        Output = Result<
+            openwebide_core::plugins::languages::intelligence::actions::CommandProgress,
+            String,
+        >,
+    >,
+) -> Result<openwebide_core::plugins::languages::intelligence::actions::CommandProgress, String> {
+    let request = Box::pin(request);
+    let deadline = Box::pin(crate::util::sleep_ms(30_000));
+    match futures::future::select(request,deadline).await {
+        futures::future::Either::Left((result,_))=>result,
+        futures::future::Either::Right(_)=>Err("The command response was lost or timed out. Check its pending outcome; do not run it again.".into()),
     }
 }
 
@@ -335,6 +381,7 @@ pub(crate) struct ActionHost {
     context: PluginExecutionContext,
     current: SendWrapper<Rc<dyn Fn() -> bool>>,
     grants: Arc<Mutex<BTreeMap<String, String>>>,
+    recovery_connection_checked: Arc<std::sync::atomic::AtomicBool>,
 }
 impl ActionHost {
     fn backend(&self) -> Result<Rc<dyn Backend>, String> {
@@ -375,6 +422,7 @@ pub(crate) fn agent_language_tools(
                 },
                 current: SendWrapper::new(Rc::new(current)),
                 grants: Arc::default(),
+                recovery_connection_checked: Arc::default(),
             },
             scope,
             u128::from_le_bytes(nonce),
@@ -417,6 +465,25 @@ impl PluginActionHost for ActionHost {
         })
         .await
     }
+    async fn language_action_recovery(
+        &self,
+        request: &openwebide_core::plugins::languages::intelligence::actions::ActionRecoveryRequest,
+    ) -> Result<
+        Option<openwebide_core::plugins::languages::intelligence::actions::ActionRecovery>,
+        String,
+    > {
+        SendWrapper::new(async move {
+            self.backend()?
+                .language_action_recovery(
+                    self.context
+                        .project_id
+                        .ok_or("Language actions require a project")?,
+                    request,
+                )
+                .await
+        })
+        .await
+    }
     async fn language_command(
         &self,
         request: &openwebide_core::plugins::languages::intelligence::actions::CommandDispatch,
@@ -431,12 +498,26 @@ impl PluginActionHost for ActionHost {
                 .context
                 .project_id
                 .ok_or("Language commands require a project")?;
+            if request.operation != CommandOperation::Start
+                && !self
+                    .recovery_connection_checked
+                    .swap(true, std::sync::atomic::Ordering::AcqRel)
+            {
+                let host = *self.project_host;
+                let guarded = self.current.clone();
+                leptos::task::spawn_local(async move {
+                    let _ = host.reconnect_language_commands(project, &**guarded).await;
+                });
+            }
             match &*self.transport {
                 Transport::Remote(..) => backend.language_command(project, request).await,
                 Transport::Local(client) => {
                     let command = backend.authorize_language_command(project, request).await?;
                     if !(self.current)() {
                         return Err("Language command context changed".into());
+                    }
+                    if let Some(progress) = command.progress {
+                        return Ok(progress);
                     }
                     let root = if request.operation == CommandOperation::Start {
                         let current = Rc::clone(&self.current);
@@ -455,15 +536,55 @@ impl PluginActionHost for ActionHost {
                     if !(self.current)() {
                         return Err("Language command context changed".into());
                     }
+                    use openwebide_core::plugins::languages::intelligence::actions::{
+                        CommandAuthority, CommandDelegationRequest, CommandPreparation,
+                        PairedCommandJournalRequest,
+                    };
+                    let mut input = HostCommandRequest {
+                        user: None,
+                        root,
+                        command,
+                        authority: request.call.as_ref().map(|call| CommandAuthority {
+                            grant: call.grant.clone(),
+                            session_id: call.session_id,
+                        }),
+                        journal: None,
+                    };
+                    if request.operation == CommandOperation::Start {
+                        let preparation: CommandPreparation = client
+                            .plugin_request(
+                                "languages/command/prepare",
+                                serde_json::to_value(&input).map_err(|e| e.to_string())?,
+                            )
+                            .await?;
+                        let worker = match preparation {
+                            CommandPreparation::Existing { progress } => return Ok(progress),
+                            CommandPreparation::Worker { worker } => worker,
+                        };
+                        if !(self.current)() {
+                            return Err("Language command context changed".into());
+                        }
+                        let (api_url, delegation) = backend
+                            .delegate_language_command(
+                                project,
+                                &CommandDelegationRequest {
+                                    id: input.command.invocation.id.clone(),
+                                    worker,
+                                },
+                            )
+                            .await?;
+                        input.journal = Some(PairedCommandJournalRequest {
+                            api_url,
+                            delegation,
+                        });
+                    }
+                    if !(self.current)() {
+                        return Err("Language command context changed".into());
+                    }
                     client
                         .plugin_request(
                             "languages/command",
-                            serde_json::to_value(HostCommandRequest {
-                                user: None,
-                                root,
-                                command,
-                            })
-                            .map_err(|e| e.to_string())?,
+                            serde_json::to_value(input).map_err(|e| e.to_string())?,
                         )
                         .await
                 }

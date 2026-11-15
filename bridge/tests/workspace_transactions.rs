@@ -1,6 +1,6 @@
 mod common;
 use common::{HttpResponse, http};
-use openwebide_bridge::{ServerConfig, run_server};
+use openwebide_bridge::run_server;
 use tokio::net::TcpListener;
 
 #[tokio::test]
@@ -9,7 +9,7 @@ async fn workspace_dispatch_accepts_only_backend_service_authority() {
     std::fs::write(directory.path().join("keep"), "unchanged").unwrap();
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
-    let config = ServerConfig::new(
+    let config = common::server_config(
         directory.path().canonicalize().unwrap(),
         "dummy_secret".into(),
         Some("paired-token".into()),
@@ -72,7 +72,7 @@ async fn workspace_dispatch_accepts_only_backend_service_authority() {
     let _ = server.await;
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
-    let rotated = ServerConfig::new(
+    let rotated = common::server_config(
         directory.path().canonicalize().unwrap(),
         "rotated_secret".into(),
         None,

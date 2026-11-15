@@ -1559,6 +1559,67 @@ impl Default for WorkspaceState {
 
 #[cfg(test)]
 mod tests {
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+    #[cfg_attr(not(target_arch = "wasm32"), test)]
+    fn terminal_command_recovery_keeps_saves_blocked_until_native_settlement() {
+        use openwebide_core::plugins::languages::intelligence::actions::{
+            ActionPhase, ActionRecovery, CommandInvocation, CommandOutcome, CommandRecoveryScope,
+        };
+        use openwebide_core::workspace_transaction::WorkspaceTransactionWorkerState;
+        for acknowledged in [false, true] {
+            let outcome = if acknowledged {
+                CommandOutcome::Uncertain {
+                    message: "Original response lost".into(),
+                }
+            } else {
+                CommandOutcome::Completed {
+                    result: serde_json::json!({"original":true}),
+                }
+            };
+            let mut recovery = ActionRecovery {
+                command: CommandRecoveryScope {
+                    invocation: CommandInvocation {
+                        id: "a".repeat(32),
+                        client: "original-window".into(),
+                        command: "b".repeat(32),
+                        server: "old-service".into(),
+                        origin: "c".repeat(64),
+                        review: "d".repeat(64),
+                        approval: "e".repeat(64),
+                    },
+                    revision: 4,
+                    phase: if acknowledged {
+                        ActionPhase::Acknowledged
+                    } else {
+                        ActionPhase::Completed
+                    },
+                    outcome_digest: Some(openwebide_core::plugins::content_digest(
+                        &serde_json::to_vec(&outcome).unwrap(),
+                    )),
+                    worker: Some(WorkspaceTransactionWorkerState {
+                        id: "f".repeat(32),
+                        active: true,
+                    }),
+                    native_settlement_pending: true,
+                    command_cleanup_confirmed: true,
+                },
+                outcome: Some(outcome),
+                acknowledgement: acknowledged.then(|| "Reviewed original effects".into()),
+            };
+            recovery.validate().unwrap();
+            let status = super::WorkspaceRecoveryStatus::from_recovery(None, Some(&recovery));
+            assert!(status.blocks_saves());
+            assert!(status.message().contains("command recovery"));
+            recovery.command.native_settlement_pending = false;
+            recovery.command.worker.as_mut().unwrap().active = false;
+            recovery.validate().unwrap();
+            assert_eq!(
+                super::WorkspaceRecoveryStatus::from_recovery(None, Some(&recovery)),
+                super::WorkspaceRecoveryStatus::Ready
+            );
+        }
+    }
+
     #[cfg(target_arch = "wasm32")]
     #[wasm_bindgen_test::wasm_bindgen_test]
     async fn cooperative_recovery_guards_match_sync_and_reject_new_documents_in_both_modes() {

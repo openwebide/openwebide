@@ -1,0 +1,131 @@
+{
+  "status": "Current browser candidate delivery and running native command callback changes pass browser-facade and native HTTP contracts in both modes. Complete application reconnection, command recovery and the original roadmap remain unfinished.",
+  "source_sha256": "22a11ccd142a4f24bae1492291f34cc031ed7cba87f780eb0c6a23eb31d61c41",
+  "builds_on": "configured-command-callback-checks.json",
+  "native_schema": 9,
+  "storage_schema": 71,
+  "shared_implementation": "ProjectHost supplies the current BackendApi address through thin paired HTTP or authenticated backend adapters. One Host policy selects original account/project/mode records, probes candidates, and persists a verified native origin. Configured startup and current-browser hints share that policy and a two-batch semaphore acquired before retaining private state; each candidate probe has a five-second bound. No global backend service URL is replaced.",
+  "contract": [
+    "Browser reconnection is independent of folder handles, permission resolution and fresh provider/dispatch admission. Pin the account generation, ProjectHost revision and caller guard before and after awaiting either adapter. Recovery discovery sends a separate asynchronous hint after publishing normal status, including when public recovery rows are absent; a command-control client coalesces repeated hints.",
+    "The backend checks project ownership before reading a hint, accepts this route only for its Remote project, and overwrites caller account identity with the authenticated user. Native routing selects Local for a paired principal and Remote for a service principal, using the same scoped Host policy. Invalid URLs, credentials in URLs, query/fragment data, extra body fields and changed project claims are rejected.",
+    "Running publishers use the original sealed transport and resolve the verified origin from their native namespace. A changed origin or retired owner cancels a stalled old request; subsequent reconciliation uses original authority and worker identity. Trusted legacy embeddings without a callback origin retain their existing adapter.",
+    "In each real native HTTP adapter, keep the same running host and port while moving the genuine Store-backed callback listener. Reject unauthenticated hints, invalid addresses, other account/project/mode records, a real replacement issuer, and an authentic encrypted reply replayed from another request. Preserve exact native key/command/owner state on rejection; a successful hint changes only origin. The original write fence remains until ordinary manual acknowledgement and settlement.",
+    "Hold a real old Scope reply while rebinding. Native settlement and metadata disposal finish through the new address without releasing the old response or restarting the host; the fixture records cancellation of its old connection. No command is dispatched, no source changes, and callbacks stop after retirement.",
+    "Move the genuine backend after public history pruning, final receipt deletion, a lost metadata acknowledgement and a second native process loss. With only the durable native outbox remaining, the new configured candidate acknowledges and drains metadata in both modes without recreating public rows, changing the namespace key, replaying execution or blocking ordinary writers.",
+    "Optimized Chrome tests run the actual ProjectHost facade and both HTTP clients with fetch intercepted at the network boundary. They check current address delivery, absent folder handles, pending folder permission, and account/caller changes during held replies. These tests do not run the complete production backend forwarding path or establish physical folder permission behavior."
+  ],
+  "verification": {
+    "focused_terminal": "browser-callback-focused-1794727685/terminal.json",
+    "terminal": "browser-callback-qualified-1794727808/terminal.json",
+    "artifacts": "browser-callback-qualified-outputs-1794728442/manifest.json",
+    "checks": [
+      {
+        "case": "format",
+        "returncode": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "native-clippy",
+        "returncode": 0,
+        "log_sha256": "1960d7165c45b85678c31e6caa03f11709e9f008acc38041dfe318dc8b754582"
+      },
+      {
+        "case": "WASI-backend-clippy",
+        "returncode": 0,
+        "log_sha256": "60f889154aab9eda957f509ed640783dec3cae17d36ae8d6e59d9cf0f2208bfe"
+      },
+      {
+        "case": "WASM-frontend-clippy",
+        "returncode": 0,
+        "log_sha256": "7a7c5f339ce35cb7811e73ee64d146487d7e72eb2090f8175330980b4fb58593"
+      },
+      {
+        "case": "Windows-cross-clippy",
+        "returncode": 0,
+        "log_sha256": "ceabe1c808068b4e669b4a102dbdeb7cf3352fc4f0328fb93fdd17b96d14a0d2"
+      },
+      {
+        "case": "auth-all-unit",
+        "returncode": 0,
+        "log_sha256": "47f790fc2ba1452c445f23d515208ce3a3581f2026f966375f9a14253b3c23ec"
+      },
+      {
+        "case": "backend-all-unit",
+        "returncode": 0,
+        "log_sha256": "3aa627720a3cb5a234988664d3d6c544f411f47c3e62bbc8053fc12e264c3a56"
+      },
+      {
+        "case": "frontend-native-library",
+        "returncode": 0,
+        "log_sha256": "8a0117b2c76841dd8377e878ce04fe6583050f40b30fdbdc49b47a2e97da15a5"
+      },
+      {
+        "case": "frontend-browser-library",
+        "returncode": 0,
+        "log_sha256": "8aa96542f6e053d589bcc048388a7a9450ade3527630574204014f2c53f3ef59"
+      },
+      {
+        "case": "all-native-library",
+        "returncode": 0,
+        "log_sha256": "c0962a3a8bee1a987aec9c6d67c0c6ba2ea006b59ac2199221792b5e61da8290"
+      },
+      {
+        "case": "explicit-marketplace-smoke",
+        "returncode": 0,
+        "log_sha256": "184db8a6947ab9c6f4a670015792fab45d3238961ee49745d26f6b4f22624cb0"
+      },
+      {
+        "case": "all-command-HTTP",
+        "returncode": 0,
+        "log_sha256": "89a4ebeebd03218c6602b390b1e8b9dadaf2f5d388540dca25135f043bcc4a97"
+      },
+      {
+        "case": "default-bin-clippy",
+        "returncode": 0,
+        "log_sha256": "ba3e5c207b3514e919947dda0bfbd4578ec576398e9f825eceacc02d2a30b0ab"
+      },
+      {
+        "case": "production-feature-inventory",
+        "returncode": 0,
+        "log_sha256": "51a70955c82feadb08bcaf685eec7550c14e8cf35436c8f256347155c7578b04"
+      }
+    ],
+    "focused_checks": 11,
+    "broader_checks": 14,
+    "test_counts": {
+      "auth-all-unit": 14,
+      "backend-all-unit": 137,
+      "frontend-native-library": 143,
+      "frontend-browser-library": 62,
+      "all-native-library": 544,
+      "explicit-marketplace-smoke": 1,
+      "all-command-HTTP": 14
+    },
+    "distinct_tests": 915,
+    "focused_duplicate_test_executions": 7,
+    "distinct_native_HTTP_tests": 559,
+    "HTTP_tests": 14,
+    "native_WASI_WASM_Windows_cross_Clippy": true,
+    "macOS_native_runtime_both_adapters": true,
+    "optimized_Chrome_facade_both_adapters": true,
+    "native_Windows_runtime": false,
+    "fresh_Linux_runtime": false,
+    "complete_production_application": false,
+    "physical_folder_permissions": false,
+    "all40_original_production_artifacts_unchanged": true
+  },
+  "earlier_harness_run": "The first focused run reached successful native settlement at the new origin, then incorrectly waited for the old held response to resume after its request had been cancelled. Its source, logs and actual binaries are retained. The fixture now records cancellation with a drop guard and verifies it explicitly; no production behavior changed for that correction.",
+  "remaining": [
+    "Qualify callback recovery with the current optimized native/WASI release distribution and installed app, including original OS-selected private namespace and physical browser folder permission/device checks. The built-app checkpoint uses optimized frontend, unoptimized production WASI entry point and the same native HTTP host with an isolated test-support namespace.",
+    "Finish frozen-owner application recovery beyond the native OS-owner CLI: deleted original projects/accounts, legacy command owners without verifiable cleanup, actual process interruptions and current packaged/native platform contracts. Never infer cleanup from missing public rows, failed requests or 404 replies.",
+    "Finish remaining admission/watcher-enrollment and outcome/context interruptions, including escaped-process cleanup beyond the verified managed-group cases.",
+    "Finish every participating writer, Git/PTY and escaped-process lifetime; implement and verify native Windows ownership and fresh packaged Linux runtime.",
+    "Complete all original packaged application/browser, cache/resource/RSS/prefetch/homelab and full-CI requirements."
+  ],
+  "browser_facade_and_native_transport_contracts_verified": true,
+  "general_callback_reconnection_complete": false,
+  "command_recovery_complete": false,
+  "full_CI_complete": false,
+  "whole_goal_complete": false,
+  "followup": "retired-command-worker-checks.json"
+}

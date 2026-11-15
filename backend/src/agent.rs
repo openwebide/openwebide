@@ -1325,7 +1325,7 @@ impl SpinTaskFactory {
     fn builtin_executor(&self) -> SpinBuiltinTaskExecutor {
         let workspace = self.base.as_ref().map(|base| {
             let executor = VfsToolExecutor::with_web_and_bridge(
-                HostFsVfs::new(base.clone()),
+                HostFsVfs::with_store(base.clone(), self.store.clone()),
                 openwebide_agent::NoopWebClient,
                 crate::bridge_client::SpinBridgeClient::for_project(
                     self.store.clone(),

@@ -1,0 +1,185 @@
+{
+  "status": "Final original command settlement and metadata acknowledgement survive public history pruning and distinct native restarts in both adapters. Command recovery and the complete roadmap remain unfinished.",
+  "source_sha256": "a7f9f08a770a466d8fa0201a6ccf383da22c5d55dc978ff8507beb283be12e83",
+  "builds_on": "received-command-result-checks.json",
+  "storage_schema": 71,
+  "native_schema": 9,
+  "shared_implementation": "Shared Store policy retains compact final receipts and authenticates original worker metadata. One native host retry policy persists a separate bounded metadata ACK queue above the existing thin service and paired transports. The backend verifies the enduring issuer and reads retained original scope without public provider/source payloads or replacement credentials.",
+  "contract": [
+    "Public payload pruning does not erase the compact terminal proof required after a lost Settle reply. New receipts retain the original worker secret hash; schema 70 legacy rows preserve their prior original-issuer and worker-ID proof without deserializing archived provider/source/result payloads.",
+    "Private receipts retain no result or source payload and confer no fresh command admission. Capacity is reserved before native worker attachment. Original metadata acknowledgements free their slot, are idempotent and cannot alter a newer workspace generation.",
+    "The schema 9 native outbox is durable before original command/owner retirement. Active commands and pending metadata share bounded capacity. Pending metadata neither fences ordinary writers nor requires the retired workspace folder. Exact original namespace, authority, worker and terminal proof bind local disposal.",
+    "Two real HTTP cases, one per adapter, kill the original owner and its first successor: four SIGKILLs. Ordinary later work prunes both public payloads. A committed Settle reply and then a committed metadata-disposal reply are lost. The second successor drains the same native outbox without replay and preserves the exact result, source, editor state, namespace key and unrelated later transaction.",
+    "The real authenticated backend route retains cancelled command scope after ordinary public pruning, rejects browser/forged requests, issues the same original credential and accepts only the distinct metadata ACK response. Disposal can be retried after the now-idle project is deleted; this does not establish recovery if a project is deleted before native settlement observation.",
+    "Actual schema 70 upgrade, migration-step replay and no-resurrection after ACK pass with unreadable archived payloads. Shared Store and native capacity tests prove rejection before new ownership and successful admission after an original ACK frees a slot.",
+    "Existing strict no-further-callback assertions now observe both native command retirement and durable ACK-queue disposal before taking their baseline. No callback counter was weakened or filtered."
+  ],
+  "verification": {
+    "qualified_terminal": "settlement-http-final-1794722262/qualified-terminal.json",
+    "final_HTTP_terminal": "settlement-http-final-1794722262/terminal.json",
+    "qualified_prior_terminal": "settlement-qualified-1794721682/terminal.json",
+    "qualification": "Thirteen prior cases retain identical build inputs. Only four HTTP test paths changed to await the actual durable ACK queue; all affected HTTP and lint contracts reran on the final source.",
+    "only_changed_HTTP_test_paths": [
+      "bridge/tests/language_commands.rs",
+      "bridge/tests/language_commands/cancellation.rs",
+      "bridge/tests/language_commands/retained.rs",
+      "bridge/tests/language_commands/settlement.rs"
+    ],
+    "qualified_prior_cases": 13,
+    "final_source_cases": 6,
+    "checks": [
+      {
+        "case": "WASI-backend-clippy",
+        "returncode": 0,
+        "source_sha256": "77d23a3e4c017163d25fc00da22b95762d44ae28be3401a0c2306c3783a086af",
+        "log_sha256": "0b53209db424367e80c52cd8cde8b75e37af110438a0efde777104a1463956de"
+      },
+      {
+        "case": "WASM-frontend-all-target-clippy",
+        "returncode": 0,
+        "source_sha256": "77d23a3e4c017163d25fc00da22b95762d44ae28be3401a0c2306c3783a086af",
+        "log_sha256": "9c73735a1033f44f00ea48e15c38d73843ff5a391557aac653bd81d564a34b5f"
+      },
+      {
+        "case": "storage-all-unit",
+        "returncode": 0,
+        "source_sha256": "77d23a3e4c017163d25fc00da22b95762d44ae28be3401a0c2306c3783a086af",
+        "log_sha256": "52afefe33fdf69c8442f5b6ea731bacc3d02fe4e4098cc270410a4f5f3061738"
+      },
+      {
+        "case": "core-workspace-contracts",
+        "returncode": 0,
+        "source_sha256": "77d23a3e4c017163d25fc00da22b95762d44ae28be3401a0c2306c3783a086af",
+        "log_sha256": "3545c1e76ce2f32eee6aff6342834783aaff9d4579885d9e108f1e89406dcdcd"
+      },
+      {
+        "case": "core-command-contracts",
+        "returncode": 0,
+        "source_sha256": "77d23a3e4c017163d25fc00da22b95762d44ae28be3401a0c2306c3783a086af",
+        "log_sha256": "51e7e364880e3edf7aa8f6bf28af757f3c49f6669013c38241d81bbfc39609da"
+      },
+      {
+        "case": "backend-all-unit",
+        "returncode": 0,
+        "source_sha256": "77d23a3e4c017163d25fc00da22b95762d44ae28be3401a0c2306c3783a086af",
+        "log_sha256": "36cb6696875023238100acf926b54473c56c33bb5f5955646ea0ad5bf059feaa"
+      },
+      {
+        "case": "agent-command-actions",
+        "returncode": 0,
+        "source_sha256": "77d23a3e4c017163d25fc00da22b95762d44ae28be3401a0c2306c3783a086af",
+        "log_sha256": "575ce82e8ebb7f209db81b3f02a3db723d25674b4cf7731439511dda68f6f348"
+      },
+      {
+        "case": "frontend-native-unit",
+        "returncode": 0,
+        "source_sha256": "77d23a3e4c017163d25fc00da22b95762d44ae28be3401a0c2306c3783a086af",
+        "log_sha256": "609dc9d6073da7383250b647234b4461e1b65f7213ef80fb364f9d8781fae896"
+      },
+      {
+        "case": "matching-debug-bridge",
+        "returncode": 0,
+        "source_sha256": "77d23a3e4c017163d25fc00da22b95762d44ae28be3401a0c2306c3783a086af",
+        "log_sha256": "54d32f1312e9ec321c58af432997bfe3bae5b14322fc06e68fd35a1f2f0e6519"
+      },
+      {
+        "case": "owned-producer-compound-admission",
+        "returncode": 0,
+        "source_sha256": "77d23a3e4c017163d25fc00da22b95762d44ae28be3401a0c2306c3783a086af",
+        "log_sha256": "0c51303543a4b4a1c19feafa5001bf4a978ac23717a7e16d7318843b377488f8"
+      },
+      {
+        "case": "bridge-all-unit",
+        "returncode": 0,
+        "source_sha256": "77d23a3e4c017163d25fc00da22b95762d44ae28be3401a0c2306c3783a086af",
+        "log_sha256": "deb7abec5bf66562af7a8c775965943631976c4c71c1138c4e4f95051dac19f0"
+      },
+      {
+        "case": "marketplace-published-smoke",
+        "returncode": 0,
+        "source_sha256": "77d23a3e4c017163d25fc00da22b95762d44ae28be3401a0c2306c3783a086af",
+        "log_sha256": "4aada98c61053af6493b6477a0c2ffa7ee84f96b25dc3ec66d9755b59bbafa58"
+      },
+      {
+        "case": "native-recovery-host-example",
+        "returncode": 0,
+        "source_sha256": "77d23a3e4c017163d25fc00da22b95762d44ae28be3401a0c2306c3783a086af",
+        "log_sha256": "c51d8315296ca103947cb0fc4049b4e76e58f535148035ff78dd35c901b7d2eb"
+      },
+      {
+        "case": "format",
+        "returncode": 0,
+        "source_sha256": "a7f9f08a770a466d8fa0201a6ccf383da22c5d55dc978ff8507beb283be12e83",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "native-all-target-clippy",
+        "returncode": 0,
+        "source_sha256": "a7f9f08a770a466d8fa0201a6ccf383da22c5d55dc978ff8507beb283be12e83",
+        "log_sha256": "d7e98c19a6486570e1e94e2b7aae3429bcc37a4eb3591488de1e3b9492e47cac"
+      },
+      {
+        "case": "windows-cross-clippy-not-native-runtime",
+        "returncode": 0,
+        "source_sha256": "a7f9f08a770a466d8fa0201a6ccf383da22c5d55dc978ff8507beb283be12e83",
+        "log_sha256": "d6531a7d653d86cec856f2d97ec3353443c242ee49fdc10ab082967a13513dc2"
+      },
+      {
+        "case": "command-http-complete",
+        "returncode": 0,
+        "source_sha256": "a7f9f08a770a466d8fa0201a6ccf383da22c5d55dc978ff8507beb283be12e83",
+        "log_sha256": "70f345c35984492919a291c723c2e153a8dc5753c4f12ef85cb734d8529c5e11"
+      },
+      {
+        "case": "bridge-default-bin-clippy",
+        "returncode": 0,
+        "source_sha256": "a7f9f08a770a466d8fa0201a6ccf383da22c5d55dc978ff8507beb283be12e83",
+        "log_sha256": "bae79b5f761689efe43548a2772c3079467fa7e355db1118ab58b3a109b625cf"
+      },
+      {
+        "case": "production-feature-inventory",
+        "returncode": 0,
+        "source_sha256": "a7f9f08a770a466d8fa0201a6ccf383da22c5d55dc978ff8507beb283be12e83",
+        "log_sha256": "51a70955c82feadb08bcaf685eec7550c14e8cf35436c8f256347155c7578b04"
+      }
+    ],
+    "test_counts": {
+      "storage-all-unit": 244,
+      "core-workspace-contracts": 53,
+      "core-command-contracts": 1,
+      "backend-all-unit": 135,
+      "agent-command-actions": 3,
+      "frontend-native-unit": 143,
+      "owned-producer-compound-admission": 1,
+      "bridge-all-unit": 543,
+      "marketplace-published-smoke": 1,
+      "command-http-complete": 12
+    },
+    "distinct_tests": 1135,
+    "test_executions": 1136,
+    "distinct_native_HTTP_tests": 556,
+    "HTTP_tests": 12,
+    "HTTP_lifecycle_scenarios": 90,
+    "HTTP_SIGKILL_scenarios": 50,
+    "new_HTTP_SIGKILL_scenarios": 4,
+    "artifacts": "settlement-qualified-outputs-1794722517/manifest.json",
+    "all40_original_production_artifacts_unchanged": true,
+    "native_WASI_WASM_Windows_cross_Clippy": true,
+    "macOS_runtime_both_adapters": true,
+    "native_Windows_runtime": false,
+    "fresh_Linux_runtime": false,
+    "current_browser_or_installed_app": false,
+    "full_CI_complete": false
+  },
+  "remaining": [
+    "Qualify callback recovery with the current optimized native/WASI release distribution and installed app, including original OS-selected private namespace and physical browser folder permission/device checks. The built-app checkpoint uses optimized frontend, unoptimized production WASI entry point and the same native HTTP host with an isolated test-support namespace.",
+    "Finish frozen-owner application recovery beyond the native OS-owner CLI: deleted original projects/accounts, legacy command owners without verifiable cleanup, actual process interruptions and current packaged/native platform contracts. Never infer cleanup from missing public rows, failed requests or 404 replies.",
+    "Finish remaining admission/watcher-enrollment and outcome/context interruptions, including escaped-process cleanup beyond the verified managed-group cases.",
+    "Finish every participating writer, Git/PTY and escaped-process lifetime; implement and verify native Windows ownership and fresh packaged Linux runtime.",
+    "Complete all original packaged application/browser, cache/resource/RSS/prefetch/homelab and full-CI requirements."
+  ],
+  "command_recovery_complete": false,
+  "full_CI_complete": false,
+  "whole_goal_complete": false,
+  "followup": "retired-command-worker-checks.json"
+}

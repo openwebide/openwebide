@@ -18,6 +18,7 @@ struct PluginMetadataFixture {
 
 #[derive(Default)]
 struct FakeBackend {
+    workspace_mode: Mutex<Option<openwebide_core::WorkspaceMode>>,
     plugin_context: Mutex<Option<PluginMetadataFixture>>,
     todo_plan: Mutex<Option<openwebide_core::TodoUpdate>>,
     fail_todo: AtomicBool,
@@ -188,6 +189,7 @@ impl RunBackend for FakeBackend {
             self.kind.lock().unwrap().clone().unwrap_or(RunKind::Chat),
             content,
         );
+        plan.environment.mode = *self.workspace_mode.lock().unwrap();
         if let Some(request) = self.compaction_request.lock().unwrap().clone() {
             plan.request = request;
         }
@@ -292,6 +294,81 @@ impl RunBackend for FakeBackend {
             .unwrap()
             .push("legacy web fetch".into());
         Ok(String::new())
+    }
+}
+
+#[tokio::test]
+async fn agent_file_writes_wait_for_the_shared_folder_gate_in_both_modes() {
+    use crate::folder_coordination::{Coordinator, Folder};
+    for mode in [
+        openwebide_core::WorkspaceMode::Remote,
+        openwebide_core::WorkspaceMode::Local,
+    ] {
+        let directory = tempfile::tempdir().unwrap();
+        std::fs::write(directory.path().join("a"), "original").unwrap();
+        let coordinator = Coordinator::default();
+        let held = coordinator
+            .acquire(Folder::capture(directory.path()).unwrap())
+            .await
+            .unwrap();
+        let backend = Arc::new(FakeBackend::default());
+        *backend.kind.lock().unwrap() = Some(RunKind::Agent {
+            project_path: "".into(),
+        });
+        *backend.workspace_mode.lock().unwrap() = Some(mode);
+        *backend.approval_mode.lock().unwrap() = openwebide_core::ApprovalMode::Yolo;
+        let provider = FakeProvider {
+            tools: Mutex::new(vec![
+                vec![Ok(ToolStreamChunk::Response(ChatResponse::ToolCalls(
+                    vec![ToolCall {
+                        id: "write".into(),
+                        name: "write_file".into(),
+                        arguments: r#"{"path":"a","content":"changed"}"#.into(),
+                    }],
+                )))],
+                vec![Ok(ToolStreamChunk::Response(ChatResponse::Text(
+                    "finished".into(),
+                )))],
+            ]),
+            ..Default::default()
+        };
+        let registry = RunRegistry::with_coordinator(coordinator.clone());
+        let run = registry
+            .start(
+                &user(1),
+                start("coordinated-write"),
+                directory.path(),
+                backend,
+                |_| provider,
+            )
+            .await
+            .unwrap();
+        tokio::time::timeout(Duration::from_secs(2), async {
+            while coordinator.waiting() == 0 {
+                assert!(
+                    run.running.load(Ordering::SeqCst),
+                    "Agent finished while another native worker held its folder ({mode:?})"
+                );
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("Agent did not queue for its physical folder");
+        assert_eq!(
+            std::fs::read_to_string(directory.path().join("a")).unwrap(),
+            "original"
+        );
+        drop(held);
+        finished(&run).await;
+        assert_eq!(
+            std::fs::read_to_string(directory.path().join("a")).unwrap(),
+            "changed"
+        );
+        assert!(
+            events(&run)
+                .iter()
+                .any(|event| matches!(event, RunEvent::Done { .. }))
+        );
     }
 }
 
@@ -2356,14 +2433,14 @@ async fn plugin_management_lifecycle_uses_actual_server_and_paired_host_adapters
             paired,
             host_id: scope.into(),
         };
+        let files = WorkspaceFiles::new(
+            workspace.path().canonicalize().unwrap(),
+            crate::folder_coordination::Coordinator::default(),
+        );
         let tools = ManagementTools::new(
-            VfsToolExecutor::new(NativeFsVfs {
-                root: workspace.path().canonicalize().unwrap(),
-            }),
+            VfsToolExecutor::new(files.clone()),
             BridgeManagementHost {
-                workspace: Some(NativeFsVfs {
-                    root: workspace.path().canonicalize().unwrap(),
-                }),
+                workspace: Some(files),
                 backend,
                 run: Arc::new(Run::new("management".into(), owner.get(), 1, 16)),
                 transport: execution.transport(owner.get()),

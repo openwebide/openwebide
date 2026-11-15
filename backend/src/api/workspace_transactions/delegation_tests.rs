@@ -128,6 +128,7 @@ fn account_issues_one_scoped_native_capability_and_browser_callbacks_are_rejecte
             delegation: grant,
             worker: worker.clone(),
             operation: Operation::Admit {
+                command: None,
                 review_digest: None,
                 language_grant: None,
             },

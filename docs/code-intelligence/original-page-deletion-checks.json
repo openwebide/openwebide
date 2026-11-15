@@ -1,0 +1,151 @@
+{
+  "status": "Both modes pass with the original approval page left running without reload through real API project deletion and native replacement. Closed and reloaded-page cases retain separate evidence. Account decommissioning, actual OS-default CLI in this sequence, optimized/platform/resource/full-CI and original roadmap requirements remain unfinished.",
+  "source_sha256": "b6cb5b1e99fb73530b1012b6a1d7b74b218fc510bbfe0bd04fd623eb33be2b77",
+  "contract": [
+    "Keep the actual original browser document alive after its real approved LSP command completes. Lose one actual native settlement reply after backend commit, then delete the project through the authenticated production WASI API.",
+    "Retain the same native address across three distinct process lifetimes. Original-private callbacks receive404, ordinary writing stays fenced until explicit retirement, and no LSP command is replayed.",
+    "Use the shared CLI parser/executor with the isolated native home, original positive cleanup, exact inspected ID/digest and review note. Preserve the exact original outcome/context and idempotent audit.",
+    "At seven lifecycle observations, retain all original file names, sizes and hashes exactly. Before ordinary writing no addition/removal/modification is observed; afterward only the requested verified file is added. Preserve the final exact equality assertion."
+  ],
+  "verification": {
+    "terminal": "original-page-deletion-1794746197/terminal.json",
+    "artifacts": "original-page-deletion-1794746197/artifacts.json",
+    "matching_native_build": {
+      "source": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/open-browser-deletion-1794745145/source-manifest.json",
+      "native_source_sha256": "3f999488570b5bee59856eb709f0baf5e2848ddebdc529e784165fe56d80d3bc",
+      "changes_since_build": [
+        "AGENTS.md",
+        "CHANGELOG.md",
+        "docs/code-intelligence/browser-reload-deletion-checks.json",
+        "docs/code-intelligence/built-deleted-project-checks.json",
+        "docs/execution-bridge.md",
+        "docs/roadmap.md"
+      ],
+      "only_documentation_changed": true,
+      "helper_sha256": "797461221e21d08dd81b724a415c7bde3fe8fc52fc4ca8c0c2f6dc31f8b3f3ae",
+      "native_build_and_strict_Clippy_already_passed": true
+    },
+    "checks": [
+      {
+        "case": "application-local",
+        "command": [
+          "python3",
+          "tools/check-deleted-project-client.py",
+          "--backend-wasm",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-wasip2/debug/openwebide_backend.wasm",
+          "--host-binary",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/debug/examples/check_recorded_command_host",
+          "--evidence-dir",
+          "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/original-page-deletion-1794746197/app",
+          "--mode",
+          "local",
+          "--page-after-settlement",
+          "keep"
+        ],
+        "deadline_seconds": 1500,
+        "returncode": 0,
+        "seconds": 382.61,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/original-page-deletion-1794746197/application-local.log",
+        "log_sha256": "3b939f9f512299ec0dbcac71419646c6f9bcf89a563cc3a631726127a8038db8"
+      },
+      {
+        "case": "application-remote",
+        "command": [
+          "python3",
+          "tools/check-deleted-project-client.py",
+          "--backend-wasm",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-wasip2/debug/openwebide_backend.wasm",
+          "--host-binary",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/debug/examples/check_recorded_command_host",
+          "--evidence-dir",
+          "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/original-page-deletion-1794746197/app",
+          "--mode",
+          "remote",
+          "--page-after-settlement",
+          "keep"
+        ],
+        "deadline_seconds": 1500,
+        "returncode": 0,
+        "seconds": 374.14,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/original-page-deletion-1794746197/application-remote.log",
+        "log_sha256": "7b1b80c5b49d87bef1dcca424810f8c369a4afa49447b73950e6aaecb5e68aa6"
+      }
+    ],
+    "facts": {
+      "local": {
+        "result": {
+          "mode": "local",
+          "real_browser_command_approval": true,
+          "page_after_settlement": "keep",
+          "native_address_preserved": true,
+          "real_WASI_project_deletion": true,
+          "settlement_reply_lost_after_commit": true,
+          "native_processes": [
+            60482,
+            65451,
+            65455
+          ],
+          "single_command_dispatch": true,
+          "original_outcome_preserved": true,
+          "missing_project_did_not_release_claim": true,
+          "actual_ordinary_file_write_after_explicit_retirement": true,
+          "shared_CLI_executor_test_home": true,
+          "OS_default_CLI_in_this_sequence": false,
+          "optimized_native_WASI_distribution": false,
+          "physical_folder_permissions": false,
+          "whole_goal_complete": false
+        },
+        "all_seven_source_stages_exact": true,
+        "lost_reply_path": "/api/language-commands/delegated",
+        "original_private_callback404": true,
+        "audit_preserved": true
+      },
+      "remote": {
+        "result": {
+          "mode": "remote",
+          "real_browser_command_approval": true,
+          "page_after_settlement": "keep",
+          "native_address_preserved": true,
+          "real_WASI_project_deletion": true,
+          "settlement_reply_lost_after_commit": true,
+          "native_processes": [
+            65469,
+            69170,
+            69174
+          ],
+          "single_command_dispatch": true,
+          "original_outcome_preserved": true,
+          "missing_project_did_not_release_claim": true,
+          "actual_ordinary_file_write_after_explicit_retirement": true,
+          "shared_CLI_executor_test_home": true,
+          "OS_default_CLI_in_this_sequence": false,
+          "optimized_native_WASI_distribution": false,
+          "physical_folder_permissions": false,
+          "whole_goal_complete": false
+        },
+        "all_seven_source_stages_exact": true,
+        "lost_reply_path": "/api/language-commands/original-private",
+        "original_private_callback404": true,
+        "audit_preserved": true
+      }
+    },
+    "quality_scope": "Native code and verifier inputs are byte-identical to the successful reload qualification. Only six docs differ; exact actual native binary hash is matched to that already-built and strict-Clippy-checked producer. Runtime cases do not need recompilation."
+  },
+  "limits": {
+    "test_selected_native_home": true,
+    "deterministic_LSP_peer": true,
+    "Local_OPFS_correspondence": true,
+    "actual_OS_default_CLI_in_this_sequence": false,
+    "deleted_account": false,
+    "physical_permissions": false,
+    "installed_PWA": false,
+    "optimized_native_WASI_distribution": false,
+    "native_Windows_runtime": false,
+    "full_CI_complete": false,
+    "whole_goal_complete": false
+  },
+  "account_decommission_followup": {
+    "checkpoint": "account-decommission-checks.json",
+    "scope": "Both modes additionally recover after administrative removal of the sole guarded fixture account, actual cascades and old-cookie401. This is not a public account-delete API or OS-default CLI namespace proof."
+  }
+}

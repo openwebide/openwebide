@@ -1,0 +1,211 @@
+{
+  "status": "Backend command reservation and legacy file recovery verified in both modes; complete early Stop/Cancel and native restart cleanup remain unfinished",
+  "source_sha256": "8642038a757ddf207f1d146fb513a33df1b2b3e2527280e13a7148865274ce6f",
+  "shared_implementation": {
+    "file_admission": "Store.claim_workspace_transaction_worker_compound_inner and reserve_workspace_command, in one database transaction",
+    "native_entry": "Workspace Host.execute_in prepares and durably reserves the original native worker before sending file ClaimWorker",
+    "thin_adapters": "Backend service ClaimWorker and paired delegated Admit both call the shared compound admission; the paired grant activates in the same transaction",
+    "wire": "Optional command_reservation on the existing private ClaimWorker/Admit envelopes, containing compact original command recovery and the private native worker"
+  },
+  "behavior": [
+    "Reserve the attached command worker/digest and native settlement protection atomically with first file admission. Missing or substituted reservations roll back file admission and paired delegation activation.",
+    "A reservation provides recovery ownership without dispatch permission. Start promotes only the same private worker and still validates fresh manual UI authority, the complete committed edit and current editor state.",
+    "A matching paired grant for an already reserved worker owns cleanup before Start succeeds. Failed Start authorization and expired bootstrap time cannot remove that original cleanup authority.",
+    "Ordinary file-only admissions do not require command metadata. A prior file worker or durable file intent can recover after provider revocation without adding command ownership or renewing dispatch permission.",
+    "Keep the existing native fixed-capacity result reservation, original scope/issuer validation, no-RPC rejection, manual acknowledgement and settlement contracts."
+  ],
+  "behavioral_tests": [
+    "New storage contract: both modes, Start admitted and denied. Reject missing/substituted initial reservations without changing the original scope; join exact admission; reject another secret; release the file worker while retaining command ownership; reject an invalid Start grant; publish/acknowledge/settle the original no-RPC outcome after bootstrap expiry.",
+    "New legacy contract: both modes and both old forms (persisted file worker without accepted review digest, or durable intent without private worker columns). After provider configuration becomes unavailable, recover file admission without changing the original command metadata.",
+    "Keep all existing accepted-resource identity and metadata recovery assertions. Their shared setup now prepares the genuine original LSP worker and calls compound admission instead of bypassing the new prerequisite.",
+    "Run the original complete command HTTP cases in both modes, including success, stop-before-start, Git branch/round-trip, cached outcomes and missing/invalid/valid authentication. Admitted cases verify cleanup/settlement; the early-stop retirement gap is explicitly still open."
+  ],
+  "verification": {
+    "terminal": "backend-command-reservation-1794693843/terminal.json",
+    "artifacts": "backend-command-reservation-final-outputs-1794694321/manifest.json",
+    "cases": [
+      {
+        "case": "format",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "storage-all-unit",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "e3044a508dea001cbf87f1e85553929fbca381edfde26d71ce9014ccbfb7c6e7"
+      },
+      {
+        "case": "core-workspace-contracts",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "aef6401f1b198d9f66074296f3189e6c4491a9ca0ed222489c110fa3fd3bd24e"
+      },
+      {
+        "case": "core-command-contracts",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "3c70a40d84a043730a4a4c0efe868ae2e752bdf66ee39577ebf8ea2040b4c927"
+      },
+      {
+        "case": "backend-all-unit",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "1c039bb2bcf6704c8177fff328dd34906694544da7a12878930162ff9db21579"
+      },
+      {
+        "case": "agent-command-actions",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "950c372eb58dd8b777024fd053d106f20856083799432c27106ebe8c72d89f8c"
+      },
+      {
+        "case": "frontend-native-unit",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "8a197636481781304513818764dc2a8012be21a49240a7065a88187f2cd11801"
+      },
+      {
+        "case": "native-all-target-clippy",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "a4715f5a47804b69650d089a5978da7803b5af96021f721afe07645e44d9ccc1"
+      },
+      {
+        "case": "WASI-backend-clippy",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "66781adc073cff70c9e918396a7c4e19b112911e465dcdc3e769649a06765107"
+      },
+      {
+        "case": "WASM-frontend-all-target-clippy",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "f81a7a8ad201a0ab3c7b57470c6e3b731c42bcfd1a1bcf6b7b3c640539e225da"
+      },
+      {
+        "case": "matching-debug-bridge",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "9c73735a1033f44f00ea48e15c38d73843ff5a391557aac653bd81d564a34b5f"
+      },
+      {
+        "case": "owned-producer-compound-admission",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "aaba8e490895e97e8c049129e7b6edaa799d3666268a0e1b5190c30ac16f4930"
+      },
+      {
+        "case": "bridge-all-unit",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "59d0e2c45e0943d59aaa886eafb2fbee35211aa4956c75994ce6e199fdb5cde7"
+      },
+      {
+        "case": "marketplace-published-smoke",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "892a93408f9b057f11aa406c15d5556473e24cdafcd7368240d7ca5bc09a8e36"
+      },
+      {
+        "case": "command-http-complete",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "1ca593e67d52812c375392f4bbf324f8759fdc4809f7b8d18272fb6643e512ac"
+      },
+      {
+        "case": "bridge-default-bin-clippy",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "7a7c5f339ce35cb7811e73ee64d146487d7e72eb2090f8175330980b4fb58593"
+      },
+      {
+        "case": "windows-cross-clippy-not-native-runtime",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "1834c5ddd1411dc3fdd549b2a919fc3632dae56c519c4adb0499ce38c5c88689"
+      },
+      {
+        "case": "production-feature-inventory",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "51a70955c82feadb08bcaf685eec7550c14e8cf35436c8f256347155c7578b04"
+      }
+    ],
+    "counts": {
+      "storage-all-unit": 237,
+      "core-workspace-contracts": 53,
+      "core-command-contracts": 1,
+      "backend-all-unit": 133,
+      "agent-command-actions": 3,
+      "frontend-native-unit": 143,
+      "owned-producer-compound-admission": 1,
+      "bridge-all-unit": 532,
+      "marketplace-published-smoke": 1,
+      "command-http-complete": 2
+    },
+    "distinct_tests": 1105,
+    "test_executions": 1106,
+    "native_library_all_declared_passed": 533,
+    "preexisting_ignored_native_smoke_explicitly_passed": true,
+    "HTTP_command_scenarios": 8,
+    "HTTP_authentication_requests": 6,
+    "native_all_target_Clippy_passed": true,
+    "WASI_backend_Clippy_passed": true,
+    "WASM_frontend_all_target_Clippy_passed": true,
+    "Windows_all_target_cross_Clippy_passed": true,
+    "Windows_native_runtime_verified": false,
+    "fresh_current_Linux_runtime_verified": false,
+    "current_browser_or_installed_application_runtime_verified": false,
+    "log_inventory": "When parallel stdout interleaves a successful native test line, match the completed harness counts with the retained executable test inventory; no test is silently omitted."
+  },
+  "regressions_resolved": [
+    {
+      "log": "backend-command-reservation-storage-all-first.log",
+      "issue": "Unconditional command metadata lookup rejected file-only transactions. Gate the compact command read on the original activity observation; all storage tests pass."
+    },
+    {
+      "terminal": "backend-command-reservation-1794692211/terminal.json",
+      "retained": "backend-command-reservation-first-outputs-1794692942/manifest.json",
+      "issue": "27 native recovery fixtures seeded the old direct file admission. Their shared setup now supplies the original command reservation; all original recovery checks remain."
+    },
+    {
+      "red": "backend-command-reservation-legacy-red-second.log",
+      "green": "backend-command-reservation-legacy-green.log",
+      "issue": "Requiring a new reservation for already accepted legacy file work blocked recovery after provider loss. Require it on first admission only; cover both legacy forms and adapters."
+    }
+  ],
+  "intermediate_checkpoint": {
+    "source_sha256": "833dde042352ec0f254551c4feed7458b185f5f2f6b09656cbd3bc3b48fc3d08",
+    "terminal": "backend-command-reservation-finish-1794693114/terminal.json",
+    "artifacts": "backend-command-reservation-verified-outputs-1794693688/manifest.json",
+    "qualification": "Passed unchanged shared inputs plus the corrected complete native/HTTP suite. Superseded by the fresh full 18-case verification above after the legacy fix."
+  },
+  "preservation": {
+    "receipt": "backend-command-reservation-final-outputs-1794694321/terminal.json",
+    "actual_executables_retained": 8,
+    "all_available_dev_executables_retained": 10,
+    "matching_normal_main_help_passed": true,
+    "protected_prior_release_and_other39_artifacts_unchanged": true,
+    "cache_cleanup": [
+      {
+        "packages": [
+          "openwebide-bridge"
+        ],
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/backend-command-reservation-final-outputs-1794694321/clean-0.log",
+        "log_sha256": "903ae5ac630823db91d9fdd38a67d77ecd7d4b006cc4c02775efb558f78b702a"
+      }
+    ]
+  },
+  "remaining": [
+    "Qualify callback recovery with the current optimized native/WASI release distribution and installed app, including original OS-selected private namespace and physical browser folder permission/device checks. The built-app checkpoint uses optimized frontend, unoptimized production WASI entry point and the same native HTTP host with an isolated test-support namespace.",
+    "Finish frozen-owner application recovery beyond the native OS-owner CLI: deleted original projects/accounts, legacy command owners without verifiable cleanup, actual process interruptions and current packaged/native platform contracts. Never infer cleanup from missing public rows, failed requests or 404 replies.",
+    "Finish remaining admission/watcher-enrollment and outcome/context interruptions, including escaped-process cleanup beyond the verified managed-group cases.",
+    "Finish every participating writer, Git/PTY and escaped-process lifetime; implement and verify native Windows ownership and fresh packaged Linux runtime.",
+    "Complete all original packaged application/browser, cache/resource/RSS/prefetch/homelab and full-CI requirements."
+  ],
+  "full_CI_complete": false,
+  "whole_goal_complete": false,
+  "followup": "retired-command-worker-checks.json"
+}

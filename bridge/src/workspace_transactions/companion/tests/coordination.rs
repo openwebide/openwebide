@@ -96,7 +96,7 @@ async fn a_new_nested_proof_fences_an_older_parent_even_across_accounts_and_proj
         .is_err()
     );
     let captured = Transactions::capture_root(&case.root(), "", 1, 1).unwrap();
-    let fence = case.host.exclude(&captured).await.unwrap();
+    let fence = case.host.exclude(&captured, None).await.unwrap();
     drop(fence);
     assert!(
         case.host

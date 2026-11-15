@@ -1,0 +1,765 @@
+{
+  "format": 1,
+  "checked_on": "2026-11-13",
+  "base_commit": "44b642b489ed56137f8f9c67a3db59b1e5e7f0e2",
+  "status": "private_credential_issuance_verified_durable_mutation_enforcement_and_full_ci_pending",
+  "published": false,
+  "shared_implementation": [
+    "crates/auth/src/lib.rs::derive_secret",
+    "crates/core/src/workspace_transaction/authority.rs::RecoveryAuthority",
+    "backend/src/recovery_authority.rs::issue"
+  ],
+  "adapters": {
+    "Remote": "Bridge-authenticated workspace-transactions/service RecoveryScope; owned Remote project and authoritative compact journal read.",
+    "Local": "workspace-transactions/delegated RecoveryScope; existing native-worker preimage and scoped bootstrap/admitted context, rejecting browser-origin/cookie transports."
+  },
+  "contract": {
+    "master_key": "Separate 32-byte random database setting, atomically inserted once. Existing invalid data rejects without replacement or disclosure. Never stored in user settings or exposed by browser journal reads.",
+    "credential": "Domain-separated HMAC-SHA256 over canonical immutable format/account/project/transaction/generation/root claims; 32 bytes encoded as unpadded URL-safe base64.",
+    "mutable_fields_excluded": [
+      "revision",
+      "worker",
+      "accepted_language_review_digest"
+    ],
+    "authorization": "Private issuance is preflight only. Credential structure, public journal identity and issuance never grant filesystem mutation. No previous owner secret is sent to the issuer.",
+    "response_limits": "Both private scope transports retain the original 64 KiB response limit. Responses use no-store. JSON parse errors do not echo credential-bearing values.",
+    "expiry": "No credential TTL or clock-dependent takeover. Existing Local bootstrap expiry/admission checks remain unchanged."
+  },
+  "test_groups": {
+    "backend_latest": {
+      "passed": 128,
+      "includes_private_issuer_tests": 6
+    },
+    "storage_transactions": {
+      "passed": 40
+    },
+    "shared_transactions": {
+      "passed": 52,
+      "includes_authority_tests": 5
+    },
+    "native_transaction_adapters": {
+      "passed": 43
+    },
+    "private_native_transport_cases": {
+      "passed": 2
+    },
+    "original_native_response_bound": {
+      "passed": 1
+    },
+    "overlap": "The paired private transport case also appears in the native transaction group; do not count it twice.",
+    "auth_primitive_prior_source": {
+      "passed": 13,
+      "includes_derivation_tests": 3
+    }
+  },
+  "verified_cases": [
+    "Both modes issue the same original-owner credential before admission, during a worker claim and after durable release.",
+    "Session/bridge transport-secret rotation and a fresh request state preserve the credential.",
+    "A file-backed SQLite database is closed and reopened before the same credential is reissued. Its private fixture and proof are retained outside Git.",
+    "Another backend with identical public claims derives a different credential.",
+    "Concurrent first requests retain one persistent master; malformed existing master data fails without rotating it.",
+    "Wrong account, missing journal, wrong Local worker and browser transport reject before key initialization.",
+    "Neither browser journal data nor user settings contain the master or original-owner secret.",
+    "Both transports enforce their compact response budget and sanitize malformed response errors."
+  ],
+  "focused_native_and_wasi_checks": {
+    "source_sha256": "66a0e982a32bdfdd93f3ca2bb6ca2fd09b05962e96fa01101240aad564c217b1",
+    "evidence_id": "recovery-authority-issuer-1794557909",
+    "terminal_returncode": 0,
+    "cases": [
+      {
+        "case": "format-and-whitespace",
+        "command": [
+          "bash",
+          "-euc",
+          "cargo fmt --all --check\ngit diff --check"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 2.88,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "invalidate-changed-dev-cache",
+        "command": [
+          "cargo",
+          "clean",
+          "-p",
+          "openwebide-core",
+          "-p",
+          "openwebide-storage",
+          "-p",
+          "openwebide-backend",
+          "-p",
+          "openwebide-bridge",
+          "--profile",
+          "dev",
+          "--target-dir",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.17,
+        "log_sha256": "0bdaeb2aa6a92a0fdfec2d2cc4d0ab71946de5d0654e08c526e4629130ae0f28"
+      },
+      {
+        "case": "core-storage-native-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-core",
+          "-p",
+          "openwebide-storage",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 32.35,
+        "log_sha256": "fd5221476f3114350fc849c05cab7c7d88aa3dff408c33988522b3957c8d09a9"
+      },
+      {
+        "case": "all-backend-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-backend",
+          "--lib",
+          "--locked"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 50.75,
+        "log_sha256": "b1f14b45f7bf93127742ff37196dcc2708803c5604ec5951e2cc0ec384024d19"
+      },
+      {
+        "case": "all-storage-transaction-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-storage",
+          "--lib",
+          "--locked",
+          "workspace_transactions::"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 23.36,
+        "log_sha256": "b6144d0400cd17df9808fb2f5fac510deccb186f3156063c4b58ba4a6f9b1bf7"
+      },
+      {
+        "case": "all-shared-transaction-contracts",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-core",
+          "--lib",
+          "--locked",
+          "workspace_transaction::"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 21.16,
+        "log_sha256": "6bed2df5923cd84d2167c21e557c4e89575fe87cfb569d676d57934ea93e4a76"
+      },
+      {
+        "case": "backend-native-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-backend",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 16.73,
+        "log_sha256": "e631508681be68ab5e424a25d22c4ce108c40b4d75b630cb8ba99773e06038b5"
+      },
+      {
+        "case": "wasi-backend-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-backend",
+          "--target",
+          "wasm32-wasip2",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 18.66,
+        "log_sha256": "ed6a288e1f583ad600ce58cd0655192b01810c58b748dbb82c9cad659d0f9a89"
+      },
+      {
+        "case": "matching-debug-bridge",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--locked"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 88.64,
+        "log_sha256": "6ae70a616971d4be6c6fe3ceace1deffecc1267ad6b4930f6bdcd53dc878c4c3"
+      },
+      {
+        "case": "native-private-scope-transports",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "private_recovery_scope_"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 55.37,
+        "log_sha256": "86468e5a70f7a9280cb095f9e5b7273f907f31711d7744b399c210d029be1205"
+      },
+      {
+        "case": "existing-native-scope-bounds",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "recovery_scope_transport_is_bounded"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.65,
+        "log_sha256": "323c19781e70f0f3793067293a4c5985071da1fcd58a2be95535f74a9aa1ea52"
+      },
+      {
+        "case": "both-native-transaction-adapters",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "workspace_transactions::"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 1.9,
+        "log_sha256": "9ecca7b7485dba45c3674335c5d777cee72330819f29d4996a897d656f830c9a"
+      },
+      {
+        "case": "bridge-all-target-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 37.09,
+        "log_sha256": "21d2d42d097cacf264bd822873f284761cd39aca604539743e6dddd6e08f788c"
+      }
+    ]
+  },
+  "file_database_reopen_checks": {
+    "source_sha256": "7667cbe8ad7994b16052427d0b484e26187618c564bf1808f61f926ca60a0942",
+    "evidence_id": "recovery-authority-reopen-1794558486",
+    "terminal_returncode": 0,
+    "cases": [
+      {
+        "case": "format-and-whitespace",
+        "command": [
+          "bash",
+          "-euc",
+          "cargo fmt --all --check\ngit diff --check"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 2.89,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "invalidate-changed-backend-dev-cache",
+        "command": [
+          "cargo",
+          "clean",
+          "-p",
+          "openwebide-backend",
+          "--profile",
+          "dev",
+          "--target-dir",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.12,
+        "log_sha256": "0bdaeb2aa6a92a0fdfec2d2cc4d0ab71946de5d0654e08c526e4629130ae0f28"
+      },
+      {
+        "case": "all-backend-contracts-with-real-database-reopen",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-backend",
+          "--lib",
+          "--locked"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 61.03,
+        "log_sha256": "8677bce6ade3f98d9cebaccc73fae26dedcc3e336498388688a17676ee384292"
+      },
+      {
+        "case": "backend-native-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-backend",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 22.98,
+        "log_sha256": "2c6be14f2fbdded4a04c9fa4935f66b9f4c1896ad06f2dde7469ddb67055fe66"
+      }
+    ]
+  },
+  "derivation_primitive_checks": {
+    "source_sha256": "24650cf3344ea3f7257589338924cfe9f596a1e46edbb8bd247147efea9a129d",
+    "evidence_id": "native-recovery-crypto-1794555754",
+    "terminal_returncode": 0,
+    "cases": [
+      {
+        "case": "format-and-whitespace",
+        "command": [
+          "bash",
+          "-euc",
+          "cargo fmt --all --check\ngit diff --check"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 2.82,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "invalidate-changed-auth-dev-cache",
+        "command": [
+          "cargo",
+          "clean",
+          "-p",
+          "openwebide-auth",
+          "--profile",
+          "dev",
+          "--target-dir",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.21,
+        "log_sha256": "0bdaeb2aa6a92a0fdfec2d2cc4d0ab71946de5d0654e08c526e4629130ae0f28"
+      },
+      {
+        "case": "all-existing-and-new-auth-tests",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-auth",
+          "--lib",
+          "--locked"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 5.18,
+        "log_sha256": "a90786b601cc691e32fcccaccedaf55676e3de37834eb5f51916d6ecb2296e3b"
+      },
+      {
+        "case": "auth-all-target-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-auth",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 1.61,
+        "log_sha256": "1b289b7d4ee6ebc69796701c4b86ac265a9b42223db0fea9cf60bcfd5d809ae9"
+      },
+      {
+        "case": "wasi-auth-compile",
+        "command": [
+          "cargo",
+          "check",
+          "-p",
+          "openwebide-auth",
+          "--target",
+          "wasm32-wasip2",
+          "--locked"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 1.58,
+        "log_sha256": "f76ce1f94909db67657ac79eb5df8e1e61d7c541cea0e741fbe8395754dc3cdd"
+      }
+    ]
+  },
+  "windows_compile_only": {
+    "source_sha256": "66a0e982a32bdfdd93f3ca2bb6ca2fd09b05962e96fa01101240aad564c217b1",
+    "evidence_id": "recovery-issuer-windows-cross-1794558322",
+    "terminal_returncode": 0,
+    "cases": [
+      {
+        "case": "invalidate-changed-Windows-runtime-cache",
+        "command": [
+          "cargo",
+          "clean",
+          "-p",
+          "openwebide-plugin-runtime",
+          "--profile",
+          "dev",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--target-dir",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 0.44,
+        "log_sha256": "0bdaeb2aa6a92a0fdfec2d2cc4d0ab71946de5d0654e08c526e4629130ae0f28"
+      },
+      {
+        "case": "invalidate-changed-Windows-bridge-cache",
+        "command": [
+          "cargo",
+          "clean",
+          "-p",
+          "openwebide-bridge",
+          "--profile",
+          "dev",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--target-dir",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 0.09,
+        "log_sha256": "0bdaeb2aa6a92a0fdfec2d2cc4d0ab71946de5d0654e08c526e4629130ae0f28"
+      },
+      {
+        "case": "windows-cross-clippy-not-native-runtime",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "deadline_seconds": 2400,
+        "returncode": 0,
+        "seconds": 81.96,
+        "log_sha256": "cb482e5fe8b215e771740b678ac16a46f56dc48b24132e8f456ef6112f4fa548"
+      },
+      {
+        "case": "clear-completed-Windows-cross-cache",
+        "command": [
+          "cargo",
+          "clean",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--profile",
+          "dev",
+          "--target-dir",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 0.19,
+        "log_sha256": "9144f6cc78b9f148c6e0161d4edbb88f051995043ae872b174fbe451e30820fb"
+      }
+    ]
+  },
+  "source_delta_after_focused_checks": {
+    "file_database_reopen_source": "7667cbe8ad7994b16052427d0b484e26187618c564bf1808f61f926ca60a0942",
+    "only_code_delta": [
+      "backend/src/recovery_authority/tests.rs"
+    ],
+    "production_code_unchanged": true,
+    "at_issuer_checkpoint_c5177952_documentation_delta_only": true,
+    "subsequent_native_writer_progress": "native-file-writer-checks.json"
+  },
+  "retained_failure": {
+    "evidence_id": "recovery-authority-issuer-1794557581",
+    "source_sha256": "c7d7e76025c51bc7d07bc459cc42c6019a92003a2a5f0e3ba433a498a30fdcfc",
+    "case": "native-private-scope-transports",
+    "returncode": 101,
+    "log_sha256": "f9526e79227199f7099b1baef3969db7b69e392746553a39f16f844144bdae70",
+    "explanation": "New test compared a worker credential type without PartialEq. No native test executed in that attempt; corrected to explicit ID/secret comparisons. Prior outputs and raw logs retained."
+  },
+  "limits": [
+    "This issuer checkpoint alone adds no native durable registry, phase claim, compound command/recovery ownership or participating writer. Subsequent live native file-writer progress is recorded in native-file-writer-checks.json.",
+    "Browser-only Local saves remain available without the companion and are outside the physical locking guarantee.",
+    "Registry/original-object replacement, aliases/accounts/profiles, frozen owners, escaped groups, PTY/Git and native Windows process ownership remain unfinished.",
+    "Windows results are cross compilation only; no native Windows execution is attributed to this source.",
+    "WASI results are compilation/Clippy, not a new production browser or deployed runtime check.",
+    "Full required local native/browser/production CI and publication are pending. Earlier published main checks and the frozen44b release prototype are not attributed to this source."
+  ],
+  "full_required_local_ci_passed": false,
+  "durable_native_mutation_authority_complete": false,
+  "whole_code_intelligence_goal_complete": false,
+  "native_namespace_followup": "native-recovery-namespace-checks.json",
+  "compound_activity_followup": {
+    "status": "Atomic original-journal activity verified; durable native owners and mutation enforcement still unfinished",
+    "verified_source_sha256": "0cff0a32e56878a0d3ceaf640e0b62bb8d8dda3748bb0e2164d9b4a523b753b8",
+    "terminal_receipt": "compound-recovery-activity-1794667909/terminal.json",
+    "shared_entry": "Store::workspace_transaction_activity; common private backend issuer; service BackendClient and PairedJournal adapters",
+    "behavior": [
+      "One SQL statement reads immutable journal scope and current file/command recovery columns without decoding file/editor/command/provider payloads. Project-wide and original-journal queries share resolved command phases.",
+      "Private issuer revalidates the earlier authorized scope before returning a credential and activity; original credentials remain stable across changing activity.",
+      "RecoveryScope requires complete WorkspaceActivity. Missing/null/partial activity is rejected by the shared type and both native transports; earlier private credentials are never reflected in issuer requests.",
+      "Approved, running, rejected and uncertain commands stay pending after file recovery finishes. Completed, acknowledged and cancelled commands are resolved; another pending journal affects project admission without changing this original owner observation."
+    ],
+    "actual_checks": {
+      "storage_unit_tests": 222,
+      "core_transaction_tests": 53,
+      "backend_unit_tests": 130,
+      "native_transport_tests": 4,
+      "native_test_executions": 409,
+      "both_modes": true,
+      "all_seven_command_phases_through_both_private_http_routes": true,
+      "missing_activity_through_both_native_http_clients": true,
+      "native_core_storage_bridge_all_target_clippy": true,
+      "WASI_backend_clippy": true,
+      "Windows_bridge_all_target_cross_clippy": true,
+      "native_Windows_runtime": false
+    },
+    "cases": [
+      {
+        "case": "format",
+        "command": [
+          "bash",
+          "-euc",
+          "cargo fmt --all --check\ngit diff --check"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 2.96,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "storage-all-unit",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-storage",
+          "--lib",
+          "--locked",
+          "--",
+          "--nocapture"
+        ],
+        "deadline_seconds": 1200,
+        "returncode": 0,
+        "seconds": 15.83,
+        "log_sha256": "351ba2944d704f5e4aea25923b7be9f1dd8b55cdd7fe65e01c45445604a0afbb"
+      },
+      {
+        "case": "core-transactions",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-core",
+          "--lib",
+          "--locked",
+          "--features",
+          "editor-parser",
+          "workspace_transaction::",
+          "--",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.8,
+        "log_sha256": "29dfe4522ebc695c5ca87cc9832d5af4a3361317b7303bc8c329b3c4d2b4a691"
+      },
+      {
+        "case": "backend-all-unit",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-backend",
+          "--lib",
+          "--locked",
+          "--",
+          "--nocapture"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 12.48,
+        "log_sha256": "ad9a8ea74fe64a14932ea2186d89a3b8f6947603ecf3a008790a2bf453246f04"
+      },
+      {
+        "case": "core-storage-all-target-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-core",
+          "-p",
+          "openwebide-storage",
+          "--all-targets",
+          "--features",
+          "openwebide-core/editor-parser",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.36,
+        "log_sha256": "9a30d54c8b16d7e49510b182028079bca120aeebb7d662e88f8566e6196a49f6"
+      },
+      {
+        "case": "matching-debug-bridge",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--locked"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 25.22,
+        "log_sha256": "39670348c4e280758dd719848ae6fae1ef8266c92cf53dea02c81d3e0d95ebfb"
+      },
+      {
+        "case": "both-native-recovery-transports",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "recovery_scope",
+          "--",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 41.76,
+        "log_sha256": "f55cc3b6bab94c44ab3bb9560fdc581d69bba9d141824b58841047302d461fd5"
+      },
+      {
+        "case": "bridge-all-target-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 6.82,
+        "log_sha256": "f383e0687cc01b583ad53e06a7ef8295b64c0896d5e27c1a14b0dfbd9d1d0137"
+      },
+      {
+        "case": "wasi-backend-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-backend",
+          "--target",
+          "wasm32-wasip2",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.39,
+        "log_sha256": "8b1fd2394f7b6f177ede882431154a419bd9f404f00add314c912e91a7fc0ec0"
+      },
+      {
+        "case": "windows-cross-clippy-not-native-runtime",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "deadline_seconds": 2400,
+        "returncode": 0,
+        "seconds": 5.3,
+        "log_sha256": "9cf6f11cc80961e4f2d8991a3efc1b58aeaed53d4e8d4f382de59d6852158652"
+      }
+    ],
+    "limits": [
+      "Activity is an observation, not a filesystem lease or proof of original process cleanup. Native owners must retain their claim until positive compound reconciliation.",
+      "No durable native owner rows, owner permits, global writer barrier or compound phase authority are implemented by this response.",
+      "The route fixture arranges durable command columns with opaque unreadable payloads after terminal file recovery. It verifies phase observation, not command dispatch authorization.",
+      "Full local CI and publication remain unfinished."
+    ]
+  },
+  "command_metadata_followup": {
+    "checks": "command-recovery-metadata-checks.json",
+    "same_original_issuer": true,
+    "original_command_and_compound_phase_in_one_observation": true,
+    "payload_independent_recovery": true,
+    "native_command_dispatch_integration_complete": false
+  }
+}

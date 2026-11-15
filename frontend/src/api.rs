@@ -1,5 +1,8 @@
 //! Thin client for the backend REST API, including SSE streaming.
 
+#[cfg(test)]
+mod command_callback_tests;
+
 use gloo_net::http::{Method, RequestBuilder};
 use openwebide_core::workspace_transaction::{
     AdvanceWorkspaceTransaction, BeginWorkspaceTransaction, ExecuteWorkspaceTransaction,
@@ -1549,6 +1552,20 @@ impl BackendApi {
         self.post(&format!("/projects/{project}/language-actions"), request)
             .await
     }
+    pub async fn language_action_recovery(
+        &self,
+        project: i64,
+        request: &openwebide_core::plugins::languages::intelligence::actions::ActionRecoveryRequest,
+    ) -> Result<
+        Option<openwebide_core::plugins::languages::intelligence::actions::ActionRecovery>,
+        String,
+    > {
+        self.post(
+            &format!("/projects/{project}/language-actions/recovery"),
+            request,
+        )
+        .await
+    }
     pub async fn language_command(
         &self,
         project: i64,
@@ -1557,6 +1574,42 @@ impl BackendApi {
     {
         self.post(&format!("/projects/{project}/language-commands"), request)
             .await
+    }
+    pub fn command_callback_url(&self) -> String {
+        self.base()
+    }
+    pub async fn reconnect_language_commands(
+        &self,
+        request:&openwebide_core::plugins::languages::intelligence::actions::CommandCallbackRequest,
+    ) -> Result<bool, String> {
+        self.post(
+            &format!("/projects/{}/language-commands/reconnect", request.project),
+            request,
+        )
+        .await
+    }
+    pub async fn delegate_language_command(
+        &self,
+        project: i64,
+        request:&openwebide_core::plugins::languages::intelligence::actions::CommandDelegationRequest,
+    ) -> Result<
+        (
+            String,
+            openwebide_core::workspace_transaction::WorkspaceJournalDelegation,
+        ),
+        String,
+    > {
+        let grant: openwebide_core::workspace_transaction::WorkspaceJournalDelegation = self
+            .post(
+                &format!("/projects/{project}/language-commands/delegate"),
+                request,
+            )
+            .await?;
+        grant.validate()?;
+        if grant.project != project || grant.scope.id != request.id {
+            return Err("The original command delegation changed".into());
+        }
+        Ok((self.base(), grant))
     }
     pub async fn authorize_language_command(
         &self,

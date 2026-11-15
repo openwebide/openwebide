@@ -1,0 +1,239 @@
+{
+  "status": "Native HTTP/SQLite integration verifies a genuinely dispatched Completed command, committed settlement with a lost acknowledgement, production Store project deletion and explicit retirement in both modes. Built WASI/browser/OS-default-CLI application workflows and the full roadmap remain unfinished.",
+  "source_sha256": "7ce7d8616ca8a80223234fae392dd4bf85abc38d59fffa076eec36524680d392",
+  "full_HTTP_suite_source_sha256": "c5d07fdbc5626409ea36b1ec5548304a7d4340d8152cfc64075117641ee4deb9",
+  "implementation": {
+    "facade": "bridge/src/recovery.rs: the test-support-only execute_in_test_home entry point calls the same parser/execute/administration policy as the OS-owner CLI, using an isolated home. Normal distributions gain no namespace argument or API.",
+    "adapters": "The existing command_case fixture sends authenticated service or paired HTTP requests into the same native language host. The real SQLite Store handles command CAS, settlement and owner-scoped delete_project; the deterministic LSP peer, lost reply and isolated namespace are fixtures.",
+    "fault": "A single test-fixture settlement_reply helper drops the actual connection only after Store successfully commits, on original/service/delegated transports. It never fabricates an outcome or cleanup receipt."
+  },
+  "contract": [
+    "Dispatch once through a deterministic LSP peer, retain its real Completed reply and confirm backend idle/settled/cleaned state while the native acknowledgement is lost. Count exactly one execution and preserve source bytes.",
+    "Delete the project through owner-scoped Store.delete_project after genuine settlement. Project, language action and original command recovery APIs return typed NotFound. No SQL constructs a completed outcome or permits deletion.",
+    "Stop the original native host, start a distinct native process against the same private state, observe a real original callback after deletion and prove ordinary HTTP writing remains denied. Missing project data does not certify native completion.",
+    "Inspect the retained native owner and compare exact original outcome, outcome digest, transaction, account/project and mode. Stop the retry process before retirement; failed callbacks need not hold physical locks continuously, and liveness alone does not prove an active physical claim.",
+    "Run the shared CLI parser/executor with exact inspected ID/digest and review note. Preserve the complete inspected record in the permanent audit and repeat idempotently.",
+    "Start another distinct native host, write and independently read an ordinary file through a successful HTTP command, retain the audit and prove original source and the one-execution log are unchanged."
+  ],
+  "verification": {
+    "focused_terminal": "deleted-project-focused-1794741979/terminal.json",
+    "qualified_terminal": "deleted-project-qualified-1794741613/terminal.json",
+    "checks": [
+      {
+        "case": "format",
+        "command": [
+          "bash",
+          "-euc",
+          "cargo fmt --all --check\ngit diff --check"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 3.09,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/deleted-project-focused-1794741979/format.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "native-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--features",
+          "openwebide-core/editor-parser",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 1.69,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/deleted-project-focused-1794741979/native-clippy.log",
+        "log_sha256": "eac6a94135d0e10a6c01470445c11dc4f776941d251951230a23a9d9bd564e70"
+      },
+      {
+        "case": "matching-example",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--example",
+          "check_recorded_command_host",
+          "--features",
+          "test-support",
+          "--locked"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 0.46,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/deleted-project-focused-1794741979/matching-example.log",
+        "log_sha256": "92bec25ad54c650450560360480d5f94d3d8ad203f81a2c724e0c641b330bbfb"
+      },
+      {
+        "case": "deleted-project",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--test",
+          "language_commands",
+          "--features",
+          "openwebide-core/editor-parser",
+          "--locked",
+          "deleted_project::",
+          "--",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 30.69,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/deleted-project-focused-1794741979/deleted-project.log",
+        "log_sha256": "c1e4b8efc7494e2147831bdbda6cc4488e8288d6d5674f407f8a5cb630a45a41"
+      },
+      {
+        "case": "format",
+        "command": [
+          "bash",
+          "-euc",
+          "cargo fmt --all --check\ngit diff --check"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 3.16,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/deleted-project-qualified-1794741613/format.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "Windows-cross-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--all-targets",
+          "--target",
+          "x86_64-pc-windows-gnu",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 9.64,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/deleted-project-qualified-1794741613/Windows-cross-clippy.log",
+        "log_sha256": "aa936357d1d8d4ceee58b708fa12fa09d6a487939cad0e6696299ec8b9857aef"
+      },
+      {
+        "case": "matching-main",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--locked"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 76.87,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/deleted-project-qualified-1794741613/matching-main.log",
+        "log_sha256": "f06c82f1fe2ab886d75084c98bfce599e15deb603564f106ab3b11d9759c83eb"
+      },
+      {
+        "case": "default-bin-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "openwebide-bridge",
+          "--bin",
+          "openwebide-bridge",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 11.46,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/deleted-project-qualified-1794741613/default-bin-clippy.log",
+        "log_sha256": "e5b10f3cbacdb7ad3be4b700dfab5f956e014016202717d89b8a1d8821820a15"
+      },
+      {
+        "case": "production-feature-inventory",
+        "command": [
+          "cargo",
+          "tree",
+          "-p",
+          "openwebide-bridge",
+          "-e",
+          "normal,build",
+          "--depth",
+          "0",
+          "-f",
+          "{p} features=[{f}]"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.21,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/deleted-project-qualified-1794741613/production-feature-inventory.log",
+        "log_sha256": "51a70955c82feadb08bcaf685eec7550c14e8cf35436c8f256347155c7578b04"
+      },
+      {
+        "case": "all-command-HTTP",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--test",
+          "language_commands",
+          "--features",
+          "openwebide-core/editor-parser",
+          "--locked",
+          "--",
+          "--nocapture"
+        ],
+        "deadline_seconds": 900,
+        "returncode": 0,
+        "seconds": 225.78,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/deleted-project-qualified-1794741613/all-command-HTTP.log",
+        "log_sha256": "b658bc483843c111c5f996c52a7e5309f2eb2fb23f2fca6983ff9cab03d26a71"
+      }
+    ],
+    "HTTP_tests": 16,
+    "new_test_functions": 1,
+    "new_adapter_cases": 2,
+    "native_and_Windows_cross_clippy": true,
+    "normal_default_binary_built": true,
+    "normal_features": [
+      "default",
+      "tls"
+    ],
+    "strengthening_after_full_suite": "Only the new integration-test file changed: its ordinary writer now writes/reads a real file and proves denial leaves no file. The same native Clippy, matching helper and strengthened two-mode case pass afterward; other 15 HTTP test functions and all production inputs are unchanged."
+  },
+  "limits": {
+    "built_WASI_browser_flow": false,
+    "actual_OS_default_CLI_in_this_sequence": false,
+    "deleted_account": false,
+    "unconfirmed_cleanup_attestation": false,
+    "optimized_distribution": false,
+    "physical_browser_permissions": false,
+    "native_Windows_runtime": false,
+    "full_CI_complete": false,
+    "whole_goal_complete": false
+  },
+  "remaining": [
+    "Run the deleted-project/account workflow through the actual packaged application and OS-selected CLI.",
+    "Complete remaining command/process interruptions, legacy cleanup policy, native Windows and all participating writers.",
+    "Finish original distribution/browser/cache/resource/RSS/prefetch/homelab and complete CI requirements."
+  ],
+  "built_application_followup": {
+    "checkpoint": "built-deleted-project-checks.json",
+    "scope": "Real built-browser approval and WASI API deletion with actual native original-private settlement reply loss and404, explicit shared CLI executor retirement and actual file writing in both modes. Test-selected namespace and Local OPFS correspondence; OS-default CLI and optimized native/WASI distribution remain open."
+  }
+}

@@ -807,6 +807,19 @@ pub trait Backend {
     > {
         Box::pin(async { Err("Language action recovery unavailable".into()) })
     }
+    fn language_action_recovery<'a>(
+        &'a self,
+        _project: i64,
+        _request:&'a openwebide_core::plugins::languages::intelligence::actions::ActionRecoveryRequest,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<
+            Option<openwebide_core::plugins::languages::intelligence::actions::ActionRecovery>,
+            String,
+        >,
+    > {
+        Box::pin(async { Err("Language action recovery is unavailable".into()) })
+    }
     fn language_command<'a>(
         &'a self,
         _project: i64,
@@ -816,6 +829,31 @@ pub trait Backend {
         Result<openwebide_core::plugins::languages::intelligence::actions::CommandProgress, String>,
     > {
         Box::pin(async { Err("Language command host unavailable".into()) })
+    }
+    fn command_callback_url(&self) -> Result<String, String> {
+        Err("The current backend address is unavailable".into())
+    }
+    fn reconnect_language_commands<'a>(
+        &'a self,
+        _request:&'a openwebide_core::plugins::languages::intelligence::actions::CommandCallbackRequest,
+    ) -> LocalBoxFuture<'a, Result<bool, String>> {
+        Box::pin(async { Err("Native command reconnection is unavailable".into()) })
+    }
+    fn delegate_language_command<'a>(
+        &'a self,
+        _project: i64,
+        _request:&'a openwebide_core::plugins::languages::intelligence::actions::CommandDelegationRequest,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<
+            (
+                String,
+                openwebide_core::workspace_transaction::WorkspaceJournalDelegation,
+            ),
+            String,
+        >,
+    > {
+        Box::pin(async { Err("Native command delegation is unavailable".into()) })
     }
     fn authorize_language_command<'a>(
         &'a self,
@@ -2006,6 +2044,19 @@ impl Backend for BackendApi {
     > {
         Box::pin(BackendApi::language_action_request(self, project, request))
     }
+    fn language_action_recovery<'a>(
+        &'a self,
+        project: i64,
+        request:&'a openwebide_core::plugins::languages::intelligence::actions::ActionRecoveryRequest,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<
+            Option<openwebide_core::plugins::languages::intelligence::actions::ActionRecovery>,
+            String,
+        >,
+    > {
+        Box::pin(BackendApi::language_action_recovery(self, project, request))
+    }
     fn language_command<'a>(
         &'a self,
         project: i64,
@@ -2015,6 +2066,33 @@ impl Backend for BackendApi {
         Result<openwebide_core::plugins::languages::intelligence::actions::CommandProgress, String>,
     > {
         Box::pin(BackendApi::language_command(self, project, request))
+    }
+    fn command_callback_url(&self) -> Result<String, String> {
+        Ok(BackendApi::command_callback_url(self))
+    }
+    fn reconnect_language_commands<'a>(
+        &'a self,
+        request:&'a openwebide_core::plugins::languages::intelligence::actions::CommandCallbackRequest,
+    ) -> LocalBoxFuture<'a, Result<bool, String>> {
+        Box::pin(BackendApi::reconnect_language_commands(self, request))
+    }
+    fn delegate_language_command<'a>(
+        &'a self,
+        project: i64,
+        request:&'a openwebide_core::plugins::languages::intelligence::actions::CommandDelegationRequest,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<
+            (
+                String,
+                openwebide_core::workspace_transaction::WorkspaceJournalDelegation,
+            ),
+            String,
+        >,
+    > {
+        Box::pin(BackendApi::delegate_language_command(
+            self, project, request,
+        ))
     }
     fn authorize_language_command<'a>(
         &'a self,

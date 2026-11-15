@@ -5,13 +5,18 @@
 mod unix;
 #[cfg(unix)]
 pub(super) use unix::Access;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+pub(crate) use unix::quarantine_descriptors;
 
 #[cfg(not(unix))]
 #[derive(Debug)]
 pub(super) struct Access;
 #[cfg(not(unix))]
 impl Access {
-    pub fn try_acquire(folder: &super::Folder) -> Result<Option<Self>, String> {
+    pub fn for_use(
+        folder: &super::Folder,
+        _workspace_use: super::WorkspaceUse,
+    ) -> Result<Option<Self>, String> {
         if folder.current() {
             Ok(Some(Self))
         } else {

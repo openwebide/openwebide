@@ -1,6 +1,7 @@
 //! Metadata read from one owned descriptor, interpreted only by native I/O.
 use super::*;
 use openwebide_core::workspace_transaction::OriginalMutation;
+use serde::{Deserialize, Serialize};
 mod attributes;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

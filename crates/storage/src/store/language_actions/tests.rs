@@ -162,7 +162,7 @@ impl Scenario {
             id: id.clone(),
             plan: WorkspacePlan {
                 version,
-                root: "physical-folder".into(),
+                root: openwebide_core::plugins::content_digest(b"physical-folder"),
                 operations: vec![],
                 roots: vec![],
                 before: BTreeMap::new(),
@@ -410,8 +410,8 @@ fn command_dispatch_requires_a_durable_claim_and_retains_recovery_access_after_d
                 .await
                 .unwrap();
             assert_eq!(authorized.invocation, claimed.invocation().unwrap());
-            assert_eq!(authorized.selection.user, case.user.get());
-            assert_eq!(authorized.selection.project, case.project);
+            assert_eq!(authorized.selection.as_ref().unwrap().user, case.user.get());
+            assert_eq!(authorized.selection.as_ref().unwrap().project, case.project);
             let mut recovery = case
                 .store
                 .editor_recovery(case.user, case.project)
@@ -1178,3 +1178,7 @@ fn deleting_a_project_preserves_pending_command_recovery_after_files_commit_in_b
         }
     });
 }
+
+mod recovery;
+
+mod worker;

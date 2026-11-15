@@ -2,6 +2,7 @@
 //! runtimes holding the physical folder gate may replace or release a worker.
 //! Released IDs remain as tombstones, preventing delayed admission from reviving.
 use super::*;
+use openwebide_core::plugins::languages::intelligence::actions::CommandReservation;
 use openwebide_core::workspace_transaction::{
     WorkspaceTransactionScope, WorkspaceTransactionWorker,
 };
@@ -72,15 +73,57 @@ impl<D: Db> Store<D> {
         review: Option<(&str, &str)>,
         now: i64,
     ) -> Result<WorkspaceTransactionScope, StorageError> {
+        self.claim_workspace_transaction_worker_compound(
+            user,
+            project,
+            expected,
+            worker,
+            (review, None),
+            now,
+        )
+        .await
+    }
+    pub async fn claim_workspace_transaction_worker_compound(
+        &self,
+        user: UserId,
+        project: i64,
+        expected: &WorkspaceTransactionScope,
+        worker: &WorkspaceTransactionWorker,
+        admission: (Option<(&str, &str)>, Option<&CommandReservation>),
+        now: i64,
+    ) -> Result<WorkspaceTransactionScope, StorageError> {
         self.db
             .transaction(|tx| async move {
                 Store::new(tx)
-                    .claim_workspace_transaction_worker_inner(
-                        user, project, expected, worker, review, now,
+                    .claim_workspace_transaction_worker_compound_inner(
+                        user, project, expected, worker, admission, now,
                     )
                     .await
             })
             .await
+    }
+    pub(super) async fn claim_workspace_transaction_worker_compound_inner(
+        &self,
+        user: UserId,
+        project: i64,
+        expected: &WorkspaceTransactionScope,
+        worker: &WorkspaceTransactionWorker,
+        admission: (Option<(&str, &str)>, Option<&CommandReservation>),
+        now: i64,
+    ) -> Result<WorkspaceTransactionScope, StorageError> {
+        let (review, command) = admission;
+        if let Some(command) = command {
+            command.validate().map_err(StorageError::InvalidRequest)?;
+            if &command.expected.scope != expected || command.worker.id == worker.id {
+                return Err(conflict());
+            }
+        }
+        let claimed = self
+            .claim_workspace_transaction_worker_inner(user, project, expected, worker, review, now)
+            .await?;
+        self.reserve_workspace_command(user, project, expected, &claimed, command, now)
+            .await?;
+        Ok(claimed)
     }
     pub(super) async fn claim_workspace_transaction_worker_inner(
         &self,

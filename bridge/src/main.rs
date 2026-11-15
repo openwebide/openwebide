@@ -85,6 +85,7 @@ fn parse_args() -> Result<Args, String> {
                 println!(
                     "OpenWebIDE Bridge Daemon\n\n\
                      Usage: openwebide-bridge [OPTIONS]\n\n\
+                     Recovery: openwebide-bridge recovery --help\n\n\
                      Options:\n\
                        --host <HOST>             Host to bind on (default: 127.0.0.1, env: OPENWEBIDE_BRIDGE_HOST)\n\
                        -p, --port <PORT>         Port to bind on (default: 3001, env: OPENWEBIDE_BRIDGE_PORT)\n\
@@ -168,6 +169,9 @@ fn parse_args() -> Result<Args, String> {
 }
 
 fn main() -> anyhow::Result<()> {
+    if let Some(result) = openwebide_bridge::recovery::run_if_requested() {
+        return result.map_err(anyhow::Error::msg);
+    }
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     {
         if let Some(result) = openwebide_bridge::exec::process_owner::run_if_requested() {

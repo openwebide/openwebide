@@ -18,7 +18,7 @@ async fn start_with_config(config: ServerConfig) -> u16 {
 #[tokio::test]
 async fn hello_with_valid_token_ok() {
     let secret = "test_secret_for_hello";
-    let config = ServerConfig::new(PathBuf::from("."), secret.into(), None);
+    let config = common::server_config(PathBuf::from("."), secret.into(), None);
     let port = start_with_config(config).await;
 
     let now = std::time::SystemTime::now()
@@ -58,7 +58,7 @@ async fn hello_with_valid_token_ok() {
 #[tokio::test]
 async fn hello_with_expired_token_rejected() {
     let secret = "test_secret_for_hello";
-    let config = ServerConfig::new(PathBuf::from("."), secret.into(), None);
+    let config = common::server_config(PathBuf::from("."), secret.into(), None);
     let port = start_with_config(config).await;
 
     let now = std::time::SystemTime::now()
@@ -95,7 +95,7 @@ async fn hello_with_expired_token_rejected() {
 async fn hello_with_login_secret_token_rejected() {
     let secret = "test_secret_for_hello";
     let login_secret = "different_secret_for_login";
-    let config = ServerConfig::new(PathBuf::from("."), secret.into(), None);
+    let config = common::server_config(PathBuf::from("."), secret.into(), None);
     let port = start_with_config(config).await;
 
     let now = std::time::SystemTime::now()
@@ -130,7 +130,7 @@ async fn hello_with_login_secret_token_rejected() {
 
 #[tokio::test]
 async fn pairing_token_accepted() {
-    let config = ServerConfig::new(
+    let config = common::server_config(
         PathBuf::from("."),
         "secret".into(),
         Some("my_pairing_token".into()),
@@ -168,7 +168,7 @@ async fn pairing_token_accepted() {
 
 #[tokio::test]
 async fn ws_terminal_requires_hello() {
-    let config = ServerConfig::new(PathBuf::from("."), "secret".into(), None);
+    let config = common::server_config(PathBuf::from("."), "secret".into(), None);
     let port = start_with_config(config).await;
 
     let (mut ws, _) = tokio_tungstenite::connect_async(format!("ws://127.0.0.1:{port}/"))
@@ -205,7 +205,7 @@ async fn ws_terminal_requires_hello() {
 
 #[tokio::test]
 async fn hello_timeout_closes() {
-    let config = ServerConfig::new(PathBuf::from("."), "secret".into(), None);
+    let config = common::server_config(PathBuf::from("."), "secret".into(), None);
     let port = start_with_config(config).await;
 
     let (mut ws, _) = tokio_tungstenite::connect_async(format!("ws://127.0.0.1:{port}/"))
@@ -222,7 +222,7 @@ async fn hello_timeout_closes() {
 
 #[tokio::test]
 async fn oversized_pre_hello_frame_closes() {
-    let config = ServerConfig::new(PathBuf::from("."), "secret".into(), None);
+    let config = common::server_config(PathBuf::from("."), "secret".into(), None);
     let port = start_with_config(config).await;
 
     let (mut ws, _) = tokio_tungstenite::connect_async(format!("ws://127.0.0.1:{port}/"))
@@ -244,7 +244,7 @@ mod common;
 #[tokio::test]
 async fn browser_exec_requires_bridge_token() {
     let secret = "test_secret_for_hello";
-    let config = ServerConfig::new(PathBuf::from("."), secret.into(), None);
+    let config = common::server_config(PathBuf::from("."), secret.into(), None);
     let port = start_with_config(config).await;
 
     let now = std::time::SystemTime::now()
@@ -279,7 +279,7 @@ Content-Length: 2\r\n\r\n{{}}"
 #[tokio::test]
 async fn multiplexed_commands_require_hello_and_terminal_still_streams() {
     use openwebide_core::{ChatRequest, RunRejectCode};
-    let port = start_with_config(ServerConfig::new(
+    let port = start_with_config(common::server_config(
         std::env::temp_dir(),
         "secret".into(),
         Some("paired".into()),
@@ -433,7 +433,7 @@ async fn multiplexed_commands_require_hello_and_terminal_still_streams() {
 #[cfg(not(feature = "tls"))]
 #[tokio::test]
 async fn http_only_signed_in_user_cannot_start_runs_or_completions() {
-    let port = start_with_config(ServerConfig::new(
+    let port = start_with_config(common::server_config(
         std::env::temp_dir(),
         "secret".into(),
         None,

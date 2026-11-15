@@ -581,6 +581,54 @@ impl Backend for FakeBackend {
             })
         })
     }
+    fn language_action_recovery<'a>(
+        &'a self,
+        project: i64,
+        request:&'a openwebide_core::plugins::languages::intelligence::actions::ActionRecoveryRequest,
+    ) -> LocalBoxFuture<
+        'a,
+        Result<
+            Option<openwebide_core::plugins::languages::intelligence::actions::ActionRecovery>,
+            String,
+        >,
+    > {
+        use openwebide_core::plugins::languages::intelligence::actions::{
+            ActionJournalRequest, ActionRecovery, ActionRecoveryRequest, CommandRecoveryScope,
+        };
+        Box::pin(async move {
+            let ActionRecoveryRequest::Load { id } = request else {
+                return Err("No recovery mutation fixture is installed".into());
+            };
+            let record = self
+                .language_action_request(project, &ActionJournalRequest::Load { id: id.clone() })
+                .await?;
+            record
+                .map(|record| {
+                    let value = ActionRecovery {
+                        command: CommandRecoveryScope {
+                            invocation: record.approval.command_invocation()?,
+                            revision: record.revision,
+                            phase: record.phase,
+                            outcome_digest: record
+                                .outcome
+                                .as_ref()
+                                .map(serde_json::to_vec)
+                                .transpose()
+                                .map_err(|e| e.to_string())?
+                                .map(|bytes| openwebide_core::plugins::content_digest(&bytes)),
+                            worker: None,
+                            native_settlement_pending: false,
+                            command_cleanup_confirmed: false,
+                        },
+                        outcome: record.outcome,
+                        acknowledgement: record.acknowledgement,
+                    };
+                    value.validate()?;
+                    Ok(value)
+                })
+                .transpose()
+        })
+    }
     fn host_updates<'a>(
         &'a self,
         request: &'a openwebide_core::host_admin::updates::UpdateRequest,

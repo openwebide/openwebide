@@ -81,8 +81,15 @@ enum Route {
     PluginStartInvocation,
     LanguageServerQuery,
     LanguageActionJournal,
+    LanguageActionRecovery,
     LanguageCommand,
     LanguageCommandAuthorize,
+    LanguageCommandDelegate,
+    ReconnectLanguageCommand,
+    LanguageCommandService,
+    DelegatedLanguageCommand,
+    OriginalLanguageCommand,
+    PrivateOriginalLanguageCommand,
     SessionLanguageContext,
     LanguageServerAuthorize,
     LanguageServerRevoke,
@@ -263,6 +270,21 @@ fn resolve(method: &str, segments: &[&str]) -> Option<Route> {
         }
         ("POST", ["workspace-transactions", "service"]) => Some(Route::WorkspaceJournalService),
         ("POST", ["workspace-transactions", "delegated"]) => Some(Route::DelegatedWorkspaceJournal),
+        ("POST", ["language-commands", "service"]) => Some(Route::LanguageCommandService),
+        ("POST", ["language-commands", "delegated"]) => Some(Route::DelegatedLanguageCommand),
+        ("POST", ["language-commands", "original"]) => Some(Route::OriginalLanguageCommand),
+        ("POST", ["language-commands", "original-private"]) => {
+            Some(Route::PrivateOriginalLanguageCommand)
+        }
+        ("POST", ["projects", id, "language-commands", "reconnect"]) if numeric_id(id) => {
+            Some(Route::ReconnectLanguageCommand)
+        }
+        ("POST", ["projects", id, "language-commands", "delegate"]) if numeric_id(id) => {
+            Some(Route::LanguageCommandDelegate)
+        }
+        ("POST", ["projects", id, "language-actions", "recovery"]) if numeric_id(id) => {
+            Some(Route::LanguageActionRecovery)
+        }
         ("POST", ["projects", id, "language-actions"]) if numeric_id(id) => {
             Some(Route::LanguageActionJournal)
         }
@@ -522,10 +544,27 @@ pub async fn route(req: Request) -> JsonResp {
             return with_cors(error.into_response(), origin);
         }
     };
-    if route == Some(Route::DelegatedWorkspaceJournal) {
+    if matches!(
+        route,
+        Some(
+            Route::DelegatedWorkspaceJournal
+                | Route::DelegatedLanguageCommand
+                | Route::OriginalLanguageCommand
+                | Route::PrivateOriginalLanguageCommand
+        )
+    ) {
         // This native transport authenticates a journal-scoped bootstrap and
         // the worker's private preimage, independently of cookies/service keys.
-        return match api::workspace_transactions::delegated(req, &state).await {
+        let result = if route == Some(Route::PrivateOriginalLanguageCommand) {
+            api::language_actions::original_private(req, &state).await
+        } else if route == Some(Route::OriginalLanguageCommand) {
+            api::language_actions::original(req, &state).await
+        } else if route == Some(Route::DelegatedLanguageCommand) {
+            api::language_actions::delegated(req, &state).await
+        } else {
+            api::workspace_transactions::delegated(req, &state).await
+        };
+        return match result {
             Ok(response) => response,
             Err(error) => {
                 error.log_for_route(method.as_str(), &path);
@@ -545,10 +584,14 @@ pub async fn route(req: Request) -> JsonResp {
                 | Route::PluginUpdateService
                 | Route::PluginRunService
                 | Route::WorkspaceJournalService
+                | Route::LanguageCommandService
         )
     ) {
         let result = match crate::auth::require_bridge_service(&state, req.headers()).await {
             Ok(()) => match route {
+                Some(Route::LanguageCommandService) => {
+                    api::workspace_transactions::command_service(req, &state).await
+                }
                 Some(Route::WorkspaceJournalService) => {
                     api::workspace_transactions::service(req, &state).await
                 }
@@ -668,11 +711,20 @@ pub async fn route(req: Request) -> JsonResp {
         (Some(Route::LanguageServerQuery), Some(user)) => {
             api::plugins::language_server(req, &state, user, false).await
         }
+        (Some(Route::LanguageActionRecovery), Some(user)) => {
+            api::language_actions::recovery(req, &state, &path, user).await
+        }
         (Some(Route::LanguageActionJournal), Some(user)) => {
             api::language_actions::journal(req, &state, &path, user).await
         }
         (Some(Route::LanguageCommand), Some(user)) => {
             api::language_actions::dispatch(req, &state, &path, user, false).await
+        }
+        (Some(Route::ReconnectLanguageCommand), Some(user)) => {
+            api::language_actions::reconnect(req, &state, &path, user).await
+        }
+        (Some(Route::LanguageCommandDelegate), Some(user)) => {
+            api::language_actions::delegate(req, &state, &path, user).await
         }
         (Some(Route::LanguageCommandAuthorize), Some(user)) => {
             api::language_actions::dispatch(req, &state, &path, user, true).await
@@ -1252,8 +1304,13 @@ mod tests {
             }
             for route in [
                 Route::LanguageActionJournal,
+                Route::LanguageActionRecovery,
                 Route::LanguageCommand,
                 Route::LanguageCommandAuthorize,
+                Route::ReconnectLanguageCommand,
+                Route::LanguageCommandDelegate,
+                Route::LanguageCommandService,
+                Route::DelegatedLanguageCommand,
                 Route::ExecuteWorkspaceTransaction,
                 Route::WorkspaceTransactionRoot,
                 Route::WorkspaceJournalService,
@@ -1375,6 +1432,11 @@ mod tests {
             ),
             (
                 "POST",
+                "projects/5/language-actions/recovery",
+                Route::LanguageActionRecovery,
+            ),
+            (
+                "POST",
                 "projects/5/language-commands",
                 Route::LanguageCommand,
             ),
@@ -1382,6 +1444,11 @@ mod tests {
                 "POST",
                 "projects/5/language-commands/authorize",
                 Route::LanguageCommandAuthorize,
+            ),
+            (
+                "POST",
+                "projects/5/language-commands/reconnect",
+                Route::ReconnectLanguageCommand,
             ),
             (
                 "GET",

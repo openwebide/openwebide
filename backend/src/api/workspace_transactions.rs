@@ -140,10 +140,32 @@ where
     }
     let input: openwebide_core::workspace_transaction::DelegatedWorkspaceJournalRequest =
         parse_json(read_body(req, 64 * 1024).await?)?;
-    let value = state
+    let mut value = state
         .store
         .delegated_workspace_journal(&input, now())
         .await?;
+    if matches!(input.operation, openwebide_core::workspace_transaction::DelegatedWorkspaceJournalOperation::CommandRecoveryScope) {
+        let openwebide_core::workspace_transaction::WorkspaceJournalResponse::CommandScope { recovery } = value else {
+            return Err(ApiError::internal("Invalid private command recovery scope"));
+        };
+        value = crate::recovery_authority::issue_command(state, input.delegation.user, input.delegation.project, recovery.map(|value| *value)).await?;
+    } else if matches!(
+        input.operation,
+        openwebide_core::workspace_transaction::DelegatedWorkspaceJournalOperation::RecoveryScope
+    ) {
+        let openwebide_core::workspace_transaction::WorkspaceJournalResponse::Scope { scope } =
+            value
+        else {
+            return Err(ApiError::internal("Invalid private recovery scope"));
+        };
+        value = crate::recovery_authority::issue(
+            state,
+            input.delegation.user,
+            input.delegation.project,
+            scope,
+        )
+        .await?;
+    }
     let mut response = json_response(200, &value);
     response.headers_mut().insert(
         "cache-control",
@@ -791,6 +813,7 @@ mod api_contract {
                         .unwrap()
                         .unwrap();
                     callback.operation = WorkspaceJournalOperation::ClaimWorker {
+                        command: None,
                         review_digest: None,
                         language_grant: None,
                         scope,
@@ -974,10 +997,44 @@ where
     B::Data: AsRef<[u8]> + Send,
     B::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
+    let input: openwebide_core::workspace_transaction::WorkspaceJournalRequest =
+        parse_json(read_body(req, 64 * 1024).await?)?;
+    service_request(input, state).await
+}
+pub(crate) async fn command_service<B>(
+    req: Request<B>,
+    state: &AppState,
+) -> Result<JsonResp, ApiError>
+where
+    B: http_body::Body + Send + 'static,
+    B::Data: AsRef<[u8]> + Send,
+    B::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+{
+    let input: openwebide_core::workspace_transaction::WorkspaceJournalRequest = parse_json(
+        read_body(
+            req,
+            openwebide_core::plugins::languages::intelligence::actions::MAX_COMMAND_BYTES
+                + 64 * 1024,
+        )
+        .await?,
+    )?;
+    if !matches!(
+        input.operation,
+        openwebide_core::workspace_transaction::WorkspaceJournalOperation::Command { .. }
+    ) {
+        return Err(ApiError::bad_request(
+            "An owned native command operation is required",
+        ));
+    }
+    service_request(input, state).await
+}
+async fn service_request(
+    input: openwebide_core::workspace_transaction::WorkspaceJournalRequest,
+    state: &AppState,
+) -> Result<JsonResp, ApiError> {
     use openwebide_core::workspace_transaction::{
-        WorkspaceJournalOperation, WorkspaceJournalRequest, WorkspaceJournalResponse,
+        WorkspaceJournalOperation, WorkspaceJournalResponse,
     };
-    let input: WorkspaceJournalRequest = parse_json(read_body(req, 64 * 1024).await?)?;
     if input.user <= 0 || input.project <= 0 || !valid_id(&input.id) {
         return Err(ApiError::bad_request("Invalid workspace recovery scope"));
     }
@@ -990,6 +1047,7 @@ where
     }
     let response = match input.operation {
         WorkspaceJournalOperation::ClaimWorker {
+            command,
             scope,
             worker,
             review_digest,
@@ -1006,12 +1064,12 @@ where
             WorkspaceJournalResponse::WorkerClaimed {
                 scope: state
                     .store
-                    .claim_workspace_transaction_worker_reviewed(
+                    .claim_workspace_transaction_worker_compound(
                         user,
                         input.project,
                         &scope,
                         &worker,
-                        review,
+                        (review, command.as_deref()),
                         now(),
                     )
                     .await?,
@@ -1040,6 +1098,31 @@ where
                 .workspace_transaction_scope(user, input.project, &input.id)
                 .await?,
         },
+        WorkspaceJournalOperation::RecoveryScope => {
+            let scope = state
+                .store
+                .workspace_transaction_scope(user, input.project, &input.id)
+                .await?;
+            crate::recovery_authority::issue(state, input.user, input.project, scope).await?
+        }
+        WorkspaceJournalOperation::CommandRecoveryScope => {
+            let expected = state
+                .store
+                .workspace_command_recovery(user, input.project, &input.id)
+                .await?;
+            crate::recovery_authority::issue_command(state, input.user, input.project, expected)
+                .await?
+        }
+        WorkspaceJournalOperation::Command { operation } => {
+            WorkspaceJournalResponse::CommandScope {
+                recovery: Some(Box::new(
+                    state
+                        .store
+                        .native_language_command(user, input.project, &input.id, &operation, now())
+                        .await?,
+                )),
+            }
+        }
         WorkspaceJournalOperation::Load => WorkspaceJournalResponse::Loaded {
             state: state
                 .store
@@ -1083,7 +1166,12 @@ where
                 .await?,
         },
     };
-    Ok(json_response(200, &response))
+    let mut response = json_response(200, &response);
+    response.headers_mut().insert(
+        "cache-control",
+        spin_sdk::http::HeaderValue::from_static("no-store"),
+    );
+    Ok(response)
 }
 
 pub(crate) async fn execute<B>(

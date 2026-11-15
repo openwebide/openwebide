@@ -1,0 +1,303 @@
+{
+  "status": "Mutable native recovery database prerequisite verified on macOS/Linux; owner enrollment and compound phase authority remain unfinished",
+  "verified_source_sha256": "f495584ed53cc4105371301ea680b28b4e1fb4c2f0a95af55bd7e52a0feef4ca",
+  "shared_implementation": "bridge/src/native_recovery/persistence.rs, called from Namespace::open on the common service/paired Host path",
+  "contract": [
+    "Keep the original SQLite inode and immutable external anchor JSON prefix; bounded SQLite deserialization uses captured file bytes, never an ambient SQLite pathname.",
+    "Fsync a private candidate snapshot, then atomically publish and fsync Prepared head before rewriting the captured original database. Fsync that database before publishing Committed head; flush the directory again before authorizing readers.",
+    "Head records bind their own typed device/inode/birth identity, namespace key, monotonic SQLite revision, digest and original candidate identity. Identical copies cannot substitute for the original objects.",
+    "Recovery holds the exclusive original-anchor lock and replays only a validated original candidate into the original database. Missing/replaced/corrupt state fails closed; there is no elapsed-time takeover.",
+    "After Prepared becomes durable, append and fsync a permanent seal outside the replaceable database directory before touching SQLite. Every partial seal prefix requires a head and can finish only from the original published intent. Restoring initial database bytes does not make a missing head fresh again.",
+    "Migrate the previous namespace-only schema through this same protocol. Existing older executables reject the sealed format; they cannot silently reset it.",
+    "Ordinary committed readers share the lock; migration, replay and updates require exclusive ownership. Completed snapshots are removed only after commit; unknown unpublished files remain inert and count against storage limits."
+  ],
+  "format": {
+    "sqlite_schema": 2,
+    "migrates_from": 1,
+    "current_contents": "Namespace identity and monotonic revision only; no durable recovery-owner rows",
+    "database_max_bytes": 16777216,
+    "head_and_external_identity_max_bytes": 8192,
+    "private_total_max_bytes": 67108864,
+    "private_file_count_limit": 32
+  },
+  "macOS": {
+    "terminal_receipt": "native-recovery-publication-mac-1794666880/terminal.json",
+    "base_focused_receipt": "native-recovery-installation-green-1794666745/terminal.json",
+    "distinct_tests": 176,
+    "test_executions": 195,
+    "core_and_bridge_all_target_clippy": true,
+    "publication_case": {
+      "case": "durable-snapshot-publication",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-bridge",
+        "--lib",
+        "--locked",
+        "--features",
+        "openwebide-core/editor-parser",
+        "native_recovery::persistence::tests::",
+        "--",
+        "--nocapture"
+      ],
+      "deadline_seconds": 600,
+      "returncode": 0,
+      "seconds": 3.65,
+      "log_sha256": "1c056522ceaead3fa7d48cea97be9d6d6ef92646a1e53184b3324355a6a55853"
+    },
+    "publication_behaviors": [
+      "Actual child-process exit without unwinding at snapshot, Prepared, partial database rewrite, database fsync and Committed boundaries",
+      "Same original DB inode survives recovery; unprepared snapshots never become committed data",
+      "Missing/copied head and missing/copied candidate or DB reject; restoration of original objects permits recovery",
+      "Every short external-seal prefix resumes; initial DB bytes plus missing head still reject",
+      "Old schema migration, monotonic repeated updates, concurrent readers, busy exclusive writer and inert orphan quota"
+    ]
+  },
+  "Linux": {
+    "terminal_receipt": "native-recovery-linux-installation-1794666905/terminal.json",
+    "distinct_tests": 35,
+    "test_executions": 36,
+    "matching_native_bridge_and_libtest": true,
+    "packaged_state_script": "python3 docker/native-recovery/check.py IMAGE MATCHING_LINUX_LIBTEST EVIDENCE_DIR",
+    "runtime_stage": "Dockerfile runtime-state, not the full app image",
+    "fresh_container_successes": 4,
+    "expected_missing_or_copied_rejections": 4,
+    "original_objects_checked": [
+      "principal directory",
+      "namespace directory",
+      "external identity file",
+      "SQLite database",
+      "committed head"
+    ],
+    "cases": [
+      {
+        "case": "exact-packaged-runtime-state",
+        "command": [
+          "docker",
+          "build",
+          "--target",
+          "runtime-state",
+          "--tag",
+          "openwebide:recovery-state-1794666905",
+          "."
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 3.32,
+        "log_sha256": "1defc4f7bf5fd9dcbe60378557fbf52cecb7a38fac25917caecd8ccb23073da0"
+      },
+      {
+        "case": "matching-linux-bridge-and-libtest",
+        "command": [
+          "docker",
+          "run",
+          "--name",
+          "openwebide-recovery-build-1794666905",
+          "--volume",
+          "/Users/BWestnes/source/repos/openwebide/native-folder-recovery:/src:ro",
+          "--volume",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target:/shared-target",
+          "--volume",
+          "/Users/BWestnes/.cargo/registry:/usr/local/cargo/registry",
+          "--volume",
+          "/Users/BWestnes/.cargo/git:/usr/local/cargo/git",
+          "--env",
+          "CARGO_TARGET_DIR=/shared-target",
+          "--workdir",
+          "/src",
+          "--entrypoint",
+          "sh",
+          "sha256:ff521445a372125ed4f76e1453a1f8098f2d05332d1601d30db1c1f62757e730",
+          "-ec",
+          "set -eu\ntimeout 1800s cargo build -p openwebide-bridge --locked --target aarch64-unknown-linux-gnu\ntimeout 600s cargo test -p openwebide-bridge --lib --locked --features openwebide-core/editor-parser --target aarch64-unknown-linux-gnu --no-run --message-format=json"
+        ],
+        "deadline_seconds": 2400,
+        "returncode": 0,
+        "seconds": 93.87,
+        "log_sha256": "e32c77fabd7ccf45fd619cc048edded1e93d5ef0ec680c92cea2dc92a7fe7936"
+      },
+      {
+        "case": "fresh-containers-same-volume-fault-restoration",
+        "command": [
+          "python3",
+          "docker/native-recovery/check.py",
+          "openwebide:recovery-state-1794666905",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/aarch64-unknown-linux-gnu/debug/deps/openwebide_bridge-446653d62892d95f",
+          "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/native-recovery-linux-installation-1794666905/packaged-containers"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 2.81,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "linux-namespace-primitives",
+        "command": [
+          "docker",
+          "run",
+          "--name",
+          "openwebide-recovery-build-1794666905-primitives",
+          "--network",
+          "none",
+          "--volume",
+          "openwebide-recovery-e1165a8e9cd0-data:/app/.spin",
+          "--volume",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/aarch64-unknown-linux-gnu/debug/deps/openwebide_bridge-446653d62892d95f:/recovery-test:ro",
+          "--entrypoint",
+          "/recovery-test",
+          "openwebide:recovery-state-1794666905",
+          "native_recovery::",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.53,
+        "log_sha256": "e2e9350bcf849e79006d6f660961426974cce6e2b8b09fcb6355da7a335aaab4"
+      },
+      {
+        "case": "linux-directory-mutation",
+        "command": [
+          "docker",
+          "run",
+          "--name",
+          "openwebide-recovery-build-1794666905-directory-mutation",
+          "--network",
+          "none",
+          "--volume",
+          "openwebide-recovery-e1165a8e9cd0-data:/app/.spin",
+          "--volume",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/aarch64-unknown-linux-gnu/debug/deps/openwebide_bridge-446653d62892d95f:/recovery-test:ro",
+          "--entrypoint",
+          "/recovery-test",
+          "openwebide:recovery-state-1794666905",
+          "runs::native_vfs::workspace::tests::root::directory_bound_mutations_preserve_alias_and_entry_kind_contracts",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.15,
+        "log_sha256": "cbdf4554ebd53bb5ab8b21fa32385b2139352f3760e1ba60423499b27861a29d"
+      },
+      {
+        "case": "linux-captured-directory-sync",
+        "command": [
+          "docker",
+          "run",
+          "--name",
+          "openwebide-recovery-build-1794666905-captured-directory-sync",
+          "--network",
+          "none",
+          "--volume",
+          "openwebide-recovery-e1165a8e9cd0-data:/app/.spin",
+          "--volume",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/aarch64-unknown-linux-gnu/debug/deps/openwebide_bridge-446653d62892d95f:/recovery-test:ro",
+          "--entrypoint",
+          "/recovery-test",
+          "openwebide:recovery-state-1794666905",
+          "native_directory::tests::",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.12,
+        "log_sha256": "7fa7b77030628ff8d045124e971dcbb917a9966490f1b3f6b3825a3bda3373ad"
+      },
+      {
+        "case": "linux-all-native-writers",
+        "command": [
+          "docker",
+          "run",
+          "--name",
+          "openwebide-recovery-build-1794666905-all-native-writers",
+          "--network",
+          "none",
+          "--volume",
+          "openwebide-recovery-e1165a8e9cd0-data:/app/.spin",
+          "--volume",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/aarch64-unknown-linux-gnu/debug/deps/openwebide_bridge-446653d62892d95f:/recovery-test:ro",
+          "--entrypoint",
+          "/recovery-test",
+          "openwebide:recovery-state-1794666905",
+          "runs::native_vfs::workspace::tests::",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.15,
+        "log_sha256": "b852a2943c4bcbadc2b3c32ec0a21d60dc95746b8bf4e5fd856ff23679c18b9f"
+      },
+      {
+        "case": "linux-admission",
+        "command": [
+          "docker",
+          "run",
+          "--name",
+          "openwebide-recovery-build-1794666905-admission",
+          "--network",
+          "none",
+          "--volume",
+          "openwebide-recovery-e1165a8e9cd0-data:/app/.spin",
+          "--volume",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/aarch64-unknown-linux-gnu/debug/deps/openwebide_bridge-446653d62892d95f:/recovery-test:ro",
+          "--entrypoint",
+          "/recovery-test",
+          "openwebide:recovery-state-1794666905",
+          "--exact",
+          "workspace_transactions::tests::paired::namespace::namespace_loss_and_identical_copies_cannot_admit_file_workers_in_either_mode",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.67,
+        "log_sha256": "7577a66301d1f93525ec66e2ec21ddd16d08cbf3890ac0c2f75f66264e0c4de3"
+      },
+      {
+        "case": "linux-after-claim",
+        "command": [
+          "docker",
+          "run",
+          "--name",
+          "openwebide-recovery-build-1794666905-after-claim",
+          "--network",
+          "none",
+          "--volume",
+          "openwebide-recovery-e1165a8e9cd0-data:/app/.spin",
+          "--volume",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/aarch64-unknown-linux-gnu/debug/deps/openwebide_bridge-446653d62892d95f:/recovery-test:ro",
+          "--entrypoint",
+          "/recovery-test",
+          "openwebide:recovery-state-1794666905",
+          "--exact",
+          "workspace_transactions::tests::paired::namespace_after_claim::namespace_replacement_during_claim_rejects_files_until_the_original_object_is_restored",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 0.22,
+        "log_sha256": "ae16e41a4b05909f28b10929fa87c1546ea461d52e4f1f836ac6d36804d23380"
+      }
+    ]
+  },
+  "cross_compilation": {
+    "audit_receipt": "native-recovery-publication-cross-audit-1794667082/terminal.json",
+    "actual_prior_compile_source_sha256": "7fbccdd457034ccdea95fc139e04d07d2d3326dcf426b18c0e98fbcad722fb70",
+    "fresh_full_source_cross_executed": false,
+    "scope": "Exact source reconstruction verifies changes to otherwise shared files are excluded from Windows. The new namespace modules are Linux/macOS only. WASI backend dependency sources are unchanged. This is qualified reuse of earlier actual cross-Clippy, not native Windows execution.",
+    "later_full_source_cross_check": {
+      "checks": "private-recovery-authority-checks.json#compound_activity_followup",
+      "source_sha256": "0cff0a32e56878a0d3ceaf640e0b62bb8d8dda3748bb0e2164d9b4a523b753b8",
+      "Windows_bridge_all_target_clippy": true,
+      "WASI_backend_clippy": true,
+      "native_Windows_runtime": false,
+      "scope": "Later exact-source compilation includes unchanged persistence code with the compound activity response; it does not supply a Windows persistence adapter."
+    }
+  },
+  "limits": [
+    "No durable transaction-owner records, private owner enrollment, ordinary-writer ledger barrier or compound file/command phase authority yet.",
+    "Process termination is verified; a physical power cut or failed hardware fsync is not simulated. Short seal appends are injected against real original files.",
+    "This verifies runtime-state containers and native contracts, not complete packaged app startup or a new physical browser permission check.",
+    "Native Windows recovery namespace remains unsupported. Destruction or forgery of all private authentication material and independent containers without a shared authority filesystem remain outside this guarantee.",
+    "Full local CI, commit and publication remain unfinished."
+  ]
+}

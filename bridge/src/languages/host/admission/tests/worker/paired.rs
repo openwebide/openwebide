@@ -118,33 +118,186 @@ pub(super) async fn serve(backend: Arc<Backend>) -> Server {
                     move |request: hyper::Request<hyper::body::Incoming>| {
                         let backend = backend.clone();
                         async move {
-                            assert_eq!(
-                                request.uri().path(),
-                                "/api/workspace-transactions/delegated"
-                            );
-                            for header in ["authorization", "cookie", "origin"] {
+                            let path = request.uri().path().to_string();
+                            for header in ["cookie", "origin"] {
                                 assert!(!request.headers().contains_key(header));
                             }
-                            let request: DelegatedWorkspaceJournalRequest = serde_json::from_slice(
-                                &request.into_body().collect().await.unwrap().to_bytes(),
-                            )
-                            .unwrap();
-                            let response = futures::executor::block_on(
-                                backend.store.delegated_workspace_journal(
-                                    &request,
-                                    backend.now.load(Ordering::SeqCst),
-                                ),
-                            );
-                            if response.is_ok()
-                                && let transaction::DelegatedWorkspaceJournalOperation::Advance {
-                                    progress,
-                                    ..
-                                } = &request.operation
-                            {
-                                backend.after_progress(progress);
+                            let service = path.ends_with("/service");
+                            if service {
+                                assert_eq!(
+                                    request.headers()["authorization"],
+                                    "Bearer native-command-test-service"
+                                );
+                            } else {
+                                assert!(!request.headers().contains_key("authorization"));
                             }
+                            let bytes = request.into_body().collect().await.unwrap().to_bytes();
+                            let private: Option<protocol::actions::CommandRecoveryMessage> =
+                                if path == "/api/language-commands/original-private" {
+                                    Some(serde_json::from_slice(&bytes).unwrap())
+                                } else {
+                                    None
+                                };
+
+                            let response: Result<Reply, String> = if path
+                                == "/api/workspace-transactions/delegated"
+                            {
+                                let request: DelegatedWorkspaceJournalRequest =
+                                    serde_json::from_slice(&bytes).unwrap();
+                                let response = futures::executor::block_on(async {
+                                    if matches!(request.operation, transaction::DelegatedWorkspaceJournalOperation::Admit { .. }) {
+                                        backend.observe_reservation(UserId::new(request.delegation.user), request.delegation.project, &request.delegation.scope.id).await?;
+                                    }
+                                    backend.store.delegated_workspace_journal(
+                                        &request,
+                                        backend.now.load(Ordering::SeqCst),
+                                    ).await
+                                })
+                                .map_err(|e| e.to_string());
+                                if response.is_ok() && let transaction::DelegatedWorkspaceJournalOperation::Advance {progress,..}=&request.operation {backend.after_progress(progress);}
+                                if response.is_ok() && matches!(request.operation,transaction::DelegatedWorkspaceJournalOperation::RecoveryScope|transaction::DelegatedWorkspaceJournalOperation::CommandRecoveryScope) {
+                                    futures::executor::block_on(backend.private_reply(UserId::new(request.delegation.user),request.delegation.project,&request.delegation.scope.id,matches!(request.operation,transaction::DelegatedWorkspaceJournalOperation::CommandRecoveryScope))).map_err(|e|e.to_string())
+                                } else {response}
+                            } else if let Some(message) = &private {
+                                use protocol::actions::{
+                                    COMMAND_RECOVERY_PLAINTEXT_LIMIT,
+                                    COMMAND_RECOVERY_REQUEST_DOMAIN, CommandJournalOperation,
+                                    OriginalCommandRequest,
+                                };
+                                futures::executor::block_on(async {
+                                    let key = backend
+                                        .store
+                                        .get_setting("native_test_original_issuer")
+                                        .await
+                                        .map_err(|e| e.to_string())?
+                                        .ok_or("Missing original fixture issuer")?;
+                                    let binding =
+                                        transaction::RecoveryAuthority::binding_for_scope(
+                                            message.user,
+                                            message.project,
+                                            &message.scope,
+                                        )?;
+                                    let authority = transaction::RecoveryAuthority::for_scope(
+                                        message.user,
+                                        message.project,
+                                        &message.scope,
+                                        openwebide_auth::derive_secret(
+                                            key.as_bytes(),
+                                            transaction::RECOVERY_AUTHORITY_DOMAIN,
+                                            &binding,
+                                        ),
+                                    )?;
+                                    let body = openwebide_auth::private_messages::open(
+                                        authority.secret.as_bytes(),
+                                        COMMAND_RECOVERY_REQUEST_DOMAIN,
+                                        &message.context()?,
+                                        &message.nonce,
+                                        &message.ciphertext,
+                                        COMMAND_RECOVERY_PLAINTEXT_LIMIT,
+                                    )?;
+                                    let input: OriginalCommandRequest =
+                                        serde_json::from_slice(&body)
+                                            .map_err(|_| "Invalid private fixture request")?;
+                                    if input.authority != authority {
+                                        return Err("Original fixture authority changed".into());
+                                    }
+                                    let reply = backend
+                                        .store
+                                        .original_language_command(
+                                            &input,
+                                            backend.now.load(Ordering::SeqCst),
+                                        )
+                                        .await
+                                        .map_err(|e| e.to_string())?;
+                                    if matches!(input.operation, CommandJournalOperation::Scope) {
+                                        let Reply::CommandScope {
+                                            recovery: Some(recovery),
+                                        } = reply
+                                        else {
+                                            return Err("Missing original fixture scope".into());
+                                        };
+                                        Ok(Reply::CommandRecoveryScope {
+                                            recovery,
+                                            authority: Box::new(authority),
+                                        })
+                                    } else {
+                                        Ok(reply)
+                                    }
+                                })
+                            } else if path == "/api/language-commands/delegated" {
+                                use protocol::actions::{
+                                    CommandJournalOperation, DelegatedCommandRequest,
+                                };
+                                let request: DelegatedCommandRequest =
+                                    serde_json::from_slice(&bytes).unwrap();
+                                let response = futures::executor::block_on(
+                                    backend.store.delegated_language_command(
+                                        &request,
+                                        backend.now.load(Ordering::SeqCst),
+                                    ),
+                                )
+                                .map_err(|e| e.to_string());
+                                if response.is_ok()
+                                    && matches!(request.operation, CommandJournalOperation::Scope)
+                                {
+                                    futures::executor::block_on(backend.private_reply(
+                                        UserId::new(request.delegation.user),
+                                        request.delegation.project,
+                                        &request.delegation.scope.id,
+                                        true,
+                                    ))
+                                    .map_err(|e| e.to_string())
+                                } else {
+                                    response
+                                }
+                            } else {
+                                assert!(service);
+                                let request: WorkspaceJournalRequest =
+                                    serde_json::from_slice(&bytes).unwrap();
+                                backend.request(&request).await
+                            };
                             let (status, body) = match response {
-                                Ok(reply) => (200, serde_json::to_vec(&reply).unwrap()),
+                                Ok(reply) => {
+                                    let body = serde_json::to_vec(&reply).unwrap();
+                                    let body = if let Some(message) = &private {
+                                        let key = backend
+                                            .store
+                                            .get_setting("native_test_original_issuer")
+                                            .await
+                                            .unwrap()
+                                            .unwrap();
+                                        let binding =
+                                            transaction::RecoveryAuthority::binding_for_scope(
+                                                message.user,
+                                                message.project,
+                                                &message.scope,
+                                            )
+                                            .unwrap();
+                                        let secret = openwebide_auth::derive_secret(
+                                            key.as_bytes(),
+                                            transaction::RECOVERY_AUTHORITY_DOMAIN,
+                                            &binding,
+                                        );
+                                        let (nonce, ciphertext) =
+                                            openwebide_auth::private_messages::seal(
+                                                secret.as_bytes(),
+                                                protocol::actions::COMMAND_RECOVERY_REPLY_DOMAIN,
+                                                &message.reply_context().unwrap(),
+                                                &body,
+                                            )
+                                            .unwrap();
+                                        serde_json::to_vec(
+                                            &protocol::actions::CommandRecoveryReply {
+                                                nonce,
+                                                ciphertext,
+                                            },
+                                        )
+                                        .unwrap()
+                                    } else {
+                                        body
+                                    };
+                                    (200, body)
+                                }
                                 Err(error) => (
                                     409,
                                     serde_json::to_vec(&json!({"error":error.to_string()}))

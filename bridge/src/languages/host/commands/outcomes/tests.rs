@@ -44,6 +44,33 @@ fn receipts_keep_results_without_retaining_services_and_enforce_every_claim_boun
         store.get(&context, &input, false).unwrap(),
         Some(CommandProgress::Finished { outcome })
     );
+    let recovered = store
+        .control_scope(&scope.owner, scope.project, &input)
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        CommandScope::new(&recovered, &input).unwrap().provider,
+        context.provider
+    );
+    assert!(
+        store
+            .control_scope("another-owner", scope.project, &input)
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        store
+            .control_scope(&scope.owner, scope.project + 1, &input)
+            .unwrap()
+            .is_none()
+    );
+    let mut changed = input.clone();
+    changed.approval = "f".repeat(64);
+    assert!(
+        store
+            .control_scope(&scope.owner, scope.project, &changed)
+            .is_err()
+    );
     assert!(matches!(
         store
             .record(&context, &input, &Arc::new(Entry::new()), &progress)

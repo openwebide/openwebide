@@ -24,8 +24,11 @@ impl Challenge {
         root: &CapturedRoot,
         session: &str,
         coordinator: Coordinator,
-        _lease: &Lease,
+        lease: &Lease,
     ) -> Result<Self, String> {
+        if !lease.proof_covers(&root.folder) {
+            return Err("Folder proof requires its original private gate".into());
+        }
         use rustix::fs::{Mode, OFlags, openat};
         let name = challenge_name(session)?;
         let captured = Rooted(
@@ -151,7 +154,7 @@ impl Drop for Challenge {
         // capacity/closure/identity failures preserve the file without writing.
         runtime.spawn(async move {
             let _registration = registration;
-            let result = match coordinator.acquire(folder).await {
+            let result = match coordinator.acquire_proof(folder).await {
                 Ok(lease) => proof.clear(&lease),
                 Err(error) => Err(error),
             };

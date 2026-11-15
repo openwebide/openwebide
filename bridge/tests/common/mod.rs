@@ -45,13 +45,38 @@ impl Drop for TestDir {
     }
 }
 
+/// Keep integration-test recovery discovery outside the real OS account home.
+/// Servers in one test process share their disposable namespace so reconnects
+/// can still observe the original owners.
+pub fn server_config(
+    workspace_root: PathBuf,
+    secret: std::sync::Arc<str>,
+    pairing_token: Option<String>,
+) -> ServerConfig {
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    {
+        static RECOVERY_HOME: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+        let home = RECOVERY_HOME.get_or_init(|| {
+            tempfile::Builder::new()
+                .prefix("openwebide-integration-recovery-")
+                .tempdir()
+                .expect("create isolated integration recovery home")
+                .keep()
+        });
+        ServerConfig::new_for_test(workspace_root, secret, pairing_token, home.clone())
+            .expect("configure isolated integration recovery home")
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    ServerConfig::new(workspace_root, secret, pairing_token)
+}
+
 /// Start a bridge server on 127.0.0.1:0 and return the bound port.
 pub async fn start(workspace_root: PathBuf) -> u16 {
     let listener = TcpListener::bind("127.0.0.1:0")
         .await
         .expect("failed to bind 127.0.0.1:0");
     let port = listener.local_addr().expect("local_addr failed").port();
-    let config = ServerConfig::new(workspace_root, std::sync::Arc::from("dummy_secret"), None);
+    let config = server_config(workspace_root, std::sync::Arc::from("dummy_secret"), None);
     tokio::spawn(async move {
         run_server(listener, config).await;
     });

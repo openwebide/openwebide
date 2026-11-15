@@ -1138,6 +1138,17 @@ pub struct EditorRecoveryRoot {
     pub path: Option<String>,
 }
 impl EditorRecoveryRoot {
+    pub fn validate(&self) -> Result<(), String> {
+        if self
+            .path
+            .as_ref()
+            .is_some_and(|path| path.len() > 4096 || path.contains('\0'))
+        {
+            return Err("Recovered project root is invalid".into());
+        }
+        Ok(())
+    }
+
     /// Host capability boundary: local roots are origin-bound directory handles.
     pub fn for_project(project: &crate::Project) -> Self {
         Self {
@@ -1178,12 +1189,8 @@ impl EditorRecovery {
         if !self.files.is_empty() && self.root.is_none() {
             return Err("Recovered files have no project root".into());
         }
-        if self.root.as_ref().is_some_and(|root| {
-            root.path
-                .as_ref()
-                .is_some_and(|path| path.len() > 4096 || path.contains('\0'))
-        }) {
-            return Err("Recovered project root is invalid".into());
+        if let Some(root) = &self.root {
+            root.validate()?;
         }
         if self.files.len() > MAX_RECOVERY_FILES {
             return Err("Too many open files for editor recovery".into());

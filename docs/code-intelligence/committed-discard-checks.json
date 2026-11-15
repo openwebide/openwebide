@@ -1,0 +1,253 @@
+{
+  "status": "Committed-edit command discard and exact original rejection recovery verified in both modes. Dispatched-command recovery and the broader roadmap remain unfinished.",
+  "source_sha256": "7218a1e1489888a260938e4240d2e3c67c868ef5f757e208d825f0203ee1bc05",
+  "builds_on": "native-cancellation-checks.json",
+  "shared_implementation": {
+    "facade": "LanguageActionClient.discard_unstarted and acknowledge_command own Stop, positive native cleanup, compact reload and acknowledgement. Frontend recovery actions call this shared policy. Reserved Approved controls require existing native settlement; no fresh provider grant or Start is issued.",
+    "original_outcome": "The original authenticated command worker can read a bounded retained result only for an exact expected recovery scope, invocation, revision, phase and digest. Reads do not decode archived provider/source payloads and do not grant Claim or dispatch permission.",
+    "native": "The original journal callback adapter supplies the result primitive in both modes. Native reconciliation only adopts a retained Rejected outcome when its original reservation proves no dispatch and finished files, under the complete original folder lease and issuer. Existing results remain immutable.",
+    "lifecycle": "Bounded original observations recover prior backend rejections. Canonical Rejected and Cancelled decisions update compatible existing warm/retired command-control caches without retaining process or source handles."
+  },
+  "behavioral_tests": [
+    "Actual failing shared-facade test reproduced Approved Stop denial before the fix; retained failed executable and log.",
+    "Both-mode reserved Approved Stop contract plus eighteen committed-discard/prior-rejection cases exercise revoked providers, exact custom Unicode outcomes, callback loss, original-folder replacement/restoration, real lost result/settlement replies and six SIGKILL/successor cases. File/editor recovery remains unchanged and no command executes or fresh authority is requested.",
+    "Both-mode warm/retired cancellation controls reproduced Ready after physical retirement before the terminal-cache fix. The full suite now requires the original Cancelled state without inventing an outcome.",
+    "Both-mode Store result reads cover rejected and 200 KB completed results after archived provider payload corruption, plus wrong-worker/root/revision and forged/stale replies.",
+    "Existing native and HTTP cancellation, original outcome, late-folder and peer-publisher tests rerun. Post-recovery ordinary writer checks validate actual successful command outcomes."
+  ],
+  "verification": {
+    "terminal": "committed-discard-qualified-1794710142/terminal.json",
+    "artifacts": "committed-discard-outputs-1794710183/manifest.json",
+    "cases": [
+      {
+        "case": "format",
+        "returncode": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "storage-all-unit",
+        "returncode": 0,
+        "log_sha256": "f93c630153b4113b6f1e37336c4260b1964412b4c9a09aa63ed6cc396f577694"
+      },
+      {
+        "case": "core-workspace-contracts",
+        "returncode": 0,
+        "log_sha256": "8fa2777f3906c8b04fee386ef3550a810cd5ccb10846e97da3c979ea90102ef5"
+      },
+      {
+        "case": "core-command-contracts",
+        "returncode": 0,
+        "log_sha256": "c9973cb81a727da01f81bfc7a8711e693e40d18873cae1e8e3e973486e1737f1"
+      },
+      {
+        "case": "backend-all-unit",
+        "returncode": 0,
+        "log_sha256": "362c99cfa68b277db66e8016d224b25a1e945720347ea65e68a44dabd22edd34"
+      },
+      {
+        "case": "agent-command-actions",
+        "returncode": 0,
+        "log_sha256": "f96ff344f516d7cea000f762130f54288796ea585086c6038f60fd2bb253ba35"
+      },
+      {
+        "case": "frontend-native-unit",
+        "returncode": 0,
+        "log_sha256": "1ea0ef5671db9cad0a3170a6be83edeb9fdd694bb1f0b0b68b789867cfacc2f9"
+      },
+      {
+        "case": "native-all-target-clippy",
+        "returncode": 0,
+        "log_sha256": "0775b8d8a5f3910f57c27a4e09b0b4b4b624c89f88c179712e407f3f5857e299"
+      },
+      {
+        "case": "WASI-backend-clippy",
+        "returncode": 0,
+        "log_sha256": "9ffc0528ed237d2e2ad1a65fdced75b55b502dadd5689bbb171fdcb1b5d1592a"
+      },
+      {
+        "case": "WASM-frontend-all-target-clippy",
+        "returncode": 0,
+        "log_sha256": "a68ab9e2a2e832d6bb91baaadb958acb827c15c22344b8817b88b33755d0060b"
+      },
+      {
+        "case": "matching-debug-bridge",
+        "returncode": 0,
+        "log_sha256": "84b2842aed1e5a6ef3a25b0230d10de8750953e6dbdffecc124703a1018be04c"
+      },
+      {
+        "case": "owned-producer-compound-admission",
+        "returncode": 0,
+        "log_sha256": "4bff8ff004379f3d21c9d8ec25398684a27f20daa1ff4bfefe564fafe132b4b1"
+      },
+      {
+        "case": "bridge-all-unit",
+        "returncode": 0,
+        "log_sha256": "acc22ebb73680ff9fa8ec923f4aad43968e91575193edb147bdc4cf50e6a7b4f"
+      },
+      {
+        "case": "marketplace-published-smoke",
+        "returncode": 0,
+        "log_sha256": "68a37fbaaa550e7592e04615e01b29941cf0889ce238d4f181e5011c7b7ada11"
+      },
+      {
+        "case": "native-recovery-host-example",
+        "returncode": 0,
+        "log_sha256": "84b2842aed1e5a6ef3a25b0230d10de8750953e6dbdffecc124703a1018be04c"
+      },
+      {
+        "case": "command-http-complete",
+        "returncode": 0,
+        "log_sha256": "4f9a79a7d08a9a028c50a29676222c849da7c019ed8581254c2e0a91e0d015fa"
+      },
+      {
+        "case": "bridge-default-bin-clippy",
+        "returncode": 0,
+        "log_sha256": "38a361a82aa00f03f6447590e54bbada3f4043512bf5f0c1d753a4f6cfd1e1b5"
+      },
+      {
+        "case": "windows-cross-clippy-not-native-runtime",
+        "returncode": 0,
+        "log_sha256": "5c934b0488d5b58c8ed4596cf20f5b1a805f62d4b351b5a939b70ed23c2f6b48"
+      },
+      {
+        "case": "production-feature-inventory",
+        "returncode": 0,
+        "log_sha256": "51a70955c82feadb08bcaf685eec7550c14e8cf35436c8f256347155c7578b04"
+      }
+    ],
+    "counts": {
+      "storage-all-unit": 241,
+      "core-workspace-contracts": 53,
+      "core-command-contracts": 1,
+      "backend-all-unit": 135,
+      "agent-command-actions": 3,
+      "frontend-native-unit": 143,
+      "owned-producer-compound-admission": 1,
+      "bridge-all-unit": 536,
+      "marketplace-published-smoke": 1,
+      "command-http-complete": 8
+    },
+    "distinct_tests": 1121,
+    "test_executions": 1122,
+    "native_library_all_declared_passed": 537,
+    "HTTP_tests": 8,
+    "HTTP_lifecycle_scenarios": 66,
+    "new_discard_HTTP_scenarios": 20,
+    "new_terminal_cache_HTTP_scenarios": 2,
+    "actual_SIGKILL_scenarios": 24,
+    "actual_peer_scenarios": 2,
+    "HTTP_authentication_scenarios": 6,
+    "native_WASI_WASM_Windows_cross_Clippy_passed": true,
+    "fresh_checks_after_platform_guard": 4,
+    "qualified_prior_cases": 15,
+    "source_qualification": "The sole source delta cfg-gates a helper to precisely match its only caller. macOS active code and all shared inputs are unchanged; native all-target and Windows cross Clippy freshly compile the final source.",
+    "native_Windows_runtime_verified": false,
+    "fresh_current_Linux_runtime_verified": false,
+    "current_browser_or_installed_application_verified": false,
+    "actual_production_release_rebuilt": false,
+    "additional_integration_verification": {
+      "source_sha256": "74fe8d806404a490222e895d45eca48371f3546b3170a991d2095e023712335e",
+      "terminal": "integration-isolation-1794710371/terminal.json",
+      "artifacts": "integration-isolation-outputs-1794710803/manifest.json",
+      "native_and_Windows_cross_Clippy_passed": true,
+      "integration_binaries": 17,
+      "counts": {
+        "auth": {
+          "passed": 9,
+          "ignored": 0
+        },
+        "cwd_confinement": {
+          "passed": 8,
+          "ignored": 0
+        },
+        "host_admin_auth": {
+          "passed": 1,
+          "ignored": 0
+        },
+        "host_admin_ssh": {
+          "passed": 0,
+          "ignored": 2
+        },
+        "http_git": {
+          "passed": 4,
+          "ignored": 0
+        },
+        "http_parsing": {
+          "passed": 17,
+          "ignored": 0
+        },
+        "http_secret": {
+          "passed": 7,
+          "ignored": 0
+        },
+        "http_security": {
+          "passed": 19,
+          "ignored": 0
+        },
+        "language_commands": {
+          "passed": 8,
+          "ignored": 0
+        },
+        "plugin_panels": {
+          "passed": 0,
+          "ignored": 1
+        },
+        "plugins": {
+          "passed": 2,
+          "ignored": 0
+        },
+        "process_lifecycle": {
+          "passed": 3,
+          "ignored": 0
+        },
+        "scheduling_component": {
+          "passed": 0,
+          "ignored": 1
+        },
+        "workspace_companion": {
+          "passed": 1,
+          "ignored": 0
+        },
+        "workspace_inspection": {
+          "passed": 1,
+          "ignored": 0
+        },
+        "workspace_transactions": {
+          "passed": 1,
+          "ignored": 0
+        },
+        "ws_delivery": {
+          "passed": 11,
+          "ignored": 0
+        }
+      },
+      "passed": 92,
+      "ignored": 4,
+      "scope": "Twenty-four ordinary integration server constructors now use a disposable namespace shared per test process. Existing explicitly isolated command fixtures retain their own homes. Production code is byte-identical to the committed-discard checkpoint.",
+      "native_Windows_runtime_verified": false,
+      "full_CI_complete": false,
+      "explicit_ignored_panel": {
+        "terminal": "integration-isolation-panel-1794710914/terminal.json",
+        "passed": 1,
+        "executable_sha256": "85561edbd65aa40c0430eb63e9ec34780d99c28ea685bc4ce2d2e58ced45b963",
+        "component_sha256": "5d1cc9f88bc538ae4f8fb1ff416bf6d71154949eee9d7fe62ed3f69a239d9e35",
+        "reference_commit": "e517f4c0dff6182a26ca7283832021a148a9f82e"
+      },
+      "effective_distinct_integration_tests_passed": 93,
+      "remaining_ignored_tests": [
+        "Two host_admin_ssh tests require their isolated Docker/SSH target.",
+        "One scheduling_component test requires its separately compiled component."
+      ]
+    }
+  },
+  "remaining": [
+    "Qualify callback recovery with the current optimized native/WASI release distribution and installed app, including original OS-selected private namespace and physical browser folder permission/device checks. The built-app checkpoint uses optimized frontend, unoptimized production WASI entry point and the same native HTTP host with an isolated test-support namespace.",
+    "Finish frozen-owner application recovery beyond the native OS-owner CLI: deleted original projects/accounts, legacy command owners without verifiable cleanup, actual process interruptions and current packaged/native platform contracts. Never infer cleanup from missing public rows, failed requests or 404 replies.",
+    "Finish remaining admission/watcher-enrollment and outcome/context interruptions, including escaped-process cleanup beyond the verified managed-group cases.",
+    "Finish every participating writer, Git/PTY and escaped-process lifetime; implement and verify native Windows ownership and fresh packaged Linux runtime.",
+    "Complete all original packaged application/browser, cache/resource/RSS/prefetch/homelab and full-CI requirements."
+  ],
+  "full_CI_complete": false,
+  "whole_goal_complete": false,
+  "followup": "retired-command-worker-checks.json"
+}

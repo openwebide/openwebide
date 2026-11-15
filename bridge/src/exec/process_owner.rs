@@ -24,7 +24,7 @@ use std::{
     time::Duration,
 };
 
-const VERSION: u32 = 2;
+const VERSION: u32 = 4;
 const MODE: &str = "--internal-process-owner";
 static EXECUTABLE: OnceLock<PathBuf> = OnceLock::new();
 static STOP_REQUESTED: AtomicBool = AtomicBool::new(false);
@@ -60,6 +60,7 @@ enum Request {
     },
     StartCommand {
         version: u32,
+        ordinary: bool,
         program: PathBuf,
         args: Vec<String>,
         root: PathBuf,
@@ -68,6 +69,7 @@ enum Request {
     CompleteCommand,
     Retain {
         id: String,
+        cleanup: Option<crate::native_recovery::ProcessCleanup>,
     },
     Release {
         id: String,
@@ -262,6 +264,20 @@ impl Owner {
         let _ = self.stop.shutdown(Shutdown::Both);
     }
     pub async fn retain(&self, descriptors: Vec<OwnedFd>) -> Result<Claim, String> {
+        self.retain_inner(descriptors, None).await
+    }
+    pub(crate) async fn retain_command(
+        &self,
+        descriptors: Vec<OwnedFd>,
+        cleanup: crate::native_recovery::ProcessCleanup,
+    ) -> Result<Claim, String> {
+        self.retain_inner(descriptors, Some(cleanup)).await
+    }
+    async fn retain_inner(
+        &self,
+        descriptors: Vec<OwnedFd>,
+        cleanup: Option<crate::native_recovery::ProcessCleanup>,
+    ) -> Result<Claim, String> {
         // Own cleanup before the first await: cancellation may happen after
         // descriptors were delivered but before the watcher acknowledges them.
         let claim = Claim {
@@ -273,6 +289,7 @@ impl Owner {
             .exchange(
                 Request::Retain {
                     id: claim.id.clone(),
+                    cleanup,
                 },
                 descriptors,
             )
@@ -363,6 +380,8 @@ fn helper_command(fd: i32) -> Result<tokio::process::Command, String> {
 
 fn run(mut stream: UnixStream) -> Result<(), String> {
     install_signals()?;
+    #[cfg(target_os = "linux")]
+    groups::adopt_descendants().map_err(|error| error.to_string())?;
     configure(&stream)?;
     // Do not let the actual server inherit its owner's private control socket.
     // SAFETY: only descriptor flags on this exclusively owned socket change.
@@ -373,12 +392,13 @@ fn run(mut stream: UnixStream) -> Result<(), String> {
     let request = match request {
         Request::StartCommand {
             version: VERSION,
+            ordinary,
             program,
             args,
             root,
             environment,
         } => {
-            return commands::run(stream, program, args, root, environment, fds);
+            return commands::run(stream, program, args, root, environment, fds, ordinary);
         }
         request => request,
     };
@@ -416,7 +436,12 @@ fn run(mut stream: UnixStream) -> Result<(), String> {
         &[],
     )
     .is_err();
-    let mut retained: Option<(String, Vec<OwnedFd>)> = None;
+    struct Retained {
+        id: String,
+        descriptors: Vec<OwnedFd>,
+        cleanup: Option<crate::native_recovery::ProcessCleanup>,
+    }
+    let mut retained: Option<Retained> = None;
     while !stopping && !STOP_REQUESTED.load(Ordering::Relaxed) {
         match groups::exited(pid) {
             Ok(false) => {}
@@ -444,7 +469,7 @@ fn run(mut stream: UnixStream) -> Result<(), String> {
             let (request, fds) =
                 wire::receive::<Request>(&mut stream).map_err(|e| e.to_string())?;
             let reply = match request {
-                Request::Retain { id }
+                Request::Retain { id, cleanup }
                     if retained.is_none() && valid_id(&id) && !fds.is_empty() =>
                 {
                     for fd in &fds {
@@ -455,12 +480,22 @@ fn run(mut stream: UnixStream) -> Result<(), String> {
                             return Err("A folder claim requires directory descriptors".into());
                         }
                     }
-                    retained = Some((id.clone(), fds));
+                    let validation = cleanup.as_ref().map_or(Ok(()), |c| c.validate(&fds));
+                    retained = Some(Retained {
+                        id: id.clone(),
+                        descriptors: fds,
+                        cleanup: if validation.is_ok() { cleanup } else { None },
+                    });
+                    validation?;
                     Reply::Retained { id }
                 }
                 Request::Release { id }
-                    if fds.is_empty() && retained.as_ref().is_some_and(|(held, _)| held == &id) =>
+                    if fds.is_empty() && retained.as_ref().is_some_and(|held| held.id == id) =>
                 {
+                    let held = retained.as_ref().expect("The original claim was checked");
+                    if let Some(cleanup) = &held.cleanup {
+                        cleanup.release(&held.descriptors)?;
+                    }
                     drop(retained.take());
                     Reply::Released { id }
                 }
@@ -482,8 +517,19 @@ fn run(mut stream: UnixStream) -> Result<(), String> {
         }
         std::thread::sleep(Duration::from_millis(100));
     }
+    if let Some(held) = &retained
+        && let Some(cleanup) = &held.cleanup
+    {
+        while cleanup.stopped(&held.descriptors).is_err() {
+            // Positive group cleanup cannot be replaced by silence or an
+            // unconfirmed journal write. Keep the original descriptors and PID.
+            std::thread::sleep(Duration::from_millis(100));
+        }
+    }
     drop(retained);
     child.wait().map_err(|e| e.to_string())?;
+    #[cfg(target_os = "linux")]
+    groups::reap_descendants(pid).map_err(|error| error.to_string())?;
     Ok(())
 }
 fn valid_id(id: &str) -> bool {

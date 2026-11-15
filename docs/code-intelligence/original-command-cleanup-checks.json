@@ -1,0 +1,202 @@
+{
+  "status": "Original early Stop recovery verified in both modes after file completion; complete command recovery remains in progress",
+  "source_sha256": "0440928b5f8b9fc7337639a0677e3ad6de46564dcfdcf56bb133b6ee6df13f96",
+  "shared_implementation": {
+    "native": "Namespace original owner context and file receipts; Host.recover_original_control and Journal.complete reuse original ownership and outcome publication",
+    "backend": "OriginalCommandRequest, recovery_authority.verify and Store.original_language_command share one recovery-only callback policy",
+    "adapters": "Service and paired file transports retain their original callback at admission; recovery uses the same pinned OriginalCommandJournal above HTTP primitives",
+    "locking": "A bounded process-local FIFO queues lock attempts by the original anchor object. OS locks continue to coordinate processes. Queue and filesystem acquisition share the original wait budget."
+  },
+  "behavior": [
+    "Persist the original issuer secret, callback origin and immutable scope binding in bounded private owner metadata; reconstruct authority without copying large provider/source payloads into fixed command-result space.",
+    "Record positive original file completion while holding the complete physical folder lease, before releasing file credentials. Unknown legacy effects and unfinished file work cannot justify no-dispatch cleanup.",
+    "Observe or clean up only with the original issuer and reserved command worker. Reject browser transport, substituted identities and every Claim, including structurally valid Start and Recover.",
+    "Stop a reserved, never-dispatched command after original file completion even when no original LSP session exists. Persist its native rejection before publication; retain exclusion through manual acknowledgement and exact backend/native settlement.",
+    "Retry exact rejection and final settlement acknowledgements through shared storage CAS. Preserve the original outcome and forbid replay.",
+    "Avoid unchanged owner/result/receipt publications and repeated validation of the same locked database snapshot. Keep original object, namespace, schema, digest, revision and directory-flush checks; prevent fresh local readers from starving a waiting publisher."
+  ],
+  "behavioral_tests": [
+    "Both-mode HTTP matrix: success, Stop before Start, Stop from a fresh host with no original LSP session, Git branch change and branch round trip. All ten scenarios retain original result/file assertions, await settlement and run an ordinary native command through the physical folder gate afterward.",
+    "Original callback HTTP policy in both modes: forbidden browser headers, forged issuer, wrong project, wrong private worker, valid Start/Recover envelopes, unfinished file work, valid compact reads and transport-secret rotation.",
+    "Storage in both modes: reserved Approved cleanup after actual file worker release and provider revocation, exact lost rejection ACK, manual acknowledgement, lost final settlement ACK, original terminal observation and idle project state.",
+    "Native namespace: original credential and origin survive reopen; unfinished work cannot be rejected; complete file receipt survives reopen while retaining command exclusion; different callback is rejected; legacy upgrade keeps unknown effects; context corruption and schema downgrade are rejected.",
+    "An actual shared OS reader holds the anchor while an exclusive publisher queues. A later reader cannot pass that publisher. All original native busy-initializer, persistence, object replacement, cleanup and recovery assertions remain enabled under default parallelism."
+  ],
+  "verification": {
+    "terminal": "original-command-cleanup-qualified-1794698924/terminal.json",
+    "input_qualification": "original-command-cleanup-qualified-1794698924/input-qualification.json",
+    "artifacts": "original-command-cleanup-final-outputs-1794698925/manifest.json",
+    "fresh_native_cases": 11,
+    "unchanged_shared_cases": 8,
+    "qualification": "The final native-only changes affect four private native bridge files. The eight successful shared cases retain identical non-bridge package/build inputs; earlier native failures remain recorded as failures. All affected native checks were rerun on the final code.",
+    "cases": [
+      {
+        "case": "format",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "inputs_verified_from_source_sha256": "0440928b5f8b9fc7337639a0677e3ad6de46564dcfdcf56bb133b6ee6df13f96"
+      },
+      {
+        "case": "storage-all-unit",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "456385016a6b60b115d27e47cac455fe5ec3a1e22e64253abb4cc9ae63e3aa18",
+        "inputs_verified_from_source_sha256": "e74f17f581c3cb994f655ae56a59ce93229ac90f9c2815200cb865a4b7f4d982"
+      },
+      {
+        "case": "core-workspace-contracts",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "e8be1a2e98e7af20347bc7564e85f3595976d44fc6155a8e4f517c80cf0bd840",
+        "inputs_verified_from_source_sha256": "e74f17f581c3cb994f655ae56a59ce93229ac90f9c2815200cb865a4b7f4d982"
+      },
+      {
+        "case": "core-command-contracts",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "8e9f48b55dec557686dc2ccd9a01cb121a1ca61e5409e0e38adcf79da25eef04",
+        "inputs_verified_from_source_sha256": "e74f17f581c3cb994f655ae56a59ce93229ac90f9c2815200cb865a4b7f4d982"
+      },
+      {
+        "case": "backend-all-unit",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "75b8fd5ef65e7af26240370ad7fc493e36cdb0e8a830c899716cacdaebd1da34",
+        "inputs_verified_from_source_sha256": "e74f17f581c3cb994f655ae56a59ce93229ac90f9c2815200cb865a4b7f4d982"
+      },
+      {
+        "case": "agent-command-actions",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "a84efe636a198b187c799355faeeb8e9d34cd6bf69661c786f4e0d22078839c8",
+        "inputs_verified_from_source_sha256": "e74f17f581c3cb994f655ae56a59ce93229ac90f9c2815200cb865a4b7f4d982"
+      },
+      {
+        "case": "frontend-native-unit",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "ec19914dffbb1c9c1a532c43a8f19e41cd45f6db76861615b5aa9343c4e8c7ae",
+        "inputs_verified_from_source_sha256": "e74f17f581c3cb994f655ae56a59ce93229ac90f9c2815200cb865a4b7f4d982"
+      },
+      {
+        "case": "native-all-target-clippy",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "accb305d4f57538a6e1325f56a25a97bf5d424ee78a1b9e56f67864316f986da",
+        "inputs_verified_from_source_sha256": "0440928b5f8b9fc7337639a0677e3ad6de46564dcfdcf56bb133b6ee6df13f96"
+      },
+      {
+        "case": "WASI-backend-clippy",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "0674b29b50c3dec56646820dd880f72135797e8fbae612e62ca8370ee4ddce1c",
+        "inputs_verified_from_source_sha256": "e74f17f581c3cb994f655ae56a59ce93229ac90f9c2815200cb865a4b7f4d982"
+      },
+      {
+        "case": "WASM-frontend-all-target-clippy",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "a7642a0867425c6137f6fda230ee0c5445d5148745ccd7b4f5b0b4f2b4540d91",
+        "inputs_verified_from_source_sha256": "e74f17f581c3cb994f655ae56a59ce93229ac90f9c2815200cb865a4b7f4d982"
+      },
+      {
+        "case": "matching-debug-bridge",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "d4d75ca394462d179bd64147ac935203d54d7a3a74014e31c820c47656ddeff5",
+        "inputs_verified_from_source_sha256": "0440928b5f8b9fc7337639a0677e3ad6de46564dcfdcf56bb133b6ee6df13f96"
+      },
+      {
+        "case": "namespace-fair-publisher",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "d07985937e12cd3fffe509262042f2d09e418c8e4074bb51d487c22b8223e65b",
+        "inputs_verified_from_source_sha256": "0440928b5f8b9fc7337639a0677e3ad6de46564dcfdcf56bb133b6ee6df13f96"
+      },
+      {
+        "case": "owned-producer-compound-admission",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "6fd91d10b386077572726d139609d44550bd67ac813bf354e333292f8f755d61",
+        "inputs_verified_from_source_sha256": "0440928b5f8b9fc7337639a0677e3ad6de46564dcfdcf56bb133b6ee6df13f96"
+      },
+      {
+        "case": "bridge-all-unit",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "c77a5be06361c2da76eb7d0e09233f374380d225bb46d53e42b83b803f084720",
+        "inputs_verified_from_source_sha256": "0440928b5f8b9fc7337639a0677e3ad6de46564dcfdcf56bb133b6ee6df13f96"
+      },
+      {
+        "case": "marketplace-published-smoke",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "2715a057aa67d901582dddfdaadb948b0534efcb4339fdb27e23e2237e87eb81",
+        "inputs_verified_from_source_sha256": "0440928b5f8b9fc7337639a0677e3ad6de46564dcfdcf56bb133b6ee6df13f96"
+      },
+      {
+        "case": "command-http-complete",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "74827386532e52bed0f3512b72dca774764b8760326976e9adafc5fa7f50a3a4",
+        "inputs_verified_from_source_sha256": "0440928b5f8b9fc7337639a0677e3ad6de46564dcfdcf56bb133b6ee6df13f96"
+      },
+      {
+        "case": "bridge-default-bin-clippy",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "354b866486a637f41967800e520d6aa14ea03db31e35dbf8165a6d04d8bc8a30",
+        "inputs_verified_from_source_sha256": "0440928b5f8b9fc7337639a0677e3ad6de46564dcfdcf56bb133b6ee6df13f96"
+      },
+      {
+        "case": "windows-cross-clippy-not-native-runtime",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "d07d0d419e2747fbe906d23f3335849328abb98992d7f7e716980b0676b16f7d",
+        "inputs_verified_from_source_sha256": "0440928b5f8b9fc7337639a0677e3ad6de46564dcfdcf56bb133b6ee6df13f96"
+      },
+      {
+        "case": "production-feature-inventory",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "51a70955c82feadb08bcaf685eec7550c14e8cf35436c8f256347155c7578b04",
+        "inputs_verified_from_source_sha256": "0440928b5f8b9fc7337639a0677e3ad6de46564dcfdcf56bb133b6ee6df13f96"
+      }
+    ],
+    "counts": {
+      "storage-all-unit": 238,
+      "core-workspace-contracts": 53,
+      "core-command-contracts": 1,
+      "backend-all-unit": 135,
+      "agent-command-actions": 3,
+      "frontend-native-unit": 143,
+      "namespace-fair-publisher": 1,
+      "owned-producer-compound-admission": 1,
+      "bridge-all-unit": 535,
+      "marketplace-published-smoke": 1,
+      "command-http-complete": 2
+    },
+    "distinct_tests": 1111,
+    "test_executions": 1113,
+    "native_library_all_declared_passed": 536,
+    "HTTP_command_scenarios": 10,
+    "HTTP_authentication_requests": 6,
+    "normal_bridge_features": [
+      "default",
+      "tls"
+    ],
+    "native_Windows_runtime": false,
+    "fresh_current_Linux_runtime": false,
+    "fresh_current_browser_or_installed_app_runtime": false,
+    "full_CI_complete": false,
+    "whole_goal_complete": false
+  },
+  "limits": [
+    "The fresh-host HTTP case creates a new server/host and session registry in the same test process against the same private namespace. It does not prove an abrupt OS-process crash or packaged-app restart.",
+    "Controls can observe an already-recorded native outcome, but do not yet restart its failed publisher after host loss. Startup reconciliation, watcher completion receipts and history-pruned final-ACK recovery remain unfinished.",
+    "Early Cancel retirement and callback rebinding with a fresh original-scope proof remain unfinished. Unknown legacy context stays pending rather than inferring cleanup.",
+    "Lost-ACK assertions here are shared storage contracts, not injected HTTP connection failures. Complete transport fault and phase-lifetime coverage remains required.",
+    "Direct backend/WASI writer participation, native Windows ownership, fresh Linux and packaged-app checks, all required CI, and all original cache/resource/prefetch requirements remain open."
+  ]
+}

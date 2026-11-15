@@ -1169,6 +1169,256 @@ Remaining work:
   through permission loss and require manual acknowledgement for uncertain effects
   ([recorded cases and checkpoint limits](code-intelligence/physical-folder-checks.json)).
   These device cases do not establish the remaining mutation authority guarantees.
+  Native admission now checks captured root and ancestor creation-time observations
+  using the shared resource identity
+  ([focused native checks](code-intelligence/native-folder-identity-checks.json)).
+  Both native journal transports now share private recovery credential issuance
+  bound to the original journal and a separate persistent backend namespace.
+  Worker release, transport-secret rotation and a closed/reopened backend database
+  preserve that credential
+  ([focused issuer checks](code-intelligence/private-recovery-authority-checks.json)).
+  Their private scope now observes original file and command recovery together
+  without loading snapshots or provider payloads; stale authorization and missing
+  activity are rejected in both transports. This observation does not grant a lease.
+  Compact private command recovery now retains the original invocation, revision,
+  phase and outcome fingerprint without reading provider/source payloads. Both
+  transports use the original issuer and reject stale or incomplete replies;
+  readable archived records gain their binding once, while unreadable legacy
+  records remain pending
+  ([command metadata checks](code-intelligence/command-recovery-metadata-checks.json)).
+  The backend now keeps command-worker claims and settlement independent of the
+  file worker. Both native transports share original identity and outcome
+  validation; completed commands retain writer/deletion protection until cleanup
+  and settlement are acknowledged. Upgrade/replay and callback contracts pass in
+  both modes ([command worker checks](code-intelligence/command-worker-checks.json)).
+  The shared native producer now resumes the original permit, reserves result
+  storage before command admission, records one dispatch boundary and publishes
+  outcomes/settlement under the complete folder lease after browser loss. Both
+  modes execute once, preserve warm services and keep no-dispatch rejections
+  fenced through manual acknowledgement
+  ([live producer checks](code-intelligence/native-command-producer-checks.json)).
+  Status returns stored outcomes without the original host, including uncertain
+  results. Stop can return the stored result after positive native cleanup;
+  otherwise it still requires the original host. Both adapters use the same
+  backend authorization decision and retain account/context checks.
+  Bounded recovery snapshots and outcome acknowledgements now use preserved
+  command metadata without loading the archived provider or source payload.
+  Native controls resolve the original retained session; recovery does not load
+  installed providers. Reload keeps completed/acknowledged commands visible and
+  saves paused until native settlement clears.
+  Complete bridge HTTP command cases now use real storage approvals, native file
+  admission and paired folder/command delegation in an isolated test namespace.
+  Join, stop-before-start, Git branch/round-trip and post-cache outcomes retain
+  their original assertions
+  ([command HTTP checks](code-intelligence/command-http-checks.json)).
+  Attached-command result space and the original private worker are now reserved
+  atomically with folder ownership before first file admission. Capacity failure
+  publishes neither a new folder owner nor a command intent. Only that worker can
+  promote a reservation after file recovery is idle; existing execution intents
+  remain single-use
+  ([reservation checks](code-intelligence/command-reservation-checks.json)).
+  Backend file admission also retains the original command worker atomically,
+  without permission to dispatch. Start still checks fresh manual authority;
+  paired callbacks for the reserved worker can publish cleanup after Start denial.
+  Legacy file admissions and intents can still recover after provider revocation;
+  the new reservation requirement applies to first admission
+  ([backend reservation checks](code-intelligence/backend-command-reservation-checks.json)).
+  Native owners now retain their original private callback credential and origin,
+  plus a positive file-completion receipt before file credentials are released.
+  A recovery-only backend channel checks that issuer and the original command
+  worker; it cannot start a command. Early Stop can publish a no-dispatch rejection
+  and settle after acknowledgement without the original LSP session. All ten
+  HTTP lifecycle cases now verify backend settlement and a subsequent ordinary
+  native writer, including a fresh native host using the same private namespace.
+  Legacy owners retain unknown file effects. Local namespace lock attempts now
+  queue behind waiting publishers within the existing bounded wait
+  ([original cleanup checks](code-intelligence/original-command-cleanup-checks.json)).
+  Recorded native outcomes now resume through the original callback at startup
+  and on controls, with bounded, deduplicated recovery ownership. Known results
+  remain readable during callback outages or folder replacement; cleanup waits
+  for the original folder and issuer. Eight real process cases kill the recorded
+  result's owner with SIGKILL, then verify successor recovery in both modes,
+  including a settlement committed before its HTTP reply is lost
+  ([recorded restart checks](code-intelligence/recorded-command-restart-checks.json)).
+  Settlement retries now check the original native record independently of callback
+  context, retry later folder loss and stop after another process retires that record.
+  Both-mode contracts cover no-origin owners, a newer owner retaining exclusion,
+  later folder substitution and two real publishers joined across a stale reply
+  ([peer settlement checks](code-intelligence/settlement-peer-recovery-checks.json)).
+  Ten deterministic both-mode cases now verify actual registered jobs fall from
+  one to zero after peer retirement with the original folder absent: a retained
+  no-dispatch result, admitted/unadmitted cancellation and real received completed
+  and uncertain results. Dispatched commands execute exactly once. Uncertain
+  results retain manual review; completed commands preserve their warm service
+  until host shutdown. Removing the early original-presence check reproduces the
+  live-job leak; the full affected command HTTP suite passes with it restored
+  ([retired worker checks](code-intelligence/retired-command-worker-checks.json)).
+  Cancelled native reservations now persist an outcome-free receipt and retire only
+  after exact original cleanup and settlement. The shared facade sends recovery
+  controls without fresh provider authority; bounded native observations and owned
+  retries continue independently of browser lifetime. Reservations whose first
+  backend admission never committed require positive original no-worker/file proof;
+  unknown or unfinished effects remain protected. Both modes pass twenty new HTTP
+  cases, including eight process kills, revoked providers, folder substitution and
+  lost cleanup/final replies. No command is replayed
+  ([native cancellation checks](code-intelligence/native-cancellation-checks.json)).
+  Committed-edit command discard and outcome acknowledgement now share native
+  Stop/cleanup policy above both adapters, without acquiring fresh provider grants.
+  Already-recorded backend rejections retain their exact original result through
+  bounded authenticated reads; adoption requires positive no-dispatch and completed
+  file proof under the original folder lease. Warm and retired controls keep the
+  original Rejected or Cancelled decision. Twenty discard/control cases and two
+  terminal-cache cases pass in both modes, including six more process kills
+  ([committed discard checks](code-intelligence/committed-discard-checks.json)).
+  Original process watchers now persist managed-group cleanup receipts before
+  releasing their complete folder descriptors. Command results precede watcher
+  release, preserving exact outcomes through an unacknowledged handoff. A successor
+  with the original issuer and folder can recover a dispatched command as uncertain
+  after its owner is killed, without replay, and retains fencing through manual
+  acknowledgement and settlement. Both modes pass the real dispatch/process-loss
+  contract plus all prior command HTTP cases
+  ([watcher receipt checks](code-intelligence/watcher-receipt-checks.json)).
+  Prepared native intents now recover through original Stop after owner loss
+  before backend Claim or after its commit but before ACK. Both modes pass all four
+  real process-loss cases with no RPC, unchanged source/editor recovery, late-worker
+  fencing, manual acknowledgement and successful ordinary writing afterwards
+  ([prepared command checks](code-intelligence/prepared-command-checks.json)).
+  Received completed and uncertain results now pass sixteen real owner-loss cases
+  across both adapters, including watcher handoff, original namespace/folder loss,
+  lost final settlement replies and concurrent recovery hosts. Exact results,
+  physical fencing, manual review and ordinary writer recovery are retained without
+  replay ([received result checks](code-intelligence/received-command-result-checks.json)).
+  Finish remaining admission/watcher enrollment and outcome/context interruption windows.
+  Original final settlements now survive public history pruning in bounded private
+  receipts. A durable native metadata acknowledgement queue retires independently
+  of folder access and ordinary writer admission, including a second process loss
+  after the backend disposes its receipt. Upgrade/replay, capacity and authenticated
+  callback checks pass in both modes
+  ([pruned history checks](code-intelligence/pruned-command-history-checks.json)).
+  Configured backend address changes now reconnect original command callbacks
+  only after an authenticated private scope reply. Both adapters retain the
+  verified move through process loss and missing folder paths, without exposing
+  the original recovery proofs or changing command authority
+  ([configured callback checks](code-intelligence/configured-command-callback-checks.json)).
+  The current browser connection now supplies a scoped candidate through the
+  shared project host without requiring folder access. Running native publishers
+  follow a verified move; both transports reject replacement issuers and replayed
+  replies, and metadata-only queues reconnect after pruning and a lost final ACK
+  ([browser callback checks](code-intelligence/browser-command-callback-checks.json)).
+  Built-browser checks now pass the real WASI backend/paired transports and
+  recovery UI after a backend address move with the native process unchanged.
+  Original Stop/manual acknowledgement and ordinary writing recover in both
+  modes; the new Local origin has no folder handle and no command is replayed
+  ([built app checks](code-intelligence/built-command-callback-checks.json)).
+  Qualify optimized native/WASI distributions, installed apps and physical
+  permissions; frozen-owner administration and escaped groups remain open.
+  The native OS-owner recovery CLI now inspects and explicitly retires reviewed
+  original records without the old issuer. It requires the original folder gate
+  and positive command cleanup, retains an audit and permanently fences old
+  transaction credentials. A later normal command can settle while preserving the
+  audit and new acknowledgement metadata
+  ([native CLI checks](code-intelligence/native-recovery-administration-checks.json)).
+  Fresh Linux containers now pass the actual OS-default CLI, late-original
+  fencing and ordinary HTTP writing, plus both-mode native metadata contracts
+  ([Linux CLI checks](code-intelligence/linux-recovery-administration-checks.json)).
+  Native HTTP/SQLite checks now cover a genuinely dispatched command whose
+  project is deleted after settlement but before native acknowledgement. Both
+  adapters retain the original result and require explicit retirement before
+  ordinary writing resumes
+  ([deleted-project checks](code-intelligence/deleted-project-command-checks.json)).
+  Built-browser/WASI checks now cover real command approval, a lost committed
+  settlement reply and authenticated project deletion. A new native host observes
+  the original callback's 404 and keeps the fence; explicit retirement preserves
+  the result and permits an actual file write after another restart in both modes
+  ([built-app deletion checks](code-intelligence/built-deleted-project-checks.json)).
+  Reloaded pages now remain active through deletion and native restarts in both
+  modes. The companion keeps its address; complete file snapshots stay exact
+  through recovery, followed by the requested ordinary write
+  ([reload checks](code-intelligence/browser-reload-deletion-checks.json)).
+  The original approval page now also stays active without reload through the
+  same deletion/recovery sequence in both modes, with all seven file observations
+  exact ([original-page checks](code-intelligence/original-page-deletion-checks.json)).
+  Account decommissioning now has the same two-mode recovery evidence: after
+  actual API project deletion, a guarded administrative SQLite removal enforces
+  foreign keys and rejects the old login. Native ownership retains the original
+  context/result until explicit recovery; all eight file observations stay exact
+  ([account checks](code-intelligence/account-decommission-checks.json)).
+  The normal Linux companion and OS-default CLI now pass the same application/
+  account-removal sequence in both modes, using the shipped root-owned policy
+  and retaining exact files, original results and the audit through fresh
+  containers ([normal CLI app checks](code-intelligence/normal-cli-application-checks.json)).
+  Finish remaining command/process fault checks, optimized distributions,
+  native Windows and complete CI
+  ([operator workflow](execution-bridge.md#native-recovery-after-an-issuer-is-decommissioned)).
+  Native reviewed workers now check private recovery-state continuity in the
+  OS-selected private directory under their complete folder gate. Original database,
+  directory and external identity-file observations reject missing or identical
+  replacement copies before admission and during execution. Shared filesystem/Git
+  filters protect their names and ordinary native VFS/execution roots reject aliases
+  into private runtime folders
+  ([namespace checkpoint](code-intelligence/native-recovery-namespace-checks.json)).
+  The shared native gate also persists original transaction owners before the
+  complete worker's backend claim. Overlapping ordinary native writers remain
+  fenced across process/profile changes; only the original private issuer and
+  physical folder can resume recovery. File completion clears a file-only owner
+  only after an idle compound observation and acknowledged worker release.
+  Attached-command owners remain pending until original command cleanup and settlement
+  ([owner checks](code-intelligence/native-recovery-owner-checks.json)).
+  Private state reads also reject FIFOs without waiting for a peer. Container
+  images select the existing data volume through root-owned per-UID installation
+  policy, keeping SSH/tool home paths and browser-only Local saves available.
+  Fresh Linux runtime-state containers retain the same original namespace objects,
+  reject missing/copied databases and accept explicit restoration of the same
+  original database. Namespace and both-adapter admission contracts also pass on
+  Linux ([installation checkpoint](code-intelligence/native-recovery-installation-checks.json)).
+  Revisioned SQLite publication and recovery now preserve the original database
+  inode across process loss, with an external seal preventing a missing update
+  record from becoming fresh state
+  ([persistence checkpoint](code-intelligence/native-recovery-persistence-checks.json)).
+  Per-file companion calls now share durable admission and original private
+  scope validation. Closing revoked access retains protection until positive
+  original recovery. Complete compound command phase authority, a Windows
+  namespace adapter and full packaged-app verification.
+  Native agent/child-task and plugin-management file writes now share the live
+  folder gate with reviewed operations and commands. Accepted I/O survives
+  observer loss; queued cancellation and changed-root rejection pass the native
+  contracts ([writer checks](code-intelligence/native-file-writer-checks.json)).
+  Native file mutations now retain their lease inside the actual blocking
+  operation through runtime shutdown. Version-1 transaction files reuse the
+  original outer lease; raw atomic move/replacement calls remain non-yielding.
+  A real blocked-write regression verifies retention until I/O finishes
+  ([runtime ownership checks](code-intelligence/native-file-runtime-checks.json)).
+  Ordinary native mutations now use the retained original directory capability
+  through one shared mutation policy, including atomic replacement and existing
+  descriptor-relative moves. A real root-replacement regression verifies all
+  eight mutation cases against the original object while leaving the lookalike
+  untouched; alias and entry-kind contracts remain available
+  ([directory binding checks](code-intelligence/native-file-root-checks.json)).
+  Backend API and SSE-agent file mutations now use that same native policy by
+  default, including a distinct project alias after backend settlement while
+  original native recovery remains pending. Both built-app modes preserve the
+  fence through project/account deletion and restore actual writing after explicit
+  recovery. Explicit companion-disabled deployments retain directory-bound WASI
+  saves outside the physical-lock guarantee; native failures never fall back
+  ([backend writer checks](code-intelligence/backend-writer-checks.json)).
+  The same directory-binding, admitted-I/O lifetime, ACL/xattr and authenticated
+  writer contracts now also pass on Linux (48 filesystem and two HTTP cases on
+  a persistent Linux volume). These are focused development-profile contracts,
+  not a complete rebuilt distribution. Finish native Windows runtime verification
+  and full packaged-app checks. Ordinary saves, commands, Git operations and
+  proofs now share admission while reviewed resource/command work remains
+  exclusive. Waiting reviews retain priority, accepted I/O owns its lifetime and
+  uncertain cleanup quarantines overlapping work across original directory
+  descriptors, independent coordinators and processes. macOS/Linux contracts,
+  actual background-save compatibility, namespace upgrade/retirement and both
+  built-app transports pass ([admission checks](code-intelligence/ordinary-admission-checks.json)).
+  Linux process watchers now adopt and reap their original managed descendants,
+  releasing reviewed exclusion after acknowledged background work even when the
+  daemon is PID 1 without a container init process. The normal daemon passes with
+  and without init; all 59 focused native contracts pass. Complete combined-source
+  verification remains open.
+  Durable authority across lost owners and participating mutation paths remains
+  outstanding.
   Companion observers now have deadlines without cancelling accepted native work.
   Expired and abandoned folder-proof cleanup now uses bounded registered workers
   and the original physical folder gate, preserving changed proofs/folders and

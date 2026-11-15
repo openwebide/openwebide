@@ -1,7 +1,8 @@
+mod common;
 use bytes::Bytes;
 use http_body_util::Full;
 use hyper::Request;
-use openwebide_bridge::{ServerConfig, run_server_until};
+use openwebide_bridge::run_server_until;
 use std::{
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
@@ -48,7 +49,7 @@ async fn host_routes_require_the_server_secret_and_reject_browser_and_companion_
         let workspace = tempfile::tempdir().unwrap();
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let port = listener.local_addr().unwrap().port();
-        let mut config = ServerConfig::new(
+        let mut config = common::server_config(
             workspace.path().into(),
             secret.clone(),
             paired.then(|| "companion-pairing-token".into()),

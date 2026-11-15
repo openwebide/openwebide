@@ -2,6 +2,51 @@
 //! child, reserving the original process-group ID through confirmed cleanup.
 use std::io;
 
+#[cfg(target_os = "linux")]
+pub(super) fn adopt_descendants() -> io::Result<()> {
+    // prctl's variadic arguments require native unsigned-long width.
+    let enabled: libc::c_ulong = 1;
+    let unused: libc::c_ulong = 0;
+    // SAFETY: the private, single-threaded watcher has not spawned its child
+    // yet. This affects only its own orphaned descendants, not the bridge's
+    // Tokio child handling or other processes in the container.
+    if unsafe {
+        libc::prctl(
+            libc::PR_SET_CHILD_SUBREAPER,
+            enabled,
+            unused,
+            unused,
+            unused,
+        )
+    } < 0
+    {
+        return Err(io::Error::last_os_error());
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+pub(super) fn reap_descendants(group: i32) -> io::Result<()> {
+    loop {
+        // SAFETY: callers have already reaped the original group leader and
+        // will never signal its numeric ID again. Reap only this watcher's
+        // adopted, exited children in that original group, without waiting.
+        let reaped = unsafe { libc::waitpid(-group, std::ptr::null_mut(), libc::WNOHANG) };
+        if reaped > 0 {
+            continue;
+        }
+        if reaped == 0 {
+            return Ok(());
+        }
+        let error = io::Error::last_os_error();
+        match error.raw_os_error() {
+            Some(libc::EINTR) => (),
+            Some(libc::ECHILD) => return Ok(()),
+            _ => return Err(error),
+        }
+    }
+}
+
 pub(super) fn signal(group: i32, signal: i32) {
     // SAFETY: group is our own unreaped direct child, never an unbound PID.
     unsafe {

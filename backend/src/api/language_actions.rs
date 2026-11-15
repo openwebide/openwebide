@@ -36,6 +36,41 @@ where
     ))
 }
 
+pub(crate) async fn recovery<B>(
+    req: Request<B>,
+    state: &AppState,
+    path: &str,
+    user: AuthedUser,
+) -> Result<JsonResp, ApiError>
+where
+    B: http_body::Body + Send + 'static,
+    B::Data: AsRef<[u8]> + Send,
+    B::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+{
+    let project = project(path, "/language-actions/recovery")?;
+    state.store.get_project(project, user.id).await?;
+    let request: openwebide_core::plugins::languages::intelligence::actions::ActionRecoveryRequest =
+        parse_json(
+            read_body(
+                req,
+                openwebide_core::plugins::languages::intelligence::actions::MAX_COMMAND_BYTES
+                    + 8192,
+            )
+            .await?,
+        )?;
+    let mut response = json_response(
+        200,
+        &state
+            .store
+            .language_action_recovery(user.id, project, &request, now())
+            .await?,
+    );
+    response
+        .headers_mut()
+        .insert("cache-control", "no-store".parse().unwrap());
+    Ok(response)
+}
+
 pub(crate) async fn dispatch<B>(
     req: Request<B>,
     state: &AppState,
@@ -65,6 +100,9 @@ where
     if authorize_only {
         return Ok(json_response(200, &command));
     }
+    if let Some(progress) = &command.progress {
+        return Ok(json_response(200, progress));
+    }
     let root = openwebide_core::run::execution_root(&owned).ok_or_else(|| {
         ApiError::bad_request("Use the paired execution host for this local project")
     })?;
@@ -76,6 +114,13 @@ where
             user: None,
             root,
             command,
+            authority: request.call.as_ref().map(|call| {
+                openwebide_core::plugins::languages::intelligence::actions::CommandAuthority {
+                    grant: call.grant.clone(),
+                    session_id: call.session_id,
+                }
+            }),
+            journal: None,
         })
         .map_err(|e| ApiError::bad_request(e.to_string()))?,
     )
@@ -84,10 +129,239 @@ where
     Ok(json_response(200, &progress))
 }
 
+pub(crate) async fn reconnect<B>(
+    req: Request<B>,
+    state: &AppState,
+    path: &str,
+    user: AuthedUser,
+) -> Result<JsonResp, ApiError>
+where
+    B: http_body::Body + Send + 'static,
+    B::Data: AsRef<[u8]> + Send,
+    B::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+{
+    use openwebide_core::plugins::languages::intelligence::actions::CommandCallbackRequest;
+    let project = project(path, "/language-commands/reconnect")?;
+    let owned = state.store.get_project(project, user.id).await?;
+    if owned.mode != openwebide_core::WorkspaceMode::Remote {
+        return Err(ApiError::bad_request(
+            "Use the paired execution host for this local project",
+        ));
+    }
+    let mut request: CommandCallbackRequest = parse_json(read_body(req, 8192).await?)?;
+    request.validate().map_err(ApiError::bad_request)?;
+    if request.project != project {
+        return Err(ApiError::bad_request("Command recovery project changed"));
+    }
+    request.user = Some(user.id.get());
+    let changed: bool = plugins::send_plugin_rpc(
+        &state.store,
+        user.id,
+        "/plugins/languages/command/reconnect",
+        serde_json::to_value(request)
+            .map_err(|_| ApiError::bad_request("Invalid command callback request"))?,
+    )
+    .await
+    .map_err(ApiError::bad_request)?;
+    Ok(json_response(200, &changed))
+}
+
+pub(crate) async fn delegate<B>(
+    req: Request<B>,
+    state: &AppState,
+    path: &str,
+    user: AuthedUser,
+) -> Result<JsonResp, ApiError>
+where
+    B: http_body::Body + Send + 'static,
+    B::Data: AsRef<[u8]> + Send,
+    B::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+{
+    let project = project(path, "/language-commands/delegate")?;
+    let request:openwebide_core::plugins::languages::intelligence::actions::CommandDelegationRequest=parse_json(read_body(req,64*1024).await?)?;
+    let grant = state
+        .store
+        .delegate_language_command(user.id, project, &request, now())
+        .await?;
+    let mut response = json_response(200, &grant);
+    response.headers_mut().insert(
+        "cache-control",
+        spin_sdk::http::HeaderValue::from_static("no-store"),
+    );
+    Ok(response)
+}
+
+pub(crate) async fn delegated<B>(req: Request<B>, state: &AppState) -> Result<JsonResp, ApiError>
+where
+    B: http_body::Body + Send + 'static,
+    B::Data: AsRef<[u8]> + Send,
+    B::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+{
+    use openwebide_core::plugins::languages::intelligence::actions::{
+        CommandJournalOperation, DelegatedCommandRequest, MAX_COMMAND_BYTES,
+    };
+    if ["origin", "sec-fetch-site", "cookie"]
+        .iter()
+        .any(|header| req.headers().contains_key(*header))
+    {
+        return Err(ApiError::new(
+            403,
+            "Paired command callbacks require the native worker transport",
+        ));
+    }
+    let input: DelegatedCommandRequest =
+        parse_json(read_body(req, MAX_COMMAND_BYTES + 64 * 1024).await?)?;
+    let mut value = state
+        .store
+        .delegated_language_command(&input, now())
+        .await?;
+    if matches!(input.operation, CommandJournalOperation::Scope) {
+        let openwebide_core::workspace_transaction::WorkspaceJournalResponse::CommandScope {
+            recovery,
+        } = value
+        else {
+            return Err(ApiError::internal("Invalid private command scope"));
+        };
+        value = crate::recovery_authority::issue_command(
+            state,
+            input.delegation.user,
+            input.delegation.project,
+            recovery.map(|v| *v),
+        )
+        .await?;
+    }
+    let mut response = json_response(200, &value);
+    response.headers_mut().insert(
+        "cache-control",
+        spin_sdk::http::HeaderValue::from_static("no-store"),
+    );
+    Ok(response)
+}
+
+pub(crate) async fn original<B>(req: Request<B>, state: &AppState) -> Result<JsonResp, ApiError>
+where
+    B: http_body::Body + Send + 'static,
+    B::Data: AsRef<[u8]> + Send,
+    B::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+{
+    use openwebide_core::plugins::languages::intelligence::actions::{
+        MAX_COMMAND_BYTES, OriginalCommandRequest,
+    };
+    if ["origin", "sec-fetch-site", "cookie"]
+        .iter()
+        .any(|h| req.headers().contains_key(*h))
+    {
+        return Err(ApiError::new(
+            403,
+            "Original command recovery requires the native transport",
+        ));
+    }
+    let input: OriginalCommandRequest =
+        parse_json(read_body(req, MAX_COMMAND_BYTES + 64 * 1024).await?)?;
+    let value = original_reply(state, &input).await?;
+    let mut response = json_response(200, &value);
+    response.headers_mut().insert(
+        "cache-control",
+        spin_sdk::http::HeaderValue::from_static("no-store"),
+    );
+    Ok(response)
+}
+
+async fn original_reply(
+    state: &AppState,
+    input: &openwebide_core::plugins::languages::intelligence::actions::OriginalCommandRequest,
+) -> Result<openwebide_core::workspace_transaction::WorkspaceJournalResponse, ApiError> {
+    use openwebide_core::plugins::languages::intelligence::actions::CommandJournalOperation;
+    input.validate().map_err(ApiError::bad_request)?;
+    crate::recovery_authority::verify(state, &input.authority).await?;
+    let mut value = state.store.original_language_command(input, now()).await?;
+    if matches!(input.operation, CommandJournalOperation::Scope) {
+        let openwebide_core::workspace_transaction::WorkspaceJournalResponse::CommandScope {
+            recovery,
+        } = value
+        else {
+            return Err(ApiError::internal("Invalid original command scope"));
+        };
+        value =
+            crate::recovery_authority::issue_original_command(state, input, recovery.map(|r| *r))
+                .await?;
+    }
+    Ok(value)
+}
+
+pub(crate) async fn original_private<B>(
+    req: Request<B>,
+    state: &AppState,
+) -> Result<JsonResp, ApiError>
+where
+    B: http_body::Body + Send + 'static,
+    B::Data: AsRef<[u8]> + Send,
+    B::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+{
+    use openwebide_core::plugins::languages::intelligence::actions::{
+        COMMAND_RECOVERY_MESSAGE_LIMIT, COMMAND_RECOVERY_PLAINTEXT_LIMIT,
+        COMMAND_RECOVERY_REPLY_DOMAIN, COMMAND_RECOVERY_REQUEST_DOMAIN, CommandRecoveryMessage,
+        CommandRecoveryReply, OriginalCommandRequest,
+    };
+    if ["origin", "sec-fetch-site", "cookie"]
+        .iter()
+        .any(|h| req.headers().contains_key(*h))
+    {
+        return Err(ApiError::new(
+            403,
+            "Original command recovery requires the native transport",
+        ));
+    }
+    let message: CommandRecoveryMessage =
+        parse_json(read_body(req, COMMAND_RECOVERY_MESSAGE_LIMIT).await?)?;
+    let authority = crate::recovery_authority::command_message_authority(state, &message).await?;
+    let context = message.context().map_err(ApiError::bad_request)?;
+    let plaintext = openwebide_auth::private_messages::open(
+        authority.secret.as_bytes(),
+        COMMAND_RECOVERY_REQUEST_DOMAIN,
+        &context,
+        &message.nonce,
+        &message.ciphertext,
+        COMMAND_RECOVERY_PLAINTEXT_LIMIT,
+    )
+    .map_err(|_| ApiError::new(401, "Original command message could not be authenticated"))?;
+    let input: OriginalCommandRequest = serde_json::from_slice(&plaintext)
+        .map_err(|_| ApiError::bad_request("Invalid original command message"))?;
+    if input.authority != authority || !message.matches_authority(&input.authority) {
+        return Err(ApiError::new(
+            401,
+            "Original command message changed identity",
+        ));
+    }
+    let value = original_reply(state, &input).await?;
+    let plaintext = serde_json::to_vec(&value)
+        .map_err(|_| ApiError::internal("Invalid original command reply"))?;
+    if plaintext.len() > COMMAND_RECOVERY_PLAINTEXT_LIMIT {
+        return Err(ApiError::internal(
+            "Original command reply exceeds its bound",
+        ));
+    }
+    let (nonce, ciphertext) = openwebide_auth::private_messages::seal(
+        authority.secret.as_bytes(),
+        COMMAND_RECOVERY_REPLY_DOMAIN,
+        &message.reply_context().map_err(ApiError::bad_request)?,
+        &plaintext,
+    )
+    .map_err(|_| ApiError::internal("Original command reply is unavailable"))?;
+    let mut response = json_response(200, &CommandRecoveryReply { nonce, ciphertext });
+    response.headers_mut().insert(
+        "cache-control",
+        spin_sdk::http::HeaderValue::from_static("no-store"),
+    );
+    Ok(response)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use openwebide_core::{NewProject, UserRole};
+    mod reconnect;
+    mod recorded;
 
     fn request(body: &str, size: usize) -> Request<FullBody<Bytes>> {
         Request::builder()

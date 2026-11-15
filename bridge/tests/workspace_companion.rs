@@ -1,7 +1,7 @@
 #![cfg(any(target_os = "linux", target_os = "macos"))]
 mod common;
 use common::{HttpResponse, http};
-use openwebide_bridge::{ServerConfig, run_server};
+use openwebide_bridge::run_server;
 use openwebide_core::workspace_transaction::companion::{FolderReply, REQUEST_LIMIT};
 use tokio::net::TcpListener;
 
@@ -20,7 +20,7 @@ async fn physical_folder_capabilities_require_browser_account_authority_and_cann
     std::fs::write(directory.path().join("source"), "unchanged").unwrap();
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
-    let config = ServerConfig::new(
+    let config = common::server_config(
         directory.path().canonicalize().unwrap(),
         "service-secret".into(),
         Some("paired-token".into()),

@@ -15,7 +15,12 @@ use crate::{FileEntry, SearchHit};
 
 mod moves;
 mod private;
-pub use private::{private_workspace_globs, private_workspace_path};
+mod writes;
+pub use private::{
+    NATIVE_RECOVERY_DIRECTORY, NATIVE_RECOVERY_OWNER, private_workspace_globs,
+    private_workspace_path,
+};
+pub use writes::{FileMutation, FileMutationRequest};
 
 /// Errors encountered during Virtual File System operations.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -24,6 +29,7 @@ pub enum VfsError {
     PermissionDenied(String),
     PermissionRequired(String),
     AlreadyExists(String),
+    Conflict(String),
     PathEscape(String),
     Io(String),
 }
@@ -35,6 +41,7 @@ impl std::fmt::Display for VfsError {
             Self::PermissionRequired(detail) => f.write_str(detail),
             Self::PermissionDenied(p) => write!(f, "permission denied: {p}"),
             Self::AlreadyExists(p) => write!(f, "already exists: {p}"),
+            Self::Conflict(message) => f.write_str(message),
             Self::PathEscape(p) => write!(f, "path escapes workspace root: {p}"),
             Self::Io(msg) => write!(f, "I/O error: {msg}"),
         }
@@ -207,7 +214,8 @@ pub fn skip_dir(name: &str, opts: SearchOptions) -> bool {
 }
 
 /// The workspace entry to create. Transport adapters retain the legacy `is_dir` wire field.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum VfsEntryKind {
     File,
     Directory,

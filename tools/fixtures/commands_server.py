@@ -1,4 +1,4 @@
-import json,sys,time,pathlib,subprocess
+import json,sys,time,pathlib,subprocess,os
 mode=sys.argv[1];opened={}
 def send(value):
     body=json.dumps({'jsonrpc':'2.0',**value}).encode()
@@ -45,10 +45,19 @@ while True:
         assert list(opened.values())==[('text' if mode=='command-only' else 'next')+' 文😀\r\n']
         if mode=='inputs':assert pathlib.Path('settings-new.json').exists() and not pathlib.Path('settings-old.json').exists()
         with open('executions','a') as log:log.write('executed\n')
-        if mode=='fork-block':
+        if mode in ('fork-block','retained-result','retained-error'):
             subprocess.Popen([sys.executable,'-c',"import signal,pathlib,time,os\nsignal.signal(signal.SIGTERM,signal.SIG_IGN)\npathlib.Path('child-ready').write_text(str(os.getpid()))\nvalue=0\nwhile True:\n pathlib.Path('heartbeat').write_text(str(value));value+=1;time.sleep(.01)\n"])
-            time.sleep(60)
+            if mode=='fork-block':time.sleep(60)
+            else:
+                pathlib.Path('owner.tmp').write_text(json.dumps({'watcher':os.getppid(),'server':os.getpid()}))
+                pathlib.Path('owner.tmp').replace('owner.json')
+                deadline=time.monotonic()+20
+                while not pathlib.Path('reply-now').exists() and time.monotonic()<deadline:time.sleep(.01)
+                if not pathlib.Path('reply-now').exists():raise RuntimeError('Retained-result supervisor did not request a reply')
+                if mode=='retained-error':
+                    send({'id':message['id'],'error':{'code':-32801,'message':'Retained command error 文😀 "quoted" \\ original'}});continue
         if mode=='block':time.sleep(60)
         if mode=='cancel':send({'id':message['id'],'error':{'code':-32801,'message':'Changed index after command effects'}});continue
         time.sleep(.1);result={'marker':17,'source':list(opened.values())[0]}
+        if mode=='retained-result':result['kept']='原本 😀 "quoted" \\ exact\r\n'*1024
     if 'id' in message:send({'id':message['id'],'result':result})

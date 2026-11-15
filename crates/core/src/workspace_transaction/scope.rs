@@ -2,7 +2,7 @@
 //! This is not a write lease; match it with fresh metadata and the full record
 //! after acquiring the physical folder and snapshot capacity.
 use super::{WorkspaceTransactionState, valid_id};
-use crate::editor::{EditorRecovery, EditorRecoveryRoot};
+use crate::editor::EditorRecoveryRoot;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -38,12 +38,7 @@ impl WorkspaceTransactionScope {
                 })
     }
     pub fn validate(&self) -> Result<(), String> {
-        if !valid_id(&self.id)
-            || !valid_id(&self.generation)
-            || self.revision == 0
-            || self.root_identity.is_empty()
-            || self.root_identity.len() > 4096
-            || self.root_identity.chars().any(char::is_control)
+        if self.revision == 0
             || self
                 .worker
                 .as_ref()
@@ -57,10 +52,23 @@ impl WorkspaceTransactionScope {
         {
             return Err("Invalid workspace recovery scope".into());
         }
-        EditorRecovery {
-            root: Some(self.root.clone()),
-            ..EditorRecovery::default()
-        }
-        .validate()
+        validate_original_scope(&self.id, &self.generation, &self.root_identity, &self.root)
     }
+}
+
+pub(super) fn validate_original_scope(
+    id: &str,
+    generation: &str,
+    root_identity: &str,
+    root: &EditorRecoveryRoot,
+) -> Result<(), String> {
+    if !valid_id(id)
+        || !valid_id(generation)
+        || root_identity.is_empty()
+        || root_identity.len() > 4096
+        || root_identity.chars().any(char::is_control)
+    {
+        return Err("Invalid workspace recovery scope".into());
+    }
+    root.validate()
 }

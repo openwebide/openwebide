@@ -12,7 +12,9 @@ use openwebide_core::workspace_transaction::{
     WorkspaceTransactionWorker,
 };
 
+#[derive(Clone)]
 pub struct PairedJournal {
+    origin: String,
     url: String,
     delegation: WorkspaceJournalDelegation,
     worker: WorkspaceTransactionWorker,
@@ -22,6 +24,30 @@ pub struct PairedJournal {
 #[cfg(test)]
 mod tests;
 impl PairedJournal {
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    pub(super) async fn recovery(
+        &self,
+    ) -> Result<
+        (
+            WorkspaceTransactionScope,
+            openwebide_core::workspace_transaction::RecoveryAuthority,
+            openwebide_core::workspace_transaction::WorkspaceActivity,
+        ),
+        String,
+    > {
+        // Use the same private response validation as the complete native worker.
+        super::Journal {
+            backend: std::sync::Arc::new(self.clone()),
+            user: self.delegation.user,
+            project: self.delegation.project,
+            id: self.delegation.scope.id.clone(),
+            generation: self.delegation.scope.generation.clone(),
+            worker: self.worker.clone(),
+            mode: openwebide_core::WorkspaceMode::Local,
+        }
+        .recovery()
+        .await
+    }
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     pub(super) fn identity(&self) -> (&str, &str) {
         (&self.delegation.scope.id, &self.delegation.scope.generation)
@@ -53,6 +79,7 @@ impl PairedJournal {
             return Err("The delegated journal does not match the proven physical folder".into());
         }
         Ok(Self {
+            origin: api_url.trim_end_matches('/').into(),
             url: format!(
                 "{}/workspace-transactions/delegated",
                 api_url.trim_end_matches('/')
@@ -70,6 +97,15 @@ impl PairedJournal {
         &self,
         review: Option<(&str, &str)>,
     ) -> Result<WorkspaceTransactionScope, String> {
+        self.admit_compound(review, None).await
+    }
+    async fn admit_compound(
+        &self,
+        review: Option<(&str, &str)>,
+        command: Option<
+            Box<openwebide_core::plugins::languages::intelligence::actions::CommandReservation>,
+        >,
+    ) -> Result<WorkspaceTransactionScope, String> {
         let mut expected = self.delegation.scope.clone();
         expected.worker = Some(self.worker.state());
         if let Some((digest, _)) = review {
@@ -77,6 +113,7 @@ impl PairedJournal {
         }
         match self
             .request(Operation::Admit {
+                command,
                 review_digest: review.map(|(digest, _)| digest.into()),
                 language_grant: review.map(|(_, grant)| grant.into()),
             })
@@ -177,13 +214,32 @@ impl PairedJournal {
                 .and_then(|v| v["error"].as_str().map(str::to_owned))
                 .unwrap_or_else(|| format!("Paired workspace service returned {status}")));
         }
-        serde_json::from_slice(&body).map_err(|e| e.to_string())
+        let reply: WorkspaceJournalResponse = serde_json::from_slice(&body)
+            .map_err(|_| "Invalid paired workspace response".to_string())?;
+        if matches!(request.operation, Operation::CommandRecoveryScope) {
+            let (_, authority) = reply.command_recovery(
+                self.delegation.user,
+                self.delegation.project,
+                &self.delegation.scope.id,
+            )?;
+            if !authority.matches_scope(
+                self.delegation.user,
+                self.delegation.project,
+                &self.delegation.scope,
+            ) {
+                return Err("The original paired command recovery scope changed".into());
+            }
+        }
+        Ok(reply)
     }
 }
 
 // Translate transport primitives only. The same native worker and shared
 // transaction interpreter own admission, execution, rollback and release.
 impl super::JournalBackend for PairedJournal {
+    fn recovery_origin(&self) -> Option<&str> {
+        Some(&self.origin)
+    }
     async fn request(
         &self,
         input: &openwebide_core::workspace_transaction::WorkspaceJournalRequest,
@@ -202,8 +258,11 @@ impl super::JournalBackend for PairedJournal {
         };
         match &input.operation {
             Native::Scope => self.request(Operation::Inspect).await,
+            Native::RecoveryScope => self.request(Operation::RecoveryScope).await,
+            Native::CommandRecoveryScope => self.request(Operation::CommandRecoveryScope).await,
             Native::Load => self.request(Operation::Load).await,
             Native::ClaimWorker {
+                command,
                 scope,
                 worker,
                 review_digest,
@@ -216,7 +275,7 @@ impl super::JournalBackend for PairedJournal {
                     review_digest.as_deref(),
                     language_grant.as_deref(),
                 )?;
-                self.admit_reviewed(review)
+                self.admit_compound(review, command.clone())
                     .await
                     .map(|scope| WorkspaceJournalResponse::WorkerClaimed { scope })
             }

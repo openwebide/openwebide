@@ -917,6 +917,7 @@ async fn late_discovery_cannot_release_a_new_workspace_or_command_fence_in_both_
             WorkspaceRecoveryStatus::LanguageAction {
                 id: "b".repeat(32),
                 title: "New command".into(),
+                native_settlement_pending: false,
                 phase: ActionPhase::Running,
                 recovering: false,
                 error: None,

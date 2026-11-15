@@ -1,0 +1,121 @@
+{
+  "status": "Original Prepared intents interrupted before backend Claim or after its commit but before ACK now recover through the existing Stop contract in both modes. The complete roadmap remains unfinished.",
+  "source_sha256": "979e3f93292d0629f8a7dac7f5492b2af8eeca2c4621f9c5b35f528819dddd4b",
+  "builds_on": "watcher-receipt-checks.json",
+  "shared_implementation": {
+    "facade": "The existing owned native command producer, original callback recovery and shared LanguageActionClient remain unchanged; only the native pending no-dispatch capability now includes Prepared plus finished file work. Service and paired callbacks keep the same original Store CAS contract.",
+    "proof": "Recovery must reacquire the complete original folder lease and reread the native stage before publishing. An active producer retains that lease. Saving the exact rejection fences later native admission/dispatch; the original backend CAS fences a delayed Claim.",
+    "limits": "Admitted/dispatched states without original cleanup receipts and unfinished or unknown file effects remain protected. Prepared remains single-use; observation never authorizes RPC replay."
+  },
+  "behavioral_tests": [
+    "Four real SIGKILL cases first failed before the change, then passed with both adapters: owner loss before backend Claim, and owner loss after its commit but before ACK. Each reopens the exact SQLite issuer/callback from a distinct native process, after provider revocation.",
+    "Every case retains source and editor recovery, records zero LSP command executions, preserves the exact original Rejected result, fences ordinary writers until manual acknowledgement, rejects delayed old Claim before and after settlement, then confirms successful ordinary writing.",
+    "Twelve native boundary cases exercise both modes, finished and unfinished files, and Prepared/Admitted/Dispatched stages without cleanup receipts. Positive Prepared recovery rejects late native admission/dispatch/process enrollment and duplicate intent retains the original result.",
+    "The full command HTTP suite, native library, receipt contracts, file-recovery group and explicit ignored marketplace smoke pass."
+  ],
+  "audit_correction": "The previously hypothesized public cancellation and public Uncertain-finish races at Prepared were not demonstrated: native Start follows the public Approved-to-Running claim; public Cancel requires Approved plus restored file work, and public Finish rejects native-pending owners. No phase, cancellation, outcome or worker authority was broadened for those hypotheses.",
+  "verification": {
+    "terminal": "prepared-claim-1794715467/terminal.json",
+    "red_terminal": "prepared-claim-red-1794715272/terminal.json",
+    "red_artifacts": "prepared-claim-red-outputs-1794715415/manifest.json",
+    "artifacts": "prepared-claim-outputs-1794716189/manifest.json",
+    "cases": [
+      {
+        "case": "format",
+        "returncode": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "native-all-target-clippy",
+        "returncode": 0,
+        "log_sha256": "0f6a1f984b643fb111c7c71b0ce71058663d362259722bb25684ea57e6c74e44"
+      },
+      {
+        "case": "Windows-cross-all-target-clippy",
+        "returncode": 0,
+        "log_sha256": "15288d24c501b6f336c6488efbd28a1e82ce564ba15911ca0eb9fedabcf4f4f0"
+      },
+      {
+        "case": "matching-main",
+        "returncode": 0,
+        "log_sha256": "228673ef1a69243c2dee8d4cefcb7839e41886acd0c5981da8419a905cba3265"
+      },
+      {
+        "case": "matching-process-example",
+        "returncode": 0,
+        "log_sha256": "970fac77b11ddef592ec5e70a950709d81a33adaf770796c2dea1b21ece33300"
+      },
+      {
+        "case": "native-original-process-receipts",
+        "returncode": 0,
+        "log_sha256": "e1b14204e89ff3e9fdbf36b0c34b7a2bb764c75b250063f2c0811967b342f271"
+      },
+      {
+        "case": "native-prepared-intent",
+        "returncode": 0,
+        "log_sha256": "d3e0d2bca6d95379c9e64a9e0f6c9499e70f823f570d5b1831c4a05d9c980508"
+      },
+      {
+        "case": "all-file-recovery-tests",
+        "returncode": 0,
+        "log_sha256": "5babddf0efa65e0198f70ef7e74ad70d09e55640d6f66268c804dff286e012d8"
+      },
+      {
+        "case": "prepared-claim-process-loss",
+        "returncode": 0,
+        "log_sha256": "5486de78f09d3213a57b76d8c0d007c2bd615b77c123e28e6b6c82122084ac37"
+      },
+      {
+        "case": "all-command-HTTP",
+        "returncode": 0,
+        "log_sha256": "d3064453cd42185f57b7f1e6e831164a22b535012c9dc1ac5654f0742ad4b681"
+      },
+      {
+        "case": "all-native-library",
+        "returncode": 0,
+        "log_sha256": "f4a7a098f09adaa628881b2626741555951ed8270a740888548af1d47bfbee9d"
+      },
+      {
+        "case": "explicit-marketplace-smoke",
+        "returncode": 0,
+        "log_sha256": "59c23dddeb6193a5d3dfa87267aa72ff1d52cff976f78ac321bc8285627540c7"
+      },
+      {
+        "case": "default-bin-clippy",
+        "returncode": 0,
+        "log_sha256": "e8cdf15d4e061e1038d2a7ab570a47005828c827de47ec1a92286c3ad5c36445"
+      },
+      {
+        "case": "production-feature-inventory",
+        "returncode": 0,
+        "log_sha256": "51a70955c82feadb08bcaf685eec7550c14e8cf35436c8f256347155c7578b04"
+      }
+    ],
+    "native_default_passed": 541,
+    "native_explicit_ignored_passed": 1,
+    "HTTP_tests_passed": 10,
+    "distinct_native_HTTP_tests": 552,
+    "test_executions": 574,
+    "HTTP_lifecycle_scenarios": 72,
+    "HTTP_SIGKILL_scenarios": 30,
+    "targeted_SIGKILL_scenarios_duplicated_in_full_HTTP": 4,
+    "actual_peer_scenarios": 2,
+    "macOS_runtime_both_adapters": true,
+    "Windows_cross_Clippy": true,
+    "Windows_native_runtime": false,
+    "fresh_Linux_runtime": false,
+    "current_browser_or_installed_app": false,
+    "full_CI_complete": false,
+    "shared_crates": "Inputs remain byte-identical to the prior shared checkpoints; their full suites were not freshly rerun for this native-only change."
+  },
+  "remaining": [
+    "Qualify callback recovery with the current optimized native/WASI release distribution and installed app, including original OS-selected private namespace and physical browser folder permission/device checks. The built-app checkpoint uses optimized frontend, unoptimized production WASI entry point and the same native HTTP host with an isolated test-support namespace.",
+    "Finish frozen-owner application recovery beyond the native OS-owner CLI: deleted original projects/accounts, legacy command owners without verifiable cleanup, actual process interruptions and current packaged/native platform contracts. Never infer cleanup from missing public rows, failed requests or 404 replies.",
+    "Finish remaining admission/watcher-enrollment and outcome/context interruptions, including escaped-process cleanup beyond the verified managed-group cases.",
+    "Finish every participating writer, Git/PTY and escaped-process lifetime; implement and verify native Windows ownership and fresh packaged Linux runtime.",
+    "Complete all original packaged application/browser, cache/resource/RSS/prefetch/homelab and full-CI requirements."
+  ],
+  "command_recovery_complete": false,
+  "whole_goal_complete": false,
+  "followup": "retired-command-worker-checks.json"
+}

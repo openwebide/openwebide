@@ -294,6 +294,9 @@ pub struct BackendClient {
 }
 
 impl BackendClient {
+    pub(crate) fn recovery_origin(&self) -> &str {
+        &self.url
+    }
     pub fn new(url: String, secret: Arc<str>, http: ReqwestHttpClient) -> Self {
         Self { url, secret, http }
     }
@@ -303,9 +306,35 @@ impl BackendClient {
         request: &openwebide_core::workspace_transaction::WorkspaceJournalRequest,
     ) -> Result<openwebide_core::workspace_transaction::WorkspaceJournalResponse, String> {
         use http_body_util::{BodyExt, Limited};
+        let command_worker = match &request.operation {
+            openwebide_core::workspace_transaction::WorkspaceJournalOperation::Command {
+                operation,
+            } => Some(operation.clone()),
+            _ => None,
+        };
+        if let Some(operation) = &command_worker {
+            operation.validate()?;
+        }
+        let encoded =
+            serde_json::to_vec(request).map_err(|_| "Invalid workspace journal request")?;
+        if command_worker.is_some()
+            && encoded.len()
+                > openwebide_core::plugins::languages::intelligence::actions::MAX_COMMAND_BYTES
+                    + openwebide_core::workspace_transaction::RECOVERY_SCOPE_BODY_LIMIT
+        {
+            return Err("Native command request exceeds its limit".into());
+        }
+        let original_command = matches!(
+            request.operation,
+            openwebide_core::workspace_transaction::WorkspaceJournalOperation::CommandRecoveryScope
+        )
+        .then(|| (request.user, request.project, request.id.clone()));
         let response_limit = if matches!(
             &request.operation,
             openwebide_core::workspace_transaction::WorkspaceJournalOperation::Scope
+                | openwebide_core::workspace_transaction::WorkspaceJournalOperation::RecoveryScope
+                | openwebide_core::workspace_transaction::WorkspaceJournalOperation::CommandRecoveryScope
+                | openwebide_core::workspace_transaction::WorkspaceJournalOperation::Command { .. }
                 | openwebide_core::workspace_transaction::WorkspaceJournalOperation::ClaimWorker { .. }
                 | openwebide_core::workspace_transaction::WorkspaceJournalOperation::ReleaseWorker { .. }
         ) {
@@ -313,17 +342,20 @@ impl BackendClient {
         } else {
             openwebide_core::workspace_transaction::JOURNAL_API_BODY_LIMIT
         };
+        let endpoint = if matches!(
+            request.operation,
+            openwebide_core::workspace_transaction::WorkspaceJournalOperation::Command { .. }
+        ) {
+            "language-commands/service"
+        } else {
+            "workspace-transactions/service"
+        };
         let request = Request::builder()
             .method("POST")
-            .uri(format!(
-                "{}/workspace-transactions/service",
-                self.url.trim_end_matches('/')
-            ))
+            .uri(format!("{}/{endpoint}", self.url.trim_end_matches('/')))
             .header("authorization", format!("Bearer {}", self.secret))
             .header("content-type", "application/json")
-            .body(Full::new(Bytes::from(
-                serde_json::to_vec(request).map_err(|e| e.to_string())?,
-            )))
+            .body(Full::new(Bytes::from(encoded)))
             .map_err(|e| e.to_string())?;
         let response = self.http.send(request).await.map_err(|e| e.to_string())?;
         let status = response.status();
@@ -336,13 +368,25 @@ impl BackendClient {
         .map_err(|_| "Workspace recovery response failed or exceeded its limit")?
         .to_bytes();
         if !status.is_success() {
+            if command_worker.is_some() {
+                return Err(format!("Original native command journal returned {status}"));
+            }
             let error = serde_json::from_slice::<Value>(&bytes)
                 .ok()
                 .and_then(|value| value["error"].as_str().map(str::to_string))
                 .unwrap_or_else(|| format!("Workspace recovery service returned {status}"));
             return Err(error);
         }
-        serde_json::from_slice(&bytes).map_err(|e| e.to_string())
+        let reply: openwebide_core::workspace_transaction::WorkspaceJournalResponse =
+            serde_json::from_slice(&bytes)
+                .map_err(|_| "Invalid workspace recovery response".to_string())?;
+        if let Some((user, project, id)) = original_command {
+            reply.command_recovery(user, project, &id)?;
+        }
+        if let Some(operation) = command_worker {
+            reply.command_worker(&operation)?;
+        }
+        Ok(reply)
     }
     pub async fn plugin_run_service(
         &self,
@@ -1040,6 +1084,45 @@ impl<B: RunBackend> openwebide_agent::compaction::CompactionSource for ModelSour
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn private_recovery_scope_is_bounded_and_parse_errors_do_not_echo_credentials() {
+        use openwebide_core::workspace_transaction::{
+            RECOVERY_SCOPE_BODY_LIMIT, WorkspaceJournalOperation, WorkspaceJournalRequest,
+        };
+        for padding in [0, RECOVERY_SCOPE_BODY_LIMIT] {
+            let body = r#"{"result":"recovery_scope","scope":"private-disclosure-marker","authority":null}"#.to_string() + &" ".repeat(padding);
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            );
+            let (url, captured) =
+                crate::runs::http_client::tests::capture(Box::leak(response.into_boxed_str()))
+                    .await;
+            let client = BackendClient::new(
+                format!("{url}/api"),
+                "service-secret".into(),
+                ReqwestHttpClient::default(),
+            );
+            let error = client
+                .workspace_journal_service(&WorkspaceJournalRequest {
+                    user: 7,
+                    project: 11,
+                    id: "a".repeat(32),
+                    operation: WorkspaceJournalOperation::RecoveryScope,
+                })
+                .await
+                .unwrap_err();
+            assert!(!error.contains("private-disclosure-marker"));
+            if padding == 0 {
+                assert_eq!(error, "Invalid workspace recovery response");
+            } else {
+                assert!(error.contains("exceeded its limit"));
+            }
+            let request = captured.await.unwrap();
+            assert!(request.contains("\"command\":\"recovery_scope\""));
+        }
+    }
 
     #[tokio::test]
     async fn recovery_scope_transport_is_bounded_before_large_snapshot_capacity_is_acquired() {

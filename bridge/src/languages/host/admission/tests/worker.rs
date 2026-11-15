@@ -14,6 +14,7 @@ use openwebide_core::{
 use openwebide_storage::{Store, rusqlite_db::RusqliteDb};
 use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 
+mod command_producer;
 mod paired;
 mod recovery_identity;
 
@@ -23,8 +24,137 @@ struct Backend {
     now: AtomicI64,
     intent_count: std::sync::atomic::AtomicUsize,
     replace_on_intent: std::sync::Mutex<Option<(std::path::PathBuf, std::path::PathBuf)>>,
+    reservation_home: std::sync::Mutex<Option<std::path::PathBuf>>,
+    reserved_worker: std::sync::Mutex<
+        Option<openwebide_core::workspace_transaction::WorkspaceTransactionWorkerKey>,
+    >,
 }
 impl Backend {
+    async fn admit_fixture(
+        &self,
+        fixture: &Fixture,
+        state: &WorkspaceTransactionState,
+        worker: &WorkspaceTransactionWorker,
+        request: &NativeWorkspaceTransaction,
+    ) -> Result<openwebide_core::workspace_transaction::WorkspaceTransactionScope, String> {
+        let expected = self
+            .store
+            .workspace_command_recovery(
+                UserId::new(request.user),
+                request.project,
+                &request.request.id,
+            )
+            .await
+            .map_err(|e| e.to_string())?
+            .ok_or("Missing original command")?;
+        let command_worker = fixture
+            .host
+            .prepare_workspace_command(fixture.scope.clone(), state, &expected)
+            .await?;
+        let digest = state
+            .language_review
+            .as_ref()
+            .ok_or("Missing original review")?
+            .fingerprint()?;
+        let reservation = protocol::actions::CommandReservation {
+            expected: Box::new(expected.clone()),
+            worker: command_worker,
+        };
+        self.store
+            .claim_workspace_transaction_worker_compound(
+                UserId::new(request.user),
+                request.project,
+                &expected.scope,
+                worker,
+                (
+                    Some((
+                        &digest,
+                        request
+                            .request
+                            .language_grant
+                            .as_deref()
+                            .ok_or("Missing manual grant")?,
+                    )),
+                    Some(&reservation),
+                ),
+                101,
+            )
+            .await
+            .map_err(|e| e.to_string())
+    }
+    async fn observe_reservation(
+        &self,
+        user: UserId,
+        project: i64,
+        id: &str,
+    ) -> Result<(), openwebide_storage::StorageError> {
+        let home = self.reservation_home.lock().unwrap().clone();
+        if let Some(home) = home {
+            let original = self
+                .store
+                .workspace_command_recovery(user, project, id)
+                .await?
+                .unwrap();
+            let namespace = crate::native_recovery::Namespace::open(&home).unwrap();
+            let worker = namespace
+                .reserved_command_worker(&original.command.invocation)
+                .expect("A durable command result reservation must precede the first file claim");
+            *self.reserved_worker.lock().unwrap() = Some(worker);
+        }
+        Ok(())
+    }
+    async fn private_reply(
+        &self,
+        user: UserId,
+        project: i64,
+        id: &str,
+        command: bool,
+    ) -> Result<Reply, openwebide_storage::StorageError> {
+        use openwebide_core::workspace_transaction::{
+            RECOVERY_AUTHORITY_DOMAIN, RecoveryAuthority,
+        };
+        self.store
+            .insert_setting_if_absent(
+                "native_test_original_issuer",
+                &format!("{:032x}", rand::random::<u128>()),
+            )
+            .await?;
+        let key = self
+            .store
+            .get_setting("native_test_original_issuer")
+            .await?
+            .unwrap();
+        let (scope, activity) = self
+            .store
+            .workspace_transaction_activity(user, project, id)
+            .await?
+            .unwrap();
+        let binding = RecoveryAuthority::binding_for_scope(user.get(), project, &scope).unwrap();
+        let authority = RecoveryAuthority::for_scope(
+            user.get(),
+            project,
+            &scope,
+            openwebide_auth::derive_secret(key.as_bytes(), RECOVERY_AUTHORITY_DOMAIN, &binding),
+        )
+        .unwrap();
+        Ok(if command {
+            Reply::CommandRecoveryScope {
+                recovery: Box::new(
+                    self.store
+                        .workspace_command_recovery(user, project, id)
+                        .await?
+                        .unwrap(),
+                ),
+                authority: Box::new(authority),
+            }
+        } else {
+            Reply::RecoveryScope {
+                scope,
+                activity,
+                authority: Box::new(authority),
+            }
+        })
+    }
     fn after_progress(&self, progress: &TransactionProgress) {
         if progress.active {
             self.intent_count.fetch_add(1, Ordering::SeqCst);
@@ -47,6 +177,19 @@ impl JournalBackend for Backend {
             let project = request.project;
             let now = self.now.load(Ordering::SeqCst);
             match &request.operation {
+                Operation::CommandRecoveryScope => {
+                    self.private_reply(user, project, &request.id, true).await
+                }
+                Operation::RecoveryScope => {
+                    self.private_reply(user, project, &request.id, false).await
+                }
+                Operation::Command { operation } => self
+                    .store
+                    .native_language_command(user, project, &request.id, operation, now)
+                    .await
+                    .map(|recovery| Reply::CommandScope {
+                        recovery: Some(Box::new(recovery)),
+                    }),
                 Operation::Scope => Ok(Reply::Scope {
                     scope: self
                         .store
@@ -61,11 +204,13 @@ impl JournalBackend for Backend {
                         .map(Box::new),
                 }),
                 Operation::ClaimWorker {
+                    command,
                     scope,
                     worker,
                     review_digest,
                     language_grant,
                 } => {
+                    self.observe_reservation(user, project, &request.id).await?;
                     if self.revoke_on_claim.swap(false, Ordering::SeqCst) {
                         self.store
                             .set_user_setting(
@@ -78,12 +223,15 @@ impl JournalBackend for Backend {
                     Ok(Reply::WorkerClaimed {
                         scope: self
                             .store
-                            .claim_workspace_transaction_worker_reviewed(
+                            .claim_workspace_transaction_worker_compound(
                                 user,
                                 project,
                                 scope,
                                 worker,
-                                review_digest.as_deref().zip(language_grant.as_deref()),
+                                (
+                                    review_digest.as_deref().zip(language_grant.as_deref()),
+                                    command.as_deref(),
+                                ),
                                 now,
                             )
                             .await?,
@@ -280,6 +428,8 @@ async fn store_review(
             now: AtomicI64::new(101),
             intent_count: Default::default(),
             replace_on_intent: Default::default(),
+            reservation_home: Default::default(),
+            reserved_worker: Default::default(),
         }),
         command,
     )
@@ -460,28 +610,8 @@ async fn accepted_ambiguous_native_move_restores_after_original_service_and_gran
         id: "e".repeat(32),
         secret: "f".repeat(32),
     };
-    let scope = backend
-        .store
-        .workspace_transaction_scope(user, command.project, &command.request.id)
-        .await
-        .unwrap()
-        .unwrap();
-    let digest = state
-        .language_review
-        .as_ref()
-        .unwrap()
-        .fingerprint()
-        .unwrap();
     backend
-        .store
-        .claim_workspace_transaction_worker_reviewed(
-            user,
-            command.project,
-            &scope,
-            &worker,
-            Some((&digest, command.request.language_grant.as_deref().unwrap())),
-            101,
-        )
+        .admit_fixture(&fixture, &state, &worker, &command)
         .await
         .unwrap();
     for active in [false, true] {

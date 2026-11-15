@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "status": "ordinary_admission_and_reviewed_exclusion_verified_full_goal_pending",
+  "runtime_source_sha256": "04a3d363d710d8f817cc6d42eb1d3fe30e0a4304886a08d6a60eafb66c2fc1da",
+  "shared_implementation": "folder_coordination Coordinator; WorkspaceUse Ordinary and Reviewed; directory-bound WorkspaceFiles; matching independent process watchers",
+  "behavior": {
+    "ordinary_activity_coexists": true,
+    "reviewed_work_excludes_overlapping_activity": true,
+    "waiting_review_prevents_barging_within_coordinator": true,
+    "accepted_IO_owns_claim": true,
+    "uncertain_cleanup_quarantines_original_directory_across_processes": true,
+    "unrelated_siblings_remain_available": true,
+    "browser_only_Local_and_explicit_direct_outside_physical_guarantee": true
+  },
+  "native_namespace": {
+    "schema": 11,
+    "process_owner_protocol": 4,
+    "original_database_inode_preserved": true,
+    "original_records_preserved_on_upgrade": true,
+    "older_warm_daemon_and_CLI_rejected_after_upgrade": true,
+    "retirement_preserves_schema11": true
+  },
+  "macOS": {
+    "native_source_sha256": "677a90423a4d3483a36e6ecc793a19c141f45a436611f4e14358841c0c573bcb",
+    "full_bridge_units": {
+      "passed": 558,
+      "failed": 0,
+      "ignored_existing": 1
+    },
+    "native_file_HTTP_passed": 2,
+    "ordinary_admission_contracts": 7,
+    "actual_background_and_nested_review_contract": true,
+    "strict_all_targets_clippy_passed": true,
+    "post_checkpoint_shared_OFD_conversion_requires_full_gate": true
+  },
+  "Linux": {
+    "focused_passed": 58,
+    "native_filesystem_cases": 48,
+    "HTTP_cases": 2,
+    "ordinary_admission_cases": 7,
+    "actual_background_contract": 1,
+    "normal_main_sha256": "6bab2098b3292babb48bb35348c580305b45969a9889f194b18d31817f714c7c",
+    "normal_default_tls_without_test_support": true,
+    "normal_daemon_save_finished_while_background_live": true,
+    "finite_probe_write_seconds": 0.006798,
+    "normal_CLI_commands": 29,
+    "persistent_volume_with_ACL_xattr_assertions": true,
+    "container_init_enabled": true
+  },
+  "Windows": {
+    "strict_all_targets_cross_clippy_passed": true,
+    "native_runtime_executed": false
+  },
+  "application": {
+    "local": {
+      "positive_API_operations": 6,
+      "fenced_API_operations": 4,
+      "separate_project_same_physical_folder": {
+        "original_project": 1,
+        "alias_project": 2,
+        "distinct_paths_same_physical_folder": true
+      },
+      "backend_settled_native_fence_retained": true,
+      "source_stages": 8,
+      "original_result_and_retirement_audit_exact": true,
+      "single_actual_LSP_command": true,
+      "account_removed_old_cookie_rejected": true,
+      "ordinary_write_after_retirement": true,
+      "seconds": 387.11
+    },
+    "remote": {
+      "positive_API_operations": 6,
+      "fenced_API_operations": 4,
+      "separate_project_same_physical_folder": {
+        "original_project": 1,
+        "alias_project": 2,
+        "distinct_paths_same_physical_folder": true
+      },
+      "backend_settled_native_fence_retained": true,
+      "source_stages": 8,
+      "original_result_and_retirement_audit_exact": true,
+      "single_actual_LSP_command": true,
+      "account_removed_old_cookie_rejected": true,
+      "ordinary_write_after_retirement": true,
+      "seconds": 380.49
+    }
+  },
+  "command_HTTP_passed": 16,
+  "evidence": {
+    "ordinary-admission-current.json": {
+      "sha256": "f6c266e4ff711342cb723ba3197c281d0665853e7c0c065668c46e3e9b709db6",
+      "evidence_id": "ordinary-admission-1794761451"
+    },
+    "ordinary-admission-linux-current.json": {
+      "sha256": "d69782a44db07a95682cc3a8cddd74e8f9b8034f1d970578ffe4a8b2a2cf5d36",
+      "evidence_id": "ordinary-admission-linux-1794762531"
+    },
+    "ordinary-admission-portable-current.json": {
+      "sha256": "84a77cc9d6758e22ac060f5c15662546a52d2e74a1867e8e404e835c81ba9817",
+      "evidence_id": "ordinary-admission-portable-current.json"
+    },
+    "ordinary-administration-protocol11-current.json": {
+      "sha256": "a4c4b2f7447ad0e04b7dfef09365a735601da0fcef5d7f45dee50bc3c3a1523f",
+      "evidence_id": "ordinary-administration-protocol11-1794763307"
+    },
+    "background-file-writes-current.json": {
+      "sha256": "89871bbf4c274d86debb50d4f72ae33b6e1d5ccd8458265fb11fe7cd98b86fee",
+      "evidence_id": "background-file-writes-current.json"
+    },
+    "ordinary-application-current.json": {
+      "sha256": "32692842db21330fcbdd52a9e119fbc7a984409ecfaca8f6d748466f403679d6",
+      "evidence_id": "ordinary-application-1794763991"
+    },
+    "ordinary-application-audit-current.json": {
+      "sha256": "586936d9aa052559fff37450a4dca2a07ad76a5aaacc63ff5384f0c5459af7b0",
+      "evidence_id": "ordinary-application-1794763991"
+    },
+    "pid1-reaper-linux-current.json": {
+      "sha256": "03d104870332acceceeac72ff4fc482ba725c20b24bd0f259277d74813a37fc0",
+      "evidence_id": "pid1-reaper-linux-1794771104"
+    },
+    "pid1-reaper-normal-daemons-current.json": {
+      "sha256": "fbacae216e296fca7110acc928804b18ae51526bcd4c02021e3b03e3890e3947",
+      "evidence_id": "pid1-reaper-normal-daemons-current.json"
+    },
+    "adopted-child-old-companion-red-current.json": {
+      "sha256": "a8e19c225f2ad07eb33a4337b518d6d11a8762f00dd0634b40361d93ba5346ce",
+      "evidence_id": "adopted-child-old-companion-red-1794770781"
+    }
+  },
+  "limits": [
+    "Finite background-save probe is a behavior check, not a general latency benchmark.",
+    "Actual app uses an isolated test-support bundled helper, real browser and development WASI backend. Local OPFS correspondence does not establish physical permission prompts.",
+    "Linux tests and normal CLI mount development binaries in an existing runtime image; optimized complete distributions remain unverified.",
+    "Native Windows runtime, remaining writer/process paths, resource/cache/prefetch work and complete required CI remain open."
+  ],
+  "full_CI_complete": false,
+  "whole_goal_complete": false,
+  "Linux_cleanup_followup": {
+    "source_sha256": "ebeb29e7deb0e27b07bff60e1ed85b457e2da35781c4ac84bd89a95fe4905578",
+    "normal_main_sha256": "908ed587883ad61c839474c6bd79d51222763ef9f73112ff042e626336be1e8c",
+    "normal_default_tls_without_test_support": true,
+    "strict_all_targets_clippy_passed": true,
+    "focused_passed": 59,
+    "original_managed_descendant_cleanup_without_init": true,
+    "normal_daemon_runs": [
+      {
+        "container_init_enabled": false,
+        "save_completed_while_background_live": true,
+        "finite_write_seconds": 0.006512,
+        "reviewed_exclusion_released_seconds": 0.058595,
+        "remaining_managed_children": 0,
+        "clean_exit": 0
+      },
+      {
+        "container_init_enabled": true,
+        "save_completed_while_background_live": true,
+        "finite_write_seconds": 0.007041,
+        "reviewed_exclusion_released_seconds": 0.211606,
+        "remaining_managed_children": 0,
+        "clean_exit": 0
+      }
+    ],
+    "old_companion_fails_same_revised_child_reaping_assertion": true,
+    "scope": "Development binaries in existing Linux runtime image; no complete optimized distribution or latest macOS/Windows runtime claim."
+  }
+}

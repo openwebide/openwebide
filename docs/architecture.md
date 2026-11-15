@@ -66,7 +66,8 @@ flowchart TB
         remote["Remote project files"]
         processes["Host commands and Git"]
         backend -->|"spin-sdk sqlite"| sqlite
-        backend -->|"Host filesystem VFS"| remote
+        backend -->|"WASI reads; explicitly direct writes"| remote
+        backend -->|"Coordinated file mutations"| bridge
         bridge --> remote
         bridge --> processes
         bridge -->|"REST · secret and acting user"| backend
@@ -104,7 +105,11 @@ The container ships Spin, both WASM components/assets and the native bridge.
 The browser always runs the same frontend WASM. Remote files use backend workspace
 access; local files use browser directory handles. Process/Git primitives require
 a bridge that can see the project; browser-only local editing remains available
-without a companion. Model servers are separate HTTP services reachable from the
+without a companion. Backend API and SSE-agent mutations use shared `FileMutation`
+dispatch through the native `WorkspaceFiles` implementation by default. Explicit
+`workspace_write_policy=direct` deployments use directory-bound WASI primitives
+outside native locking; failed native requests never select that policy.
+Model servers are separate HTTP services reachable from the
 deployment, not bundled into the app image.
 
 ### Transport paths
@@ -372,7 +377,11 @@ owns each command's original process group and directory locks before dispatch.
 The command enters the original directory through its open descriptor. Cancellation
 or lost control stops that group before releasing folder access; uncertain cleanup
 keeps the folder blocked. Acknowledged command completion preserves intentional
-background work, while the watcher retains exclusion until that group ends.
+background work, while the watcher retains its ordinary claim until that group
+ends. Ordinary saves, commands and Git work share admission; reviewed resource
+and server-command work remains exclusive across overlapping physical folders.
+Unconfirmed cleanup quarantines new activity through the same original directory
+capabilities, including across independent coordinators and processes.
 Escaped process groups, Windows process ownership and complete durable writer
 authority remain on the roadmap.
 

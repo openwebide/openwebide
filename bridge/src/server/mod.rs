@@ -69,6 +69,30 @@ impl ServerConfig {
             coordinator: self.workspace_transactions.coordinator.clone(),
         })
     }
+    /// Trusted Rust integration tests can isolate private ownership state before
+    /// starting any service. Normal constructors and wire APIs always select
+    /// the OS account location; no runtime profile or environment override exists.
+    #[cfg(feature = "test-support")]
+    pub fn new_for_test(
+        workspace_root: PathBuf,
+        secret: Arc<str>,
+        pairing_token: Option<String>,
+        recovery_home: PathBuf,
+    ) -> Result<Self, String> {
+        let mut config = Self::new(workspace_root, secret, pairing_token);
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        {
+            config
+                .workspace_transactions
+                .set_test_recovery_home(Arc::new(recovery_home));
+            Ok(config)
+        }
+        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+        {
+            let _ = (&mut config, recovery_home);
+            Err("Native recovery test namespaces are unavailable on this platform".into())
+        }
+    }
     pub fn new(workspace_root: PathBuf, secret: Arc<str>, pairing_token: Option<String>) -> Self {
         let workspace_transactions = crate::workspace_transactions::Host::default();
         let runs = Arc::new(crate::runs::RunRegistry::with_coordinator(
@@ -269,6 +293,13 @@ pub async fn run_server_until(
     config
         .runs
         .configure_host_administration(config.pairing_token.is_none());
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    {
+        config
+            .language_servers
+            .reconnect_command_callbacks(config.backend_url.clone());
+        config.language_servers.recover_recorded_commands();
+    }
     let session_manager = SessionManager::new();
 
     let reap_sessions = session_manager.clone();

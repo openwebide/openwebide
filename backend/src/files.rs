@@ -6,12 +6,16 @@
 
 type Result<T, E = FsError> = std::result::Result<T, E>;
 
+mod direct;
+
 #[derive(Debug, thiserror::Error)]
 pub enum FsError {
     #[error("path {0:?} is reserved")]
     Reserved(String),
     #[error("already exists in workspace: {0}")]
     AlreadyExists(String),
+    #[error("{0}")]
+    Conflict(String),
     #[error("not found in workspace: {0}")]
     NotFound(String),
     #[error("file is too large to read ({size} bytes, max {max})")]
@@ -30,6 +34,7 @@ impl From<openwebide_core::VfsError> for FsError {
             openwebide_core::VfsError::PermissionRequired(path)
             | openwebide_core::VfsError::PermissionDenied(path) => Self::PermissionDenied(path),
             openwebide_core::VfsError::AlreadyExists(path) => Self::AlreadyExists(path),
+            openwebide_core::VfsError::Conflict(message) => Self::Conflict(message),
             openwebide_core::VfsError::PathEscape(path) => Self::PathEscape(path),
             openwebide_core::VfsError::Io(detail) => Self::Io(detail),
         }
@@ -215,45 +220,6 @@ async fn file_at_read(rel: &str) -> Result<Descriptor> {
     .map_err(|code| fs_error_at(code, &rel))
 }
 
-/// Open a file for writing, creating it (and any missing parent directories)
-/// and truncating it to zero length.
-async fn file_at_write(rel: &str) -> Result<Descriptor> {
-    let root = root()?;
-    let resolver = WasiResolver::new(&root);
-    let rel = sanitize(&resolver, rel).await?;
-    ensure_parent_dirs(&rel).await?;
-    root.open_at(
-        PathFlags::empty(),
-        rel.clone(),
-        OpenFlags::CREATE | OpenFlags::TRUNCATE,
-        DescriptorFlags::WRITE,
-    )
-    .await
-    .map_err(|code| fs_error_at(code, &rel))
-}
-
-/// Create every ancestor directory of `rel`, ignoring "already exists".
-async fn ensure_parent_dirs(rel: &str) -> Result<()> {
-    let parts: Vec<&str> = rel.split('/').filter(|p| !p.is_empty()).collect();
-    if parts.len() <= 1 {
-        return Ok(());
-    }
-    let root = root()?;
-    let mut prefix = String::new();
-    for part in &parts[..parts.len() - 1] {
-        if !prefix.is_empty() {
-            prefix.push('/');
-        }
-        prefix.push_str(part);
-        match root.create_directory_at(prefix.clone()).await {
-            Ok(()) => {}
-            Err(ErrorCode::Exist) => {}
-            Err(code) => return Err(fs_error_at(code, &prefix)),
-        }
-    }
-    Ok(())
-}
-
 /// Read the entries of a directory.
 async fn read_dir_entries(dir: &Descriptor) -> Result<Vec<DirectoryEntry>> {
     let (stream, fut) = dir.read_directory();
@@ -378,188 +344,6 @@ pub async fn read(rel: &str) -> Result<String> {
     String::from_utf8(bytes).map_err(|_| FsError::Io("file is not valid UTF-8".into()))
 }
 
-/// Write `bytes` to `file` by streaming them through a component-model
-/// stream that the host drains into the file.
-///
-/// `write_via_stream` starts the host's read of the stream (and its write to
-/// the file) synchronously, so the host is already consuming from the stream
-/// by the time we write. We then write all bytes with `write_all`; each
-/// `await` yields to the runtime, which drives the host's read forward, and
-/// the write completes once the host has the bytes. Dropping the writer
-/// signals EOF, and awaiting the host's future finalizes the file (this is
-/// where a file-level error such as `NotPermitted` surfaces).
-///
-/// This mirrors the working `read` path (`read_via_stream` + `collect`). A
-/// tight manual-poll loop with a `noop_waker` does not work here: these
-/// operations complete via a host callback, so a loop that never yields to
-/// the runtime stalls, and dropping the still-pending write future cancels
-/// it, silently losing the bytes (a 0-byte file).
-async fn write_stream(file: &Descriptor, bytes: Vec<u8>) -> Result<()> {
-    let total = bytes.len();
-    let (mut writer, reader) = crate::wit_stream::new::<u8>();
-    let drain = file.write_via_stream(reader, 0);
-
-    let remaining = writer.write_all(bytes).await;
-    if !remaining.is_empty() {
-        return Err(FsError::Io(format!(
-            "stream closed before all {total} bytes were written ({} delivered)",
-            total - remaining.len()
-        )));
-    }
-
-    drop(writer);
-    match drain.await {
-        Ok(()) => Ok(()),
-        Err(code) => Err(fs_error(code)),
-    }
-}
-
-/// Write `bytes` to a file, creating it (and parent dirs) if needed.
-pub async fn write(rel: &str, bytes: &[u8]) -> Result<()> {
-    let file = file_at_write(rel).await?;
-    write_stream(&file, bytes.to_vec()).await
-}
-
-/// Create an empty file or a directory at `rel`.
-pub async fn create(rel: &str, is_dir: bool) -> Result<()> {
-    let root_desc = root()?;
-    let resolver = WasiResolver::new(&root_desc);
-    let rel = sanitize(&resolver, rel).await?;
-
-    if is_dir {
-        ensure_parent_dirs(&rel).await?;
-        match root_desc.create_directory_at(rel.clone()).await {
-            Ok(()) => Ok(()),
-            Err(ErrorCode::Exist) => Ok(()),
-            Err(code) => Err(fs_error_at(code, &rel)),
-        }
-    } else {
-        ensure_parent_dirs(&rel).await?;
-        let root = root()?;
-        let file = root
-            .open_at(
-                PathFlags::empty(),
-                rel.clone(),
-                OpenFlags::CREATE | OpenFlags::EXCLUSIVE,
-                DescriptorFlags::WRITE,
-            )
-            .await
-            .map_err(|code| match code {
-                ErrorCode::Exist => FsError::AlreadyExists(rel.clone()),
-                other => fs_error_at(other, &rel),
-            })?;
-        write_stream(&file, Vec::new()).await
-    }
-}
-
-/// Copy `from` to `to`, overwriting `to` if it exists.
-/// Copy `from` to `to`, overwriting `to` if it exists.
-pub async fn copy(from: &str, to: &str) -> Result<()> {
-    let from_file = file_at_read(from).await?;
-    let to_file = file_at_write(to).await?;
-
-    // Using `write_via_stream` with the stream from `read_via_stream`
-    // instructs the WASI runtime to pipe the data efficiently.
-    let (from_stream, read_fut) = from_file.read_via_stream(0);
-    let write_fut = to_file.write_via_stream(from_stream, 0);
-
-    match write_fut.await {
-        Ok(()) => {}
-        Err(code) => return Err(fs_error(code)),
-    }
-    match read_fut.await {
-        Ok(()) => Ok(()),
-        Err(code) => Err(fs_error(code)),
-    }
-}
-
-/// Delete a file, symlink, or directory tree at `rel`.
-///
-/// Only the **parent directory** is resolved through the PathResolver, so all
-/// `.spin`/escape checks run on every ancestor component. The final path
-/// component is used as a *literal* name within that resolved parent — meaning
-/// a symlink is removed as a link rather than having its target deleted.
-pub async fn delete(rel: &str) -> Result<()> {
-    // Split into parent path and leaf name.  Reject any leaf that looks like
-    // a traversal (e.g. an empty leaf, `.`, or `..`) since those shouldn't
-    // appear as real filesystem names and could be confusing.
-    let rel = rel.trim_matches('/');
-    let (parent_rel, leaf) = match rel.rfind('/') {
-        Some(idx) => (&rel[..idx], &rel[idx + 1..]),
-        None => ("", rel),
-    };
-    if leaf.is_empty() || leaf == "." || leaf == ".." {
-        return Err(FsError::Io(format!("invalid path component: {leaf:?}")));
-    }
-    if leaf.contains('/') {
-        return Err(FsError::Io(format!(
-            "leaf name must not contain '/': {leaf:?}"
-        )));
-    }
-
-    // Resolve the *parent* through sanitize so its `.spin`/escape checks run.
-    let root_desc = root()?;
-    let resolver = WasiResolver::new(&root_desc);
-    let resolved_parent = sanitize(&resolver, parent_rel).await?;
-    openwebide_core::vfs::workspace_path(&format!("{resolved_parent}/{leaf}"))?;
-
-    // Open the resolved parent directory and unlink the leaf by its literal name.
-    let parent_dir = if resolved_parent.is_empty() {
-        root_desc
-    } else {
-        root_desc
-            .open_at(
-                PathFlags::empty(),
-                resolved_parent.clone(),
-                OpenFlags::DIRECTORY,
-                DescriptorFlags::MUTATE_DIRECTORY,
-            )
-            .await
-            .map_err(|code| fs_error_at(code, &resolved_parent))?
-    };
-
-    remove_entry(&parent_dir, leaf).await
-}
-
-/// WASI recursive deletion primitive; symlinks are unlinked without following them.
-fn remove_entry<'a>(
-    parent: &'a Descriptor,
-    leaf: &'a str,
-) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send + 'a>> {
-    Box::pin(async move {
-        let metadata = parent
-            .stat_at(PathFlags::empty(), leaf.to_string())
-            .await
-            .map_err(|code| fs_error_at(code, leaf))?;
-        if matches!(metadata.type_, DescriptorType::Directory) {
-            let directory = parent
-                .open_at(
-                    PathFlags::empty(),
-                    leaf.to_string(),
-                    OpenFlags::DIRECTORY,
-                    DescriptorFlags::MUTATE_DIRECTORY,
-                )
-                .await
-                .map_err(|code| fs_error_at(code, leaf))?;
-            for entry in read_dir_entries(&directory).await? {
-                if entry.name != "." && entry.name != ".." {
-                    remove_entry(&directory, &entry.name).await?;
-                }
-            }
-            parent
-                .remove_directory_at(leaf.to_string())
-                .await
-                .map_err(|code| fs_error_at(code, leaf))
-        } else {
-            // Do not follow symlinks: only unlink their literal directory entry.
-            parent
-                .unlink_file_at(leaf.to_string())
-                .await
-                .map_err(|code| fs_error_at(code, leaf))
-        }
-    })
-}
-
 /// Hard caps on a search walk: matching hits, bytes read and directory entries. A search
 /// stops early once the hit or entry budget is exhausted; the byte budget
 /// is checked per file before reading.
@@ -570,44 +354,44 @@ use openwebide_core::{
 };
 
 pub async fn search(rel: &str, query: &str, opts: SearchOptions) -> Result<Vec<FileEntry>> {
-    openwebide_core::search::files(
-        &HostFsVfs {
-            base: String::new(),
-        },
-        query,
-        rel,
-        opts,
-    )
-    .await
-    .map_err(FsError::from)
+    openwebide_core::search::files(&HostFsVfs::new(""), query, rel, opts)
+        .await
+        .map_err(FsError::from)
 }
 pub async fn full_text_search(
     rel: &str,
     query: &str,
     opts: SearchOptions,
 ) -> Result<Vec<SearchHit>> {
-    openwebide_core::search::content(
-        &HostFsVfs {
-            base: String::new(),
-        },
-        query,
-        rel,
-        opts,
-    )
-    .await
-    .map_err(FsError::from)
+    openwebide_core::search::content(&HostFsVfs::new(""), query, rel, opts)
+        .await
+        .map_err(FsError::from)
 }
 
 /// Remote-mode VFS implementation bound to a project's base directory
 /// (itself relative to the Spin preopen root).
-#[derive(Debug, Clone)]
-pub struct HostFsVfs {
+#[derive(Clone)]
+pub struct HostFsVfs<S = std::sync::Arc<openwebide_storage::Store<crate::state::AppDb>>> {
     base: String,
+    store: Option<S>,
 }
 
 impl HostFsVfs {
+    /// Read-only filesystem access, also used by search and startup context.
     pub fn new(base: impl Into<String>) -> Self {
-        Self { base: base.into() }
+        Self {
+            base: base.into(),
+            store: None,
+        }
+    }
+}
+
+impl<S> HostFsVfs<S> {
+    pub fn with_store(base: impl Into<String>, store: S) -> Self {
+        Self {
+            base: base.into(),
+            store: Some(store),
+        }
     }
 
     fn resolve(&self, rel: &str) -> Result<String, VfsError> {
@@ -640,6 +424,7 @@ impl HostFsVfs {
 fn map_vfs_err(e: FsError) -> VfsError {
     match e {
         FsError::AlreadyExists(path) => VfsError::AlreadyExists(path),
+        FsError::Conflict(message) => VfsError::Conflict(message),
         FsError::NotFound(path) => VfsError::NotFound(path),
         FsError::PermissionDenied(path) => VfsError::PermissionDenied(path),
         FsError::PathEscape(path) | FsError::Reserved(path) => VfsError::PathEscape(path),
@@ -647,15 +432,78 @@ fn map_vfs_err(e: FsError) -> VfsError {
     }
 }
 
-impl Vfs for HostFsVfs {
+impl<S: std::ops::Deref<Target = openwebide_storage::Store<crate::state::AppDb>> + Send + Sync>
+    HostFsVfs<S>
+{
+    async fn mutate(
+        &self,
+        mutation: openwebide_core::vfs::FileMutation,
+    ) -> std::result::Result<(), VfsError> {
+        let store = self
+            .store
+            .as_ref()
+            .ok_or_else(|| VfsError::PermissionDenied("Read-only filesystem access".into()))?;
+        let request = openwebide_core::vfs::FileMutationRequest {
+            root: openwebide_core::vfs::workspace_path(&self.base)?,
+            mutation,
+        };
+        let payload =
+            serde_json::to_string(&request).map_err(|error| VfsError::Io(error.to_string()))?;
+        // Deployment policy selects a primitive. A communication failure never
+        // changes this choice or replays a potentially accepted write.
+        if direct_writes().await? {
+            return request
+                .mutation
+                .apply(&direct::DirectFiles::open(&request.root).await?)
+                .await;
+        }
+        // The native writer retains its execution lease after observer loss.
+        let (status, body) = crate::bridge::send(store, "/workspace/write", payload)
+            .await
+            .map_err(|error| {
+                VfsError::Conflict(format!("Workspace write is unconfirmed: {error:?}"))
+            })?;
+        if status != 200 {
+            return Err(VfsError::Conflict(format!(
+                "Workspace write was rejected (HTTP {status}): {}",
+                String::from_utf8_lossy(&body)
+            )));
+        }
+        serde_json::from_slice::<std::result::Result<(), VfsError>>(&body).map_err(|_| {
+            VfsError::Conflict(
+                "Workspace write is unconfirmed; the companion reply was invalid".into(),
+            )
+        })?
+    }
+}
+
+async fn direct_writes() -> std::result::Result<bool, VfsError> {
+    #[cfg(not(test))]
+    let policy = spin_sdk::variables::get("workspace_write_policy")
+        .await
+        .ok();
+    #[cfg(test)]
+    let policy: Option<String> = None;
+    match policy.as_deref().unwrap_or("coordinated") {
+        "coordinated" => Ok(false),
+        "direct" => Ok(true),
+        _ => Err(VfsError::Conflict("Unknown workspace write policy".into())),
+    }
+}
+
+impl<S: std::ops::Deref<Target = openwebide_storage::Store<crate::state::AppDb>> + Send + Sync> Vfs
+    for HostFsVfs<S>
+{
     fn read_bytes<'a>(&'a self, path: &'a str) -> VfsFuture<'a, Vec<u8>> {
         Box::pin(async move { read_bytes(&self.resolve(path)?).await.map_err(map_vfs_err) })
     }
     fn write_bytes<'a>(&'a self, path: &'a str, contents: &'a [u8]) -> VfsFuture<'a, ()> {
         Box::pin(async move {
-            write(&self.resolve(path)?, contents)
-                .await
-                .map_err(map_vfs_err)
+            self.mutate(openwebide_core::vfs::FileMutation::Write {
+                path: path.into(),
+                contents: contents.to_vec(),
+            })
+            .await
         })
     }
     fn read<'a>(&'a self, path: &'a str) -> VfsFuture<'a, String> {
@@ -666,10 +514,7 @@ impl Vfs for HostFsVfs {
     }
 
     fn write<'a>(&'a self, path: &'a str, content: &'a str) -> VfsFuture<'a, ()> {
-        Box::pin(async move {
-            let full = self.resolve(path)?;
-            write(&full, content.as_bytes()).await.map_err(map_vfs_err)
-        })
+        self.write_bytes(path, content.as_bytes())
     }
 
     fn list<'a>(&'a self, dir: &'a str) -> VfsFuture<'a, Vec<FileEntry>> {
@@ -693,23 +538,66 @@ impl Vfs for HostFsVfs {
         kind: openwebide_core::vfs::VfsEntryKind,
     ) -> VfsFuture<'a, ()> {
         Box::pin(async move {
-            let full = self.resolve(path)?;
-            create(&full, kind.is_dir()).await.map_err(map_vfs_err)
+            self.mutate(openwebide_core::vfs::FileMutation::Create {
+                path: path.into(),
+                kind,
+            })
+            .await
         })
     }
 
     fn delete<'a>(&'a self, path: &'a str) -> VfsFuture<'a, ()> {
         Box::pin(async move {
-            let full = self.resolve(path)?;
-            delete(&full).await.map_err(map_vfs_err)
+            self.mutate(openwebide_core::vfs::FileMutation::Delete { path: path.into() })
+                .await
         })
     }
 
     fn copy<'a>(&'a self, from: &'a str, to: &'a str) -> VfsFuture<'a, ()> {
         Box::pin(async move {
-            let from = self.resolve(from)?;
-            let to = self.resolve(to)?;
-            copy(&from, &to).await.map_err(map_vfs_err)
+            self.mutate(openwebide_core::vfs::FileMutation::Copy {
+                from: from.into(),
+                to: to.into(),
+            })
+            .await
+        })
+    }
+
+    fn replace_atomic<'a>(&'a self, path: &'a str, contents: &'a [u8]) -> VfsFuture<'a, ()> {
+        Box::pin(async move {
+            self.mutate(openwebide_core::vfs::FileMutation::Replace {
+                path: path.into(),
+                contents: contents.to_vec(),
+            })
+            .await
+        })
+    }
+    fn remove_entry<'a>(
+        &'a self,
+        path: &'a str,
+        kind: openwebide_core::vfs::VfsEntryKind,
+    ) -> VfsFuture<'a, ()> {
+        Box::pin(async move {
+            self.mutate(openwebide_core::vfs::FileMutation::Remove {
+                path: path.into(),
+                kind,
+            })
+            .await
+        })
+    }
+    fn move_atomic<'a>(
+        &'a self,
+        from: &'a str,
+        to: &'a str,
+        kind: openwebide_core::vfs::VfsEntryKind,
+    ) -> VfsFuture<'a, ()> {
+        Box::pin(async move {
+            self.mutate(openwebide_core::vfs::FileMutation::Move {
+                from: from.into(),
+                to: to.into(),
+                kind,
+            })
+            .await
         })
     }
 

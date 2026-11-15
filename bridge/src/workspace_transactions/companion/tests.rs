@@ -56,16 +56,30 @@ impl FolderTransport for Client {
 }
 struct Case {
     directory: tempfile::TempDir,
+    recovery_home: Arc<PathBuf>,
     host: Host,
-    authorities: std::sync::Mutex<Vec<authority::Authority>>,
+    authorities: std::sync::Mutex<Vec<Arc<authority::Authority>>>,
     lose_advance: Arc<AtomicBool>,
     requests: Arc<std::sync::Mutex<Vec<FolderRequest>>>,
 }
 impl Case {
     fn new() -> Self {
+        Self::at(tempfile::tempdir().unwrap())
+    }
+    fn at(directory: tempfile::TempDir) -> Self {
+        let recovery_home = Arc::new(
+            tempfile::Builder::new()
+                .prefix("openwebide-companion-registry-")
+                .tempdir()
+                .unwrap()
+                .keep(),
+        );
+        let host = Host::default();
+        host.coordinator.set_recovery_home(recovery_home.clone());
         Self {
-            directory: tempfile::tempdir().unwrap(),
-            host: Host::default(),
+            directory,
+            recovery_home,
+            host,
             authorities: Default::default(),
             lose_advance: Arc::new(AtomicBool::new(false)),
             requests: Default::default(),
@@ -130,6 +144,10 @@ impl Case {
         path: &str,
         lose_transfer: Arc<AtomicBool>,
     ) -> CompanionFiles<Client> {
+        // Independent test machines have independent registries. Every host
+        // participating in this test shares its one original registry.
+        host.coordinator
+            .set_recovery_home(self.recovery_home.clone());
         let FolderReply::Opened {
             session: id,
             challenge: name,
@@ -515,7 +533,7 @@ async fn native_transactions_exclude_old_companion_calls_and_replaced_roots_neve
     .await
     .unwrap();
     let captured = Transactions::capture_root(&case.root(), "project", 1, 1).unwrap();
-    let fence = case.host.exclude(&captured).await.unwrap();
+    let fence = case.host.exclude(&captured, None).await.unwrap();
     drop(fence);
     assert!(
         case.call(

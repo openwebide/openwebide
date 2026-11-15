@@ -18,6 +18,11 @@ fn private_bootstrap_reads_original_scope_and_state_without_accepting_a_worker()
             panic!("Missing private preflight scope")
         };
         assert_eq!(inspected, scope);
+        request.operation = Operation::RecoveryScope;
+        assert!(matches!(
+            store.delegated_workspace_journal(&request, 101).await.unwrap(),
+            WorkspaceJournalResponse::Scope { scope: Some(ref inspected) } if inspected == &scope
+        ));
         assert!(serde_json::to_vec(&inspected).unwrap().len() < 1024);
         request.operation = Operation::Load;
         let WorkspaceJournalResponse::Loaded { state: Some(state) } = store
@@ -43,7 +48,11 @@ fn private_bootstrap_reads_original_scope_and_state_without_accepting_a_worker()
                 .await
                 .is_err()
         );
-        for operation in [Operation::Inspect, Operation::Load] {
+        for operation in [
+            Operation::Inspect,
+            Operation::RecoveryScope,
+            Operation::Load,
+        ] {
             request.operation = operation;
             let mut forged = request.clone();
             forged.worker.secret = "f".repeat(32);
@@ -104,7 +113,11 @@ fn private_bootstrap_reads_original_scope_and_state_without_accepting_a_worker()
             )
             .await
             .unwrap();
-        for operation in [Operation::Inspect, Operation::Load] {
+        for operation in [
+            Operation::Inspect,
+            Operation::RecoveryScope,
+            Operation::Load,
+        ] {
             request.operation = operation;
             assert!(
                 store

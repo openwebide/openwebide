@@ -1,0 +1,160 @@
+{
+  "status": "Ten native cases release a registered original recovery worker after a peer retires its owner with the original folder absent. Coverage includes real received Completed and Uncertain results. Further recovery work and the original roadmap remain unfinished.",
+  "source_sha256": "58d1880774960ad0a88c4355b40a1e3acdf24a47efb0fea382c2af6ed2bb86d0",
+  "builds_on": "built-command-callback-checks.json",
+  "implementation": "The shared Journal::reconcile_original checks original native record presence before reopening its folder. Cancellation checks native presence before reopening and at retry entry. This checkpoint adds test-support-only observation of the existing registered native worker count; no wire endpoint, distribution API or recovery authority is added.",
+  "contract": [
+    "Create real file/command ownership through the authenticated HTTP fixture and production Store. Cover a recorded no-dispatch rejection, admitted and unadmitted cancellation, and dispatched Completed and Uncertain results in both service and paired transports. Block initial settlement before Start; never fabricate an outcome or retirement.",
+    "Stop the original execution host, move the original folder away, and start a real original control on an independent current-thread Tokio runtime. Require the exact retained result or outcome-free cancellation and one registered native worker. Poll that actor, then suspend driving its runtime on a channel so its retry cannot race peer settlement; no clock is mocked.",
+    "Restore the same folder and run a separate real HTTP host in the same private namespace. Manually acknowledge Rejected and Uncertain results through normal Store policy; Completed and cancellation settle without manual review. Wait for native command and acknowledgement retirement and prove an ordinary native writer succeeds.",
+    "Remove the folder again and resume the original runtime. Observe its actual registered worker count fall from one to zero before shutdown while the original path remains absent. Assert no additional original callbacks, unchanged result digest, editor recovery and source. Dispatched cases retain exactly one original execution; all others retain zero. Missing folder access itself never releases ownership.",
+    "Remove only the early native-presence guard from Journal::reconcile_original and replay the actual retained-result case. It fails precisely because the registered retry remains alive with the folder absent, despite no more backend callbacks. Preserve the first passing and failing actual binaries, restore exact good source, then rerun the complete native and HTTP suites.",
+    "The metric getter is enabled only by test-support and reads the existing Coordinator registration counter. Ordinary builds retain their normal feature inventory. All five original outcome/cancellation variants make the same exact post-peer, missing-folder registration assertion in both transports.",
+    "Dispatched cases use deterministic real LSP replies: a large Unicode/quoted JSON result or a genuine server error, with a SIGTERM-resistant managed descendant and observed heartbeat. Uncertain cleanup is confirmed before host shutdown and cannot start settlement before review. Completed preserves the existing warm service; host shutdown must stop its descendant before the folder is removed. No production lifecycle behavior changes in this extension."
+  ],
+  "verification": {
+    "focused_terminal": "dispatched-peer-focused-1794733865/terminal.json",
+    "focused_outputs": "dispatched-peer-focused-outputs-1794733940/manifest.json",
+    "terminal": "dispatched-peer-qualified-1794733941/terminal.json",
+    "outputs": "dispatched-peer-qualified-outputs-1794734196/manifest.json",
+    "checks": [
+      {
+        "case": "format",
+        "returncode": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "all-command-HTTP",
+        "returncode": 0,
+        "log_sha256": "61149e974bca0bdf2c491079b09e93272ed4529fcca1904d1dc63e30ec7a05e6"
+      },
+      {
+        "case": "default-bin-clippy",
+        "returncode": 0,
+        "log_sha256": "4599439dfcad843e5fd2b1c63f75ed30ce50c6792a50c40b9cb6294df0fcd3a1"
+      },
+      {
+        "case": "production-feature-inventory",
+        "returncode": 0,
+        "log_sha256": "51a70955c82feadb08bcaf685eec7550c14e8cf35436c8f256347155c7578b04"
+      }
+    ],
+    "focused_native_all_target_Clippy": true,
+    "all_command_HTTP_tests": 15,
+    "lifecycle_cases": 10,
+    "additional_dispatched_lifecycle_cases": 4,
+    "production_changes": false,
+    "test_only_files": [
+      "bridge/tests/language_commands/peer_retirement.rs",
+      "bridge/tests/language_commands/retained.rs"
+    ],
+    "prior_full_native_qualification": "peer-folder-qualified-1794732135/terminal.json",
+    "prior_native_library_tests": 544,
+    "prior_explicit_marketplace_test": 1,
+    "native_library_reexecuted": false,
+    "Windows_cross_reexecuted": false,
+    "native_Windows_runtime": false,
+    "fresh_Linux_runtime": false,
+    "built_browser_workflows_reexecuted": false,
+    "all40_original_production_artifacts_unchanged": true,
+    "initial_test_expectations_corrected": [
+      "Completed retains its warm service until host shutdown.",
+      "Uncertain waits for manual review before settlement; observe cleanup confirmation instead of a settlement attempt."
+    ]
+  },
+  "remaining": [
+    "Qualify callback recovery with the current optimized native/WASI release distribution and installed app, including original OS-selected private namespace and physical browser folder permission/device checks. The built-app checkpoint uses optimized frontend, unoptimized production WASI entry point and the same native HTTP host with an isolated test-support namespace.",
+    "Finish frozen-owner application recovery beyond the native OS-owner CLI: deleted original projects/accounts, legacy command owners without verifiable cleanup, actual process interruptions and current packaged/native platform contracts. Never infer cleanup from missing public rows, failed requests or 404 replies.",
+    "Finish remaining admission/watcher-enrollment and outcome/context interruptions, including escaped-process cleanup beyond the verified managed-group cases.",
+    "Finish every participating writer, Git/PTY and escaped-process lifetime; implement and verify native Windows ownership and fresh packaged Linux runtime.",
+    "Complete all original packaged application/browser, cache/resource/RSS/prefetch/homelab and full-CI requirements."
+  ],
+  "missing_folder_job_retirement_verified": {
+    "no_dispatch_recorded_rejection": true,
+    "admitted_cancellation": true,
+    "unadmitted_cancellation": true,
+    "dispatched_completed_or_uncertain_result": true
+  },
+  "command_recovery_complete": false,
+  "full_CI_complete": false,
+  "whole_goal_complete": false,
+  "previous_checkpoint": {
+    "source_sha256": "d5d079ad1182e1165e69b0c31a53abe5e7f2a7aced6211baa8689cad4d57aabc",
+    "verification": {
+      "focused_terminal": "peer-folder-focused-1794731691/terminal.json",
+      "regression_replay": "peer-folder-red-1794731992/terminal.json",
+      "red_test_returncode": 101,
+      "only_presence_guard_removed": true,
+      "exact_good_source_restored": true,
+      "terminal": "peer-folder-qualified-1794732135/terminal.json",
+      "outputs": "peer-folder-qualified-outputs-1794732983/manifest.json",
+      "checks": [
+        {
+          "case": "format",
+          "returncode": 0,
+          "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "case": "native-clippy",
+          "returncode": 0,
+          "log_sha256": "d892923e5a74b5524080c0e5fe937ec2b9fb61de5f629793eecf5360af462ebb"
+        },
+        {
+          "case": "Windows-cross-clippy",
+          "returncode": 0,
+          "log_sha256": "b722e0ef1cd1719eb058eaca48dd28106e1868c92d3d9a2fd6fd6492d089ae63"
+        },
+        {
+          "case": "matching-main",
+          "returncode": 0,
+          "log_sha256": "2ee0f1d254f2ad5cdb22918a67fad73c1e4da2ff37b6d046fbbd0c06566398d6"
+        },
+        {
+          "case": "matching-example",
+          "returncode": 0,
+          "log_sha256": "3c3d101ccea8b66a5f5b684116984dc0f4bef81f9c7e00a352e05ff4188ad455"
+        },
+        {
+          "case": "all-native-library",
+          "returncode": 0,
+          "log_sha256": "205d13706a0d4dc9c86d7936d944831b9b5f24ed76ec8ebc2b755af40c486bc8"
+        },
+        {
+          "case": "explicit-marketplace-smoke",
+          "returncode": 0,
+          "log_sha256": "16fb8dccf335addc0a073ccc81bcab1587fa9689aa18a3d292a56def9b47b5c3"
+        },
+        {
+          "case": "all-command-HTTP",
+          "returncode": 0,
+          "log_sha256": "1a53650a4bc3133289ca11930262f74b8e9f62942c24ce581432e6e60086a434"
+        },
+        {
+          "case": "default-bin-clippy",
+          "returncode": 0,
+          "log_sha256": "3b6261ee62ec9f3861197d590257eb4983ecc2cfd07e3feb67b2725e3a63b993"
+        },
+        {
+          "case": "production-feature-inventory",
+          "returncode": 0,
+          "log_sha256": "51a70955c82feadb08bcaf685eec7550c14e8cf35436c8f256347155c7578b04"
+        }
+      ],
+      "test_counts": {
+        "all-native-library": 544,
+        "explicit-marketplace-smoke": 1,
+        "all-command-HTTP": 15
+      },
+      "distinct_native_HTTP_tests": 560,
+      "additional_focused_duplicate_test_executions": 1,
+      "new_lifecycle_cases": 6,
+      "new_SIGKILL_cases": 0,
+      "native_and_Windows_cross_Clippy": true,
+      "native_Windows_runtime": false,
+      "fresh_Linux_runtime": false,
+      "built_browser_workflows_reexecuted": false,
+      "all40_original_production_artifacts_unchanged": true
+    },
+    "scope": "Six no-dispatch/cancellation cases, actual presence-guard regression replay and full native qualification. These historical tests were not all rerun for this integration-test-only extension."
+  }
+}

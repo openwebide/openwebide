@@ -22,7 +22,7 @@ use crate::StorageError;
 use crate::db::Db;
 
 /// The highest schema version this build knows how to apply.
-pub const SCHEMA_VERSION: i64 = 68;
+pub const SCHEMA_VERSION: i64 = 71;
 
 pub const MIGRATIONS: &[&str] = &[
     "CREATE TABLE IF NOT EXISTS settings (
@@ -826,6 +826,107 @@ async fn apply_step<D: Db>(
             // refuse new state instead of rewriting its recovery authority.
             Ok(())
         }
+        69 => {
+            for column in ["invocation", "outcome_digest"] {
+                if db
+                    .execute(
+                        "SELECT 1 FROM pragma_table_info('language_actions') WHERE name=?",
+                        &[crate::db::DbValue::Text(column.into())],
+                    )
+                    .await?
+                    .rows
+                    .is_empty()
+                {
+                    db.execute(
+                        &format!("ALTER TABLE language_actions ADD COLUMN {column} TEXT"),
+                        &[],
+                    )
+                    .await?;
+                }
+            }
+            // Reserve compact immutable recovery data without deserializing or
+            // rewriting archived provider/source payloads. Readable legacy
+            // actions populate their original binding during authorization.
+            let reserve =
+                openwebide_core::plugins::languages::intelligence::actions::MAX_COMMAND_BYTES
+                    + 8192
+                    + 64;
+            db.execute(
+                &format!(
+                    "UPDATE language_actions SET bytes=length(CAST(approval AS BLOB))+{reserve}"
+                ),
+                &[],
+            )
+            .await?;
+            Ok(())
+        }
+        70 => {
+            for (column, definition) in [
+                ("command_worker_id", "TEXT NOT NULL DEFAULT ''"),
+                ("command_worker_digest", "TEXT NOT NULL DEFAULT ''"),
+                (
+                    "command_worker_may_dispatch",
+                    "INTEGER NOT NULL DEFAULT 0 CHECK(command_worker_may_dispatch IN (0,1))",
+                ),
+                (
+                    "native_settlement_pending",
+                    "INTEGER NOT NULL DEFAULT 0 CHECK(native_settlement_pending IN (0,1))",
+                ),
+                (
+                    "command_cleanup_confirmed",
+                    "INTEGER NOT NULL DEFAULT 0 CHECK(command_cleanup_confirmed IN (0,1))",
+                ),
+            ] {
+                if db
+                    .execute(
+                        "SELECT 1 FROM pragma_table_info('language_actions') WHERE name=?",
+                        &[crate::db::DbValue::Text(column.into())],
+                    )
+                    .await?
+                    .rows
+                    .is_empty()
+                {
+                    db.execute(
+                        &format!("ALTER TABLE language_actions ADD COLUMN {column} {definition}"),
+                        &[],
+                    )
+                    .await?;
+                }
+            }
+            db.execute("DROP INDEX IF EXISTS language_actions_pending", &[])
+                .await?;
+            db.execute("CREATE UNIQUE INDEX language_actions_pending ON language_actions(user_id,project_id) WHERE phase NOT IN ('completed','acknowledged','cancelled') OR native_settlement_pending=1", &[]).await?;
+            db.execute("CREATE TABLE IF NOT EXISTS language_command_delegations (id TEXT PRIMARY KEY,secret_digest TEXT NOT NULL,user_id INTEGER NOT NULL,project_id INTEGER NOT NULL,transaction_id TEXT NOT NULL,generation TEXT NOT NULL,scope TEXT NOT NULL,worker_id TEXT NOT NULL,worker_digest TEXT NOT NULL,admitted INTEGER NOT NULL DEFAULT 0 CHECK(admitted IN (0,1)),expires_at INTEGER NOT NULL,FOREIGN KEY(user_id,project_id,transaction_id) REFERENCES language_actions(user_id,project_id,id) ON DELETE CASCADE,UNIQUE(user_id,project_id,transaction_id,generation,worker_id))", &[]).await?;
+            db.execute("CREATE INDEX IF NOT EXISTS language_command_delegations_quota ON language_command_delegations(user_id,admitted,expires_at)", &[]).await?;
+            // Reserve the complete command actor identity/digest too.
+            let reserve =
+                openwebide_core::plugins::languages::intelligence::actions::MAX_COMMAND_BYTES
+                    + 8192
+                    + 64
+                    + 96;
+            db.execute(
+                &format!(
+                    "UPDATE language_actions SET bytes=length(CAST(approval AS BLOB))+{reserve}"
+                ),
+                &[],
+            )
+            .await?;
+            Ok(())
+        }
+        71 => {
+            if db.execute("SELECT 1 FROM pragma_table_info('language_actions') WHERE name='command_settlement_acknowledged'", &[]).await?.rows.is_empty() {
+                db.execute("ALTER TABLE language_actions ADD COLUMN command_settlement_acknowledged INTEGER NOT NULL DEFAULT 0 CHECK(command_settlement_acknowledged IN (0,1))", &[]).await?;
+            }
+            // Independent of public history: pruning payloads must not remove
+            // the proof needed by an original native owner's final retry.
+            db.execute("CREATE TABLE IF NOT EXISTS language_command_settlements (user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,id TEXT NOT NULL,recovery TEXT NOT NULL CHECK(length(CAST(recovery AS BLOB))<=65536),worker_digest TEXT NOT NULL,legacy INTEGER NOT NULL DEFAULT 0 CHECK(legacy IN (0,1)),PRIMARY KEY(user_id,project_id,id))", &[]).await?;
+            // At most the prior public action quota (256/user) can be legacy.
+            // Legacy terminal rows already discarded their worker secret hash;
+            // preserve their existing issuer + original-worker-ID contract.
+            // Never deserialize provider/source snapshots during migration.
+            db.execute("INSERT OR IGNORE INTO language_command_settlements(user_id,project_id,id,recovery,worker_digest,legacy) SELECT a.user_id,a.project_id,a.id,json_object('scope',json_object('id',w.id,'revision',w.revision,'generation',w.generation,'root_identity',w.root_identity,'root',json(w.editor_root),'worker',json(CASE WHEN w.worker_id='' THEN 'null' ELSE json_object('id',w.worker_id,'active',json(CASE WHEN w.worker_digest='' THEN 'false' ELSE 'true' END)) END),'accepted_language_review_digest',w.accepted_language_review_digest),'activity',json_object('file_recovery',json('false'),'language_command',json('false')),'command',json_object('invocation',json(a.invocation),'revision',a.revision,'phase',a.phase,'outcome_digest',a.outcome_digest,'worker',json_object('id',a.command_worker_id,'active',json('false')),'native_settlement_pending',json('false'),'command_cleanup_confirmed',json('true'))),'',1 FROM language_actions a JOIN workspace_transactions w ON w.user_id=a.user_id AND w.project_id=a.project_id AND w.id=a.id WHERE a.phase IN ('completed','acknowledged','cancelled') AND a.native_settlement_pending=0 AND a.command_cleanup_confirmed=1 AND a.command_worker_id<>'' AND a.command_settlement_acknowledged=0 AND w.terminal=1 AND length(w.id)=32 AND length(w.generation)=32 AND length(w.root_identity)=64 AND length(w.worker_id) IN (0,32) AND (w.accepted_language_review_digest IS NULL OR length(w.accepted_language_review_digest)=64) AND length(a.command_worker_id)=32 AND (a.outcome_digest IS NULL OR length(a.outcome_digest)=64) AND length(CAST(a.invocation AS BLOB))<=4096 AND json_valid(a.invocation) AND length(CAST(w.editor_root AS BLOB))<=4096 AND json_valid(w.editor_root)", &[]).await?;
+            Ok(())
+        }
         other => Err(StorageError::Db(format!("unknown migration step {other}"))),
     }
 }
@@ -939,6 +1040,12 @@ pub(crate) async fn apply_through<D: Db>(db: &D, target: i64) -> Result<(), Stor
         apply_step(db, step, &|_| false).await?;
     }
     Ok(())
+}
+
+/// Replay one migration to check its idempotence against its own schema.
+#[cfg(test)]
+pub(crate) async fn replay_step<D: Db>(db: &D, step: i64) -> Result<(), StorageError> {
+    apply_step(db, step, &|_| false).await
 }
 
 /// `ALTER TABLE ... ADD COLUMN` is not idempotent, so probe first.

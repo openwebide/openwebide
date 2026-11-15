@@ -49,3 +49,58 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod recovery_response_tests {
+    use super::*;
+    use crate::{
+        WorkspaceMode,
+        editor::EditorRecoveryRoot,
+        workspace_transaction::{
+            RecoveryAuthority, WorkspaceJournalResponse, WorkspaceTransactionScope,
+        },
+    };
+    #[test]
+    fn private_scope_requires_complete_compound_activity_and_redacts_its_credential() {
+        let scope = WorkspaceTransactionScope {
+            id: "1".repeat(32),
+            revision: 1,
+            generation: "2".repeat(32),
+            root_identity: "original".into(),
+            root: EditorRecoveryRoot {
+                mode: WorkspaceMode::Local,
+                path: None,
+            },
+            worker: None,
+            accepted_language_review_digest: None,
+        };
+        let authority = RecoveryAuthority::for_scope(1, 2, &scope, "A".repeat(43)).unwrap();
+        let secret = authority.secret.clone();
+        let response = WorkspaceJournalResponse::RecoveryScope {
+            scope,
+            authority: Box::new(authority),
+            activity: WorkspaceActivity {
+                file_recovery: false,
+                language_command: true,
+            },
+        };
+        assert!(!format!("{response:?}").contains(&secret));
+        let mut value = serde_json::to_value(response).unwrap();
+        let WorkspaceJournalResponse::RecoveryScope { activity, .. } =
+            serde_json::from_value(value.clone()).unwrap()
+        else {
+            unreachable!()
+        };
+        assert!(activity.ensure_idle().is_err());
+        for invalid in [
+            serde_json::Value::Null,
+            serde_json::json!({}),
+            serde_json::json!({"file_recovery":false}),
+        ] {
+            value["activity"] = invalid;
+            assert!(serde_json::from_value::<WorkspaceJournalResponse>(value.clone()).is_err());
+        }
+        value.as_object_mut().unwrap().remove("activity");
+        assert!(serde_json::from_value::<WorkspaceJournalResponse>(value).is_err());
+    }
+}

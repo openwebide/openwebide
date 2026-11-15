@@ -456,10 +456,10 @@
     }
   },
   "current_published_followup": {
-    "status": "in_progress",
-    "conclusion": null,
+    "status": "completed",
+    "conclusion": "success",
     "html_url": "https://github.com/openwebide/openwebide/actions/runs/43356867555",
-    "observed_at_utc": "2026-11-13T06:01:28+00:00",
+    "observed_at_utc": "2026-11-13T06:23:07+00:00",
     "jobs": [
       {
         "name": "validate",
@@ -542,17 +542,29 @@
       {
         "name": "checks / frontend",
         "id": 131682717254,
-        "status": "in_progress",
-        "conclusion": null
+        "status": "completed",
+        "conclusion": "success"
       },
       {
         "name": "assets",
         "id": 131700996239,
         "status": "completed",
         "conclusion": "success"
+      },
+      {
+        "name": "publish-nightly",
+        "id": 131729148063,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "publish",
+        "id": 131729149538,
+        "status": "completed",
+        "conclusion": "skipped"
       }
     ],
-    "raw_sha256": "4a7d175ec5a329ff63b1ab405e62e03c88e88d4f71de6d00676fd7974c1af750",
+    "raw_sha256": "6102bbb57758b893ab1c1f9be208728d2b216b98e6a0589635e9bac051b2b087",
     "site": {
       "workflow_run": 43356867487,
       "status": "completed",
@@ -565,7 +577,12 @@
     ],
     "commit": "5145aa29201b2de8f8037c518491e363535ad3ee",
     "workflow_run": 43356867555,
-    "observation_format": "JSON envelope containing observed_epoch, raw run and raw jobs API objects"
+    "observation_format": "JSON envelope containing observed_epoch, raw run and raw jobs API objects",
+    "executed_jobs_passed": 16,
+    "expected_skipped_jobs": [
+      "publish"
+    ],
+    "expected_skip_basis": "Main selects rolling publication; publish-nightly passed and the tagged publisher is conditional on rolling != true."
   },
   "initial_checked_on": "2026-11-11",
   "initial_status": "current_native_memory_fixture_passed_separate_shutdown_and_editor_failures",
@@ -1821,5 +1838,12 @@
       "No compiler flags, build profiles, original assertions, warnings, limits or deadlines relaxed.",
       "The only later source changes at this point are this documentation followup; keep source identities distinct."
     ]
+  },
+  "local_native_folder_identity_followup": {
+    "receipt": "native-folder-identity-checks.json",
+    "verification_source_sha256": "e20c6187e189bac6a7d65f80ae1d1bfcf252d092b05293c02aad7b84bb3d9f2f",
+    "focused_native97_and_windows_cross_passed": true,
+    "full_current_source_CI_or_publication_complete": false,
+    "durable_authority_complete": false
   }
 }

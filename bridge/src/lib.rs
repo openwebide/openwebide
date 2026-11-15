@@ -7,6 +7,7 @@ pub mod languages;
 pub mod mcp;
 pub mod paths;
 pub mod plugins;
+pub mod recovery;
 pub mod runs;
 pub mod scheduled;
 pub mod secret;
@@ -21,4 +22,11 @@ pub use exec::{git, proc};
 pub use runs::{agent_host, backend_client, http_client, native_vfs};
 pub use server::http;
 pub use terminals::{headless, pty, seq_ring, session};
+#[cfg(unix)]
+mod file_identity;
 mod folder_coordination;
+#[cfg(unix)]
+mod native_directory;
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+mod native_recovery;

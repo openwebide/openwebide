@@ -44,6 +44,31 @@ pub enum CommandOperation {
     Start,
     Status,
     Stop,
+    Cancel,
+}
+
+impl CommandOperation {
+    /// Observation and fencing remain valid after native completion. They never
+    /// turn an archived invocation into fresh permission to start it.
+    pub fn invocation(self, record: &ActionRecord) -> Result<CommandInvocation, String> {
+        record.validate()?;
+        match self {
+            Self::Cancel if record.phase == ActionPhase::Cancelled => {
+                record.approval.command_invocation()
+            }
+            Self::Cancel => Err("Cancel only an already cancelled unstarted action".into()),
+            Self::Start if record.phase == ActionPhase::Running => {
+                record.approval.command_invocation()
+            }
+            Self::Start => Err("A command with a recorded outcome cannot be started again".into()),
+            Self::Status | Self::Stop
+                if matches!(record.phase, ActionPhase::Approved | ActionPhase::Cancelled) =>
+            {
+                Err("The approved command was not claimed".into())
+            }
+            Self::Status | Self::Stop => record.approval.command_invocation(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -59,9 +84,18 @@ pub struct CommandDispatch {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AuthorizedCommand {
-    pub selection: Selection,
+    pub user: i64,
+    pub project: i64,
+    /// Only Start carries provider/source data. Controls address original work.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selection: Option<Selection>,
     pub invocation: CommandInvocation,
     pub operation: CommandOperation,
+    /// A backend-recorded result can be observed without contacting the old
+    /// host. Stop is resolved here only after positive native cleanup.
+    /// This is a response to authorization, never native execution authority.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub progress: Option<CommandProgress>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -70,4 +104,24 @@ pub struct HostCommandRequest {
     pub user: Option<i64>,
     pub root: String,
     pub command: AuthorizedCommand,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub authority: Option<CommandAuthority>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub journal: Option<PairedCommandJournalRequest>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PairedCommandJournalRequest {
+    pub api_url: String,
+    pub delegation: crate::workspace_transaction::WorkspaceJournalDelegation,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "result", rename_all = "snake_case", deny_unknown_fields)]
+pub enum CommandPreparation {
+    Worker {
+        worker: crate::workspace_transaction::WorkspaceTransactionWorkerKey,
+    },
+    Existing {
+        progress: CommandProgress,
+    },
 }

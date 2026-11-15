@@ -26,11 +26,12 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class Runtime:
-    def __init__(self, state, frontend=False):
+    def __init__(self, state, frontend=False, manifest=None):
         self.state = Path(state)
         self.process = None
         self.log = None
         self.frontend = frontend
+        self.manifest = None if manifest is None else Path(manifest).resolve()
         self.cookies = http.cookiejar.CookieJar()
         self.client = urllib.request.build_opener(
             urllib.request.HTTPCookieProcessor(self.cookies),
@@ -69,6 +70,8 @@ class Runtime:
                 "spin", "up", "--direct-mounts", "--allow-transient-write",
                 "--state-dir", str(self.state), "--listen", f"127.0.0.1:{self.port}",
         ]
+        if self.manifest is not None:
+            command.extend(["--from", str(self.manifest)])
         if not self.frontend:
             command.extend(["--component-id", "backend"])
         self.process = subprocess.Popen(

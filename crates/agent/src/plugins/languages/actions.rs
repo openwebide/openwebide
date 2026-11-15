@@ -99,6 +99,13 @@ impl<H: PluginActionHost> LanguageActionClient<H> {
         }
         self.current()?;
         if let Some(record) = &record
+            && record.phase == openwebide_core::plugins::languages::intelligence::actions::ActionPhase::Cancelled
+        {
+            // Durable cancellation is independent of folder/service availability.
+            // The original native owner retries cleanup without fresh authority.
+            let _ = self.dispatch_command(&record.approval.id, CommandOperation::Cancel, None).await;
+        }
+        if let Some(record) = &record
             && matches!(record.phase,
                 openwebide_core::plugins::languages::intelligence::actions::ActionPhase::Cancelled
                 | openwebide_core::plugins::languages::intelligence::actions::ActionPhase::Acknowledged)
@@ -160,26 +167,240 @@ impl<H: PluginActionHost> LanguageActionClient<H> {
         operation: CommandOperation,
     ) -> Result<CommandProgress, String> {
         self.current()?;
-        record.invocation()?;
-        if operation == CommandOperation::Start
-            && record.phase
-                != openwebide_core::plugins::languages::intelligence::actions::ActionPhase::Running
-        {
-            return Err("A command with an uncertain outcome cannot be started again".into());
-        }
+        operation.invocation(record)?;
         let call = if operation == CommandOperation::Start {
             Some(Box::new(self.call(&record.approval).await?))
         } else {
             None
         };
+        self.dispatch_command(&record.approval.id, operation, call)
+            .await
+    }
+    pub async fn recovery(
+        &self,
+        request: &openwebide_core::plugins::languages::intelligence::actions::ActionRecoveryRequest,
+    ) -> Result<
+        Option<openwebide_core::plugins::languages::intelligence::actions::ActionRecovery>,
+        String,
+    > {
+        use openwebide_core::plugins::languages::intelligence::actions::{
+            ActionPhase, ActionRecoveryRequest,
+        };
+        self.current()?;
+        let result = self.host.language_action_recovery(request).await?;
+        if result.is_none() && !matches!(request, ActionRecoveryRequest::Load { .. }) {
+            return Err("Command recovery change was not acknowledged".into());
+        }
+        if let Some(value) = &result {
+            value.validate()?;
+            let expected = match request {
+                ActionRecoveryRequest::Load { id } => id.as_deref(),
+                ActionRecoveryRequest::Finish { id, outcome, .. } => {
+                    if value.outcome.as_ref() != Some(outcome) {
+                        return Err("Command recovery outcome changed".into());
+                    }
+                    Some(id.as_str())
+                }
+                ActionRecoveryRequest::Acknowledge { id, revision, note } => {
+                    if value.command.phase != ActionPhase::Acknowledged
+                        || Some(value.command.revision) != revision.checked_add(1)
+                        || value.acknowledgement.as_ref() != Some(note)
+                    {
+                        return Err("Command recovery acknowledgement changed".into());
+                    }
+                    Some(id.as_str())
+                }
+            };
+            if expected.is_some_and(|id| id != value.command.invocation.id) {
+                return Err("Command recovery belongs to another action".into());
+            }
+        }
+        self.current()?;
+        Ok(result)
+    }
+    pub async fn recover_command(
+        &self,
+        record: &openwebide_core::plugins::languages::intelligence::actions::ActionRecovery,
+        operation: CommandOperation,
+    ) -> Result<CommandProgress, String> {
+        use openwebide_core::plugins::languages::intelligence::actions::ActionPhase;
+        self.current()?;
+        record.validate()?;
+        if operation == CommandOperation::Start
+            || (record.command.phase == ActionPhase::Approved
+                && !record.command.native_settlement_pending)
+            || ((record.command.phase == ActionPhase::Cancelled)
+                != (operation == CommandOperation::Cancel))
+        {
+            return Err("Recovery cannot start an approved command".into());
+        }
+        self.dispatch_command(&record.command.invocation.id, operation, None)
+            .await
+    }
+    pub async fn acknowledge_command(
+        &self,
+        record: &openwebide_core::plugins::languages::intelligence::actions::ActionRecovery,
+        note: &str,
+    ) -> Result<openwebide_core::plugins::languages::intelligence::actions::ActionRecovery, String>
+    {
+        use openwebide_core::plugins::languages::intelligence::actions::{
+            ActionPhase, ActionRecoveryRequest,
+        };
+        self.current()?;
+        record.validate()?;
+        if !matches!(
+            record.command.phase,
+            ActionPhase::Rejected | ActionPhase::Uncertain
+        ) {
+            return Err("Review the original command outcome before acknowledging it".into());
+        }
+        let mut current = record.clone();
+        if current.command.native_settlement_pending && !current.command.command_cleanup_confirmed {
+            if !matches!(
+                self.recover_command(&current, CommandOperation::Stop)
+                    .await?,
+                CommandProgress::Finished { .. }
+            ) {
+                return Err(
+                    "Wait for the original command to stop before acknowledging its effects".into(),
+                );
+            }
+            current = self
+                .recovery(&ActionRecoveryRequest::Load {
+                    id: Some(record.command.invocation.id.clone()),
+                })
+                .await?
+                .ok_or("Original command recovery is unavailable")?;
+            if current.command.invocation != record.command.invocation
+                || current.command.outcome_digest != record.command.outcome_digest
+                || current.command.revision != record.command.revision
+                || !current.command.command_cleanup_confirmed
+            {
+                return Err(
+                    "Wait for original native cleanup before acknowledging this command".into(),
+                );
+            }
+        }
+        self.recovery(&ActionRecoveryRequest::Acknowledge {
+            id: current.command.invocation.id,
+            revision: current.command.revision,
+            note: note.into(),
+        })
+        .await?
+        .ok_or_else(|| "Command acknowledgement was not retained".into())
+    }
+    /// Discard only the unstarted command. Its files have already reached the
+    /// supplied terminal decision; neither branch grants dispatch permission.
+    pub async fn discard_unstarted(
+        &self,
+        record: &ActionRecord,
+        phase: openwebide_core::workspace_transaction::TransactionPhase,
+    ) -> Result<(), String> {
+        use openwebide_core::{
+            plugins::languages::intelligence::actions::{
+                ActionPhase, ActionRecoveryRequest, CommandOutcome,
+            },
+            workspace_transaction::TransactionPhase,
+        };
+        self.current()?;
+        record.validate()?;
+        if record.phase != ActionPhase::Approved {
+            return Err(
+                "A claimed command must be stopped and reviewed instead of discarded".into(),
+            );
+        }
+        let id = &record.approval.id;
+        match phase {
+            TransactionPhase::Restored => {
+                self.request(&ActionJournalRequest::Cancel {
+                    id: id.clone(),
+                    revision: record.revision,
+                })
+                .await?
+                .ok_or("Command cancellation was not acknowledged")?;
+            }
+            TransactionPhase::Committed => {
+                let current = self
+                    .recovery(&ActionRecoveryRequest::Load {
+                        id: Some(id.clone()),
+                    })
+                    .await?
+                    .ok_or("Original command recovery is unavailable")?;
+                if current.command.invocation != record.approval.command_invocation()?
+                    || current.command.revision != record.revision
+                    || current.command.phase != ActionPhase::Approved
+                {
+                    return Err("The unstarted command changed before discard".into());
+                }
+                let revision = if current.command.native_settlement_pending {
+                    let progress = self
+                        .recover_command(&current, CommandOperation::Stop)
+                        .await?;
+                    let CommandProgress::Finished {
+                        outcome: outcome @ CommandOutcome::Rejected { .. },
+                    } = progress
+                    else {
+                        return Err(
+                            "Wait for original native cleanup before acknowledging this command"
+                                .into(),
+                        );
+                    };
+                    let confirmed = self
+                        .recovery(&ActionRecoveryRequest::Load {
+                            id: Some(id.clone()),
+                        })
+                        .await?
+                        .ok_or("Original command recovery is unavailable")?;
+                    if confirmed.command.invocation != current.command.invocation
+                        || confirmed.command.phase != ActionPhase::Rejected
+                        || !confirmed.command.command_cleanup_confirmed
+                        || confirmed.outcome.as_ref() != Some(&outcome)
+                    {
+                        return Err(
+                            "Wait for original native cleanup before acknowledging this command"
+                                .into(),
+                        );
+                    }
+                    confirmed.command.revision
+                } else {
+                    self.request(&ActionJournalRequest::RejectUnstarted {
+                        id: id.clone(),
+                        revision: record.revision,
+                        message: "The approved edit was kept; its unstarted command was discarded"
+                            .into(),
+                    })
+                    .await?
+                    .ok_or("Command discard was not acknowledged")?
+                    .revision
+                };
+                self.recovery(&ActionRecoveryRequest::Acknowledge {
+                    id: id.clone(),
+                    revision,
+                    note: "Keep the committed edit without running its attached command".into(),
+                })
+                .await?;
+            }
+            _ => return Err("Restore the interrupted file operation first".into()),
+        }
+        self.current()
+    }
+    async fn dispatch_command(
+        &self,
+        id: &str,
+        operation: CommandOperation,
+        call: Option<Box<Call>>,
+    ) -> Result<CommandProgress, String> {
         let progress = self
             .host
             .language_command(&CommandDispatch {
-                id: record.approval.id.clone(),
+                id: id.into(),
                 operation,
                 call,
             })
             .await?;
+        if operation == CommandOperation::Cancel && progress != CommandProgress::Cancelled {
+            return Err("Native cancellation acknowledgement changed".into());
+        }
         if let CommandProgress::Finished { outcome } = &progress {
             outcome.validate()?;
         }

@@ -9,6 +9,7 @@ use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use hmac::{Hmac, KeyInit, Mac};
 use rand::Rng;
 use sha2::Sha256;
+pub mod private_messages;
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -125,11 +126,84 @@ fn hmac(secret: &str, payload: &[u8]) -> Vec<u8> {
     mac.finalize().into_bytes().to_vec()
 }
 
+/// Derive a deterministic private credential in a separate protocol namespace.
+///
+/// Domain and payload lengths use fixed-width framing on every target. The
+/// caller owns credential lifetime, canonical claims and authorization policy.
+///
+/// # Panics
+/// Panics if a domain or payload length cannot be represented by a `u64`.
+#[must_use]
+pub fn derive_secret(secret: &[u8], domain: &str, payload: &[u8]) -> String {
+    let mut mac = HmacSha256::new_from_slice(secret).expect("HMAC accepts any key length");
+    mac.update(b"openwebide-derived-secret-v1\0");
+    mac.update(
+        &u64::try_from(domain.len())
+            .expect("domain length fits u64")
+            .to_be_bytes(),
+    );
+    mac.update(domain.as_bytes());
+    mac.update(
+        &u64::try_from(payload.len())
+            .expect("payload length fits u64")
+            .to_be_bytes(),
+    );
+    mac.update(payload);
+    URL_SAFE_NO_PAD.encode(mac.finalize().into_bytes())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     const NOW: i64 = 1_000_000;
+
+    #[test]
+    fn derived_secret_matches_the_portable_known_vector() {
+        let key: [u8; 32] = std::array::from_fn(|index| u8::try_from(index).unwrap());
+        assert_eq!(
+            derive_secret(
+                &key,
+                "workspace-recovery-v1",
+                br#"[7,11,"transaction","generation","root"]"#,
+            ),
+            "utkrQJQnJWToQQdHSO_O0f6vexnEeD_G6wO4-UedNo8"
+        );
+    }
+
+    #[test]
+    fn derived_secrets_separate_keys_domains_and_claims_without_boundary_ambiguity() {
+        let original = derive_secret(b"secret", "workspace-recovery-v1", b"original");
+        assert_ne!(
+            original,
+            derive_secret(b"other-secret", "workspace-recovery-v1", b"original")
+        );
+        assert_ne!(
+            original,
+            derive_secret(b"secret", "other-protocol", b"original")
+        );
+        assert_ne!(
+            original,
+            derive_secret(b"secret", "workspace-recovery-v1", b"replacement")
+        );
+        assert_ne!(
+            derive_secret(b"secret", "ab", b"c"),
+            derive_secret(b"secret", "a", b"bc")
+        );
+    }
+
+    #[test]
+    fn a_derived_credential_cannot_supply_a_bearer_token_signature() {
+        let valid = sign_token_expires("secret", 7, NOW + 100, 2);
+        assert!(verify_token_at("secret", &valid, NOW).is_some());
+        let payload = format!("7.{}.2", NOW + 100);
+        let forged = format!(
+            "{}.{}",
+            URL_SAFE_NO_PAD.encode(payload.as_bytes()),
+            derive_secret(b"secret", "workspace-recovery-v1", payload.as_bytes())
+        );
+        assert!(verify_token_at("secret", &forged, NOW).is_none());
+    }
 
     #[test]
     fn malformed_tokens_are_rejected() {

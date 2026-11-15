@@ -19,7 +19,7 @@ use tokio::time::Instant;
 use crate::auth::Principal;
 use crate::runs::agent_host::{BridgeCancel, BridgeGate, InProcessBridgeClient};
 use crate::runs::backend_client::RunBackend;
-use crate::runs::native_vfs::NativeFsVfs;
+use crate::runs::native_vfs::workspace::WorkspaceFiles;
 use crate::server::WriterCmd;
 use crate::terminals::seq_ring::SeqRing;
 
@@ -523,6 +523,7 @@ impl RunRegistry {
                 }
             }
         });
+        let coordinator = self.coordinator.clone();
         tokio::spawn(async move {
             run_body(
                 body_run,
@@ -531,7 +532,7 @@ impl RunRegistry {
                 plan,
                 dir,
                 message.id,
-                (host, mcp_transport),
+                (host, mcp_transport, coordinator),
             )
             .await;
             control.abort();
@@ -558,9 +559,13 @@ async fn run_body<B: RunBackend + 'static, P: LlmProvider + 'static>(
     mut plan: RunPlan,
     dir: Option<PathBuf>,
     anchor_id: i64,
-    host: (RunHost, crate::mcp::host::NativeTransport),
+    host: (
+        RunHost,
+        crate::mcp::host::NativeTransport,
+        crate::folder_coordination::Coordinator,
+    ),
 ) {
-    let (host, mcp_transport) = host;
+    let (host, mcp_transport, coordinator) = host;
     if plan.environment.timestamp == 0 {
         plan.environment.timestamp = i64::try_from(now()).unwrap_or(i64::MAX);
     }
@@ -641,6 +646,9 @@ async fn run_body<B: RunBackend + 'static, P: LlmProvider + 'static>(
                 mcp_transport,
                 run: run.clone(),
                 backend: backend.clone(),
+                files: dir
+                    .as_ref()
+                    .map(|root| WorkspaceFiles::new(root.clone(), coordinator.clone())),
                 dir,
                 execution: host.execution,
                 anchor: anchor_id,
@@ -887,7 +895,7 @@ fn wall_time_ms() -> u64 {
 
 type BridgeBuiltinTaskExecutor<B> = openwebide_agent::todo::TodoTools<
     openwebide_agent::vfs_executor::SessionToolExecutor<
-        VfsToolExecutor<NativeFsVfs, openwebide_agent::NoopWebClient, InProcessBridgeClient>,
+        VfsToolExecutor<WorkspaceFiles, openwebide_agent::NoopWebClient, InProcessBridgeClient>,
         openwebide_agent::NoopWebClient,
         crate::runs::agent_host::HostInfoClient<B>,
     >,
@@ -926,6 +934,7 @@ type BridgeTaskGate<B> = openwebide_agent::plugins::management_tools::Management
     >,
 >;
 struct BridgeTaskFactory<B> {
+    files: Option<WorkspaceFiles>,
     language_scope: Option<openwebide_core::plugins::languages::tools::LanguageToolScope>,
     mcp_catalog: Arc<openwebide_core::mcp::Catalog>,
     mcp_transport: crate::mcp::host::NativeTransport,
@@ -945,6 +954,7 @@ struct BridgeTaskFactory<B> {
 impl<B> Clone for BridgeTaskFactory<B> {
     fn clone(&self) -> Self {
         Self {
+            files: self.files.clone(),
             language_scope: self.language_scope.clone(),
             mcp_catalog: self.mcp_catalog.clone(),
             mcp_transport: self.mcp_transport.clone(),
@@ -984,10 +994,7 @@ impl<B: RunBackend + 'static> BridgeTaskFactory<B> {
                     run: self.run.clone(),
                     transport: self.plugin_transport.clone(),
                     host_id: self.plugin_management_host.clone(),
-                    workspace: self
-                        .dir
-                        .as_ref()
-                        .map(|dir| NativeFsVfs { root: dir.clone() }),
+                    workspace: self.files.clone(),
                 },
             ),
             transport: self.mcp_transport.clone(),
@@ -1013,34 +1020,38 @@ impl<B: RunBackend + 'static> BridgeTaskFactory<B> {
         }
     }
     fn builtin_executor(&self) -> BridgeBuiltinTaskExecutor<B> {
-        let workspace = self.dir.as_ref().map(|dir| {
-            let executor = VfsToolExecutor::with_web_and_bridge(
-                NativeFsVfs { root: dir.clone() },
-                openwebide_agent::NoopWebClient,
-                InProcessBridgeClient {
-                    dir: dir.clone(),
-                    execution: self.execution.clone(),
-                    cancel: self.run.cancel.clone(),
-                },
-            )
-            .with_context(self.environment.clone());
-            match &self.language_scope {
-                Some(scope) => executor.with_code_intelligence(Arc::new(
-                    openwebide_agent::intelligence::LanguageTools::new(
-                        super::language_tools::LanguageHost {
-                            backend: self.backend.clone(),
-                            transport: self.plugin_transport.clone(),
-                            user: self.run.owner,
-                            session: self.run.session_id,
-                            cancel: self.run.cancel.clone(),
-                        },
-                        scope.clone(),
-                        rand::random::<u128>(),
-                    ),
-                )),
-                None => executor,
-            }
-        });
+        let workspace = self
+            .dir
+            .as_ref()
+            .zip(self.files.as_ref())
+            .map(|(dir, files)| {
+                let executor = VfsToolExecutor::with_web_and_bridge(
+                    files.clone(),
+                    openwebide_agent::NoopWebClient,
+                    InProcessBridgeClient {
+                        dir: dir.clone(),
+                        execution: self.execution.clone(),
+                        cancel: self.run.cancel.clone(),
+                    },
+                )
+                .with_context(self.environment.clone());
+                match &self.language_scope {
+                    Some(scope) => executor.with_code_intelligence(Arc::new(
+                        openwebide_agent::intelligence::LanguageTools::new(
+                            super::language_tools::LanguageHost {
+                                backend: self.backend.clone(),
+                                transport: self.plugin_transport.clone(),
+                                user: self.run.owner,
+                                session: self.run.session_id,
+                                cancel: self.run.cancel.clone(),
+                            },
+                            scope.clone(),
+                            rand::random::<u128>(),
+                        ),
+                    )),
+                    None => executor,
+                }
+            });
         let executor = openwebide_agent::vfs_executor::SessionToolExecutor::new(
             workspace,
             openwebide_agent::NoopWebClient,
@@ -1140,7 +1151,7 @@ type BridgeTaskExecutor<B> = openwebide_agent::questions::QuestionTools<
 >;
 
 struct BridgeManagementHost<B> {
-    workspace: Option<NativeFsVfs>,
+    workspace: Option<WorkspaceFiles>,
     backend: Arc<B>,
     run: Arc<Run>,
     transport: crate::plugins::transport::NativePluginTransport,

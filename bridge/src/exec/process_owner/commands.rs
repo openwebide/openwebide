@@ -24,6 +24,7 @@ impl Command {
         let started = Owner::start(
             Request::StartCommand {
                 version: VERSION,
+                ordinary: folder.ordinary(),
                 program: spec.command.clone().into(),
                 args: spec.args.clone(),
                 root: spec.cwd.clone(),
@@ -105,6 +106,7 @@ pub(super) fn run(
     root: PathBuf,
     environment: BTreeMap<String, String>,
     descriptors: Vec<OwnedFd>,
+    ordinary: bool,
 ) -> Result<(), String> {
     let mut child = match spawn(program, args, &root, environment, &descriptors) {
         Ok(child) => child,
@@ -181,6 +183,10 @@ pub(super) fn run(
         }
     }
     if !completed || STOP_REQUESTED.load(Ordering::Relaxed) {
+        if ordinary && let Err(error) = crate::folder_coordination::quarantine_command(&descriptors)
+        {
+            eprintln!("Native command quarantine could not be published: {error}");
+        }
         groups::signal(pid, libc::SIGTERM);
         let deadline = std::time::Instant::now() + Duration::from_secs(2);
         while !groups::quiet(pid).is_ok_and(|quiet| quiet) && std::time::Instant::now() < deadline {
@@ -199,6 +205,10 @@ pub(super) fn run(
     // No more signals after reaping the PID. A dead descendant can remain in
     // the kernel briefly; keep exclusion until the original group is gone.
     loop {
+        #[cfg(target_os = "linux")]
+        if waited.is_ok() {
+            let _ = groups::reap_descendants(pid);
+        }
         // SAFETY: signal zero observes only; it cannot affect a reused group.
         if unsafe { libc::kill(-pid, 0) } < 0
             && io::Error::last_os_error().raw_os_error() == Some(libc::ESRCH)
@@ -296,6 +306,7 @@ mod tests {
     fn request(root: &Path) -> Request {
         Request::StartCommand {
             version: VERSION,
+            ordinary: false,
             program: "sh".into(),
             args: vec!["-c".into(), "printf forbidden > dispatched".into()],
             root: root.into(),

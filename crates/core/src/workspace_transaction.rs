@@ -7,6 +7,8 @@ use std::collections::{BTreeMap, BTreeSet};
 mod editor;
 pub use editor::{EditorRecoveryPatch, MAX_EDITOR_PATCH_BYTES};
 mod activity;
+mod authority;
+pub use authority::{RECOVERY_AUTHORITY_DOMAIN, RecoveryAuthority};
 mod delegation;
 mod language_review;
 mod requests;
@@ -20,10 +22,10 @@ pub use delegation::{
 };
 pub use requests::{
     AdvanceWorkspaceTransaction, BeginWorkspaceTransaction, ExecuteWorkspaceTransaction,
-    JOURNAL_API_BODY_LIMIT, NativeWorkspaceTransaction, WorkspaceJournalOperation,
-    WorkspaceJournalRequest, WorkspaceJournalResponse, WorkspaceRootIdentity,
-    WorkspaceTransactionAction, WorkspaceTransactionAdvanced, WorkspaceTransactionOutcome,
-    WorkspaceTransactionPrepared, WorkspaceTransactionState, valid_id,
+    JOURNAL_API_BODY_LIMIT, NativeWorkspaceTransaction, WorkspaceCommandRecovery,
+    WorkspaceJournalOperation, WorkspaceJournalRequest, WorkspaceJournalResponse,
+    WorkspaceRootIdentity, WorkspaceTransactionAction, WorkspaceTransactionAdvanced,
+    WorkspaceTransactionOutcome, WorkspaceTransactionPrepared, WorkspaceTransactionState, valid_id,
 };
 pub use scope::WorkspaceTransactionScope;
 pub use worker::{WorkspaceTransactionWorker, WorkspaceTransactionWorkerState};

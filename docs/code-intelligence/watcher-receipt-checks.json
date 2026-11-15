@@ -1,0 +1,129 @@
+{
+  "status": "Original managed-group watcher receipts and basic dispatched-command process-loss recovery verified in both modes. Command recovery and the complete roadmap remain unfinished.",
+  "source_sha256": "1451e6df237578ea16673be5b43b1b98365515b201ec26ad9df5d94158a5f07a",
+  "builds_on": "committed-discard-checks.json",
+  "shared_implementation": {
+    "facade": "The existing shared native command producer and original journal callback serve Local paired and Remote service adapters. Recovery obtains no fresh provider grant and never replays a command.",
+    "enrollment": "Native namespace schema 8/command format 3 binds a small original cleanup token to the reserved worker/invocation and namespace identity before the complete folder descriptors reach the process watcher. Existing formats remain readable; earlier readers reject the new schema.",
+    "watcher": "The private process-owner protocol 3 carries only the enrolled capability. It validates the original namespace and complete folder descriptor identities. Positive managed-group cleanup is persisted before releasing descriptors; failed persistence retains the original descriptors and unreaped PID for retry. Reopening cannot initialize replacement state.",
+    "outcomes": "Received command outcomes are persisted before watcher release or service cleanup. Warm release requires that exact retained outcome. Cleanup confirmations are monotonic, and an acknowledged release cannot replace the original result. Ambiguous native dispatch-write errors return uncertainty.",
+    "recovery": "A successor needs the original issuer and complete original folder lease. A positively cleaned dispatched record with no result becomes Uncertain and requires manual review. Retained compatible dispatched outcomes remain exact. Legacy owners without proof stay protected.",
+    "cancellation": "Cancelling another reservation preserves live watcher records and does not downgrade their native schema.",
+    "test_runtime": "Unit tests isolate default native state per libtest entry. Coordinators capture their original context before moving across threads; fresh hosts in the same test retain the same fence. Production namespace selection and test parallelism are unchanged."
+  },
+  "behavioral_tests": [
+    "The original real process-loss regression failed in both modes before this implementation (dispatched-command-red-1794711334). It now executes one real reviewed LSP command, SIGKILLs its owning HTTP/backend process, reopens the same SQLite issuer and exact callback origin, and recovers from a distinct native successor.",
+    "Both modes retain source/editor recovery, exactly one execution, positive original cleanup, an Uncertain result, writer fencing before manual acknowledgement, exact native settlement and successful ordinary native writing afterwards.",
+    "Native receipt contracts reject forged tokens/namespace keys, wrong workers, incomplete/reversed descriptors and release without a retained outcome. They retain exact large/Unicode outcomes, idempotent confirmations, original-folder proof through replacement and fail closed on missing private state.",
+    "Mixed cancellation/watcher contracts retain both original decisions across namespace reopen. Cross-thread and fresh-host tests exercise the original native owner fence.",
+    "All existing command HTTP lifecycle, cancellation, discarded edits, callback/root faults, process replacement and peer settlement contracts rerun. All native library cases and the separately ignored marketplace smoke pass."
+  ],
+  "verification": {
+    "terminal": "watcher-receipt-1794713776/terminal.json",
+    "artifacts": "watcher-receipt-outputs-1794714435/manifest.json",
+    "cases": [
+      {
+        "case": "format",
+        "returncode": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "native-all-target-clippy",
+        "returncode": 0,
+        "log_sha256": "bcb74884a78099501f6bfc31de29d15aae4eb48dcd18d5c99bdde44d75b90089"
+      },
+      {
+        "case": "Windows-cross-all-target-clippy",
+        "returncode": 0,
+        "log_sha256": "3a64015873642aeaf1b1d77c5b3f43af397a5628020192121d9cbe77cb50ddd1"
+      },
+      {
+        "case": "matching-main",
+        "returncode": 0,
+        "log_sha256": "84b2842aed1e5a6ef3a25b0230d10de8750953e6dbdffecc124703a1018be04c"
+      },
+      {
+        "case": "matching-process-example",
+        "returncode": 0,
+        "log_sha256": "84b2842aed1e5a6ef3a25b0230d10de8750953e6dbdffecc124703a1018be04c"
+      },
+      {
+        "case": "native-original-process-receipts",
+        "returncode": 0,
+        "log_sha256": "204af6a7eab6b3156c09454e3ccbab16c569cef3c4f0a2c198b79be42f37fb43"
+      },
+      {
+        "case": "all-file-recovery-tests",
+        "returncode": 0,
+        "log_sha256": "afb25619fd210ad64848a7099886366256aefe55044c96e706c0585fda6d031c"
+      },
+      {
+        "case": "actual-dispatch-process-loss",
+        "returncode": 0,
+        "log_sha256": "48b1e29600d76ac16f6e464f836dc3d68b682d60f1a252d302d0377e7a47d43b"
+      },
+      {
+        "case": "all-command-HTTP",
+        "returncode": 0,
+        "log_sha256": "726900f60fcc34e5ca4cc655a7f23b15a6b49f563250ac85b2fda62eda576bcf"
+      },
+      {
+        "case": "all-native-library",
+        "returncode": 0,
+        "log_sha256": "372f4be4946742204f5e69a3e7907b4aef82e0edc2d3d87d9b6cb1dc8d8b5b09"
+      },
+      {
+        "case": "explicit-marketplace-smoke",
+        "returncode": 0,
+        "log_sha256": "214fa6c0c5ca36582b625b8b89933b57cef24ed1d05f4feed96025a4643a32ea"
+      },
+      {
+        "case": "default-bin-clippy",
+        "returncode": 0,
+        "log_sha256": "237c4e2ecc5ecd7182575ae0c637409cbbd45c96f010caeae2cac57274c726a5"
+      },
+      {
+        "case": "production-feature-inventory",
+        "returncode": 0,
+        "log_sha256": "51a70955c82feadb08bcaf685eec7550c14e8cf35436c8f256347155c7578b04"
+      }
+    ],
+    "passed_counts": {
+      "native-original-process-receipts": 3,
+      "all-file-recovery-tests": 17,
+      "actual-dispatch-process-loss": 1,
+      "all-command-HTTP": 9,
+      "all-native-library": 540,
+      "explicit-marketplace-smoke": 1
+    },
+    "distinct_native_HTTP_tests": 550,
+    "fresh_test_executions": 571,
+    "native_library_all_declared_passed": 541,
+    "complete_HTTP_tests": 9,
+    "complete_HTTP_lifecycle_scenarios": 68,
+    "complete_HTTP_SIGKILL_scenarios": 26,
+    "targeted_SIGKILL_scenarios_also_repeated_in_complete_HTTP": 2,
+    "peer_scenarios": 2,
+    "HTTP_authentication_scenarios": 6,
+    "native_and_Windows_cross_Clippy_passed": true,
+    "managed_process_group_only": true,
+    "escaped_groups_verified": false,
+    "native_Windows_runtime_verified": false,
+    "fresh_current_Linux_runtime_verified": false,
+    "current_browser_or_installed_application_verified": false,
+    "actual_production_release_rebuilt": false,
+    "scope": "This verifies the native implementation and both transports on macOS. The first full native run exposed shared test-state contamination; the final unchanged-parallelism run passes after test-only context isolation."
+  },
+  "remaining": [
+    "Qualify callback recovery with the current optimized native/WASI release distribution and installed app, including original OS-selected private namespace and physical browser folder permission/device checks. The built-app checkpoint uses optimized frontend, unoptimized production WASI entry point and the same native HTTP host with an isolated test-support namespace.",
+    "Finish frozen-owner application recovery beyond the native OS-owner CLI: deleted original projects/accounts, legacy command owners without verifiable cleanup, actual process interruptions and current packaged/native platform contracts. Never infer cleanup from missing public rows, failed requests or 404 replies.",
+    "Finish remaining admission/watcher-enrollment and outcome/context interruptions, including escaped-process cleanup beyond the verified managed-group cases.",
+    "Finish every participating writer, Git/PTY and escaped-process lifetime; implement and verify native Windows ownership and fresh packaged Linux runtime.",
+    "Complete all original packaged application/browser, cache/resource/RSS/prefetch/homelab and full-CI requirements."
+  ],
+  "command_recovery_complete": false,
+  "full_CI_complete": false,
+  "whole_goal_complete": false,
+  "followup": "retired-command-worker-checks.json",
+  "followup_audit_correction": "The previously hypothesized public cancellation and public Uncertain-finish races at Prepared were not demonstrated: native Start follows the public Approved-to-Running claim; public Cancel requires Approved plus restored file work, and public Finish rejects native-pending owners. No phase, cancellation, outcome or worker authority was broadened for those hypotheses."
+}

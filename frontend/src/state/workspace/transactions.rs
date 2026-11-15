@@ -16,6 +16,7 @@ pub enum WorkspaceRecoveryStatus {
     LanguageAction {
         id: String,
         title: String,
+        native_settlement_pending: bool,
         phase: openwebide_core::plugins::languages::intelligence::actions::ActionPhase,
         recovering: bool,
         error: Option<String>,
@@ -36,6 +37,34 @@ impl WorkspaceRecoveryStatus {
                 id: action.approval.id.clone(),
                 title: action.approval.review.title.clone(),
                 phase: action.phase,
+                native_settlement_pending: false,
+                recovering: false,
+                error: match &action.outcome {
+                    Some(
+                        CommandOutcome::Rejected { message }
+                        | CommandOutcome::Uncertain { message },
+                    ) => Some(message.clone()),
+                    _ => None,
+                },
+            },
+            None => status,
+        }
+    }
+    pub fn from_recovery(
+        workspace: Option<&openwebide_core::workspace_transaction::WorkspaceTransactionState>,
+        action: Option<&openwebide_core::plugins::languages::intelligence::actions::ActionRecovery>,
+    ) -> Self {
+        use openwebide_core::plugins::languages::intelligence::actions::CommandOutcome;
+        let status = Self::from_state(workspace);
+        if status.blocks_saves() {
+            return status;
+        }
+        match action.filter(|action| action.pending()) {
+            Some(action) => Self::LanguageAction {
+                id: action.command.invocation.id.clone(),
+                title: "Approved server command".into(),
+                phase: action.command.phase,
+                native_settlement_pending: action.command.native_settlement_pending,
                 recovering: false,
                 error: match &action.outcome {
                     Some(
@@ -83,6 +112,7 @@ impl WorkspaceRecoveryStatus {
             Self::Pending {phase:openwebide_core::workspace_transaction::TransactionPhase::Finalizing | openwebide_core::workspace_transaction::TransactionPhase::Committed,..}=>"The operation’s result is saved. Finish recovery before saving files. Your drafts remain editable.".into(),
             Self::Pending { .. } => "An interrupted workspace operation needs recovery before files can be saved. Your drafts remain editable.".into(),
             Self::LanguageAction {title,recovering:true,..}=>format!("Checking the approved command: {title}…"),
+            Self::LanguageAction {phase,native_settlement_pending:true,..} if phase.terminal()=>"The command outcome is saved. Waiting for command recovery to finish before saving files. Your drafts remain editable.".into(),
             Self::LanguageAction {title,error:Some(error),..}=>format!("File saves are paused while the command outcome is reviewed: {title}. {error}"),
             Self::LanguageAction {title,..}=>format!("The approved command needs review before files can be saved: {title}. Your drafts remain editable."),
         }

@@ -1,0 +1,59 @@
+{
+  "status": "Current Linux native file-owner recovery CLI passes across fresh containers using the packaged OS installation policy, plus both-mode native administration contracts. This is a dev binary mounted into the runtime-state image; optimized full-app, deleted-issuer and dispatched-command administration remain unfinished.",
+  "source_sha256": "90e703e374e4ee4b9690a6731c83b461ef3a5b6fdb59fa4a2697295a907046e5",
+  "build_source_sha256": "6983096d2dd971330827a12608f83f49d66576514b64c0f1bc7be9f47b45f160",
+  "builds_on": "native-recovery-administration-checks.json",
+  "driver": "docker/native-recovery/check-administration.py",
+  "runtime": {
+    "image": "sha256:5d8c46959705f3e9f8567c810058162d8509650147189d18c7ed584309f9affa",
+    "stage": "Dockerfile runtime-state",
+    "bridge": "Current normal unoptimized production entry point, mounted read-only",
+    "libtest": "Matching Linux library test artifact, mounted read-only",
+    "target": "aarch64-unknown-linux-gnu",
+    "private_state": "Installed root-owned per-UID policy, shared named data volume; no namespace override",
+    "scratch": "A separate writable workspace volume; base filesystem read-only",
+    "normal_bridge_has_test_support": false
+  },
+  "contract": [
+    "Use the real installed namespace policy. An absent original namespace cannot be initialized by CLI inspection. A real native file-owner fixture initializes ownership, rejects ordinary writing and successfully resumes from another fresh container before retirement. Persistent folder identity stays equal while outer runtime ancestry actually changes.",
+    "The normal CLI inspects the original owner without exposing its recovery credential. A stale reviewed digest fails without changing the owner. Explicit retirement preserves the inspected context and note in its audit; repeating the same request returns that same audit.",
+    "A fresh late original actor is denied specifically by its retired immutable binding. This occurs after a successful same-fixture recovery control and is followed by an unchanged audited namespace, not inferred merely from a process failure.",
+    "Launch the actual normal HTTP bridge in another fresh container, using only a synthetic fixture secret and an unavailable backend address. Execute an ordinary filesystem write through /exec, require exit_code 0, independently read the created file and re-inspect the unchanged audit. Stop the server and retain all evidence.",
+    "Run all three native administration contracts inside the packaged OS: Local/Remote modern and legacy file claims, physical descriptor gates, unknown cleanup refusal, exact original outcomes, final metadata retirement and subsequent normal command settlement."
+  ],
+  "verification": {
+    "first_build_and_runtime": "administration-linux-1794739705/terminal.json",
+    "final_runtime": "administration-linux-qualified-1794739971/terminal.json",
+    "packaged_CLI": "administration-linux-qualified-1794739971/packaged-CLI/terminal.json",
+    "native_contracts": "administration-linux-1794739705/packaged-native-administration-contracts.log",
+    "native_contract_tests": 3,
+    "native_contract_modes": [
+      "local",
+      "remote"
+    ],
+    "intentional_late_actor_returncode": 101,
+    "ordinary_exec_exit_code": 0,
+    "available_Linux_executables_retained": 3,
+    "used_Linux_executables_retained": 2,
+    "outputs": "administration-linux-outputs-1794740284/manifest.json",
+    "matching_native_source_inputs_unchanged_after_verifier_strengthening": true,
+    "actual_original_backend_or_project_created_deleted": false,
+    "real_dispatched_command_administration": false,
+    "optimized_release_distribution": false,
+    "installed_PWA_physical_permissions": false,
+    "native_Windows_runtime": false,
+    "full_CI_complete": false,
+    "recorded_runtime_cases": 21,
+    "actual_CLI_invocations": 8
+  },
+  "remaining": [
+    "Qualify callback recovery with the current optimized native/WASI release distribution and installed app, including original OS-selected private namespace and physical browser folder permission/device checks. The built-app checkpoint uses optimized frontend, unoptimized production WASI entry point and the same native HTTP host with an isolated test-support namespace.",
+    "Finish frozen-owner application recovery beyond the native OS-owner CLI: deleted original projects/accounts, legacy command owners without verifiable cleanup, actual process interruptions and current packaged/native platform contracts. Never infer cleanup from missing public rows, failed requests or 404 replies.",
+    "Finish remaining admission/watcher-enrollment and outcome/context interruptions, including escaped-process cleanup beyond the verified managed-group cases.",
+    "Finish every participating writer, Git/PTY and escaped-process lifetime; implement and verify native Windows ownership and fresh packaged Linux runtime.",
+    "Complete all original packaged application/browser, cache/resource/RSS/prefetch/homelab and full-CI requirements."
+  ],
+  "frozen_owner_recovery_complete": false,
+  "full_CI_complete": false,
+  "whole_goal_complete": false
+}

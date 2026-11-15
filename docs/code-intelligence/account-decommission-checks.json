@@ -1,0 +1,232 @@
+{
+  "status": "Both built-browser/WASI/native recovery cases pass after real API project deletion and administrative decommissioning of the sole isolated fixture account. Old authentication is rejected; native fencing and original context/result survive until explicit recovery. This adds no public account-delete feature. OS-default CLI application sequence, platform/distribution/process/writer/resource/full-CI and original roadmap requirements remain unfinished.",
+  "source_sha256": "addb8b6d9cabc7af8a2b6e72a46b443e8951f98a4c60f07310a202c30df0426a",
+  "contract": [
+    "Approve and genuinely dispatch one command through the public HTML plugin/deterministic LSP. Lose its actual native settlement reply after backend commit; read and retain its real completed result before deletion.",
+    "Delete its project through the authenticated production WASI API. Stop the isolated backend, back up its SQLite database and guard the exact sole fixture id/name with no owned projects or chat sessions.",
+    "With SQLite foreign keys enabled, delete that account in a real transaction. Installed records and user settings actually cascade away; do not disable constraints or fabricate command completion/cleanup. Independently check before/after databases and referential integrity.",
+    "Restart the same backend and require the original cookie to receive401 for account/project access. Keep the browser alive; missing account/project and a genuine private callback404 do not retire native ownership or authorize ordinary writing.",
+    "Stop the original/recovery native processes before shared CLI executor retirement using the exact inspected ID/digest and review note. Require positive original cleanup, preserve original account/project/transaction/result in the audit and repeat idempotently.",
+    "Start native again, actually write/read a file, retain the audit, keep the one-execution log and preserve every original file at all eight observed lifecycle boundaries."
+  ],
+  "implementation": {
+    "verifier": "tools/check-deleted-project-client.py --decommission-account",
+    "administrative_fault": "remove_fixture_account operates only on the stopped, guarded fixture database after real API project deletion; it is a test input, not a public account management endpoint.",
+    "production_policy": "Native and WASI/frontend implementation inputs are unchanged. The same shared native authority/recovery/retirement policy serves both adapters."
+  },
+  "verification": {
+    "terminal": "account-decommission-1794747486/terminal.json",
+    "artifacts": "account-decommission-1794747486/artifacts.json",
+    "native_build_producer": {
+      "source": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/open-browser-deletion-1794745145/source-manifest.json",
+      "native_inputs_unchanged": true,
+      "matched_native_inputs": 637,
+      "verifier_delta": [
+        "tools/check-deleted-project-client.py"
+      ],
+      "helper_sha256": "797461221e21d08dd81b724a415c7bde3fe8fc52fc4ca8c0c2f6dc31f8b3f3ae",
+      "native_build_and_strict_Clippy_already_passed": true
+    },
+    "checks": [
+      {
+        "case": "format-and-verifier-syntax",
+        "command": [
+          "bash",
+          "-euc",
+          "cargo fmt --all --check\ngit diff --check\npython3 -c \"from pathlib import Path; p=Path('tools/check-deleted-project-client.py'); compile(p.read_text(),str(p),'exec')\"\npython3 tools/check-deleted-project-client.py --help"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 0,
+        "seconds": 3.31,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/account-decommission-1794747486/format-and-verifier-syntax.log",
+        "log_sha256": "ced541839b505fb177596e816ac55d6582e6d9f18950696ab0527fe0729160a2"
+      },
+      {
+        "case": "application-local",
+        "command": [
+          "python3",
+          "tools/check-deleted-project-client.py",
+          "--backend-wasm",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-wasip2/debug/openwebide_backend.wasm",
+          "--host-binary",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/debug/examples/check_recorded_command_host",
+          "--evidence-dir",
+          "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/account-decommission-1794747486/app",
+          "--mode",
+          "local",
+          "--page-after-settlement",
+          "keep",
+          "--decommission-account"
+        ],
+        "deadline_seconds": 1500,
+        "returncode": 0,
+        "seconds": 381.73,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/account-decommission-1794747486/application-local.log",
+        "log_sha256": "06cbfec5a71ac5cc55347b7a0ab91a402e11e6f1364631308f808edfc5b27069"
+      },
+      {
+        "case": "application-remote",
+        "command": [
+          "python3",
+          "tools/check-deleted-project-client.py",
+          "--backend-wasm",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/wasm32-wasip2/debug/openwebide_backend.wasm",
+          "--host-binary",
+          "/Users/BWestnes/source/repos/openwebide/openwebide/target/debug/examples/check_recorded_command_host",
+          "--evidence-dir",
+          "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/account-decommission-1794747486/app",
+          "--mode",
+          "remote",
+          "--page-after-settlement",
+          "keep",
+          "--decommission-account"
+        ],
+        "deadline_seconds": 1500,
+        "returncode": 0,
+        "seconds": 379.7,
+        "log": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/account-decommission-1794747486/application-remote.log",
+        "log_sha256": "c404bb241bca91ea2f9ee2703e07ac2d0879459b888658798204ad618e866a22"
+      }
+    ],
+    "facts": {
+      "local": {
+        "result": {
+          "mode": "local",
+          "real_browser_command_approval": true,
+          "page_after_settlement": "keep",
+          "native_address_preserved": true,
+          "account_decommissioning": {
+            "method": "Administrative SQLite deletion after real API project deletion",
+            "fixture_user": 1,
+            "only_guarded_fixture_account_removed": true,
+            "owned_projects_and_chat_sessions_absent_before_removal": true,
+            "installed_records_before": 1,
+            "installed_records_cascaded": true,
+            "foreign_key_check_clean": true,
+            "before_database": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/account-decommission-1794747486/app/local/before-account-removal.sqlite3",
+            "public_account_deletion_API": false,
+            "old_authentication_rejected_after_restart": true
+          },
+          "real_WASI_project_deletion": true,
+          "settlement_reply_lost_after_commit": true,
+          "native_processes": [
+            71454,
+            76986,
+            76990
+          ],
+          "single_command_dispatch": true,
+          "original_outcome_preserved": true,
+          "missing_project_did_not_release_claim": true,
+          "actual_ordinary_file_write_after_explicit_retirement": true,
+          "shared_CLI_executor_test_home": true,
+          "OS_default_CLI_in_this_sequence": false,
+          "optimized_native_WASI_distribution": false,
+          "physical_folder_permissions": false,
+          "whole_goal_complete": false
+        },
+        "database_observations": {
+          "before": {
+            "users": 1,
+            "projects": 0,
+            "sessions": 0,
+            "plugin_records": 1,
+            "user_settings": 9,
+            "workspace_transactions": 0,
+            "language_command_settlements": 0
+          },
+          "after": {
+            "users": 0,
+            "projects": 0,
+            "sessions": 0,
+            "plugin_records": 0,
+            "user_settings": 0,
+            "workspace_transactions": 0,
+            "language_command_settlements": 0
+          }
+        },
+        "all_eight_source_stages_exact": true,
+        "original_private_callback404": true,
+        "lost_reply_path": "/api/language-commands/delegated",
+        "original_context_result_audit_retained": true
+      },
+      "remote": {
+        "result": {
+          "mode": "remote",
+          "real_browser_command_approval": true,
+          "page_after_settlement": "keep",
+          "native_address_preserved": true,
+          "account_decommissioning": {
+            "method": "Administrative SQLite deletion after real API project deletion",
+            "fixture_user": 1,
+            "only_guarded_fixture_account_removed": true,
+            "owned_projects_and_chat_sessions_absent_before_removal": true,
+            "installed_records_before": 1,
+            "installed_records_cascaded": true,
+            "foreign_key_check_clean": true,
+            "before_database": "/Users/BWestnes/source/repos/openwebide/code-intelligence/ai_docs/code-intelligence-verification/account-decommission-1794747486/app/remote/before-account-removal.sqlite3",
+            "public_account_deletion_API": false,
+            "old_authentication_rejected_after_restart": true
+          },
+          "real_WASI_project_deletion": true,
+          "settlement_reply_lost_after_commit": true,
+          "native_processes": [
+            77004,
+            82628,
+            82643
+          ],
+          "single_command_dispatch": true,
+          "original_outcome_preserved": true,
+          "missing_project_did_not_release_claim": true,
+          "actual_ordinary_file_write_after_explicit_retirement": true,
+          "shared_CLI_executor_test_home": true,
+          "OS_default_CLI_in_this_sequence": false,
+          "optimized_native_WASI_distribution": false,
+          "physical_folder_permissions": false,
+          "whole_goal_complete": false
+        },
+        "database_observations": {
+          "before": {
+            "users": 1,
+            "projects": 0,
+            "sessions": 0,
+            "plugin_records": 1,
+            "user_settings": 8,
+            "workspace_transactions": 0,
+            "language_command_settlements": 0
+          },
+          "after": {
+            "users": 0,
+            "projects": 0,
+            "sessions": 0,
+            "plugin_records": 0,
+            "user_settings": 0,
+            "workspace_transactions": 0,
+            "language_command_settlements": 0
+          }
+        },
+        "all_eight_source_stages_exact": true,
+        "original_private_callback404": true,
+        "lost_reply_path": "/api/language-commands/original-private",
+        "original_context_result_audit_retained": true
+      }
+    }
+  },
+  "limits": {
+    "test_selected_native_home": true,
+    "Local_OPFS_correspondence": true,
+    "deterministic_LSP_peer": true,
+    "public_account_delete_API_added": false,
+    "actual_OS_default_CLI_in_this_sequence": false,
+    "unknown_cleanup_attestation": false,
+    "physical_folder_permissions": false,
+    "installed_PWA": false,
+    "optimized_native_WASI_distribution": false,
+    "native_Windows_runtime": false,
+    "full_CI_complete": false,
+    "whole_goal_complete": false
+  },
+  "normal_CLI_followup": {
+    "checkpoint": "normal-cli-application-checks.json",
+    "scope": "The same two-mode application/account removal workflow now passes with the normal Linux companion/CLI, shipped OS policy and no test-support feature. Historical test-home cases retain their original scope."
+  }
+}

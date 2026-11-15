@@ -1,0 +1,143 @@
+{
+  "status": "Original native command callbacks reconnect to a configured backend address only after a private original-scope reply, in both adapters. General callback reconnection, command recovery and the complete roadmap remain unfinished.",
+  "source_sha256": "3e982ce83901285dec287cfecea09c8834faf76de996516d2bb764aebc5876c8",
+  "builds_on": "pruned-command-history-checks.json",
+  "native_schema": 9,
+  "storage_schema": 71,
+  "shared_implementation": "One Host reconnection loop probes configured candidate addresses with at most two requests in flight and bounded attempts. Shared CommandRecoveryMessage routing/context validation and auth private_messages protect the original transport. Original backend plaintext and private adapters call the same original_reply and Store ownership policy. Native callback CAS changes only the persisted origin; recovery transports resolve that persisted origin on later requests.",
+  "contract": [
+    "Route immutable public account/project/transaction/root identity separately from an encrypted original request. Use the existing original authority to derive domain-separated request/reply keys, random 192-bit nonces and authenticated context. Replies bind the exact request nonce and ciphertext digest; no original authority or worker preimage is sent in plaintext to a candidate.",
+    "The backend derives only from its existing original issuer, authenticates before deserializing private commands, and applies the unchanged original-only worker policy. It cannot initialize or replace a missing issuer, start a command, accept another worker or bypass browser-header denial. Actual backend tests run the original contract over both legacy and private transports in both modes.",
+    "Only an authenticated original scope with the same invocation, original native authority and worker may update the candidate origin. No command, outcome, file phase, folder identity, lease or native namespace key changes. The original folder pathname may be missing while metadata changes; native exclusion remains.",
+    "Two actual HTTP cases, one per adapter, reject a candidate that echoes request ciphertext, then move the real callback server while preserving its original Store/issuer. The verified move survives SIGKILL with the folder missing. A successor configured with the bad candidate still follows the persisted verified address and settles after normal manual acknowledgement. There is no LSP RPC replay, file change or private proof disclosure.",
+    "Four SIGKILLs in the new matrix: two recovery processes per adapter. The same matrix repeats in the complete HTTP target. Native CAS tests also reject forged authority/worker/invocation/origin, a changed generation, another namespace and a stale origin update, while preserving exact command state and the writer fence.",
+    "Existing final-ACK pruning, managed-group cleanup, cancellation, received results, prepared intents, peer retirement and no-further-callback contracts pass with encrypted original callbacks. Normal configured-backend service traffic retains its own authentication; the private message guarantee applies to original recovery proofs."
+  ],
+  "compatibility": "New native original callbacks require the updated backend original-private endpoint. The legacy original endpoint remains available to older native callers. Probed candidates never receive a plaintext fallback carrying an enduring proof.",
+  "crypto_reference": "https://docs.rs/chacha20poly1305/0.10.1/chacha20poly1305/",
+  "verification": {
+    "terminal": "callback-qualified-1794724199/terminal.json",
+    "artifacts": "callback-qualified-outputs-1794724996/manifest.json",
+    "checks": [
+      {
+        "case": "format",
+        "returncode": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "native-clippy",
+        "returncode": 0,
+        "log_sha256": "5132bc8df7ce8a5924d5da75a32e95a9211b81bf91fb215fc45ef3bf0544cdb1"
+      },
+      {
+        "case": "WASI-backend-clippy",
+        "returncode": 0,
+        "log_sha256": "1f5852af1ed7025b5728e842e3c3c2f5d2f720d25557d84c38f1ffda99719c59"
+      },
+      {
+        "case": "WASM-frontend-clippy",
+        "returncode": 0,
+        "log_sha256": "4618eeba4e21359898995b7f544b56cd4d474efe9641525e1447388aaa8fabe6"
+      },
+      {
+        "case": "Windows-cross-clippy",
+        "returncode": 0,
+        "log_sha256": "4618eeba4e21359898995b7f544b56cd4d474efe9641525e1447388aaa8fabe6"
+      },
+      {
+        "case": "auth-all-unit",
+        "returncode": 0,
+        "log_sha256": "47f790fc2ba1452c445f23d515208ce3a3581f2026f966375f9a14253b3c23ec"
+      },
+      {
+        "case": "backend-all-unit",
+        "returncode": 0,
+        "log_sha256": "0690a603bf58ba71f5a444cde1c19263ee11f8136a0c91c10f52d8bf4e8fdb9c"
+      },
+      {
+        "case": "matching-main",
+        "returncode": 0,
+        "log_sha256": "84b2842aed1e5a6ef3a25b0230d10de8750953e6dbdffecc124703a1018be04c"
+      },
+      {
+        "case": "matching-process-example",
+        "returncode": 0,
+        "log_sha256": "2ee0f1d254f2ad5cdb22918a67fad73c1e4da2ff37b6d046fbbd0c06566398d6"
+      },
+      {
+        "case": "native-callback-CAS",
+        "returncode": 0,
+        "log_sha256": "7c49df64cf6789292843267289f5e2cdb2693f9cfc611178fb38f922e82d250c"
+      },
+      {
+        "case": "actual-proof-and-callback-restart",
+        "returncode": 0,
+        "log_sha256": "0e1eecee75e69a7959cd363f8137a3e4e7369269053796504ca7eb136836b322"
+      },
+      {
+        "case": "all-native-library",
+        "returncode": 0,
+        "log_sha256": "7eddacad6b3dcb896fbba3a87d607b27fd0e1996861fa1b08ba504613fdbc0cd"
+      },
+      {
+        "case": "explicit-marketplace-smoke",
+        "returncode": 0,
+        "log_sha256": "de912efdf2a1da8a84b450d8aa2a2baded786000b0cea9967f4527fa7ddf3dee"
+      },
+      {
+        "case": "all-command-HTTP",
+        "returncode": 0,
+        "log_sha256": "663f63a9a4d7d7f13b1b2640b21f7e454de20a7745f87fa649d5d3964b72c7a0"
+      },
+      {
+        "case": "default-bin-clippy",
+        "returncode": 0,
+        "log_sha256": "530cde809ddcb41a0c1470f5193c8f96befdcb787248aa0edcd0ac0470d5a9e3"
+      },
+      {
+        "case": "production-feature-inventory",
+        "returncode": 0,
+        "log_sha256": "51a70955c82feadb08bcaf685eec7550c14e8cf35436c8f256347155c7578b04"
+      }
+    ],
+    "test_counts": {
+      "auth-all-unit": 14,
+      "backend-all-unit": 136,
+      "native-callback-CAS": 1,
+      "actual-proof-and-callback-restart": 1,
+      "all-native-library": 544,
+      "explicit-marketplace-smoke": 1,
+      "all-command-HTTP": 13
+    },
+    "distinct_tests": 708,
+    "test_executions": 710,
+    "distinct_native_HTTP_tests": 558,
+    "HTTP_tests": 13,
+    "HTTP_lifecycle_scenarios": 92,
+    "HTTP_SIGKILL_scenarios": 54,
+    "new_callback_SIGKILL_scenarios": 4,
+    "additional_focused_duplicate_SIGKILL_scenarios": 4,
+    "actual_peer_scenarios": 6,
+    "native_WASI_WASM_Windows_cross_Clippy": true,
+    "macOS_runtime_both_adapters": true,
+    "native_Windows_runtime": false,
+    "fresh_Linux_runtime": false,
+    "current_browser_or_installed_app": false,
+    "all_shared_runtime_suites_rerun": false,
+    "all40_original_production_artifacts_unchanged": true
+  },
+  "earlier_harness_run": "The first focused process assertions passed but its fake server panicked on unrelated configured-backend service requests. That run is not accepted as clean verification; its source, actual binaries and logs are retained. The fixture now returns404 for unrelated paths, keeps strict assertions on original private messages, and the verifier rejects unexpected HTTP-test panics.",
+  "remaining": [
+    "Qualify callback recovery with the current optimized native/WASI release distribution and installed app, including original OS-selected private namespace and physical browser folder permission/device checks. The built-app checkpoint uses optimized frontend, unoptimized production WASI entry point and the same native HTTP host with an isolated test-support namespace.",
+    "Finish frozen-owner application recovery beyond the native OS-owner CLI: deleted original projects/accounts, legacy command owners without verifiable cleanup, actual process interruptions and current packaged/native platform contracts. Never infer cleanup from missing public rows, failed requests or 404 replies.",
+    "Finish remaining admission/watcher-enrollment and outcome/context interruptions, including escaped-process cleanup beyond the verified managed-group cases.",
+    "Finish every participating writer, Git/PTY and escaped-process lifetime; implement and verify native Windows ownership and fresh packaged Linux runtime.",
+    "Complete all original packaged application/browser, cache/resource/RSS/prefetch/homelab and full-CI requirements."
+  ],
+  "configured_destination_contract_verified": true,
+  "general_callback_reconnection_complete": false,
+  "command_recovery_complete": false,
+  "full_CI_complete": false,
+  "whole_goal_complete": false,
+  "followup": "retired-command-worker-checks.json"
+}

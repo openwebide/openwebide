@@ -1,0 +1,341 @@
+{
+  "format": 1,
+  "checked_on": "2026-11-13",
+  "base_commit": "44b642b489ed56137f8f9c67a3db59b1e5e7f0e2",
+  "verification_source_sha256": "e20c6187e189bac6a7d65f80ae1d1bfcf252d092b05293c02aad7b84bb3d9f2f",
+  "status": "focused_native_original_identity_contracts_and_windows_cross_compile_passed_full_ci_pending",
+  "published": false,
+  "shared_implementation": [
+    "bridge/src/file_identity.rs",
+    "bridge/src/folder_coordination.rs",
+    "bridge/src/folder_coordination/physical/unix.rs"
+  ],
+  "both_mode_entry": "workspace_transactions::Host::execute_in uses ExecutionFolder Remote/Paired and the same native folder coordinator.",
+  "change": "Retain original root and ancestor creation-time observations with the existing resource identity. Check them while queuing and against opened directory handles before accepting native access.",
+  "resource_identity_implementation_and_u0_u1_encoding_unchanged": true,
+  "original_birthless_assertions_preserved_in_shared_module": true,
+  "original_identity_normalized_implementation_sha256": "bc7bb4499481737f78a8e55d82f8866626cdd4d6c6944ba9fd6e1d6c41ef782c",
+  "actual_mac_regression": {
+    "test": "changed_directory_birth_invalidates_admission_without_changing_file_ids",
+    "operation": "fsetattrlist changes creation time on an owned directory while its physical file ID stays unchanged. The passing candidate covers both selected root and ancestor.",
+    "baseline_source_sha256": "42ac67b3ee478974d39229e6c91a8f7470d293182d89612b52427a6e1eab3f1e",
+    "baseline_actual_test_returncode": 101,
+    "baseline_observed_failure": "The original folder admission still accepted the changed observation; assertion !folder.current() failed.",
+    "baseline_cases": [
+      {
+        "case": "matching-native-bridge",
+        "command": [
+          "cargo",
+          "build",
+          "-p",
+          "openwebide-bridge",
+          "--locked"
+        ],
+        "deadline_seconds": 1800,
+        "returncode": 0,
+        "seconds": 103.17,
+        "log_sha256": "d80a2d871d9e9372f8124d48339475dfc001435e517de74863b2cf46987bfe5f"
+      },
+      {
+        "case": "actual-baseline-regression",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "openwebide-bridge",
+          "--lib",
+          "--locked",
+          "--features",
+          "openwebide-core/editor-parser",
+          "folder_coordination::tests::changed_directory_birth_invalidates_admission_without_changing_file_ids",
+          "--",
+          "--exact",
+          "--nocapture"
+        ],
+        "deadline_seconds": 600,
+        "returncode": 101,
+        "seconds": 73.45,
+        "log_sha256": "68a797b17de270e5f76cbbcc4a60e1a47adb103ff0b0e85e74e8be5ac3d5ac27"
+      }
+    ],
+    "candidate_actual_passed": 1
+  },
+  "focused_native_contracts": {
+    "actual-birth-regression-green": {
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0
+    },
+    "shared-original-object-identity": {
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0
+    },
+    "complete-folder-coordination-contract": {
+      "passed": 19,
+      "failed": 0,
+      "ignored": 0
+    },
+    "workspace-transaction-both-mode-contract": {
+      "passed": 42,
+      "failed": 0,
+      "ignored": 0
+    },
+    "native-filesystem-and-resource-contract": {
+      "passed": 34,
+      "failed": 0,
+      "ignored": 0
+    }
+  },
+  "distinct_native_tests_passed": 97,
+  "repeat_of_exact_regression_before_complete_folder_suite": 1,
+  "native_checks": [
+    {
+      "case": "format-and-whitespace",
+      "command": [
+        "bash",
+        "-euc",
+        "cargo fmt --all --check\ngit diff --check"
+      ],
+      "deadline_seconds": 600,
+      "returncode": 0,
+      "seconds": 2.83,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "invalidate-changed-bridge-dev-cache",
+      "command": [
+        "cargo",
+        "clean",
+        "-p",
+        "openwebide-bridge",
+        "--profile",
+        "dev",
+        "--target-dir",
+        "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+      ],
+      "deadline_seconds": 600,
+      "returncode": 0,
+      "seconds": 0.1,
+      "log_sha256": "c1015dd29ccf07542f4e8b2d98768702573a619595dd0b3499a04627761e7618"
+    },
+    {
+      "case": "matching-native-bridge",
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "openwebide-bridge",
+        "--locked"
+      ],
+      "deadline_seconds": 1800,
+      "returncode": 0,
+      "seconds": 13.94,
+      "log_sha256": "ea8e959ea78f247f56dfce610a7a17ce78d44fbfd90162c94b1fee679cd9bebf"
+    },
+    {
+      "case": "actual-birth-regression-green",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-bridge",
+        "--lib",
+        "--locked",
+        "--features",
+        "openwebide-core/editor-parser",
+        "folder_coordination::tests::changed_directory_birth_invalidates_admission_without_changing_file_ids",
+        "--",
+        "--exact",
+        "--nocapture"
+      ],
+      "deadline_seconds": 600,
+      "returncode": 0,
+      "seconds": 47.88,
+      "log_sha256": "9e79fe67a3ac83226a801cd00e335dc02e0482ad89c8d7680aa94a7a7db72f64"
+    },
+    {
+      "case": "shared-original-object-identity",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-bridge",
+        "--lib",
+        "--locked",
+        "--features",
+        "openwebide-core/editor-parser",
+        "file_identity::tests"
+      ],
+      "deadline_seconds": 600,
+      "returncode": 0,
+      "seconds": 1.81,
+      "log_sha256": "22debbdc28c0fe07424efda0e8901865cda0ebf12926decb1f554f864363d7c4"
+    },
+    {
+      "case": "complete-folder-coordination-contract",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-bridge",
+        "--lib",
+        "--locked",
+        "--features",
+        "openwebide-core/editor-parser",
+        "folder_coordination::"
+      ],
+      "deadline_seconds": 600,
+      "returncode": 0,
+      "seconds": 0.57,
+      "log_sha256": "339b5058bd319a9a0093771973764b87d610916a90b30121a529995ec5298b23"
+    },
+    {
+      "case": "workspace-transaction-both-mode-contract",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-bridge",
+        "--lib",
+        "--locked",
+        "--features",
+        "openwebide-core/editor-parser",
+        "workspace_transactions::"
+      ],
+      "deadline_seconds": 600,
+      "returncode": 0,
+      "seconds": 2.98,
+      "log_sha256": "a1fc99e97a0201795d6e24db8f530fbaf750eb2410061c169a4f5b19aad37441"
+    },
+    {
+      "case": "native-filesystem-and-resource-contract",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "openwebide-bridge",
+        "--lib",
+        "--locked",
+        "--features",
+        "openwebide-core/editor-parser",
+        "runs::native_vfs::"
+      ],
+      "deadline_seconds": 600,
+      "returncode": 0,
+      "seconds": 55.16,
+      "log_sha256": "fca47c8bd2642f074c3f533349097ccc7575520b68fe84ae75cf439e726f9420"
+    },
+    {
+      "case": "bridge-all-target-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-bridge",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "deadline_seconds": 1800,
+      "returncode": 0,
+      "seconds": 41.2,
+      "log_sha256": "5c60cf06f043a3c25b3c8e3cbc34bd952a55ab0ad977237fb5ab5d8e574fdc68"
+    }
+  ],
+  "windows_cross_compile": [
+    {
+      "case": "invalidate-changed-Windows-runtime-cache",
+      "command": [
+        "cargo",
+        "clean",
+        "-p",
+        "openwebide-plugin-runtime",
+        "--profile",
+        "dev",
+        "--target",
+        "x86_64-pc-windows-gnu",
+        "--target-dir",
+        "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+      ],
+      "deadline_seconds": 1800,
+      "returncode": 0,
+      "seconds": 0.43,
+      "log_sha256": "0bdaeb2aa6a92a0fdfec2d2cc4d0ab71946de5d0654e08c526e4629130ae0f28"
+    },
+    {
+      "case": "invalidate-changed-Windows-bridge-cache",
+      "command": [
+        "cargo",
+        "clean",
+        "-p",
+        "openwebide-bridge",
+        "--profile",
+        "dev",
+        "--target",
+        "x86_64-pc-windows-gnu",
+        "--target-dir",
+        "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+      ],
+      "deadline_seconds": 1800,
+      "returncode": 0,
+      "seconds": 0.1,
+      "log_sha256": "0bdaeb2aa6a92a0fdfec2d2cc4d0ab71946de5d0654e08c526e4629130ae0f28"
+    },
+    {
+      "case": "windows-cross-clippy-not-native-runtime",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "openwebide-bridge",
+        "--all-targets",
+        "--target",
+        "x86_64-pc-windows-gnu",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "deadline_seconds": 2400,
+      "returncode": 0,
+      "seconds": 84.31,
+      "log_sha256": "1a07510f18535f7f61e58b3d5a9458021d9f35a771c54d72ee3f86e35c2860c5"
+    },
+    {
+      "case": "clear-completed-Windows-cross-cache",
+      "command": [
+        "cargo",
+        "clean",
+        "--target",
+        "x86_64-pc-windows-gnu",
+        "--profile",
+        "dev",
+        "--target-dir",
+        "/Users/BWestnes/source/repos/openwebide/openwebide/target"
+      ],
+      "deadline_seconds": 1800,
+      "returncode": 0,
+      "seconds": 0.2,
+      "log_sha256": "9144f6cc78b9f148c6e0161d4edbb88f051995043ae872b174fbe451e30820fb"
+    }
+  ],
+  "native_windows_runtime_verified": false,
+  "linux_runtime_verified": false,
+  "full_required_current_source_CI_complete": false,
+  "durable_compound_authority_implemented": false,
+  "prior_compile_failure": {
+    "source_sha256": "1b3b8b09bedd5c5da6400fbedc09098a25c2ab8d8104188ec9fe4b9b95d085ad",
+    "log_sha256": "981c9e388c81d2661ac4f92c0a30da33fadcc9c7262d9dbe15757881fb4fa794",
+    "observed": "Revision depended on serde derive imports through its parent module. Moving the identity removed those imports.",
+    "resolution": "Import the derives explicitly in Revision; no suppression or format change.",
+    "resolved_in_verified_source": true
+  },
+  "limits": [
+    "The actual macOS fixture changes creation time; it does not force OS inode reuse. A separate shared identity contract distinguishes equal device/inode values with different creation times.",
+    "Unknown creation time remains an explicitly weaker observation; the existing u0 identity never establishes persistent original-object capability.",
+    "This strengthens in-memory native admission. Durable phase/owner authority across host loss, participating mutation entry points and frozen-owner recovery remain outstanding.",
+    "Windows cross-Clippy is a compile contract. Native Windows ownership, Linux runtime execution and the full project gate for this new source remain unverified.",
+    "No original assertion, workload, deadline, compiler flag, profile or ignore was weakened. Actual red and green binaries and raw logs are retained."
+  ]
+}

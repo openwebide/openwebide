@@ -1,7 +1,7 @@
 #![cfg(any(target_os = "linux", target_os = "macos"))]
 mod common;
 use common::{HttpResponse, http};
-use openwebide_bridge::{ServerConfig, run_server, workspace_transactions::Host};
+use openwebide_bridge::{run_server, workspace_transactions::Host};
 use openwebide_core::workspace_transaction::companion::{
     FileAction, FileValue, FolderInspection, NativeFolderInspection,
 };
@@ -22,7 +22,7 @@ async fn remote_inspection_is_service_only_complete_read_only_and_bound_to_the_p
     let identity = Host::root_identity(&root, "project", 42, 7).unwrap();
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
-    let config = ServerConfig::new(
+    let config = common::server_config(
         root.clone(),
         "service-secret".into(),
         Some("paired-token".into()),

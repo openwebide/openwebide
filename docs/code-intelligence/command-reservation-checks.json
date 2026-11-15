@@ -1,0 +1,123 @@
+{
+  "status": "Native command reservation before file admission verified on macOS in both modes; complete compound recovery remains unfinished",
+  "source_sha256": "d444356222903aa3fc727078b2be16ed0006dd728be2f60a5099512e7b93ce03",
+  "shared_entry": "Workspace Host.execute_in above the service and paired JournalBackend transports; Namespace.enroll_command publishes original owner and command result space together",
+  "behavior": [
+    "Before the first reviewed file claim, read the original compact command scope and issuer, reproduce its invocation from the retained LanguageReview, and retain the same private native preparation later returned by command/prepare.",
+    "Publish original folder ownership and a fixed-size Reserved command result cell in one anchored database replacement. Capacity failure publishes neither a new owner nor a partial command record.",
+    "Only the original private worker may promote Reserved after file recovery is idle and its worker is inactive. A reservation alone cannot admit or dispatch a command. Prepared and later execution intents remain single-use.",
+    "Standalone native command intent enrollment uses the same atomic path, so a full command ledger cannot leave a newly enrolled folder owner there either.",
+    "Native database schema 5 records the new reservation stage; prior schema numbers are not used to publish it."
+  ],
+  "behavioral_contracts": [
+    "Both modes: reopen the native namespace, retain the original worker, reject substitute IDs/secrets, deny dispatch from Reserved, reject promotion during file recovery, and allow one original promotion/dispatch.",
+    "Fill the actual ledger until it rejects excess work; compare the complete anchored database before and after both reservation and legacy direct-intent rejection. Reopen the namespace and acquire the rejected folder through ordinary admission.",
+    "A shared fixture observer reads the durable Reserved worker before either the service ClaimWorker or paired delegated Admit reaches Store. Compare that commitment with later native preparation, then complete the original success and no-RPC admission-rejection/acknowledgement flows.",
+    "Keep the complete existing HTTP success, stop-before-start, Git branch/round-trip, cached outcome and authentication assertions in both modes."
+  ],
+  "verification": {
+    "terminal": "command-reservation-1794690837/terminal.json",
+    "artifacts": "command-reservation-verified-outputs-1794691214/manifest.json",
+    "cases": [
+      {
+        "case": "format",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "matching-debug-bridge",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "beed191cf5cd39a57477a6d66e9acb53f3b4efe7566a30e0ada805357a0fe6ff"
+      },
+      {
+        "case": "native-owned-producer-reservation-order",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "76906fef9fd5289ab712912c929fcd0ff4ec0511080d1cace17b7decf355f82c"
+      },
+      {
+        "case": "bridge-all-unit",
+        "returncode": 0,
+        "deadline_seconds": 1800,
+        "log_sha256": "dc93210cbff80057df34a6d53dce03131bc9800f0fcbaa0282212f48dd144361"
+      },
+      {
+        "case": "marketplace-published-smoke",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "d8b7749a95b2a748e807f5791037abe56733046dcdb8584f59ed14c2c896769f"
+      },
+      {
+        "case": "command-http-complete",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "888949c562600488667398a5d6c05fbba8a1c39f96c1e49fe97111f28bb08c91"
+      },
+      {
+        "case": "bridge-all-target-clippy",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "29162d76fb109d9c6005d8544d63a4a438d15235d4f9b8e73d51adc9ba6e95d7"
+      },
+      {
+        "case": "bridge-default-bin-clippy",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "46e448d440e2a7f9f1769990d53565d69b975c82acc8fbc3df8b8b0e67650a1e"
+      },
+      {
+        "case": "windows-cross-clippy-not-native-runtime",
+        "returncode": 0,
+        "deadline_seconds": 2400,
+        "log_sha256": "ce6feb7bcdec9928962725d9442ab2b5d570e0eeba12de944714430a4d1c5560"
+      },
+      {
+        "case": "production-feature-inventory",
+        "returncode": 0,
+        "deadline_seconds": 600,
+        "log_sha256": "51a70955c82feadb08bcaf685eec7550c14e8cf35436c8f256347155c7578b04"
+      }
+    ],
+    "native_library_default_passed": 532,
+    "native_library_preexisting_ignored_smoke_explicitly_passed": 1,
+    "native_library_all_declared_passed": 533,
+    "HTTP_tests_passed": 2,
+    "HTTP_command_scenarios": 8,
+    "HTTP_authentication_credential_scenarios": 6,
+    "focused_producer_executions": 1,
+    "distinct_tests": 535,
+    "test_executions": 536,
+    "native_and_default_Clippy_passed": true,
+    "Windows_all_target_cross_Clippy_passed": true,
+    "native_Windows_runtime_verified": false,
+    "fresh_current_Linux_runtime_verified": false
+  },
+  "initial_probe_failure": {
+    "terminal": "command-reservation-1794690351/terminal.json",
+    "retained_executables": "command-reservation-first-outputs-1794690774/manifest.json",
+    "observed": "531 native tests passed, one new Local probe failed, one preexisting smoke ignored. The test observer covered only Backend.request; paired Admit uses its HTTP fixture and Store directly.",
+    "fix": "Invoke the same observer at both thin transport boundaries. Preserve the original commitment assertion; the full rerun and focused producer now pass."
+  },
+  "cleanup": {
+    "receipt": "command-reservation-verified-outputs-1794691214/terminal.json",
+    "all_available_dev_executables_retained": 10,
+    "matching_native_main_restored_and_help_passed": true,
+    "package_cache_cleaned": [
+      "openwebide-bridge (development profile only)"
+    ],
+    "protected_prior_release_unchanged": true,
+    "other39_original_artifacts_unchanged": true
+  },
+  "remaining": [
+    "Qualify callback recovery with the current optimized native/WASI release distribution and installed app, including original OS-selected private namespace and physical browser folder permission/device checks. The built-app checkpoint uses optimized frontend, unoptimized production WASI entry point and the same native HTTP host with an isolated test-support namespace.",
+    "Finish frozen-owner application recovery beyond the native OS-owner CLI: deleted original projects/accounts, legacy command owners without verifiable cleanup, actual process interruptions and current packaged/native platform contracts. Never infer cleanup from missing public rows, failed requests or 404 replies.",
+    "Finish remaining admission/watcher-enrollment and outcome/context interruptions, including escaped-process cleanup beyond the verified managed-group cases.",
+    "Finish every participating writer, Git/PTY and escaped-process lifetime; implement and verify native Windows ownership and fresh packaged Linux runtime.",
+    "Complete all original packaged application/browser, cache/resource/RSS/prefetch/homelab and full-CI requirements."
+  ],
+  "full_CI_complete": false,
+  "whole_goal_complete": false,
+  "followup": "retired-command-worker-checks.json"
+}

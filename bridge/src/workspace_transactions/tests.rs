@@ -11,6 +11,8 @@ use openwebide_storage::{Store, rusqlite_db::RusqliteDb};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use tokio::sync::Notify;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
+mod owners;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 mod paired;
 mod scope;
 
@@ -32,7 +34,67 @@ impl JournalBackend for Backend {
     ) -> Result<WorkspaceJournalResponse, String> {
         let user = UserId::new(request.user);
         match &request.operation {
+            WorkspaceJournalOperation::CommandRecoveryScope
+            | WorkspaceJournalOperation::Command { .. } => {
+                Err("This file-only fixture has no attached command".into())
+            }
+            WorkspaceJournalOperation::RecoveryScope => {
+                use base64::Engine as _;
+                let (scope, activity) = self
+                    .store
+                    .workspace_transaction_activity(user, request.project, &request.id)
+                    .await
+                    .map_err(|e| e.to_string())?
+                    .ok_or("Missing original recovery")?;
+                if self
+                    .store
+                    .get_setting("test_recovery_issuer")
+                    .await
+                    .map_err(|e| e.to_string())?
+                    .is_none()
+                {
+                    self.store
+                        .insert_setting_if_absent(
+                            "test_recovery_issuer",
+                            &format!("{:032x}", rand::random::<u128>()),
+                        )
+                        .await
+                        .map_err(|e| e.to_string())?;
+                }
+                let key = self
+                    .store
+                    .get_setting("test_recovery_issuer")
+                    .await
+                    .map_err(|e| e.to_string())?
+                    .unwrap();
+                let binding = transaction::RecoveryAuthority::binding_for_scope(
+                    request.user,
+                    request.project,
+                    &scope,
+                )?;
+                let secret = openwebide_auth::derive_secret(
+                    key.as_bytes(),
+                    transaction::RECOVERY_AUTHORITY_DOMAIN,
+                    &binding,
+                );
+                // Both production and fixture credentials are canonical 32-byte base64url.
+                let _ = base64::engine::general_purpose::URL_SAFE_NO_PAD
+                    .decode(&secret)
+                    .unwrap();
+                let authority = transaction::RecoveryAuthority::for_scope(
+                    request.user,
+                    request.project,
+                    &scope,
+                    secret,
+                )?;
+                Ok(WorkspaceJournalResponse::RecoveryScope {
+                    scope,
+                    authority: Box::new(authority),
+                    activity,
+                })
+            }
             WorkspaceJournalOperation::ClaimWorker {
+                command,
                 scope,
                 worker,
                 review_digest,
@@ -40,12 +102,12 @@ impl JournalBackend for Backend {
             } => {
                 let review = review_digest.as_deref().zip(language_grant.as_deref());
                 let claimed = futures::executor::block_on(
-                    self.store.claim_workspace_transaction_worker_reviewed(
+                    self.store.claim_workspace_transaction_worker_compound(
                         user,
                         request.project,
                         scope,
                         worker,
-                        review,
+                        (review, command.as_deref()),
                         100,
                     ),
                 )
@@ -393,7 +455,12 @@ async fn disconnected_request_keeps_worker_and_queues_recovery() {
         );
         async move { host.execute(root, command, backend).await }
     });
-    fixture.backend.entered.notified().await;
+    tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        fixture.backend.entered.notified(),
+    )
+    .await
+    .expect("The original native file worker did not reach its claim");
     let owned_scope = fixture
         .backend
         .store
@@ -747,7 +814,12 @@ async fn replacing_root_mid_operation_stops_io_and_original_folder_can_recover()
         );
         async move { host.execute(root, command, backend).await }
     });
-    fixture.backend.entered.notified().await;
+    tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        fixture.backend.entered.notified(),
+    )
+    .await
+    .expect("The original native file worker did not reach its claim");
     let original = fixture.directory.path().join("original-project");
     std::fs::rename(fixture.directory.path().join("project"), &original).unwrap();
     std::fs::create_dir(fixture.directory.path().join("project")).unwrap();
@@ -823,7 +895,12 @@ async fn native_permission_loss_retains_journal_until_access_is_regranted() {
         );
         async move { host.execute(root, command, backend).await }
     });
-    fixture.backend.entered.notified().await;
+    tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        fixture.backend.entered.notified(),
+    )
+    .await
+    .expect("The original native file worker did not reach its claim");
     assert!(project.join("after.rs").exists());
     std::fs::set_permissions(&project, std::fs::Permissions::from_mode(0o555)).unwrap();
     fixture.backend.release.notify_one();
@@ -864,5 +941,59 @@ async fn native_permission_loss_retains_journal_until_access_is_regranted() {
     assert_eq!(
         std::fs::read_to_string(project.join("before.rs")).unwrap(),
         "disk 文😀\r\n"
+    );
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[tokio::test]
+async fn default_native_ownership_stays_original_across_runtime_threads_and_fresh_hosts() {
+    let fixture = fixture().await;
+    let host = Host::default();
+    let folder = Folder::capture(&fixture.directory.path().join("project")).unwrap();
+    let WorkspaceJournalResponse::RecoveryScope {
+        scope,
+        authority,
+        activity,
+    } = fixture
+        .backend
+        .request(&WorkspaceJournalRequest {
+            user: fixture.user.get(),
+            project: fixture.project,
+            id: fixture.command.request.id.clone(),
+            operation: WorkspaceJournalOperation::RecoveryScope,
+        })
+        .await
+        .unwrap()
+    else {
+        panic!("Missing original recovery scope");
+    };
+    let namespace = host.coordinator.recovery_namespace().unwrap();
+    let permit = namespace
+        .permit(&folder, &authority, &scope, activity)
+        .unwrap();
+    let lease = host
+        .coordinator
+        .acquire_recovery(folder.clone(), permit.clone())
+        .await
+        .unwrap();
+    namespace.enroll(&folder, &lease, &permit).unwrap();
+    drop(lease);
+    let moved = host.coordinator.clone();
+    let original = folder.clone();
+    let denied = std::thread::spawn(move || {
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(moved.acquire(original))
+            .is_err()
+    })
+    .join()
+    .unwrap();
+    assert!(
+        denied,
+        "Moving the runtime cannot select a different recovery namespace"
+    );
+    assert!(
+        Host::default().coordinator.acquire(folder).await.is_err(),
+        "A fresh host in this original context must retain the same owner fence"
     );
 }

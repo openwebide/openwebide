@@ -6,18 +6,8 @@ use super::VfsError;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 use super::io_error;
 use openwebide_core::vfs::VfsEntryKind;
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 use std::path::Path;
-
-#[cfg(any(target_os = "linux", target_os = "macos"))]
-pub(super) fn transfer(
-    root: &Path,
-    from: &str,
-    to: &str,
-    kind: VfsEntryKind,
-) -> Result<(), VfsError> {
-    let root = std::fs::File::open(root).map_err(|error| io_error(error, "workspace root"))?;
-    transfer_between(&root, from, &root, to, kind)
-}
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 pub(super) fn transfer_between(
@@ -132,14 +122,8 @@ fn publish(
             "Object move could not confirm source removal".into(),
         ));
     }
-    source
-        .parent
-        .sync_all()
-        .map_err(|error| io_error(error, from))?;
-    destination
-        .parent
-        .sync_all()
-        .map_err(|error| io_error(error, to))
+    crate::native_directory::sync(&source.parent).map_err(|error| io_error(error, from))?;
+    crate::native_directory::sync(&destination.parent).map_err(|error| io_error(error, to))
 }
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]

@@ -89,9 +89,31 @@ async fn serve(backend: Arc<Backend>) -> Server {
                                 }
                                 _ => {}
                             }
-                            let response = futures::executor::block_on(
+                            let mut response = futures::executor::block_on(
                                 backend.store.delegated_workspace_journal(&input, 101),
-                            );
+                            )
+                            .map_err(|e| e.to_string());
+                            if matches!(input.operation, Operation::RecoveryScope)
+                                && let Ok(WorkspaceJournalResponse::Scope {
+                                    scope: Some(expected),
+                                }) = &response
+                            {
+                                let expected = expected.clone();
+                                response = backend
+                                    .request(&WorkspaceJournalRequest {
+                                        user: input.delegation.user,
+                                        project: input.delegation.project,
+                                        id: input.delegation.scope.id.clone(),
+                                        operation: WorkspaceJournalOperation::RecoveryScope,
+                                    })
+                                    .await;
+                                if let Ok(WorkspaceJournalResponse::RecoveryScope { scope, .. }) =
+                                    &response
+                                    && *scope != expected
+                                {
+                                    response = Err("Original recovery changed".into());
+                                }
+                            }
                             if matches!(
                                 response,
                                 Ok(WorkspaceJournalResponse::WorkerClaimed { .. })
@@ -422,4 +444,82 @@ async fn queued_complete_workers_load_no_snapshot_and_reject_changed_recovery_in
         }
         drop(server);
     }
+}
+
+mod namespace;
+mod namespace_after_claim;
+
+#[tokio::test]
+async fn a_new_local_folder_proof_recovers_its_original_pending_native_owner() {
+    use crate::native_recovery::Namespace;
+    let fixture = fixture_mode(2, WorkspaceMode::Local).await;
+    let home = tempfile::Builder::new()
+        .prefix("openwebide-owner-local-reconnect-")
+        .tempdir()
+        .unwrap()
+        .keep();
+    let mut first = Host::new();
+    first.recovery_home = Arc::new(home.clone());
+    first
+        .coordinator
+        .set_recovery_home(first.recovery_home.clone());
+    let namespace = Namespace::open(&home).unwrap();
+    let folder = Folder::capture(&fixture.directory.path().join("project")).unwrap();
+    let WorkspaceJournalResponse::RecoveryScope {
+        scope,
+        authority,
+        activity,
+    } = fixture
+        .backend
+        .request(&WorkspaceJournalRequest {
+            user: fixture.user.get(),
+            project: fixture.project,
+            id: fixture.command.request.id.clone(),
+            operation: WorkspaceJournalOperation::RecoveryScope,
+        })
+        .await
+        .unwrap()
+    else {
+        unreachable!()
+    };
+    let permit = namespace
+        .permit(&folder, &authority, &scope, activity)
+        .unwrap();
+    let lease = first
+        .coordinator
+        .acquire_recovery(folder.clone(), permit.clone())
+        .await
+        .unwrap();
+    namespace.enroll(&folder, &lease, &permit).unwrap();
+    drop(lease);
+    drop(first);
+    assert!(namespace.admit(&folder, None).is_err());
+    let mut next = Host::new();
+    next.recovery_home = Arc::new(home.clone());
+    next.coordinator
+        .set_recovery_home(next.recovery_home.clone());
+    let files = files(&next, &fixture, Arc::new(Mutex::new(Vec::new()))).await;
+    assert!(!files.read_bytes("before.rs").await.unwrap().is_empty());
+    assert!(
+        namespace.admit(&folder, None).is_err(),
+        "A proof and read cannot remove the owner"
+    );
+    let delegated = delegation(&fixture, &files).await;
+    let server = serve(fixture.backend.clone()).await;
+    let outcome = files
+        .execute(
+            server.url.clone(),
+            delegated,
+            fixture.command.request.clone(),
+        )
+        .await
+        .unwrap();
+    assert!(outcome.error.is_none());
+    assert_eq!(outcome.phase, Some(TransactionPhase::Committed));
+    namespace.admit(&folder, None).unwrap();
+    println!(
+        "retained_local_owner_fixture={} workspace={}",
+        home.display(),
+        fixture.directory.keep().display()
+    );
 }
