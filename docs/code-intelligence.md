@@ -87,7 +87,7 @@ rename, the owned native process is stopped and killed, folder access is removed
 and a replacement host reopens the same durable recovery namespace. Local browser
 File editing denial and Remote OS permission denial both block saves while
 preserving drafts. Restoring original access and choosing recovery restores the
-original inodes, external hard links, modes, timestamps, ACLs, extended attributes
+original inodes, external hard links, modes, modification times, ACLs, extended attributes
 and CRLF bytes, together with both unsaved Unicode drafts.
 These checks establish the recorded Chrome cases; editor IME, assistive technology,
 Edge and phone-device checks remain separate roadmap work.
