@@ -1,4 +1,7 @@
 //! One accepted-recovery contract through both native folder/journal adapters.
+//! Keep each scenario's root handle until the matrix finishes. Deleted fixture
+//! inodes can otherwise be reused while their deliberately unresolved durable
+//! owners still conservatively fence that identity, especially on Linux.
 use super::*;
 use openwebide_core::workspace_transaction::{
     ResourceLocation,
@@ -313,7 +316,7 @@ fn query_count(fixture: &Fixture) -> usize {
         })
         .count()
 }
-async fn resume(mode: WorkspaceMode, replacement: bool, prefix: bool) {
+async fn resume(mode: WorkspaceMode, replacement: bool, prefix: bool) -> Folder {
     let accepted = accepted(
         mode,
         if prefix {
@@ -323,6 +326,7 @@ async fn resume(mode: WorkspaceMode, replacement: bool, prefix: bool) {
         },
     )
     .await;
+    let folder = Folder::capture(&accepted.fixture.scope.root).unwrap();
     let saved = tempfile::tempdir().unwrap();
     if replacement {
         // Keep the original alive: the new object has approved bytes but a
@@ -394,31 +398,33 @@ async fn resume(mode: WorkspaceMode, replacement: bool, prefix: bool) {
             accepted.assert_editor_unchanged().await;
         }
     }
+    folder
 }
 
 #[tokio::test]
 async fn remote_accepted_prepared_recovery_preserves_original_identity_after_service_expiry() {
-    resume(WorkspaceMode::Remote, false, false).await;
+    let _original_folder = resume(WorkspaceMode::Remote, false, false).await;
     resume(WorkspaceMode::Remote, true, false).await;
 }
 #[tokio::test]
 async fn paired_accepted_prepared_recovery_preserves_original_identity_after_service_expiry() {
-    resume(WorkspaceMode::Local, false, false).await;
+    let _original_folder = resume(WorkspaceMode::Local, false, false).await;
     resume(WorkspaceMode::Local, true, false).await;
 }
 #[tokio::test]
 async fn remote_accepted_ambiguous_directory_recovery_preserves_original_children() {
-    resume(WorkspaceMode::Remote, false, true).await;
+    let _original_folder = resume(WorkspaceMode::Remote, false, true).await;
     resume(WorkspaceMode::Remote, true, true).await;
 }
 #[tokio::test]
 async fn paired_accepted_ambiguous_directory_recovery_preserves_original_children() {
-    resume(WorkspaceMode::Local, false, true).await;
+    let _original_folder = resume(WorkspaceMode::Local, false, true).await;
     resume(WorkspaceMode::Local, true, true).await;
 }
 
-async fn cleanup(mode: WorkspaceMode, replacement: bool) {
+async fn cleanup(mode: WorkspaceMode, replacement: bool) -> Folder {
     let accepted = accepted(mode, Checkpoint::Cleanup).await;
+    let folder = Folder::capture(&accepted.fixture.scope.root).unwrap();
     let editor = accepted
         .backend
         .store
@@ -481,16 +487,17 @@ async fn cleanup(mode: WorkspaceMode, replacement: bool) {
         "source contents"
     );
     assert!(!accepted.fixture.root.path().join("executions").exists());
+    folder
 }
 
 #[tokio::test]
 async fn remote_accepted_cleanup_preserves_replaced_original_children() {
-    cleanup(WorkspaceMode::Remote, false).await;
+    let _original_folder = cleanup(WorkspaceMode::Remote, false).await;
     cleanup(WorkspaceMode::Remote, true).await;
 }
 #[tokio::test]
 async fn paired_accepted_cleanup_preserves_replaced_original_children() {
-    cleanup(WorkspaceMode::Local, false).await;
+    let _original_folder = cleanup(WorkspaceMode::Local, false).await;
     cleanup(WorkspaceMode::Local, true).await;
 }
 

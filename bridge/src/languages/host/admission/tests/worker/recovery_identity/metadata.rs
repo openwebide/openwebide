@@ -15,6 +15,7 @@ enum Change {
 }
 
 async fn changed(mode: WorkspaceMode, checkpoint: Checkpoint) {
+    let mut roots = Vec::new();
     for change in [
         Change::Permissions,
         Change::Modified,
@@ -22,6 +23,7 @@ async fn changed(mode: WorkspaceMode, checkpoint: Checkpoint) {
         Change::Link,
     ] {
         let accepted = accepted(mode, checkpoint).await;
+        roots.push(Folder::capture(&accepted.fixture.scope.root).unwrap());
         let editor = accepted
             .backend
             .store
@@ -129,7 +131,7 @@ async fn paired_accepted_metadata_cleanup() {
     changed(WorkspaceMode::Local, Checkpoint::Cleanup).await;
 }
 
-async fn partial_cleanup(mode: WorkspaceMode, external_change: bool) {
+async fn partial_cleanup(mode: WorkspaceMode, external_change: bool) -> Folder {
     let accepted = accepted(mode, Checkpoint::Cleanup).await;
     let folder = Folder::capture(&accepted.fixture.scope.root).unwrap();
     let lease = accepted
@@ -200,15 +202,16 @@ async fn partial_cleanup(mode: WorkspaceMode, external_change: bool) {
         editor
     );
     assert_eq!(query_count(&accepted.fixture), queries);
+    folder
 }
 #[tokio::test]
 async fn remote_accepted_metadata_partial_cleanup() {
-    partial_cleanup(WorkspaceMode::Remote, false).await;
+    let _original_folder = partial_cleanup(WorkspaceMode::Remote, false).await;
     partial_cleanup(WorkspaceMode::Remote, true).await;
 }
 #[tokio::test]
 async fn paired_accepted_metadata_partial_cleanup() {
-    partial_cleanup(WorkspaceMode::Local, false).await;
+    let _original_folder = partial_cleanup(WorkspaceMode::Local, false).await;
     partial_cleanup(WorkspaceMode::Local, true).await;
 }
 
@@ -334,10 +337,16 @@ impl Attribute {
     }
 }
 
-async fn moved_root_attribute(mode: WorkspaceMode, checkpoint: Checkpoint, attribute: Attribute) {
+async fn moved_root_attribute(
+    mode: WorkspaceMode,
+    checkpoint: Checkpoint,
+    attribute: Attribute,
+) -> Vec<Folder> {
     use std::os::unix::fs::MetadataExt;
+    let mut roots = Vec::new();
     for external_change in [false, true] {
         let accepted = accepted(mode, checkpoint).await;
+        roots.push(Folder::capture(&accepted.fixture.scope.root).unwrap());
         // The retained directory itself was renamed. Unlike its untouched
         // descendants, it must permit the interpreter's own ctime transition.
         let root = accepted.path.parent().unwrap().parent().unwrap();
@@ -411,11 +420,13 @@ async fn moved_root_attribute(mode: WorkspaceMode, checkpoint: Checkpoint, attri
         );
         assert!(!accepted.fixture.root.path().join("executions").exists());
     }
+    roots
 }
 
 async fn moved_root_attributes(mode: WorkspaceMode, checkpoint: Checkpoint) {
+    let mut roots = Vec::new();
     for attribute in [Attribute::Extended, Attribute::Acl, Attribute::Flags] {
-        moved_root_attribute(mode, checkpoint, attribute).await;
+        roots.extend(moved_root_attribute(mode, checkpoint, attribute).await);
     }
 }
 

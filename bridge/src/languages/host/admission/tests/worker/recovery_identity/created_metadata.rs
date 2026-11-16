@@ -145,6 +145,7 @@ enum Change {
     Link,
 }
 async fn changed(mode: WorkspaceMode, directory: bool) {
+    let mut roots = Vec::new();
     for change in [
         Change::None,
         Change::Attribute(Attribute::Extended),
@@ -158,6 +159,7 @@ async fn changed(mode: WorkspaceMode, directory: bool) {
             continue;
         }
         let accepted = created(mode, directory).await;
+        roots.push(Folder::capture(&accepted.fixture.scope.root).unwrap());
         let editor = accepted
             .backend
             .store
@@ -264,11 +266,13 @@ async fn paired_accepted_created_directory_metadata_is_preserved_after_service_e
 }
 
 async fn before_receipt(mode: WorkspaceMode) {
+    let mut roots = Vec::new();
     for directory in [false, true] {
         // Exercise the externally changed object first to establish the causal
         // failure, then the unchanged but unwitnessed control.
         for external in [true, false] {
             let accepted = created_at(mode, directory, false).await;
+            roots.push(Folder::capture(&accepted.fixture.scope.root).unwrap());
             let user = UserId::new(accepted.command.user);
             let editor = accepted
                 .backend
