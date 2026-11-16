@@ -10,7 +10,7 @@ use std::{
     io::{self, Read, Write},
 };
 
-pub(crate) struct Rooted(pub File);
+pub(crate) struct Rooted(pub File, pub bool);
 
 pub(crate) mod revision;
 
@@ -27,6 +27,17 @@ fn normalized(path: &str) -> io::Result<&str> {
 }
 
 impl Rooted {
+    pub fn file_identity(&self, file: &File) -> io::Result<Identity> {
+        if self.1 {
+            Identity::legacy(file)
+        } else {
+            Identity::of(file)
+        }
+    }
+    pub fn observation(&self, file: &File) -> io::Result<revision::Observation> {
+        revision::Observation::of_mode(file, self.1)
+    }
+
     pub fn directory(&self, path: &str) -> io::Result<Self> {
         normalized(path)?;
         let mut directory = self.0.try_clone()?;
@@ -38,7 +49,7 @@ impl Rooted {
                 Mode::empty(),
             )?);
         }
-        Ok(Self(directory))
+        Ok(Self(directory, self.1))
     }
     fn parent<'a>(&self, path: &'a str) -> io::Result<(Self, &'a str)> {
         normalized(path)?;
@@ -82,7 +93,7 @@ impl Rooted {
         }
     }
     pub fn identity(&self, path: &str) -> io::Result<Identity> {
-        Identity::of(&self.object(path)?)
+        self.file_identity(&self.object(path)?)
     }
     pub fn list(&self, path: &str, limit: usize) -> io::Result<Vec<FileEntry>> {
         let directory = self.directory(path)?;

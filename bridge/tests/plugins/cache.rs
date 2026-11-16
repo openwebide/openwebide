@@ -18,6 +18,16 @@ async fn query(port: u16, paired: bool, scope: &HostRequest) -> Value {
     response.validate(&scope.selection.input).unwrap();
     serde_json::from_str(response.result["contents"].as_str().unwrap()).unwrap()
 }
+async fn revoke(port: u16, paired: bool, prepared: &PreparedPlugin) {
+    let response = preparation_request(
+        port,
+        paired,
+        "/plugins/languages/revoke",
+        json!({"user":42,"project":202,"provider":prepared.storage_namespace()}),
+    )
+    .await;
+    assert_eq!(response.status, 200, "{}", response.body);
+}
 pub(super) async fn check(port: u16, paired: bool, prepared: &PreparedPlugin, workspace: &Path) {
     let root = workspace.join(if paired {
         "cache-paired"
@@ -61,18 +71,26 @@ pub(super) async fn check(port: u16, paired: bool, prepared: &PreparedPlugin, wo
         first["settings"]["directory"],
         path.parent().unwrap().join("settings").to_str().unwrap()
     );
-    let revoked = preparation_request(
-        port,
-        paired,
-        "/plugins/languages/revoke",
-        json!({"user":42,"project":202,"provider":prepared.storage_namespace()}),
-    )
-    .await;
-    assert_eq!(revoked.status, 200, "{}", revoked.body);
+    revoke(port, paired, prepared).await;
     scope.selection.input.request += 1;
     let restarted = query(port, paired, &scope).await;
     assert_eq!(restarted["hit"], true);
     assert_eq!(restarted["cache"], first["cache"]);
+    let implementation = workspace.join("cache.py");
+    let contents = std::fs::read_to_string(&implementation).unwrap();
+    // The interpreter, declaration and reported server version are unchanged.
+    // Both authenticated routes must preserve the public implementation role.
+    std::fs::write(
+        &implementation,
+        format!("{contents}\n# Updated implementation\n"),
+    )
+    .unwrap();
+    revoke(port, paired, prepared).await;
+    scope.selection.input.request += 1;
+    let updated = query(port, paired, &scope).await;
+    assert_ne!(updated["cache"], first["cache"]);
+    assert_eq!(updated["hit"], false);
+    assert_eq!(updated["sources"], json!(["dirty source"]));
     assert_eq!(
         std::fs::read_to_string(root.join("main.cache-notes")).unwrap(),
         "disk source"

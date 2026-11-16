@@ -36,6 +36,7 @@ impl Challenge {
                 .as_file()
                 .try_clone()
                 .map_err(|e| e.to_string())?,
+            false,
         );
         let mut file = File::from(
             openat(

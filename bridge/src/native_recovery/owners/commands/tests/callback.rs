@@ -101,6 +101,22 @@ async fn verified_callback_changes_preserve_native_ownership_and_reject_stale_or
                 .is_err()
         );
         std::fs::rename(&parked, root.path()).unwrap();
+        let lease = coordinator
+            .acquire_recovery(folder.clone(), permit.clone())
+            .await
+            .unwrap();
+        namespace
+            .enroll(&folder, &lease, &permit)
+            .expect("Reconnecting command recovery must preserve the original file journal");
+        assert_eq!(
+            namespace
+                .command_callback(&authority, &worker)
+                .unwrap()
+                .as_deref(),
+            Some("http://127.0.0.1:3001/api"),
+            "File recovery changed the verified command callback"
+        );
+        drop(lease);
         assert!(coordinator.acquire(folder).await.is_err());
     }
 }

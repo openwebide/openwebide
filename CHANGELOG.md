@@ -9,6 +9,35 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Persist macOS native recovery and resource identities with descriptor-derived
+  volume UUIDs so pending ownership and rollback survive device-number changes.
+  Keep exact legacy recovery checks and conservatively fence ambiguous aliases.
+  Add read-only OS-account CLI inspection for empty legacy upgrades, with
+  source-bound review digests and refusal of pending, unknown or replaced state.
+  Implement reviewed publication, resumption and cancellation with original-object
+  backups and durable completion receipts. Native tests and interrupted APFS
+  remounts pass, including backup-first legacy-writer fencing before the visible
+  intent and cancellation that preserves a later partial old journal after remount.
+  The complete built resource/command workflow and installed-plugin matrix pass
+  in both modes. A reviewed upgrade of the actual empty OS-account registry
+  restores ordinary admission while retaining the exact original objects and
+  bytes. Physical permissions and complete optimized distributions retain their
+  separate qualification scope.
+
+- Refresh editor recovery after asynchronous native command settlement. Keep
+  verified command callback changes separate from the original file journal,
+  including final acknowledgement after process loss. Prove the original Local
+  recovery folder without ordinary commands that pending recovery fences.
+  Native schema 12 preserves
+  older records and requires older companions to upgrade after a callback moves.
+  The complete built resource and command workflow passes in both modes,
+  including native restart, folder regrant, rollback and command non-replay.
+
+- Add public API 10 runtime-input declarations for interpreted language servers
+  and sidecar implementation files. Invalidate changed services and derived-cache
+  identity while preserving mutable log/output arguments and unsaved drafts.
+  Reject nonregular implementation paths without blocking inspection workers.
+
 - Keep ordinary file saves, commands and Git work available alongside healthy
   background jobs. Preserve exclusive reviewed resource/command operations across
   nested folders and aliases, waiting-review priority and accepted I/O ownership.

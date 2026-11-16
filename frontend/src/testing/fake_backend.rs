@@ -69,6 +69,22 @@ type SettingsLoad = futures::channel::oneshot::Receiver<Result<BTreeMap<String, 
 #[derive(Default)]
 pub struct FakeBackend {
     pub workspace_transactions: super::transactions::Harness,
+    pub language_recoveries: RefCell<
+        BTreeMap<i64, openwebide_core::plugins::languages::intelligence::actions::ActionRecovery>,
+    >,
+    pub language_recovery_results: RefCell<
+        VecDeque<
+            Deferred<
+                Option<openwebide_core::plugins::languages::intelligence::actions::ActionRecovery>,
+            >,
+        >,
+    >,
+    pub language_recovery_requests: RefCell<
+        Vec<(
+            i64,
+            openwebide_core::plugins::languages::intelligence::actions::ActionRecoveryRequest,
+        )>,
+    >,
     pub language_handler: RefCell<Option<LanguageHandler>>,
     pub language_inputs: RefCell<Vec<openwebide_core::plugins::languages::LanguageInput>>,
     pub bridge_credential: RefCell<Option<(String, i64)>>,
@@ -595,10 +611,26 @@ impl Backend for FakeBackend {
         use openwebide_core::plugins::languages::intelligence::actions::{
             ActionJournalRequest, ActionRecovery, ActionRecoveryRequest, CommandRecoveryScope,
         };
+        self.language_recovery_requests
+            .borrow_mut()
+            .push((project, request.clone()));
+        let deferred = self.language_recovery_results.borrow_mut().pop_front();
+        let retained = self.language_recoveries.borrow().get(&project).cloned();
         Box::pin(async move {
             let ActionRecoveryRequest::Load { id } = request else {
                 return Err("No recovery mutation fixture is installed".into());
             };
+            if let Some(deferred) = deferred {
+                return deferred
+                    .await
+                    .map_err(|_| "Recovery fixture closed".to_string())?;
+            }
+            if let Some(retained) = retained {
+                return Ok(id
+                    .as_ref()
+                    .is_none_or(|id| *id == retained.command.invocation.id)
+                    .then_some(retained));
+            }
             let record = self
                 .language_action_request(project, &ActionJournalRequest::Load { id: id.clone() })
                 .await?;

@@ -22,6 +22,48 @@ fn rust() -> serde_json::Value {
 }
 
 #[test]
+fn native_runtime_inputs_require_api_ten_and_validate_file_roles() {
+    let mut plugin = binding(
+        "custom",
+        "host",
+        json!({"id":"custom","name":"Custom","extensions":["custom"],"features":{"languageServer":{
+            "command":"python3","args":["/installed/server.py","/logs/server.log"],
+            "runtimeInputs":{"argumentFiles":[0],"files":["../lib/version.json"]}
+        }}}),
+    );
+    for api in 5..=9 {
+        plugin.prepared.manifest.compatibility.plugin_api = api;
+        assert!(plugin.prepared.manifest.validate().is_err(), "API {api}");
+    }
+    plugin.prepared.manifest.compatibility.plugin_api = 10;
+    plugin.prepared.manifest.validate().unwrap();
+    let server = plugin.prepared.manifest.contributions.languages[0]
+        .features
+        .language_server
+        .as_mut()
+        .unwrap();
+    assert_eq!(
+        server.shared_configuration().runtime_inputs,
+        server.runtime_inputs
+    );
+    let original = server.runtime_inputs.clone();
+    for inputs in [
+        json!({}),
+        json!({"argumentFiles":[2]}),
+        json!({"argumentFiles":[0,0]}),
+        json!({"files":["version.json","version.json"]}),
+        json!({"files":["${cache}/server.py"]}),
+        json!({"files":["invalid\nfile"]}),
+    ] {
+        server.runtime_inputs = Some(serde_json::from_value(inputs).unwrap());
+        assert!(validate_runtime_inputs(server).is_err());
+    }
+    server.runtime_inputs = original;
+    server.args[0] = "${cache}/server.py".into();
+    assert!(validate_runtime_inputs(server).is_err());
+}
+
+#[test]
 fn native_cache_declarations_require_api_nine() {
     let mut plugin = binding(
         "custom",

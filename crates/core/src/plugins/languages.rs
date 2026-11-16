@@ -16,9 +16,11 @@ pub use service::*;
 mod cache;
 mod project_files;
 mod project_inputs;
+mod runtime_inputs;
 pub use cache::{BoundServer, bind_server_cache, validate_server_cache};
 pub use project_files::ProjectFiles;
 pub use project_inputs::{ProjectInputPatterns, validate_project_inputs};
+pub use runtime_inputs::validate_runtime_inputs;
 
 pub const MAX_LANGUAGES: usize = 64;
 pub const MAX_DEFINITION_BYTES: usize = 256 * 1024;
@@ -184,6 +186,7 @@ fn validate_definition_limits(
         }
         if let Some(server) = &features.language_server {
             validate_server_cache(server)?;
+            validate_runtime_inputs(server)?;
             validate_virtual_documents(&server.virtual_documents)?;
             if let Some(inputs) = &server.project_inputs {
                 validate_project_inputs(inputs)?;

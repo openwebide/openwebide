@@ -80,6 +80,10 @@ async fn final_metadata_ack_is_durable_non_fencing_and_bound_to_its_original_nam
         let namespace = Namespace::open(home.path()).unwrap();
         let (folder, lease, permit, worker, mut recovery) =
             prepared(&namespace, &coordinator, root.path(), mode, 1).await;
+        let command = namespace.pending_commands().unwrap().remove(0);
+        namespace
+            .reconnect_command_callback(&command, &recovery, "http://127.0.0.1:3001/api")
+            .unwrap();
         let outcome = CommandOutcome::Rejected {
             message: "Original command never dispatched 文😀".into(),
         };
@@ -105,6 +109,7 @@ async fn final_metadata_ack_is_durable_non_fencing_and_bound_to_its_original_nam
         let namespace = Namespace::open(home.path()).unwrap();
         assert!(namespace.pending_commands().unwrap().is_empty());
         let pending = namespace.pending_command_settlements().unwrap().remove(0);
+        assert_eq!(pending.origin, "http://127.0.0.1:3001/api");
         assert_eq!(pending.recovery, recovery);
         assert!(namespace.has_command_settlement(&pending).unwrap());
         drop(coordinator.acquire(folder).await.unwrap());

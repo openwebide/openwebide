@@ -151,6 +151,7 @@ impl Session {
                 fingerprint: "0".repeat(64),
             }),
         )
+        .map(|files| files.with_legacy_identity(self.root.legacy))
     }
 }
 impl State {
@@ -322,7 +323,8 @@ impl Host {
                 &request.path,
                 request.user,
                 request.project,
-            )?;
+            )?
+            .matching(Some(&request.inspection.root))?;
             if root.identity != request.inspection.root {
                 return Err("The inspected physical project folder changed".into());
             }
@@ -334,7 +336,8 @@ impl Host {
                     transaction: "0".repeat(32),
                     fingerprint: "0".repeat(64),
                 },
-            )?;
+            )?
+            .with_legacy_identity(root.legacy);
             let value = files::execute(&files, None, &request.inspection.action).await?;
             if !root.current() {
                 return Err("The physical project folder changed during inspection".into());
@@ -376,13 +379,11 @@ impl Host {
     ) -> Result<FolderReply, String> {
         // Resolve the capability briefly under the session mutex, then wait
         // without that mutex. Every consumer takes the folder lease first.
-        let opened = if let FolderAction::Open { path, .. } = &request.action {
-            Some(Transactions::capture_root(
-                &workspace,
-                path,
-                request.user,
-                request.project,
-            )?)
+        let opened = if let FolderAction::Open { path, expected } = &request.action {
+            Some(
+                Transactions::capture_root(&workspace, path, request.user, request.project)?
+                    .matching(expected.as_deref())?,
+            )
         } else {
             None
         };
@@ -709,7 +710,8 @@ impl Host {
                     session.root.handle.as_file(),
                     &session.root.identity,
                     scope.clone(),
-                )?;
+                )?
+                .with_legacy_identity(session.root.legacy);
                 if files.supports_resource_moves() {
                     session.scope = Some(scope.clone());
                     Ok(FileValue::Unit)

@@ -206,6 +206,11 @@ pub struct LanguageServer {
     /// contents contribute to the service's project context.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub project_inputs: Option<ProjectInputs>,
+    /// API 10: implementation files whose replacement invalidates this native
+    /// service. File arguments are explicit because other arguments can name
+    /// mutable logs or derived output.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub runtime_inputs: Option<RuntimeInputs>,
     /// API 9: host-managed persistent derived data outside the project. The
     /// `${cache}` path may be referenced in arguments, settings and options.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -230,6 +235,19 @@ pub struct LanguageServerCache {
     /// append normal relative path segments. Other host variables are inherited.
     #[serde(default)]
     pub environment: std::collections::BTreeMap<String, String>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct RuntimeInputs {
+    /// Zero-based argument positions containing implementation-file paths.
+    /// Relative arguments use the service's working directory.
+    #[serde(default)]
+    pub argument_files: Vec<usize>,
+    /// Additional implementation files. Relative paths use the canonical
+    /// executable's directory; absolute paths are execution-host paths.
+    #[serde(default)]
+    pub files: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]

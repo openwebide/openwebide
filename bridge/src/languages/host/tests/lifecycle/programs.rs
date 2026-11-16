@@ -33,6 +33,116 @@ async fn wait_for(root: &std::path::Path, name: &str) {
 }
 
 #[tokio::test]
+async fn changed_external_server_script_rejects_the_original_warm_service() {
+    for atomic in [false, true] {
+        let root = tempfile::tempdir().unwrap();
+        let installation = tempfile::tempdir().unwrap();
+        let mut scope = fixture(root.path());
+        let script = installation.path().join("server.py");
+        let trace = installation.path().join("rpc.log");
+        std::fs::write(&trace, "previous log").unwrap();
+        let contents = std::fs::read_to_string(root.path().join("peer.py"))
+            .unwrap()
+            .replace(
+                "root = Path(__file__).parent",
+                "root = Path(__file__).parent\nPath(sys.argv[1]).write_text('native log')",
+            );
+        std::fs::write(&script, &contents).unwrap();
+        scope.server.args = vec![
+            script.to_str().unwrap().into(),
+            trace.to_str().unwrap().into(),
+        ];
+        scope.server.runtime_inputs =
+            Some(serde_json::from_value(json!({"argumentFiles":[0]})).unwrap());
+        let host = Host::default();
+        let mut input = request();
+        input.query = Query::Hover {
+            position: protocol::Position::default(),
+        };
+        let first = host.query(scope.clone(), &input).await.unwrap();
+        assert_eq!(first.result["contents"], "retained service");
+        assert_eq!(std::fs::read_to_string(&trace).unwrap(), "native log");
+        std::fs::write(installation.path().join("unrelated"), "sibling").unwrap();
+        input.request += 1;
+        let warm = host.query(scope.clone(), &input).await.unwrap();
+        assert_eq!(first.server, warm.server);
+
+        let updated = contents.replace("retained service", "updated service");
+        if atomic {
+            let next = installation.path().join("next.py");
+            std::fs::write(&next, updated).unwrap();
+            std::fs::rename(next, &script).unwrap();
+        } else {
+            std::fs::write(&script, updated).unwrap();
+        }
+        input.request += 1;
+        if let Ok(reply) = host.query(scope.clone(), &input).await {
+            // Automatic replacement and explicit invalidation are both valid.
+            // Stop the fixture before reporting the stale-success regression.
+            if reply.server == first.server {
+                host.shutdown();
+            }
+            assert_ne!(
+                reply.server, first.server,
+                "A warm service survived replacement of its external server script"
+            );
+        }
+        input.request += 1;
+        let fresh = host.query(scope, &input).await.unwrap();
+        assert_ne!(fresh.server, first.server);
+        assert_eq!(fresh.result["contents"], "updated service");
+        let calls = std::fs::read_to_string(installation.path().join("calls")).unwrap();
+        let opened = calls
+            .lines()
+            .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+            .filter(|message| message["method"] == "textDocument/didOpen")
+            .collect::<Vec<_>>();
+        assert_eq!(opened.len(), 2);
+        assert!(
+            opened
+                .iter()
+                .all(|message| message["params"]["textDocument"]["text"] == "draft")
+        );
+        host.shutdown();
+    }
+}
+
+#[tokio::test]
+async fn relative_runtime_sidecars_use_the_installed_executable_directory() {
+    let root = tempfile::tempdir().unwrap();
+    let installation = tempfile::tempdir().unwrap();
+    let mut scope = fixture(root.path());
+    std::fs::write(root.path().join("settings.json"), "workspace setting").unwrap();
+    let script = installation.path().join("server.py");
+    let contents = std::fs::read_to_string(root.path().join("peer.py")).unwrap();
+    executable(
+        &script,
+        format!("#!/usr/bin/env python3\n{contents}").as_bytes(),
+    );
+    let settings = installation.path().join("settings.json");
+    std::fs::write(&settings, "installed before").unwrap();
+    scope.server.command = script.to_str().unwrap().into();
+    scope.server.args.clear();
+    scope.server.runtime_inputs =
+        Some(serde_json::from_value(json!({"files":["settings.json"]})).unwrap());
+    let host = Host::default();
+    let mut input = request();
+    input.query = Query::Hover {
+        position: protocol::Position::default(),
+    };
+    let before = host.query(scope.clone(), &input).await.unwrap();
+    assert_eq!(before.result["contents"], "installed before");
+    std::fs::write(settings, "installed after").unwrap();
+    input.request += 1;
+    assert!(host.query(scope.clone(), &input).await.is_err());
+    input.request += 1;
+    let after = host.query(scope, &input).await.unwrap();
+    assert_ne!(after.server, before.server);
+    assert_eq!(after.result["contents"], "installed after");
+    host.shutdown();
+}
+
+#[tokio::test]
 async fn replaced_or_rewritten_server_rejects_warm_requests_and_reopens_drafts() {
     for atomic in [false, true] {
         let root = tempfile::tempdir().unwrap();

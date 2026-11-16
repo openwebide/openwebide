@@ -16,6 +16,120 @@ fn scope() -> WorkspaceTransactionScope {
         accepted_language_review_digest: None,
     }
 }
+
+#[cfg(target_os = "macos")]
+#[tokio::test]
+async fn legacy_claim_with_an_unprovable_device_still_excludes_the_renamed_original() {
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        let home = tempfile::tempdir().unwrap();
+        let parent = tempfile::tempdir().unwrap();
+        let path = parent.path().join("project");
+        std::fs::create_dir(&path).unwrap();
+        let initial = Namespace::open(home.path()).unwrap();
+        // Reproduce the version-one wire layout written before volume UUIDs.
+        // Keep the real original anchor/directory/database objects in place.
+        let key = Key {
+            uid: initial.key.uid,
+            nonce: initial.key.nonce.clone(),
+            home: Identity::legacy(&File::open(home.path()).unwrap()).unwrap(),
+            directory: Identity::legacy(&File::open(home.path().join(DIRECTORY)).unwrap()).unwrap(),
+            anchor: Identity::legacy(&File::open(home.path().join(ANCHOR)).unwrap()).unwrap(),
+        };
+        drop(initial);
+        // Namespace::open has already migrated this fresh fixture to a sealed
+        // head. Version one predates that head; do not mix the two formats.
+        std::fs::remove_file(home.path().join(DIRECTORY).join("recovery-head.json")).unwrap();
+        let data = sqlite(&key).unwrap();
+        let database = home.path().join(DIRECTORY).join(DATABASE);
+        std::fs::write(&database, &data).unwrap();
+        let anchor = Anchor {
+            format: 1,
+            key,
+            database: Identity::legacy(&File::open(&database).unwrap()).unwrap(),
+            digest: openwebide_core::plugins::content_digest(&data),
+            sealed: false,
+        };
+        std::fs::write(
+            home.path().join(ANCHOR),
+            serde_json::to_vec(&anchor).unwrap(),
+        )
+        .unwrap();
+        let namespace = Namespace::open(home.path()).unwrap();
+        let folder = Folder::capture(&path).unwrap();
+        let mut scope = scope();
+        scope.root.mode = mode;
+        scope.root.path = (mode == WorkspaceMode::Remote).then(|| "project".into());
+        let authority = RecoveryAuthority::for_scope(7, 11, &scope, "A".repeat(43)).unwrap();
+        let activity = WorkspaceActivity {
+            file_recovery: true,
+            language_command: false,
+        };
+        let permit = namespace
+            .permit(&folder, &authority, &scope, activity)
+            .unwrap();
+        let coordinator = Coordinator::default();
+        coordinator.set_recovery_home(std::sync::Arc::new(home.path().to_path_buf()));
+        let lease = coordinator
+            .acquire_recovery(folder.clone(), permit)
+            .await
+            .unwrap();
+        namespace
+            .enroll(&folder, &lease, lease.recovery().unwrap())
+            .unwrap();
+        drop(lease);
+
+        // Model a legacy workspace-volume record whose device allocation is no
+        // longer provable. The account's original namespace has not remounted.
+        // Identity/birth observations are retained; none authorizes recovery.
+        namespace
+            .access(true, |parent, anchor, connection| {
+                let mut owner = read(connection, version(connection)?)?.remove(0);
+                let original_id = owner.id.clone();
+                let mut value = serde_json::to_value(&owner.folder).unwrap();
+                let device = value["root"]["device"].as_u64().unwrap();
+                let update = |identity: &mut serde_json::Value| {
+                    if identity["device"].as_u64() == Some(device) {
+                        identity["device"] = (device + 1000).into();
+                    }
+                };
+                update(&mut value["root"]);
+                for identity in value["ancestors"].as_array_mut().unwrap() {
+                    update(identity);
+                }
+                owner.folder = serde_json::from_value(value).unwrap();
+                owner.id = openwebide_core::plugins::content_digest(
+                    &serde_json::to_vec(&(
+                        &namespace.key.nonce,
+                        &owner.binding,
+                        &owner.credential_digest,
+                        &owner.folder,
+                    ))
+                    .unwrap(),
+                );
+                connection
+                    .execute("DELETE FROM recovery_owners WHERE id=?1", [original_id])
+                    .unwrap();
+                context::save_owner(connection, &owner)?;
+                namespace.save(parent, anchor, connection)
+            })
+            .unwrap();
+        let renamed = parent.path().join("renamed");
+        std::fs::rename(&path, &renamed).unwrap();
+        let renamed = Folder::capture(&renamed).unwrap();
+        assert!(namespace.admit(&renamed, None).is_err());
+        let foreign = RecoveryAuthority::for_scope(8, 11, &scope, "Q".repeat(43)).unwrap();
+        let permit = namespace
+            .permit(&renamed, &foreign, &scope, activity)
+            .unwrap();
+        assert!(namespace.admit(&renamed, Some(&permit)).is_err());
+        let independent = parent.path().join("independent");
+        std::fs::create_dir(&independent).unwrap();
+        namespace
+            .admit(&Folder::capture(&independent).unwrap(), None)
+            .unwrap();
+    }
+}
+
 #[tokio::test]
 async fn pending_original_owner_excludes_new_coordinators_aliases_accounts_and_replacement_paths() {
     let home = tempfile::Builder::new()

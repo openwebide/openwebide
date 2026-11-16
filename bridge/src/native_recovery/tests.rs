@@ -1,6 +1,9 @@
 use super::*;
 use std::process::Command;
 
+#[cfg(target_os = "macos")]
+mod remount;
+
 fn owned_home() -> PathBuf {
     tempfile::Builder::new()
         .prefix("openwebide-recovery-namespace-case-")

@@ -1,0 +1,631 @@
+{
+  "status": "Backup-first upgrade, interruption/resume/cancel, changed-device APFS recovery and reviewed normal OS-account upgrade passed",
+  "command": "openwebide-bridge recovery upgrade inspect",
+  "inspection_qualification_sha256": "4519923e75fcce2cfdeab534828f1c2c4b960e8f14ac37e4db8a06527e55fb5e",
+  "eligibility": "Require legacy original-object inode/birth observations, coherent stored device metadata, actual persistent volume identity, exact original names/objects/bytes, valid namespace key, known SQLite schema and one revision row, a matching committed head and zero records in all four owner/command/settlement/retirement tables. Unknown files, prepared heads and replacements are rejected.",
+  "authority": "Inspection grants no ordinary recovery or initialization authority. A stable expected digest is returned only for eligible empty state. No namespace-selection override exists in normal distributions.",
+  "focused_tests": {
+    "source_sha256": "95c0d5fcc4508c742ba28a9101ac4981827f6c5b5ef7a3ad31257abbe9c7775c",
+    "cases": [
+      {
+        "case": "format",
+        "returncode": 0,
+        "seconds": 3.26,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "matching-native-main",
+        "returncode": 0,
+        "seconds": 0.77,
+        "sha256": "e68dbb831082090d6aab9641584d06498d66907f4c3e3d2d36c4824da23e94c8"
+      },
+      {
+        "case": "upgrade-inspection",
+        "returncode": 0,
+        "seconds": 7.12,
+        "sha256": "d3a478774dd0c3c1e0ac6f4525cca9fe103df318616a43dfe56a9a6bac301a59",
+        "test_summaries": [
+          {
+            "passed": 15,
+            "ignored": 1
+          }
+        ]
+      },
+      {
+        "case": "core-private-paths",
+        "returncode": 0,
+        "seconds": 0.36,
+        "sha256": "c41059c8c846abc98b7e536a96b2da2c1f4b2aff7e6e14b67084f4acb0bed6a7",
+        "test_summaries": [
+          {
+            "passed": 2,
+            "ignored": 0
+          }
+        ]
+      },
+      {
+        "case": "native-Git-private-paths",
+        "returncode": 0,
+        "seconds": 2.45,
+        "sha256": "b2922c095566f14912aa00ed7229525f48f2a065231306251e11b1a3a234c4f3",
+        "test_summaries": [
+          {
+            "passed": 14,
+            "ignored": 0
+          }
+        ]
+      },
+      {
+        "case": "CLI-contract",
+        "returncode": 0,
+        "seconds": 1.58,
+        "sha256": "7b9ad3bda9b4d9b8fccdd12f38f668fa05a252510df17894e0696a1ba33d871e",
+        "test_summaries": [
+          {
+            "passed": 10,
+            "ignored": 1
+          }
+        ]
+      },
+      {
+        "case": "OS-selected-read-only-inspection",
+        "returncode": 0,
+        "seconds": 1.65,
+        "sha256": "76b1a64cf193705937060ec531f71aebab3e163abc1303b02495fb7dfeb9fa42"
+      },
+      {
+        "case": "strict-native-bridge",
+        "returncode": 0,
+        "seconds": 0.58,
+        "sha256": "7a7c5f339ce35cb7811e73ee64d146487d7e72eb2090f8175330980b4fb58593"
+      }
+    ],
+    "scope": "Current native upgrade inspection/publication tests, CLI contracts, hidden-path checks and strict all-target native lint; see per-case test counts."
+  },
+  "real_OS_selected_account": {
+    "read_only_inspection_passed": true,
+    "legacy_schema": 11,
+    "legacy_revision": 2,
+    "device_changed": true,
+    "all_four_record_tables_empty": true,
+    "upgrade_applied": true,
+    "normal_OS_selected_non_test_binary": true,
+    "exact_original_objects_and_bytes_retained": true,
+    "ordinary_inspection_restored": true,
+    "reviewed_retry_idempotent": true,
+    "receipt_sha256": "5ff3edacf5a07fdb9d1353bd10734f80e3a862e5493e828bf639eaa6bb84da08",
+    "case_log_sha256": {
+      "inspect-legacy": {
+        "returncode": 0,
+        "stdout_sha256": "76b1a64cf193705937060ec531f71aebab3e163abc1303b02495fb7dfeb9fa42",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ordinary-before": {
+        "returncode": 1,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "1937c3851a980eb9c843a189be5add5e3627e95befb554e186dd7b4a0e184558"
+      },
+      "apply-reviewed-upgrade": {
+        "returncode": 0,
+        "stdout_sha256": "906502356735117463f8a0d7c85f0bd4886ff0b69a7f2fd8989944f305529f3e",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "inspect-completed": {
+        "returncode": 0,
+        "stdout_sha256": "f6a160f20f4d8599e68cbf9509ea212e79254e4003fdaf7bd6a9bbfe39d95d5d",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ordinary-after": {
+        "returncode": 0,
+        "stdout_sha256": "2b92ba6723e5f3329295fcb4d1f5782c0a98dfa8faadaee548db9bb554010872",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "idempotent-reviewed-upgrade": {
+        "returncode": 0,
+        "stdout_sha256": "906502356735117463f8a0d7c85f0bd4886ff0b69a7f2fd8989944f305529f3e",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "scope": "Actual macOS OS-account namespace; original anchor/directory/database/head retain inode, birth identity, mode and file bytes in the private upgrade area. This does not establish browser folder permissions."
+  },
+  "remaining": [
+    "Fresh physical folder-permission checks and complete optimized-distribution qualification remain separate from these native, app and OS-account results.",
+    "Full local CI is a separate required pre-publication gate."
+  ],
+  "whole_goal_complete": false,
+  "commands": [
+    "openwebide-bridge recovery upgrade inspect",
+    "openwebide-bridge recovery upgrade --expected <DIGEST> --note <REVIEW>",
+    "openwebide-bridge recovery upgrade cancel --expected <DIGEST> --note <REVIEW>"
+  ],
+  "publication_qualification_sha256": "4519923e75fcce2cfdeab534828f1c2c4b960e8f14ac37e4db8a06527e55fb5e",
+  "publication_source_sha256": "95c0d5fcc4508c742ba28a9101ac4981827f6c5b5ef7a3ad31257abbe9c7775c",
+  "publication_tests": [
+    {
+      "case": "format",
+      "returncode": 0,
+      "seconds": 3.26,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "case": "matching-native-main",
+      "returncode": 0,
+      "seconds": 0.77,
+      "sha256": "e68dbb831082090d6aab9641584d06498d66907f4c3e3d2d36c4824da23e94c8"
+    },
+    {
+      "case": "upgrade-inspection",
+      "returncode": 0,
+      "seconds": 7.12,
+      "sha256": "d3a478774dd0c3c1e0ac6f4525cca9fe103df318616a43dfe56a9a6bac301a59",
+      "test_summaries": [
+        {
+          "passed": 15,
+          "ignored": 1
+        }
+      ]
+    },
+    {
+      "case": "core-private-paths",
+      "returncode": 0,
+      "seconds": 0.36,
+      "sha256": "c41059c8c846abc98b7e536a96b2da2c1f4b2aff7e6e14b67084f4acb0bed6a7",
+      "test_summaries": [
+        {
+          "passed": 2,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "case": "native-Git-private-paths",
+      "returncode": 0,
+      "seconds": 2.45,
+      "sha256": "b2922c095566f14912aa00ed7229525f48f2a065231306251e11b1a3a234c4f3",
+      "test_summaries": [
+        {
+          "passed": 14,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "case": "CLI-contract",
+      "returncode": 0,
+      "seconds": 1.58,
+      "sha256": "7b9ad3bda9b4d9b8fccdd12f38f668fa05a252510df17894e0696a1ba33d871e",
+      "test_summaries": [
+        {
+          "passed": 10,
+          "ignored": 1
+        }
+      ]
+    },
+    {
+      "case": "OS-selected-read-only-inspection",
+      "returncode": 0,
+      "seconds": 1.65,
+      "sha256": "76b1a64cf193705937060ec531f71aebab3e163abc1303b02495fb7dfeb9fa42"
+    },
+    {
+      "case": "strict-native-bridge",
+      "returncode": 0,
+      "seconds": 0.58,
+      "sha256": "7a7c5f339ce35cb7811e73ee64d146487d7e72eb2090f8175330980b4fb58593"
+    }
+  ],
+  "broader_regression": {
+    "source_sha256": "95c0d5fcc4508c742ba28a9101ac4981827f6c5b5ef7a3ad31257abbe9c7775c",
+    "core_passed": 739,
+    "core_ignored": 1,
+    "native_library_passed": 583,
+    "native_ignored": 3,
+    "cases": [
+      {
+        "case": "core-regressions",
+        "returncode": 0,
+        "seconds": 21.5,
+        "sha256": "1817c5ac8cd2117796fcdcba44a3576939ef19627d9c24578c696ec7069d36dd",
+        "test_summaries": [
+          {
+            "passed": 739,
+            "ignored": 1
+          },
+          {
+            "passed": 0,
+            "ignored": 0
+          }
+        ]
+      },
+      {
+        "case": "native-lib-regressions",
+        "returncode": 0,
+        "seconds": 155.69,
+        "sha256": "112b6b87db84b7a29b5edef53a762b106ce7033fb7717b73ffdc94694bbf19bb",
+        "test_summaries": [
+          {
+            "passed": 583,
+            "ignored": 3
+          }
+        ]
+      }
+    ]
+  },
+  "publication_behavior": "Create and sync the exact original-anchor backup link before the visible current marker so existing private-file checks fence legacy publishers. Discover and resume the bounded pre-marker state by original stable identities and bytes. Retain originals through split directory/anchor publication. Link and sync completion/cancellation receipts before clearing markers. Cancellation durably removes only the known backup fence; after unfencing, resume only cleans cancellation metadata and preserves later old commits or prepared journals. Never infer legacy raw-device recovery authority after remount.",
+  "APFS_publication_checks": {
+    "AnchorBackup": {
+      "source_sha256": "95c0d5fcc4508c742ba28a9101ac4981827f6c5b5ef7a3ad31257abbe9c7775c",
+      "passed": true,
+      "process_separated": true,
+      "actual_device_changed": true,
+      "all_owned_volumes_ejected": true,
+      "scope": "Actual legacy-upgrade publication interrupted in one process, APFS detached and remounted with a different device number, then inspection/resumption/idempotence and original-object backup validation in a fresh process. Native filesystem scope; no browser-permission claim.",
+      "receipt_sha256": "1e2ddb6ecfdeab2772ecc263a5bdc71092c7f4368e4a67347855d9443d2f6a62",
+      "case_log_sha256": {
+        "create-original": {
+          "returncode": 0,
+          "stdout_sha256": "08a920f9e1bd2e5fca0f0816fa76f209bc8562dde47b4383a97608e3cec11d72",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "create-filler": {
+          "returncode": 0,
+          "stdout_sha256": "34aee1b01a1fcf39f92601af2ba7804f25d9ef33aabfefaec1fdf5c9e1aa1146",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "attach-original": {
+          "returncode": 0,
+          "stdout_sha256": "45361bacbc8a7f49dc274f410672ba9bda32f4389dcaf7e7baafc0384bfb6793",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "native-prepare": {
+          "returncode": 73,
+          "stdout_sha256": "70ab79c0f02b6c51bc270ca6ba045f2850ee948558537fbdb9422dbe709fa637",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "detach-original": {
+          "returncode": 0,
+          "stdout_sha256": "a445b037634bbfac3c03a59bafda71fd22c7a8247e56e85d288c79fbbdd03777",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "attach-filler": {
+          "returncode": 0,
+          "stdout_sha256": "0a5ac9630532c35c1d01d9832d846297981b2d9925dd5da9bf5e9e81185edfa6",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "reattach-original": {
+          "returncode": 0,
+          "stdout_sha256": "f87146afbcf1ddcfd95b814503835a3569aa709ed014434e3873d22cd4667fbd",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "native-recover": {
+          "returncode": 0,
+          "stdout_sha256": "4f2e177a97a836e4244eb2ff942e83f67800a9f023ca644ec8f825775e7a28a6",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "cleanup-disk6": {
+          "returncode": 0,
+          "stdout_sha256": "95439929e72b852fde13b19f5a9bd83ecbda40853a0407698f29d08127ab2324",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "cleanup-disk4": {
+          "returncode": 0,
+          "stdout_sha256": "a445b037634bbfac3c03a59bafda71fd22c7a8247e56e85d288c79fbbdd03777",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    "Intent": {
+      "source_sha256": "95c0d5fcc4508c742ba28a9101ac4981827f6c5b5ef7a3ad31257abbe9c7775c",
+      "passed": true,
+      "process_separated": true,
+      "actual_device_changed": true,
+      "all_owned_volumes_ejected": true,
+      "scope": "Actual legacy-upgrade publication interrupted in one process, APFS detached and remounted with a different device number, then inspection/resumption/idempotence and original-object backup validation in a fresh process. Native filesystem scope; no browser-permission claim.",
+      "receipt_sha256": "58b680ee2597c1c6cfe68480c522be5187c84c1f68cdaeab40dd5417270744a4",
+      "case_log_sha256": {
+        "create-original": {
+          "returncode": 0,
+          "stdout_sha256": "cbd9a4a489258d8b1c9342feb9cf6b4810b1596c8534be5e59fabdde53b47b52",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "create-filler": {
+          "returncode": 0,
+          "stdout_sha256": "bf63e1a12c747f98683a256daab50432cb118d049cdef0421878eebf33981ef7",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "attach-original": {
+          "returncode": 0,
+          "stdout_sha256": "205b168180e7b74d18f1efa758ccce8afd95f5155b4f237778d35c7658c41dff",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "native-prepare": {
+          "returncode": 73,
+          "stdout_sha256": "70ab79c0f02b6c51bc270ca6ba045f2850ee948558537fbdb9422dbe709fa637",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "detach-original": {
+          "returncode": 0,
+          "stdout_sha256": "a445b037634bbfac3c03a59bafda71fd22c7a8247e56e85d288c79fbbdd03777",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "attach-filler": {
+          "returncode": 0,
+          "stdout_sha256": "817c3bd1e7a059848c3ea535115861e0ec6b29942c706391a6f6512ab624c5e2",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "reattach-original": {
+          "returncode": 0,
+          "stdout_sha256": "5834af28f1be87b9284baa262a462332c304cdf014d2d96fc65518bfab38084b",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "native-recover": {
+          "returncode": 0,
+          "stdout_sha256": "03567dd8a19ed32379a7d1d330252debe03fafc56e3789ae7abb09da18bb632b",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "cleanup-disk6": {
+          "returncode": 0,
+          "stdout_sha256": "95439929e72b852fde13b19f5a9bd83ecbda40853a0407698f29d08127ab2324",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "cleanup-disk4": {
+          "returncode": 0,
+          "stdout_sha256": "a445b037634bbfac3c03a59bafda71fd22c7a8247e56e85d288c79fbbdd03777",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    "DirectoryPublished": {
+      "source_sha256": "95c0d5fcc4508c742ba28a9101ac4981827f6c5b5ef7a3ad31257abbe9c7775c",
+      "passed": true,
+      "process_separated": true,
+      "actual_device_changed": true,
+      "all_owned_volumes_ejected": true,
+      "scope": "Actual legacy-upgrade publication interrupted in one process, APFS detached and remounted with a different device number, then inspection/resumption/idempotence and original-object backup validation in a fresh process. Native filesystem scope; no browser-permission claim.",
+      "receipt_sha256": "286b37591603ef71914fcaa32eadc742e39e5b803deeeb39875187253ac60bfa",
+      "case_log_sha256": {
+        "create-original": {
+          "returncode": 0,
+          "stdout_sha256": "39d9476f10e07448157a4d3281e74ee8499eac5fbad085191c9186fb1b0fb31b",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "create-filler": {
+          "returncode": 0,
+          "stdout_sha256": "730e53ef8b6105a8de2a81f85ea0fde61bf2866953c43fabf0e1998c5e9833da",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "attach-original": {
+          "returncode": 0,
+          "stdout_sha256": "b688c48b900ac8a929071cea3e8207afaa73c917a641a886b283d856bc6af8e9",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "native-prepare": {
+          "returncode": 73,
+          "stdout_sha256": "70ab79c0f02b6c51bc270ca6ba045f2850ee948558537fbdb9422dbe709fa637",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "detach-original": {
+          "returncode": 0,
+          "stdout_sha256": "a445b037634bbfac3c03a59bafda71fd22c7a8247e56e85d288c79fbbdd03777",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "attach-filler": {
+          "returncode": 0,
+          "stdout_sha256": "fab950705b5e56e79f260f1ccc9a5ee1ab10b4b0efe240b44270d9a66ffd2e91",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "reattach-original": {
+          "returncode": 0,
+          "stdout_sha256": "2e8e603fc0bab1266ff26af57fed6f5e4cae1ba9c87964bf1f70897fc36300a1",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "native-recover": {
+          "returncode": 0,
+          "stdout_sha256": "3798081b2efdaee899b38df4c68342b20b8be109df8e1c8c8f0ecd6696d3ba88",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "cleanup-disk6": {
+          "returncode": 0,
+          "stdout_sha256": "95439929e72b852fde13b19f5a9bd83ecbda40853a0407698f29d08127ab2324",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "cleanup-disk4": {
+          "returncode": 0,
+          "stdout_sha256": "a445b037634bbfac3c03a59bafda71fd22c7a8247e56e85d288c79fbbdd03777",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    "CompletionLinked": {
+      "source_sha256": "95c0d5fcc4508c742ba28a9101ac4981827f6c5b5ef7a3ad31257abbe9c7775c",
+      "passed": true,
+      "process_separated": true,
+      "actual_device_changed": true,
+      "all_owned_volumes_ejected": true,
+      "scope": "Actual legacy-upgrade publication interrupted in one process, APFS detached and remounted with a different device number, then inspection/resumption/idempotence and original-object backup validation in a fresh process. Native filesystem scope; no browser-permission claim.",
+      "receipt_sha256": "11eb09331cd2694cf3e2b54e16b8b3efa3895f74cd4e48816f65029c1dbed649",
+      "case_log_sha256": {
+        "create-original": {
+          "returncode": 0,
+          "stdout_sha256": "881d6663d303a2eff9e0a2662fa588f65e254775357135615dd1ea06ede481c8",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "create-filler": {
+          "returncode": 0,
+          "stdout_sha256": "0635633eefed1fdedcd991beda030a88a8b89ddff58e97cb32ef82c7941aba07",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "attach-original": {
+          "returncode": 0,
+          "stdout_sha256": "8d056067bfd4e99b7a27bd131e72fb09a853b08a9bac63f58e93d1654f04ecd3",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "native-prepare": {
+          "returncode": 73,
+          "stdout_sha256": "70ab79c0f02b6c51bc270ca6ba045f2850ee948558537fbdb9422dbe709fa637",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "detach-original": {
+          "returncode": 0,
+          "stdout_sha256": "a445b037634bbfac3c03a59bafda71fd22c7a8247e56e85d288c79fbbdd03777",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "attach-filler": {
+          "returncode": 0,
+          "stdout_sha256": "5720a645510ad0e78e36519b2c36a47175f99fa31b08f428d9e0336d462ec7c8",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "reattach-original": {
+          "returncode": 0,
+          "stdout_sha256": "9e78dc418ddf00c2b4b448abf6fdaa0c2a05dd6d3945f078553b1e667055f6d2",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "native-recover": {
+          "returncode": 0,
+          "stdout_sha256": "3798081b2efdaee899b38df4c68342b20b8be109df8e1c8c8f0ecd6696d3ba88",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "cleanup-disk6": {
+          "returncode": 0,
+          "stdout_sha256": "95439929e72b852fde13b19f5a9bd83ecbda40853a0407698f29d08127ab2324",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "cleanup-disk4": {
+          "returncode": 0,
+          "stdout_sha256": "a445b037634bbfac3c03a59bafda71fd22c7a8247e56e85d288c79fbbdd03777",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    "CancellationUnfenced": {
+      "source_sha256": "95c0d5fcc4508c742ba28a9101ac4981827f6c5b5ef7a3ad31257abbe9c7775c",
+      "passed": true,
+      "process_separated": true,
+      "actual_device_changed": true,
+      "all_owned_volumes_ejected": true,
+      "scope": "Actual cancellation interrupted after unfencing, followed by an old persistence write stopped with a prepared head and partial database; APFS remounted with a different device number, then fresh-process cancellation metadata completion preserves all journal objects and bytes without adopting raw-device recovery authority. Native filesystem scope; no browser-permission claim.",
+      "receipt_sha256": "faa3411e90b6e0e52feb4caa181c9ed6269cbab83cbc2b91c73c2bb201454359",
+      "case_log_sha256": {
+        "create-original": {
+          "returncode": 0,
+          "stdout_sha256": "a581257d1e19a67404876c03cb1e46a367c962efee57e24bfabf2e3734e2bb2b",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "create-filler": {
+          "returncode": 0,
+          "stdout_sha256": "872561b02f2b7f4386aa75dccf62a7111f6fa52335b41527997f5201239a8398",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "attach-original": {
+          "returncode": 0,
+          "stdout_sha256": "178042adb0f3faac5fdc78a40d43b27f5a1fad3b2e50c1a72a5dfabfb6e8fffb",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "native-prepare": {
+          "returncode": 73,
+          "stdout_sha256": "70ab79c0f02b6c51bc270ca6ba045f2850ee948558537fbdb9422dbe709fa637",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "detach-original": {
+          "returncode": 0,
+          "stdout_sha256": "a445b037634bbfac3c03a59bafda71fd22c7a8247e56e85d288c79fbbdd03777",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "attach-filler": {
+          "returncode": 0,
+          "stdout_sha256": "c0950bd2317ce632e635382489c03f3d6cb15a48d33a5019dd82f3e8db0142cf",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "reattach-original": {
+          "returncode": 0,
+          "stdout_sha256": "09bb9aa22c8e53801797f5fa36500347812ae06678f084a3b9aa44eb042b6ed8",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "native-recover": {
+          "returncode": 0,
+          "stdout_sha256": "be9a28d642a8a8f0d3ee2afe3b16e159e091f5b93e5d02c27829ec4c5cd52c2c",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "cleanup-disk6": {
+          "returncode": 0,
+          "stdout_sha256": "95439929e72b852fde13b19f5a9bd83ecbda40853a0407698f29d08127ab2324",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "cleanup-disk4": {
+          "returncode": 0,
+          "stdout_sha256": "a445b037634bbfac3c03a59bafda71fd22c7a8247e56e85d288c79fbbdd03777",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    }
+  },
+  "current_native_resource_remount": {
+    "source_sha256": "95c0d5fcc4508c742ba28a9101ac4981827f6c5b5ef7a3ad31257abbe9c7775c",
+    "passed": true,
+    "process_separated": true,
+    "actual_device_changed": true,
+    "all_owned_volumes_ejected": true,
+    "scope": "Native namespace and original-owner exclusion, both mode scopes, resource retention/creation rollback across separate processes and changed device. Does not establish complete app transport or physical browser permissions.",
+    "receipt_sha256": "f6497e10ab6287fddb316b885d2e7d82b431ac1f5aa5ea929dc2ed547a1ab6ee",
+    "case_log_sha256": {
+      "create-original": {
+        "returncode": 0,
+        "stdout_sha256": "bc238446e0e9e5c0694819764ed0a999d7c0776a1a77ba806935b58b9a3b49f5",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "create-filler": {
+        "returncode": 0,
+        "stdout_sha256": "dbd225def374840900c60b32f53d3594b1abab8cf6d37b2de06509e7e220fafb",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "attach-original": {
+        "returncode": 0,
+        "stdout_sha256": "fac7190d96641adfe731cf3898ba346092ed501e2518ed558893570b10f51009",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "native-prepare": {
+        "returncode": 0,
+        "stdout_sha256": "b3de8b21925023abcfe9a99b7f170bfdbfb02c9e3d9c024981b1fcb0a2a6f921",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "detach-original": {
+        "returncode": 0,
+        "stdout_sha256": "a445b037634bbfac3c03a59bafda71fd22c7a8247e56e85d288c79fbbdd03777",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "attach-filler": {
+        "returncode": 0,
+        "stdout_sha256": "efdb9e1cb5aea55b7ff52165db5e2580c8710c6ba19e60dfb21521fe54202900",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "reattach-original": {
+        "returncode": 0,
+        "stdout_sha256": "6628e97e5215dacc52b2cd9722130573e4eff4e247513f9831ca3742a8f0247d",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "native-recover": {
+        "returncode": 0,
+        "stdout_sha256": "8cd629baafb9a96bebf9bf74611b0a5a4f4a7b87febe44fc769a59947f772b73",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "cleanup-disk6": {
+        "returncode": 0,
+        "stdout_sha256": "95439929e72b852fde13b19f5a9bd83ecbda40853a0407698f29d08127ab2324",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "cleanup-disk4": {
+        "returncode": 0,
+        "stdout_sha256": "a445b037634bbfac3c03a59bafda71fd22c7a8247e56e85d288c79fbbdd03777",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  },
+  "inspection_source_sha256": "95c0d5fcc4508c742ba28a9101ac4981827f6c5b5ef7a3ad31257abbe9c7775c",
+  "activation_contract": "Old publishers succeed before activation and invalidate stale review digests. They fail at the original-anchor backup before any visible current marker and after the marker. Both pre-marker resumption and cancellation survive actual changed-device APFS remounts. Interrupted cancellation preserves a subsequent old prepared journal without rewriting or adopting it.",
+  "source_scope": {
+    "Mac_application_source_sha256": "95c0d5fcc4508c742ba28a9101ac4981827f6c5b5ef7a3ad31257abbe9c7775c",
+    "Linux_and_Windows_cross_source_sha256": "80bf0089d656fc5a0a3466a07edf6baf77fcf6ff8fe4f295d0bc7459c2d86e7b",
+    "source_difference": "Only a justified cfg_attr(not(macos), allow(clippy::unused_self, reason=...)) annotation was added to has_persistent_volume. Runtime logic and API are unchanged; original Mac checks were not rerun or relabeled.",
+    "source_difference_proof_sha256": "6e250b57a59ca4dade8113e870c3a2be0c800630b3738698fd3380ed72281f7d"
+  }
+}

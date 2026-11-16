@@ -918,7 +918,7 @@ impl Session {
             same_file::Handle::from_path(workspace).map_err(|error| error.to_string())?;
         let repository = repository::Repository::new(workspace).await?;
         let inputs = inputs::Inputs::new(&scope.root, scope.server.project_inputs.as_ref()).await?;
-        let program = program::Program::prepare(&scope.server.command, workspace).await?;
+        let program = program::Program::prepare(&scope.server, workspace).await?;
         let mut cache = inner
             .cache
             .prepare(scope, workspace, &program, &inputs, &inner.coordinator)

@@ -5,6 +5,7 @@ use crate::{
     bridge::{BridgeConfig, BridgeCredentials},
     plugin_bridge::PluginBridgeClient,
 };
+use leptos::prelude::WithValue;
 use openwebide_core::workspace_transaction::companion::{
     CompanionFiles, FolderAction, FolderReply, FolderRequest, FolderTransport, challenge_name,
     fingerprint,
@@ -144,20 +145,48 @@ async fn open_folder(
     if !current() {
         return Err("The selected browser folder changed".into());
     }
+    crate::local_fs::ensure_permission(&handle)
+        .await
+        .map_err(|error| error.to_string())?;
+    if !current() {
+        return Err("The selected browser folder changed while checking access".into());
+    }
     let credentials = BridgeCredentials::new(api);
     // Resolve this exact candidate handle, including when an old origin-bound
     // handle is lost. The fresh challenge below establishes physical authority;
     // the existing path hint/discovery only locates its execution-host adapter.
-    let path = crate::local_agent::resolve_bridge_cwd_guarded(
-        api,
-        handle.clone(),
-        project,
-        &config,
-        &credentials,
-        || current(),
-    )
-    .await
-    .ok_or("Reconnect the selected folder to its paired execution host")?;
+    // Recovery already knows the original physical identity. Ordinary command
+    // probes are correctly fenced while it is pending; a saved path is only a
+    // hint, and Open(expected) plus the browser challenge remains authority.
+    let hint = if expected.is_some() {
+        api.with_value(Clone::clone)
+            .get_settings()
+            .await?
+            .get(&format!("local_bridge_cwd.{project}"))
+            .cloned()
+    } else {
+        None
+    };
+    if !current() {
+        return Err("The selected browser folder changed while locating recovery".into());
+    }
+    let path = if let Some(hint) = hint {
+        hint
+    } else {
+        crate::local_agent::resolve_bridge_cwd_guarded(
+            api,
+            handle.clone(),
+            project,
+            &config,
+            &credentials,
+            || current(),
+        )
+        .await
+        .ok_or("Reconnect the selected folder to its paired execution host")?
+    };
+    if !current() {
+        return Err("The selected browser folder changed while locating recovery".into());
+    }
     let client = PluginBridgeClient::new(config.http_url, credentials);
     let request = FolderRequest {
         user,

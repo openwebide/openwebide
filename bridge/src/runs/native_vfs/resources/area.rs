@@ -81,7 +81,7 @@ impl Area {
                     return Err(invalid("A second recovery staging folder was preserved"));
                 }
                 let directory = root.directory(&base)?;
-                if Identity::of(&directory.0)? != metadata.directory {
+                if directory.file_identity(&directory.0)? != metadata.directory {
                     return Err(invalid("The physical recovery area was replaced"));
                 }
                 let area = Self { directory };
@@ -132,7 +132,7 @@ impl Area {
             version: 1,
             root: identity.into(),
             scope: scope.clone(),
-            directory: Identity::of(&directory.0)?,
+            directory: directory.file_identity(&directory.0)?,
         };
         let bytes = serde_json::to_vec(&metadata).map_err(invalid)?;
         write_metadata(root, &part, &owner, &bytes)?;

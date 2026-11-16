@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Public API 9 configuration edits and attached commands in the production UI.
+"""Public project/runtime input edits and attached commands in the production UI.
 
 Local OPFS changes are mirrored to a disposable native folder. This establishes
 the adapter contract, not physical browser-folder permission behavior.
 """
+import argparse
 import base64
 import json
 from pathlib import Path
@@ -43,7 +44,7 @@ def git(folder, *arguments):
     return subprocess.check_output(['git', '-C', str(folder), *arguments], text=True).strip()
 
 
-def fixture(state):
+def fixture(state, input_kind='project'):
     repository = state / 'repository'
     package = repository / 'inputs-probe'
     package.mkdir(parents=True)
@@ -53,6 +54,17 @@ def fixture(state):
             'id': 'notes', 'name': 'Notes', 'extensions': ['notes'], 'features': {'languageServer': {
                 'command': sys.executable, 'args': [str(ROOT / 'tools/fixtures/commands_server.py'), 'inputs'],
                 'rootMarkers': ['.git'], 'projectInputs': {'files': ['settings*.json']}}}}]}}
+    if input_kind != 'project':
+        implementation = state / 'server.py'
+        implementation.write_text('import pathlib,sys\npathlib.Path(sys.argv[2]).write_text("started")\n' +
+            (ROOT / 'tools/fixtures/commands_server.py').read_text())
+        (state / 'sidecar.json').write_text('{"version":1}')
+        manifest['compatibility']['pluginApi'] = 10
+        server = manifest['contributions']['languages'][0]['features']['languageServer']
+        server['args'] = [str(implementation), 'inputs', str(state / 'runtime-output.log')]
+        server['runtimeInputs'] = {'argumentFiles': [0]}
+        if input_kind == 'sidecar':
+            server['runtimeInputs']['files'] = [str(state / 'sidecar.json')]
     (package / 'plugin.json').write_text(json.dumps(manifest))
     git(repository, 'init', '--quiet', '--initial-branch=main', '--template=')
     git(repository, 'add', '.')
@@ -90,7 +102,7 @@ def install(runtime, reference):
             return progress['prepared']
         progress = runtime.request('POST', '/api/plugins/preparation', {'action': 'status', 'id': progress['id']})
         return None
-    prepared = wait('public API 9 package preparation', prepared)
+    prepared = wait('public language package preparation', prepared)
     package = runtime.request('POST', '/api/plugins/package', prepared)
     entries = runtime.request('POST', '/api/plugins', {'prepared': prepared, 'package': package,
         'approved_capabilities': [], 'revision': None})
@@ -101,7 +113,7 @@ def source(browser):
     return script(browser, "return document.querySelector('textarea[data-editor-path]')?.value;")
 
 
-def check():
+def check(input_kind='project'):
     with tempfile.TemporaryDirectory(prefix='openwebide-inputs-') as state_path, \
             tempfile.TemporaryDirectory(prefix='inputs-project-', dir=ROOT.parent) as project_path:
         state, parent = Path(state_path), Path(project_path)
@@ -110,7 +122,7 @@ def check():
         host, browser, daemon = ExecutionHost(runtime), None, None
         mirror = ProbeMirror(runtime.url)
         try:
-            daemon, reference = fixture(state)
+            daemon, reference = fixture(state, input_kind)
             host.start()
             runtime.start()
             runtime.request('POST', '/api/auth/register', {'username': 'inputs-' + secrets.token_hex(6),
@@ -163,10 +175,19 @@ def check():
                     "return document.querySelector('[role=dialog]')?.textContent.includes('settings-new.json')&&document.querySelector('[role=dialog]')?.textContent.includes('fixture.apply');"))
                 assert (folder / 'settings-old.json').read_text() == files['settings-old.json']
                 assert not (folder / 'settings-new.json').exists() and not (folder / 'executions').exists()
+                if input_kind != 'project':
+                    # This argument is an output role, not an implementation input.
+                    assert (state / 'runtime-output.log').read_text() == 'started'
+                    (state / 'runtime-output.log').write_text('mutable output changed during review')
                 if stale:
                     # This matching dependency is outside the action's file plan.
                     # An ordinary affected-path comparison cannot detect it.
-                    if mode == 'remote':
+                    if input_kind != 'project':
+                        implementation = state / ('server.py' if input_kind == 'argument' else 'sidecar.json')
+                        replacement = implementation.with_suffix('.replacement')
+                        replacement.write_bytes(implementation.read_bytes() + b'\n')
+                        replacement.replace(implementation)
+                    elif mode == 'remote':
                         (folder / 'settings-external.json').write_text('{"changed":true}')
                     else:
                         assert browser.call('POST', '/execute/async', {'script': '''
@@ -183,7 +204,7 @@ def check():
                     def rejected():
                         return script(browser, """
                             return projectInputProbe.queries.some(query=>query.operation==='validate_analysis'&&query.status>=400)
-                              &&(document.body.textContent.includes('project inputs')||document.body.textContent.includes('original language service'));
+                              &&['project inputs','original language service','executable changed'].some(text=>document.body.textContent.includes(text));
                         """)
                     wait('stale configuration review rejected before intent', rejected)
                     assert runtime.request('POST', endpoint, {'operation': 'load', 'id': None}) is None
@@ -192,7 +213,8 @@ def check():
                     assert not (folder / 'executions').exists() and not (folder / 'settings-new.json').exists()
                     assert (folder / 'settings-old.json').read_text() == files['settings-old.json']
                     assert source(browser) == SOURCE.replace('\r\n', '\n')
-                    print(json.dumps({'mode': mode, 'public_api_9': True,
+                    print(json.dumps({'mode': mode, 'public_api': 9 if input_kind == 'project' else 10,
+                        'changed_input': input_kind,
                         'changed_dependency_before_apply_rejects_whole_action': True,
                         'native_validation_rejects_before_any_action_or_transaction': True,
                         'no_filesystem_primitive_or_command': True}), flush=True)
@@ -214,7 +236,9 @@ def check():
                 assert calls.count('workspace/executeCommand') == 1
                 assert calls[:calls.index('workspace/executeCommand')].count('initialize') == 1, \
                     'Configuration edit replaced the reviewed service before its command'
-                print(json.dumps({'mode': mode, 'public_api_9': True, 'review_precedes_mutation': True,
+                print(json.dumps({'mode': mode, 'public_api': 9 if input_kind == 'project' else 10,
+                    'input_kind': input_kind, 'mutable_output_preserves_service': input_kind != 'project',
+                    'review_precedes_mutation': True,
                     'configuration_move_and_unsaved_edit': True, 'original_service_command_once': True,
                     'draft_saved_to_recovery_not_disk': True}), flush=True)
         except BaseException:
@@ -239,4 +263,6 @@ def check():
 
 
 if __name__ == '__main__':
-    check()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--input-kind', choices=['project', 'argument', 'sidecar'], default='project')
+    check(parser.parse_args().input_kind)

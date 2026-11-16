@@ -216,12 +216,16 @@ impl Analysis {
             || context.server != server
             || context.result != proof.result_digest
             || context.origin != protocol::actions::origin_fingerprint(input)?
-            || context.sources != sources.revision
-            || context.overlays != overlays
             || context.issued > now
             || now.saturating_sub(context.issued) > LIFETIME
         {
             return Err(stale());
+        }
+        if context.sources != sources.revision {
+            return Err("The language analysis context changed or expired (project files changed); request the result again".into());
+        }
+        if context.overlays != overlays {
+            return Err("The language analysis context changed or expired (unsaved sources changed); request the result again".into());
         }
         Ok(context)
     }

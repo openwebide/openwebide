@@ -1,6 +1,7 @@
 //! Native executable selection and lifetime checks. Keep launch aliases intact:
 //! multicall executables such as rustup choose their service from argv[0].
 use super::{files::FileRevision, resources::owning_root};
+use openwebide_core::plugins::languages::{LanguageServer, RuntimeInputs, validate_runtime_inputs};
 use std::{
     collections::BTreeSet,
     path::{Path, PathBuf},
@@ -17,6 +18,24 @@ const MAX_PATH_BYTES: usize = 128 * 1024;
 static INSPECTIONS: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(4);
 const CHANGED: &str = "The language server executable changed or became unavailable; retry to synchronize current buffers with a fresh language service";
 
+// File identity checks must not wait for a writer if a declared implementation
+// path is replaced by a FIFO. Keep the original handle semantics on other hosts.
+fn image_handle(path: &Path) -> std::io::Result<same_file::Handle> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        let file = std::fs::OpenOptions::new()
+            .read(true)
+            .custom_flags(libc::O_NONBLOCK)
+            .open(path)?;
+        same_file::Handle::from_file(file)
+    }
+    #[cfg(not(unix))]
+    {
+        same_file::Handle::from_path(path)
+    }
+}
+
 struct Image {
     path: PathBuf,
     canonical: PathBuf,
@@ -27,7 +46,7 @@ struct Image {
 impl Image {
     fn read(path: PathBuf) -> Result<Self, String> {
         let links = links::Links::read(&path)?;
-        let handle = same_file::Handle::from_path(&path).map_err(|error| error.to_string())?;
+        let handle = image_handle(&path).map_err(|error| error.to_string())?;
         let canonical = std::fs::canonicalize(&path).map_err(|error| error.to_string())?;
         let metadata = std::fs::metadata(&path).map_err(|error| error.to_string())?;
         if !metadata.is_file() {
@@ -45,7 +64,7 @@ impl Image {
     }
     fn check(&self) -> Result<(), String> {
         if self.links.unchanged()
-            && same_file::Handle::from_path(&self.path).is_ok_and(|handle| handle == self.handle)
+            && image_handle(&self.path).is_ok_and(|handle| handle == self.handle)
             && std::fs::canonicalize(&self.path).is_ok_and(|path| path == self.canonical)
             && std::fs::metadata(&self.path)
                 .is_ok_and(|metadata| FileRevision::from(&metadata) == self.revision)
@@ -62,28 +81,40 @@ pub(super) struct Program {
     command: Arc<str>,
     workspace: Arc<Path>,
     declared: Arc<Image>,
+    inputs: Arc<[Image]>,
     images: Arc<[Image]>,
 }
 impl Program {
     pub(super) fn cache_identity(&self) -> String {
-        openwebide_core::plugins::content_digest(
-            format!(
-                "{}|{}|{:?}",
-                self.declared.path.display(),
-                self.declared.canonical.display(),
-                self.declared.revision
-            )
-            .as_bytes(),
-        )
+        let mut identity = format!(
+            "{}|{}|{:?}",
+            self.declared.path.display(),
+            self.declared.canonical.display(),
+            self.declared.revision
+        );
+        if !self.inputs.is_empty() {
+            let inputs = self
+                .inputs
+                .iter()
+                .map(|image| (&image.path, &image.canonical, &image.revision))
+                .collect::<Vec<_>>();
+            identity = format!("{identity}|{inputs:?}");
+        }
+        openwebide_core::plugins::content_digest(identity.as_bytes())
     }
-    pub(super) async fn prepare(command: &str, workspace: &Path) -> Result<Self, String> {
-        let command = command.to_string();
+    pub(super) async fn prepare(server: &LanguageServer, workspace: &Path) -> Result<Self, String> {
+        validate_runtime_inputs(server)?;
+        let command = server.command.clone();
+        let arguments = server.args.clone();
+        let inputs = server.runtime_inputs.clone().unwrap_or_default();
         let workspace = workspace.to_path_buf();
         bounded(move || {
             let path = resolve(&command, &workspace).map_err(|error| format!("Cannot start language server '{command}': {error}. Install the declared server and its toolchain on this execution host."))?;
+            let declared = Arc::new(Image::read(path)?);
+            let inputs = runtime_files(&inputs, &arguments, &declared, &workspace)?;
             Ok(Self {
                 command: command.into(), workspace: workspace.into(),
-                declared: Arc::new(Image::read(path)?), images: Arc::from([]),
+                declared, inputs, images: Arc::from([]),
             })
         }).await
     }
@@ -113,11 +144,54 @@ impl Program {
             return Err(CHANGED.into());
         }
         self.declared.check()?;
-        for image in &*self.images {
+        for image in self.inputs.iter().chain(self.images.iter()) {
             image.check()?;
         }
         Ok(())
     }
+}
+
+fn runtime_files(
+    inputs: &RuntimeInputs,
+    arguments: &[String],
+    program: &Image,
+    workspace: &Path,
+) -> Result<Arc<[Image]>, String> {
+    let mut paths = BTreeSet::new();
+    for index in &inputs.argument_files {
+        let path = PathBuf::from(&arguments[*index]);
+        paths.insert(if path.is_absolute() {
+            path
+        } else {
+            workspace.join(path)
+        });
+    }
+    let directory = program
+        .canonical
+        .parent()
+        .ok_or("The language executable has no parent directory")?;
+    for file in &inputs.files {
+        let path = PathBuf::from(file);
+        paths.insert(if path.is_absolute() {
+            path
+        } else {
+            directory.join(path)
+        });
+    }
+    if paths.len() > MAX_IMAGES
+        || paths
+            .iter()
+            .map(|path| path.as_os_str().len())
+            .sum::<usize>()
+            > MAX_PATH_BYTES
+    {
+        return Err("The language service exceeds its runtime-input inspection budget".into());
+    }
+    paths
+        .into_iter()
+        .map(Image::read)
+        .collect::<Result<Vec<_>, _>>()
+        .map(Into::into)
 }
 
 fn resolve(command: &str, workspace: &Path) -> Result<PathBuf, String> {
@@ -194,4 +268,90 @@ async fn bounded<T: Send + 'static>(
     })
     .await
     .map_err(|_| "Inspecting language server executables timed out".to_string())?
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    use std::{
+        ffi::CString,
+        os::unix::{
+            ffi::OsStrExt,
+            fs::{OpenOptionsExt, symlink},
+        },
+        sync::mpsc,
+    };
+
+    fn fifo(path: &Path) {
+        let name = CString::new(path.as_os_str().as_bytes()).unwrap();
+        // SAFETY: name is NUL-terminated and valid for the call; the private mode
+        // and owned temporary parent do not expose another filesystem object.
+        assert_eq!(unsafe { libc::mkfifo(name.as_ptr(), 0o600) }, 0);
+    }
+
+    fn rejects_without_waiting(
+        fifo: &Path,
+        work: impl FnOnce() -> Result<(), String> + Send + 'static,
+    ) {
+        let (sender, receiver) = mpsc::channel();
+        let worker = std::thread::spawn(move || sender.send(work()).unwrap());
+        let first = receiver.recv_timeout(Duration::from_secs(2));
+        let blocked = matches!(&first, Err(mpsc::RecvTimeoutError::Timeout));
+        // Release a regressed blocking reader before asserting, so a failure
+        // cannot strand a test thread or hang runtime shutdown.
+        let release = blocked.then(|| {
+            std::fs::OpenOptions::new()
+                .read(true)
+                .write(true)
+                .custom_flags(libc::O_NONBLOCK)
+                .open(fifo)
+                .unwrap()
+        });
+        let result =
+            first.unwrap_or_else(|_| receiver.recv_timeout(Duration::from_secs(2)).unwrap());
+        worker.join().unwrap();
+        drop(release);
+        assert!(
+            !blocked,
+            "Runtime-input inspection waited for a FIFO writer"
+        );
+        assert!(result.is_err(), "A nonregular runtime input was accepted");
+    }
+
+    #[test]
+    fn nonregular_runtime_inputs_do_not_wait_for_a_writer() {
+        for alias in [false, true] {
+            let root = tempfile::tempdir().unwrap();
+            let input = root.path().join("implementation");
+            fifo(&input);
+            let selected = if alias {
+                let selected = root.path().join("alias");
+                symlink(&input, &selected).unwrap();
+                selected
+            } else {
+                input.clone()
+            };
+            rejects_without_waiting(&input, move || Image::read(selected).map(|_| ()));
+        }
+    }
+
+    #[test]
+    fn replacing_a_retained_runtime_input_with_a_fifo_does_not_wait() {
+        for alias in [false, true] {
+            let root = tempfile::tempdir().unwrap();
+            let input = root.path().join("implementation");
+            std::fs::write(&input, "original implementation").unwrap();
+            let selected = if alias {
+                let selected = root.path().join("alias");
+                symlink(&input, &selected).unwrap();
+                selected
+            } else {
+                input.clone()
+            };
+            let image = Image::read(selected).unwrap();
+            std::fs::remove_file(&input).unwrap();
+            fifo(&input);
+            rejects_without_waiting(&input, move || image.check());
+        }
+    }
 }

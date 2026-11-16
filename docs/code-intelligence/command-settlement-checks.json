@@ -1,0 +1,113 @@
+{
+  "status": "Complete built resource/command contract passed after volume integration; native, account and platform qualification retain their recorded scopes",
+  "shared_UI": {
+    "facade": "frontend/src/state_actions/workspace_recovery.rs",
+    "behavior": "Observe only the original terminal command while native settlement remains pending. Recheck the complete workspace recovery scope before enabling saves. Never replay or acknowledge a command.",
+    "limits": "One cancellable observer per project, compact reads every500ms, 30s observation bound with existing manual recovery fallback. Reject late replies after account, folder, host, project or ticket changes."
+  },
+  "native_callbacks": {
+    "behavior": "A verified command address belongs to the retained command record, independently of its file journal. Dynamic command recovery and final metadata settlement follow that address.",
+    "compatibility": "Records without an independent address keep their original owner callback. Verified reconnection atomically upgrades private schema to12, including earlier settlement/audit tables; earlier readers fail closed.",
+    "authority": "Namespace, original command, worker proof, invocation and previous verified callback are rechecked. File identity, file callback, command outcome and execution authority do not change."
+  },
+  "native": {
+    "source_sha256": "95c0d5fcc4508c742ba28a9101ac4981827f6c5b5ef7a3ad31257abbe9c7775c",
+    "core_passed": 739,
+    "core_ignored": 1,
+    "native_library_passed": 583,
+    "native_ignored": 3,
+    "cases": [
+      {
+        "case": "core-regressions",
+        "returncode": 0,
+        "seconds": 21.5,
+        "sha256": "1817c5ac8cd2117796fcdcba44a3576939ef19627d9c24578c696ec7069d36dd",
+        "test_summaries": [
+          {
+            "passed": 739,
+            "ignored": 1
+          },
+          {
+            "passed": 0,
+            "ignored": 0
+          }
+        ]
+      },
+      {
+        "case": "native-lib-regressions",
+        "returncode": 0,
+        "seconds": 155.69,
+        "sha256": "112b6b87db84b7a29b5edef53a762b106ce7033fb7717b73ffdc94694bbf19bb",
+        "test_summaries": [
+          {
+            "passed": 583,
+            "ignored": 3
+          }
+        ]
+      }
+    ]
+  },
+  "application": {
+    "modes": [
+      "Local",
+      "Remote"
+    ],
+    "complete_original_resource_and_command_contract": true,
+    "source_sha256": "95c0d5fcc4508c742ba28a9101ac4981827f6c5b5ef7a3ad31257abbe9c7775c",
+    "log_sha256": "503e24addda8b1f1e1aa96b50dc5ce44f7e5c72587059a3b0ba20364b3d6357c",
+    "seconds": 541.26,
+    "assertions_and_deadlines_preserved": true,
+    "cases": "Original review and session identity; ordered resource operations and undo; durable language review; interruption after a real primitive; native restart, reload and original-folder regrant; newer draft preservation; command-only and combined approval; lost dispatch without replay; same-window Stop; uncertain outcomes; draft persistence; rollback before command claim; admitted Prepared cancellation.",
+    "transport": "Fault-injection file execution, paired command journal and verified reconnect all use the same real relaying proxy; production callback identity checks are unchanged.",
+    "physical_folder_permissions_verified": false,
+    "qualification_precedes_native_volume_integration": false
+  },
+  "remaining": [
+    "Fresh physical Chrome/PWA folder-permission checks and complete optimized-distribution qualification retain their own scope; Local OPFS is not physical permission evidence.",
+    "Full local CI remains a separate required pre-publication gate; these records describe scoped native/application checks."
+  ],
+  "whole_goal_complete": false,
+  "Local_folder_regrant": {
+    "browser_tests": 1,
+    "cases": [
+      "Successful original physical identity and browser proof with ordinary exec fenced",
+      "Wrong physical identity rejected before browser proof",
+      "Superseded scope rejected before native dispatch",
+      "Revoked browser access rejected before native dispatch"
+    ],
+    "source_sha256": "8f2a55557f8b93e5acb0d3ea46e2c4dcee532ef6a31ea110fac01252856e2ef8",
+    "log_sha256": "c2a02a9c148f9506aa17f326b4b4cde43ba9df52e4287ec1dd24e0420acf28b4",
+    "behavior": "Use the saved per-project path only as a hint when the original physical identity is known. Retain permission/current-scope checks and the existing native Open(expected), fresh browser challenge read and Prove sequence. No ordinary command admission is weakened.",
+    "strict_all_target_WASM_lint": true,
+    "strict_lint_log_sha256": "378b5e34414684b8bf29cbb25d109ddc80c954e758244f89dcea094eb7e1cddb"
+  },
+  "native_volume_qualification": {
+    "source_sha256": "95c0d5fcc4508c742ba28a9101ac4981827f6c5b5ef7a3ad31257abbe9c7775c",
+    "native_resource_remount_passed": true,
+    "complete_built_workflow_passed": true,
+    "actual_empty_account_upgrade_passed": true
+  },
+  "qualification_scope": "The current Mac app runs the original Local/Remote resource and command assertions with the same deadlines. Native restart, regrant, rollback, lost dispatch, Stop, drafts and command non-replay pass. No fresh physical-folder or complete optimized-distribution claim.",
+  "historical_Chrome": {
+    "tests": 2,
+    "modes": [
+      "Local",
+      "Remote"
+    ],
+    "terminal_phases": [
+      "Completed",
+      "Acknowledged",
+      "Cancelled"
+    ],
+    "stale_cases": "Real authentication generation and OPFS/Remote root changes reject deferred compact responses without relying on an artificial UI status change.",
+    "source_sha256": "4f2df710106123746d2d8471219382208366f7ca1b5c836a0e760e2e7d6766db",
+    "log_sha256": "c45f90308f59db93ab11d0a0aa644a66753d4ce94682e04d68afb262bead980b"
+  },
+  "source_scope": {
+    "Mac_application_source_sha256": "95c0d5fcc4508c742ba28a9101ac4981827f6c5b5ef7a3ad31257abbe9c7775c",
+    "Linux_and_Windows_cross_source_sha256": "80bf0089d656fc5a0a3466a07edf6baf77fcf6ff8fe4f295d0bc7459c2d86e7b",
+    "source_difference": "Only a justified cfg_attr(not(macos), allow(clippy::unused_self, reason=...)) annotation was added to has_persistent_volume. Runtime logic and API are unchanged; original Mac checks were not rerun or relabeled.",
+    "source_difference_proof_sha256": "6e250b57a59ca4dade8113e870c3a2be0c800630b3738698fd3380ed72281f7d"
+  },
+  "application_receipt_sha256": "c3e0112a1349abb5ff54d5306440c8fc5a09b919f14d5cd3eca11342027ac6ea"
+}

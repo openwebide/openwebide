@@ -39,7 +39,7 @@ impl OriginalFolder {
                 descriptor.as_raw_fd(),
             )?);
             if !file.metadata().map_err(|e| e.to_string())?.is_dir()
-                || Identity::of(&file).map_err(|e| e.to_string())? != *expected
+                || !expected.matches(&file).map_err(|e| e.to_string())?
             {
                 return Err("The original process folder descriptors changed".into());
             }
@@ -48,7 +48,7 @@ impl OriginalFolder {
     }
     pub(crate) fn reopen(&self) -> Result<Folder, String> {
         let folder = Folder::capture(&self.path())?;
-        if Self::capture(&folder, true)? != *self {
+        if Self::capture_mode(&folder, true, self.root.uses_device_number())? != *self {
             return Err("Reconnect the original physical recovery folder".into());
         }
         Ok(folder)
@@ -62,6 +62,13 @@ impl OriginalFolder {
         &self.ancestors[..count]
     }
     pub(crate) fn capture(folder: &Folder, enduring: bool) -> Result<Self, String> {
+        Self::capture_mode(folder, enduring, false)
+    }
+    pub(crate) fn capture_mode(
+        folder: &Folder,
+        enduring: bool,
+        legacy: bool,
+    ) -> Result<Self, String> {
         if !folder.current() {
             return Err("The original recovery folder changed".into());
         }
@@ -70,6 +77,19 @@ impl OriginalFolder {
             root: folder.original.clone(),
             ancestors: folder.original_ancestors.clone(),
         };
+        #[cfg(target_os = "macos")]
+        let value = if legacy {
+            Self {
+                root: folder.legacy_original.clone(),
+                ancestors: folder.legacy_ancestors.clone(),
+                ..value
+            }
+        } else {
+            value
+        };
+        if enduring && !legacy && !value.root.has_persistent_volume() {
+            return Err("Durable native recovery needs persistent volume identity".into());
+        }
         if enduring {
             value.validate()?;
         }
@@ -89,6 +109,8 @@ impl OriginalFolder {
                 )
             })
             || !self.root.has_birth_time()
+            || !self.root.valid()
+            || self.ancestors.iter().any(|identity| !identity.valid())
             || self
                 .workspace_ancestors()
                 .iter()

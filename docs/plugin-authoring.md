@@ -171,6 +171,30 @@ failure or later reply cannot replace another's diagnostics. The shared client
 synchronizes related dialect buffers against that service's own declarations,
 including when a different package owns primary language support.
 
+API 10 adds optional `languageServer.runtimeInputs` for native implementation
+files outside the project, such as a script passed to an interpreter:
+
+```json
+"languageServer": {
+  "command": "python3",
+  "args": ["/installed/example/server.py", "/logs/example.log"],
+  "runtimeInputs": { "argumentFiles": [0] }
+}
+```
+
+Use `compatibility.pluginApi: 10` with this declaration. `argumentFiles` contains
+zero-based positions of exact file-path arguments; relative arguments use the
+server's working directory. Optional `files` lists additional exact files,
+relative to the canonical launch executable's directory or as absolute host
+paths. These are regular files, with at most 64 references in total and bounded
+native path inspection. Derived `${cache}` paths cannot be runtime inputs.
+Missing or unreadable declared files prevent service startup while ordinary
+editing remains available. Changes invalidate the old service, its native
+analysis/review context and derived-cache identity; a retry opens current drafts
+on a fresh service. Leave mutable logs and derived outputs undeclared. The host
+does not infer input roles from arbitrary command arguments. Earlier API versions
+retain their existing executable and observed native-image checks.
+
 API 9 also adds optional `languageServer.projectInputs` for configuration and
 dependency files read from disk by the native service:
 

@@ -1,0 +1,130 @@
+{
+  "status": "Native volume identities, changed-device resource/owner recovery, complete built workflow and reviewed actual-account upgrade passed within their recorded scopes",
+  "native_library": {
+    "source_sha256": "95c0d5fcc4508c742ba28a9101ac4981827f6c5b5ef7a3ad31257abbe9c7775c",
+    "passed": 583,
+    "ignored": 3,
+    "cases": [
+      {
+        "case": "core-regressions",
+        "returncode": 0,
+        "seconds": 21.5,
+        "sha256": "1817c5ac8cd2117796fcdcba44a3576939ef19627d9c24578c696ec7069d36dd",
+        "test_summaries": [
+          {
+            "passed": 739,
+            "ignored": 1
+          },
+          {
+            "passed": 0,
+            "ignored": 0
+          }
+        ]
+      },
+      {
+        "case": "native-lib-regressions",
+        "returncode": 0,
+        "seconds": 155.69,
+        "sha256": "112b6b87db84b7a29b5edef53a762b106ce7033fb7717b73ffdc94694bbf19bb",
+        "test_summaries": [
+          {
+            "passed": 583,
+            "ignored": 3
+          }
+        ]
+      }
+    ]
+  },
+  "focused": {
+    "identity_tests": 5,
+    "legacy_alias_regression": "Both mode scopes deny ordinary and foreign recovery admission for the renamed original with an unprovable raw device; an independent folder remains usable.",
+    "strict_all_target_native_lint": true,
+    "log_sha256": {
+      "format": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matching-native-main": "923255ad4ac34f65784c49521f26ee62221fc50ada57e4423038c670dea45871",
+      "descriptor-identities": "31f6acda85b913f9f33616518ccec85c73ffe2c9ecf6b85f9f6a7945dde6323b",
+      "legacy-alias-exclusion": "dc41da6349600cdb5623afe3cc00a3055c9e6ddc24dfe91c202dfe17104c15e9",
+      "strict-native-bridge": "c4f2edf6a150839cfd0851c0f09c0e2cc139d2b5818d572470d8352ed60c8659"
+    }
+  },
+  "APFS_remount": {
+    "source_sha256": "95c0d5fcc4508c742ba28a9101ac4981827f6c5b5ef7a3ad31257abbe9c7775c",
+    "passed": true,
+    "process_separated": true,
+    "actual_device_changed": true,
+    "all_owned_volumes_ejected": true,
+    "scope": "Native namespace and original-owner exclusion, both mode scopes, resource retention/creation rollback across separate processes and changed device. Does not establish complete app transport or physical browser permissions.",
+    "receipt_sha256": "f6497e10ab6287fddb316b885d2e7d82b431ac1f5aa5ea929dc2ed547a1ab6ee",
+    "case_log_sha256": {
+      "create-original": {
+        "returncode": 0,
+        "stdout_sha256": "bc238446e0e9e5c0694819764ed0a999d7c0776a1a77ba806935b58b9a3b49f5",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "create-filler": {
+        "returncode": 0,
+        "stdout_sha256": "dbd225def374840900c60b32f53d3594b1abab8cf6d37b2de06509e7e220fafb",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "attach-original": {
+        "returncode": 0,
+        "stdout_sha256": "fac7190d96641adfe731cf3898ba346092ed501e2518ed558893570b10f51009",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "native-prepare": {
+        "returncode": 0,
+        "stdout_sha256": "b3de8b21925023abcfe9a99b7f170bfdbfb02c9e3d9c024981b1fcb0a2a6f921",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "detach-original": {
+        "returncode": 0,
+        "stdout_sha256": "a445b037634bbfac3c03a59bafda71fd22c7a8247e56e85d288c79fbbdd03777",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "attach-filler": {
+        "returncode": 0,
+        "stdout_sha256": "efdb9e1cb5aea55b7ff52165db5e2580c8710c6ba19e60dfb21521fe54202900",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "reattach-original": {
+        "returncode": 0,
+        "stdout_sha256": "6628e97e5215dacc52b2cd9722130573e4eff4e247513f9831ca3742a8f0247d",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "native-recover": {
+        "returncode": 0,
+        "stdout_sha256": "8cd629baafb9a96bebf9bf74611b0a5a4f4a7b87febe44fc769a59947f772b73",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "cleanup-disk6": {
+        "returncode": 0,
+        "stdout_sha256": "95439929e72b852fde13b19f5a9bd83ecbda40853a0407698f29d08127ab2324",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "cleanup-disk4": {
+        "returncode": 0,
+        "stdout_sha256": "a445b037634bbfac3c03a59bafda71fd22c7a8247e56e85d288c79fbbdd03777",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "modes": [
+      "Local",
+      "Remote"
+    ]
+  },
+  "compatibility": "Legacy observations retain their original wire representation, digest and exact descriptor matching. New macOS records use volume UUID/inode/birth identity. Unknown-volume legacy exclusion is conservative; it never authorizes recovery from a changed original identity.",
+  "remaining": [
+    "Fresh physical permissions and complete optimized-distribution qualification are separate from native APFS/remount and OPFS app correspondence.",
+    "Full local CI is a separate required pre-publication gate."
+  ],
+  "whole_goal_complete": false,
+  "volume_qualification_sha256": "f6497e10ab6287fddb316b885d2e7d82b431ac1f5aa5ea929dc2ed547a1ab6ee",
+  "qualification_scope": "Native original owners, aliases and resource retention/creation rollback survive a real device-number change across separate processes in both mode scopes. The complete built app and actual-account upgrade have separate receipts; no browser-permission claim.",
+  "actual_empty_account_upgrade_passed": true,
+  "source_scope": {
+    "Mac_application_source_sha256": "95c0d5fcc4508c742ba28a9101ac4981827f6c5b5ef7a3ad31257abbe9c7775c",
+    "Linux_and_Windows_cross_source_sha256": "80bf0089d656fc5a0a3466a07edf6baf77fcf6ff8fe4f295d0bc7459c2d86e7b",
+    "source_difference": "Only a justified cfg_attr(not(macos), allow(clippy::unused_self, reason=...)) annotation was added to has_persistent_volume. Runtime logic and API are unchanged; original Mac checks were not rerun or relabeled.",
+    "source_difference_proof_sha256": "6e250b57a59ca4dade8113e870c3a2be0c800630b3738698fd3380ed72281f7d"
+  }
+}

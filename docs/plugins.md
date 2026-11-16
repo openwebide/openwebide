@@ -406,6 +406,11 @@ again after verifying the affected files, immediately before dispatch. An ordina
 retry can start a fresh service with the current drafts. Launch aliases remain
 intact for toolchain shims. These boundary checks do not track every transitive toolchain dependency
 or replace the planned filesystem-event generation contract.
+API 10 packages can additionally declare `runtimeInputs`: selected file-argument
+positions and exact sidecar implementation paths. Those files share executable
+identity/modification checks and contribute to derived-cache identity. Explicit
+roles preserve mutable log/output arguments; see the
+[public declaration](plugin-authoring.md#language-plugin-build-toolchain).
 Different editing clients keep separate unsaved source inventories. A matching
 idle process can transfer between clients: the host closes its previous live
 documents, restores the incoming client's complete inventory and issues a fresh
@@ -965,7 +970,8 @@ API 6 adds native LSP services; API 7 adds per-document server language IDs and
 shared dialect synchronization through those same declarations. API 8 adds
 declared read-only virtual documents for external definitions. API 9 adds
 independently enabled diagnostics/fix services, bounded project-input declarations
-and optional native derived-cache paths outside projects. Cache redirections use
+and optional native derived-cache paths outside projects. API 10 adds declared
+native runtime implementation files. Cache redirections use
 the public server declaration and ordinary process review; recognized namespaces
 have count/byte retention budgets and stay protected until native cleanup is
 confirmed. Bounded periodic inventories stop owned cache producers after sampled

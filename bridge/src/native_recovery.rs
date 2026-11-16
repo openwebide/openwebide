@@ -20,6 +20,8 @@ mod locking;
 mod owners;
 pub(crate) use owners::administration;
 mod persistence;
+#[cfg(target_os = "macos")]
+pub(crate) mod upgrade;
 pub(crate) use owners::{
     CommandIntent, PendingCommand, PendingCommandSettlement, Permit, ProcessCleanup,
 };
@@ -107,10 +109,13 @@ fn io<T>(result: std::io::Result<T>) -> Result<T, String> {
 }
 fn original(file: &File) -> Result<Identity, String> {
     let identity = io(Identity::of(file))?;
-    if !identity.has_birth_time() {
+    if !identity.has_birth_time() || !identity.has_persistent_volume() {
         return Err("Native recovery requires persistent original-object observations on its private filesystem".into());
     }
     Ok(identity)
+}
+fn original_matches(file: &File, expected: &Identity) -> Result<bool, String> {
+    Ok(expected.valid() && expected.has_birth_time() && io(expected.matches(file))?)
 }
 fn private(file: &File, uid: u32, directory: bool) -> Result<(), String> {
     let metadata = io(file.metadata())?;
@@ -229,7 +234,7 @@ fn database(data: &[u8], expected: &Key) -> Result<(Connection, u64), String> {
         })
         .map_err(|_| INVALID)?;
     let key: Key = serde_json::from_str(&key).map_err(|_| INVALID)?;
-    if integrity != "ok" || !matches!(version, 1..=11) || count != 1 || key != *expected {
+    if integrity != "ok" || !matches!(version, 1..=12) || count != 1 || key != *expected {
         return Err(INVALID.into());
     }
     let revision = if version == 1 {
@@ -251,6 +256,18 @@ fn database(data: &[u8], expected: &Key) -> Result<(Connection, u64), String> {
     Ok((connection, revision))
 }
 impl Namespace {
+    fn original(&self, file: &File) -> Result<Identity, String> {
+        if self.key.home.uses_device_number() {
+            let identity = io(Identity::legacy(file))?;
+            if !identity.has_birth_time() {
+                return Err(INVALID.into());
+            }
+            Ok(identity)
+        } else {
+            original(file)
+        }
+    }
+
     pub(crate) fn open(home: &Path) -> Result<Self, String> {
         Self::open_with_initialization(home, true)
     }
@@ -265,6 +282,8 @@ impl Namespace {
         if io(home.handle.as_file().metadata())?.uid() != uid {
             return Err(INVALID.into());
         }
+        #[cfg(target_os = "macos")]
+        upgrade::ensure_idle(&parent)?;
         let existing = match parent.symlink_metadata(ANCHOR) {
             Ok(metadata) => {
                 if !metadata.is_file() {
@@ -298,6 +317,8 @@ impl Namespace {
             }
         };
         lock(&anchor, !existing)?;
+        #[cfg(target_os = "macos")]
+        upgrade::ensure_idle(&parent)?;
         if !existing {
             // Once the external anchor name is durable, interruption can never
             // silently turn a partial initialization into a clean first run.
@@ -369,32 +390,43 @@ impl Namespace {
         let directory = io(parent.open_dir(DIRECTORY))?;
         let file = io(directory.try_clone())?.into_std_file();
         private(&file, key.uid, true)?;
-        if original(&file)? != key.directory {
+        if !original_matches(&file, &key.directory)? {
             return Err(INVALID.into());
         }
         Ok(directory)
     }
     fn original_database(&self, parent: &Dir, record: &Anchor) -> Result<File, String> {
+        self.original_database_at(parent, parent, record)
+    }
+    fn original_database_at(
+        &self,
+        anchor_parent: &Dir,
+        directory_parent: &Dir,
+        record: &Anchor,
+    ) -> Result<File, String> {
         if record.format != 1
             || record.key != self.key
             || !self.home.current()
             || !openwebide_core::workspace_transaction::valid_id(&self.key.nonce)
             || io(self.home.handle.as_file().metadata())?.uid() != self.key.uid
-            || original(self.home.handle.as_file())? != self.key.home
-            || original(&self.anchor)? != self.key.anchor
-            || original(&io(self.directory.try_clone())?.into_std_file())? != self.key.directory
+            || !original_matches(self.home.handle.as_file(), &self.key.home)?
+            || !original_matches(&self.anchor, &self.key.anchor)?
+            || !original_matches(
+                &io(self.directory.try_clone())?.into_std_file(),
+                &self.key.directory,
+            )?
         {
             return Err(INVALID.into());
         }
         // Check current names against retained original objects. Copies with
         // identical database bytes or an identical anchor are replacements.
-        let anchor = child(parent, ANCHOR, self.key.uid)?;
-        if original(&anchor)? != self.key.anchor {
+        let anchor = child(anchor_parent, ANCHOR, self.key.uid)?;
+        if !original_matches(&anchor, &self.key.anchor)? {
             return Err(INVALID.into());
         }
-        let directory = Self::directory(parent, &self.key)?;
+        let directory = Self::directory(directory_parent, &self.key)?;
         let file = child(&directory, DATABASE, self.key.uid)?;
-        if original(&file)? != record.database {
+        if !original_matches(&file, &record.database)? {
             return Err(INVALID.into());
         }
         Ok(file)
@@ -403,7 +435,15 @@ impl Namespace {
         self.validated_database(parent, record).map(|_| ())
     }
     fn validated_database(&self, parent: &Dir, record: &Anchor) -> Result<Connection, String> {
-        let current = anchor_record(&child(parent, ANCHOR, self.key.uid)?)?;
+        self.validated_database_at(parent, parent, record)
+    }
+    fn validated_database_at(
+        &self,
+        anchor_parent: &Dir,
+        directory_parent: &Dir,
+        record: &Anchor,
+    ) -> Result<Connection, String> {
+        let current = anchor_record(&child(anchor_parent, ANCHOR, self.key.uid)?)?;
         if !current.sealed
             || current.key != record.key
             || current.database != record.database
@@ -412,7 +452,7 @@ impl Namespace {
         {
             return Err(INVALID.into());
         }
-        let file = self.original_database(parent, &current)?;
+        let file = self.original_database_at(anchor_parent, directory_parent, &current)?;
         let connection = self.validate_committed(&bytes(&file, MAX_DATABASE_BYTES)?)?;
         // An earlier publisher may have lost its acknowledgement after rename.
         // Observing a committed head alone does not prove its directory flush.
@@ -423,6 +463,8 @@ impl Namespace {
         let parent = root(&self.home)?;
         let anchor = child(&parent, ANCHOR, self.key.uid)?;
         lock(&anchor, false)?;
+        #[cfg(target_os = "macos")]
+        upgrade::ensure_idle(&parent)?;
         let record = anchor_record(&anchor)?;
         self.validate(&parent, &record)
     }

@@ -17,8 +17,8 @@ mod moves;
 mod private;
 mod writes;
 pub use private::{
-    NATIVE_RECOVERY_DIRECTORY, NATIVE_RECOVERY_OWNER, private_workspace_globs,
-    private_workspace_path,
+    NATIVE_RECOVERY_DIRECTORY, NATIVE_RECOVERY_OWNER, NATIVE_RECOVERY_UPGRADE,
+    private_workspace_globs, private_workspace_path,
 };
 pub use writes::{FileMutation, FileMutationRequest};
 

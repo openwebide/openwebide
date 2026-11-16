@@ -20,7 +20,7 @@ impl Namespace {
                 if command.worker.id != worker.id || command.worker.secret != worker.secret {
                     return Err(PENDING.into());
                 }
-                return Ok(owner.origin);
+                return Ok(command.callback(&owner).map(str::to_owned));
             }
             Ok(None)
         })
@@ -31,7 +31,7 @@ impl Namespace {
         current: &WorkspaceCommandRecovery,
         origin: &str,
     ) -> Result<(), String> {
-        super::super::context::validate_origin(origin)?;
+        let origin = openwebide_core::plugins::languages::intelligence::actions::CommandCallbackRequest::address(origin)?;
         current.validate()?;
         if pending.key != self.key
             || !pending.authority.matches_scope(
@@ -49,11 +49,11 @@ impl Namespace {
             return Err(PENDING.into());
         }
         self.access(true, |parent, anchor, db| {
-            let mut owner = super::super::read(db, version(db)?)?
+            let owner = super::super::read(db, version(db)?)?
                 .into_iter()
                 .find(|o| o.same(&pending.owner))
                 .ok_or(PENDING)?;
-            let command = read(db, version(db)?)?
+            let mut command = read(db, version(db)?)?
                 .into_iter()
                 .find(|c| c.owner == owner.id)
                 .ok_or(PENDING)?;
@@ -61,15 +61,24 @@ impl Namespace {
                 || command.worker.id != pending.worker.id
                 || command.worker.secret != pending.worker.secret
                 || command.invocation != pending.invocation
-                || owner.origin.as_deref() != Some(&pending.origin)
+                || command.callback(&owner) != Some(&pending.origin)
             {
                 return Err(PENDING.into());
             }
-            if owner.origin.as_deref() == Some(origin) {
+            if command.callback(&owner) == Some(origin.as_str()) {
                 return Ok(());
             }
-            owner.origin = Some(origin.into());
-            super::super::context::save_owner(db, &owner)?;
+            command.callback = Some(origin);
+            // Readers predating independent callbacks must fail closed rather
+            // than route a retained command through its old file callback.
+            if version(db)? < 12 {
+                db.execute_batch(
+                    "CREATE TABLE IF NOT EXISTS recovery_command_settlements(id TEXT PRIMARY KEY,record TEXT NOT NULL);
+                     CREATE TABLE IF NOT EXISTS recovery_retired_owners(id TEXT PRIMARY KEY,record TEXT NOT NULL);
+                     PRAGMA user_version=12;",
+                ).map_err(|_| INVALID)?;
+            }
+            save(db, &command)?;
             self.save(parent, anchor, db)
         })
     }

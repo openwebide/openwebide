@@ -198,7 +198,7 @@ fn retire_locked(
         let owner = read(connection, schema)?.into_iter().find(|o| o.id == id);
         let (entry, binding_digest) = if let Some(owner) = owner {
             let folder = folder.ok_or(STALE)?;
-            if OriginalFolder::capture(folder, true)? != owner.folder { return Err(STALE.into()); }
+            if namespace.original_folder(folder, true)? != owner.folder { return Err(STALE.into()); }
             let commands = commands::read(connection, schema)?;
             let entry = owner_entry(namespace, &owner, commands.iter().find(|c| c.owner == id))?;
             (entry, record_digest(&owner.binding)?)

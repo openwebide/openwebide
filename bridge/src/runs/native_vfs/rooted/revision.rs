@@ -100,8 +100,15 @@ pub(crate) struct Observation {
 }
 impl Observation {
     pub fn of(file: &File) -> io::Result<Self> {
+        Self::of_mode(file, false)
+    }
+    pub fn of_mode(file: &File, legacy: bool) -> io::Result<Self> {
         let before = Revision::of_file(file)?;
-        let identity = Identity::of(file)?;
+        let identity = if legacy {
+            Identity::legacy(file)?
+        } else {
+            Identity::of(file)?
+        };
         let after = Revision::of_file(file)?;
         if before != after {
             return Err(io::Error::other(

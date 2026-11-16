@@ -224,7 +224,9 @@ async fn current_connection_rebinds_a_running_owner_without_trusting_replays_or_
         assert_eq!(reply.status, 200, "{}", reply.body);
         assert_eq!(reply.body, "true");
         let mut expected = before.clone();
-        expected.1["origin"] = candidate.into();
+        // Moving command delivery must preserve the original file journal's
+        // origin and authority. Only the independently retained callback moves.
+        expected.2["callback"] = candidate.into();
         assert_eq!(native(case.recovery_home()).unwrap(), expected);
         assert!(!writer(&case, paired).await);
         let recovery = case
@@ -366,7 +368,7 @@ async fn original_callbacks_reconnect_only_after_private_proof_and_survive_anoth
         let moved = tokio::time::timeout(Duration::from_secs(10), async {
             loop {
                 if let Some(state) = native(case.recovery_home())
-                    && state.1["origin"] == new_url
+                    && state.2["callback"] == new_url
                 {
                     break state;
                 }
@@ -375,11 +377,11 @@ async fn original_callbacks_reconnect_only_after_private_proof_and_survive_anoth
         })
         .await
         .unwrap();
-        let mut expected = owner.clone();
-        expected["origin"] = new_url.clone().into();
+        let mut expected_command = command.clone();
+        expected_command["callback"] = new_url.clone().into();
         assert_eq!(moved.0, key);
-        assert_eq!(moved.1, expected);
-        assert_eq!(moved.2, command);
+        assert_eq!(moved.1, owner);
+        assert_eq!(moved.2, expected_command);
         case.kill_native_process().await;
         std::fs::rename(&parked, &case.root).unwrap();
         // A later configured candidate still cannot replace the persisted,

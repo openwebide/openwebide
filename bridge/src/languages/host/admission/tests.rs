@@ -22,6 +22,7 @@ use openwebide_core::{
     },
 };
 const SOURCE: &str = "text 文😀\r\n";
+mod runtime_inputs;
 mod worker;
 struct Fixture {
     root: tempfile::TempDir,

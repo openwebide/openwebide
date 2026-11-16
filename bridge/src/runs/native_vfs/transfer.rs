@@ -23,7 +23,7 @@ pub(super) fn transfer_between(
 }
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
-pub(super) fn transfer_names(
+pub(crate) fn transfer_names(
     source_root: &std::fs::File,
     from: &str,
     destination_root: &std::fs::File,

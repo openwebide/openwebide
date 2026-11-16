@@ -1,0 +1,280 @@
+{
+  "status": "Declared implementation inputs pass the five-case installed public-plugin matrix and current Linux/native and Windows-cross checks",
+  "verification_source_sha256": "80bf0089d656fc5a0a3466a07edf6baf77fcf6ff8fe4f295d0bc7459c2d86e7b",
+  "plugin_api": 10,
+  "shared_contract": {
+    "sdk": "crates/plugin-sdk/src/languages.rs",
+    "validation": "crates/core/src/plugins/languages/runtime_inputs.rs",
+    "native_lifecycle": "bridge/src/languages/host/program.rs",
+    "argumentFiles": "Zero-based arguments containing exact file paths; relative paths use the service working directory.",
+    "files": "Exact absolute paths or paths relative to the canonical executable directory.",
+    "bounds": "1\u201364 references; nonempty paths within 4096 UTF-8 bytes, no controls or derived-cache bindings; bounded native inspection.",
+    "behavior": "Changed declared implementations invalidate the native service/review context and derived-cache identity. Mutable output files remain unselected. Missing or unreadable regular files prevent startup while ordinary editing remains available.",
+    "legacy": "Earlier APIs retain executable/observed-image checks without inferring argument file roles."
+  },
+  "implementation_sha256": {
+    "crates/plugin-sdk/src/languages.rs": "32ec4fb88ecc741e8a2fd438f58429db973191dfb2e1e513be74549cc148f922",
+    "crates/core/src/plugins/languages/runtime_inputs.rs": "7bc52f62614602e5d01193fb266f81b24dd3b0207efc7d07a0c62612c9137c27",
+    "crates/core/src/plugins.rs": "9df9367175ed06410feacc07db26f47eb2390b669ab05f56f65412eedfd527ec",
+    "bridge/src/languages/host.rs": "fbd8f13c78003d3878e32ba467c05c6ac1ac07c1d6e09298e8dbb74e5ddb821e",
+    "bridge/src/languages/host/program.rs": "720aa9081d987b3132ee1ee2d9508cfa03f64fbf346da3904a6dd3ffa782dad0"
+  },
+  "verification": {
+    "schema": {
+      "tests": 42,
+      "packages": 26,
+      "catalog_listings": 25,
+      "source_sha256": "1de82ce1080f033c6e67e9c8c2874a2cab0fc8e5e536c60b5c689fb59746f696"
+    },
+    "components": {
+      "artifacts": 24,
+      "language_packages": 20,
+      "language_ids": 33,
+      "bundle_sha256": "b08aa9507d1d199fb15bf13078bef79aff91e996d0de4a5aa07e28724186def9",
+      "sdk_digest": "f5b601ba08027df92092fb72a3444e34615fbc95685d2a607b6d0c6efb1eb24d"
+    },
+    "mac_native": "All7 Program lifecycle tests, declared external implementation/cache reuse and invalidation, strict native/core/SDK lint; public prepared-package cache contract loops both authenticated routes. Cold and retained-file FIFO replacements are rejected without waiting; mutable output preserves the original review in both owner scopes.",
+    "browser": {
+      "modes": [
+        "Local",
+        "Remote"
+      ],
+      "public_api9": "Existing project-input reviews reject stale dependencies before any transaction; approved file move and unsaved edit execute the original command once.",
+      "public_api10": [
+        "Replacing an external argument script rejects the open review before intent, file operations or command dispatch.",
+        "Replacing an exact sidecar rejects the open review before intent, file operations or command dispatch.",
+        "Changing the unselected output log preserves the original service and approved command.",
+        "Unicode/CRLF source remains on disk and edited drafts remain in database recovery."
+      ],
+      "agent": "Actual installed TypeScript server supplies diagnostics, symbols, definitions and references through browser/native/WASI executors while preserving independent editor drafts and provider disablement.",
+      "prefetch": "Installed public package verifies default-off behavior, fresh related/recently closed sources, temporary-overlay retirement, original service/draft continuity and authenticated bounded file reads.",
+      "cases": [
+        {
+          "case": "public-project-inputs",
+          "returncode": 0,
+          "seconds": 385.8,
+          "sha256": "9060bf25433ea3a3553597add4a257930831357efb73403c73388a154468c71f"
+        },
+        {
+          "case": "public-argument-inputs",
+          "returncode": 0,
+          "seconds": 391.72,
+          "sha256": "039c7d45f33a5a0d7a40cd38f419ec42cd22846d14c904531b915883165583ac"
+        },
+        {
+          "case": "public-sidecar-inputs",
+          "returncode": 0,
+          "seconds": 388.94,
+          "sha256": "103348f51a6a3d03f90eda31aca4b54eb149492ec2d34ec24b7954bf1bec34ce"
+        },
+        {
+          "case": "agent-read-only-contract",
+          "returncode": 0,
+          "seconds": 441.89,
+          "sha256": "83d2d4cb550d9523ebce1a20eeebf1e3c3b31acd6f50ff6783999623c684a705"
+        },
+        {
+          "case": "idle-prefetch-contract",
+          "returncode": 0,
+          "seconds": 403.03,
+          "sha256": "d564aa9d42397ebe30a15abcd7b26bb238a69dcc927527988cde9943082ead9d"
+        }
+      ],
+      "source_sha256": "95c0d5fcc4508c742ba28a9101ac4981827f6c5b5ef7a3ad31257abbe9c7775c"
+    },
+    "linux": {
+      "source_sha256": "80bf0089d656fc5a0a3466a07edf6baf77fcf6ff8fe4f295d0bc7459c2d86e7b",
+      "strict_all_target_lint": true,
+      "program_lifecycle_tests": 7,
+      "nonregular_input_tests": 2,
+      "mutable_output_review_tests": 1,
+      "external_cache_tests": 1,
+      "public_HTTP_route_tests": 1,
+      "HTTP_test_runs_both_adapters": true,
+      "native_identity_folder_recovery_resource_analysis_tests": 175,
+      "builder_image": "docker.io/library/rust@sha256:ff521445a372125ed4f76e1453a1f8098f2d05332d1601d30db1c1f62757e730",
+      "runtime_image": "sha256:cebec331666a9e629cf3f402a7b2efb1b3e5e59d48b884fe4024a3a6637575bd",
+      "base_runtime_image": "sha256:5c02150b13c3b5c33a1096ee5b10f899dab8cefe1b55587c8e5c914d9fa85ec7",
+      "scope": "Current runtime-state OS policy plus explicitly recorded fixture tools; not complete distribution qualification.",
+      "permission_limit": "Root fixture processes do not establish unprivileged or physical permission revocation.",
+      "cases": [
+        {
+          "case": "matching-native-build",
+          "returncode": 0,
+          "seconds": 293.65,
+          "sha256": "e5cab4684063e341e4eb5c1a248ff4903f2b126ac717e067e13ae1c6414dcaf2"
+        },
+        {
+          "case": "create-test-workspace",
+          "returncode": 0,
+          "seconds": 0.03,
+          "sha256": "effeb9ad93e73cd12e034761938ebf30fcc064e131de3c9437dd1abf0f22b4c8"
+        },
+        {
+          "case": "program-lifecycle",
+          "returncode": 0,
+          "seconds": 1.35,
+          "sha256": "978733a93ade50d14f747cae09041afab304be669ac3ee3eb2e773323a4ff93e",
+          "test_summaries": [
+            {
+              "passed": 7,
+              "ignored": 0
+            }
+          ]
+        },
+        {
+          "case": "nonregular-implementation-inputs",
+          "returncode": 0,
+          "seconds": 0.13,
+          "sha256": "dc5aa5a54634e2e03bd05c6256d9569fee0bd35c1a860793eb7bc0239283af42",
+          "test_summaries": [
+            {
+              "passed": 2,
+              "ignored": 0
+            }
+          ]
+        },
+        {
+          "case": "mutable-output-review",
+          "returncode": 0,
+          "seconds": 0.22,
+          "sha256": "c8045661b00d3ffdb8befc0d8a01a516616cb1f3a9c1cb0f3875115ed7a6c450",
+          "test_summaries": [
+            {
+              "passed": 1,
+              "ignored": 0
+            }
+          ]
+        },
+        {
+          "case": "external-derived-cache",
+          "returncode": 0,
+          "seconds": 0.8,
+          "sha256": "9a848d9f9998c9c4fff6b587427beee5f38b2ff5393d36d1764f5610b06608ee",
+          "test_summaries": [
+            {
+              "passed": 1,
+              "ignored": 0
+            }
+          ]
+        },
+        {
+          "case": "both-authenticated-HTTP-routes",
+          "returncode": 0,
+          "seconds": 6.59,
+          "sha256": "722b3076dd968e55162507caed18d600e018c69cf4e77e30f3053d846bfc7203",
+          "test_summaries": [
+            {
+              "passed": 1,
+              "ignored": 0
+            }
+          ]
+        },
+        {
+          "case": "native-recovery-0",
+          "returncode": 0,
+          "seconds": 0.12,
+          "sha256": "596d8aa19c56428ccdf8146845125553ed57e7221e988e352b1502d5da367c22",
+          "test_summaries": [
+            {
+              "passed": 4,
+              "ignored": 0
+            }
+          ]
+        },
+        {
+          "case": "native-recovery-1",
+          "returncode": 0,
+          "seconds": 0.37,
+          "sha256": "0c22ce86d7d24f1f0a7013ddf3b484f08d92fa758fd2b7a005d00d12422e9e1a",
+          "test_summaries": [
+            {
+              "passed": 16,
+              "ignored": 0
+            }
+          ]
+        },
+        {
+          "case": "native-recovery-2",
+          "returncode": 0,
+          "seconds": 15.56,
+          "sha256": "ed2bd8df096c4431b1d4bce8929d6f74eb595ff27772008eb7da81fa92ae1682",
+          "test_summaries": [
+            {
+              "passed": 43,
+              "ignored": 0
+            }
+          ]
+        },
+        {
+          "case": "native-recovery-3",
+          "returncode": 0,
+          "seconds": 2.1,
+          "sha256": "02f67dc5ef645e27d5a480105862e7e3c397fcaa639bfece60c0b4a528e3cf2d",
+          "test_summaries": [
+            {
+              "passed": 53,
+              "ignored": 0
+            }
+          ]
+        },
+        {
+          "case": "native-recovery-4",
+          "returncode": 0,
+          "seconds": 3.17,
+          "sha256": "ba2ec231cdca59d66c323b2ee19b737d1dd6bba561656429e530bc9f62cbe3d5",
+          "test_summaries": [
+            {
+              "passed": 48,
+              "ignored": 0
+            }
+          ]
+        },
+        {
+          "case": "native-recovery-5",
+          "returncode": 0,
+          "seconds": 0.25,
+          "sha256": "c9167eda6577383a1b882be6c112dc95f0805a6164a2b7790007e65cd2e526e8",
+          "test_summaries": [
+            {
+              "passed": 11,
+              "ignored": 0
+            }
+          ]
+        }
+      ]
+    },
+    "windows": {
+      "source_sha256": "80bf0089d656fc5a0a3466a07edf6baf77fcf6ff8fe4f295d0bc7459c2d86e7b",
+      "all_target_GNU_cross_strict_lint": true,
+      "native_Windows_runtime_verified": false,
+      "cases": [
+        {
+          "case": "invalidate-changed-cross-packages",
+          "returncode": 0,
+          "seconds": 0.58,
+          "sha256": "e6ccdd7d337ea87e3766ea9681bd1c82eb78e7cb0aca317a28936c22fee9b5a4"
+        },
+        {
+          "case": "strict-original-Windows-cross-contract",
+          "returncode": 0,
+          "seconds": 19.04,
+          "sha256": "4910175827301dac20ed01d5f152f0ea2b7e66c8a6c4e66514305cd5c95c909c"
+        }
+      ]
+    }
+  },
+  "scope_limits": [
+    "Browser Local uses disposable OPFS/native correspondence rather than physical folder permission prompts.",
+    "macOS application uses actual dev native/WASI artifacts and optimized frontend with an isolated native home. Linux uses actual normal/test binaries in the recorded runtime image; neither run qualifies a complete rebuilt optimized distribution.",
+    "Declared file roles do not discover every transitive runtime/toolchain dependency or implement filesystem-event generations.",
+    "No latency, memory or prefetch benefit is inferred from these functional checks.",
+    "The earlier Mac argument-review stale-context failures remain recorded; later traced, untraced and complete-matrix passes do not establish their cause."
+  ],
+  "source_scope": {
+    "Mac_application_source_sha256": "95c0d5fcc4508c742ba28a9101ac4981827f6c5b5ef7a3ad31257abbe9c7775c",
+    "Linux_and_Windows_cross_source_sha256": "80bf0089d656fc5a0a3466a07edf6baf77fcf6ff8fe4f295d0bc7459c2d86e7b",
+    "source_difference": "Only a justified cfg_attr(not(macos), allow(clippy::unused_self, reason=...)) annotation was added to has_persistent_volume. Runtime logic and API are unchanged; original Mac checks were not rerun or relabeled.",
+    "source_difference_proof_sha256": "6e250b57a59ca4dade8113e870c3a2be0c800630b3738698fd3380ed72281f7d"
+  }
+}

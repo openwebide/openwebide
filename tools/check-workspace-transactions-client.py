@@ -45,16 +45,19 @@ window.fetch=async function(...args) {
   const data=JSON.parse(typeof args[1]?.body==='string'?args[1].body:await args[0].clone().text());
   if((data.command?.operation??data.operation)==='start') {resourceProbe.commandPaused=true;return new Promise(()=>{});}
  }
- // Fault injection stays at the real native journal transport. Local sends
- // one complete Execute; rewrite only its backend destination to this probe.
- if(method==='POST'&&new URL(url,location.href).pathname==='/workspace/files'&&resourceProbe.journalProxy) {
-  const request=new Request(args[0] instanceof Request?args[0].clone():args[0],args[1]),data=await request.clone().json();
-  if(data.action?.operation==='execute') {
-   data.action.api_url=resourceProbe.journalProxy;
-   args=[new Request(request,{body:JSON.stringify(data)})];
-  }
- }
+ // File execution, command dispatch and verified reconnect must name the same
+ // injected journal destination. Keep the real callback identity checks intact.
  const pathname=new URL(url,location.href).pathname;
+ const reconnect=/\/(?:language-commands|plugins\/languages\/command)\/reconnect$/.test(pathname);
+ if(method==='POST'&&resourceProbe.journalProxy&&(pathname==='/workspace/files'||pathname==='/plugins/languages/command'||reconnect)) {
+  const request=new Request(args[0] instanceof Request?args[0].clone():args[0],args[1]),data=await request.clone().json();
+  if(pathname==='/workspace/files'&&data.action?.operation==='execute') {
+   data.action.api_url=resourceProbe.journalProxy;
+  }
+  if(pathname==='/plugins/languages/command'&&data.journal) data.journal.api_url=resourceProbe.journalProxy;
+  if(reconnect) data.callback=resourceProbe.journalProxy;
+  args=[new Request(request,{body:JSON.stringify(data)})];
+ }
  const native=/\/plugins\/languages\/query$/.test(pathname),folder=pathname==='/workspace/files';
  const transaction=method==='POST'&&/\/projects\/\d+\/workspace-transactions(?:\/[a-f0-9]{32}\/execute)?$/.test(pathname);
  const grant=method==='POST'&&/\/plugins\/execution-grants$/.test(pathname);
@@ -251,6 +254,21 @@ def command_contract(runtime, host, browser, state, folder, project, files, prox
         current = record() or {}
         return current.get('phase') == expected and current.get('approval', {}).get('id') == current_id
 
+    def settled(editor=True):
+        def released():
+            current = runtime.request('POST', endpoint + '/recovery', {'operation': 'load', 'id': current_id}) or {}
+            return (current.get('command', {}).get('invocation', {}).get('id') == current_id
+                    and not current['command']['native_settlement_pending']
+                    and current['command']['phase'] in ('completed', 'acknowledged', 'cancelled'))
+        # A durable outcome precedes native cleanup and the editor's recovery
+        # refresh. The next code action synchronizes its own source on demand.
+        wait('original native command settlement acknowledged', released)
+        if editor:
+            wait('editor leaves command recovery after settlement', lambda: script(browser, '''
+                const save = document.querySelector('button[aria-label="Save file (Ctrl/⌘S)"]');
+                return Boolean(save && !save.disabled);
+            '''))
+
     def executions():
         root = folder.resolve().as_uri() + '/'
         return [json.loads(line) for line in (state / 'lsp.jsonl').read_text().splitlines()
@@ -260,6 +278,8 @@ def command_contract(runtime, host, browser, state, folder, project, files, prox
         nonlocal current_id
         before = len(executions())
         previous_id = (record() or {}).get('approval', {}).get('id')
+        if current_id is not None:
+            settled()
         open_action(browser, title)
         wait('complete command review', lambda: script(browser, "return document.querySelector('[role=dialog]')?.textContent.includes('fixture.execute')&&[...document.querySelectorAll('button')].some(b=>b.textContent.trim()==='Apply edits and run command'&&!b.disabled);"))
         assert len(executions()) == before, 'Review executed a command'
@@ -335,6 +355,7 @@ def command_contract(runtime, host, browser, state, folder, project, files, prox
     wait('command edit recovered', lambda: click(browser, 'Restore interrupted changes'))
     wait('unstarted approval retained after rollback', lambda: click(browser, 'Discard unstarted command'))
     wait('rolled-back command cancelled', lambda: phase('cancelled'))
+    settled(editor=False)
     assert files.snapshot()['command-recover.html'] is None and len(executions()) == before + 3
     assert not script(browser, 'return resourceProbe.errors;')
 
@@ -354,6 +375,8 @@ def command_project(runtime, browser, mirror, parent, mode, user):
         local_handle(browser, project['id'], user, folder.name, baseline)
         mirror.install(browser, project['id'], folder,
             files=[path for path in PATHS if '/' not in path], native_view=True)
+        runtime.request('PUT', '/api/settings', {
+            'key': f"local_bridge_cwd.{project['id']}", 'value': relative})
     drafts = [{'path': path, 'document': {'text': base64.b64encode(draft.encode()).decode(),
         'saved': base64.b64encode(baseline[path].encode()).decode(), 'selections': [{'anchor': 0, 'head': 0}], 'collapsed': []},
         'scroll': {'top': 0, 'left': 0}, 'read_only': False} for path, draft in [('page.html', DRAFT), ('unrelated.html', OTHER)]]
@@ -414,6 +437,11 @@ def check():
                     local_handle(browser, project['id'], user, folder.name, baseline)
                     mirror.install(browser, project['id'], folder,
                         files=[path for path in PATHS if '/' not in path], native_view=True)
+                    # Earlier interruption cases intentionally leave a native
+                    # claim. A broad ancestor discovery command is fenced;
+                    # prove this separate fixture's remembered folder instead.
+                    runtime.request('PUT', '/api/settings', {
+                        'key': f"local_bridge_cwd.{project['id']}", 'value': relative})
                 files = ProjectFiles(browser, folder, project, user)
                 drafts = []
                 for path, draft in [('page.html', DRAFT), ('unrelated.html', OTHER)]:

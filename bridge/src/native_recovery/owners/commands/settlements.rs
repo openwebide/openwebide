@@ -100,14 +100,14 @@ pub(super) fn retain(
 ) -> Result<(), String> {
     // Legacy trusted embedding has no durable callback. Preserve its existing
     // retirement behavior; application producers always retain their origin.
-    let Some(origin) = &owner.origin else {
+    let Some(origin) = command.callback(owner) else {
         return Ok(());
     };
     let record = Settlement {
         format: 1,
         authority: owner.authority()?.ok_or(PENDING)?,
         worker: command.worker.clone(),
-        origin: origin.clone(),
+        origin: origin.to_owned(),
         recovery: recovery.clone(),
     };
     record.validate()?;

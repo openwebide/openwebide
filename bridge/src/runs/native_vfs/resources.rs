@@ -59,6 +59,11 @@ fn workspace(path: &str) -> Result<String, String> {
 }
 
 impl ResourceFiles {
+    pub(crate) fn with_legacy_identity(mut self, legacy: bool) -> Self {
+        self.root.1 = legacy;
+        self
+    }
+
     pub fn new(root: &File, identity: &str, scope: ResourceScope) -> Result<Self, String> {
         if !root.metadata().map_err(text)?.is_dir()
             || identity.is_empty()
@@ -73,7 +78,7 @@ impl ResourceFiles {
             return Err("Invalid captured resource filesystem scope".into());
         }
         Ok(Self {
-            root: Rooted(root.try_clone().map_err(text)?),
+            root: Rooted(root.try_clone().map_err(text)?, false),
             identity: identity.into(),
             scope,
             review: None,
@@ -151,7 +156,7 @@ impl ResourceFiles {
                     .map_err(text)?
             }
         };
-        super::rooted::revision::Observation::of(&file).map_err(text)
+        self.root.observation(&file).map_err(text)
     }
     fn authorize(&self, scope: &ResourceScope) -> io::Result<()> {
         if scope != &self.scope {

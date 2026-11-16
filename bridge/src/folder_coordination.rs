@@ -42,6 +42,10 @@ pub(crate) struct Folder {
     original: crate::file_identity::Identity,
     #[cfg(unix)]
     original_ancestors: Vec<crate::file_identity::Identity>,
+    #[cfg(target_os = "macos")]
+    legacy_original: crate::file_identity::Identity,
+    #[cfg(target_os = "macos")]
+    legacy_ancestors: Vec<crate::file_identity::Identity>,
 }
 impl Folder {
     /// OS-owner recovery uses the same physical exclusion as accepted writers.
@@ -81,22 +85,36 @@ impl Folder {
             return Err("The execution folder is not a directory".into());
         }
         let physical = identity(&handle);
-        #[cfg(unix)]
+        #[cfg(all(unix, not(target_os = "macos")))]
         let original = crate::file_identity::Identity::of(handle.as_file())
             .map_err(|error| error.to_string())?;
+        #[cfg(target_os = "macos")]
+        let (original, legacy_original) =
+            crate::file_identity::Identity::observations(handle.as_file())
+                .map_err(|error| error.to_string())?;
         // Retain only identities for ancestors. Holding the selected root open
         // prevents its identity from being reused while an operation is queued.
         let mut ancestors = Vec::new();
         #[cfg(unix)]
         let mut original_ancestors = Vec::new();
+        #[cfg(target_os = "macos")]
+        let mut legacy_ancestors = Vec::new();
         for parent in path.ancestors().skip(1) {
             let handle = same_file::Handle::from_path(parent).map_err(|error| error.to_string())?;
             ancestors.push(identity(&handle));
-            #[cfg(unix)]
+            #[cfg(all(unix, not(target_os = "macos")))]
             original_ancestors.push(
                 crate::file_identity::Identity::of(handle.as_file())
                     .map_err(|error| error.to_string())?,
             );
+            #[cfg(target_os = "macos")]
+            {
+                let (current, legacy) =
+                    crate::file_identity::Identity::observations(handle.as_file())
+                        .map_err(|error| error.to_string())?;
+                original_ancestors.push(current);
+                legacy_ancestors.push(legacy);
+            }
         }
         Ok(Self {
             path,
@@ -107,6 +125,10 @@ impl Folder {
             original,
             #[cfg(unix)]
             original_ancestors,
+            #[cfg(target_os = "macos")]
+            legacy_original,
+            #[cfg(target_os = "macos")]
+            legacy_ancestors,
         })
     }
     pub fn current(&self) -> bool {

@@ -198,7 +198,7 @@ impl PluginManifest {
         ).expect("static SemVer pattern")
         });
         if self.schema_version != 1
-            || !matches!(self.compatibility.plugin_api, 1..=9)
+            || !matches!(self.compatibility.plugin_api, 1..=10)
             || self
                 .schema
                 .as_deref()
@@ -263,7 +263,7 @@ impl PluginManifest {
         let executable = self.executable.as_ref();
         if self.contributions.panels.len() > 16
             || (!self.contributions.panels.is_empty()
-                && (executable.is_none() || !matches!(self.compatibility.plugin_api, 4..=9)))
+                && (executable.is_none() || !matches!(self.compatibility.plugin_api, 4..=10)))
             || self
                 .contributions
                 .panels
@@ -312,12 +312,25 @@ impl PluginManifest {
             ));
         }
         if !self.contributions.languages.is_empty() {
-            if !matches!(self.compatibility.plugin_api, 5..=9) {
+            if !matches!(self.compatibility.plugin_api, 5..=10) {
                 return Err(invalid(
-                    "Language contributions require plugin API 5 through 9.",
+                    "Language contributions require plugin API 5 through 10.",
                 ));
             }
             languages::validate_definitions(&self.contributions.languages).map_err(invalid)?;
+            if self.compatibility.plugin_api < 10
+                && self.contributions.languages.iter().any(|definition| {
+                    definition
+                        .features
+                        .language_server
+                        .as_ref()
+                        .is_some_and(|server| server.runtime_inputs.is_some())
+                })
+            {
+                return Err(invalid(
+                    "Declared native runtime inputs require plugin API 10.",
+                ));
+            }
             if self.compatibility.plugin_api < 9
                 && self.contributions.languages.iter().any(|definition| {
                     definition
@@ -389,10 +402,10 @@ impl PluginManifest {
                 return Err(invalid("Language analysis requires a Rust executable."));
             }
         }
-        if (executable.is_some() && !matches!(self.compatibility.plugin_api, 3..=9))
+        if (executable.is_some() && !matches!(self.compatibility.plugin_api, 3..=10))
             || (executable.is_none() && self.contributions.context.is_some())
             || (executable.is_none() && matches!(self.compatibility.plugin_api, 3 | 4))
-            || (matches!(self.compatibility.plugin_api, 5..=9)
+            || (matches!(self.compatibility.plugin_api, 5..=10)
                 && self.contributions.languages.is_empty())
             || (executable.is_none() && !self.contributions.tools.is_empty())
             || self.contributions.tools.len() > 100

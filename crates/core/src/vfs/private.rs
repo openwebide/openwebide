@@ -1,6 +1,7 @@
 //! Runtime names shared by filesystem views and Git path selection.
 pub const NATIVE_RECOVERY_DIRECTORY: &str = ".openwebide-native-recovery";
 pub const NATIVE_RECOVERY_OWNER: &str = ".openwebide-native-recovery-owner";
+pub const NATIVE_RECOVERY_UPGRADE: &str = ".openwebide-native-recovery-upgrade";
 
 const PROOF_PREFIX: &str = ".openwebide-proof-";
 const CREATE_PREFIX: &str = ".openwebide-create-";
@@ -30,6 +31,7 @@ pub fn private_workspace_path(path: &str) -> bool {
             || part.eq_ignore_ascii_case(".ſpin")
             || part.eq_ignore_ascii_case(NATIVE_RECOVERY_DIRECTORY)
             || part.eq_ignore_ascii_case(NATIVE_RECOVERY_OWNER)
+            || part.eq_ignore_ascii_case(NATIVE_RECOVERY_UPGRADE)
         {
             return true;
         }
@@ -84,6 +86,7 @@ pub fn private_workspace_globs() -> Vec<String> {
         "[.]ſpin".to_string(),
         NATIVE_RECOVERY_DIRECTORY.to_string(),
         NATIVE_RECOVERY_OWNER.to_string(),
+        NATIVE_RECOVERY_UPGRADE.to_string(),
         format!("{PROOF_PREFIX}{id}"),
     ];
     names.extend(
@@ -230,6 +233,7 @@ mod aliases {
             ".SPIN/secret".to_string(),
             ".OPENWEBIDE-NATIVE-RECOVERY/recovery.sqlite3".to_string(),
             "nested/.OpenWebIde-Native-Recovery-Owner".to_string(),
+            "nested/.OpenWebIde-Native-Recovery-Upgrade/plan.json".to_string(),
             ".ſpin/secret".to_string(),
             format!("nested/.OPENWEBIDE-PROOF-{id}"),
             format!("nested/.OPENWEBIDE-CREATE-{id}-1023"),
@@ -242,6 +246,7 @@ mod aliases {
             ".OpenWebIde/RECOVERY-NOTES".to_string(),
             ".openwebide-native-recovery-notes".to_string(),
             ".openwebide-native-recovery-owner-notes".to_string(),
+            ".openwebide-native-recovery-upgrade-notes".to_string(),
             format!(".OPENWEBIDE-CREATE-{id}-01"),
             format!(".OPENWEBIDE-CREATE-{id}-1024"),
         ] {

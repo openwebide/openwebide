@@ -83,6 +83,10 @@ pub(crate) struct CommandRecord {
     pub cleaned: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     cleanup: Option<cleanup::Receipt>,
+    // Command reconnection must not replace the file journal's callback.
+    // Older records use the original owner's address until verified reconnect.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    callback: Option<String>,
 }
 impl std::fmt::Debug for CommandRecord {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -93,6 +97,9 @@ impl std::fmt::Debug for CommandRecord {
     }
 }
 impl CommandRecord {
+    fn callback<'a>(&'a self, owner: &'a Owner) -> Option<&'a str> {
+        self.callback.as_deref().or(owner.origin.as_deref())
+    }
     pub(super) fn retirement_blocked(&self) -> Option<String> {
         if matches!(
             self.stage,
@@ -146,6 +153,9 @@ impl CommandRecord {
                 return Err(INVALID.into());
             }
         }
+        if let Some(callback) = &self.callback {
+            openwebide_core::plugins::languages::intelligence::actions::CommandCallbackRequest::address(callback)?;
+        }
         Ok(())
     }
 }
@@ -177,6 +187,7 @@ pub(super) fn read(connection: &Connection, schema: u32) -> Result<Vec<CommandRe
             || (schema < 5 && record.stage == CommandStage::Reserved)
             || (schema < 7 && record.stage == CommandStage::Cancelled)
             || (schema < 8 && record.format == 3)
+            || (schema < 12 && record.callback.is_some())
         {
             return Err(INVALID.into());
         }
@@ -329,12 +340,12 @@ impl Namespace {
                 if !matches(&authority, &command.invocation) {
                     continue;
                 }
-                let Some(origin) = &owner.origin else {
+                let Some(origin) = command.callback(&owner) else {
                     continue;
                 };
                 pending.push(PendingCommand {
                     authority,
-                    origin: origin.clone(),
+                    origin: origin.to_owned(),
                     worker: command.worker.clone(),
                     invocation: command.invocation.clone(),
                     outcome: command.outcome.clone(),
@@ -410,7 +421,7 @@ impl Namespace {
         {
             return Err("The original native command intent changed".into());
         }
-        let folder = OriginalFolder::capture(folder, true)?;
+        let folder = self.original_folder(folder, true)?;
         self.access(true, |parent, anchor, connection| {
             let (owner, owner_changed) = self.enroll_owner(connection, &folder, permit)?;
             let commands = read(connection, version(connection)?)?;
@@ -455,6 +466,7 @@ impl Namespace {
                         outcome: None,
                         cleaned: false,
                         cleanup: None,
+                        callback: None,
                     },
                     true,
                 )
@@ -679,7 +691,7 @@ impl Namespace {
         if !lease.covers(folder) {
             return Err(PENDING.into());
         }
-        let folder = OriginalFolder::capture(folder, true)?;
+        let folder = self.original_folder(folder, true)?;
         self.access(true, |parent, anchor, connection| {
             let owners = super::read(connection, version(connection)?)?;
             self.check(connection, &owners, &folder, Some(permit))?;

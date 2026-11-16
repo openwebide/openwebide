@@ -48,7 +48,8 @@ impl ExecutionFolder {
                     .ok_or("The original remote folder is unavailable")?,
                 user,
                 project,
-            ),
+            )
+            .and_then(|root| root.matching(Some(&scope.root_identity))),
             #[cfg(any(target_os = "linux", target_os = "macos"))]
             Self::Paired(folder) => Ok(folder.root.clone()),
         }

@@ -2,30 +2,30 @@
 //! An interrupted, published intent may restore only its exact original snapshot.
 use super::*;
 
-const HEAD: &str = "recovery-head.json";
+pub(super) const HEAD: &str = "recovery-head.json";
 const MAX_FILES: usize = 32;
 const MAX_PRIVATE_BYTES: u64 = MAX_DATABASE_BYTES * 4;
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Snapshot {
-    name: String,
-    identity: Identity,
+pub(super) struct Snapshot {
+    pub(super) name: String,
+    pub(super) identity: Identity,
 }
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Head {
-    format: u32,
-    key: Key,
-    identity: Identity,
-    revision: u64,
-    digest: String,
-    snapshot: Snapshot,
-    phase: Phase,
+pub(super) struct Head {
+    pub(super) format: u32,
+    pub(super) key: Key,
+    pub(super) identity: Identity,
+    pub(super) revision: u64,
+    pub(super) digest: String,
+    pub(super) snapshot: Snapshot,
+    pub(super) phase: Phase,
 }
 #[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-enum Phase {
+pub(super) enum Phase {
     Prepared,
     Committed,
 }
@@ -58,7 +58,7 @@ impl Namespace {
             .ok_or(INVALID)?;
         if head.format != 1
             || head.key != self.key
-            || head.identity != original(&file)?
+            || !original_matches(&file, &head.identity)?
             || head.revision == 0
             || head.revision > i64::MAX as u64
             || !openwebide_core::workspace_transaction::valid_id(id)
@@ -88,7 +88,7 @@ impl Namespace {
             .custom_flags(libc::O_NONBLOCK | libc::O_NOFOLLOW);
         let mut file = io(parent.open_with(ANCHOR, &options))?.into_std();
         private(&file, self.key.uid, false)?;
-        if original(&file)? != self.key.anchor {
+        if !original_matches(&file, &self.key.anchor)? {
             return Err(INVALID.into());
         }
         let data = bytes(&file, MAX_ANCHOR_BYTES)?;
@@ -143,7 +143,7 @@ impl Namespace {
         self.quota(MAX_ANCHOR_BYTES)?;
         let name = format!("head-{:032x}.json", rand::random::<u128>());
         let mut file = self.create(&name)?;
-        head.identity = original(&file)?;
+        head.identity = self.original(&file)?;
         let data = serde_json::to_vec(&head).map_err(|_| INVALID)?;
         if data.len() as u64 > MAX_ANCHOR_BYTES {
             return Err(INVALID.into());
@@ -173,7 +173,7 @@ impl Namespace {
             _ => return Err(INVALID.into()),
         }
         let file = child(&self.directory, &snapshot.name, self.key.uid)?;
-        if original(&file)? != snapshot.identity {
+        if !original_matches(&file, &snapshot.identity)? {
             return Err(INVALID.into());
         }
         io(self.directory.remove_file(&snapshot.name))?;
@@ -196,7 +196,7 @@ impl Namespace {
             .custom_flags(libc::O_NONBLOCK | libc::O_NOFOLLOW);
         let mut file = io(self.directory.open_with(DATABASE, &options))?.into_std();
         private(&file, self.key.uid, false)?;
-        if original(&file)? != original(&observed)? {
+        if self.original(&file)? != self.original(&observed)? {
             return Err(INVALID.into());
         }
         let middle = data.len() / 2;
@@ -242,7 +242,7 @@ impl Namespace {
         io(crate::native_directory::sync(&self.directory))?;
         let snapshot = Snapshot {
             name,
-            identity: original(&file)?,
+            identity: self.original(&file)?,
         };
         barrier(Barrier::Snapshot)?;
         self.original_database(parent, anchor)?;
@@ -290,7 +290,7 @@ impl Namespace {
         match self.head()? {
             Some(mut head) if head.phase == Phase::Prepared => {
                 let file = child(&self.directory, &head.snapshot.name, self.key.uid)?;
-                if original(&file)? != head.snapshot.identity {
+                if !original_matches(&file, &head.snapshot.identity)? {
                     return Err(INVALID.into());
                 }
                 let data = bytes(&file, MAX_DATABASE_BYTES)?;

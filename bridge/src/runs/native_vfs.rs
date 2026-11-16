@@ -13,6 +13,8 @@ pub(crate) mod resources;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 pub(crate) mod rooted;
 mod transfer;
+#[cfg(target_os = "macos")]
+pub(crate) use transfer::transfer_names;
 pub(crate) mod workspace;
 
 #[derive(Clone, Debug)]

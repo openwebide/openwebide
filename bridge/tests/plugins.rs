@@ -119,7 +119,7 @@ async fn native_language_routes_check_account_package_and_path_before_launch() {
     for mut file in review_files() {
         if file.path == "plugin.json" {
             let mut manifest: serde_json::Value = serde_json::from_slice(&file.content).unwrap();
-            manifest["compatibility"]["pluginApi"] = serde_json::json!(9);
+            manifest["compatibility"]["pluginApi"] = serde_json::json!(10);
             manifest["contributions"] = serde_json::json!({"skills":[],"languages":[{
                 "id":"notes","name":"Notes","extensions":["notes"],"features":{"languageServer":{"command":"openwebide-test-language-server-not-installed"}}
             }, {
@@ -127,7 +127,7 @@ async fn native_language_routes_check_account_package_and_path_before_launch() {
             }, {
                 "id":"reuse-notes","name":"Reuse Notes","extensions":["reuse-notes"],"features":{"languageServer":{"command":"python3","args":[reuse_peer]}}
             }, {
-                "id":"cache-notes","name":"Cache Notes","extensions":["cache-notes"],"features":{"languageServer":{"command":"python3","args":[cache_peer],"cache":{"versionArgs":[cache_peer,"--version"],"environment":{"FIXTURE_CACHE":"${cache}/build"}},"initializationOptions":{"directory":"${cache}/options"},"settings":{"directory":"${cache}/settings"}}}
+                "id":"cache-notes","name":"Cache Notes","extensions":["cache-notes"],"features":{"languageServer":{"command":"python3","args":[cache_peer],"runtimeInputs":{"argumentFiles":[0]},"cache":{"versionArgs":[cache_peer,"--version"],"environment":{"FIXTURE_CACHE":"${cache}/build"}},"initializationOptions":{"directory":"${cache}/options"},"settings":{"directory":"${cache}/settings"}}}
             }, {
                 "id":"prefetch-notes","name":"Prefetch Notes","extensions":["prefetch-notes"],"features":{"languageServer":{"command":"python3","args":[prefetch_peer]}}
             }]});

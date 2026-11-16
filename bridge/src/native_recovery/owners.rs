@@ -136,6 +136,14 @@ fn version(connection: &Connection) -> Result<u32, String> {
         .map_err(|_| INVALID.into())
 }
 impl Namespace {
+    fn original_folder(&self, folder: &Folder, enduring: bool) -> Result<OriginalFolder, String> {
+        if self.key.home.uses_device_number() {
+            OriginalFolder::capture_mode(folder, enduring, true)
+        } else {
+            OriginalFolder::capture(folder, enduring)
+        }
+    }
+
     pub(crate) fn permit(
         &self,
         folder: &Folder,
@@ -149,7 +157,7 @@ impl Namespace {
         let binding =
             RecoveryAuthority::binding_for_scope(authority.user, authority.project, scope)?;
         let credential_digest = authority.secret_digest()?;
-        let folder = OriginalFolder::capture(folder, true)?;
+        let folder = self.original_folder(folder, true)?;
         let data = serde_json::to_vec(&(&self.key.nonce, &binding, &credential_digest, &folder))
             .map_err(|_| INVALID)?;
         let owner = Owner {
@@ -179,6 +187,8 @@ impl Namespace {
         let parent = root(&self.home)?;
         let anchor = child(&parent, ANCHOR, self.key.uid)?;
         lock(&anchor, exclusive)?;
+        #[cfg(target_os = "macos")]
+        super::upgrade::ensure_idle(&parent)?;
         let record = anchor_record(&anchor)?;
         if exclusive && self.needs_recovery()? {
             self.recover(&parent, &record)?;
@@ -234,7 +244,7 @@ impl Namespace {
         })
     }
     pub(crate) fn admit(&self, folder: &Folder, permit: Option<&Permit>) -> Result<(), String> {
-        let folder = OriginalFolder::capture(folder, false)?;
+        let folder = self.original_folder(folder, false)?;
         self.access(false, |_, _, connection| {
             self.check(
                 connection,
@@ -261,7 +271,7 @@ impl Namespace {
         permit: &Permit,
     ) -> Result<(), String> {
         self.enrollment_lease(folder, lease, permit)?;
-        let folder = OriginalFolder::capture(folder, true)?;
+        let folder = self.original_folder(folder, true)?;
         self.access(true, |parent, anchor, connection| {
             let (_, changed) = self.enroll_owner(connection, &folder, permit)?;
             if changed {
@@ -344,7 +354,7 @@ impl Namespace {
         if !lease.covers(folder) {
             return Err("Original recovery release requires the complete folder lease".into());
         }
-        let folder = OriginalFolder::capture(folder, true)?;
+        let folder = self.original_folder(folder, true)?;
         self.access(true, |parent, anchor, connection| {
             let owners = read(connection, version(connection)?)?;
             self.check(connection, &owners, &folder, Some(permit))?;

@@ -30,6 +30,9 @@ use std::{
 };
 mod actions;
 mod grant;
+mod settlement;
+#[cfg(all(test, target_arch = "wasm32"))]
+mod tests;
 
 #[derive(Clone, Copy)]
 struct Context {
@@ -42,6 +45,7 @@ struct Context {
     files: WorkspaceActions,
     tickets: StoredValue<HashMap<i64, u64>>,
     counter: StoredValue<u64>,
+    settlement_checks: StoredValue<HashMap<i64, futures::future::AbortHandle>>,
     original_folders:
         StoredValue<send_wrapper::SendWrapper<HashMap<i64, web_sys::FileSystemDirectoryHandle>>>,
     folder_access: RwSignal<HashSet<i64>>,
@@ -109,6 +113,11 @@ impl Context {
         }
     }
     fn reserve(self, project: i64) -> u64 {
+        self.settlement_checks.update_value(|checks| {
+            if let Some(previous) = checks.remove(&project) {
+                previous.abort();
+            }
+        });
         self.counter
             .update_value(|value| *value = value.wrapping_add(1));
         let ticket = self.counter.get_value();
@@ -229,22 +238,38 @@ impl Context {
                 }
             });
             let reconnect = result.is_ok();
-            self.status(
-                id,
-                match result {
-                    Ok((state, action)) => {
-                        let mut status =
-                            WorkspaceRecoveryStatus::from_recovery(state.as_ref(), action.as_ref());
-                        if let (Err(error), WorkspaceRecoveryStatus::Pending { error: issue, .. }) =
-                            (access, &mut status)
-                        {
-                            *issue = Some(error);
-                        }
-                        status
+            let status = match result {
+                Ok((state, action)) => {
+                    let mut status =
+                        WorkspaceRecoveryStatus::from_recovery(state.as_ref(), action.as_ref());
+                    if let (Err(error), WorkspaceRecoveryStatus::Pending { error: issue, .. }) =
+                        (access, &mut status)
+                    {
+                        *issue = Some(error);
                     }
-                    Err(error) => WorkspaceRecoveryStatus::Unavailable(error.to_string()),
-                },
-            );
+                    status
+                }
+                Err(error) => WorkspaceRecoveryStatus::Unavailable(error.to_string()),
+            };
+            let settlement = match &status {
+                WorkspaceRecoveryStatus::LanguageAction {
+                    id,
+                    native_settlement_pending: true,
+                    phase,
+                    ..
+                } if phase.terminal() => Some(id.clone()),
+                _ => None,
+            };
+            self.status(id, status);
+            if let Some(action) = settlement {
+                self.observe_command_settlement(
+                    project.clone(),
+                    root.clone(),
+                    account,
+                    ticket,
+                    action,
+                );
+            }
             if reconnect && let Some(host) = self.host {
                 spawn_local(async move {
                     let current = move || self.current(&project, &root, account, ticket);
@@ -545,6 +570,7 @@ impl WorkspaceRecoveryActions {
             files: expect_context(),
             tickets: StoredValue::new(HashMap::new()),
             counter: StoredValue::new(0),
+            settlement_checks: StoredValue::new(HashMap::new()),
             original_folders: StoredValue::new(send_wrapper::SendWrapper::new(HashMap::new())),
             folder_access: RwSignal::new(HashSet::new()),
             missing_folders: RwSignal::new(HashSet::new()),
@@ -552,6 +578,13 @@ impl WorkspaceRecoveryActions {
             host: use_context(),
         };
         let account = StoredValue::new(auth.generation.get_untracked());
+        on_cleanup(move || {
+            ctx.settlement_checks.try_with_value(|checks| {
+                for check in checks.values() {
+                    check.abort();
+                }
+            });
+        });
         let recovery_phase = Memo::new(move |_| {
             projects
                 .active_project
@@ -563,6 +596,11 @@ impl WorkspaceRecoveryActions {
             let generation = auth.generation.get();
             if account.get_value() != generation {
                 account.set_value(generation);
+                ctx.settlement_checks.update_value(|checks| {
+                    for (_, check) in checks.drain() {
+                        check.abort();
+                    }
+                });
                 ctx.tickets.set_value(HashMap::new());
                 ctx.original_folders
                     .set_value(send_wrapper::SendWrapper::new(HashMap::new()));

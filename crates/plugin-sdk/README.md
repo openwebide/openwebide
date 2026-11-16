@@ -71,7 +71,7 @@ can implement this same protocol directly, including a different grammar or a
 pure Rust lexer. Browser clients only render validated results and apply
 declarative rules.
 
-## Native language services (APIs 6–9)
+## Native language services (APIs 6–10)
 
 API 6 opts a language into its declared native server command and ordinary
 process-access installation review. API 7 adds per-document `languageId` values
@@ -91,6 +91,13 @@ initialization options and settings resolve to the same derived-data directory
 outside the project. This is ordinary public metadata, with the same process
 approval and lifecycle for bundled and community packages. See the authoring
 guide for namespace ownership, limits and supported path templates.
+
+API 10 adds `LanguageServer.runtime_inputs` (JSON `runtimeInputs`). Declare
+implementation-file argument positions in `argumentFiles` and additional exact
+file paths in `files`. The host checks their identity and modification metadata
+at service boundaries and includes them in derived-cache identity. Mutable logs
+and outputs remain ordinary arguments. See the authoring guide for path bases,
+limits and update behavior.
 
 Servers execute only on project execution hosts. The shared facade owns provider
 selection, preparation, fresh project authority and unsaved-buffer synchronization

@@ -1310,6 +1310,28 @@ Remaining work:
   Original Stop/manual acknowledgement and ordinary writing recover in both
   modes; the new Local origin has no folder handle and no command is replayed
   ([built app checks](code-intelligence/built-command-callback-checks.json)).
+  The complete built resource/command workflow now passes in both modes with
+  persistent volume identities, asynchronous settlement refresh, independent
+  command/file callback persistence
+  and Local folder regrant through the existing physical proof while ordinary
+  commands remain fenced. It verifies native restart, rollback, lost dispatch,
+  same-window Stop, draft persistence and command non-replay
+  ([current checks](code-intelligence/command-settlement-checks.json)).
+  Persistent macOS volume identities now cover native ownership, resource areas,
+  creation receipts and workspace roots. Native library tests and process-separated
+  APFS remount recovery pass for both mode scopes
+  ([native volume checks](code-intelligence/native-volume-checks.json)).
+  Read-only `recovery upgrade inspect` now validates original objects, committed
+  bytes, known schema and empty record/history tables through the OS-selected
+  CLI, including the real account. Reviewed publication, resumption and
+  cancellation now preserve original objects across process loss and actual APFS
+  remounts. Backup-first activation now fences legacy writers before the visible
+  upgrade intent; pre-marker resume and cancellation pass changed-device remount
+  checks. Cancellation also preserves an old prepared journal written after its
+  fence is removed. A reviewed upgrade of the actual empty OS-account registry
+  now restores ordinary admission, retains the exact original objects and bytes,
+  and accepts an idempotent reviewed retry
+  ([upgrade inspection checks](code-intelligence/native-upgrade-checks.json)).
   Qualify optimized native/WASI distributions, installed apps and physical
   permissions; frozen-owner administration and escaped groups remain open.
   The native OS-owner recovery CLI now inspects and explicitly retires reviewed
@@ -1744,6 +1766,11 @@ Remaining work:
   Finish reusable-result keys, filesystem-event coverage and transitive runtime/toolchain
   invalidation. Complete native Windows file identity/change-time and accepted-resource
   recovery verification beyond the selected notification and Git metadata contracts.
+  API 10 now declares interpreter argument files and exact sidecars separately
+  from mutable outputs. Public schema, lifecycle/cache and installed Local/Remote
+  checks pass, with rebuilt SDK-matching defaults, native macOS/Linux contracts
+  and Windows cross lint ([runtime input checks](code-intelligence/runtime-input-checks.json)).
+  This does not discover undeclared transitive dependencies or replace filesystem events.
 - Run the same service/cache contracts against both adapters, including reconnect,
   concurrent overlays, cancellation, eviction, folder-access recovery and updates.
   The `146c26b3` Linux memory-recovery fixture passed within its 64 MiB

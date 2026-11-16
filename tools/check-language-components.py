@@ -17,12 +17,12 @@ import tempfile
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def check(bundle):
+def check(bundle, checker=None):
     snapshot = json.loads((ROOT / 'bridge/bundled/plugins.json').read_text())
     artifacts = json.loads(bundle.read_text())['artifacts']
     target = Path(os.environ.get('CARGO_TARGET_DIR', ROOT / 'target')).expanduser()
-    checker = target / 'release/examples/check_language'
-    assert checker.is_file(), 'Build cargo build -p openwebide-plugin-runtime --example check_language --release first'
+    checker = (checker or target / 'release/examples/check_language').expanduser().resolve()
+    assert checker.is_file(), f'Build the check_language example first: {checker}'
     languages = set()
     packages = 0
     with tempfile.TemporaryDirectory(prefix='openwebide-language-components-') as directory:
@@ -54,4 +54,6 @@ def check(bundle):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('bundle', type=Path, help='Output of openwebide-bundle-plugins')
-    check(parser.parse_args().bundle)
+    parser.add_argument('--checker', type=Path, help='Matching check_language executable (defaults to release)')
+    args = parser.parse_args()
+    check(args.bundle, args.checker)

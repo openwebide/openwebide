@@ -132,7 +132,7 @@ impl ResourceFiles {
         }
         let (parent, _) = path.rsplit_once('/').unwrap_or(("", path));
         let parent = self.root.directory(parent)?;
-        if Identity::of(&parent.0)? != claim.parent {
+        if self.root.file_identity(&parent.0)? != claim.parent {
             return Err(invalid("The original creation parent was replaced"));
         }
         let temporary = self.temporary_name(ordinal)?;
@@ -205,7 +205,7 @@ impl ResourceFiles {
                 }
             }
             if let Some(receipt) = &receipt {
-                let observed = Observation::of(&parent.object(&temporary)?)?;
+                let observed = self.root.observation(&parent.object(&temporary)?)?;
                 let matches = if anchored || kind.is_dir() {
                     receipt.matches(&observed, OriginalMutation::default())
                 } else {
@@ -226,7 +226,7 @@ impl ResourceFiles {
                 .ok_or_else(|| invalid("An unpublished creation has no receipt"))?;
             if receipt.kind() != kind
                 || !receipt.matches(
-                    &Observation::of(&objects.object(&name)?)?,
+                    &self.root.observation(&objects.object(&name)?)?,
                     OriginalMutation::default(),
                 )
                 || !objects.is_empty(&name, kind)?

@@ -190,6 +190,42 @@ async fn public_cache_bindings_persist_derived_data_across_host_restarts_without
 }
 
 #[tokio::test]
+async fn declared_external_implementation_changes_retire_derived_cache_identity() {
+    let root = tempfile::tempdir().unwrap();
+    let storage = tempfile::tempdir().unwrap();
+    let installation = tempfile::tempdir().unwrap();
+    let mut scope = scope(root.path());
+    let script = installation.path().join("server.py");
+    let contents = fs::read_to_string(root.path().join("peer.py")).unwrap();
+    fs::write(&script, &contents).unwrap();
+    let argument = script.to_str().unwrap().to_string();
+    scope.server.args[0] = argument.clone();
+    scope.server.cache.as_mut().unwrap().version_args[0] = argument;
+    scope.server.runtime_inputs =
+        Some(serde_json::from_value(json!({"argumentFiles":[0]})).unwrap());
+
+    let first_host = host(storage.path());
+    let first = query(&first_host, scope.clone()).await;
+    assert_eq!(first["hit"], false);
+    stop(first_host).await;
+    let unchanged_host = host(storage.path());
+    let unchanged = query(&unchanged_host, scope.clone()).await;
+    assert_eq!(unchanged["cache"], first["cache"]);
+    assert_eq!(unchanged["hit"], true);
+    stop(unchanged_host).await;
+
+    // The declared executable, configuration and printed server version stay
+    // the same. A changed external implementation still needs a new namespace.
+    fs::write(&script, format!("{contents}\n# New implementation\n")).unwrap();
+    let updated_host = host(storage.path());
+    let updated = query(&updated_host, scope).await;
+    assert_ne!(updated["cache"], first["cache"]);
+    assert_eq!(updated["hit"], false);
+    assert_eq!(updated["sources"], json!(["dirty source"]));
+    stop(updated_host).await;
+}
+
+#[tokio::test]
 async fn cache_namespaces_change_with_authority_provider_configuration_inputs_and_actual_server_version()
  {
     let root = tempfile::tempdir().unwrap();

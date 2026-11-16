@@ -10,7 +10,7 @@ use std::{fs::File, io::Read};
 pub(super) struct Native(Rooted);
 impl Native {
     pub fn new(root: &Path) -> Result<Self, String> {
-        Ok(Self(Rooted(File::open(root).map_err(text)?)))
+        Ok(Self(Rooted(File::open(root).map_err(text)?, false)))
     }
     pub fn current(&self, root: &Path) -> bool {
         root.canonicalize().is_ok_and(|path| path == root)

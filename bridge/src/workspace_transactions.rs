@@ -305,6 +305,25 @@ impl Default for Host {
 struct CapturedRoot {
     folder: Folder,
     identity: String,
+    legacy_identity: String,
+    legacy: bool,
+}
+impl CapturedRoot {
+    fn matching(mut self, expected: Option<&str>) -> Result<Self, String> {
+        if let Some(expected) = expected {
+            if self.identity == expected {
+                return Ok(self);
+            }
+            if self.legacy_identity != expected {
+                return Err(
+                    "Reconnect the original physical project folder before recovery".into(),
+                );
+            }
+            self.identity = self.legacy_identity.clone();
+            self.legacy = true;
+        }
+        Ok(self)
+    }
 }
 impl std::ops::Deref for CapturedRoot {
     type Target = Folder;
@@ -383,8 +402,33 @@ impl Host {
         let mut bytes = serde_json::to_vec(&("workspace-root-v2", user, project, &path, created))
             .map_err(|e| e.to_string())?;
         bytes.extend_from_slice(&physical.0);
-        let identity = openwebide_core::plugins::content_digest(&bytes);
-        Ok(CapturedRoot { folder, identity })
+        let legacy_identity = openwebide_core::plugins::content_digest(&bytes);
+        #[cfg(target_os = "macos")]
+        let (identity, legacy) = {
+            let object =
+                crate::file_identity::Identity::of(handle.as_file()).map_err(|e| e.to_string())?;
+            if object.has_persistent_volume() {
+                let bytes = serde_json::to_vec(&(
+                    "workspace-root-v3",
+                    user,
+                    project,
+                    &path,
+                    object.fingerprint(),
+                ))
+                .map_err(|e| e.to_string())?;
+                (openwebide_core::plugins::content_digest(&bytes), false)
+            } else {
+                (legacy_identity.clone(), true)
+            }
+        };
+        #[cfg(not(target_os = "macos"))]
+        let (identity, legacy) = (legacy_identity.clone(), true);
+        Ok(CapturedRoot {
+            folder,
+            identity,
+            legacy_identity,
+            legacy,
+        })
     }
     pub fn root_identity(
         workspace: &std::path::Path,
@@ -667,7 +711,7 @@ impl Host {
                             },
                             state.language_review.as_deref(),
                             &state.journal.plan,
-                        )?;
+                        )?.with_legacy_identity(root.legacy);
                         transaction::execute(
                             &files,
                             &journal,

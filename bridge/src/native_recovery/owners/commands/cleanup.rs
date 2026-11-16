@@ -45,8 +45,8 @@ impl ProcessCleanup {
         let home = Folder::capture_state(&path)?;
         let parent = root(&home)?;
         let anchor = child(&parent, ANCHOR, self.key.uid)?;
-        if original(&anchor)? != self.key.anchor
-            || original(home.handle.as_file())? != self.key.home
+        if !original_matches(&anchor, &self.key.anchor)?
+            || !original_matches(home.handle.as_file(), &self.key.home)?
         {
             return Err(INVALID.into());
         }

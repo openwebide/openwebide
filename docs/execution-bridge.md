@@ -90,6 +90,49 @@ The [ordinary admission checks](code-intelligence/ordinary-admission-checks.json
 cover macOS/Linux contracts, a normal Linux background job, older-companion
 rejection and both built-app transports. Windows is cross-compiled only.
 
+## Legacy macOS volume identities
+
+Current macOS companions bind native recovery state to the volume UUID and file
+identity. Older state used a device number, which can change after a remount.
+If ordinary recovery rejects that legacy namespace, inspect it as the same OS
+account that runs the companion:
+
+```sh
+openwebide-bridge recovery upgrade inspect
+```
+
+Inspection is read-only and uses the normal OS-selected namespace. An upgrade is
+eligible only when the original private objects, committed database and known
+schema are intact and all owner, command, settlement and retirement-history
+tables are empty. Pending records, unknown files or replaced objects require
+preserving and recovering the original state; this command does not reset them.
+
+Review the inspection, then copy its `expected` digest into the explicit upgrade:
+
+```sh
+openwebide-bridge recovery upgrade --expected <DIGEST> --note "Reviewed the empty legacy registry and original files"
+```
+
+The upgrade retains the exact original anchor, directory, database and head under
+the private `.openwebide-native-recovery-upgrade` area and publishes replacement
+state with persistent volume identities. Retain that area and its receipts.
+Older companions reject the new identities; update every companion that uses
+this OS account before resuming ordinary work.
+
+After an interrupted upgrade, inspect again and repeat the same reviewed upgrade
+to resume.
+Repeating a completed upgrade is idempotent. Cancellation is available only while
+the original anchor and directory still occupy their original names:
+
+```sh
+openwebide-bridge recovery upgrade cancel --expected <DIGEST> --note "Reviewed cancellation before authority publication"
+```
+
+Once original authority publication has begun, resume the upgrade. Cancellation
+does not undo a completed publication. If cancellation is interrupted, repeat the
+same cancellation command to finish it. These commands are specific to macOS;
+they do not grant folder access or authorize recovery of a pending transaction.
+
 ## Native recovery after an issuer is decommissioned
 
 On Linux and macOS, run recovery administration as the same OS account as the

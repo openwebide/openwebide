@@ -70,7 +70,7 @@ impl ResourceFiles {
         // Creating an unpublished temporary changes its destination parent even
         // when publication never happens. Keep that fact with a created parent's
         // receipt before the syscall, so it survives abandoning the child step.
-        if Identity::of(&self.root.0)? == *parent {
+        if self.root.file_identity(&self.root.0)? == *parent {
             return Ok(());
         }
         for entry in area
@@ -163,7 +163,7 @@ impl ResourceFiles {
         if source.kind(name)? != Some(expected) || !source.is_empty(name, kind)? {
             return Err(invalid("An unpublished creation contains unreviewed data"));
         }
-        let observed = Observation::of(&source.object(name)?)?;
+        let observed = self.root.observation(&source.object(name)?)?;
         let object = observed.identity;
         if kind.is_dir() && !object.has_birth_time() {
             return Err(invalid(
@@ -198,7 +198,7 @@ impl ResourceFiles {
                 source.link(name, &anchors, &anchor)?;
             }
             if !receipt.matches(
-                &Observation::of(&anchors.object(&anchor)?)?,
+                &self.root.observation(&anchors.object(&anchor)?)?,
                 OriginalMutation::default(),
             ) {
                 return Err(invalid("A creation anchor belongs to another object"));
@@ -234,8 +234,12 @@ impl ResourceFiles {
         }
         let (parent, leaf) = path.rsplit_once('/').unwrap_or(("", path));
         let parent = self.root.directory(parent)?;
-        let identity = Identity::of(&parent.0)?;
-        if !Identity::of(&self.root.0)?.same_device(&identity) {
+        let identity = self.root.file_identity(&parent.0)?;
+        if !self
+            .root
+            .file_identity(&self.root.0)?
+            .same_device(&identity)
+        {
             return Err(invalid("Resource creation crosses a filesystem boundary"));
         }
         if kind.is_dir() && !identity.has_birth_time() {
@@ -290,7 +294,7 @@ impl ResourceFiles {
         parent.transfer(&temporary, &objects, &name, kind)?;
         checkpoint()?;
         if !receipt.matches(
-            &Observation::of(&objects.object(&name)?)?,
+            &self.root.observation(&objects.object(&name)?)?,
             OriginalMutation::default(),
         ) {
             return Err(invalid("The staged creation was replaced"));
@@ -346,7 +350,7 @@ impl ResourceFiles {
         // with the exact prior child operations. This primitive additionally
         // protects attributes, ownership and mode immediately before removal.
         if !receipt.matches(
-            &Observation::of(&self.root.object(path)?)?,
+            &self.root.observation(&self.root.object(path)?)?,
             OriginalMutation {
                 moved: true,
                 directory_changed: kind.is_dir(),
@@ -387,7 +391,7 @@ impl ResourceFiles {
             self.root.transfer(path, &objects, &name, kind)?;
         }
         if !receipt.matches(
-            &Observation::of(&objects.object(&name)?)?,
+            &self.root.observation(&objects.object(&name)?)?,
             OriginalMutation {
                 moved: true,
                 directory_changed: kind.is_dir(),
@@ -425,7 +429,7 @@ impl ResourceFiles {
             return Ok(true);
         }
         Ok(receipt.matches(
-            &Observation::of(&objects.object(&name)?)?,
+            &self.root.observation(&objects.object(&name)?)?,
             OriginalMutation {
                 moved: true,
                 directory_changed: kind.is_dir(),
@@ -514,7 +518,7 @@ impl ResourceFiles {
                     .ok_or_else(|| invalid("An unknown staged resource was preserved"))?;
                 if expected.kind() != kind
                     || !expected.matches(
-                        &Observation::of(&objects.object(&name)?)?,
+                        &self.root.observation(&objects.object(&name)?)?,
                         OriginalMutation {
                             moved: true,
                             directory_changed: kind.is_dir(),
@@ -533,10 +537,10 @@ impl ResourceFiles {
                     .as_ref()
                     .ok_or_else(|| invalid("An unknown creation anchor was preserved"))?;
                 if expected.directory
-                    || Identity::of(&file)? != expected.object
+                    || self.root.file_identity(&file)? != expected.object
                     || (file.metadata()?.nlink() == 1
                         && (file.metadata()?.len() != 0
-                            || !expected.matches_without_anchor(&Observation::of(&file)?)))
+                            || !expected.matches_without_anchor(&self.root.observation(&file)?)))
                 {
                     return Err(invalid("Unexpected creation anchor data was preserved"));
                 }
