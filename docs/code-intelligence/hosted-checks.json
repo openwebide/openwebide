@@ -1845,5 +1845,128 @@
     "focused_native97_and_windows_cross_passed": true,
     "full_current_source_CI_or_publication_complete": false,
     "durable_authority_complete": false
+  },
+  "latest_implementation_qualification": {
+    "checked_on": "2026-11-16",
+    "implementation_commit": "342f812a92a9c6c6a88e477265252e50688025ae",
+    "implementation_source_manifest_sha256": "3f2ceff5f4063bf0a2b47ab7b9affbf9b7043873da83902e2cdf920877d4823d",
+    "full_local_CI": {
+      "passed": true,
+      "browser_executions": 771,
+      "browser_summaries": 19,
+      "isolated_source_compiler_passed": true,
+      "original_deadlines_and_inventory_preserved": true
+    },
+    "Linux_complete_bridge_suite": {
+      "passed": 570,
+      "failed": 0,
+      "ignored_existing_network_smoke": 1,
+      "recovery_identity_matrix_passed": 26
+    },
+    "physical_native_folders": "Current-shell macOS Chrome PWA Local and Remote cases passed; see physical-folder-checks.json.",
+    "original_published_run": {
+      "run": 43868549503,
+      "commit": "867fb7662792dd209d0b1df25522a9d1b8139f10",
+      "status": "in_progress",
+      "conclusion": "",
+      "url": "https://github.com/openwebide/openwebide/actions/runs/43868549503",
+      "jobs": [
+        {
+          "id": 133414006126,
+          "name": "checks / editor-ui-tests (2/2)",
+          "status": "in_progress",
+          "conclusion": ""
+        },
+        {
+          "id": 133414008896,
+          "name": "checks / backend-and-crates",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 133414009475,
+          "name": "checks / editor-ui-tests (1/2)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 133414009765,
+          "name": "checks / frontend",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 133414062240,
+          "name": "checks / bridge-windows",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 133414068500,
+          "name": "checks / plugin-runtime",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "id": 133414077080,
+          "name": "images (ubuntu-24.04-arm, arm64, aarch64-unknown-linux-gnu)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 133414082058,
+          "name": "assets",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 133414100846,
+          "name": "checks / plugin-panels",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 133414103318,
+          "name": "checks / frontend-ui-tests",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 133414103683,
+          "name": "checks / docker",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 133414107055,
+          "name": "validate",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 133414109450,
+          "name": "images (ubuntu-24.04, amd64, x86_64-unknown-linux-gnu)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 133414112290,
+          "name": "macos-bridges (macos-15, aarch64-apple-darwin)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 133414113302,
+          "name": "macos-bridges (macos-15-intel, x86_64-apple-darwin)",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    "original_failures_retained": [
+      "The original Linux runtime job failed 22 fixture-admission cases. The published correction retains root handles across scenario matrices; actual production identity checks and original assertions are unchanged.",
+      "The original unchanged Local wrapped replay reached its 300-second deadline. Its exact selected-job replay was accepted after the parent workflow completed. A passing replay does not establish the original timeout cause."
+    ],
+    "scope": "Original functional roadmap contracts are verified. Hosted observations retain their exact run/attempt state; this is not a claim that a pending or failed complete release is green."
   }
 }

@@ -200,5 +200,62 @@
       "Complete durable phase authority, all filesystem writers, crash-surviving non-LSP children, multi-profile ownership and native Windows verification remain open.",
       "Computer Use became unavailable after the completed cases. Fixture and replacement servers were stopped, and both owned listening ports were verified closed."
     ]
+  },
+  "current_native_file_recovery_followup": {
+    "checked_on": "2026-11-16",
+    "actual_artifact_source_manifest_sha256": "95c0d5fcc4508c742ba28a9101ac4981827f6c5b5ef7a3ad31257abbe9c7775c",
+    "verified_implementation_source_manifest_sha256": "3f2ceff5f4063bf0a2b47ab7b9affbf9b7043873da83902e2cdf920877d4823d",
+    "runtime_qualification": "Documentation, test-only fixture/expectation changes and one non-macOS-only lint attribute separate the actual macOS artifacts from the verified implementation. Artifacts retain their original producer identity.",
+    "native_pwa_asset": "openwebide-frontend-7361202ccc9f1a6f.js",
+    "asset_observation": "Native PWA DevTools initiator after close/reopen; retained JavaScript/WASM hashes verified. No HAR export retained.",
+    "cases": [
+      {
+        "mode": "local",
+        "native_rename_before_process_loss": true,
+        "access_loss": "Chrome File editing Ask -> Block",
+        "replacement_host_same_native_home": true,
+        "save_disabled_and_drafts_editable_while_denied": true,
+        "recovery_while_denied": "rejected with folder-access error",
+        "original_access_restored": true,
+        "manual_restore": true,
+        "final_progress": {
+          "phase": "restored",
+          "completed": 1,
+          "active": false,
+          "rollback_from": 1
+        },
+        "outside_hard_link_preserved": true,
+        "original_inode_mode_timestamps_acl_xattrs_flags_bytes_restored": true,
+        "both_independent_unicode_crlf_drafts_exact": true,
+        "drafts_saved_to_disk": false,
+        "readback_receipt_sha256": "eaa6a1b2df04906882885fa47dfd395e9afc8c02bd03598d0c46654845ef496d"
+      },
+      {
+        "mode": "remote",
+        "native_rename_before_process_loss": true,
+        "access_loss": "Native directory mode 000; actual UID 502 read PermissionError",
+        "replacement_host_same_native_home": true,
+        "save_disabled_and_drafts_editable_while_denied": true,
+        "recovery_while_denied": "rejected with folder-access error",
+        "original_access_restored": true,
+        "manual_restore": true,
+        "final_progress": {
+          "phase": "restored",
+          "completed": 1,
+          "active": false,
+          "rollback_from": 1
+        },
+        "outside_hard_link_preserved": true,
+        "original_inode_mode_timestamps_acl_xattrs_flags_bytes_restored": true,
+        "both_independent_unicode_crlf_drafts_exact": true,
+        "drafts_saved_to_disk": false,
+        "readback_receipt_sha256": "e93156185c9dfd8565e7c218ca9ee0820e2e5c634f66a5f3a0d1201c91f8da73"
+      }
+    ],
+    "earlier_attempt": "The first Local case restored after closing/reopening the installed PWA. The earlier shell asset was not captured, so a stale shell is an inference. Both recorded current-shell cases below ran after the retained asset was observed.",
+    "limits": [
+      "Chrome macOS physical folders only; no Edge/IME/assistive-technology claim.",
+      "Local browser-only saves retain the documented limit on native locking."
+    ]
   }
 }

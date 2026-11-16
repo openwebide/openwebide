@@ -9,6 +9,16 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Complete the code intelligence roadmap in both project modes: independent
+  server packages, snippets and navigation, reviewed file/command recovery,
+  read-only agent queries, warm service reuse, declared-input freshness and
+  bounded optional prefetch. Verify native Chrome PWA folder-loss recovery with
+  original file metadata and independent drafts; retain measured cache/resource
+  limits and keep prefetch off by default. See [code intelligence](docs/code-intelligence.md).
+- Keep recovery-test root handles alive across scenario matrices so Linux inode
+  reuse cannot alias an earlier deliberately unresolved fixture owner. Preserve
+  production identity checks and all original recovery assertions.
+
 - Persist macOS native recovery and resource identities with descriptor-derived
   volume UUIDs so pending ownership and rollback survive device-number changes.
   Keep exact legacy recovery checks and conservatively fence ambiguous aliases.
