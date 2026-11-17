@@ -221,8 +221,27 @@ def check():
                 close(browser)
                 time.sleep(1.5)
                 assert not any(query['input']['query']['operation'] == 'prefetch' for query in queries(browser))
-                runtime.request('PUT', '/api/settings', {'key': 'language_prefetch', 'value': 'true'})
-                browser.call('POST', '/url', {'url': runtime.url + '/'})
+                # Opt in on the original editing client. A reload can overlap
+                # draining requests from its predecessor and legitimately need
+                # another process; that is separate from warming continuity.
+                for label in ('Account menu', 'Settings'):
+                    wait(label, lambda label=label: script(browser, '''
+                        const button=document.querySelector('button[aria-label="'+arguments[0]+'"]');
+                        if(!button||button.disabled||!button.getClientRects().length)return false;
+                        button.click();return true;
+                    ''', label))
+                wait('Editor settings', lambda: script(browser, '''
+                    const tab=document.getElementById('settings-tab-editor');
+                    if(!tab)return false;tab.click();return true;
+                '''))
+                wait('enable idle language analysis', lambda: script(browser, '''
+                    const label=[...document.querySelectorAll('label')]
+                        .find(label=>label.textContent.trim()==='Warm language services while idle');
+                    const input=label?.querySelector('input');
+                    if(!input||input.disabled)return false;
+                    if(!input.checked)input.click();return input.checked;
+                '''))
+                close(browser)
                 wait(mode + ' opt-in editor', lambda: source(browser) == SOURCE)
                 # Register a closed recent file without selecting an unopened target.
                 wait('recent open-source observation', lambda: any(
@@ -267,17 +286,31 @@ def check():
                 close(browser)
                 events = [json.loads(line) for line in (folder / 'calls').read_text().splitlines()]
                 assert sum(event['method'] == 'initialize' for event in events) == 1, 'Warming replaced the original service'
+                assert len({query['input']['client'] for query in queries(browser)}) == 1
+                assert len({query['response']['server'] for query in queries(browser)
+                    if query.get('response', {}).get('server')}) == 1
                 for path in ('related.notes', 'recent.notes'):
                     assert any(event['method'] == 'textDocument/didClose'
                         and event['params']['textDocument']['uri'].endswith('/' + path) for event in events)
-                assert (folder / 'main.notes').read_bytes() == SOURCE.encode()
-                assert (folder / 'draft.notes').read_bytes() == files['draft.notes'].encode()
                 assert not script(browser, 'return prefetchEvidence.errors;')
                 if mode == 'remote':
                     assert script(browser, 'return prefetchEvidence.reads.length;') > 0
+                # Persistence is a separate check with a fresh editing client.
+                browser.call('POST', '/url', {'url': runtime.url + '/'})
+                wait(mode + ' editor after opt-in reload', lambda: source(browser) == SOURCE)
+                wait('idle analysis preference survives reload', lambda: any(
+                    query['input']['query']['operation'] == 'prefetch'
+                    and query.get('status') == 200 for query in queries(browser)))
+                command(browser, 'Symbol information')
+                wait('reload preserves retained drafts', clean_sources)
+                close(browser)
+                assert (folder / 'main.notes').read_bytes() == SOURCE.encode()
+                assert (folder / 'draft.notes').read_bytes() == files['draft.notes'].encode()
+                assert not script(browser, 'return prefetchEvidence.errors;')
                 print(json.dumps({'mode': mode, 'installed_public_package': True, 'default_off': True,
                     'fresh_unopened_related_source': True, 'fresh_recently_closed_source': True,
                     'temporary_sources_retired': True, 'original_service_and_drafts_preserved': True,
+                    'idle_analysis_preference_and_drafts_survive_reload': True,
                     'no_result_dialog_or_file_write': True}), flush=True)
         except BaseException:
             if browser is not None:

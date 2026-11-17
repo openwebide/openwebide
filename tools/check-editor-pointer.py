@@ -100,9 +100,25 @@ def check(mode, repeat, language, ending, wrap, source_path=None, target_line=2)
                 ]
                 for column, beyond, gap, drag, height in positions:
                     browser.script("document.querySelector('textarea[data-editor-path]').blur();")
+                    # A click inside the viewport cannot select a column still
+                    # offscreen on a long unwrapped line. Reveal the target
+                    # through the editor's real scroll surface before measuring.
+                    browser.call('POST', '/execute/async', {'args': [], 'script': f"""
+                        const done=arguments[0];
+                        const input=document.querySelector('textarea[data-editor-path]');
+                        const row=document.querySelector('.editor-source-line[data-line="{line}"]');
+                        const walker=document.createTreeWalker(row,NodeFilter.SHOW_TEXT);
+                        let node,at={column}; while((node=walker.nextNode())) {{if(at<=node.length) break;at-=node.length;}}
+                        const range=document.createRange();range.setStart(node,at);range.collapse(true);
+                        const caret=range.getBoundingClientRect(),bounds=input.getBoundingClientRect();
+                        const scroll=document.querySelector('.editor-scroll-surface')??input;
+                        if(caret.left<bounds.left+2) scroll.scrollLeft+=caret.left-bounds.left-2;
+                        else if(caret.left>bounds.right-48) scroll.scrollLeft+=caret.left-bounds.right+48;
+                        requestAnimationFrame(()=>requestAnimationFrame(()=>done(true)));
+                    """})
                     x = 'rect.left+0.25'
                     if beyond:
-                        x = 'input.getBoundingClientRect().right-20' if gap is None else f'rect.left+{gap}'
+                        x = 'Math.max(rect.left+4,input.getBoundingClientRect().right-20)' if gap is None else f'rect.left+{gap}'
                     point = browser.script(f"""
                         const input=document.querySelector('textarea[data-editor-path]');
                         const row=document.querySelector('.editor-source-line[data-line="{line}"]');
@@ -117,6 +133,9 @@ def check(mode, repeat, language, ending, wrap, source_path=None, target_line=2)
                         }},{{once:true}});
                         return {{x:Math.min(input.getBoundingClientRect().right-2,{x}),caret_x:rect.left,caret_y:rect.top,y:row.getBoundingClientRect().top+row.getBoundingClientRect().height*{height},bound:input.dataset.editorNativeBound==='true',bounds:input.getBoundingClientRect().toJSON()}};
                     """)
+                    assert point['bounds']['left'] <= point['caret_x'] <= point['bounds']['right'] - 2, point
+                    if beyond:
+                        assert point['x'] > point['caret_x'], point
                     for kind in ['mouseMoved', 'mousePressed', 'mouseReleased']:
                         args = {'type': kind, 'x': point['x'], 'y': point['y']}
                         if kind != 'mouseMoved': args.update(button='left', clickCount=1)

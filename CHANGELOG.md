@@ -9,6 +9,13 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Reveal offscreen caret and pointer targets before production input checks,
+  preserving automatic completion after reload and line-end selection, insertion
+  and undo checks on long source lines.
+
+- Verify idle language warming on the original editing client through Settings,
+  and check saved opt-in and retained drafts separately after reloading.
+
 - Pin wasm-opt 133 for frontend builds across developer, CI and container
   environments, fixing the older optimizer's Linux release-build crash while
   retaining release optimization.

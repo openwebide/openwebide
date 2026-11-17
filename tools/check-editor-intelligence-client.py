@@ -36,6 +36,30 @@ def options(browser):
     return script(browser, "return [...document.querySelectorAll('.editor-completion-option > span')].map(node=>node.textContent);")
 
 
+def reveal_caret(browser):
+    # Programmatic selection does not reveal a caret in the scroll surface.
+    # Use real navigation to reveal it without changing the intended position.
+    before = script(browser, "const i=document.querySelector('textarea[data-editor-path]');return {value:i.value,start:i.selectionStart,end:i.selectionEnd};")
+    assert before['start'] == before['end'], before
+    for arrow in (['\ue012', '\ue014'] if before['start'] else ['\ue014', '\ue012']):
+        key(browser, arrow)
+    wait('visible caret before completion', lambda: script(browser, r'''
+        const input=document.querySelector('textarea[data-editor-path]');
+        const before=input.value.slice(0,input.selectionStart),line=before.split('\n').length;
+        const column=before.length-(before.lastIndexOf('\n')+1);
+        const row=document.querySelector(`.editor-source-line[data-line="${line}"]`);
+        if(!row)return false;
+        const walker=document.createTreeWalker(row,NodeFilter.SHOW_TEXT);
+        let node,offset=column;while((node=walker.nextNode())){if(offset<=node.length)break;offset-=node.length;}
+        if(!node)return false;
+        const range=document.createRange();range.setStart(node,offset);range.collapse(true);
+        const rect=range.getBoundingClientRect(),bounds=input.getBoundingClientRect();
+        return rect.height>0&&rect.top>=bounds.top-1&&rect.bottom<=bounds.bottom+1
+            &&rect.left>=bounds.left-1&&rect.left<=bounds.right-1;
+    '''))
+    assert script(browser, "const i=document.querySelector('textarea[data-editor-path]');return {value:i.value,start:i.selectionStart,end:i.selectionEnd};") == before, 'Revealing the caret changed the source or selection'
+
+
 def point(browser, token):
     return wait('painted symbol point', lambda: script(browser, r'''
         const input=document.querySelector('textarea[data-editor-path]');
@@ -300,6 +324,7 @@ def check():
                 wait('hidden suggestions preserve ordinary Enter', lambda: editor(browser) == expected)
                 caret(browser, 'nearBottom = person.al', len('nearBottom = person.al'))
                 script(browser, "const scroll=document.querySelector('.editor-scroll-surface');scroll.scrollTop=scroll.scrollHeight;")
+                reveal_caret(browser)
                 wait('caret visible before resize check', lambda: bool(point(browser, 'nearBottom =')))
                 original_rect = browser.call('GET', '/window/rect')
                 key(browser, '\ue009', ' ')
@@ -324,6 +349,7 @@ def check():
                 browser.call('POST', '/url', {'url': runtime.url + '/'})
                 wait('re-enabled provider', lambda: script(browser, """return !!document.querySelector('button[aria-label="Code intelligence"]');"""))
                 caret(browser, 'person.alpha;', len('person.alpha;'))
+                reveal_caret(browser)
                 insert(browser, '\nperson.al')
                 wait('automatic completion after re-enabling', lambda: options(browser) == ['alpha', 'alpine'])
                 key(browser, '\ue00c')
