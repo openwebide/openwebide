@@ -247,6 +247,130 @@ async fn delegation(
 }
 
 #[tokio::test]
+async fn cancelled_preparations_release_native_reservations_without_claiming_a_worker_in_both_modes()
+ {
+    for mode in [WorkspaceMode::Remote, WorkspaceMode::Local] {
+        for enrolled in [false, true] {
+            let fixture = fixture_mode(2, mode).await;
+            let host = Host::new();
+            host.coordinator
+                .set_recovery_home(host.recovery_home.clone());
+            let root = fixture.directory.path().join("project");
+            let before = same_file::Handle::from_path(root.join("before.rs")).unwrap();
+            let after = same_file::Handle::from_path(root.join("after.rs")).unwrap();
+            let folder = Folder::capture(&root).unwrap();
+            let namespace = crate::native_recovery::Namespace::open(&host.recovery_home).unwrap();
+            if enrolled {
+                let journal = Journal {
+                    backend: fixture.backend.clone(),
+                    user: fixture.user.get(),
+                    project: fixture.project,
+                    id: fixture.command.request.id.clone(),
+                    generation: fixture.command.request.generation.clone(),
+                    worker: WorkspaceTransactionWorker {
+                        id: "7".repeat(32),
+                        secret: "8".repeat(32),
+                    },
+                    mode,
+                };
+                let (scope, authority, activity) = journal.recovery().await.unwrap();
+                let permit = namespace
+                    .permit(&folder, &authority, &scope, activity)
+                    .unwrap();
+                let lease = host
+                    .coordinator
+                    .acquire_recovery(folder.clone(), permit.clone())
+                    .await
+                    .unwrap();
+                namespace.enroll(&folder, &lease, &permit).unwrap();
+            }
+            fixture
+                .backend
+                .store
+                .advance_workspace_transaction(
+                    fixture.user,
+                    fixture.project,
+                    &AdvanceWorkspaceTransaction {
+                        id: fixture.command.request.id.clone(),
+                        generation: fixture.command.request.generation.clone(),
+                        revision: 1,
+                        progress: TransactionProgress::prepared_cancellation(),
+                    },
+                    101,
+                )
+                .await
+                .unwrap();
+            // Repeat a lost cleanup acknowledgement. Neither pass may publish
+            // accepted worker credentials or re-run the original file plan.
+            for _ in 0..2 {
+                let mut command = fixture.command.clone();
+                command.request.action = transaction::WorkspaceTransactionAction::Recover;
+                let outcome = if mode == WorkspaceMode::Local {
+                    let files = files(&host, &fixture, Arc::default()).await;
+                    let grant = delegation(&fixture, &files).await;
+                    let server = serve(fixture.backend.clone()).await;
+                    let outcome = files
+                        .execute(server.url.clone(), grant, command.request)
+                        .await
+                        .unwrap();
+                    files.close().await.unwrap();
+                    outcome
+                } else {
+                    host.execute(
+                        fixture.directory.path().into(),
+                        command,
+                        fixture.backend.clone(),
+                    )
+                    .await
+                    .unwrap()
+                };
+                assert_eq!(outcome.phase, Some(TransactionPhase::Restored));
+                assert!(outcome.error.is_none(), "{:?}", outcome.error);
+                let scope = fixture
+                    .backend
+                    .store
+                    .workspace_transaction_scope(
+                        fixture.user,
+                        fixture.project,
+                        &fixture.command.request.id,
+                    )
+                    .await
+                    .unwrap()
+                    .unwrap();
+                assert!(scope.worker.is_none());
+                assert!(scope.accepted_language_review_digest.is_none());
+                assert!(fixture.backend.last_worker.lock().unwrap().is_none());
+                assert_eq!(
+                    same_file::Handle::from_path(root.join("before.rs")).unwrap(),
+                    before
+                );
+                assert_eq!(
+                    same_file::Handle::from_path(root.join("after.rs")).unwrap(),
+                    after
+                );
+                assert_eq!(
+                    std::fs::read(root.join("before.rs")).unwrap(),
+                    "disk 文😀\r\n".as_bytes()
+                );
+                assert_eq!(
+                    std::fs::read(root.join("after.rs")).unwrap(),
+                    b"overwritten original"
+                );
+                drop(
+                    tokio::time::timeout(
+                        std::time::Duration::from_secs(2),
+                        host.coordinator.acquire_ordinary(folder.clone()),
+                    )
+                    .await
+                    .unwrap()
+                    .unwrap(),
+                );
+            }
+        }
+    }
+}
+
+#[tokio::test]
 async fn complete_worker_retains_its_physical_gate_and_commits_after_observer_loss_in_both_modes() {
     for mode in [WorkspaceMode::Remote, WorkspaceMode::Local] {
         let fixture = fixture_mode(2, mode).await;

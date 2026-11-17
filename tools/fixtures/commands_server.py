@@ -1,5 +1,8 @@
 import json,sys,time,pathlib,subprocess,os
 mode=sys.argv[1];opened={}
+calls=pathlib.Path('calls')
+if '--calls-dir' in sys.argv:
+    calls=pathlib.Path(sys.argv[sys.argv.index('--calls-dir')+1])/pathlib.Path.cwd().name
 def send(value):
     body=json.dumps({'jsonrpc':'2.0',**value}).encode()
     sys.stdout.buffer.write(('Content-Length: %d\r\n\r\n'%len(body)).encode()+body);sys.stdout.buffer.flush()
@@ -11,7 +14,7 @@ while True:
     if not line:break
     message=json.loads(sys.stdin.buffer.read(int(headers['content-length'])))
     method=message.get('method');params=message.get('params',{});result=None
-    with open('calls','a') as log:log.write(method+'\n')
+    with calls.open('a') as log:log.write(method+'\n')
     if method=='initialize':result={'capabilities':{'textDocumentSync':1,'codeActionProvider':True,'executeCommandProvider':{'commands':['fixture.apply']}}}
     elif method in ('textDocument/didOpen','textDocument/didChange'):
         document=params['textDocument'];opened[document['uri']]=document.get('text',params.get('contentChanges',[{}])[0].get('text'))

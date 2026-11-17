@@ -607,6 +607,24 @@ impl Host {
             #[cfg(any(target_os = "linux", target_os = "macos"))]
             if !folder.matches_state(&state)? { return Err("The loaded plan differs from the original proven review".into()); }
             #[cfg(any(target_os = "linux", target_os = "macos"))]
+            if state.journal.progress == TransactionProgress::prepared_cancellation() {
+                // A rejected initial claim may already have reserved this native
+                // folder. Reconcile its cancellation without admitting a worker,
+                // obtaining new language authority, or running a file primitive.
+                let (scope, authority, activity) = coordinator.prepare(journal.recovery()).await??;
+                if scope != current_scope || activity.file_recovery
+                    || scope.worker.as_ref().is_some_and(|worker| worker.active) {
+                    return Err("The original cancellation changed before native cleanup".into());
+                }
+                let fresh = native_namespace.permit(&root.folder, &authority, &scope, activity)?;
+                native_namespace.finish_files(&root.folder, fence.lease(), &fresh, activity)?;
+                return Ok(WorkspaceTransactionOutcome {
+                    generation: journal.generation.clone(),
+                    phase: Some(transaction::TransactionPhase::Restored),
+                    error: None,
+                });
+            }
+            #[cfg(any(target_os = "linux", target_os = "macos"))]
             let language_scope = state.language_review.as_ref().filter(|_| current_scope.accepted_language_review_digest.is_none()
                 && state.journal.progress != TransactionProgress::prepared_cancellation()).map(|review| {
                 Ok::<_, String>(crate::languages::host::Scope {

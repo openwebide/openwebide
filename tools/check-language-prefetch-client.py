@@ -196,6 +196,8 @@ def check():
                     print('Authenticated WASI bounded reads: exact UTF-8 bytes, oversize, missing, escape and unsigned rejection passed', flush=True)
                 else:
                     local_handle(browser, project['id'], user, folder.name, files)
+                    runtime.request('PUT', '/api/settings', {
+                        'key': f"local_bridge_cwd.{project['id']}", 'value': relative})
                     mirror.install(browser, project['id'], folder)
                 recovered = []
                 for path in ('main.notes', 'draft.notes', 'recent.notes'):

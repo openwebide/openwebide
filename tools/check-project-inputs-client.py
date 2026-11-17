@@ -23,7 +23,7 @@ SUPPORT = runpy.run_path(str(ROOT / 'tools/check-editor-recovery.py'))
 Runtime, Browser = SUPPORT['Runtime'], SUPPORT['Browser']
 SOURCE, AFTER = 'text 文😀\r\n', 'next 文😀\r\n'
 EVIDENCE = r'''
-window.projectInputProbe={queries:[]};
+window.projectInputProbe={queries:[],discovery:[]};
 const inputFetch=window.fetch;
 window.fetch=async function(...args){
  const path=new URL(String(args[0]?.url??args[0]),location.href).pathname;
@@ -32,6 +32,10 @@ window.fetch=async function(...args){
   const body=JSON.parse(typeof args[1]?.body==='string'?args[1].body:await args[0].clone().text());
   const input=body.input??body.selection?.input;
   trace={operation:input?.query?.operation};projectInputProbe.queries.push(trace);
+ }else if(path==='/exec'){
+  const body=JSON.parse(typeof args[1]?.body==='string'?args[1].body:await args[0].clone().text());
+  trace={cwd:body.cwd};projectInputProbe.discovery.push(trace);
+  if(projectInputProbe.discovery.length>16)projectInputProbe.discovery.shift();
  }
  const response=await inputFetch.apply(this,args);
  if(trace){const data=await response.clone().json();Object.assign(trace,{status:response.status,error:data.error});}
@@ -65,6 +69,10 @@ def fixture(state, input_kind='project'):
         server['runtimeInputs'] = {'argumentFiles': [0]}
         if input_kind == 'sidecar':
             server['runtimeInputs']['files'] = [str(state / 'sidecar.json')]
+    # Diagnostics must not mutate the project-source generation being reviewed.
+    (state / 'server-calls').mkdir()
+    manifest['contributions']['languages'][0]['features']['languageServer']['args'].extend(
+        ['--calls-dir', str(state / 'server-calls')])
     (package / 'plugin.json').write_text(json.dumps(manifest))
     git(repository, 'init', '--quiet', '--initial-branch=main', '--template=')
     git(repository, 'add', '.')
@@ -156,6 +164,10 @@ def check(input_kind='project'):
                     'revision': binding['revision'] if binding else None})
                 if mode == 'local':
                     local_handle(browser, project['id'], user, folder.name, files)
+                    # Verify this known counterpart without searching across another
+                    # scenario's deliberately retained native recovery fence.
+                    runtime.request('PUT', '/api/settings', {
+                        'key': f"local_bridge_cwd.{project['id']}", 'value': relative})
                     mirror.install(browser, project['id'], folder,
                         files=('settings-old.json', 'settings-new.json', 'settings-external.json'),
                         native_view=True)
@@ -169,6 +181,13 @@ def check(input_kind='project'):
                     runtime.request('PUT', '/api/settings', {'key': key, 'value': value})
                 browser.call('POST', '/url', {'url': runtime.url + '/'})
                 wait(mode + ' restored editor', lambda: source(browser) == SOURCE.replace('\r\n', '\n'))
+                # Restored text precedes the initial disk read and passive host
+                # synchronization. Review the settled source, not startup I/O.
+                wait(mode + ' initial language synchronization', lambda: script(browser, """
+                    const input=document.querySelector('textarea[data-editor-path]');
+                    return input&&!input.readOnly&&input.dataset.editorNativePreparing==='false'
+                      &&projectInputProbe.queries.some(query=>query.operation==='synchronize'&&query.status===200);
+                """))
                 command(browser, 'Code actions')
                 wait('configuration action selected', lambda: click(browser, 'Edit then run'))
                 wait('complete configuration and command review', lambda: script(browser,
@@ -232,7 +251,7 @@ def check(input_kind='project'):
                 recovery = runtime.request('GET', f"/api/projects/{project['id']}/editor-recovery")
                 retained = next(file for file in recovery['state']['files'] if file['path'] == 'main.notes')
                 assert base64.b64decode(retained['document']['text']).decode() == AFTER
-                calls = (folder / 'calls').read_text().splitlines()
+                calls = (state / 'server-calls' / folder.name).read_text().splitlines()
                 assert calls.count('workspace/executeCommand') == 1
                 assert calls[:calls.index('workspace/executeCommand')].count('initialize') == 1, \
                     'Configuration edit replaced the reviewed service before its command'

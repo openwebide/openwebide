@@ -4,6 +4,50 @@ use futures::future::{Either, abortable, select};
 use openwebide_core::plugins::languages::intelligence::actions::ActionRecoveryRequest;
 
 impl Context {
+    pub(super) fn observe_published_command_settlements(self) {
+        Effect::new(move |_| {
+            let account = self.auth.generation.get();
+            if self.auth.user.get().is_none() {
+                return;
+            }
+            let Some(project) = self
+                .projects
+                .active_project
+                .get()
+                .and_then(|id| self.projects.project(id))
+            else {
+                return;
+            };
+            let action =
+                self.workspace
+                    .workspace_recovery
+                    .with(|states| match states.get(&project.id) {
+                        Some(WorkspaceRecoveryStatus::LanguageAction {
+                            id,
+                            native_settlement_pending: true,
+                            phase,
+                            recovering: false,
+                            ..
+                        }) if phase.terminal() => Some(id.clone()),
+                        _ => None,
+                    });
+            let Some(action) = action else {
+                return;
+            };
+            if self
+                .settlement_checks
+                .with_value(|checks| checks.contains_key(&project.id))
+            {
+                return;
+            }
+            // Command completion can publish this status without changing a
+            // file publication's phase or explicitly checking recovery again.
+            let root = EditorRoot::for_project(&project, self.projects, Some(self.settings));
+            let ticket = self.reserve(project.id);
+            self.observe_command_settlement(project, root, account, ticket, action);
+        });
+    }
+
     pub(super) fn observe_command_settlement(
         self,
         project: Project,

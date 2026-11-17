@@ -256,7 +256,8 @@ async fn queued_local_review_reads_fresh_journal_state_after_acquiring_the_works
     held.await.unwrap();
     let error = review.await.err().unwrap();
     assert!(error.contains("pending workspace operation"), "{error}");
-    assert_eq!(fake.workspace_transactions.latest_reads.get(), 1);
+    // The cancellation lookup and compound activity read both follow the lock.
+    assert_eq!(fake.workspace_transactions.latest_reads.get(), 2);
     nativeReviewTestCleanup(&folder).await;
     owner.cleanup();
 }

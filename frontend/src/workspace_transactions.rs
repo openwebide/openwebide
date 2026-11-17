@@ -5,6 +5,7 @@ use crate::{
     workspace_journal::BackendWorkspaceJournal,
 };
 use futures::channel::oneshot;
+use leptos::prelude::{UpdateValue, WithValue};
 use openwebide_core::workspace_transaction::{
     self as transaction, BeginWorkspaceTransaction, ExecuteWorkspaceTransaction, JournalRecord,
     VfsTransactionFiles, WorkspaceJournal, WorkspaceTransactionAction, WorkspaceTransactionOutcome,
@@ -114,6 +115,82 @@ pub struct WorkspaceTransactionExecutor {
     review_files: Option<std::sync::Arc<review::WorkspaceReviewFiles>>,
 }
 impl WorkspaceTransactionExecutor {
+    /// A database-only cancellation can outlive an unaccepted native reservation.
+    /// Recover the terminal journal through the original folder and worker path;
+    /// it performs no file operation and still requires the native release receipt.
+    pub async fn settle_prepared_cancellation(
+        &self,
+        state: transaction::WorkspaceTransactionState,
+        current: Rc<dyn Fn() -> bool>,
+    ) -> Result<(), String> {
+        let executor = self.clone();
+        with_workspace_lock(workspace_lock_name(self.project), async move {
+            executor
+                .settle_prepared_cancellation_locked(state, current)
+                .await
+        })
+        .await
+    }
+
+    async fn settle_prepared_cancellation_locked(
+        &self,
+        state: transaction::WorkspaceTransactionState,
+        current: Rc<dyn Fn() -> bool>,
+    ) -> Result<(), String> {
+        if state.journal.plan.version != 2
+            || state.journal.progress != transaction::TransactionProgress::prepared_cancellation()
+        {
+            return Ok(());
+        }
+        if !current() {
+            return Err("The workspace changed before cancellation cleanup".into());
+        }
+        let identity = (
+            state.journal.generation.clone(),
+            state.journal.plan.root.clone(),
+        );
+        let receipts = self
+            .host
+            .map(crate::project_host::ProjectHost::cancelled_preparations);
+        if receipts.is_some_and(|receipts| {
+            receipts.try_with_value(|completed| completed.get(&self.project) == Some(&identity))
+                == Some(true)
+        }) {
+            return Ok(());
+        }
+        let mut executor = self.clone();
+        // A new preview's read capability cannot authorize an older journal.
+        executor.review_files = None;
+        let outcome = executor
+            .execute_locked(
+                BeginWorkspaceTransaction {
+                    language_review: state.language_review,
+                    id: state.journal.id,
+                    plan: state.journal.plan,
+                    editor: state.editor,
+                },
+                state.journal.generation,
+                WorkspaceTransactionAction::Recover,
+                current.clone(),
+            )
+            .await?;
+        if !current() {
+            return Err("The workspace changed during cancellation cleanup".into());
+        }
+        if let Some(error) = outcome.error {
+            return Err(error.message);
+        }
+        if outcome.phase != Some(transaction::TransactionPhase::Restored) {
+            return Err("The original cancellation has not finished native cleanup".into());
+        }
+        if let Some(receipts) = receipts {
+            receipts.try_update_value(|completed| {
+                completed.insert(self.project, identity);
+            });
+        }
+        Ok(())
+    }
+
     /// Bind a browser capability only after the user explicitly reviewed and
     /// confirmed this folder. Content matching alone never grants authority.
     pub async fn grant_reviewed_folder(
@@ -364,6 +441,24 @@ impl WorkspaceTransactionExecutor {
         if !transaction::valid_id(&generation) || !current() {
             return Err("The reviewed workspace changed".into());
         }
+        let executor = self.clone();
+        with_workspace_lock(workspace_lock_name(self.project), async move {
+            executor
+                .execute_locked(input, generation, action, current)
+                .await
+        })
+        .await
+    }
+    async fn execute_locked(
+        &self,
+        input: BeginWorkspaceTransaction,
+        generation: String,
+        action: WorkspaceTransactionAction,
+        current: Rc<dyn Fn() -> bool>,
+    ) -> Result<WorkspaceTransactionOutcome, String> {
+        if !transaction::valid_id(&generation) || !current() {
+            return Err("The reviewed workspace changed".into());
+        }
         if self
             .review_files
             .as_ref()
@@ -378,82 +473,94 @@ impl WorkspaceTransactionExecutor {
         let review_files = self.review_files.clone();
         match &self.runtime {
             Runtime::Native => {
-                with_workspace_lock(workspace_lock_name(project), async move {
-                    let (_, record, language_grant) = reviewed_record(
-                        backend.clone(),
+                let (_, record, language_grant) = reviewed_record(
+                    backend.clone(),
+                    project,
+                    &input,
+                    &generation,
+                    action,
+                    &current,
+                )
+                .await?;
+                if !current() {
+                    return Err("The reviewed workspace changed".into());
+                }
+                let outcome = backend
+                    .execute_workspace_transaction(
                         project,
-                        &input,
-                        &generation,
-                        action,
-                        &current,
+                        &ExecuteWorkspaceTransaction {
+                            language_grant,
+                            id: input.id,
+                            generation: record.generation,
+                            action,
+                        },
                     )
-                    .await?;
-                    if !current() {
-                        return Err("The reviewed workspace changed".into());
-                    }
-                    let outcome = backend
-                        .execute_workspace_transaction(
-                            project,
-                            &ExecuteWorkspaceTransaction {
-                                language_grant,
-                                id: input.id,
+                    .await
+                    .map_err(|e| e.to_string())?;
+                outcome.validate(&generation)?;
+                Ok(outcome)
+            }
+            Runtime::Browser { handle, .. } => {
+                let handle = handle.clone();
+                let original = crate::idb::load_transaction_root(user, project, &input.id)
+                    .await?
+                    .ok_or("Grant access to the original transaction folder before recovery")?;
+                let same = JsFuture::from(original.is_same_entry(&handle))
+                    .await
+                    .map_err(|error| format!("Could not verify the original folder: {error:?}"))?;
+                let identity = if input.plan.version == 2 {
+                    input.plan.root.clone()
+                } else {
+                    local_identity(user, project, &input.id)
+                };
+                if same.as_bool() != Some(true) || input.plan.root != identity {
+                    return Err("Reconnect the original project folder before recovery".into());
+                }
+                let (journal, record, language_grant) =
+                    reviewed_record(backend, project, &input, &generation, action, &current)
+                        .await?;
+                if input.plan.version == 2 {
+                    let retained = if let Some(review) = &review_files {
+                        review
+                            .local_files()
+                            .ok_or("The original proven browser folder is unavailable")?
+                    } else {
+                        Rc::new(futures::lock::Mutex::new(host.ok_or("Connect the paired execution host before native resource operations")?
+                                .folder_files(user, project, handle, Some(identity), current.clone()).await?))
+                    };
+                    let mut files = retained.lock().await;
+                    files
+                        .bind(transaction::ResourceScope {
+                            transaction: input.id,
+                            fingerprint: input.plan.fingerprint()?,
+                        })
+                        .await?;
+                    let (api_url, delegation) =
+                        journal.delegation(&*files, record.revision).await?;
+                    let outcome = files
+                        .execute(
+                            api_url,
+                            delegation,
+                            ExecuteWorkspaceTransaction {
+                                id: record.id,
                                 generation: record.generation,
                                 action,
+                                language_grant,
                             },
                         )
-                        .await
-                        .map_err(|e| e.to_string())?;
-                    outcome.validate(&generation)?;
-                    Ok(outcome)
-                })
-                .await
-            }
-            Runtime::Browser { handle, lock } => {
-                let handle = handle.clone();
-                with_workspace_lock(lock.clone(), async move {
-                    let original = crate::idb::load_transaction_root(user, project, &input.id)
-                        .await?
-                        .ok_or("Grant access to the original transaction folder before recovery")?;
-                    let same = JsFuture::from(original.is_same_entry(&handle))
-                        .await
-                        .map_err(|error| {
-                            format!("Could not verify the original folder: {error:?}")
-                        })?;
-                    let identity = if input.plan.version == 2 { input.plan.root.clone() }
-                        else { local_identity(user, project, &input.id) };
-                    if same.as_bool() != Some(true) || input.plan.root != identity {
-                        return Err("Reconnect the original project folder before recovery".into());
-                    }
-                    let (journal, record, language_grant) =
-                        reviewed_record(backend, project, &input, &generation, action, &current).await?;
-                    if input.plan.version == 2 {
-                        let retained = if let Some(review) = &review_files {
-                            review.local_files().ok_or("The original proven browser folder is unavailable")?
-                        } else {
-                            Rc::new(futures::lock::Mutex::new(host.ok_or("Connect the paired execution host before native resource operations")?
-                                .folder_files(user, project, handle, Some(identity), current.clone()).await?))
-                        };
-                        let mut files = retained.lock().await;
-                        files.bind(transaction::ResourceScope { transaction: input.id,
-                            fingerprint: input.plan.fingerprint()? }).await?;
-                        let (api_url, delegation) = journal.delegation(&*files,record.revision).await?;
-                        let outcome = files.execute(api_url, delegation, ExecuteWorkspaceTransaction {
-                            id: record.id, generation: record.generation, action, language_grant,
-                        }).await;
-                        // This also drains a request whose HTTP observer failed.
-                        // A later session fences this capability even if close's
-                        // acknowledgement is itself lost.
-                        let _ = files.close().await;
-                        return outcome;
-                    }
-                    let vfs = BrowserFsaVfs::new(handle);
-                    let files = VfsTransactionFiles {
-                        vfs: &vfs,
-                        identity: &identity,
-                    };
-                    Ok(execute_files(&files, &journal, record, action, &current).await)
-                })
-                .await
+                        .await;
+                    // This also drains a request whose HTTP observer failed.
+                    // A later session fences this capability even if close's
+                    // acknowledgement is itself lost.
+                    let _ = files.close().await;
+                    return outcome;
+                }
+                let vfs = BrowserFsaVfs::new(handle);
+                let files = VfsTransactionFiles {
+                    vfs: &vfs,
+                    identity: &identity,
+                };
+                Ok(execute_files(&files, &journal, record, action, &current).await)
             }
         }
     }

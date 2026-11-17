@@ -206,6 +206,8 @@ def main():
                 session = runtime.request('POST', '/api/sessions', {'name': 'Agent '+mode, 'project_id': project['id'], 'connection_id': connection['id'], 'auto_title': False}, expected=201)
                 if mode == 'local':
                     local_handle(browser, project['id'], user, folder.name, files)
+                    runtime.request('PUT', '/api/settings', {
+                        'key': f"local_bridge_cwd.{project['id']}", 'value': relative})
                     mirror.install(browser, project['id'], folder)
                 text = lambda value: base64.b64encode(value.encode()).decode()
                 runtime.request('PUT', f"/api/projects/{project['id']}/editor-recovery", {'revision': 0, 'state': {'format': 1, 'root': {'mode': mode, 'path': relative if mode == 'remote' else None}, 'selected': 'main.ts', 'files': [{'path': 'main.ts', 'document': {'text': text(DRAFT), 'saved': text(SOURCE), 'selections': [{'anchor': 0, 'head': 0}], 'collapsed': []}, 'scroll': {'top': 0, 'left': 0}, 'read_only': False}]}})

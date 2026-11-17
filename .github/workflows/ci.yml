@@ -444,6 +444,7 @@ jobs:
             /tmp/openwebide-csharp-lsp-client-*.log
             /tmp/openwebide-csharp-lsp-*.png
             /tmp/openwebide-terraform-client-*.log
+            /tmp/openwebide-project-input-client-*.log
             /tmp/openwebide-completion-popup-*.log
             /tmp/openwebide-completion-popup-*.png
             /tmp/openwebide-hover-popup-*.png

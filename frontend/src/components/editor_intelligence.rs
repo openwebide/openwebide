@@ -329,6 +329,7 @@ fn WorkspaceEditReview(
     read_only: Signal<bool>,
     #[prop(optional)] reviewed_action: Option<ActionReview>,
 ) -> impl IntoView {
+    let workspace: crate::state::workspace::WorkspaceState = expect_context();
     let edit = StoredValue::new(edit);
     let reviewed_action = StoredValue::new(reviewed_action);
     Effect::new(move |_| {
@@ -354,7 +355,11 @@ fn WorkspaceEditReview(
             })}
             <ul>{review.operations.iter().cloned().map(|operation| view! { <li>{operation}</li> }).collect_view()}</ul>
             {review.previews.iter().cloned().map(super::editor::render_inline_diff).collect_view()}
-            <Button disabled=Signal::derive(move || read_only.get() || actions.busy.get())
+            <Button disabled=Signal::derive(move || {
+                workspace.workspace_recovery.track();
+                read_only.get() || actions.busy.get()
+                    || workspace.active_project.get().is_none_or(|project| workspace.workspace_saves_blocked(project))
+            })
                 on_click=Callback::new(move |_| actions.apply_resource_workspace(approved.clone(), read_only))>{if review.command().is_some() {"Apply edits and run command"} else {"Apply file operations and editor edits"}}</Button>
         }})}
         <Show when=move || actions.resources.get().is_none()>

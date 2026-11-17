@@ -130,6 +130,8 @@ def check():
                 project = runtime.request('POST', '/api/projects', {'name': 'Automatic ' + mode, 'mode': mode, 'path': relative if mode == 'remote' else directory.name}, expected=201)
                 if mode == 'local':
                     local_handle(browser, project['id'], user, directory.name, files)
+                    runtime.request('PUT', '/api/settings', {
+                        'key': f"local_bridge_cwd.{project['id']}", 'value': relative})
                     mirror.install(browser, project['id'], directory)
                 drafts = [{'path': path, 'document': {'text': base64.b64encode(files[path].encode()).decode(), 'saved': base64.b64encode(files[path].encode()).decode(), 'selections': [{'anchor': 0, 'head': 0}], 'collapsed': []}, 'scroll': {'top': 0, 'left': 0}, 'read_only': path == 'readonly.ts'} for path in ['main.ts', 'readonly.ts']]
                 runtime.request('PUT', f"/api/projects/{project['id']}/editor-recovery", {'revision': 0, 'state': {'format': 1, 'root': {'mode': mode, 'path': relative if mode == 'remote' else None}, 'selected': 'main.ts', 'files': drafts}})

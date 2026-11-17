@@ -9,6 +9,21 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Reconcile an untouched resource transaction's native reservation after its
+  database cancellation, and retry cleanup before preparing another operation.
+  Reuse the original folder and transaction executor without running file
+  primitives or obtaining authority from a disabled language service. Keep
+  database cancellation available without a companion or folder grant.
+  Observe terminal command cleanup even without a file-publication refresh, so
+  saves and later reviews resume after the native acknowledgement.
+
+- Map disposable Local language-test folders before probing them, so earlier
+  recovery scenarios cannot block a workspace-wide discovery search. Keep the
+  native marker verification, recovery fences and behavioral assertions intact;
+  wait for initial source synchronization, keep mock-server call logs outside
+  the reviewed project sources, and retain project-input probe and companion
+  failure diagnostics in CI.
+
 - Complete the code intelligence roadmap in both project modes: independent
   server packages, snippets and navigation, reviewed file/command recovery,
   read-only agent queries, warm service reuse, declared-input freshness and

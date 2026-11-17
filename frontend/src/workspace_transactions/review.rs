@@ -157,31 +157,30 @@ impl WorkspaceTransactionExecutor {
         if !openwebide_core::workspace_transaction::valid_id(&id) || !current() {
             return Err("The workspace review identity changed".into());
         }
-        match &self.runtime {
-            Runtime::Native => {
-                self.check_new_review(&id, &current).await?;
-                let files =
-                    inspection::remote_files(self.backend.clone(), self.project, current).await?;
-                let root = files.root_identity().to_owned();
-                Ok(WorkspaceReviewFiles::new(
-                    self.clone(),
-                    id,
-                    root,
-                    ReviewRuntime::Remote(files),
-                ))
+        let executor = self.clone();
+        with_workspace_lock(super::workspace_lock_name(self.project), async move {
+            // Reconcile the previous cancellation before opening a new proof.
+            // A later recovery proof would retire this review's read capability.
+            if let Some(previous) = executor.backend.workspace_transaction(executor.project, None)
+                .await.map_err(|error| error.to_string())? {
+                executor.settle_prepared_cancellation_locked(previous, current.clone()).await?;
             }
-            Runtime::Browser { handle, lock } => {
-                let (executor, handle) = (self.clone(), handle.clone());
-                with_workspace_lock(lock.clone(), async move {
-                    executor.check_new_review(&id, &current).await?;
+            executor.check_new_review(&id, &current).await?;
+            match &executor.runtime {
+                Runtime::Native => {
+                    let files = inspection::remote_files(executor.backend.clone(), executor.project, current).await?;
+                    let root = files.root_identity().to_owned();
+                    Ok(WorkspaceReviewFiles::new(executor, id, root, ReviewRuntime::Remote(files)))
+                }
+                Runtime::Browser { handle, .. } => {
                     let host = executor.host.ok_or("Connect the paired execution host before reviewing native resource operations")?;
-                    let files = host.folder_files(executor.user, executor.project, handle, None, current.clone()).await?;
+                    let files = host.folder_files(executor.user, executor.project, handle.clone(), None, current.clone()).await?;
                     if !current() {return Err("The selected folder changed during review preparation".into())}
                     let root = files.root_identity().to_owned();
                     Ok(WorkspaceReviewFiles::new(executor, id, root, ReviewRuntime::Local(Rc::new(futures::lock::Mutex::new(files)))))
-                }).await
+                }
             }
-        }
+        }).await
     }
     async fn check_new_review(
         &self,

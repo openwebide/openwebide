@@ -127,6 +127,7 @@ fn fixture(mode: WorkspaceMode) -> (Owner, Context, Rc<FakeBackend>) {
             tickets: StoredValue::new(HashMap::new()),
             counter: StoredValue::new(0),
             settlement_checks: StoredValue::new(HashMap::new()),
+            cancellation_checks: StoredValue::new(HashMap::new()),
             original_folders: StoredValue::new(send_wrapper::SendWrapper::new(HashMap::new())),
             folder_access: RwSignal::new(HashSet::new()),
             missing_folders: RwSignal::new(HashSet::new()),
@@ -158,6 +159,81 @@ fn pending(context: Context) -> bool {
                 })
             )
         })
+}
+
+#[wasm_bindgen_test::wasm_bindgen_test]
+async fn published_terminal_commands_start_settlement_observation_in_both_modes() {
+    for mode in [WorkspaceMode::Local, WorkspaceMode::Remote] {
+        for phase in [
+            ActionPhase::Completed,
+            ActionPhase::Acknowledged,
+            ActionPhase::Cancelled,
+        ] {
+            let (owner, context, backend) = fixture(mode);
+            owner.with(|| {
+                provide_context(context.recovery);
+                WorkspaceRecoveryActions::install(
+                    context.api,
+                    context.auth,
+                    context.projects,
+                    context.workspace,
+                );
+            });
+            wait("Initial recovery check finished", || {
+                context
+                    .workspace
+                    .workspace_recovery
+                    .with_untracked(|states| {
+                        states.get(&1) == Some(&WorkspaceRecoveryStatus::Ready)
+                    })
+            })
+            .await;
+            backend
+                .language_recoveries
+                .borrow_mut()
+                .insert(1, command(phase, true));
+            // Command completion publishes its status without a file publication
+            // or an explicit recovery check. That status must start observation.
+            context.workspace.workspace_recovery.update(|states| {
+                states.insert(
+                    1,
+                    WorkspaceRecoveryStatus::from_recovery(None, Some(&command(phase, true))),
+                );
+            });
+            assert!(context.workspace.workspace_saves_blocked(1));
+            wait("Published command starts compact settlement reads", || {
+                backend.language_recovery_requests.borrow().iter().any(|(_, request)| {
+                    matches!(request, ActionRecoveryRequest::Load { id: Some(id) } if *id == "a".repeat(32))
+                })
+            }).await;
+            backend
+                .language_recoveries
+                .borrow_mut()
+                .insert(1, command(phase, false));
+            wait(
+                "Published command releases saves after native settlement",
+                || {
+                    context
+                        .workspace
+                        .workspace_recovery
+                        .with_untracked(|states| {
+                            states.get(&1) == Some(&WorkspaceRecoveryStatus::Ready)
+                        })
+                },
+            )
+            .await;
+            assert!(!context.workspace.workspace_saves_blocked(1));
+            assert!(
+                backend
+                    .language_recovery_requests
+                    .borrow()
+                    .iter()
+                    .all(|(_, request)| { matches!(request, ActionRecoveryRequest::Load { .. }) }),
+                "Settlement observation attempted a command mutation"
+            );
+            owner.cleanup();
+        }
+    }
 }
 
 #[wasm_bindgen_test::wasm_bindgen_test]

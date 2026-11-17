@@ -34,6 +34,14 @@ mod settlement;
 #[cfg(all(test, target_arch = "wasm32"))]
 mod tests;
 
+struct CancellationCheck {
+    account: u64,
+    generation: String,
+    ticket: u64,
+    root: send_wrapper::SendWrapper<EditorRoot>,
+    abort: futures::future::AbortHandle,
+}
+
 #[derive(Clone, Copy)]
 struct Context {
     api: Api,
@@ -46,6 +54,7 @@ struct Context {
     tickets: StoredValue<HashMap<i64, u64>>,
     counter: StoredValue<u64>,
     settlement_checks: StoredValue<HashMap<i64, futures::future::AbortHandle>>,
+    cancellation_checks: StoredValue<HashMap<i64, CancellationCheck>>,
     original_folders:
         StoredValue<send_wrapper::SendWrapper<HashMap<i64, web_sys::FileSystemDirectoryHandle>>>,
     folder_access: RwSignal<HashSet<i64>>,
@@ -54,6 +63,87 @@ struct Context {
     host: Option<crate::project_host::ProjectHost>,
 }
 impl Context {
+    fn settle_prepared_cancellation(
+        self,
+        project: Project,
+        root: EditorRoot,
+        account: u64,
+        ticket: u64,
+        state: &openwebide_core::workspace_transaction::WorkspaceTransactionState,
+    ) {
+        if state.journal.plan.version != 2
+            || state.journal.progress != TransactionProgress::prepared_cancellation()
+            || !self.current(&project, &root, account, ticket)
+        {
+            return;
+        }
+        let generation = state.journal.generation.clone();
+        if self.cancellation_checks.with_value(|checks| {
+            checks.get(&project.id).is_some_and(|check| {
+                check.account == account
+                    && check.generation == generation
+                    && !check.root.changed(&root)
+            })
+        }) {
+            return;
+        }
+        let Some(workspace) = Workspace::for_project(self.api, self.projects, project.id) else {
+            return;
+        };
+        let Some(user) = self.auth.user.get_untracked().map(|user| user.id.get()) else {
+            return;
+        };
+        let Ok(executor) = WorkspaceTransactionExecutor::select(
+            self.api.with_value(Clone::clone),
+            workspace,
+            user,
+            project.id,
+        ) else {
+            return;
+        };
+        let id = project.id;
+        let (abort, registration) = futures::future::AbortHandle::new_pair();
+        self.cancellation_checks.update_value(|checks| {
+            if let Some(previous) = checks.insert(
+                id,
+                CancellationCheck {
+                    account,
+                    generation: generation.clone(),
+                    ticket,
+                    root: send_wrapper::SendWrapper::new(root.clone()),
+                    abort,
+                },
+            ) {
+                previous.abort.abort();
+            }
+        });
+        let state = state.clone();
+        spawn_local(async move {
+            let _ = futures::future::Abortable::new(
+                async move {
+                    let current: Rc<dyn Fn() -> bool> =
+                        Rc::new(move || self.scope_current(&project, &root, account));
+                    // Database cancellation remains available without a companion or
+                    // folder grant. A later check or preparation retries native cleanup.
+                    let _ = executor
+                        .with_host(self.host)
+                        .settle_prepared_cancellation(state, current)
+                        .await;
+                },
+                registration,
+            )
+            .await;
+            self.cancellation_checks.try_update_value(|checks| {
+                if checks.get(&id).is_some_and(|check| {
+                    check.account == account
+                        && check.generation == generation
+                        && check.ticket == ticket
+                }) {
+                    checks.remove(&id);
+                }
+            });
+        });
+    }
     async fn recovered(
         self,
         id: i64,
@@ -127,12 +217,15 @@ impl Context {
         ticket
     }
     fn current(self, project: &Project, root: &EditorRoot, account: u64, ticket: u64) -> bool {
-        self.auth.generation.try_get_untracked() == Some(account)
-            && self.auth.user.try_with_untracked(Option::is_some) == Some(true)
+        self.scope_current(project, root, account)
             && self
                 .tickets
                 .try_with_value(|tickets| tickets.get(&project.id) == Some(&ticket))
                 == Some(true)
+    }
+    fn scope_current(self, project: &Project, root: &EditorRoot, account: u64) -> bool {
+        self.auth.generation.try_get_untracked() == Some(account)
+            && self.auth.user.try_with_untracked(Option::is_some) == Some(true)
             && self.projects.project(project.id).is_some_and(|project| {
                 !root.changed(&EditorRoot::for_project(
                     &project,
@@ -176,6 +269,9 @@ impl Context {
                 let action=backend.language_action_recovery(id,&openwebide_core::plugins::languages::intelligence::actions::ActionRecoveryRequest::Load {id:None}).await?;
                 if !self.current(&project, &root, account, ticket) {
                     return Err("The workspace changed while checking recovery".into());
+                }
+                if let Some(state) = &workspace {
+                    self.settle_prepared_cancellation(project.clone(), root.clone(), account, ticket, state);
                 }
                 if let Some(state) = &workspace
                     && state.journal.progress.phase == TransactionPhase::Committed
@@ -406,8 +502,11 @@ impl Context {
         );
         spawn_local(async move {
             let mut phase = phase;
-            let current: Rc<dyn Fn() -> bool> =
-                Rc::new(move || self.current(&project, &root, account, ticket));
+            let current: Rc<dyn Fn() -> bool> = {
+                let project = project.clone();
+                let root = root.clone();
+                Rc::new(move || self.current(&project, &root, account, ticket))
+            };
             let result = async {
                 lock.wait_for_saves(|| current()).await?;
                 let backend = self.api.with_value(Clone::clone);
@@ -435,6 +534,13 @@ impl Context {
                         )
                         .await
                         .map_err(|error| error.to_string())?;
+                    if let Ok(Some(cancelled)) = backend
+                        .workspace_transaction(id, Some(&transaction)).await
+                    {
+                        self.settle_prepared_cancellation(
+                            project.clone(), root.clone(), account, ticket, &cancelled,
+                        );
+                    }
                     return Ok(());
                 }
                 if self
@@ -571,6 +677,7 @@ impl WorkspaceRecoveryActions {
             tickets: StoredValue::new(HashMap::new()),
             counter: StoredValue::new(0),
             settlement_checks: StoredValue::new(HashMap::new()),
+            cancellation_checks: StoredValue::new(HashMap::new()),
             original_folders: StoredValue::new(send_wrapper::SendWrapper::new(HashMap::new())),
             folder_access: RwSignal::new(HashSet::new()),
             missing_folders: RwSignal::new(HashSet::new()),
@@ -579,6 +686,11 @@ impl WorkspaceRecoveryActions {
         };
         let account = StoredValue::new(auth.generation.get_untracked());
         on_cleanup(move || {
+            ctx.cancellation_checks.try_with_value(|checks| {
+                for check in checks.values() {
+                    check.abort.abort();
+                }
+            });
             ctx.settlement_checks.try_with_value(|checks| {
                 for check in checks.values() {
                     check.abort();
@@ -596,6 +708,11 @@ impl WorkspaceRecoveryActions {
             let generation = auth.generation.get();
             if account.get_value() != generation {
                 account.set_value(generation);
+                ctx.cancellation_checks.update_value(|checks| {
+                    for (_, check) in checks.drain() {
+                        check.abort.abort();
+                    }
+                });
                 ctx.settlement_checks.update_value(|checks| {
                     for (_, check) in checks.drain() {
                         check.abort();
@@ -618,6 +735,7 @@ impl WorkspaceRecoveryActions {
                 ctx.check(id);
             }
         });
+        ctx.observe_published_command_settlements();
         let actions = Self {
             check: Callback::new(move |id| ctx.check(id)),
             recover: Callback::new(move |id| ctx.recover(id)),

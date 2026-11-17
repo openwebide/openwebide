@@ -65,9 +65,9 @@ window.fetch=async function(...args) {
  if(trace){try{const body=JSON.parse(typeof args[1]?.body==='string'?args[1].body:await args[0].clone().text());
    if(native){const input=body.input??body.selection?.input;Object.assign(trace,{input,query:input?.query,path:input?.path,request:input?.request,revision:input?.revision});
      resourceProbe.native.push(trace);}
-   else if(folder) Object.assign(trace,{operation:body.action?.operation,fileOperation:body.action?.action?.operation,session:body.action?.session,sequence:body.action?.sequence,hasGrant:/^[a-f0-9]{32}$/.test(body.action?.request?.language_grant??'')});
+   else if(folder) Object.assign(trace,{operation:body.action?.operation,fileOperation:body.action?.action?.operation,session:body.action?.session,sequence:body.action?.sequence,id:body.action?.request?.id,generation:body.action?.request?.generation,executionAction:body.action?.request?.action,hasGrant:/^[a-f0-9]{32}$/.test(body.action?.request?.language_grant??'')});
    else if(grant) Object.assign(trace,{context:body.context,packages:body.plugins?.map(plugin=>plugin.digest)});
-   else Object.assign(trace,{operation:pathname.endsWith('/execute')?'execute':'begin',id:body.id,body:pathname.endsWith('/execute')?undefined:body,hasGrant:/^[a-f0-9]{32}$/.test(body.language_grant??'')});
+   else Object.assign(trace,{operation:pathname.endsWith('/execute')?'execute':'begin',id:body.id,generation:body.generation,executionAction:body.action,body:pathname.endsWith('/execute')?undefined:body,hasGrant:/^[a-f0-9]{32}$/.test(body.language_grant??'')});
    resourceProbe.timeline.push(trace);}catch{}}
  const response=await resourceFetch.apply(this,args);
  if(trace){try{const data=await response.clone().json();Object.assign(trace,{completed:++resourceProbe.clock,status:response.status,error:data.error,server:data.server,result:folder?data.result:undefined,analysisContext:native?data.context:undefined,analysisResult:native?data.result:undefined,grantDigests:grant?Object.keys(data):undefined,openedSession:folder?data.session:undefined,titles:Array.isArray(data.result)?data.result.map(x=>x.title):undefined});}catch{}}

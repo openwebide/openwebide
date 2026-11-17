@@ -216,6 +216,8 @@ def check():
                         'revision': binding['revision'] if binding else None})
                 if mode == 'local':
                     local_handle(browser, project['id'], user, folder.name, {'main.notes': SOURCE})
+                    runtime.request('PUT', '/api/settings', {
+                        'key': f"local_bridge_cwd.{project['id']}", 'value': relative})
                     mirror.install(browser, project['id'], folder)
                 encoded = base64.b64encode(SOURCE.encode()).decode()
                 runtime.request('PUT', f"/api/projects/{project['id']}/editor-recovery", {'revision': 0,

@@ -291,6 +291,19 @@ def revoke_admission(runtime, browser, proxy, user, project, folder, packages, o
     restore_owner_authority(runtime, project, packages, changed)
     browser.call('POST', '/url', {'url': runtime.url + '/'})
     wait('fresh retry preserves the original draft', lambda: RESOURCE['source'](browser) == original)
+    wait('original cancelled native reservation cleanup acknowledged', lambda: script(browser, '''
+        return resourceProbe.timeline.some(row=>row.operation==='execute'
+          &&row.id===arguments[0]&&row.generation===arguments[1]
+          &&row.executionAction==='recover'&&row.status===200&&!row.hasGrant);
+    ''', prepared['journal']['id'], prepared['journal']['generation']))
+    unaccepted(runtime, user, project, runtime.request('GET', transactions))
+    assert RESOURCE['source'](browser) == original and not (folder / 'created.notes').exists()
+    # Native cleanup can reply before the reloaded editor/provider scope settles.
+    # Let its active-document synchronization finish before a foreground retry.
+    wait('fresh retry active document synchronized', lambda: script(browser, '''
+        return resourceProbe.native.some(row=>row.query.operation==='synchronize'
+          &&row.input.path==='main.notes'&&row.status===200);
+    '''))
     print(json.dumps({'mode': project['mode'], 'command': command,
         'boundary': 'actual_initial_native_worker_admission_callback', 'admission_status': row['status'],
         'version_replacement': replacement is not None,
@@ -431,6 +444,8 @@ def check(scenario):
                             'revision': binding['revision'] if binding else None})
                     if mode == 'local':
                         local_handle(browser, project['id'], user, folder.name, baseline)
+                        runtime.request('PUT', '/api/settings', {
+                            'key': f"local_bridge_cwd.{project['id']}", 'value': relative})
                         mirror.install(browser, project['id'], folder,
                             files=['main.notes', 'unrelated.notes', 'created.notes'], native_view=True)
                     drafts = []

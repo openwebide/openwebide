@@ -358,10 +358,11 @@ impl Namespace {
         self.access(true, |parent, anchor, connection| {
             let owners = read(connection, version(connection)?)?;
             self.check(connection, &owners, &folder, Some(permit))?;
-            let owner = owners
-                .iter()
-                .find(|o| o.same(&permit.owner))
-                .ok_or(PENDING)?;
+            let Some(owner) = owners.iter().find(|o| o.same(&permit.owner)) else {
+                // A terminal cancellation may never have reached enrollment,
+                // or its original cleanup acknowledgement may have been lost.
+                return Ok(());
+            };
             if !activity.file_recovery && owner.format == 2 && owner.files != FileStage::Finished {
                 let mut completed = owner.clone();
                 completed.files = FileStage::Finished;

@@ -27,6 +27,7 @@ pub struct ProjectHost {
     local: StoredValue<HashMap<i64, LocalRepository>, LocalStorage>,
     epoch: StoredValue<Rc<Cell<u64>>, LocalStorage>,
     revision: RwSignal<u64>,
+    cancelled_preparations: StoredValue<HashMap<i64, (String, String)>>,
 }
 
 impl ProjectHost {
@@ -39,6 +40,7 @@ impl ProjectHost {
         let local = StoredValue::new_local(HashMap::new());
         let epoch = StoredValue::new_local(Rc::new(Cell::new(0u64)));
         let revision = RwSignal::new(0_u64);
+        let cancelled_preparations = StoredValue::new(HashMap::new());
         let previous = StoredValue::new_local(None);
         Effect::new(move |_| {
             let identity = (
@@ -59,6 +61,7 @@ impl ProjectHost {
             );
             if previous.with_value(|previous| previous.as_ref() != Some(&identity)) {
                 local.update_value(HashMap::clear);
+                cancelled_preparations.update_value(HashMap::clear);
                 epoch.with_value(|epoch| epoch.set(epoch.get().wrapping_add(1)));
                 revision.set(epoch.with_value(|epoch| epoch.get()));
             }
@@ -72,7 +75,12 @@ impl ProjectHost {
             local,
             epoch,
             revision,
+            cancelled_preparations,
         }
+    }
+
+    pub(crate) fn cancelled_preparations(self) -> StoredValue<HashMap<i64, (String, String)>> {
+        self.cancelled_preparations
     }
 
     /// Mode selection for unattended work stays at the host capability boundary.
