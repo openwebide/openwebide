@@ -3,11 +3,21 @@
 All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-Main builds publish a rolling nightly release; the last numbered prerelease is
+Scheduled nightly builds publish a rolling release; the last numbered prerelease is
 `1.0.0-alpha.6`. See
 [docs/roadmap.md](docs/roadmap.md) for what is still ahead.
 
 ## [Unreleased]
+
+- Publish nightlies at 3:00 a.m. Central instead of on every main push, skipping
+  builds when the head matches the previous successful nightly. Keep ordinary CI
+  on main pushes, version-tag releases and optional manual publication.
+
+- Reuse Linux-compiled plugin WASM in Intel and Apple Silicon companion builds,
+  verifying its source commit, checksum and offline operation on each native host.
+
+- Include the code intelligence guides in the project website navigation and
+  validate the actual documentation snapshot before compiling its playground.
 
 - Serialize overlapping native SQLite access with active transactions, including
   rollback before releasing waiting readers when a transaction is cancelled.

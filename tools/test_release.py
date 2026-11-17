@@ -14,8 +14,8 @@ from pathlib import Path
 import release
 
 
-def workflow_script(step_name):
-    workflow = (release.ROOT / '.github/workflows/release.yml').read_text()
+def workflow_script(step_name, filename='release.yml'):
+    workflow = (release.ROOT / '.github/workflows' / filename).read_text()
     step = workflow.split(f'      - name: {step_name}\n', 1)[1]
     lines = step.split('        run: |\n', 1)[1].splitlines()
     script = []
@@ -215,19 +215,60 @@ if os.environ.get('GH_MISSING') == 'true' and (args[:2] == ['api', 'repos/openwe
         self.assertIn('needs: [validate, checks, images, assets]', job)
         self.assertIn('contents: write', job)
 
-    def test_rolling_builds_stamp_macos_bridges_and_are_not_gated_off(self):
-        workflow = (release.ROOT / '.github/workflows/release.yml').read_text()
-
-        def job(name):
-            return re.split(r'\n  [a-z-]+:\n', workflow.split(f'\n  {name}:\n', 1)[1], maxsplit=1)[0]
-
-        bridges = job('macos-bridges')
-        self.assertIn('ROLLING: ${{ needs.validate.outputs.rolling }}', bridges)
-        self.assertIn('if [ "$ROLLING" = true ]; then python3 tools/release.py stamp-nightly', bridges)
-        for name in ['macos-bridges', 'assets']:
-            self.assertNotRegex(job(name), r'(?m)^    if:', name)
-        self.assertIn('if: needs.validate.outputs.rolling == \'true\'', job('publish-nightly'))
-        self.assertIn('macos-bridges', job('assets').split('needs:', 1)[1].splitlines()[0])
+    def test_native_companion_builds_receive_the_bundle_and_correct_version(self):
+        script = workflow_script('Build and smoke-test native bridge', 'ci.yml')
+        tools = self.root / 'tools'
+        tools.mkdir()
+        (tools / 'release.py').write_text(Path(release.__file__).read_text())
+        (self.root / 'LICENSE').write_text('Fixture license')
+        (self.root / 'docs/execution-bridge.md').write_text('Fixture guide')
+        bundle = self.root / 'portable-defaults.json'
+        bundle.write_text('{"artifacts":[]}')
+        bin_dir = self.root / 'bin'
+        bin_dir.mkdir()
+        log = self.root / 'commands.jsonl'
+        cargo = bin_dir / 'cargo'
+        cargo.write_text('''#!/usr/bin/env python3
+import json, os, sys, tomllib
+from pathlib import Path
+version = tomllib.loads(Path('Cargo.toml').read_text())['workspace']['package']['version']
+with open(os.environ['COMMAND_LOG'], 'a') as stream:
+    stream.write(json.dumps({'args': sys.argv[1:], 'version': version,
+                             'bundle': os.environ['OPENWEBIDE_BUNDLED_ARTIFACTS']}) + '\\n')
+if sys.argv[1] == 'build':
+    binary = Path('target/release/openwebide-bridge')
+    binary.parent.mkdir(parents=True, exist_ok=True)
+    binary.write_text('#!/bin/sh\\nexit 0\\n')
+    binary.chmod(0o755)
+''')
+        cargo.chmod(0o755)
+        commit = 'c' * 40
+        target = next(iter(release.TARGETS))
+        for rolling in (False, True):
+            with self.subTest(rolling=rolling):
+                if rolling:
+                    self.set_version('1.0.0-nightly')
+                output = self.root / str(rolling)
+                env = os.environ | {
+                    'PATH': str(bin_dir) + os.pathsep + os.environ['PATH'],
+                    'COMMAND_LOG': str(log), 'RUNNER_TEMP': str(output),
+                    'RELEASE_TARGET': target, 'BUILD_COMMIT': commit,
+                    'OPENWEBIDE_BUNDLED_ARTIFACTS': str(bundle),
+                    'ROLLING': str(rolling).lower(),
+                }
+                log.unlink(missing_ok=True)
+                subprocess.run(['bash', '-e', '-c', script], cwd=self.root, env=env,
+                               capture_output=True, text=True, check=True)
+                expected = '1.0.0-nightly+sha.' + commit[:12] if rolling else '1.0.0'
+                calls = [json.loads(line) for line in log.read_text().splitlines()]
+                self.assertTrue(calls)
+                self.assertTrue(all(call['version'] == expected for call in calls))
+                self.assertTrue(all(call['bundle'] == str(bundle) for call in calls))
+                label = 'nightly' if rolling else 'v1.0.0'
+                archive = output / 'assets' / f'openwebide-bridge-{label}-{target}.tar.gz'
+                with tarfile.open(archive) as packaged:
+                    binary = next(item for item in packaged if item.name.endswith('/openwebide-bridge'))
+                    self.assertEqual(binary.mode, 0o755)
 
     def test_publish_commands_do_not_promote_prereleases_to_latest(self):
         workflow = (release.ROOT / '.github/workflows/release.yml').read_text()

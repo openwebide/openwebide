@@ -8,6 +8,7 @@
 - Using Open WebIDE:
     - Overview: docs/using.md
     - Editor: docs/editor.md
+    - Code intelligence: docs/code-intelligence.md
     - Git changes and history: docs/git.md
     - Chat commands and goals: docs/chat-controls.md
     - Agent questions: docs/agent-questions.md
@@ -40,6 +41,7 @@
     - Design system: docs/design-system.md
     - Editor performance: docs/editor-performance.md
     - Editor checkpoint history: docs/editor-performance/editor-roadmap-checkpoint-history.md
+    - Code intelligence checkpoint history: docs/code-intelligence/checkpoint-history.md
     - Language service measurements: docs/code-intelligence/service-measurements.md
     - Project website: docs/project-site.md
 - Project:

@@ -2,13 +2,20 @@ name: Release
 
 on:
   push:
-    branches: [main]
     tags: ['v*']
-  # Build and smoke-test artifacts without publishing a release or registry image.
+  schedule:
+    - cron: '0 3 * * *'
+      timezone: America/Chicago
   workflow_dispatch:
+    inputs:
+      publish-nightly:
+        description: Force nightly publication from main (otherwise verification only)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -17,7 +24,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      build: ${{ steps.plan.outputs.build }}
+      publish: ${{ steps.plan.outputs.publish }}
+      rolling: ${{ steps.plan.outputs.rolling }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check whether release work is needed
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MANUAL_PUBLISH: ${{ inputs.publish-nightly || false }}
+        run: python3 tools/plan_release.py >> "$GITHUB_OUTPUT"
+      - name: Record release decision
+        env:
+          REASON: ${{ steps.plan.outputs.reason }}
+        run: printf '%s\n' "$REASON" >> "$GITHUB_STEP_SUMMARY"
+
   validate:
+    needs: plan
+    if: needs.plan.outputs.build == 'true'
     runs-on: ubuntu-24.04
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -35,9 +63,9 @@ jobs:
         id: version
         env:
           RELEASE_TAG: ${{ github.ref_name }}
-          PUBLISH: ${{ github.event_name == 'push' }}
+          PUBLISH: ${{ needs.plan.outputs.publish }}
           BUILD_COMMIT: ${{ github.sha }}
-          ROLLING: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          ROLLING: ${{ needs.plan.outputs.rolling }}
         run: |
           if [ "$ROLLING" = true ]; then
             python3 tools/release.py stamp-nightly --commit "$BUILD_COMMIT"
@@ -58,6 +86,9 @@ jobs:
   checks:
     needs: validate
     uses: ./.github/workflows/ci.yml
+    with:
+      package-companions: true
+      rolling: ${{ needs.validate.outputs.rolling == 'true' }}
 
   images:
     needs: validate
@@ -153,48 +184,8 @@ jobs:
           path: ${{ runner.temp }}/digests/*
           if-no-files-found: error
 
-  macos-bridges:
-    needs: validate
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-15-intel
-            target: x86_64-apple-darwin
-          - runner: macos-15
-            target: aarch64-apple-darwin
-    runs-on: ${{ matrix.runner }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: 1.98.1
-          targets: wasm32-wasip2
-      - uses: Swatinem/rust-cache@v2
-      - name: Build and smoke-test native bridge
-        env:
-          RELEASE_TARGET: ${{ matrix.target }}
-          OPENWEBIDE_BUNDLED_ARTIFACTS: ${{ runner.temp }}/bundled-plugins.json
-          ROLLING: ${{ needs.validate.outputs.rolling }}
-          BUILD_COMMIT: ${{ github.sha }}
-        run: |
-          if [ "$ROLLING" = true ]; then python3 tools/release.py stamp-nightly --commit "$BUILD_COMMIT"; fi
-          wasi_sdk_path=$(python3 tools/install_wasi_sdk.py "$RUNNER_TEMP/openwebide-wasi-sdk")
-          export WASI_SDK_PATH="$wasi_sdk_path"
-          export WASI_SYSROOT="$wasi_sdk_path/share/wasi-sysroot"
-          cargo test -p openwebide-plugin-runtime --release --lib --locked build::process_tests -- --test-threads=1
-          cargo run -p openwebide-plugin-runtime --bin openwebide-bundle-plugins --release --locked -- bridge/bundled/plugins.json "$OPENWEBIDE_BUNDLED_ARTIFACTS"
-          cargo build -p openwebide-bridge --features bundled-defaults --release --locked
-          "target/release/openwebide-bridge" --help
-          python3 tools/release.py package-bridge --target "$RELEASE_TARGET" --binary "target/release/openwebide-bridge" --output "$RUNNER_TEMP/assets"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: bridge-${{ matrix.target }}
-          path: ${{ runner.temp }}/assets/*.tar.gz
-          if-no-files-found: error
-
   assets:
-    needs: [validate, images, macos-bridges]
+    needs: [validate, images, checks]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -305,7 +296,7 @@ jobs:
         run: |
           notes="$RUNNER_TEMP/nightly-notes.md"
           cat > "$notes" <<EOF
-          Rolling build of \`$BUILD_COMMIT\` from \`main\`. Each successful main build replaces these assets.
+          Rolling build of \`$BUILD_COMMIT\` from \`main\`. Successful scheduled or manually requested nightlies replace these assets.
 
           - Image: \`ghcr.io/$GH_REPO:nightly\` (this build: \`ghcr.io/$GH_REPO:sha-$BUILD_COMMIT\`)
           - Changes: [Unreleased changelog](https://github.com/$GH_REPO/blob/$BUILD_COMMIT/CHANGELOG.md#unreleased)

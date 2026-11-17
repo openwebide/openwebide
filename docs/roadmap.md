@@ -1384,13 +1384,19 @@ archive/checksum contracts, workflow lint and Compose configuration checks cover
 this preparation. Nightly images and release assets are published from main and the GHCR package
 is public; release-host verification remains outstanding.
 Documentation now has [section overviews](index.md), first-session/workspace guides
-and curated site navigation. Complete the remaining task guides and installation
-walkthroughs against the final app before public launch.
+and curated site navigation, with coverage checked against the actual documentation
+snapshot before the website playground compiles. Complete the remaining task
+guides and installation walkthroughs against the final app before public launch.
 
 - **Release reliability:** qualify the shared browser-app artifact and parallel
   production contract jobs on hosted runners. Keep complete both-mode coverage,
   measure the resulting feedback time and resolve failures before claiming a
   release is successful; local checks alone do not establish publication.
+  Native companion packaging now reuses the shared compiled plugin WASM with
+  commit/checksum and offline-host validation. Measure the hosted improvement;
+  Linux image build reuse and Cargo cache retention remain follow-up work.
+  Nightlies run at 3:00 a.m. Central and skip unchanged successful heads; main
+  pushes retain ordinary CI without triggering release packaging.
 - **Release gates:** finish the hardening/editor dependencies and the Remaining
   manual verification checks above. Do not declare 1.0 while both-mode contracts,
   device checks or known responsiveness issues remain unresolved.
@@ -1422,7 +1428,7 @@ walkthroughs against the final app before public launch.
   notes, archives, install files and checksums using `GITHUB_TOKEN`. Verify anonymous
   pulls and clean installs on both architectures for the stable image.
   Shared CI checks generated Quadlet services against the `stable` image channel.
-  Main builds publish the rolling `nightly` image and release assets; nightly publication does not complete
+  Scheduled nightly builds publish the rolling image and release assets; nightly publication does not complete
   the stable-release gates.
 - **Public launch:** update the [site landing page](project-site.md) and pre-release
   documentation wording for the actual release, then prepare community announcements

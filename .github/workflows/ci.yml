@@ -1,9 +1,25 @@
 name: CI
 
 on:
+  push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
   workflow_call:
+    inputs:
+      package-companions:
+        description: Build and smoke-test native companion archives for Release
+        type: boolean
+        default: false
+      rolling:
+        description: Stamp native companion versions for a main-branch nightly
+        type: boolean
+        default: false
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  # Complete active checks and retain their caches; coalesce pending pushes.
+  cancel-in-progress: false
 
 env:
   CARGO_TERM_COLOR: always
@@ -22,6 +38,8 @@ jobs:
       - name: Validate release tooling and install configuration
         run: |
           python3 -m unittest discover -s tools -p 'test_release.py'
+          python3 -m unittest discover -s tools -p 'test_compiled_plugins.py'
+          python3 -m unittest discover -s tools -p 'test_plan_release.py'
           python3 -m unittest discover -s tools -p 'test_wasi_sdk.py'
           python3 -m unittest discover -s tools -p 'test_setup_*_language_server.py'
           python3 -m unittest discover -s tools -p 'test_language_process_observation.py'
@@ -133,11 +151,57 @@ jobs:
           # the ordinary native contract suite below still uses the debug host.
           cargo test -p openwebide-bridge --lib --release --features bundled-defaults bundled_tests
 
-      - name: Retain compiled defaults for production browser checks
+      - name: Bind portable defaults to this source commit
+        run: python3 tools/compiled_plugins.py seal "$RUNNER_TEMP/bundled-plugins.json" --commit "$GITHUB_SHA"
+
+      - name: Retain compiled defaults for browser and native hosts
         uses: actions/upload-artifact@v4
         with:
           name: compiled-default-plugins
-          path: ${{ runner.temp }}/bundled-plugins.json
+          path: ${{ runner.temp }}/bundled-plugins*.json
+          if-no-files-found: error
+
+  macos-bridges:
+    if: inputs.package-companions
+    needs: default-plugins
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+          - runner: macos-15
+            target: aarch64-apple-darwin
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.98.1
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: compiled-default-plugins
+          path: ${{ runner.temp }}/openwebide-defaults
+      - name: Verify portable default components
+        run: python3 tools/compiled_plugins.py verify "$RUNNER_TEMP/openwebide-defaults/bundled-plugins.json" --commit "$GITHUB_SHA"
+      - name: Build and smoke-test native bridge
+        env:
+          RELEASE_TARGET: ${{ matrix.target }}
+          OPENWEBIDE_BUNDLED_ARTIFACTS: ${{ runner.temp }}/openwebide-defaults/bundled-plugins.json
+          ROLLING: ${{ inputs.rolling }}
+          BUILD_COMMIT: ${{ github.sha }}
+        run: |
+          if [ "$ROLLING" = true ]; then python3 tools/release.py stamp-nightly --commit "$BUILD_COMMIT"; fi
+          cargo test -p openwebide-plugin-runtime --release --lib --locked build::process_tests -- --test-threads=1
+          cargo test -p openwebide-bridge --lib --release --locked --features bundled-defaults bundled_tests
+          cargo build -p openwebide-bridge --features bundled-defaults --release --locked
+          "target/release/openwebide-bridge" --help
+          python3 tools/release.py package-bridge --target "$RELEASE_TARGET" --binary "target/release/openwebide-bridge" --output "$RUNNER_TEMP/assets"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bridge-${{ matrix.target }}
+          path: ${{ runner.temp }}/assets/*.tar.gz
           if-no-files-found: error
 
   plugin-runtime:
@@ -330,6 +394,9 @@ jobs:
         with:
           name: compiled-default-plugins
           path: ${{ runner.temp }}/openwebide-defaults
+
+      - name: Verify portable default components
+        run: python3 tools/compiled_plugins.py verify "$RUNNER_TEMP/openwebide-defaults/bundled-plugins.json" --commit "$GITHUB_SHA"
 
       - name: Build release execution host with compiled defaults
         env:

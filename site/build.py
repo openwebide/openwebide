@@ -87,6 +87,22 @@ def build_playground(destination):
     subprocess.run(["trunk", "build", "--release", "--config", str(ROOT / "frontend/playground/Trunk.toml"), "--dist", str(destination), "--public-url", "./"], cwd=ROOT, env=env, check=True)
 
 
+def prepare_documentation(content):
+    shutil.copytree(ROOT / "docs", content / "docs")
+    credits = content / "docs/open-source-software.md"
+    credits.write_text(credits.read_text().replace("<!-- dependency-inventory -->", render_credits(ROOT)))
+    for name in ("README.md", "CHANGELOG.md", "LICENSE"):
+        shutil.copy2(ROOT / name, content / name)
+    shutil.copy2(ROOT / "site/index.md", content / "index.md")
+    # MkDocs treats README.md as an index; reserve index.md for the homepage.
+    (content / "README.md").rename(content / "getting-started.md")
+    for path in content.rglob("*.md"):
+        path.write_text(rewrite_readme_links(path.read_text()))
+    return validate_navigation(
+        yaml.safe_load((ROOT / "site/navigation.yml").read_text()), content
+    )
+
+
 def build(output, site_url, playground_dist=None):
     output = output.resolve()
     marker = output / ".openwebide-site"
@@ -95,18 +111,13 @@ def build(output, site_url, playground_dist=None):
         raise ValueError(f"Refusing to replace non-site output directory: {output}")
     with tempfile.TemporaryDirectory(prefix="openwebide-docs-") as temporary:
         staging = Path(temporary)
+        content = staging / "content"
+        navigation = prepare_documentation(content)
         if playground_dist is None:
             playground_dist = staging / "playground"
             build_playground(playground_dist)
         if not (playground_dist / "index.html").is_file() or not list(playground_dist.glob("*.wasm")):
             raise ValueError("The panel playground must be a compiled Rust/WASM bundle")
-        content = staging / "content"
-        shutil.copytree(ROOT / "docs", content / "docs")
-        credits = content / "docs/open-source-software.md"
-        credits.write_text(credits.read_text().replace("<!-- dependency-inventory -->", render_credits(ROOT)))
-        for name in ("README.md", "CHANGELOG.md", "LICENSE"):
-            shutil.copy2(ROOT / name, content / name)
-        shutil.copy2(ROOT / "site/index.md", content / "index.md")
         shutil.copytree(ROOT / "site/assets", content / "assets")
         shutil.copytree(playground_dist, content / "tools/panel-playground")
         (content / "fonts").mkdir()
@@ -116,14 +127,6 @@ def build(output, site_url, playground_dist=None):
         (content / "frontend/pwa").mkdir(parents=True)
         shutil.copy2(ROOT / "frontend/pwa/favicon.svg", content / "frontend/pwa/favicon.svg")
         (content / "assets/shared.css").write_text(shared_styles())
-        # MkDocs treats README.md as an index; reserve index.md for the homepage.
-        (content / "README.md").rename(content / "getting-started.md")
-        for path in content.rglob("*.md"):
-            path.write_text(rewrite_readme_links(path.read_text()))
-
-        navigation = validate_navigation(
-            yaml.safe_load((ROOT / "site/navigation.yml").read_text()), content
-        )
         config = {
             "site_name": "Open WebIDE",
             "site_description": "A self-hosted browser IDE for coding with your own models.",

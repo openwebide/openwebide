@@ -1,16 +1,22 @@
 # Releases and upgrades
 
-Every successful `main` build updates the rolling `nightly` image and replaces the
+Nightlies run daily at **3:00 a.m. Central** (`America/Chicago`, including daylight
+saving changes). When `main` has moved since the previous successful nightly, the
+release workflow builds, checks and updates the rolling `nightly` image and replaces the
 assets on [the `nightly` release](https://github.com/openwebide/openwebide/releases/tag/nightly):
 Compose and Quadlet files, Linux/macOS bridge archives and checksums. There are no
 numbered prereleases; `preview` and `stable` are published from version tags, and none
 exists yet. The GHCR package is public, so pulling needs no registry authentication.
 The remaining stable-release and installation checks are tracked on the roadmap.
 
-Releases run one at a time per branch or tag. A new `main` push leaves the running
-release intact and replaces any pending build with the newer commit. This lets
-passing builds reach publication during active development without building a
-backlog of intermediate commits. The `nightly` image advances only after the
+An unchanged head skips builds and publication after a small history check.
+Failed runs do not count as successful nightlies; a successful manual verification
+without publication does not suppress the next nightly. Manual runs can force a
+rebuild, with an explicit option to publish a nightly from `main`.
+
+Releases run one at a time per branch or tag, completing active work and retaining
+only the newest pending run. Ordinary main pushes run CI without starting release
+packaging. The `nightly` image advances only after the
 complete test suite, both platform image checks and the macOS bridge and asset
 jobs pass. The image is promoted before the `nightly` tag and release assets are
 updated, so if that last step fails the image has already advanced and the
@@ -207,15 +213,15 @@ want to control upgrade timing.
 
 | Source | Rolling image tag | Pinned image tag | GitHub Release |
 | --- | --- | --- | --- |
-| Successful `main` build | `nightly` | `sha-<full-commit-sha>` | Rolling `nightly` prerelease (assets replaced each build) |
+| Successful scheduled or requested nightly | `nightly` | `sha-<full-commit-sha>` | Rolling `nightly` prerelease (assets replaced each build) |
 | `v1.0.0-rc.1` tag | `preview` | `v1.0.0-rc.1` | Prerelease |
 | `v1.0.0` tag | `stable` | `v1.0.0` | Stable |
 
-Every push to `main` starts the Release workflow, including the shared CI checks
-and native amd64/arm64 image smoke tests. It publishes the tested image to `nightly`
-and a commit-specific tag. A running release finishes; newer pushes replace only
-the pending run. Failed
-checks leave the published channel unchanged. About displays the build commit;
+Main pushes and PRs run CI directly. The scheduled Release workflow first checks
+the previous successful nightly head, then runs the shared CI checks and native
+amd64/arm64 image smoke tests when a new build is needed. A successful nightly
+publishes the tested image to `nightly` and a commit-specific tag. Failed checks
+leave the published channel unchanged. About displays the build commit;
 nightly images embed `1.0.0-nightly+sha.<12-character-commit-sha>` as the Cargo and Spin
 version. Local development reports `1.0.0-nightly`. Nightly builds bundle the
 Unreleased changelog and link to the changelog rather than a numbered release.
@@ -229,6 +235,14 @@ Each job verifies the package checksum and source commit before restoring it;
 the archive preserves executable permissions. Every group must pass the final
 frontend gate, including both workspace modes and the existing scenario limits.
 This shortens feedback and lets a failed group be rerun against the same app.
+
+Release companion jobs consume the same Linux-compiled plugin WASM bundle as the
+browser checks. Intel and Apple Silicon runners verify its source commit and
+checksum, then build the native host, test process cleanup and the macOS sandbox,
+and verify every bundled plugin prepares offline in both host modes. They do not
+recompile the language plugins or build the frontend/backend WASM. These jobs
+start after the default bundle is ready, alongside the remaining shared checks;
+publication still requires every platform and browser gate to pass.
 
 Main builds also publish standalone Linux/macOS bridge archives, installation files
 and checksums to the `nightly` release under stable names
@@ -277,8 +291,8 @@ with your version, deployment method, browser and workspace mode.
 
 ## Maintainer release procedure
 
-PRs run CI directly; main and tag builds run the same CI workflow through Release,
-so main pushes run the checks once. The following steps are for preview/stable
+PRs and main pushes run CI directly. Scheduled, manual and version-tag Release
+runs use the same shared CI workflow. The following steps are for preview/stable
 release snapshots.
 
 1. For stable 1.0, finish the release gates in the [roadmap](roadmap.md), including both-mode
@@ -286,15 +300,18 @@ release snapshots.
    does not complete the 1.0 milestone.
 2. Run the **Release** workflow manually on the intended commit. This runs CI,
    builds/smoke-tests images on native Linux amd64/arm64 runners and packages native
-   Linux/macOS bridges; it uploads artifacts without publishing GHCR or a release.
+   Linux/macOS bridges; by default it uploads artifacts without publishing GHCR or
+   a release. The optional **publish-nightly** input forces nightly publication
+   from `main`, even when its head has already been released.
    Validate downloaded archives and try the install assets with a locally loaded
    matching image via `OPENWEBIDE_IMAGE`. Exercise Compose and rootless Quadlet,
    persistence, upgrades, both workspace modes and real-model streaming.
 3. Set the same version in `Cargo.toml` and `spin.toml`, update `Cargo.lock`, and
    move shipped changelog entries into its versioned section, leaving Unreleased
    for subsequent work. Use `MAJOR.MINOR.PATCH-rc.N` for preview (numeric `N`, no
-   leading zeros), or `MAJOR.MINOR.PATCH` for stable. Rolling nightly only needs a
-   push to `main`; keep its changes under Unreleased. Update the README/site/guide to describe the actual
+   leading zeros), or `MAJOR.MINOR.PATCH` for stable. Rolling nightlies pick up new
+   main commits at the next scheduled run; keep their changes under Unreleased.
+   Update the README/site/guide to describe the actual
    release status. Run `python3 tools/release.py validate --tag v<version>`.
 4. Commit the reviewed release changes and push the corresponding `v<version>` tag.
    Tag builds require matching manifest/lock versions and nonempty tagged changelog

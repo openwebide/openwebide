@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 from navigation import validate_navigation
-from build import rewrite_readme_links
+from build import prepare_documentation, rewrite_readme_links
 
 
 class NavigationTests(unittest.TestCase):
@@ -50,6 +50,12 @@ class ReadmeLinksTests(unittest.TestCase):
         self.assertIn("[Up](../getting-started.md)", rendered)
         self.assertIn("[SDK](../crates/plugin-sdk/README.md)", rendered)
         self.assertIn("[Source](https://github.com/openwebide/openwebide/blob/main/crates/plugin-sdk/README.md)", rendered)
+
+
+class RepositoryDocumentationTests(unittest.TestCase):
+    def test_documentation_snapshot_has_complete_navigation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            prepare_documentation(Path(temporary))
 
 
 if __name__ == "__main__":
