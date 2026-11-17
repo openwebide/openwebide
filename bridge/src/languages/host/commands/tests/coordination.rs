@@ -3,6 +3,98 @@ use crate::folder_coordination::Folder;
 #[cfg(unix)]
 use futures::FutureExt;
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[tokio::test]
+async fn terminal_command_controls_release_service_capacity_and_preserve_receipts_and_other_reviews()
+ {
+    for owner in ["user:1", "paired/user:1"] {
+        for terminal in [
+            CommandProgress::Cancelled,
+            CommandProgress::Finished {
+                outcome: CommandOutcome::Rejected {
+                    message: "Discarded before dispatch".into(),
+                },
+            },
+        ] {
+            let mut fixture = Fixture::new("success").await;
+            fixture.scope.owner = owner.into();
+            let (_, invocation) = fixture.review().await;
+            fixture
+                .host
+                .native_command_worker(fixture.scope.clone(), &invocation)
+                .await
+                .unwrap();
+            fixture
+                .host
+                .retain_original_control(fixture.scope.clone(), &invocation, &terminal)
+                .await
+                .unwrap();
+
+            // A conflicting receipt must release its temporary use too.
+            let mut forged = invocation.clone();
+            forged.approval = "d".repeat(64);
+            assert!(
+                fixture
+                    .host
+                    .retain_original_control(fixture.scope.clone(), &forged, &terminal)
+                    .await
+                    .is_err()
+            );
+
+            // Fill the remaining capacity with real, unclaimed reviews. They
+            // must retain their services while the terminal one is replaced.
+            let mut peers = Vec::new();
+            for index in 0..MAX_OWNER_SERVICES.min(MAX_SERVICES).saturating_sub(1) {
+                let mut peer = Fixture::new("success").await;
+                peer.host = fixture.host.clone();
+                peer.scope.owner = owner.into();
+                peer.scope.project = i64::try_from(index).unwrap() + 2;
+                peer.scope.provider = format!("community/peer-{index}");
+                let (_, review) = peer.review().await;
+                peers.push((peer, review));
+            }
+            let mut fresh = fixture.input.clone();
+            fresh.client = "replacement-client".into();
+            fresh.document = "replacement-document".into();
+            fresh.request = 1;
+            fresh.revision = 1;
+            fresh.query = Query::CodeActions {
+                range: Range {
+                    start: Position::default(),
+                    end: Position {
+                        line: 0,
+                        character: 4,
+                    },
+                },
+            };
+            fixture
+                .host
+                .query(fixture.scope.clone(), &fresh)
+                .await
+                .expect("a terminal command must not retain service capacity");
+            assert_eq!(
+                fixture
+                    .host
+                    .command_progress(fixture.scope.clone(), &invocation)
+                    .await
+                    .unwrap(),
+                terminal
+            );
+            assert_eq!(fixture.executions(), 0);
+            for (peer, review) in peers {
+                assert_eq!(
+                    peer.host
+                        .command_progress(peer.scope.clone(), &review)
+                        .await
+                        .unwrap(),
+                    CommandProgress::Ready
+                );
+                assert_eq!(peer.executions(), 0);
+            }
+        }
+    }
+}
+
 #[tokio::test]
 async fn uncertain_receipts_survive_capacity_eviction_without_pinning_a_stopped_service() {
     let mut fixture = Fixture::new("cancel").await;

@@ -420,6 +420,7 @@ impl Host {
             return Ok(());
         }
         let (context, entry) = self.command_entry(scope, invocation, false).await?;
+        let _guard = entry.as_ref().map(|entry| ServiceUse(entry.clone()));
         if let Some(entry) = entry
             && let Some(session) = entry.session.get()
         {

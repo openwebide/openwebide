@@ -9,6 +9,14 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Pin wasm-opt 133 for frontend builds across developer, CI and container
+  environments, fixing the older optimizer's Linux release-build crash while
+  retaining release optimization.
+
+- Release temporary language-service uses after retaining cancelled or rejected
+  command receipts, including failed receipt updates, so later reviews can use
+  available capacity without losing original outcomes or other providers' reviews.
+
 - Reconcile an untouched resource transaction's native reservation after its
   database cancellation, and retry cleanup before preparing another operation.
   Reuse the original folder and transaction executor without running file
