@@ -9,6 +9,35 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.98.1
+          components: rustfmt
+      - name: Format check
+        run: cargo fmt --all --check
+      - name: Validate release tooling and install configuration
+        run: |
+          python3 -m unittest discover -s tools -p 'test_release.py'
+          python3 -m unittest discover -s tools -p 'test_wasi_sdk.py'
+          python3 -m unittest discover -s tools -p 'test_setup_*_language_server.py'
+          python3 -m unittest discover -s tools -p 'test_language_process_observation.py'
+          python3 -m unittest discover -s tools -p 'test_host_updates.py'
+          python3 -m unittest discover -s tools -p 'test_open_source.py'
+          python3 -m unittest discover -s tools -p 'test_editor_measurements.py'
+          python3 -m unittest discover -s tools -p 'test_editor_browser_runner.py'
+          python3 tools/bundle_plugins.py --check
+          python3 tools/release.py validate
+          docker compose -f docker-compose.release.yml config --quiet
+          OPENWEBIDE_SSH_AUTH_SOCK=/tmp/agent.sock OPENWEBIDE_SSH_CONFIG_DIR=/tmp/public-ssh docker compose -f docker-compose.release.yml -f docker-compose.ssh.yml config --quiet
+          OPENWEBIDE_TAILSCALE_HOST=openwebide.example.ts.net OPENWEBIDE_SERVE_CONFIG_DIR=/tmp/serve docker compose -f docker-compose.https.yml config --quiet
+
+      - name: Test PWA caching and installation
+        run: node --test frontend/pwa/pwa.test.cjs
+
   backend-and-crates:
     runs-on: ubuntu-latest
     steps:
@@ -34,22 +63,6 @@ jobs:
 
       - name: Format check
         run: cargo fmt --all --check
-
-      - name: Validate release tooling and install configuration
-        run: |
-          python3 -m unittest discover -s tools -p 'test_release.py'
-          python3 -m unittest discover -s tools -p 'test_wasi_sdk.py'
-          python3 -m unittest discover -s tools -p 'test_setup_*_language_server.py'
-          python3 -m unittest discover -s tools -p 'test_language_process_observation.py'
-          python3 -m unittest discover -s tools -p 'test_host_updates.py'
-          python3 -m unittest discover -s tools -p 'test_open_source.py'
-          python3 -m unittest discover -s tools -p 'test_editor_measurements.py'
-          python3 -m unittest discover -s tools -p 'test_editor_browser_runner.py'
-          python3 tools/bundle_plugins.py --check
-          python3 tools/release.py validate
-          docker compose -f docker-compose.release.yml config --quiet
-          OPENWEBIDE_SSH_AUTH_SOCK=/tmp/agent.sock OPENWEBIDE_SSH_CONFIG_DIR=/tmp/public-ssh docker compose -f docker-compose.release.yml -f docker-compose.ssh.yml config --quiet
-          OPENWEBIDE_TAILSCALE_HOST=openwebide.example.ts.net OPENWEBIDE_SERVE_CONFIG_DIR=/tmp/serve docker compose -f docker-compose.https.yml config --quiet
 
       - name: Clippy (native crates)
         run: cargo clippy -p openwebide-core -p openwebide-llm -p openwebide-storage -p openwebide-agent -p openwebide-auth -p openwebide-plugin-sdk -p openwebide-plugin-runtime -p openwebide-plugin-build -p openwebide-language-grammars -p openwebide-language-syntax --features openwebide-core/editor-parser --all-targets -- -D warnings
@@ -89,6 +102,44 @@ jobs:
       - name: Build backend component
         run: cargo build -p openwebide-backend --target wasm32-wasip2 --release
 
+  default-plugins:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.98.1
+          components: rust-analyzer, rust-src, rustfmt
+          targets: wasm32-wasip2
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Prepare isolated plugin builds
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      - name: Compile and verify offline executable defaults
+        env:
+          OPENWEBIDE_BUNDLED_ARTIFACTS: ${{ runner.temp }}/bundled-plugins.json
+        run: |
+          wasi_sdk_path=$(python3 tools/install_wasi_sdk.py "$RUNNER_TEMP/openwebide-wasi-sdk")
+          export WASI_SDK_PATH="$wasi_sdk_path"
+          export WASI_SYSROOT="$wasi_sdk_path/share/wasi-sysroot"
+          cargo run -p openwebide-plugin-runtime --bin openwebide-bundle-plugins --release --locked -- bridge/bundled/plugins.json "$OPENWEBIDE_BUNDLED_ARTIFACTS"
+          cargo build -p openwebide-plugin-runtime --example check_language --release --locked
+          python3 tools/check-language-components.py "$OPENWEBIDE_BUNDLED_ARTIFACTS"
+          # Validate all family components in the optimized host we distribute;
+          # the ordinary native contract suite below still uses the debug host.
+          cargo test -p openwebide-bridge --lib --release --features bundled-defaults bundled_tests
+
+      - name: Retain compiled defaults for production browser checks
+        uses: actions/upload-artifact@v4
+        with:
+          name: compiled-default-plugins
+          path: ${{ runner.temp }}/bundled-plugins.json
+          if-no-files-found: error
+
   plugin-runtime:
     runs-on: ubuntu-latest
     steps:
@@ -119,27 +170,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bubblewrap
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-
-      - name: Compile and verify offline executable defaults
-        env:
-          OPENWEBIDE_BUNDLED_ARTIFACTS: ${{ runner.temp }}/bundled-plugins.json
-        run: |
-          wasi_sdk_path=$(python3 tools/install_wasi_sdk.py "$RUNNER_TEMP/openwebide-wasi-sdk")
-          export WASI_SDK_PATH="$wasi_sdk_path"
-          export WASI_SYSROOT="$wasi_sdk_path/share/wasi-sysroot"
-          cargo run -p openwebide-plugin-runtime --bin openwebide-bundle-plugins --release --locked -- bridge/bundled/plugins.json "$OPENWEBIDE_BUNDLED_ARTIFACTS"
-          cargo build -p openwebide-plugin-runtime --example check_language --release --locked
-          python3 tools/check-language-components.py "$OPENWEBIDE_BUNDLED_ARTIFACTS"
-          # Validate all family components in the optimized host we distribute;
-          # the ordinary native contract suite below still uses the debug host.
-          cargo test -p openwebide-bridge --lib --release --features bundled-defaults bundled_tests
-
-      - name: Retain compiled defaults for production browser checks
-        uses: actions/upload-artifact@v4
-        with:
-          name: compiled-default-plugins
-          path: ${{ runner.temp }}/bundled-plugins.json
-          if-no-files-found: error
 
       - name: Tests (bridge, plugin runtime, and isolated compiler)
         run: cargo test -p openwebide-bridge -p openwebide-plugin-runtime -p openwebide-plugin-build
@@ -223,9 +253,8 @@ jobs:
       - name: Verify native Git metadata freshness
         run: cargo test -p openwebide-bridge --lib languages::host::repository -- --test-threads=1
 
-  frontend:
+  frontend-build:
     runs-on: ubuntu-latest
-    needs: plugin-runtime
     steps:
       - uses: actions/checkout@v4
 
@@ -241,25 +270,10 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - uses: ./.github/actions/setup-python-language-server
-      - uses: ./.github/actions/setup-go-language-server
-      - uses: ./.github/actions/setup-clangd-language-server
-
-      - uses: ./.github/actions/setup-typescript-language-server
-
-      - uses: ./.github/actions/setup-csharp-language-server
-
-      - uses: ./.github/actions/setup-web-language-servers
-
-      - uses: ./.github/actions/setup-terraform-language-server
-
       - name: Install Trunk
         run: |
           curl -sSL https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-x86_64-unknown-linux-gnu.tar.gz \
             | tar -xz -C /usr/local/bin trunk
-
-      - name: Test PWA caching and installation
-        run: node --test frontend/pwa/pwa.test.cjs
 
       - name: Build frontend
         run: cd frontend && trunk build --release
@@ -285,24 +299,118 @@ jobs:
       - name: Build backend for editor input verification
         run: cargo build -p openwebide-backend --target wasm32-wasip2 --release
 
+      - name: Package optimized web components
+        run: |
+          tar -czf "$RUNNER_TEMP/production-web-components.tar.gz" \
+            frontend/dist target/wasm32-wasip2/release/openwebide_backend.wasm
+      - uses: actions/upload-artifact@v4
+        with:
+          name: production-web-components
+          path: ${{ runner.temp }}/production-web-components.tar.gz
+          if-no-files-found: error
+          retention-days: 3
+
+  production-browser-app:
+    runs-on: ubuntu-latest
+    needs: [frontend-build, default-plugins]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.98.1
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: production-web-components
+          path: ${{ runner.temp }}
+      - name: Restore optimized web components
+        run: tar -xzf "$RUNNER_TEMP/production-web-components.tar.gz"
       - name: Load compiled language/default components
         uses: actions/download-artifact@v4
         with:
           name: compiled-default-plugins
           path: ${{ runner.temp }}/openwebide-defaults
 
-      - name: Prepare isolated custom plugin builds
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y bubblewrap
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-
       - name: Build release execution host with compiled defaults
         env:
           OPENWEBIDE_BUNDLED_ARTIFACTS: ${{ runner.temp }}/openwebide-defaults/bundled-plugins.json
         run: cargo build -p openwebide-bridge --release --features bundled-defaults
 
+      - name: Package the app for production browser contracts
+        run: |
+          tar -czf "$RUNNER_TEMP/production-browser-app.tar.gz" \
+            frontend/dist \
+            target/wasm32-wasip2/release/openwebide_backend.wasm \
+            target/release/openwebide-bridge
+          (cd "$RUNNER_TEMP" && sha256sum production-browser-app.tar.gz > production-browser-app.sha256)
+          printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/production-browser-app.commit"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: production-browser-app
+          path: ${{ runner.temp }}/production-browser-app.*
+          if-no-files-found: error
+          retention-days: 3
+
+  production-browser-tests:
+    runs-on: ubuntu-latest
+    needs: production-browser-app
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [languages, workspace, reviews, intelligence, input, pointer]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.98.1
+          components: llvm-tools, rust-analyzer, rust-src, rustfmt
+          targets: wasm32-unknown-unknown, wasm32-wasip2
+      - name: Prepare browser parser C compiler
+        timeout-minutes: 12
+        run: bash tools/setup-wasm-compiler.sh
+      - uses: ./.github/actions/setup-python-language-server
+        if: matrix.group == 'languages'
+      - uses: ./.github/actions/setup-go-language-server
+        if: matrix.group == 'languages'
+      - uses: ./.github/actions/setup-clangd-language-server
+        if: matrix.group == 'languages'
+
+      - uses: ./.github/actions/setup-typescript-language-server
+        if: matrix.group == 'languages' || matrix.group == 'workspace' || matrix.group == 'intelligence'
+
+      - uses: ./.github/actions/setup-csharp-language-server
+        if: matrix.group == 'languages'
+
+      - uses: ./.github/actions/setup-web-language-servers
+        if: matrix.group == 'languages'
+
+      - uses: ./.github/actions/setup-terraform-language-server
+        if: matrix.group == 'languages'
+
+      - uses: ./.github/actions/setup-editor-browser
+        id: chrome
+      - name: Install Spin runtime for editor input verification
+        run: |
+          curl -fsSL https://github.com/spinframework/spin/releases/download/v4.1.0/spin-v4.1.0-linux-amd64.tar.gz \
+            | tar -xz -C /usr/local/bin spin
+      - name: Prepare isolated custom plugin builds
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - uses: actions/download-artifact@v4
+        with:
+          name: production-browser-app
+          path: ${{ runner.temp }}/production-browser-app
+      - name: Verify and restore this commit's built app
+        run: |
+          test "$(cat "$RUNNER_TEMP/production-browser-app/production-browser-app.commit")" = "$GITHUB_SHA"
+          (cd "$RUNNER_TEMP/production-browser-app" && sha256sum --check production-browser-app.sha256)
+          tar -xzf "$RUNNER_TEMP/production-browser-app/production-browser-app.tar.gz"
+          test -x target/release/openwebide-bridge
+
       - name: Check host language lifecycle and custom marketplace installation in both modes
+        if: matrix.group == 'languages'
         env:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
@@ -311,6 +419,7 @@ jobs:
 
       - name: Check production Rust language-server features in both modes
         timeout-minutes: 10
+        if: matrix.group == 'languages'
         env:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
@@ -318,6 +427,7 @@ jobs:
 
       - name: Check production TypeScript language-server features in both modes
         timeout-minutes: 10
+        if: matrix.group == 'languages'
         env:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
@@ -325,6 +435,7 @@ jobs:
 
       - name: Check production Python language-server features in both modes
         timeout-minutes: 10
+        if: matrix.group == 'languages'
         env:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
@@ -332,6 +443,7 @@ jobs:
 
       - name: Check production Go language-server features in both modes
         timeout-minutes: 10
+        if: matrix.group == 'languages'
         env:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
@@ -339,6 +451,7 @@ jobs:
 
       - name: Check production C/C++ language-server features in both modes
         timeout-minutes: 10
+        if: matrix.group == 'languages'
         env:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
@@ -346,6 +459,7 @@ jobs:
 
       - name: Check production C# language-server features in both modes
         timeout-minutes: 10
+        if: matrix.group == 'languages'
         env:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
@@ -353,6 +467,7 @@ jobs:
 
       - name: Check production HTML, CSS and JSON language-server features in both modes
         timeout-minutes: 10
+        if: matrix.group == 'languages'
         env:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
@@ -360,6 +475,7 @@ jobs:
 
       - name: Check production Terraform language-server features in both modes
         timeout-minutes: 10
+        if: matrix.group == 'languages'
         env:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
@@ -367,6 +483,7 @@ jobs:
 
       - name: Check reviewed workspace operations, commands and interrupted recovery in both modes
         timeout-minutes: 10
+        if: matrix.group == 'workspace'
         env:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
@@ -374,6 +491,7 @@ jobs:
 
       - name: Check declared project inputs and reviewed configuration commands in both modes
         timeout-minutes: 10
+        if: matrix.group == 'workspace'
         env:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
@@ -381,6 +499,7 @@ jobs:
 
       - name: Check agent language tools in browser, bridge and backend executors
         timeout-minutes: 10
+        if: matrix.group == 'workspace'
         env:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
@@ -388,6 +507,7 @@ jobs:
 
       - name: Check production navigation and independent diagnostics in both modes
         timeout-minutes: 10
+        if: matrix.group == 'intelligence'
         env:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
@@ -395,6 +515,7 @@ jobs:
 
       - name: Check independent-provider review identity and authority in both modes
         timeout-minutes: 30
+        if: matrix.group == 'reviews'
         env:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
@@ -402,6 +523,7 @@ jobs:
 
       - name: Check bounded idle language warming and source retirement in both modes
         timeout-minutes: 10
+        if: matrix.group == 'intelligence'
         env:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
@@ -409,12 +531,14 @@ jobs:
 
       - name: Check automatic completion and pointer information in both modes
         timeout-minutes: 10
+        if: matrix.group == 'intelligence'
         env:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
         run: python3 tools/check-editor-intelligence-client.py
 
       - name: Check production editor input, history and pointer selection
+        if: matrix.group == 'input'
         env:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
@@ -423,6 +547,13 @@ jobs:
           python3 tools/check-editor-input.py
           python3 tools/check-editor-input.py --windowed
           python3 tools/check-editor-input.py --windowed --ascii-row
+
+      - name: Check production pointer selection, insertion and undo
+        if: matrix.group == 'pointer'
+        env:
+          CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
           python3 tools/check-editor-pointer.py
           python3 tools/check-editor-pointer.py --language rs --repeat 1 --source crates/auth/src/lib.rs --line 62 --ending lf
 
@@ -430,7 +561,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: native-language-diagnostics-${{ github.run_attempt }}
+          name: native-language-diagnostics-${{ matrix.group }}-${{ github.run_attempt }}
           path: |
             ${{ runner.temp }}/language-host-diagnostics
             ${{ runner.temp }}/language-review-evidence
@@ -450,6 +581,22 @@ jobs:
             /tmp/openwebide-hover-popup-*.png
           if-no-files-found: ignore
           retention-days: 3
+
+  # Keep the existing required frontend check, including failure on a skipped producer.
+  frontend:
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [frontend-build, production-browser-app, production-browser-tests]
+    steps:
+      - name: Require the build and every production browser contract
+        env:
+          BUILD_RESULT: ${{ needs.frontend-build.result }}
+          APP_RESULT: ${{ needs.production-browser-app.result }}
+          CONTRACT_RESULT: ${{ needs.production-browser-tests.result }}
+        run: |
+          test "$BUILD_RESULT" = success
+          test "$APP_RESULT" = success
+          test "$CONTRACT_RESULT" = success
 
   frontend-ui-tests:
     runs-on: ubuntu-latest

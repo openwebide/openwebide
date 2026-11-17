@@ -1387,6 +1387,10 @@ Documentation now has [section overviews](index.md), first-session/workspace gui
 and curated site navigation. Complete the remaining task guides and installation
 walkthroughs against the final app before public launch.
 
+- **Release reliability:** qualify the shared browser-app artifact and parallel
+  production contract jobs on hosted runners. Keep complete both-mode coverage,
+  measure the resulting feedback time and resolve failures before claiming a
+  release is successful; local checks alone do not establish publication.
 - **Release gates:** finish the hardening/editor dependencies and the Remaining
   manual verification checks above. Do not declare 1.0 while both-mode contracts,
   device checks or known responsiveness issues remain unresolved.

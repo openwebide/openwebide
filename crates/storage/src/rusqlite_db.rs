@@ -13,6 +13,9 @@ use crate::db::{Db, DbValue, ExecResult, QueryRow};
 /// `rusqlite::Connection` is `!Sync`, so it is held behind a `Mutex`.
 pub struct RusqliteDb {
     conn: std::sync::Arc<Mutex<Option<SqliteConnection>>>,
+    // A transaction owns the connection across awaits. Other callers must wait
+    // without blocking its executor thread or entering its uncommitted state.
+    access: futures::lock::Mutex<()>,
 }
 
 impl RusqliteDb {
@@ -22,6 +25,7 @@ impl RusqliteDb {
             .map_err(|e| StorageError::Db(e.to_string()))?;
         Ok(Self {
             conn: std::sync::Arc::new(Mutex::new(Some(conn))),
+            access: futures::lock::Mutex::new(()),
         })
     }
 
@@ -32,6 +36,7 @@ impl RusqliteDb {
             .map_err(|e| StorageError::Db(e.to_string()))?;
         Ok(Self {
             conn: std::sync::Arc::new(Mutex::new(Some(conn))),
+            access: futures::lock::Mutex::new(()),
         })
     }
 }
@@ -113,6 +118,7 @@ impl Db for RusqliteDb {
     type Tx<'a> = RusqliteTx;
 
     async fn execute(&self, sql: &str, params: &[DbValue]) -> Result<ExecResult, StorageError> {
+        let _access = self.access.lock().await;
         let mut conn_guard = self
             .conn
             .lock()
@@ -128,6 +134,9 @@ impl Db for RusqliteDb {
         F: FnOnce(Self::Tx<'a>) -> Fut + Send + 'a,
         Fut: std::future::Future<Output = Result<T, StorageError>> + Send + 'a,
     {
+        // Declared before TxGuard so rollback/commit restores the connection
+        // before a waiting caller is released, including on cancellation.
+        let _access = self.access.lock().await;
         let conn = {
             let mut guard = self
                 .conn
@@ -220,5 +229,90 @@ impl Db for RusqliteTx {
         Err(StorageError::Db(
             "Nested transactions are not supported".into(),
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use futures::{channel::oneshot, executor::block_on, poll};
+
+    #[test]
+    fn reads_and_transactions_wait_for_the_current_transaction() {
+        block_on(async {
+            let db = RusqliteDb::open_in_memory().unwrap();
+            db.execute("CREATE TABLE entries (id INTEGER)", &[])
+                .await
+                .unwrap();
+            let (release, held) = oneshot::channel();
+            let mut first = Box::pin(db.transaction(|tx| async move {
+                tx.execute("INSERT INTO entries VALUES (1)", &[]).await?;
+                held.await.unwrap();
+                Ok(())
+            }));
+            assert!(poll!(first.as_mut()).is_pending());
+
+            let mut read = Box::pin(db.execute("SELECT id FROM entries WHERE id = 1", &[]));
+            let observed = poll!(read.as_mut());
+            assert!(
+                observed.is_pending(),
+                "A read must wait for the owning transaction: {observed:?}"
+            );
+            let mut second = Box::pin(db.transaction(|tx| async move {
+                tx.execute("INSERT INTO entries VALUES (2)", &[]).await?;
+                Ok(())
+            }));
+            let observed = poll!(second.as_mut());
+            assert!(
+                observed.is_pending(),
+                "A second transaction must wait for the first: {observed:?}"
+            );
+
+            release.send(()).unwrap();
+            first.await.unwrap();
+            let (read, second) = futures::join!(read, second);
+            assert_eq!(read.unwrap().rows[0].get_int(0).unwrap(), 1);
+            second.unwrap();
+            let total = db
+                .execute("SELECT sum(id) FROM entries", &[])
+                .await
+                .unwrap();
+            assert_eq!(total.rows[0].get_int(0).unwrap(), 3);
+        });
+    }
+
+    #[test]
+    fn cancelling_a_transaction_rolls_back_before_releasing_waiters() {
+        block_on(async {
+            let db = RusqliteDb::open_in_memory().unwrap();
+            db.execute("CREATE TABLE entries (id INTEGER)", &[])
+                .await
+                .unwrap();
+            let mut first = Box::pin(db.transaction(|tx| async move {
+                tx.execute("INSERT INTO entries VALUES (1)", &[]).await?;
+                futures::future::pending::<()>().await;
+                Ok(())
+            }));
+            assert!(poll!(first.as_mut()).is_pending());
+            let mut read = Box::pin(db.execute("SELECT count(*) FROM entries", &[]));
+            let observed = poll!(read.as_mut());
+            assert!(
+                observed.is_pending(),
+                "A read must not enter an unfinished transaction: {observed:?}"
+            );
+            drop(first);
+            assert_eq!(read.await.unwrap().rows[0].get_int(0).unwrap(), 0);
+            db.transaction(|tx| async move {
+                tx.execute("INSERT INTO entries VALUES (2)", &[]).await?;
+                Ok(())
+            })
+            .await
+            .unwrap();
+            let total = db
+                .execute("SELECT sum(id) FROM entries", &[])
+                .await
+                .unwrap();
+            assert_eq!(total.rows[0].get_int(0).unwrap(), 2);
+        });
     }
 }

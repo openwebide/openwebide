@@ -213,12 +213,22 @@ want to control upgrade timing.
 
 Every push to `main` starts the Release workflow, including the shared CI checks
 and native amd64/arm64 image smoke tests. It publishes the tested image to `nightly`
-and a commit-specific tag. New pushes supersede unfinished main builds. Failed
+and a commit-specific tag. A running release finishes; newer pushes replace only
+the pending run. Failed
 checks leave the published channel unchanged. About displays the build commit;
 nightly images embed `1.0.0-nightly+sha.<12-character-commit-sha>` as the Cargo and Spin
 version. Local development reports `1.0.0-nightly`. Nightly builds bundle the
 Unreleased changelog and link to the changelog rather than a numbered release.
 Tagged preview and stable builds retain their exact numbered versions.
+
+The shared CI workflow validates release tooling and PWA installation separately
+from compilation. Optimized web components, bundled default plugins and native
+contracts build independently. Production browser checks then share one packaged
+app across language, workspace, review, intelligence, input and pointer jobs.
+Each job verifies the package checksum and source commit before restoring it;
+the archive preserves executable permissions. Every group must pass the final
+frontend gate, including both workspace modes and the existing scenario limits.
+This shortens feedback and lets a failed group be rerun against the same app.
 
 Main builds also publish standalone Linux/macOS bridge archives, installation files
 and checksums to the `nightly` release under stable names

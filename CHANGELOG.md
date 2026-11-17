@@ -9,6 +9,13 @@ Main builds publish a rolling nightly release; the last numbered prerelease is
 
 ## [Unreleased]
 
+- Serialize overlapping native SQLite access with active transactions, including
+  rollback before releasing waiting readers when a transaction is cancelled.
+
+- Run production browser contracts in independent groups against one shared app
+  build, and start optimized web builds and release-tool validation without
+  waiting for native plugin contracts.
+
 - Reveal offscreen caret and pointer targets before production input checks,
   preserving automatic completion after reload and line-end selection, insertion
   and undo checks on long source lines.

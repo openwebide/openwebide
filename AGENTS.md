@@ -112,6 +112,12 @@ Instructions, conventions, and architectural principles for AI agents working on
 
 ### Required Pre-Commit / Pre-Push Verification & Tooling Gate
 
+When asked to complete or verify a release, local checks and individual passing
+jobs are insufficient. Wait for the Release workflow to finish successfully at
+the requested commit, then verify the published release assets, checksums and
+multi-architecture image tags refer to that commit. Report an outstanding or
+failed gate explicitly; do not mark release work complete before publication.
+
 **Never commit or push without running the full local CI verification suite.** Many frontend UI
 components (`frontend/src/components/*`) are gated behind `#[cfg(target_arch = "wasm32")]` and are
 **not** compiled by native `cargo test -p openwebide-frontend --lib`. Skipping WASM compilation or
