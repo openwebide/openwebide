@@ -5,6 +5,11 @@ it and press Shift+F10/the context-menu key. The inline **…** button opens the
 menu. Action rows use the same icons in dropdown and right-click menus. Escape
 or an outside click dismisses it; arrow keys navigate the menu.
 
+<figure class="doc-screenshot" markdown="1">
+[![The forecast.rs file menu showing Rename, Move, Copy path, and Git actions including Stage and View file history](../assets/screenshots/file-actions.png)](../assets/screenshots/file-actions.png)
+<figcaption>The file menu groups actions for the selected row. Git actions depend on that file's current status.</figcaption>
+</figure>
+
 The Files **…** menu contains New file/folder, Refresh files, and Include hidden
 files and folders. The hidden-file preference syncs through your account. Tree
 rows are compact outside phone mode; phone mode uses larger touch targets.
@@ -15,7 +20,7 @@ Hover or use a screen reader for the status description.
 Binary and untracked files have status icons without invented line counts.
 
 Rename, move, copy the project-relative path, or delete an entry. New file and
-New folder are available on folders and the Explorer toolbar. Editor tab menus
+New folder are available on folders and the Files toolbar. Editor tab menus
 also offer Reveal in Files, which expands and focuses the corresponding tree row.
 Move
 accepts a destination relative to the project; its parent folder must exist.
@@ -48,7 +53,7 @@ headers also support right-click, long press and the keyboard context-menu keys.
 The browser context menu is suppressed throughout the app, including blank areas
 and inputs; only elements with an app context menu show one.
 
-The Files header keeps **Explorer** and **Changes** available during search. Its
+The Files header keeps **Tree** and **Changes** available during search. Its
 search icon reveals and focuses project search; Escape cancels search and returns
 focus to the icon. Switching views retains the mounted file controls.
 

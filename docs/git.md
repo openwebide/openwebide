@@ -16,6 +16,11 @@ appears in both sections. Save editor changes before staging. A nested project
 will refuse a commit if the index also contains changes outside that project;
 open the repository root or unstage those files first.
 
+<figure class="doc-screenshot" markdown="1">
+[![The Files Changes view with a commit message field, Staged and Unstaged groups, and forecast.rs listed under Unstaged](../assets/screenshots/git-working-changes.png)](../assets/screenshots/git-working-changes.png)
+<figcaption>Open Changes in the Files panel to see what is staged and move files into or out of the next commit.</figcaption>
+</figure>
+
 When a model is configured, an empty commit message is filled automatically after
 staging settles, using only the indexed diff. Your edits are preserved. The
 sparkles icon requests another summary. No commit is made automatically.
@@ -48,6 +53,14 @@ configured upstream, falling back to `origin` and the current branch.
 See [Git SSH setup](git-ssh.md) for execution-host authentication.
 
 ## History
+
+<figure class="doc-screenshot" markdown="1">
+
+[![The History panel with the main branch commit selected, a changed file in the tree and its read-only diff.](../assets/screenshots/git-history.png)](../assets/screenshots/git-history.png)
+
+<figcaption>Select a commit, then select a file under Changed files to inspect that revision.</figcaption>
+
+</figure>
 
 - Search commit messages automatically after a 300 ms pause in typing, or filter by a local branch, remote branch or tag.
 - Inspect colored branch/merge tracks, reference labels, subjects, authors,

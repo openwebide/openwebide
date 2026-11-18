@@ -517,6 +517,19 @@ pub struct ParsedThinking {
     pub answer: String,
 }
 
+impl ParsedThinking {
+    /// Live output can start with an incomplete reasoning delimiter.
+    pub fn has_visible_output(&self) -> bool {
+        let answer = self.answer.trim();
+        self.thinking.as_ref().is_some_and(|text| !text.is_empty())
+            || (!answer.is_empty()
+                && !(self.thinking.is_none()
+                    && ["<think>", crate::ESCAPED_REASONING_OPEN]
+                        .iter()
+                        .any(|tag| tag.starts_with(answer))))
+    }
+}
+
 /// Timing of an observed reasoning phase. The host supplies milliseconds so
 /// browser and native clocks share the same transition rules.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]

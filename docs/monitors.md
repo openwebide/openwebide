@@ -33,6 +33,11 @@ future checks. The indicator appears only while a monitor is active. **Stop** st
 and expired monitors are cleaned up; conversation messages remain. Failures,
 expiry and interruption leave a note in chat and stop repeats.
 
+<figure class="doc-screenshot" markdown="1">
+[![The active monitors flyout showing a pending check, its next run time, and Refresh and Cancel future checks controls](../assets/screenshots/conversation-monitor.png)](../assets/screenshots/conversation-monitor.png)
+<figcaption>Open Monitor active in the Chat status line to see the scheduled check and its controls.</figcaption>
+</figure>
+
 Remote and projectless checks run on the server bridge. Local projects need a
 paired native host with access to the selected folder. Use **Authorize this
 folder's host** in Monitors to verify and save the mapping, or reuse a mapping

@@ -95,10 +95,14 @@ fn render_approval_diff(diff: Memo<Option<FileDiff>>) -> impl IntoView {
 
 /// Render a single assistant message with collapsible thinking stream.
 fn render_assistant_message(content: Memo<String>) -> AnyView {
-    render_assistant_message_with_footer(content, ().into_any())
+    render_assistant_message_with_footer(content, Signal::derive(|| false), ().into_any())
 }
 
-fn render_assistant_message_with_footer(content: Memo<String>, footer: AnyView) -> AnyView {
+fn render_assistant_message_with_footer(
+    content: Memo<String>,
+    waiting: Signal<bool>,
+    footer: AnyView,
+) -> AnyView {
     let parsed = Memo::new(move |_| content.with(|content| parse_thinking(content)));
     let thinking_sig =
         Memo::new(move |_| parsed.with(|parsed| parsed.thinking.clone().unwrap_or_default()));
@@ -163,7 +167,7 @@ fn render_assistant_message_with_footer(content: Memo<String>, footer: AnyView) 
                 </super::ui::DisclosurePanel>
             </Show>
 
-            <Show when=move || !answer_sig.with(String::is_empty) fallback=|| ()>
+            <Show when=move || !waiting.get() && !answer_sig.with(String::is_empty) fallback=|| ()>
                 <div
                     class="tui-assistant-body markdown"
                     inner_html=move || render_markdown(&answer_sig.get())
@@ -174,35 +178,25 @@ fn render_assistant_message_with_footer(content: Memo<String>, footer: AnyView) 
     }.into_any()
 }
 
-/// Placeholder "Thinking" pane shown from the moment a prompt is sent until the
-/// model streams its first content, at which point the real pane takes over.
-fn render_pending_thinking() -> AnyView {
-    let started = Date::now();
-    let now = RwSignal::new(started);
-    let timer =
-        set_interval_with_handle(move || now.set(Date::now()), Duration::from_millis(100)).ok();
-    let timer: StoredValue<Option<IntervalHandle>> = StoredValue::new(timer);
+fn render_model_wait() -> AnyView {
+    const VERBS: [&str; 4] = ["Preparing…", "Working…", "Processing…", "Continuing…"];
+    let verb = RwSignal::new(0_usize);
+    let timer = set_interval_with_handle(
+        move || verb.update(|index| *index = (*index + 1) % VERBS.len()),
+        Duration::from_secs(4),
+    )
+    .ok();
     on_cleanup(move || {
-        if let Some(handle) = timer.get_value() {
+        if let Some(handle) = timer {
             handle.clear();
         }
     });
-    let summary =
-        move || openwebide_core::tui::reasoning_summary(true, Some(now.get() - started), 0);
 
     view! {
-        <div class="tui-stream-line tui-assistant">
-            <super::ui::DisclosurePanel class="tui-thinking-box" toggle_class="tui-thinking-summary"
-                title="Waiting for the model to respond"
-                active=Signal::derive(|| true)
-                summary=move || view! {
-                    <span class="tui-think-meta">{summary}</span>
-                    <span class="tui-spinner" aria-hidden="true"/>
-                }>
-                <div class="tui-thinking-trace">
-                    <pre class="tui-thinking-pre">"Waiting for the model…"</pre>
-                </div>
-            </super::ui::DisclosurePanel>
+        <div class="tui-model-wait" role="status" title="Waiting for the model to respond">
+            <span class="tui-spinner" aria-hidden="true"/>
+            <span aria-hidden="true">{move || VERBS[verb.get()]}</span>
+            <span class="sr-only">"Waiting for the model"</span>
         </div>
     }
     .into_any()
@@ -942,11 +936,7 @@ pub fn ChatPane(
                         ConversationItem::Notice { .. } => None,
                         ConversationItem::Message(message) if message.role == Role::Assistant => {
                             let parsed = openwebide_core::tui::parse_thinking(&message.content);
-                            if parsed.thinking.is_none() && parsed.answer.trim().is_empty() {
-                                None
-                            } else {
-                                Some(false)
-                            }
+                            parsed.has_visible_output().then_some(false)
                         }
                         ConversationItem::Message(message) if message.role == Role::User => {
                             Some(true)
@@ -1117,6 +1107,8 @@ pub fn ChatPane(
                                             }>
                                                 {render_assistant_message_with_footer(
                                                     content,
+                                                    Signal::derive(move || awaiting_first_response.get()
+                                                        && item.with(|item| matches!(item, ConversationItem::Message(message) if message.id <= 0))),
                                                     view! {
                                                         <Show when=move || !streaming.get() && content.with(|text| text.ends_with(openwebide_core::REPLY_CUT_OFF_MARKER)) && messages.handles.with(|handles| handles.last().is_some_and(|last| last.key == handle.key))>
                                                             <div class="tui-stopped-marker">
@@ -1150,7 +1142,7 @@ pub fn ChatPane(
                         }
                     />
                     <Show when=move || awaiting_first_response.get()>
-                        {render_pending_thinking()}
+                        {render_model_wait()}
                     </Show>
                     <Show when=move || assistance.completion.get().is_some() && !streaming.get()>
                         <p class="form-hint chat-completion" role="status"><span role="img" aria-label="Conversation recap" title="Conversation recap">"↪"</span>" "{move || assistance.completion.get().unwrap_or_default()}</p>

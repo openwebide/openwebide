@@ -30,7 +30,9 @@ impl LayoutActions {
         let saving = StoredValue::new(None::<u64>);
         Effect::new(move |_| {
             auth.generation.track();
-            layout.history_tree_width.set(260.0);
+            layout
+                .history_tree_width
+                .set(crate::state::layout::DEFAULT_HISTORY_TREE_WIDTH);
             layout.history_tree_revision.set(0);
             layout.panels.set(PanelVisibility::default());
             layout.panel_revision.set(0);

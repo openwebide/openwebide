@@ -4891,7 +4891,7 @@ async fn caret_and_scroll_restore_across_files_projects_and_views_in_both_modes(
                 content: Ok("old".into()),
             }));
         settle().await;
-        mounted.click_text("Changes");
+        mounted.click_text("Diff");
         settle().await;
         assert!(
             mounted
@@ -5822,7 +5822,7 @@ async fn editor_numbers_full_diff_and_find_share_both_workspace_modes() {
                 .unwrap()
                 .contains("2 / 2")
         );
-        mounted.click_text("Changes");
+        mounted.click_text("Diff");
         settle().await;
         assert_eq!(
             mounted
@@ -6032,7 +6032,7 @@ async fn numbered_views_scroll_horizontally_with_compact_gutters_and_linked_spli
                 .unwrap()
                 .contains("120")
         );
-        mounted.click_text("Changes");
+        mounted.click_text("Diff");
         settle().await;
         let inline = mounted.element(".editor-diff-inline");
         assert!(inline.scroll_width() > inline.client_width() * 2);
@@ -10245,7 +10245,7 @@ async fn diff_syntax_paint_keeps_word_changes_and_embedded_context_in_both_modes
             view! { <style>{include_str!("../../styles.css")}</style><div style="display:flex;width:600px;height:400px">{editor_view(state)}</div> }
         });
         settle().await;
-        mounted.click_text("Changes");
+        mounted.click_text("Diff");
         wait_until("host diff colors", || {
             mounted.has_element(".diff-line.add[data-line='3'] .tok-comment")
         })

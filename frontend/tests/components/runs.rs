@@ -933,26 +933,18 @@ async fn permission_snapshot_restores_retry(auto_approve: bool) {
     ready(&fake).await;
     no_runs(&fake);
     let run_id = send(&mounted, &fake).await;
-    event(
-        &fake,
-        &run_id,
-        1,
-        RunEvent::Message {
-            message: message(7, Role::User, "hello"),
-        },
-    );
-    event(
-        &fake,
-        &run_id,
-        2,
-        RunEvent::PermissionRequest {
-            id: "a7t0c0".into(),
-            name: "write_file".into(),
-            summary: "file".into(),
-            diff: None,
-            note: None,
-        },
-    );
+    let prompt = RunEvent::Message {
+        message: message(7, Role::User, "hello"),
+    };
+    let approval = RunEvent::PermissionRequest {
+        id: "a7t0c0".into(),
+        name: "write_file".into(),
+        summary: "file".into(),
+        diff: None,
+        note: None,
+    };
+    event(&fake, &run_id, 1, prompt.clone());
+    event(&fake, &run_id, 2, approval.clone());
     settle().await;
     fake.lose_next_permission();
     mounted.key("y", "KeyY", true);
@@ -964,9 +956,15 @@ async fn permission_snapshot_restores_retry(auto_approve: bool) {
             .any(|m| matches!(m, BridgeClientMessage::RunPermission { .. }))
     );
     fake.disconnect();
-    settle().await;
-    sleep_ms(1100).await;
+    wait_until("the bridge reconnects during approval", || {
+        fake.connections() == 2
+    })
+    .await;
     ready(&fake).await;
+    assert!(fake.sent().contains(&BridgeClientMessage::RunAttach {
+        run_id: run_id.clone(),
+        last_seq: Some(2),
+    }));
     mounted.state.chat.active_session.set(None);
     settle().await;
     mounted.state.chat.active_session.set(Some(1));
@@ -976,45 +974,47 @@ async fn permission_snapshot_restores_retry(auto_approve: bool) {
             modes.insert(1, openwebide_agent::policy::ApprovalMode::AlwaysForSession);
         });
     }
-    fake.reply(BridgeServerMessage::RunSnapshot {
-        run_id: run_id.clone(),
-        session_id: 1,
-        seq: 2,
-        snapshot: RunSnapshot {
-            items: vec![
-                RunItem::Message(message(7, Role::User, "hello")),
-                RunItem::Step(RunStep {
-                    timing: None,
-                    id: "a7t0c0".into(),
-                    name: "write_file".into(),
-                    summary: "file".into(),
-                    awaiting_permission: true,
-                    result: None,
-                    diff: None,
-                    note: None,
-                }),
-            ],
-            ..Default::default()
-        },
-    });
-    settle().await;
-    assert_eq!(
-        mounted
-            .state
-            .chat
-            .awaiting_step_id
-            .get_untracked()
-            .as_deref(),
-        Some("a7t0c0")
-    );
+    let mut snapshot = RunSnapshot::default();
+    snapshot.apply(&prompt);
+    snapshot.apply(&approval);
+    let replay = || {
+        fake.reply(BridgeServerMessage::RunSnapshot {
+            run_id: run_id.clone(),
+            session_id: 1,
+            seq: 2,
+            snapshot: snapshot.clone(),
+        });
+    };
+    let count = |selector| mounted.root.query_selector_all(selector).unwrap().length();
+    for _ in 0..2 {
+        replay();
+        settle().await;
+        assert_eq!(count(".tui-permission-prompt .btn-y:not(:disabled)"), 1);
+        assert_eq!(count(".tui-tool-box"), 1);
+    }
     assert!(mounted.state.chat.active_run.get_untracked().is_some());
+    mounted.click(".tui-permission-prompt .btn-y");
+    settle().await;
+    // This snapshot was sent before the bridge processed the retry.
+    replay();
+    event(&fake, &run_id, 2, approval);
+    settle().await;
+    assert_eq!(count(".tui-permission-prompt"), 0);
     mounted.key("y", "KeyY", true);
     settle().await;
-    assert!(fake.sent().contains(&BridgeClientMessage::RunPermission {
-        run_id: run_id.clone(),
-        tool_call_id: "a7t0c0".into(),
-        approved: true,
-    }));
+    let decisions: Vec<_> = fake
+        .sent()
+        .into_iter()
+        .filter(|message| matches!(message, BridgeClientMessage::RunPermission { .. }))
+        .collect();
+    assert_eq!(
+        decisions,
+        [BridgeClientMessage::RunPermission {
+            run_id: run_id.clone(),
+            tool_call_id: "a7t0c0".into(),
+            approved: true,
+        }]
+    );
     event(
         &fake,
         &run_id,
@@ -1026,14 +1026,47 @@ async fn permission_snapshot_restores_retry(auto_approve: bool) {
         },
     );
     settle().await;
-    assert!(
-        mounted
-            .state
-            .chat
-            .awaiting_step_id
-            .get_untracked()
-            .is_none()
+    assert_eq!(count(".tui-tool-box.running"), 1);
+    let result = RunEvent::ToolResult {
+        id: "a7t0c0".into(),
+        name: "write_file".into(),
+        ok: true,
+        summary: "file written".into(),
+        diff: None,
+    };
+    event(&fake, &run_id, 4, result.clone());
+    replay();
+    event(&fake, &run_id, 4, result);
+    event(
+        &fake,
+        &run_id,
+        5,
+        RunEvent::Done {
+            message: message(8, Role::Assistant, "Approval replay finished"),
+        },
     );
+    settle().await;
+    assert_eq!(count(".tui-permission-prompt"), 0);
+    assert_eq!(count(".tui-tool-box"), 1);
+    assert_eq!(count(".tui-tool-box.ok"), 1);
+    assert_eq!(
+        mounted
+            .root
+            .text_content()
+            .unwrap()
+            .matches("Approval replay finished")
+            .count(),
+        1
+    );
+    assert!(!mounted.state.chat.streaming.get_untracked());
+    assert_eq!(
+        fake.sent()
+            .iter()
+            .filter(|message| matches!(message, BridgeClientMessage::RunStart { .. }))
+            .count(),
+        1
+    );
+    assert_eq!(sse_calls(&mounted), 0);
     close(&mounted);
 }
 

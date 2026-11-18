@@ -14,7 +14,14 @@ a model server elsewhere.
 
 ## Remote projects
 
-Choose **Open remote** and select a folder under the configured workspace.
+From the app menu, choose **Open remote project**, navigate to a folder under
+the configured workspace, and choose **Select folder**.
+
+<figure class="doc-screenshot" markdown="1">
+[![The remote folder picker open to harbor-forecast, showing its src and tests folders and the Select folder button](../assets/screenshots/remote-folder.png)](../assets/screenshots/remote-folder.png)
+<figcaption>The folder picker shows the current path and contents on the Open WebIDE host.</figcaption>
+</figure>
+
 In containers, `OPENWEBIDE_WORKSPACE` selects the host directory mounted as
 `/workspace`. The agent's commands run on the bridge host, using the tools installed
 there. Installing a compiler on your browser's computer does not install it in

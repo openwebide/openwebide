@@ -1322,7 +1322,7 @@ async fn reload_during_unfinished_local_tool_offers_resume_without_reexecuting_i
 }
 
 #[wasm_bindgen_test]
-async fn pending_thinking_indicator_survives_system_context_until_model_tokens_arrive() {
+async fn model_wait_survives_system_context_until_model_tokens_arrive() {
     use leptos::prelude::*;
     use openwebide_core::{Role, RunEvent, WorkspaceMode};
 
@@ -1348,8 +1348,8 @@ async fn pending_thinking_indicator_survives_system_context_until_model_tokens_a
 
         // The optimistic thinking box should be visible
         assert!(
-            mounted.has_element(".tui-thinking-box"),
-            "Pending thinking box should be visible immediately on send"
+            mounted.has_element(".tui-model-wait"),
+            "Model wait indicator should be visible immediately on send"
         );
         let text = mounted.root.text_content().unwrap();
         assert!(
@@ -1369,8 +1369,8 @@ async fn pending_thinking_indicator_survives_system_context_until_model_tokens_a
 
         // CRITICAL CHECK: The thinking box must NOT disappear when system context arrives!
         assert!(
-            mounted.has_element(".tui-thinking-box"),
-            "Pending thinking box must survive system context message"
+            mounted.has_element(".tui-model-wait"),
+            "Model wait indicator must survive system context message"
         );
         let text = mounted.root.text_content().unwrap();
         assert!(
@@ -1386,8 +1386,8 @@ async fn pending_thinking_indicator_survives_system_context_until_model_tokens_a
 
         // The thinking box must STILL be visible while awaiting tokens
         assert!(
-            mounted.has_element(".tui-thinking-box"),
-            "Pending thinking box must survive server user message confirmation"
+            mounted.has_element(".tui-model-wait"),
+            "Model wait indicator must survive server user message confirmation"
         );
 
         // First token arrives from the model
@@ -1470,4 +1470,145 @@ async fn pending_thinking_indicator_survives_system_context_until_model_tokens_a
         chat.streaming.set(false);
         settle().await;
     }
+}
+
+#[wasm_bindgen_test]
+async fn scripted_turn_replays_reasoning_approval_tool_and_answer_through_the_composer() {
+    // The native tool ID is scoped to the saved user message for this turn.
+    const TOOL: &str = "a1t0c0";
+    let (advance, permits) = futures::channel::mpsc::unbounded();
+    let permits = std::cell::RefCell::new(Some(permits));
+    let mounted = mount_test(move |state| {
+        state.seed_project();
+        state.seed_connection();
+        state.seed_session();
+        state.fake.scripted_event_permits.replace(permits.take());
+        state.fake.scripted_events.borrow_mut().push_back(vec![
+            RunEvent::Message {
+                message: message(1, Role::User, "Update the forecast"),
+            },
+            RunEvent::Delta {
+                content: "<thi".into(),
+            },
+            RunEvent::Delta {
+                content: "nk>".into(),
+            },
+            RunEvent::Delta {
+                content: "Check the forecast function.".into(),
+            },
+            RunEvent::Interim {
+                message: message(
+                    2,
+                    Role::Assistant,
+                    "<think>Check the forecast function.</think>",
+                ),
+            },
+            RunEvent::PermissionRequest {
+                id: TOOL.into(),
+                name: "edit_file".into(),
+                summary: "Update forecast.rs".into(),
+                diff: None,
+                note: None,
+            },
+            RunEvent::ToolCall {
+                id: TOOL.into(),
+                name: "edit_file".into(),
+                summary: "Update forecast.rs".into(),
+            },
+            RunEvent::ToolResult {
+                id: TOOL.into(),
+                name: "edit_file".into(),
+                ok: true,
+                summary: "Updated forecast.rs".into(),
+                diff: None,
+            },
+            RunEvent::Delta {
+                content: "Forecast updated.".into(),
+            },
+            RunEvent::Done {
+                message: message(3, Role::Assistant, "Forecast updated."),
+            },
+        ]);
+        chat_view(state)
+    });
+    settle().await;
+    mounted.input("Update the forecast");
+    mounted.key("Enter", "Enter", false);
+    settle().await;
+
+    let pending = ".tui-model-wait";
+    let thinking = ".tui-thinking-summary.active";
+    assert!(
+        mounted
+            .element(pending)
+            .text_content()
+            .unwrap()
+            .contains("Preparing…")
+    );
+
+    for _ in 0..3 {
+        advance.unbounded_send(()).unwrap();
+        settle().await;
+        assert!(mounted.has_element(pending));
+        assert!(!mounted.has_element(thinking));
+        assert!(!mounted.root.text_content().unwrap().contains("<thi"));
+    }
+
+    advance.unbounded_send(()).unwrap();
+    settle().await;
+    assert!(!mounted.has_element(pending));
+    assert!(
+        mounted
+            .element(thinking)
+            .text_content()
+            .unwrap()
+            .contains("Thinking")
+    );
+
+    for _ in 0..2 {
+        advance.unbounded_send(()).unwrap();
+        settle().await;
+        assert!(!mounted.has_element(pending));
+    }
+    assert!(mounted.has_element(".tui-tool-box.awaiting"));
+    assert!(!mounted.has_element(thinking));
+    mounted.click(".tui-permission-prompt .btn.approve");
+    settle().await;
+    assert!(mounted.state.fake.calls.borrow().contains(
+        &openwebide_frontend::testing::fake_backend::Call::SetPermission {
+            session: 1,
+            id: TOOL.into(),
+            approved: true,
+        }
+    ));
+
+    advance.unbounded_send(()).unwrap();
+    settle().await;
+    assert!(mounted.has_element(".tui-tool-box.running"));
+    assert!(!mounted.has_element(pending));
+
+    advance.unbounded_send(()).unwrap();
+    settle().await;
+    assert!(mounted.has_element(pending));
+    advance.unbounded_send(()).unwrap();
+    settle().await;
+    assert!(!mounted.has_element(pending));
+    assert!(
+        mounted
+            .root
+            .text_content()
+            .unwrap()
+            .contains("Forecast updated.")
+    );
+    advance.unbounded_send(()).unwrap();
+    settle_run(&mounted).await;
+    assert_eq!(
+        mounted
+            .root
+            .text_content()
+            .unwrap()
+            .matches("Forecast updated.")
+            .count(),
+        1
+    );
 }

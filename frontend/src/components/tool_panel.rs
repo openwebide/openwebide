@@ -111,7 +111,7 @@ pub fn FilesPanel(
     let actions = expect_context::<LayoutActions>();
     view! { <div class="files-panel">
         <super::ui::PanelToolbar class="files-panel-toolbar">
-        <SegmentedControl options=vec![SegmentOption::new("File Tree", FilesView::Explorer), SegmentOption::new("Changes", FilesView::Changes)]
+        <SegmentedControl label="Files view" options=vec![SegmentOption::new("Tree", FilesView::Explorer), SegmentOption::new("Changes", FilesView::Changes)]
             value=Signal::derive(move || layout.preferences.with(|p| if p.files_view == FilesView::Search { FilesView::Explorer } else { p.files_view })) on_change=actions.select_files_view />
             <button type="button" class="icon-btn ui-icon" data-file-search-toggle="" title="Search project files" aria-label="Search project files" aria-controls="project-search" aria-expanded=move || layout.preferences.with(|prefs| prefs.files_view == FilesView::Search).to_string()
                 on:click=move |_| actions.select_files_view.run(if layout.preferences.with(|prefs| prefs.files_view == FilesView::Search) { FilesView::Explorer } else { FilesView::Search })><super::ui::Icon name=super::ui::IconName::Search /></button>

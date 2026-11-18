@@ -1210,6 +1210,41 @@ Remaining execution-host work:
 
 ## Later
 
+### UI fit and finish
+
+Use unattended headless browser captures to review and improve the app's screens,
+dialogs, menus and rarely visited states. Use the [design system](design-system.md)
+for spacing, density, typography, contrast, hierarchy and consistency. Schedule
+the app-wide pass after the editor work settles.
+
+The [project site](project-site.md) builds the real frontend and captures the
+homepage workspace and guide examples in an isolated Chrome profile. Current
+captures cover first-session setup and review, desktop and phone navigation,
+editing, Git, Chat commands, plugins, scheduled tasks and monitors. The fictional forecast
+project and conversation provide reusable fixtures. The site publishes the PNG
+images and their capture manifest together.
+
+The first pass improved phone docs navigation, nightly installation, comment
+and command-menu contrast, Git controls and History, Settings, scheduled tasks,
+file menus and plugin status. Chat distinguishes model wait from reasoning and
+has a gated replay test for a turn with approval and tool execution. Approval
+reconnect tests cover duplicate snapshots, retry and single tool execution.
+
+- Inventory and capture the remaining screens, starting with Settings and shared
+  dialogs, menus and tooltips. Include empty, loading, error, disabled and dense
+  states, both workspace modes and themes, and desktop through phone viewports.
+- Extend fictional fixtures for model discovery results, command approvals,
+  and schedule outcomes. Add guide screenshots where they help readers
+  find a control or understand a result, with explicit alt text, target viewport
+  and crop.
+- Verify unattended runs with a locked desktop and while other apps are in use.
+  Keep headless runner support and check overflow, focus, accessible names,
+  contrast and touch targets alongside image comparisons.
+- Use captured images for before/after visual review. Keep baseline updates
+  explicit, retain PR evidence and verify behavior in both workspace modes.
+  Track physical device, IME, folder permissions and assistive technology
+  separately from emulated screenshots.
+
 ### Plugins & Git marketplaces
 
 Extend agent and editor capabilities through versioned plugin packages that users

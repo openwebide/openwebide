@@ -39,7 +39,9 @@ follow the device's light/dark preference when the page loads.
 ## Build and preview
 
 Install the pinned Rust toolchain, the `wasm32-unknown-unknown` target and Trunk
-0.21.14 (as for app development), then run from the repository root:
+0.21.14 (as for app development). Set `CHROME` and `CHROMEDRIVER` to the
+matching executables pinned in `.github/actions/setup-editor-browser/chrome-version`.
+Run from the repository root:
 
 ```sh
 python3 -m venv /tmp/openwebide-pages-venv
@@ -84,14 +86,34 @@ for DNS configuration and propagation checks. To build for another deployment,
 pass `--site-url https://example.com/` to the build command.
 
 The build compiles the standalone [panel playground](panel-playground.md) using
-the app's Rust/WASM renderer and copies its bundle into the site. It does not
-launch the app backend or connect to a bridge. To reuse an existing Trunk bundle,
-pass `--playground-dist /path/to/bundle`; the bundle must include `index.html`
+the app's Rust/WASM renderer and copies its bundle into the site. To reuse an
+existing Trunk bundle, pass `--playground-dist /path/to/bundle`; the bundle must include `index.html`
 and a WASM module. Visitors can use it without an account or workspace.
 With a compatible ChromeDriver available, check the compiled tool with
 `CHROMEDRIVER=/path/to/chromedriver python3 tools/check-panel-playground.py --site /tmp/openwebide-site`.
 This runs a disposable headless browser and checks both responsive themes,
 downloads and the embedded renderer without accessing personal browser profiles.
+
+## Documentation screenshots
+
+The site build also compiles the release app from the current checkout and
+captures desktop and phone homepage views and focused guide illustrations in headless
+Chrome. The guide images cover project and model setup, pending edits, desktop
+and phone navigation, file actions, editing, Git, Chat commands, plugins, tasks
+and monitors. The browser opens a disposable loopback origin
+and receives fictional files and API responses from `site/fixtures/`,
+`site/screenshots.py` and `site/screenshot_features.py`. Each capture waits for
+its target state and browser rendering. The build fails if capture fails or a
+site image reference is missing. The fixture requires only the compiled
+frontend and the pinned headless browser.
+
+Use the same site build command locally. The PNG images and `manifest.json` are in the
+output's `assets/screenshots/` directory. The existing share URL at
+`docs/assets/openwebide-pwa.png` also serves the fresh image. The manifest
+records the checkout's base commit, working tree status, theme, dimensions
+and image digest. Pages runs from a clean checkout and retains the screenshots
+and manifest as a pull request artifact.
+
 The site links GitHub Issues for feedback and support.
 Issue forms cover bugs, feature requests and setup/usage help. An optional demo
 and launch announcements remain part of the 1.0 public-release work.
@@ -146,5 +168,5 @@ upstream links and declared licenses, with direct dependencies listed first.
 The site builder also inventories MkDocs and its installed Python dependencies.
 
 Generated tables only exist in the build output; there is no second list to edit.
-Pages rebuilds when Cargo manifests or the lockfile change. CI uses stable Cargo
-for metadata without compiling the app or installing WASM targets.
+Pages rebuilds when Cargo manifests or the lockfile change. The dependency
+inventory uses Cargo metadata and does not compile any additional targets.

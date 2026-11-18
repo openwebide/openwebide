@@ -340,7 +340,7 @@ impl LayoutState {
             sidebar_width: RwSignal::new(ActiveResizer::Sidebar.default()),
             tree_width: RwSignal::new(ActiveResizer::Tree.default()),
             history_width: RwSignal::new(ActiveResizer::History.default()),
-            history_tree_width: RwSignal::new(260.0),
+            history_tree_width: RwSignal::new(DEFAULT_HISTORY_TREE_WIDTH),
             history_tree_revision: RwSignal::new(0),
             chat_width: RwSignal::new(ActiveResizer::Chat.default()),
             terminal_height: RwSignal::new(ActiveResizer::Terminal.default()),
@@ -831,6 +831,8 @@ mod tests {
     }
 }
 
+pub const DEFAULT_HISTORY_TREE_WIDTH: f64 = 200.0;
+
 pub fn history_tree_width(container: f64, requested: f64) -> Option<f64> {
     if !container.is_finite() || container < 426.0 {
         return None;
@@ -839,7 +841,7 @@ pub fn history_tree_width(container: f64, requested: f64) -> Option<f64> {
         if requested.is_finite() {
             requested
         } else {
-            260.0
+            DEFAULT_HISTORY_TREE_WIDTH
         }
         .clamp(160.0, (container - 266.0).min(650.0)),
     )
@@ -853,6 +855,9 @@ mod history_tree_tests {
         assert_eq!(history_tree_width(426.0, 650.0), Some(160.0));
         assert_eq!(history_tree_width(900.0, 650.0), Some(634.0));
         assert_eq!(history_tree_width(1200.0, 900.0), Some(650.0));
-        assert_eq!(history_tree_width(1200.0, f64::NAN), Some(260.0));
+        assert_eq!(
+            history_tree_width(1200.0, f64::NAN),
+            Some(DEFAULT_HISTORY_TREE_WIDTH)
+        );
     }
 }

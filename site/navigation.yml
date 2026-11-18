@@ -36,10 +36,12 @@
     - Overview: docs/development.md
     - Architecture: docs/architecture.md
     - Plugin authoring: docs/plugin-authoring.md
+    - Plugin runtime: docs/plugin-runtime.md
     - Panel playground: docs/panel-playground.md
     - API examples: docs/api-examples.md
     - Design system: docs/design-system.md
     - Editor performance: docs/editor-performance.md
+    - Editor rendering and recovery: docs/editor-internals.md
     - Editor checkpoint history: docs/editor-performance/editor-roadmap-checkpoint-history.md
     - Code intelligence checkpoint history: docs/code-intelligence/checkpoint-history.md
     - Language service measurements: docs/code-intelligence/service-measurements.md

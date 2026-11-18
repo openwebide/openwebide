@@ -1,7 +1,10 @@
 use crate::backend::Api;
 use crate::idb;
 use leptos::prelude::WithValue;
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    Arc, Mutex,
+    atomic::{AtomicU64, Ordering},
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BridgeConfig {
@@ -192,6 +195,8 @@ impl BridgeTransport for GlooTransport {
 type MessageCallback = Rc<dyn Fn(BridgeServerMessage)>;
 pub type CredentialSource = Rc<dyn Fn() -> LocalBoxFuture<'static, Result<String, String>>>;
 
+static NEXT_CONNECTION_ID: AtomicU64 = AtomicU64::new(1);
+
 struct BridgeInner {
     status: ArcRwSignal<BridgeStatus>,
     shells: RefCell<HashSet<String>>,
@@ -200,6 +205,7 @@ struct BridgeInner {
     closed: Cell<bool>,
     cleanup_connection: RefCell<Option<Rc<BridgeInner>>>,
     socket: RefCell<Option<Rc<dyn BridgeSocket>>>,
+    connection_id: Cell<u64>,
     terminal: RefCell<Option<MessageCallback>>,
     runs: RefCell<HashMap<String, MessageCallback>>,
     completions: RefCell<HashMap<String, mpsc::UnboundedSender<BridgeServerMessage>>>,
@@ -245,6 +251,7 @@ impl BridgeConn {
             closed: Cell::new(false),
             cleanup_connection: RefCell::new(None),
             socket: RefCell::new(None),
+            connection_id: Cell::new(0),
             terminal: RefCell::new(None),
             runs: RefCell::new(HashMap::new()),
             completions: RefCell::new(HashMap::new()),
@@ -299,6 +306,9 @@ impl BridgeConn {
                     break;
                 };
                 if let Ok(socket) = socket {
+                    inner
+                        .connection_id
+                        .set(NEXT_CONNECTION_ID.fetch_add(1, Ordering::Relaxed));
                     *inner.socket.borrow_mut() = Some(socket);
                     drop(inner);
                     let timeout = crate::util::sleep_ms(2000);
@@ -344,6 +354,10 @@ impl BridgeConn {
 
     pub fn status(&self) -> ArcRwSignal<BridgeStatus> {
         self.0.status.clone()
+    }
+
+    pub(crate) fn connection_id(&self) -> u64 {
+        self.0.connection_id.get()
     }
 
     pub fn send(&self, message: BridgeClientMessage) -> Result<(), String> {

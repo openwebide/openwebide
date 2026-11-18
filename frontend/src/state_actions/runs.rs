@@ -1,4 +1,7 @@
-use std::{collections::HashSet, rc::Rc};
+use std::{
+    collections::{HashMap, HashSet},
+    rc::Rc,
+};
 
 use futures::channel::oneshot;
 use leptos::prelude::*;
@@ -21,7 +24,7 @@ pub(super) struct RunControls {
     run_id: String,
     pending: Vec<BridgeClientMessage>,
     decisions: HashSet<String>,
-    enqueued: HashSet<String>,
+    submitted: HashMap<String, u64>,
     sender: Option<oneshot::Sender<bool>>,
 }
 
@@ -47,13 +50,16 @@ impl RunControls {
         };
         self.track(run_id);
         if let BridgeClientMessage::RunPermission { tool_call_id, .. } = &message
-            && self.decisions.contains(tool_call_id)
+            && (self.decisions.contains(tool_call_id)
+                || bridge.is_some_and(|bridge| {
+                    self.submitted.get(tool_call_id) == Some(&bridge.connection_id())
+                }))
         {
             return true;
         }
-        if bridge.is_some_and(|bridge| bridge.send(message.clone()).is_ok()) {
+        if let Some(bridge) = bridge.filter(|bridge| bridge.send(message.clone()).is_ok()) {
             if let BridgeClientMessage::RunPermission { tool_call_id, .. } = message {
-                self.enqueued.insert(tool_call_id);
+                self.submitted.insert(tool_call_id, bridge.connection_id());
             }
             true
         } else {
@@ -215,7 +221,7 @@ impl RunActions {
                     if let RunEvent::ToolCall { id, .. } | RunEvent::ToolResult { id, .. } = &event
                     {
                         self.controls.update_value(|controls| {
-                            controls.enqueued.remove(id);
+                            controls.submitted.remove(id);
                             controls.decisions.insert(id.clone());
                         });
                     }
@@ -304,7 +310,7 @@ impl RunActions {
                         if let openwebide_core::RunItem::Step(step) = item {
                             if !step.awaiting_permission || step.result.is_some() {
                                 self.controls.update_value(|controls| {
-                                    controls.enqueued.remove(&step.id);
+                                    controls.submitted.remove(&step.id);
                                     controls.decisions.insert(step.id.clone());
                                 });
                             }
@@ -323,7 +329,7 @@ impl RunActions {
                             } else if self.chat.active_session.get_untracked() == Some(session_id)
                                 && step.awaiting_permission
                                 && !self.controls.with_value(|controls| {
-                                    controls.enqueued.contains(&step.id)
+                                    controls.submitted.contains_key(&step.id)
                                         || controls.decisions.contains(&step.id)
                                 })
                                 && self
@@ -349,9 +355,20 @@ impl RunActions {
                             }
                         }
                     }
-                    let decisions = self
-                        .controls
-                        .with_value(|controls| controls.decisions.clone());
+                    // A snapshot can be queued ahead of a decision on this socket.
+                    // A new socket may restore an approval whose send was lost.
+                    let connection_id = callback_bridge.connection_id();
+                    let decisions = self.controls.with_value(|controls| {
+                        let mut decisions = controls.decisions.clone();
+                        decisions.extend(
+                            controls
+                                .submitted
+                                .iter()
+                                .filter(|(_, socket)| **socket == connection_id)
+                                .map(|(id, _)| id.clone()),
+                        );
+                        decisions
+                    });
                     for step in decisions {
                         self.clear_prompt(&step);
                     }

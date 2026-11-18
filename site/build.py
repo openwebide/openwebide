@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
@@ -16,6 +17,7 @@ import yaml
 from navigation import validate_navigation
 
 from credits import render as render_credits
+from screenshots import capture
 
 ROOT = Path(__file__).resolve().parent.parent
 REPO_URL = "https://github.com/openwebide/openwebide"
@@ -40,6 +42,9 @@ class PageLinks(HTMLParser):
         for key in ("href", "src"):
             if key in attributes:
                 self.links.append(attributes[key])
+        if tag == "source" and attributes.get("srcset"):
+            self.links.extend(candidate.split()[0] for candidate in attributes["srcset"].split(",")
+                              if candidate.strip())
 
 
 def validate_links(output):
@@ -77,14 +82,29 @@ def shared_styles():
     return "\n".join(rules)
 
 
-def build_playground(destination):
+def build_frontend(config, destination, public_url, revision):
     env = dict(os.environ)
     env["NO_COLOR"] = "true"
     common = Path(subprocess.check_output(["git", "rev-parse", "--git-common-dir"], cwd=ROOT, text=True).strip())
     if not common.is_absolute():
         common = ROOT / common
     env.setdefault("CARGO_TARGET_DIR", str(common.resolve().parent / "target"))
-    subprocess.run(["trunk", "build", "--release", "--config", str(ROOT / "frontend/playground/Trunk.toml"), "--dist", str(destination), "--public-url", "./"], cwd=ROOT, env=env, check=True)
+    env["OPENWEBIDE_BUILD_COMMIT"] = revision
+    subprocess.run(["trunk", "build", "--release", "--config", str(ROOT / config),
+                    "--dist", str(destination), "--public-url", public_url],
+                   cwd=ROOT, env=env, check=True)
+
+
+def build_screenshots(staging, content, revision, modified):
+    version = tomllib.loads((ROOT / "Cargo.toml").read_text())["workspace"]["package"]["version"]
+    bundle = staging / "app"
+    build_frontend("frontend/Trunk.toml", bundle, "/", revision)
+    if f"<dt>Commit</dt><dd><code>{revision}</code></dd>" not in (bundle / "about.html").read_text():
+        raise ValueError("The screenshot app bundle does not identify the site build revision")
+    screenshots = content / "assets/screenshots"
+    capture(bundle, screenshots, revision, version, modified)
+    # Keep the image URL shared by the original homepage working.
+    shutil.copy2(screenshots / "workspace.png", content / "docs/assets/openwebide-pwa.png")
 
 
 def prepare_documentation(content):
@@ -109,16 +129,21 @@ def build(output, site_url, playground_dist=None):
     legacy_marker = output / ".open-webide-site"
     if output.exists() and any(output.iterdir()) and not (marker.is_file() or legacy_marker.is_file()):
         raise ValueError(f"Refusing to replace non-site output directory: {output}")
+    if not os.environ.get("CHROME") or not os.environ.get("CHROMEDRIVER"):
+        raise ValueError("Set CHROME and CHROMEDRIVER to the project's pinned browser pair")
+    revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    modified = bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT))
     with tempfile.TemporaryDirectory(prefix="openwebide-docs-") as temporary:
         staging = Path(temporary)
         content = staging / "content"
         navigation = prepare_documentation(content)
         if playground_dist is None:
             playground_dist = staging / "playground"
-            build_playground(playground_dist)
+            build_frontend("frontend/playground/Trunk.toml", playground_dist, "./", revision)
         if not (playground_dist / "index.html").is_file() or not list(playground_dist.glob("*.wasm")):
             raise ValueError("The panel playground must be a compiled Rust/WASM bundle")
         shutil.copytree(ROOT / "site/assets", content / "assets")
+        build_screenshots(staging, content, revision, modified)
         shutil.copytree(playground_dist, content / "tools/panel-playground")
         (content / "fonts").mkdir()
         for font in (ROOT / "frontend/fonts").glob("*.woff2"):

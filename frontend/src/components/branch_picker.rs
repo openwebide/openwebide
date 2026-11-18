@@ -31,7 +31,11 @@ pub fn BranchPicker(
         });
         let mut options = vec![SelectOption::new(
             format!("branch:{branch}"),
-            branch.clone(),
+            if branch.is_empty() {
+                "Branch unavailable".to_owned()
+            } else {
+                branch.clone()
+            },
         )];
         options.extend(
             git.branches

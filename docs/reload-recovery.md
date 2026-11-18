@@ -5,6 +5,11 @@ Saved messages and live output merge without duplicating prompts, tool steps or
 completed replies. Pending approvals remain usable. The bridge must still be
 running; its active-run registry is held in memory.
 
+If the connection drops during an approval, Chat reattaches to the same run.
+An approval reappears when the bridge is still waiting for a decision. Once
+you submit it, older snapshots on that connection keep the approval closed
+while the bridge processes the decision.
+
 Local agents run in the browser. Reloading interrupts that agent; **Resume**
 continues from saved history with a new model turn. Finished tools keep their
 recorded results. Unfinished tools are not replayed: the model receives an explicit

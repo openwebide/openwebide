@@ -1,5 +1,5 @@
 use crate::backend::{Backend, RecoveryError};
-use futures::future::LocalBoxFuture;
+use futures::{StreamExt, future::LocalBoxFuture};
 use leptos::prelude::RwSignal;
 use openwebide_core::{
     ChatCompletion, ChatMessage, ChatRequest, ChatSession, Connection, ConversationEntry,
@@ -305,6 +305,8 @@ pub struct FakeBackend {
     pub scripted_completions: RefCell<VecDeque<ChatCompletion>>,
     pub completion_requests: RefCell<Vec<ChatRequest>>,
     pub scripted_events: RefCell<VecDeque<Vec<RunEvent>>>,
+    /// For the next scripted send, wait for one permit before each event.
+    pub scripted_event_permits: RefCell<Option<futures::channel::mpsc::UnboundedReceiver<()>>>,
     pub calls: RefCell<Vec<Call>>,
     pub session_expired: RwSignal<bool>,
 }
@@ -4499,7 +4501,13 @@ impl Backend for FakeBackend {
             let mut assistant = None;
             let mut deltas = String::new();
             let mut interrupted = false;
+            let mut permits = self.scripted_event_permits.borrow_mut().take();
             for event in events {
+                if let Some(permits) = &mut permits
+                    && permits.next().await.is_none()
+                {
+                    return Err("scripted event replay closed".into());
+                }
                 if signal.is_some_and(AbortSignal::aborted) {
                     return Err("aborted".into());
                 }

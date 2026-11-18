@@ -31,6 +31,7 @@
   <link rel="stylesheet" href="{{ 'assets/shared.css' | url }}">
   <link rel="stylesheet" href="{{ 'assets/site.css' | url }}">
   <script defer src="{{ 'assets/diagrams.js' | url }}"></script>
+  <script defer src="{{ 'assets/navigation.js' | url }}"></script>
 </head>
 <body>
   <a class="skip-link" href="#content">Skip to content</a>
@@ -38,7 +39,7 @@
     <a class="brand" href="{{ nav.homepage.url | url }}"><img src="{{ 'frontend/pwa/favicon.svg' | url }}" alt="" width="32" height="32">Open WebIDE</a>
     <nav aria-label="Primary">
       {% for item in nav.pages %}
-        {% if item.file.src_path == 'getting-started.md' %}<a href="{{ item.url | url }}">Get started</a>{% endif %}
+        {% if item.file.src_path == 'getting-started.md' %}<a href="{{ item.url | url }}#install-and-run">Get started</a>{% endif %}
         {% if item.file.src_path == 'docs/index.md' %}<a href="{{ item.url | url }}">Docs</a>{% endif %}
       {% endfor %}
       <a href="{{ config.repo_url }}/issues">Issues</a>
@@ -49,8 +50,8 @@
   <div class="layout{% if home %} landing{% endif %}">
     {% if not home %}
     <aside class="sidebar">
-      <details open>
-        <summary>Documentation</summary>
+      <details class="docs-navigation">
+        <summary>Browse documentation</summary>
         <nav aria-label="Documentation">
           {% macro navigation(items) %}
             <ul>
@@ -84,6 +85,18 @@
             <span aria-hidden="true">/</span><span aria-current="page">{{ page.title }}</span>
           </nav>
           <p class="source-link"><a href="{{ config.repo_url }}/blob/main/{{ 'README.md' if page.file.src_path == 'getting-started.md' else page.file.src_path }}">View source on GitHub</a></p>
+          {% if page.toc and page.toc.items[0].children | length > 2 %}
+            <details class="article-contents">
+              <summary>On this page</summary>
+              <nav aria-label="On this page">
+                <ul>
+                {% for item in page.toc.items[0].children %}
+                  <li><a href="{{ item.url | e }}">{{ item.title | e }}</a></li>
+                {% endfor %}
+                </ul>
+              </nav>
+            </details>
+          {% endif %}
         {% endif %}
         {{ page.content }}
       {% else %}<h1>Page not found</h1><p><a href="{{ nav.homepage.url | url }}">Return home</a></p>{% endif %}

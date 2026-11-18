@@ -84,7 +84,33 @@ fn GitHistoryContent(
             <div class="git-history-body">
                 <div class="git-history-main">
                     <div class="git-history-list" role="group" aria-label="Commit history">
-                        <div class="panel-inline-inset git-history-applied-filter">{move ||displayed.with(|query|format!("{}{}",query.reference.as_deref().unwrap_or("All branches"),if query.search.is_empty(){String::new()}else{format!(" · {}",query.search)}))}</div>
+                        {move || displayed.with(|query| {
+                            if query.reference != reference.get() {
+                                let scope = match query.reference.as_deref() {
+                                    None => "All branches",
+                                    Some("HEAD") => "Current branch",
+                                    Some(name) => name.strip_prefix("refs/heads/")
+                                        .or_else(|| name.strip_prefix("refs/remotes/"))
+                                        .or_else(|| name.strip_prefix("refs/tags/"))
+                                        .unwrap_or(name),
+                                };
+                                let label = if query.search.is_empty() {
+                                    format!("Showing results for {scope}")
+                                } else {
+                                    format!("Showing results for {scope} · {}", query.search)
+                                };
+                                Some(label)
+                            } else if query.search != search.get() {
+                                let label = if query.search.is_empty() {
+                                    "Showing unfiltered results".into()
+                                } else {
+                                    format!("Showing results for {}", query.search)
+                                };
+                                Some(label)
+                            } else {
+                                None
+                            }
+                        }).map(|label| view! { <div class="panel-inline-inset git-history-applied-filter">{label}</div> })}
                         <For each=move ||{commits.get().into_iter().map(|commit|commit.hash).collect::<Vec<_>>()} key=Clone::clone children=move |hash|{view!{<HistoryRow hash=hash actions=actions graph=graph file_history=file_history />}} />
                         <Show when=move || loading.get() && commits.with(Vec::is_empty)><div class="git-history-empty" role="status">"Loading history…"</div></Show>
                         <Show when=move || !loading.get() && commits.with(Vec::is_empty) && error.get().is_none()><div class="git-history-empty">"No matching commits"</div></Show>

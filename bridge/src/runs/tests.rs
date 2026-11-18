@@ -1127,6 +1127,188 @@ async fn websocket_scopes_attach_cancel_permission_and_list() {
     server.abort();
 }
 
+#[cfg(all(feature = "tls", any(target_os = "linux", target_os = "macos")))]
+#[tokio::test]
+async fn reconnect_during_approval_executes_the_command_once() {
+    use futures::SinkExt;
+    use openwebide_core::BridgeClientMessage;
+    use tokio::net::TcpStream;
+    use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, tungstenite::Message};
+
+    async fn receive(
+        socket: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
+    ) -> BridgeServerMessage {
+        let message = tokio::time::timeout(Duration::from_secs(10), socket.next())
+            .await
+            .expect("bridge message timed out")
+            .expect("bridge closed the socket")
+            .unwrap();
+        serde_json::from_str(message.to_text().unwrap()).unwrap()
+    }
+
+    let workspace = tempfile::tempdir().unwrap();
+    let recovery = tempfile::tempdir().unwrap();
+    let config = crate::ServerConfig::new_for_test(
+        workspace.path().into(),
+        "secret".into(),
+        None,
+        recovery.path().into(),
+    )
+    .unwrap();
+    let backend = Arc::new(FakeBackend::default());
+    *backend.kind.lock().unwrap() = Some(RunKind::Agent {
+        project_path: String::new(),
+    });
+    let run = config
+        .runs
+        .start(
+            &user(1),
+            start("approval"),
+            workspace.path(),
+            backend,
+            |_| FakeProvider {
+                tools: Mutex::new(vec![
+                    vec![Ok(ToolStreamChunk::Response(ChatResponse::ToolCalls(
+                        vec![ToolCall {
+                            id: "command".into(),
+                            name: "run_command".into(),
+                            arguments: r#"{"command":"echo executed >> runs.log"}"#.into(),
+                        }],
+                    )))],
+                    vec![Ok(ToolStreamChunk::Response(ChatResponse::Text(
+                        "finished".into(),
+                    )))],
+                ]),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    let server = tokio::spawn(crate::run_server(listener, config));
+    let token =
+        openwebide_auth::sign_token_expires("secret", 1, i64::try_from(now()).unwrap() + 120, 0);
+    let encode = |message: BridgeClientMessage| {
+        Message::Text(serde_json::to_string(&message).unwrap().into())
+    };
+    let attach = async || {
+        let (mut socket, _) = tokio_tungstenite::connect_async(format!("ws://{address}/"))
+            .await
+            .unwrap();
+        socket
+            .send(encode(BridgeClientMessage::Hello {
+                token: token.clone(),
+            }))
+            .await
+            .unwrap();
+        assert!(matches!(
+            receive(&mut socket).await,
+            BridgeServerMessage::HelloOk { runs: true, .. }
+        ));
+        socket
+            .send(encode(BridgeClientMessage::RunAttach {
+                run_id: "approval".into(),
+                last_seq: None,
+            }))
+            .await
+            .unwrap();
+        socket
+    };
+    let mut first = attach().await;
+    let approval_id = loop {
+        let pending = match receive(&mut first).await {
+            BridgeServerMessage::RunSnapshot { snapshot, .. } => {
+                snapshot.items.iter().find_map(|item| match item {
+                    openwebide_core::RunItem::Step(step) if step.awaiting_permission => {
+                        Some(step.id.clone())
+                    }
+                    _ => None,
+                })
+            }
+            BridgeServerMessage::RunEvent {
+                event: RunEvent::PermissionRequest { id, .. },
+                ..
+            } => Some(id),
+            BridgeServerMessage::RunEvent {
+                event: RunEvent::Done { .. } | RunEvent::Error { .. },
+                ..
+            } => panic!("run finished before approval"),
+            _ => None,
+        };
+        if let Some(id) = pending {
+            break id;
+        }
+    };
+    first.close(None).await.unwrap();
+
+    let mut reattached = attach().await;
+    let BridgeServerMessage::RunSnapshot { snapshot, .. } = receive(&mut reattached).await else {
+        panic!("reattach should restore the pending approval snapshot");
+    };
+    let pending: Vec<_> = snapshot
+        .items
+        .iter()
+        .filter_map(|item| match item {
+            openwebide_core::RunItem::Step(step)
+                if step.awaiting_permission && step.result.is_none() =>
+            {
+                Some(step.id.as_str())
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(pending, [approval_id.as_str()]);
+    assert!(!workspace.path().join("runs.log").exists());
+
+    for _ in 0..2 {
+        reattached
+            .send(encode(BridgeClientMessage::RunPermission {
+                run_id: "approval".into(),
+                tool_call_id: approval_id.clone(),
+                approved: true,
+            }))
+            .await
+            .unwrap();
+    }
+    let mut completed = false;
+    let mut duplicate_rejected = false;
+    while !completed || !duplicate_rejected {
+        match receive(&mut reattached).await {
+            BridgeServerMessage::RunEvent {
+                event: RunEvent::Done { message },
+                ..
+            } => {
+                assert_eq!(message.content, "finished");
+                completed = true;
+            }
+            BridgeServerMessage::RunEvent {
+                event: RunEvent::Error { message },
+                ..
+            } => panic!("{message}"),
+            BridgeServerMessage::Error { message, .. } => {
+                assert_eq!(message, format!("no pending permission for {approval_id}"));
+                duplicate_rejected = true;
+            }
+            _ => {}
+        }
+    }
+    assert_eq!(
+        std::fs::read_to_string(workspace.path().join("runs.log")).unwrap(),
+        "executed\n"
+    );
+    assert_eq!(
+        events(&run)
+            .iter()
+            .filter(|event| matches!(
+                event, RunEvent::ToolResult { id, ok: true, .. } if id == &approval_id
+            ))
+            .count(),
+        1
+    );
+    server.abort();
+}
+
 #[tokio::test]
 async fn agent_body_executes_native_tools_and_persists_interim_then_final() {
     let dir = tempfile::tempdir().unwrap();

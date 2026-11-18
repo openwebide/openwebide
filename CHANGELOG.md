@@ -9,6 +9,23 @@ Scheduled nightly builds publish a rolling release; the last numbered prerelease
 
 ## [Unreleased]
 
+- Generate desktop and phone homepage screenshots and illustrated guides from
+  the current frontend build in headless Chrome.
+
+- Put nightly installation steps first and make documentation navigation compact
+  on phones. Move editor and plugin internals into development references.
+
+- Improve comment and slash-command contrast, distinguish Files Changes from
+  Editor Diff, and streamline Git History, Settings, task controls, file menus
+  and plugin status.
+
+- Show rotating activity verbs before the model sends text, and show the
+  Thinking disclosure when reasoning text arrives.
+
+- Keep a submitted approval closed when an older snapshot arrives on the same
+  bridge connection. After reconnect, restore one approval prompt when the
+  bridge is still waiting for a decision.
+
 - Yield ordinary browser tasks around the editor tests' complete-DOM oracle so
   WebDriver can poll between expensive geometry phases, preserving every fixture,
   ownership assertion and existing timeout.

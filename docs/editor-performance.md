@@ -1,7 +1,7 @@
 # Editor performance measurements
 
 Parser and browser-worker measurements below describe their recorded artifacts.
-The current [editor implementation](editor.md#preparation-and-viewport-rendering)
+The current [editor implementation](editor-internals.md#preparation-and-viewport-rendering)
 uses host language components; its production client does not load syntax engines. Historical
 worker timings do not measure this migration or establish its performance gates.
 

@@ -3,9 +3,51 @@ name: Project site
 on:
   push:
     branches: [main]
-    paths: ['Cargo.toml', 'Cargo.lock', '**/Cargo.toml', 'rust-toolchain.toml', 'site/**', 'tools/open_source.py', 'third-party/**', 'frontend/fonts/**', 'docs/**', 'README.md', 'CHANGELOG.md', 'LICENSE', 'frontend/styles.css', 'frontend/playground/**', 'frontend/src/**', 'frontend/build.rs', 'crates/core/src/plugins/panels.rs', 'crates/plugin-sdk/**', 'tools/setup-wasm-compiler.sh', 'tools/check-panel-playground.py', 'tools/check-editor-recovery.py', '.github/actions/setup-editor-browser/**', 'frontend/pwa/favicon.svg', '.github/workflows/pages.yml']
+    paths:
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '**/Cargo.toml'
+      - 'rust-toolchain.toml'
+      - 'site/**'
+      - 'tools/open_source.py'
+      - 'third-party/**'
+      - 'docs/**'
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'LICENSE'
+      - 'frontend/**'
+      - 'crates/**'
+      - 'vendor/**'
+      - 'tools/setup-wasm-compiler.sh'
+      - 'tools/check-panel-playground.py'
+      - 'tools/check-editor-recovery.py'
+      - 'tools/language_host_support.py'
+      - 'plugins/bundled.json'
+      - '.github/actions/setup-editor-browser/**'
+      - '.github/workflows/pages.yml'
   pull_request:
-    paths: ['Cargo.toml', 'Cargo.lock', '**/Cargo.toml', 'rust-toolchain.toml', 'site/**', 'tools/open_source.py', 'third-party/**', 'frontend/fonts/**', 'docs/**', 'README.md', 'CHANGELOG.md', 'LICENSE', 'frontend/styles.css', 'frontend/playground/**', 'frontend/src/**', 'frontend/build.rs', 'crates/core/src/plugins/panels.rs', 'crates/plugin-sdk/**', 'tools/setup-wasm-compiler.sh', 'tools/check-panel-playground.py', 'tools/check-editor-recovery.py', '.github/actions/setup-editor-browser/**', 'frontend/pwa/favicon.svg', '.github/workflows/pages.yml']
+    paths:
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '**/Cargo.toml'
+      - 'rust-toolchain.toml'
+      - 'site/**'
+      - 'tools/open_source.py'
+      - 'third-party/**'
+      - 'docs/**'
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'LICENSE'
+      - 'frontend/**'
+      - 'crates/**'
+      - 'vendor/**'
+      - 'tools/setup-wasm-compiler.sh'
+      - 'tools/check-panel-playground.py'
+      - 'tools/check-editor-recovery.py'
+      - 'tools/language_host_support.py'
+      - 'plugins/bundled.json'
+      - '.github/actions/setup-editor-browser/**'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -45,10 +87,19 @@ jobs:
       - run: pip install -r site/requirements.txt
       - name: Check documentation navigation
         run: python -m unittest discover -s site -p 'test_*.py'
-      - name: Build and validate site
-        run: python site/build.py --output "$RUNNER_TEMP/project-site"
       - uses: ./.github/actions/setup-editor-browser
         id: chrome
+      - name: Build and validate site
+        env:
+          CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: python site/build.py --output "$RUNNER_TEMP/project-site"
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'pull_request'
+        with:
+          name: documentation-screenshots
+          path: ${{ runner.temp }}/project-site/assets/screenshots
+          if-no-files-found: error
       - name: Check the compiled panel playground
         env:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}

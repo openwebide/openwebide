@@ -166,11 +166,12 @@ pub fn SegmentedControl<T: Clone + PartialEq + Send + Sync + 'static>(
     value: Signal<T>,
     on_change: Callback<T>,
     #[prop(into, optional)] class: Option<String>,
+    #[prop(optional)] label: Option<&'static str>,
 ) -> impl IntoView {
     let extra_class = class.unwrap_or_default();
 
     view! {
-        <div class=format!("ui-segmented-control {extra_class}") role="group">
+        <div class=format!("ui-segmented-control {extra_class}") role="group" aria-label=label>
             {options.into_iter().map(|opt| {
                 let visible = opt.visible;
                 view! {

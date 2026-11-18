@@ -14,18 +14,23 @@ description: Your code. Your models. Your workspace.
 An IDE in your browser, powered by the models you choose. Edit code, ask an agent
 for help, review its changes, and work with Git and a terminal—all in one place.
 
-[Get started](README.md#run-with-docker){ .btn .send }
+[Get started](README.md#install-and-run){ .btn .send }
 [View on GitHub](https://github.com/openwebide/openwebide){ .btn }
 
 <p class="release-note">Under active development toward 1.0. Try the nightly container or a source build and share your feedback.</p>
 
 </div>
 
-<figure class="app-screenshot" markdown="1">
+<figure class="app-screenshot">
 
-[![Open WebIDE running as an installed PWA, with Git file-change counts, a syntax-highlighted inline Git diff, and model chat](docs/assets/openwebide-pwa.png)](docs/assets/openwebide-pwa.png)
+<a href="assets/screenshots/workspace.png">
+  <picture>
+    <source media="(max-width: 560px)" srcset="assets/screenshots/workspace-phone.png">
+    <img src="assets/screenshots/workspace.png" alt="Open WebIDE showing an inline diff for a Rust forecast project">
+  </picture>
+</a>
 
-<figcaption>Open WebIDE running as an installed PWA. Review Git diffs alongside your model conversation.</figcaption>
+<figcaption>Review changes in the editor. <a href="assets/screenshots/workspace.png">View the full desktop workspace</a> to see the conversation alongside the diff.</figcaption>
 
 </figure>
 
@@ -82,4 +87,4 @@ Use [scheduled tasks](docs/scheduled-tasks.md), [goals](docs/chat-controls.md)
 and [monitors](docs/monitors.md) for ongoing work, or inspect and manage your
 homelab through [host administration](docs/host-administration.md).
 Choose Nightly, Preview or Stable and install compatible releases from
-**Settings → Host → Updates**, using a configured Compose or Podman/systemd updater.
+**Settings → Updates**, using a configured Compose or Podman/systemd updater.

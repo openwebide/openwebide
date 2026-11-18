@@ -557,7 +557,7 @@ async fn custom_languages_color_editor_and_diff_through_both_hosts_and_recover_f
         })
         .await;
 
-        mounted.click_text("Changes");
+        mounted.click_text("Diff");
         wait_until("plugin colors intersect diff word changes", || {
             mounted.has_element(".diff-line.add .tok-string.diff-word-add")
         })

@@ -9,6 +9,11 @@ date/time. The **Cron** tab accepts a standard five-field crontab expression:
 minute, hour, day of month, month, weekday. Lists, ranges and steps are supported.
 A schedule is a prompt, not a shell command.
 
+<figure class="doc-screenshot" markdown="1">
+[![The new task form with title, prompt, session, model, and a repeating schedule with weekday and time controls](../assets/screenshots/scheduled-task.png)](../assets/screenshots/scheduled-task.png)
+<figcaption>The Repeating schedule lets you choose the weekdays and time for a saved prompt.</figcaption>
+</figure>
+
 Times are shown in the browser's timezone. One-time timestamps, next runs and run
 history are stored as UTC epoch seconds. Recurring cron expressions also retain
 the timezone in which they were created, so weekday and time choices keep their

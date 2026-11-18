@@ -19,12 +19,16 @@ main { min-width: 0; max-width: 900px; }
 .sidebar .nav-section summary { padding: 6px 0; font-size: 14px; }
 .sidebar .nav-section ul { margin-left: 8px; padding-left: 8px; border-left: 1px solid var(--border); }
 .sidebar summary { font-weight: 600; cursor: pointer; }
+.docs-navigation > summary { padding: 8px 0; }
 .sidebar a { font-size: 14px; text-decoration: none; color: var(--text-muted); }
 .sidebar a:hover, .sidebar a[aria-current] { color: var(--accent); }
 .sidebar a[aria-current] { background: var(--bg-panel); font-weight: 600; }
 .breadcrumbs { display: flex; flex-wrap: wrap; gap: 8px; font-size: 13px; color: var(--text-muted); margin-bottom: 12px; }
 .breadcrumbs a { text-decoration: none; }
 .source-link { font-size: 13px; margin: 0 0 24px; }
+.article-contents { padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.article-contents summary { cursor: pointer; font-size: 14px; font-weight: 600; }
+.article-contents ul { margin: 8px 0; padding-inline-start: 24px; }
 h1, h2, h3 { line-height: 1.25; color: var(--text); scroll-margin-top: 24px; }
 h1 { font-size: 2.4rem; letter-spacing: -.035em; }
 h2 { margin-top: 2em; font-size: 1.5rem; }
@@ -47,6 +51,9 @@ blockquote { margin-left: 0; border-left: 3px solid var(--accent); padding-left:
 .app-screenshot { margin: 0 0 48px; }
 .app-screenshot img { display: block; width: 100%; border: 1px solid var(--border); border-radius: var(--radius-lg); }
 .app-screenshot figcaption { margin-top: 12px; color: var(--text-muted); font-size: .85rem; }
+.doc-screenshot { margin: 24px 0 32px; }
+.doc-screenshot img { display: block; border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.doc-screenshot figcaption { margin-top: 8px; color: var(--text-muted); font-size: .9rem; }
 .features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 28px 0; }
 .features h2 { font-size: 1.2rem; margin-top: 0; }
 .features p { color: var(--text-muted); margin-bottom: 0; }
@@ -57,7 +64,8 @@ footer { border-top: 1px solid var(--border); padding: 24px 32px; text-align: ce
   .site-header { padding: 20px; flex-wrap: wrap; }
   .site-header nav { gap: 20px; }
   .layout { display: block; padding: 24px 20px 48px; }
-  .sidebar { margin-bottom: 32px; }
+  .sidebar { margin-bottom: 20px; }
+  .docs-navigation > summary { padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); }
   .features { grid-template-columns: 1fr; }
   .hero { padding-top: 20px; }
 }

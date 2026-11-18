@@ -255,7 +255,8 @@ fn PluginRow(
         <div class="plugin-info">
             <button type="button" class="btn ghost plugin-name" on:click=move |_|on_details.run(())>{name}</button>
             <p class="plugin-description" title=description_title>{description}</p>
-            <p class="plugin-metadata"><span>{publisher}</span><span>{move ||version.get()}</span><span>{move ||status.get()}</span><Show when=move ||!source.get().is_empty()><span>{move ||format!("Source: {}", source.get())}</span></Show></p>
+            <p class="plugin-metadata"><span>{publisher}</span><span>{move ||version.get()}</span><Show when=move ||!source.get().is_empty()><span>{move ||format!("Source: {}", source.get())}</span></Show></p>
+            <Show when=move ||!status.with(String::is_empty)><p class="plugin-status">{move ||status.get()}</p></Show>
         </div>
         <div class="plugin-row-actions">{children()}</div>
     </div>}
@@ -393,7 +394,7 @@ fn InstalledPackage(entry: PluginInstallation) -> impl IntoView {
         <PluginRow name=manifest.display_name description=manifest.description publisher=manifest.publisher icon=manifest.icon
             source=Signal::derive(move ||state.marketplaces.with(|marketplaces|entry.with_value(|entry|marketplaces.catalogs.iter().find(|catalog|catalog.source.repository==entry.prepared.source.repository).map(marketplace_name).unwrap_or_default())))
             version=Signal::derive(move ||entry.with_value(|e|e.prepared.manifest.version.clone()))
-            status=Signal::derive(move ||if requires_update.get(){"Update required".into()}else{binding.get().map_or_else(||entry.with_value(|entry|if entry.default_enabled{"Enabled by default"}else{"Activation pending"}.into()),|b|format!("{} in this project: {}",if b.enabled{"Enabled"}else{"Disabled"},b.prepared.manifest.version))})
+            status=Signal::derive(move ||if requires_update.get(){"Update required".into()}else{binding.get().map_or_else(||entry.with_value(|entry|if entry.default_enabled{"Enabled by default"}else{"Activation pending"}.into()),|b|{let state=if b.enabled{"Enabled in this project"}else{"Disabled in this project"};entry.with_value(|installed|if installed.prepared.manifest.version==b.prepared.manifest.version{state.into()}else{format!("{state} · {}",b.prepared.manifest.version)})})})
             on_details=Callback::new(move |()|details.update(|open| *open = !*open))>
             <Show when=move ||projects.active_project.get().is_some()&&binding.get().is_some()>
             <Show when=move ||enabled.get() fallback=move ||view!{<Button size=ButtonSize::Sm disabled=Signal::derive(move ||state.busy.get()||projects.active_project.get().is_none()||entry.with_value(|entry|entry.prepared.manifest.requires_update())) on_click=Callback::new(move |_|actions.enable.run(entry.get_value()))>"Enable"</Button>}>

@@ -8,14 +8,24 @@ projects, Servers, Help / Keyboard shortcuts and About. On phones the same menu
 opens a side drawer. The user dropdown contains Settings, System prompts and Log out.
 Sessions contains conversations, project memories, skills and scheduled tasks.
 
+<figure class="doc-screenshot" markdown="1">
+[![The phone app menu showing local and remote project shortcuts, Servers, help, and workspace status controls](../assets/screenshots/phone-drawer.png)](../assets/screenshots/phone-drawer.png)
+<figcaption>On a phone, open the logo menu to find project shortcuts and the workspace status controls.</figcaption>
+</figure>
+
 Use **Search…** or Ctrl/Cmd+Shift+P to find commands, filenames, projects and
 sessions. Prefix a query with `>` for commands, `/` for files, `#` for projects or
 `@` for sessions. Arrow keys choose a result; Enter opens it and Escape closes
 search. Commands remain available while filenames load. Grant access in Files
 when a local project's folder is unavailable in this browser.
 
-Editor tabs and actions share one row. **Edit / Changes / Preview** changes the
-view; Preview appears for supported files. Changes compares against the last
+<figure class="doc-screenshot" markdown="1">
+[![Workspace search with the query slash forecast and separate results for src/forecast.rs and tests/forecast.rs](../assets/screenshots/workspace-search.png)](../assets/screenshots/workspace-search.png)
+<figcaption>Search with /forecast to look for files. The paths distinguish the source file from its test.</figcaption>
+</figure>
+
+Editor tabs and actions share one row. **Edit / Diff / Preview** changes the
+view; Preview appears for supported files. Diff compares against the last
 commit, with Inline/Split display options. Save and Find remain beside the view
 selector. The **…** menu includes Copy path, Reveal in Files, Convert indentation
 and **Discard changes…**. Discard retains confirmation and pending-review guards.

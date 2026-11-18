@@ -11,6 +11,11 @@ command. Clicking an entry also completes it. Escape dismisses the suggestions
 without changing the draft. Image attachments keep the prompt on the normal send
 path rather than executing a slash command.
 
+<figure class="doc-screenshot" markdown="1">
+[![The Chat composer with slash c entered and matching slash commands shown above the input](../assets/screenshots/chat-commands.png)](../assets/screenshots/chat-commands.png)
+<figcaption>Type the first few characters after the slash to narrow the command list.</figcaption>
+</figure>
+
 Attachments appear as a compact paperclip and count beside the send controls.
 Expand it to preview or remove images and detach editor context. File mentions
 remain inline in your prompt. Chat actions return focus to the composer so you
@@ -37,6 +42,10 @@ also available through the context dialog on narrow screens. Dialogs close when
 you switch chats, projects or accounts. Closing one returns focus to the composer.
 
 ## Follow activity
+
+While a model is preparing its response, Chat shows a spinner with an activity
+verb. The **Thinking** disclosure appears when reasoning text arrives, and
+Chat shows tool activity and approval prompts as the run progresses.
 
 Consecutive tool calls and finished reasoning-only messages share an expandable
 activity summary. The step count includes those reasoning messages; the duration

@@ -6,9 +6,25 @@ A self-hosted browser IDE for coding with local LLMs: edit files, run an agent,
 review its changes, and use Git and a terminal in one workspace. Connect to
 Ollama or OpenAI-compatible model servers such as llama.cpp and LM Studio.
 
-The Rust frontend and backend run on WebAssembly; a native execution bridge
-provides terminals, commands, Git operations, and persistent agent runs. Projects,
-sessions, and preferences live in SQLite, so you can resume from another browser.
+## Install and run
+
+With Docker and Docker Compose installed, download the published nightly Compose
+file into a dedicated installation directory and start the container.
+
+```sh
+mkdir -p ~/openwebide-install ~/source
+cd ~/openwebide-install
+curl -fL -o docker-compose.yml \
+  https://github.com/openwebide/openwebide/releases/download/nightly/docker-compose.yml
+docker compose up -d --pull always
+```
+
+Open <http://localhost:8080/>, register the first account, and follow
+[Your first session](docs/first-session.md) to connect a model and open a project.
+Projects in `~/source` appear in the remote folder picker.
+
+See [release installation and upgrades](docs/releases.md) for Podman, checksums,
+custom workspace paths and existing installations.
 
 ## What you can do
 
@@ -39,6 +55,10 @@ sessions, and preferences live in SQLite, so you can resume from another browser
 See the [roadmap](docs/roadmap.md) for remaining work and the
 [changelog](CHANGELOG.md) for completed changes.
 
+The Rust frontend and backend run on WebAssembly; a native execution bridge
+provides terminals, commands, Git operations, and persistent agent runs. Projects,
+sessions, and preferences live in SQLite, so you can resume from another browser.
+
 The [project site guide](docs/project-site.md) explains how the landing page and documentation
 are built and published to GitHub Pages from this repository.
 
@@ -48,13 +68,8 @@ Hosting and administration, Development, or Project.
 
 ## Run with Docker
 
-Main builds automatically update `ghcr.io/openwebide/openwebide:nightly` for Linux
-amd64 and arm64 and refresh the Compose and Podman Quadlet files on
-[the nightly release](https://github.com/openwebide/openwebide/releases/tag/nightly),
-which follow `:nightly`. Download them and run without cloning or building. The GHCR package is public, so no registry
-authentication is needed. See
-[releases, configuration and upgrades](docs/releases.md) for installation and backup
-instructions. The source-build path below remains available now.
+Use [Install and run](#install-and-run) for the published image. The commands
+below build the container from a source checkout.
 
 Existing installs should follow the [deployment-name migration notes](docs/releases.md#existing-installations-with-the-old-project-name)
 to retain their database and Tailscale identity when adopting the `openwebide` name.
