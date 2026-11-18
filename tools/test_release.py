@@ -383,7 +383,7 @@ with open(os.environ['COMMAND_LOG'], 'a') as stream:
         self.assertEqual(calls[-1][-1], writes[0])
         self.assertEqual(calls[0][-2:], [f'{image}@sha256:' + 'a' * 64, f'{image}@sha256:' + 'b' * 64])
 
-    def test_push_uses_smoke_tested_image_and_stops_on_failure(self):
+    def test_push_retries_missing_blobs_without_rebuilding_the_smoke_tested_image(self):
         script = workflow_script('Push tested platform image')
         bin_dir = self.root / 'bin'
         bin_dir.mkdir()
@@ -392,25 +392,50 @@ with open(os.environ['COMMAND_LOG'], 'a') as stream:
         docker = bin_dir / 'docker'
         docker.write_text(r"""#!/usr/bin/env python3
 import json, os, sys
-with open(os.environ['COMMAND_LOG'], 'a') as stream:
+from pathlib import Path
+log = Path(os.environ['COMMAND_LOG'])
+calls = [json.loads(line) for line in log.read_text().splitlines()]
+with log.open('a') as stream:
     stream.write(json.dumps(sys.argv[1:]) + '\n')
-if sys.argv[1] == 'push' and os.environ.get('FAIL_PUSH') == 'true': sys.exit(1)
+if sys.argv[1] == 'push':
+    attempt = sum(call[0] == 'push' for call in calls)
+    failures = json.loads(os.environ['PUSH_FAILURES'])
+    if attempt < len(failures):
+        sys.exit(failures[attempt])
 if sys.argv[1] == 'inspect': print(os.environ['IMAGE'] + '@sha256:' + 'd' * 64)
 """)
         docker.chmod(0o755)
+        sleep = bin_dir / 'sleep'
+        sleep.write_text('#!/bin/sh\nexit 0\n')
+        sleep.chmod(0o755)
         env = os.environ | {'PATH': str(bin_dir) + os.pathsep + os.environ['PATH'],
                             'COMMAND_LOG': str(log), 'IMAGE': 'ghcr.io/openwebide/openwebide',
-                            'BUILD_COMMIT': 'c' * 40, 'ARCH': 'arm64', 'GITHUB_OUTPUT': str(output), 'BUILD_COMMIT': 'a' * 40}
-        failed = subprocess.run(['bash', '-e', '-c', script], cwd=self.root, env=env | {'FAIL_PUSH': 'true'})
-        self.assertNotEqual(failed.returncode, 0)
-        self.assertFalse(output.exists())
-        log.write_text('')
-        subprocess.run(['bash', '-e', '-c', script], cwd=self.root, env=env, check=True)
-        calls = [json.loads(line) for line in log.read_text().splitlines()]
+                            'BUILD_COMMIT': 'a' * 40, 'ARCH': 'arm64',
+                            'GITHUB_OUTPUT': str(output), 'RUNNER_TEMP': str(self.root)}
         platform = f"{env['IMAGE']}:sha-{env['BUILD_COMMIT']}-arm64"
-        self.assertEqual(calls[0], ['tag', 'openwebide:release-test', platform])
-        self.assertEqual(calls[1], ['push', platform])
-        self.assertEqual(output.read_text(), 'digest=sha256:' + 'd' * 64 + '\n')
+        cases = [
+            ([], True, 1),
+            (['unknown blob', 'manifest blob unknown'], True, 3),
+            (['unknown blob'] * 3, False, 3),
+            (['denied: permission denied'], False, 1),
+        ]
+        for failures, succeeds, push_attempts in cases:
+            with self.subTest(failures=failures):
+                log.write_text('')
+                output.unlink(missing_ok=True)
+                result = subprocess.run(
+                    ['bash', '-eo', 'pipefail', '-c', script], cwd=self.root,
+                    env=env | {'PUSH_FAILURES': json.dumps(failures)}, capture_output=True, text=True,
+                )
+                self.assertEqual(result.returncode == 0, succeeds, result.stdout + result.stderr)
+                calls = [json.loads(line) for line in log.read_text().splitlines()]
+                expected = [['tag', 'openwebide:release-test', platform], *([['push', platform]] * push_attempts)]
+                if succeeds:
+                    expected.append(['inspect', '--format={{index .RepoDigests 0}}', platform])
+                    self.assertEqual(output.read_text(), 'digest=sha256:' + 'd' * 64 + '\n')
+                else:
+                    self.assertFalse(output.exists())
+                self.assertEqual(calls, expected)
 
     def test_release_notes_only_include_tagged_section(self):
         self.assertEqual(release.validate(self.root, "v1.0.0"), ("1.0.0", "- Shipped.\n"))

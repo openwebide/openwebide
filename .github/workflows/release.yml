@@ -159,6 +159,7 @@ jobs:
       - name: Push tested platform image
         if: needs.validate.outputs.publish == 'true'
         id: push
+        shell: bash
         env:
           IMAGE: ghcr.io/${{ github.repository }}
           BUILD_COMMIT: ${{ github.sha }}
@@ -166,7 +167,18 @@ jobs:
         run: |
           platform_image="$IMAGE:sha-$BUILD_COMMIT-$ARCH"
           docker tag openwebide:release-test "$platform_image"
-          docker push "$platform_image"
+          push_log="$RUNNER_TEMP/platform-image-push.log"
+          for attempt in 1 2 3; do
+            if docker push "$platform_image" 2>&1 | tee "$push_log"; then
+              break
+            fi
+            if [[ "$attempt" -eq 3 ]] || ! grep -Eiq 'unknown blob|blob unknown' "$push_log"; then
+              exit 1
+            fi
+            delay=$((attempt * 10))
+            echo "Registry reported a missing blob. Retrying the tested image in ${delay}s."
+            sleep "$delay"
+          done
           digest=$(docker inspect --format='{{index .RepoDigests 0}}' "$platform_image")
           [[ "$digest" == "$IMAGE@sha256:"* ]]
           echo "digest=${digest##*@}" >> "$GITHUB_OUTPUT"

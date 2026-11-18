@@ -9,6 +9,9 @@ Scheduled nightly builds publish a rolling release; the last numbered prerelease
 
 ## [Unreleased]
 
+- Retry registry uploads that report a missing blob after the release image has
+  passed its smoke tests.
+
 - Generate desktop and phone homepage screenshots and illustrated guides from
   the current frontend build in headless Chrome.
 
