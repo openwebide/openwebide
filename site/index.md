@@ -3,36 +3,38 @@ title: Open WebIDE
 description: Your code. Your models. Your workspace.
 ---
 
-<div class="hero" markdown="1">
+<div class="landing-intro" markdown="1">
 
-<img class="hero-logo" src="frontend/pwa/favicon.svg" alt="" width="88" height="88" />
+<div class="hero" markdown="1">
 
 <p class="eyebrow">Self-hosted · Open source · Local LLMs</p>
 
-# Your code. Your models.<br>Your workspace.
+# <span>Your code.</span> <span>Your models.</span> <span>Your workspace.</span>
 
-An IDE in your browser, powered by the models you choose. Edit code, ask an agent
-for help, review its changes, and work with Git and a terminal—all in one place.
+<p class="hero-description">An IDE in your browser, powered by the models you choose. Edit code, ask an agent for help, review its changes, and work with Git and a terminal.</p>
+
+<div class="hero-actions" markdown="1">
 
 [Get started](README.md#install-and-run){ .btn .send }
-[View on GitHub](https://github.com/openwebide/openwebide){ .btn }
-
-<p class="release-note">Under active development toward 1.0. Try the nightly container or a source build and share your feedback.</p>
+[Browse docs](docs/index.md){ .btn }
 
 </div>
 
-<figure class="app-screenshot">
+</div>
 
-<a href="assets/screenshots/workspace.png">
-  <picture>
-    <source media="(max-width: 560px)" srcset="assets/screenshots/workspace-phone.png">
-    <img src="assets/screenshots/workspace.png" alt="Open WebIDE showing an inline diff for a Rust forecast project">
-  </picture>
-</a>
+<div>
+  <a href="assets/screenshots/workspace.png">
+    <figure class="app-screenshot">
+      <picture>
+        <source media="(max-width: 560px)" srcset="assets/screenshots/workspace-phone.png" width="390" height="844">
+        <img src="assets/screenshots/workspace.png" width="1440" height="900" alt="Open WebIDE showing an inline diff for a Rust forecast project">
+      </picture>
+      <figcaption>View the full desktop workspace screenshot</figcaption>
+    </figure>
+  </a>
+</div>
 
-<figcaption>Review changes in the editor. <a href="assets/screenshots/workspace.png">View the full desktop workspace</a> to see the conversation alongside the diff.</figcaption>
-
-</figure>
+</div>
 
 <div class="features" markdown="1">
 
@@ -40,8 +42,8 @@ for help, review its changes, and work with Git and a terminal—all in one plac
 
 ## Bring your own models
 
-Connect to Ollama, llama.cpp, or LM Studio. Use your own inference server for
-chat and coding tasks.
+Connect to Ollama, llama.cpp, or LM Studio. [Use your own inference server](docs/first-session.md#connect-a-model)
+for chat and coding tasks.
 
 </section>
 
@@ -49,8 +51,8 @@ chat and coding tasks.
 
 ## See what the agent changes
 
-Let the agent read, edit, and run commands. Review diffs and choose the approval
-mode that fits how you work.
+Let the agent read, edit, and run commands. [Review diffs](docs/first-session.md#review-changes)
+and choose the approval mode that fits how you work.
 
 </section>
 
@@ -58,12 +60,14 @@ mode that fits how you work.
 
 ## Pick up where you left off
 
-Projects, conversations, and preferences stay with your deployment. Open it from
+[Projects](docs/workspaces.md), conversations, and preferences stay with your deployment. Open it from
 another browser to continue working.
 
 </section>
 
 </div>
+
+<p class="release-note">Under active development toward 1.0. Try the nightly container or a source build and share your feedback.</p>
 
 ## Make it your workspace
 

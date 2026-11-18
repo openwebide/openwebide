@@ -96,16 +96,25 @@ Tool-group manifests are retired feature switches. PR Review remains optional.
 ## Language service lifecycle
 
 Both execution hosts use the same authenticated service and result contract.
+
+### Startup and document close
+
 Servers start on demand and remain warm across tab changes and brief disconnects.
 Closing a document never starts a missing server or retries failed startup. It
 cancels an older pending request and closes retained overlays even after a file,
 parent folder or workspace marker disappears. A close with no running service
 returns an inert `closed` acknowledgement, which cannot identify an executable
-server command. Service acquisition registers requests before capacity eviction
+server command.
+
+Service acquisition registers requests before capacity eviction
 can select them; explicit revocation and memory limits can still stop a service.
+
+### Workspace identity and declared inputs
+
 Queries check physical project and workspace identities before processing and
 before returning a result. Replacing either folder stops its old service; a later
 request can start a fresh one and synchronize the current buffers.
+
 Declared input collections retain a content snapshot and a monotonic observation
 revision for native identity/modification changes. Restoring previous contents
 does not make an earlier observation current again. Reviewed commands admit the
@@ -113,6 +122,9 @@ expected post-edit configuration, then retain that observation through subsequen
 synchronization, queued waits and final source verification. Failed collections
 publish no partial inventory. These sampled checks do not replace complete
 filesystem-event and transitive-input generations.
+
+### Git revision and metadata
+
 Services also bind their analysis to the Git commit and symbolic branch captured
 at startup, including unborn branches, detached HEAD and linked worktrees. A
 different current revision rejects an in-flight reply or a reviewed command
@@ -121,6 +133,7 @@ scanning source files or refreshing the index. The next query
 can establish a fresh service with the current unsaved buffers. Observed branch
 and commit changes clear editor intelligence results without discarding drafts;
 ordinary status-counter changes do not reset language feedback.
+
 Git metadata also uses the shared bounded generation tracker: HEAD, symbolic-ref
 chains, selected reference namespaces, packed refs, worktree pointers/configuration
 and reftable table lists/namespaces are observed around native analysis and command dispatch.
@@ -129,12 +142,16 @@ final commit, branch and HEAD bytes match. The observation follows the original
 process through client handoff. Ordinary index refreshes do not invalidate it.
 Git resolves metadata paths, including linked worktrees and external reference
 directory aliases; the host does not scan the source tree for these checks.
+
 One of the four scan workers and one quarter of the notification-handle budget
 are reserved for required metadata, so optional source speculation cannot exhaust
 them. Failed observations do not publish a partial generation. Complete unobserved
 Git/filesystem changes and editor apply-time freshness remain roadmap work.
 The [Git metadata checkpoint](code-intelligence/git-metadata-checks.json) records
 the native before/after regression, both authenticated transports and platform limits.
+
+### Executables and runtime inputs
+
 The host also retains the declared launch executable's file identity, target and
 modification metadata, plus native executable paths observed in its process tree
 after initialization. It also retains modification and identity metadata for
@@ -146,11 +163,15 @@ again after verifying the affected files, immediately before dispatch. An ordina
 retry can start a fresh service with the current drafts. Launch aliases remain
 intact for toolchain shims. These boundary checks do not track every transitive toolchain dependency
 or replace the planned filesystem-event generation contract.
+
 API 10 packages can additionally declare `runtimeInputs`: selected file-argument
 positions and exact sidecar implementation paths. Those files share executable
 identity/modification checks and contribute to derived-cache identity. Explicit
 roles preserve mutable log/output arguments; see the
 [public declaration](plugin-authoring.md#language-plugin-build-toolchain).
+
+### Client handoff
+
 Different editing clients keep separate unsaved source inventories. A matching
 idle process can transfer between clients: the host closes its previous live
 documents, restores the incoming client's complete inventory and issues a fresh
@@ -159,6 +180,7 @@ action, completion, symbol and resource handles are discarded. Active requests
 and unexpired command reviews prevent transfer or capacity eviction. Retained
 sources survive cancelled restoration and invalid paths; closing a parked file
 does not touch the current client's overlays or start another process.
+
 Overlapping requests can require independent processes. Once compatible services
 are both idle and have no command pins, an ordinary acquisition or idle maintenance
 retains one process and releases the redundant process. Each client's complete
@@ -166,6 +188,8 @@ source inventory and request watermarks remain separate; a later handoff restore
 that inventory with a fresh service identity. Active requests and outstanding
 command reviews retain their original process. Derived-cache leases remain
 protected until the retired process tree confirms cleanup.
+
+### Validate retained analysis
 
 Intelligence protocol 2 adds an optional `context` to native analysis replies.
 It binds the normalized result digest to the original live service, editing client,
@@ -189,19 +213,25 @@ normalized result and selected service, then validate on that original service
 before publishing an editor history entry. Delayed validation cannot overwrite
 changed drafts, selections, accounts or providers. Completion keeps its popup
 during validation and on failure, with retry, snippets and undo preserved.
+
+### Review and apply workspace edits
+
 Workspace reviews using the normalized `files` list now retain the same analysis,
 reject changed edit bodies and capture the exact displayed review for approval.
 Original-service validation precedes atomic publication of all affected editor
 histories; rejection preserves the review for retry. Stale approvals and changed
 drafts cannot publish a replacement review. The
 [workspace text checkpoint](code-intelligence/workspace-text-application-checks.json)
-records both-mode contracts and compatibility checks. Ordered `changes` and
+records both-mode contracts and compatibility checks.
+
+Ordered `changes` and
 command-bearing reviews now retain their original analysis too. Changed command
 arguments and attempts to apply only a command's edits reject before resource
 inspection. Command approval uses the retained request/provider; native validation
 precedes transaction creation and rechecks the editor recovery guard afterwards,
 including intrinsic read-only changes
 ([resource checkpoint](code-intelligence/resource-review-analysis-checks.json)).
+
 Local action discovery and rename now establish the physical folder capability
 before requesting analysis, then retain that same session through review and
 execution. Creating a new proof after analysis changes directory observation and
@@ -214,6 +244,7 @@ pass in both modes, including original-service and folder-session trace checks
 ([capability checkpoint](code-intelligence/review-capability-checks.json)). The
 Local browser fixture uses OPFS/native correspondence; physical permission checks
 remain separate evidence.
+
 Schema 66 adds optional durable `transaction.language_review` data using the public
 `workspace_transaction::LanguageReview` type. It retains the original provider,
 binding revision, request, context and complete normalized result, with a digest
@@ -223,6 +254,8 @@ Retries cannot replace or remove the review, and old records without one remain
 recoverable. Migration replay rebuilds the complete charge from stored data.
 The [storage checkpoint](code-intelligence/language-review-storage-checks.json)
 records this format and persistence boundary.
+
+### Native worker admission and recovery
 
 The native verifier now authenticates the exact original service, request and
 normalized result under its physical folder lease, without a new LSP request or
@@ -273,6 +306,8 @@ folder with the explicitly refreshed OPFS test counterpart
 These fixtures do not establish physical permission prompts or unconditional
 SIGKILL restoration during a review-bearing Local transaction.
 
+### Affected file identity and metadata
+
 Workspace-edit normalization now records affected native files independently
 of language associations. Ordinary original-service validation and initial native
 admission share that evidence. On Linux/macOS, reads use a captured directory
@@ -321,6 +356,7 @@ New resource reviews require persistent birth identity; ordinary analysis remain
 available on filesystems without it. Empty command-only observations remain strict
 and authorize no original-object access. These rules do not establish universal
 change-time ABA detection after the application's own moves or namespace changes.
+
 Original revisions also bind native extended attributes, ACLs and semantic flags
 to an opaque digest. Reads use the same owned descriptor with before/after checks;
 macOS ACLs use the descriptor API, while Linux ACLs use their native xattrs.
@@ -339,6 +375,7 @@ file operations preserve ordinary reads and original-service validation without
 acquiring a native resource capability. Real native contracts cover changed xattrs,
 ACLs and flags on already-moved roots in both modes, plus the bounded text fallback
 ([original attribute checkpoint](code-intelligence/accepted-attribute-checks.json)).
+
 New native creation receipts retain an opaque metadata revision before creating
 a file anchor. Publication, rollback, unpublished staging and final anchor cleanup
 compare that witness, accounting for the application's own link and namespace
@@ -354,6 +391,7 @@ the original service and grant expire. Controls restore unchanged objects withou
 query, command or editor replay. Native fault cases also cover changed unpublished
 objects and the final file anchor
 ([creation receipt checkpoint](code-intelligence/accepted-creation-checks.json)).
+
 New private creation claims also protect the interruption before that metadata
 receipt becomes durable. Recovery preserves the unwitnessed object for inspection,
 even if it is still empty; a fresh read never becomes the lost historical baseline.
@@ -382,6 +420,8 @@ version-2 language evidence remain recoverable without rewriting their input. Th
 [analysis-context checkpoint](code-intelligence/analysis-context-checks.json)
 records both transport contracts, platform checks and these limits.
 
+### Idle language preparation
+
 The public intelligence protocol also accepts optional `prefetch` queries for
 `diagnostics` and `symbols`. Both use the ordinary authenticated, source-bound
 query path. The native host permits one speculative query at a time, including
@@ -393,12 +433,14 @@ another client's current process for optional work. Valid interactive requests
 cancel speculation across documents and projects; the speculative owner retains
 its slot through source retirement. Background request accounting leaves capacity
 for newly opened foreground documents without dropping recent stale-request fences.
+
 The optional `close: true` field admits a temporary source only when its document
 ID and physical path are not already open. Owned cleanup closes that overlay or
 stops the original service before releasing its source bank, preserving other
 unsaved documents through cancellation and recovery. These replies contain no
 reusable analysis context. The default `close: false` is omitted from the wire;
 older strict hosts reject the new field rather than retain a temporary overlay.
+
 An interrupted prefetch suspends further speculation on that original
 process, because a server may continue computing after cancellation. This state
 follows process handoff and resets on actual process restart. Interactive queries
@@ -413,6 +455,7 @@ recently closed files within the remaining budget. Retained unsaved text wins;
 clean files receive fresh bounded reads through `Workspace`, using cancellable
 Local streams or the Remote bounded-file endpoint. Failed reads also consume the
 file and reserved byte budget. There is no recursive dependency discovery.
+
 Each file is limited to 256 KiB and a batch to 512 KiB,
 with at most eight diagnostics/symbol attempts per source revision and service.
 A three-second client deadline also bounds authorization and transport waits.
@@ -423,6 +466,8 @@ result cache. Installed public-plugin checks cover fresh external edits, unopene
 related files, recently closed files, temporary-source retirement and preservation
 of the original service and other drafts in both production editors. The Local
 fixture uses OPFS correspondence, not a physical-folder permission prompt.
+
+### Source observations and file watches
 
 Before and after analysis, both native routes collect the same bounded
 metadata inventory of associated source files, declared project inputs, directories
@@ -437,6 +482,7 @@ read-only replies without a proof; read workers retain their concurrency slots
 until they actually exit. These sampled checks do not establish complete
 filesystem-event coverage, transitive toolchain invalidation or editor apply-time
 freshness. Complete production resource/benefit measurements remain roadmap work.
+
 A same-build comparison of the earlier open-buffer scheduler in 128 modules found nearly
 unchanged median foreground-symbol latency and a higher Remote p95 with warming
 enabled. The combined 512-module workflow exhausted optional object-watch capacity
@@ -458,6 +504,7 @@ inotify watches to owned file descriptors, retains shared hard-link registration
 until their last path is removed, and rejects lost watches or queue overflow.
 The total handle budget is partitioned between source speculation and required
 metadata; source speculation can use at most three quarters of it.
+
 Windows additionally implements nonrecursive directory notifications with a unique
 event per pending read. Owned handles, buffers and permits remain retained through
 confirmed completion, including cancellation. A single cleanup worker retires
@@ -465,6 +512,7 @@ pending reads; per-process handle and 16 MiB notification-buffer budgets bound
 admission. Parent-only watches filter unrelated names and verify object identity
 without requiring stable directory timestamps. Windows production and test code
 passes cross-compilation, while native Windows execution remains pending.
+
 Complete filesystem-event coverage, Git metadata and transitive runtime
 invalidation remain unfinished.
 The [source-event checkpoint](code-intelligence/source-event-checks.json) records
@@ -473,16 +521,22 @@ both platforms' native contracts, descriptor bounds and source hashes. The earli
 The [Windows implementation checkpoint](code-intelligence/windows-source-event-checks.json)
 separates cross-compilation and macOS regressions from outstanding native Windows checks.
 
+### Service limits and memory pressure
+
 Service counts, retained source and response sizes, request time and idle lifetime are bounded. The native
 host samples process-tree resident memory every two seconds, counting child
 processes once. Sampling retains only original-process identity, allowing idle
 handoff during OS observation. Before applying a reading, the host resolves that
 process's current owner under the acquisition lock; retired or replaced process
-samples cannot evict a new service that reuses its key or numeric PID. Default limits are 1024 MiB per service and 1536 MiB across services,
+samples cannot evict a new service that reuses its key or numeric PID.
+
+Default limits are 1024 MiB per service and 1536 MiB across services,
 with a 128 MiB host-memory reserve. Operators can override these MiB budgets with
 `OPENWEBIDE_BRIDGE_LANGUAGE_SERVICE_MEMORY_MIB`,
 `OPENWEBIDE_BRIDGE_LANGUAGE_TOTAL_MEMORY_MIB` and
-`OPENWEBIDE_BRIDGE_LANGUAGE_MEMORY_RESERVE_MIB` on the execution host. Over-budget services are stopped; other memory
+`OPENWEBIDE_BRIDGE_LANGUAGE_MEMORY_RESERVE_MIB` on the execution host.
+
+Over-budget services are stopped; other memory
 pressure reclaims idle services first. Requests report the eviction and wait five
 seconds before retrying. Recreated services restore their retained source inventory;
 the shared synchronization facade also supplies current unsaved buffers. These are sampled limits; transient allocation

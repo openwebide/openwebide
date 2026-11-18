@@ -71,6 +71,8 @@ the text unchanged. Unavailable structure reports an error without changing the 
 
 ## Multiple selections and clipboard
 
+### Copy and paste with multiple selections
+
 With multiple selections, Copy joins their source text in primary-selection order;
 Cut removes those ranges in one undo step after writing the clipboard. Paste puts
 one clipboard line into each selection when the line and selection counts match;
@@ -83,6 +85,8 @@ invalid or stripped metadata uses the plain-text behavior above. CRLF separators
 between distributed plain-text lines are removed from their bodies. Clipboard
 failures leave the source unchanged. Clipboard edits are disabled during an active input composition.
 
+### Add cursors and select columns
+
 Use **Editing commands** or these shortcuts for multiple selections:
 
 | Action | Shortcut |
@@ -93,16 +97,20 @@ Use **Editing commands** or these shortcuts for multiple selections:
 | Expand/shrink selection | Alt+Shift+Right/Left |
 | Keep primary cursor | Escape |
 
+Alt-click adds/removes a cursor. Alt+Shift click/drag selects a column from the
+primary anchor, honoring tab stops and complete Unicode graphemes. Secondary
+carets and selections use the same font metrics as the syntax paint, including
+wrapped text; screen readers receive the cursor count.
+
 Column gestures retain their anchor, tab geometry and source-version identity,
 without retaining file text. The shared document engine reuses indexed logical
 rows for rectangles; edits, reloads, account/project changes and indentation
 changes reject stale drags. Standalone column queries use the same validation
 and grapheme policy with a fresh row index.
 
-Alt-click adds/removes a cursor. Alt+Shift click/drag selects a column from the
-primary anchor, honoring tab stops and complete Unicode graphemes. Secondary
-carets and selections use the same font metrics as the syntax paint, including
-wrapped text; screen readers receive the cursor count. Arrow keys move all cursors
+### Move multiple cursors
+
+Arrow keys move all cursors
 by grapheme or logical line; with word wrap enabled, Up/Down use measured visual
 rows.
 
@@ -112,6 +120,8 @@ boundaries; on macOS Cmd+arrows use line/document boundaries. Vertical movement
 retains the desired column across short lines, using pixels for wrapped rows.
 The shared engine retains soft-wrap affinity, skips folded rows and resets its
 horizontal goal after width/font changes.
+
+### Wrapped movement and large files
 
 Measured primary and secondary carets
 share the existing selection overlay so a wrap boundary stays on the selected row.
