@@ -10,29 +10,37 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Read tested browser version
+      id: version
+      shell: bash
+      run: |
+        version=$(cat "$GITHUB_ACTION_PATH/chrome-version")
+        [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]
+        echo "chrome-version=$version" >> "$GITHUB_OUTPUT"
     - uses: browser-actions/setup-chrome@v1
       id: first
       continue-on-error: true
       with:
-        chrome-version: stable
+        chrome-version: ${{ steps.version.outputs.chrome-version }}
         install-chromedriver: true
     - uses: browser-actions/setup-chrome@v1
       id: second
       if: steps.first.outcome == 'failure'
       continue-on-error: true
       with:
-        chrome-version: stable
+        chrome-version: ${{ steps.version.outputs.chrome-version }}
         install-chromedriver: true
     - uses: browser-actions/setup-chrome@v1
       id: third
       if: steps.second.outcome == 'failure'
       continue-on-error: true
       with:
-        chrome-version: stable
+        chrome-version: ${{ steps.version.outputs.chrome-version }}
         install-chromedriver: true
     - name: Verify matching browser installation
       shell: bash
       env:
+        EXPECTED_VERSION: ${{ steps.version.outputs.chrome-version }}
         CHROME_PATH: ${{ steps.first.outcome == 'success' && steps.first.outputs.chrome-path || steps.second.outcome == 'success' && steps.second.outputs.chrome-path || steps.third.outcome == 'success' && steps.third.outputs.chrome-path }}
         DRIVER_PATH: ${{ steps.first.outcome == 'success' && steps.first.outputs.chromedriver-path || steps.second.outcome == 'success' && steps.second.outputs.chromedriver-path || steps.third.outcome == 'success' && steps.third.outputs.chromedriver-path }}
       run: |
@@ -42,7 +50,7 @@ runs:
         driver_version=$("$DRIVER_PATH" --version)
         echo "$browser_version"
         echo "$driver_version"
-        [[ "$browser_version" =~ ([0-9]+)\. ]]
-        browser_major=${BASH_REMATCH[1]}
-        [[ "$driver_version" =~ ([0-9]+)\. ]]
-        test "$browser_major" = "${BASH_REMATCH[1]}"
+        [[ "$browser_version" =~ ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+) ]]
+        test "${BASH_REMATCH[1]}" = "$EXPECTED_VERSION"
+        [[ "$driver_version" =~ ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+) ]]
+        test "${BASH_REMATCH[1]}" = "$EXPECTED_VERSION"

@@ -80,10 +80,7 @@ async fn reasoning_summary_counts_live_tokens_for_both_stream_formats_in_all_mod
                 .get_computed_style(&header)
                 .unwrap()
                 .unwrap();
-            assert_eq!(
-                style.get_property_value("justify-content").unwrap(),
-                "flex-start"
-            );
+            super::support::assert_start_aligned(&header);
             assert_eq!(style.get_property_value("text-align").unwrap(), "left");
             assert!(header.class_list().contains("ui-disclosure-toggle"));
             let initial = mounted.element(".tui-think-meta").text_content().unwrap();

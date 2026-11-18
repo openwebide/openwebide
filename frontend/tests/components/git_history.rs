@@ -1100,15 +1100,7 @@ async fn history_status_rows_insets_and_internal_seam_share_geometry_in_both_mod
                     } else {
                         origin = Some(position);
                     }
-                    let style = web_sys::window()
-                        .unwrap()
-                        .get_computed_style(&row)
-                        .unwrap()
-                        .unwrap();
-                    assert_eq!(
-                        style.get_property_value("justify-content").unwrap(),
-                        "flex-start"
-                    );
+                    super::support::assert_start_aligned(&row);
                     assert!(!row.get_attribute("title").unwrap().is_empty());
                     assert!(
                         row.get_attribute("aria-label")

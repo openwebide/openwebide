@@ -9,6 +9,12 @@ Scheduled nightly builds publish a rolling release; the last numbered prerelease
 
 ## [Unreleased]
 
+- Pin the tested Chrome and ChromeDriver versions for reproducible browser checks,
+  and measure control alignment without depending on CSS keyword serialization.
+
+- Check the built companion before native tests enter its bounded process-control
+  handshake, keeping cold executable startup outside that protocol deadline.
+
 - Publish nightlies at 3:00 a.m. Central instead of on every main push, skipping
   builds when the head matches the previous successful nightly. Keep ordinary CI
   on main pushes, version-tag releases and optional manual publication.

@@ -1397,6 +1397,11 @@ guides and installation walkthroughs against the final app before public launch.
   Linux image build reuse and Cargo cache retention remain follow-up work.
   Nightlies run at 3:00 a.m. Central and skip unchanged successful heads; main
   pushes retain ordinary CI without triggering release packaging.
+  Browser checks pin the last successful release's Chrome/ChromeDriver pair.
+  Qualify Chrome 158 through the complete gate, including the long replay checks
+  that stalled on hosted runners; alignment assertions now measure rendered geometry.
+  Native tests check the compiled companion before entering bounded process-control
+  handshakes, matching a running daemon's use of its own executable.
 - **Release gates:** finish the hardening/editor dependencies and the Remaining
   manual verification checks above. Do not declare 1.0 while both-mode contracts,
   device checks or known responsiveness issues remain unresolved.

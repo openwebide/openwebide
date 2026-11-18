@@ -23,6 +23,11 @@ updated, so if that last step fails the image has already advanced and the
 release may hold missing, old or mixed assets; `sha256sum -c SHA256SUMS` can
 fail until the next successful build.
 
+Browser checks use the exact Chrome for Testing and ChromeDriver version in
+`.github/actions/setup-editor-browser/chrome-version`. Browser upgrades are explicit
+changes verified through the complete browser gate; they do not arrive mid-release
+through the moving stable channel.
+
 ## Install a published release
 
 Download `docker-compose.yml` from

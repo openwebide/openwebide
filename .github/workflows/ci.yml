@@ -236,7 +236,10 @@ jobs:
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       - name: Tests (bridge, plugin runtime, and isolated compiler)
-        run: cargo test -p openwebide-bridge -p openwebide-plugin-runtime -p openwebide-plugin-build
+        run: |
+          cargo test -p openwebide-bridge -p openwebide-plugin-runtime -p openwebide-plugin-build --no-run
+          target/debug/openwebide-bridge --help >/dev/null
+          cargo test -p openwebide-bridge -p openwebide-plugin-runtime -p openwebide-plugin-build
 
       - name: Check real Rust language-server services
         run: cargo run -p openwebide-bridge --example check_language_server --locked

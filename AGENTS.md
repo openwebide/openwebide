@@ -98,9 +98,11 @@ Instructions, conventions, and architectural principles for AI agents working on
   cargo build -p openwebide-bridge
   ```
   Language-server and command process watchers run the same bridge executable in a private
-  control mode. Build it before filtered native `--lib` tests or standalone
+  control mode. Build it and run `target/debug/openwebide-bridge --help` before
+  filtered native `--lib` tests or standalone
   language-host examples; an embedded native host must have the matching bridge
-  executable beside it. The ordinary integration-test gate builds it automatically.
+  executable beside it. The ordinary integration-test gate compiles the complete
+  batch with `--no-run`, then checks that executable before bounded control tests.
   Filtered `language_commands` HTTP tests also need the disposable process fixture:
   `cargo build -p openwebide-bridge --example check_recorded_command_host --features test-support`.
   It runs the same native HTTP host in an isolated test-only private home so the
@@ -135,8 +137,9 @@ Actions runs.
      tests. It must compile for the execution host, independently of WASI targets.
    - `wasm-bindgen` and `wasm-bindgen-test-runner` (`wasm-bindgen-cli` matching the exact
      `wasm-bindgen` version in `Cargo.lock`)
-   - `google-chrome` and `chromedriver` (matching versions, e.g. Chrome for Testing in
-     `~/.local/bin`)
+   - `google-chrome` and `chromedriver` (the exact Chrome for Testing version in
+     `.github/actions/setup-editor-browser/chrome-version`, e.g. in `~/.local/bin`).
+     Update that pin only after running the complete browser gate with the new pair.
    - `trunk` and `spin`
    - Bash 4.3 or newer for local container-supervisor checks (`wait -n`); macOS
      ships Bash 3.2, so install a current Bash and put it first on PATH.
@@ -290,6 +293,8 @@ Actions runs.
    cargo clippy -p openwebide-bridge --all-targets -- -D warnings
 
    # 3. Native unit & integration tests
+   cargo test -p openwebide-storage -p openwebide-core -p openwebide-auth -p openwebide-agent -p openwebide-llm -p openwebide-bridge -p openwebide-backend --no-run
+   "${CARGO_TARGET_DIR:-target}/debug/openwebide-bridge" --help >/dev/null
    cargo test -p openwebide-storage -p openwebide-core -p openwebide-auth -p openwebide-agent -p openwebide-llm -p openwebide-bridge -p openwebide-backend
    cargo test -p openwebide-frontend --lib
 

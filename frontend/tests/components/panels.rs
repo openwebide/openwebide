@@ -800,12 +800,7 @@ async fn changes_and_explorer_share_file_layout_and_single_view_headings_in_both
                     .unwrap()
             );
         }
-        assert_eq!(
-            style(".git-files .tree-item")
-                .get_property_value("justify-content")
-                .unwrap(),
-            "flex-start"
-        );
+        super::support::assert_start_aligned(&mounted.element(".git-files .tree-item"));
         assert!(
             mounted
                 .element(".git-files .tree-item")

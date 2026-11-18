@@ -444,6 +444,42 @@ pub fn editor_view(state: TestState) -> impl IntoView {
     }
 }
 
+/// Check a horizontal control's leading content and spacing using rendered geometry.
+pub fn assert_start_aligned(element: &web_sys::Element) {
+    let style = web_sys::window()
+        .unwrap()
+        .get_computed_style(element)
+        .unwrap()
+        .unwrap();
+    let pixels = |property| {
+        style
+            .get_property_value(property)
+            .unwrap()
+            .trim_end_matches("px")
+            .parse::<f64>()
+            .unwrap()
+    };
+    let first = element.first_element_child().unwrap();
+    let second = first.next_element_sibling().unwrap();
+    let first_rect = first.get_bounding_client_rect();
+    let second_rect = second.get_bounding_client_rect();
+    let start = element.get_bounding_client_rect().left()
+        + pixels("border-left-width")
+        + pixels("padding-left");
+    assert!(
+        (first_rect.left() - start).abs() < 1.0,
+        "{} leading content starts at {}, expected {start}",
+        element.class_name(),
+        first_rect.left()
+    );
+    let gap = second_rect.left() - first_rect.right();
+    assert!(
+        (gap - pixels("column-gap")).abs() < 1.0,
+        "{} leading controls have a {gap}px gap",
+        element.class_name()
+    );
+}
+
 impl Mounted {
     pub fn element(&self, selector: &str) -> web_sys::HtmlElement {
         self.root
