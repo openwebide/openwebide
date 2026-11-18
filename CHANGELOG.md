@@ -9,6 +9,10 @@ Scheduled nightly builds publish a rolling release; the last numbered prerelease
 
 ## [Unreleased]
 
+- Yield ordinary browser tasks around the editor tests' complete-DOM oracle so
+  WebDriver can poll between expensive geometry phases, preserving every fixture,
+  ownership assertion and existing timeout.
+
 - Pin the tested Chrome and ChromeDriver versions for reproducible browser checks,
   and measure control alignment without depending on CSS keyword serialization.
 

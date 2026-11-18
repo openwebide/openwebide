@@ -1393,13 +1393,16 @@ guides and installation walkthroughs against the final app before public launch.
   measure the resulting feedback time and resolve failures before claiming a
   release is successful; local checks alone do not establish publication.
   Native companion packaging now reuses the shared compiled plugin WASM with
-  commit/checksum and offline-host validation. Measure the hosted improvement;
+  commit/checksum and offline-host validation. Hosted Intel and Apple Silicon
+  jobs fell from 148/87 minutes to 63/35 minutes on the first integrated run;
   Linux image build reuse and Cargo cache retention remain follow-up work.
   Nightlies run at 3:00 a.m. Central and skip unchanged successful heads; main
   pushes retain ordinary CI without triggering release packaging.
   Browser checks pin the last successful release's Chrome/ChromeDriver pair.
-  Qualify Chrome 158 through the complete gate, including the long replay checks
-  that stalled on hosted runners; alignment assertions now measure rendered geometry.
+  Qualify Chrome 158 through the complete gate; alignment assertions now measure
+  rendered geometry. Long replay checks also exceeded WebDriver's polling deadline
+  with the pinned browser. Verify ordinary task boundaries around their complete-DOM
+  oracle on hosted runners without reducing coverage or extending deadlines.
   Native tests check the compiled companion before entering bounded process-control
   handshakes, matching a running daemon's use of its own executable.
 - **Release gates:** finish the hardening/editor dependencies and the Remaining

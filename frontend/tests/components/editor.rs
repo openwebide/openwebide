@@ -22929,12 +22929,17 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry(
                 .get_untracked()
                 .unwrap()
                 .paint;
+            // The complete-DOM oracle is test-only work. Give WebDriver an
+            // ordinary task between it and each production preparation phase;
+            // prioritized scheduler continuations can otherwise starve polling.
+            openwebide_frontend::util::sleep_ms(0).await;
             trace("complete-oracle", styled, reconnect, width, change);
             assert!(
                 bounded_wrapped_matches_complete(&input, &scope, actions).await,
                 "{mode:?} styled={styled} reconnect={reconnect} change={change}: every retained glyph and complete extent"
             );
             trace("complete-oracle-returned", styled, reconnect, width, change);
+            openwebide_frontend::util::sleep_ms(0).await;
             let suffix = actions.paragraph_suffix(&scope, 0).unwrap();
             let prefix = actions.paragraph_prefix(&scope, 0).unwrap();
             let mut plan = actions.prepare_wrapped_paragraph(&scope, 0).unwrap();
@@ -22983,6 +22988,7 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry(
             })
             .await;
             trace("owner-restored", styled, reconnect, width, change);
+            openwebide_frontend::util::sleep_ms(0).await;
             previous = changed;
         }
         drop(mounted);
