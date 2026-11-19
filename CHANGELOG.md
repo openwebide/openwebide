@@ -9,6 +9,9 @@ Scheduled nightly builds publish a rolling release; the last numbered prerelease
 
 ## [Unreleased]
 
+- Publish Linux images, install files and bridges independently of macOS builds.
+  Publish tested standalone macOS bridges through a separate workflow.
+
 - Group bridge connection, host administration and updates under Host in Settings.
   Put language support under Editor and marketplace sources in the Plugins dialog.
 - Make saved servers directly configurable and combine setup into Connect server

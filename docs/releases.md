@@ -4,9 +4,10 @@ Nightlies run daily at **3:00 a.m. Central** (`America/Chicago`, including dayli
 saving changes). When `main` has moved since the previous successful nightly, the
 release workflow builds, checks and updates the rolling `nightly` image and replaces the
 assets on [the `nightly` release](https://github.com/openwebide/openwebide/releases/tag/nightly):
-Compose and Quadlet files, Linux/macOS bridge archives and checksums. There are no
-numbered prereleases; `preview` and `stable` are published from version tags, and none
-exists yet. The GHCR package is public, so pulling needs no registry authentication.
+Compose and Quadlet files, Linux bridge archives and checksums. Optional macOS
+bridges follow on [the macOS nightly release](https://github.com/openwebide/openwebide/releases/tag/nightly-macos).
+There are no numbered prereleases; `preview` and `stable` are published from version
+tags, and none exists yet. The GHCR package is public, so pulling needs no registry authentication.
 The remaining stable-release and installation checks are tracked on the roadmap.
 
 An unchanged head skips builds and publication after a small history check.
@@ -16,9 +17,9 @@ rebuild, with an explicit option to publish a nightly from `main`.
 
 Releases run one at a time per branch or tag, completing active work and retaining
 only the newest pending run. Ordinary main pushes run CI without starting release
-packaging. The `nightly` image advances only after the
-complete test suite, both platform image checks and the macOS bridge and asset
-jobs pass. The image is promoted before the `nightly` tag and release assets are
+packaging. The `nightly` image advances after the shared checks, both Linux image
+checks and the install asset job pass. The image is promoted before the
+`nightly` tag and release assets are
 updated, so if that last step fails the image has already advanced and the
 release may hold missing, old or mixed assets; `sha256sum -c SHA256SUMS` can
 fail until the next successful build.
@@ -58,11 +59,14 @@ point Quadlet at the channel (`preview` or `stable`). See the automatic-update o
 below.
 
 The image includes both WASM components and the server-side bridge for remote
-projects. The optional standalone bridge archives support Linux/macOS on amd64
-and arm64; they do not contain the Spin backend or browser app. Verify downloaded
-files against `SHA256SUMS` (`sha256sum -c SHA256SUMS` on Linux, or
-`shasum -a 256 -c SHA256SUMS` on macOS, for a directory containing all assets).
-Extract the matching archive and run `./openwebide-bridge --help`; its bundled
+projects. The optional standalone bridge archives support amd64 and arm64.
+Download a Linux archive and its `SHA256SUMS` from the main release. For macOS,
+use `SHA256SUMS` from the macOS nightly release or `SHA256SUMS-macos` beside the
+macOS archives on a numbered release. The macOS nightly may show an older commit
+while its build is queued or if a check fails. When you have all files listed in
+the checksum manifest, run `sha256sum -c SHA256SUMS` on Linux or
+`shasum -a 256 -c SHA256SUMS` on macOS, using the manifest name for your download.
+Extract the matching archive and run `./openwebide-bridge --help`. Its bundled
 reference describes host requirements and configuration.
 
 ## Configuration
@@ -241,28 +245,27 @@ the archive preserves executable permissions. Every group must pass the final
 frontend gate, including both workspace modes and the existing scenario limits.
 This shortens feedback and lets a failed group be rerun against the same app.
 
-Release companion jobs consume the same Linux-compiled plugin WASM bundle as the
-browser checks. Intel and Apple Silicon runners verify its source commit and
-checksum, then build the native host, test process cleanup and the macOS sandbox,
-and verify every bundled plugin prepares offline in both host modes. They do not
-recompile the language plugins or build the frontend/backend WASM. These jobs
-start after the default bundle is ready, alongside the remaining shared checks;
-publication still requires every platform and browser gate to pass.
+After publication, the macOS companions workflow downloads the same Linux-built
+plugin WASM bundle used by the browser checks. Intel and Apple Silicon runners
+verify its source commit and checksum, then build the native host, test process
+cleanup and the macOS sandbox, and verify that bundled plugins prepare offline
+in both host modes. The workflow publishes the two macOS archives together once
+both pass. A maintainer can rerun failed macOS jobs without rebuilding the Linux
+release. Windows adapter validation runs in ordinary CI.
 
-Main builds also publish standalone Linux/macOS bridge archives, installation files
-and checksums to the `nightly` release under stable names
-(`openwebide-bridge-nightly-<target>.tar.gz`). The image is promoted only after the
-macOS bridges and assets build, so both come from the same commit. Assets are
-replaced in place with `SHA256SUMS` last, so a download during publication can
-briefly mismatch; download again. The release body links to the commit's changelog
-rather than embedding Unreleased notes. The `nightly` git tag moves to each build,
-so `git fetch --tags` in an existing clone reports a clobbered tag; fetch with
-`--force` or delete the local tag. If GitHub immutable releases are ever enabled
-for the repository, in-place asset replacement stops working.
+The `nightly` release publishes Linux bridges, installation files and checksums.
+The `nightly-macos` release publishes whichever nightly has most recently passed
+both macOS builds. Each uses stable archive names
+(`openwebide-bridge-nightly-<target>.tar.gz`) and replaces `SHA256SUMS` last.
+If a download during publication has mismatched checksums, download again.
+The main release body links to the commit's Unreleased changelog. Both nightly
+git tags move between builds, so an existing clone may need
+`git fetch --tags --force` to refresh them. In-place replacement requires mutable
+GitHub releases.
 Numbered alpha versions are no longer accepted; the `v1.0.0-alpha.*` releases and
 images remain as historical snapshots. Future nightly updates need no version bump,
-changelog rollover or tag. Tagged preview/stable releases publish the same assets
-under their versioned names.
+changelog rollover or tag. Tagged preview and stable releases use versioned archive
+names and receive their macOS archives and `SHA256SUMS-macos` after the macOS checks pass.
 Preview never updates `stable` or GitHub's latest release. Publish version tags
 sequentially so an older release cannot finish later and replace a newer channel.
 

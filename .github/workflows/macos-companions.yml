@@ -1,0 +1,163 @@
+name: macOS companions
+
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  plan:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+    steps:
+      - name: Find the published release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_RUN: ${{ github.event.workflow_run.id }}
+          RELEASE_EVENT: ${{ github.event.workflow_run.event }}
+          RELEASE_REF: ${{ github.event.workflow_run.head_branch }}
+          BUILD_COMMIT: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          published=$(gh api --paginate "repos/$GH_REPO/actions/runs/$RELEASE_RUN/jobs?per_page=100" \
+            --jq '.jobs[] | select(.conclusion == "success" and (.name == "publish" or .name == "publish-nightly")) | .name')
+          if [[ "$published" == publish-nightly && "$RELEASE_REF" == main ]]; then
+            tag=nightly
+          elif [[ "$published" == publish && "$RELEASE_EVENT" == push && "$RELEASE_REF" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]; then
+            tag="$RELEASE_REF"
+          else
+            exit 0
+          fi
+          published_commit=$(gh api "repos/$GH_REPO/commits/$tag" --jq .sha)
+          if [[ "$published_commit" != "$BUILD_COMMIT" ]]; then
+            echo "Release $tag has moved to $published_commit" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+  macos-bridges:
+    needs: plan
+    if: needs.plan.outputs.tag != ''
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+          - runner: macos-15
+            target: aarch64-apple-darwin
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.98.1
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: compiled-default-plugins
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+          path: ${{ runner.temp }}/openwebide-defaults
+      - name: Verify portable default components
+        env:
+          BUILD_COMMIT: ${{ github.event.workflow_run.head_sha }}
+        run: python3 tools/compiled_plugins.py verify "$RUNNER_TEMP/openwebide-defaults/bundled-plugins.json" --commit "$BUILD_COMMIT"
+      - name: Build and smoke-test native bridge
+        env:
+          RELEASE_TARGET: ${{ matrix.target }}
+          RELEASE_TAG: ${{ needs.plan.outputs.tag }}
+          OPENWEBIDE_BUNDLED_ARTIFACTS: ${{ runner.temp }}/openwebide-defaults/bundled-plugins.json
+          BUILD_COMMIT: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [[ "$RELEASE_TAG" == nightly ]]; then
+            python3 tools/release.py stamp-nightly --commit "$BUILD_COMMIT"
+          else
+            python3 tools/release.py validate --tag "$RELEASE_TAG"
+          fi
+          cargo test -p openwebide-plugin-runtime --release --lib --locked build::process_tests -- --test-threads=1
+          cargo test -p openwebide-bridge --lib --release --locked --features bundled-defaults bundled_tests
+          cargo build -p openwebide-bridge --features bundled-defaults --release --locked
+          "target/release/openwebide-bridge" --help
+          python3 tools/release.py package-bridge --target "$RELEASE_TARGET" --binary "target/release/openwebide-bridge" --output "$RUNNER_TEMP/assets"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bridge-${{ matrix.target }}
+          path: ${{ runner.temp }}/assets/*.tar.gz
+          if-no-files-found: error
+
+  publish:
+    needs: [plan, macos-bridges]
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: macos-companions-${{ needs.plan.outputs.tag }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: bridge-*-apple-darwin
+          merge-multiple: true
+          path: assets
+      - name: Checksum both native archives
+        env:
+          RELEASE_TAG: ${{ needs.plan.outputs.tag }}
+        run: |
+          test -f "assets/openwebide-bridge-$RELEASE_TAG-aarch64-apple-darwin.tar.gz"
+          test -f "assets/openwebide-bridge-$RELEASE_TAG-x86_64-apple-darwin.tar.gz"
+          python3 tools/release.py checksums assets
+      - name: Publish tested macOS companions
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.plan.outputs.tag }}
+          BUILD_COMMIT: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          published_commit=$(gh api "repos/$GH_REPO/commits/$RELEASE_TAG" --jq .sha)
+          if [[ "$published_commit" != "$BUILD_COMMIT" ]]; then
+            echo "Release $RELEASE_TAG has moved to $published_commit" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [[ "$RELEASE_TAG" != nightly ]]; then
+            mv assets/SHA256SUMS assets/SHA256SUMS-macos
+            gh release upload "$RELEASE_TAG" assets/*.tar.gz --clobber
+            gh release upload "$RELEASE_TAG" assets/SHA256SUMS-macos --clobber
+            exit 0
+          fi
+
+          notes="$RUNNER_TEMP/macos-notes.md"
+          cat > "$notes" <<EOF
+          Standalone macOS bridges built from [$BUILD_COMMIT](https://github.com/$GH_REPO/commit/$BUILD_COMMIT).
+
+          Verify both archives against SHA256SUMS from this release.
+          The container and Linux assets are on [the main nightly release](https://github.com/$GH_REPO/releases/tag/nightly).
+          EOF
+          if gh api "repos/$GH_REPO/git/ref/tags/nightly-macos" > /dev/null 2>&1; then
+            gh api --method PATCH "repos/$GH_REPO/git/refs/tags/nightly-macos" -f sha="$BUILD_COMMIT" -F force=true > /dev/null
+          else
+            gh api --method POST "repos/$GH_REPO/git/refs" -f ref=refs/tags/nightly-macos -f sha="$BUILD_COMMIT" > /dev/null
+          fi
+          if gh release view nightly-macos > /dev/null 2>&1; then
+            gh release upload nightly-macos assets/*.tar.gz --clobber
+            gh release upload nightly-macos assets/SHA256SUMS --clobber
+            gh release edit nightly-macos --notes-file "$notes"
+          else
+            gh release create nightly-macos --verify-tag --prerelease --latest=false --title "Nightly macOS bridges" \
+              --notes-file "$notes" assets/*
+          fi

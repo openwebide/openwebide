@@ -1431,6 +1431,8 @@ guides and installation walkthroughs against the final app before public launch.
   commit/checksum and offline-host validation. Hosted Intel and Apple Silicon
   jobs fell from 148/87 minutes to 63/35 minutes on the first integrated run;
   Linux image build reuse and Cargo cache retention remain follow-up work.
+  Verify that the Linux release can publish through a macOS runner failure and
+  that the separate macOS workflow subsequently publishes matching bridge archives.
   Nightlies run at 3:00 a.m. Central and skip unchanged successful heads; main
   pushes retain ordinary CI without triggering release packaging.
   Browser checks pin the last successful release's Chrome/ChromeDriver pair.

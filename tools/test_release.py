@@ -162,8 +162,14 @@ import json, os, sys
 args = sys.argv[1:]
 with open(os.environ['COMMAND_LOG'], 'a') as stream:
     stream.write(json.dumps([os.path.basename(sys.argv[0]), *args]) + '\\n')
-if os.environ.get('GH_MISSING') == 'true' and (args[:2] == ['api', 'repos/openwebide/openwebide/git/ref/tags/nightly'] or args[:3] == ['release', 'view', 'nightly']):
+if os.environ.get('GH_MISSING') == 'true' and args in [
+    ['api', 'repos/openwebide/openwebide/git/ref/tags/nightly'],
+    ['release', 'view', 'nightly'],
+]:
     sys.exit(1)
+if args[:4] == ['release', 'view', 'nightly', '--json'] and os.environ.get('GH_MISSING') == 'false':
+    print('openwebide-bridge-nightly-x86_64-unknown-linux-gnu.tar.gz')
+    print('openwebide-bridge-nightly-x86_64-apple-darwin.tar.gz')
 ''')
             path.chmod(0o755)
         assets = self.root / 'assets'
@@ -194,6 +200,10 @@ if os.environ.get('GH_MISSING') == 'true' and (args[:2] == ['api', 'repos/openwe
                     self.assertIn('repos/openwebide/openwebide/git/refs/tags/nightly', patch)
                     self.assertIn('force=true', patch)
                     self.assertEqual(creates, [])
+                removed = [call[3:] for call in calls if call[:3] == ['gh', 'release', 'delete-asset']]
+                self.assertEqual(removed, [
+                    ['nightly', 'openwebide-bridge-nightly-x86_64-apple-darwin.tar.gz', '--yes'],
+                ] if missing == 'false' else [])
                 uploads = [call for call in calls if call[:3] == ['gh', 'release', 'upload']]
                 self.assertEqual(len(uploads), 2)
                 for call in uploads:
@@ -216,7 +226,7 @@ if os.environ.get('GH_MISSING') == 'true' and (args[:2] == ['api', 'repos/openwe
         self.assertIn('contents: write', job)
 
     def test_native_companion_builds_receive_the_bundle_and_correct_version(self):
-        script = workflow_script('Build and smoke-test native bridge', 'ci.yml')
+        script = workflow_script('Build and smoke-test native bridge', 'macos-companions.yml')
         tools = self.root / 'tools'
         tools.mkdir()
         (tools / 'release.py').write_text(Path(release.__file__).read_text())
@@ -243,7 +253,7 @@ if sys.argv[1] == 'build':
 ''')
         cargo.chmod(0o755)
         commit = 'c' * 40
-        target = next(iter(release.TARGETS))
+        target = 'aarch64-apple-darwin'
         for rolling in (False, True):
             with self.subTest(rolling=rolling):
                 if rolling:
@@ -254,7 +264,7 @@ if sys.argv[1] == 'build':
                     'COMMAND_LOG': str(log), 'RUNNER_TEMP': str(output),
                     'RELEASE_TARGET': target, 'BUILD_COMMIT': commit,
                     'OPENWEBIDE_BUNDLED_ARTIFACTS': str(bundle),
-                    'ROLLING': str(rolling).lower(),
+                    'RELEASE_TAG': 'nightly' if rolling else 'v1.0.0',
                 }
                 log.unlink(missing_ok=True)
                 subprocess.run(['bash', '-e', '-c', script], cwd=self.root, env=env,
@@ -269,6 +279,70 @@ if sys.argv[1] == 'build':
                 with tarfile.open(archive) as packaged:
                     binary = next(item for item in packaged if item.name.endswith('/openwebide-bridge'))
                     self.assertEqual(binary.mode, 0o755)
+
+    def test_macos_workflow_only_publishes_for_the_matching_published_release(self):
+        workflow = 'macos-companions.yml'
+        plan = workflow_script('Find the published release', workflow)
+        publish = workflow_script('Publish tested macOS companions', workflow)
+        bin_dir = self.root / 'bin'
+        bin_dir.mkdir()
+        log = self.root / 'commands.jsonl'
+        output = self.root / 'github-output'
+        assets = self.root / 'assets'
+        assets.mkdir()
+        (assets / 'bridge.tar.gz').touch()
+        gh = bin_dir / 'gh'
+        gh.write_text('''#!/usr/bin/env python3
+import json, os, sys
+args = sys.argv[1:]
+with open(os.environ['COMMAND_LOG'], 'a') as stream:
+    stream.write(json.dumps(args) + '\\n')
+if args[:2] == ['api', '--paginate']:
+    print(os.environ['PUBLISHED_JOB'])
+elif args[0] == 'api' and '/commits/' in args[1]:
+    print(os.environ['PUBLISHED_COMMIT'])
+''')
+        gh.chmod(0o755)
+        commit = 'a' * 40
+        base_env = os.environ | {
+            'PATH': str(bin_dir) + os.pathsep + os.environ['PATH'],
+            'COMMAND_LOG': str(log), 'GITHUB_OUTPUT': str(output),
+            'GITHUB_STEP_SUMMARY': str(self.root / 'job-summary'),
+            'GH_REPO': 'openwebide/openwebide', 'RUNNER_TEMP': str(self.root),
+            'RELEASE_RUN': '123', 'BUILD_COMMIT': commit, 'PUBLISHED_COMMIT': commit,
+        }
+        for job, event, ref, tag in [
+            ('', 'schedule', 'main', ''),
+            ('', 'workflow_dispatch', 'main', ''),
+            ('publish-nightly', 'schedule', 'main', 'nightly'),
+            ('publish', 'push', 'v1.0.0-rc.3', 'v1.0.0-rc.3'),
+        ]:
+            with self.subTest(event=event, job=job):
+                output.write_text('')
+                env = base_env | {'PUBLISHED_JOB': job, 'RELEASE_EVENT': event, 'RELEASE_REF': ref}
+                subprocess.run(['bash', '-e', '-c', plan], cwd=self.root, env=env, check=True)
+                self.assertEqual(output.read_text(), f'tag={tag}\n' if tag else '')
+
+        for tag, current in [('nightly', 'b' * 40), ('nightly', commit), ('v1.0.0-rc.3', commit)]:
+            with self.subTest(tag=tag, current=current):
+                log.write_text('')
+                (assets / 'SHA256SUMS').write_text('archive checksums')
+                env = base_env | {'RELEASE_TAG': tag, 'PUBLISHED_COMMIT': current}
+                subprocess.run(['bash', '-e', '-c', publish], cwd=self.root, env=env, check=True)
+                calls = [json.loads(line) for line in log.read_text().splitlines()]
+                uploads = [call[2:4] for call in calls if call[:2] == ['release', 'upload']]
+                if current != commit:
+                    self.assertEqual(len(calls), 1)
+                elif tag == 'nightly':
+                    self.assertEqual(uploads, [
+                        ['nightly-macos', 'assets/bridge.tar.gz'],
+                        ['nightly-macos', 'assets/SHA256SUMS'],
+                    ])
+                else:
+                    self.assertEqual(uploads, [
+                        [tag, 'assets/bridge.tar.gz'],
+                        [tag, 'assets/SHA256SUMS-macos'],
+                    ])
 
     def test_publish_commands_do_not_promote_prereleases_to_latest(self):
         workflow = (release.ROOT / '.github/workflows/release.yml').read_text()
