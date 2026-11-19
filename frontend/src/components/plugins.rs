@@ -1,8 +1,8 @@
 use super::{
     dropdown::{ActionMenu, DropdownSelect, SelectOption},
     ui::{
-        Button, ButtonSize, ButtonVariant, DisclosurePanel, FormField, FormSection, Icon, IconName,
-        InlineActions, PanelSearchRow, TextInput,
+        Button, ButtonSize, ButtonVariant, DialogBody, DialogTab, DialogTabs, DisclosurePanel,
+        FormField, FormSection, Icon, IconName, InlineActions, PanelSearchRow, TextInput,
     },
 };
 use crate::{
@@ -14,14 +14,28 @@ use openwebide_core::plugins::{
     PluginInstallation, PluginUpdatePolicy,
     marketplace::{CachedMarketplace, CatalogPlugin, MarketplaceSource},
 };
+use wasm_bindgen::JsCast;
 
 #[component]
 pub fn Plugins() -> impl IntoView {
     let state = expect_context::<PluginsState>();
     let actions = expect_context::<ProjectPluginActions>();
     let projects = expect_context::<ProjectsState>();
-    let ui = expect_context::<crate::state::ui::UiState>();
-    let settings = expect_context::<crate::state::settings::SettingsState>();
+    let tab = RwSignal::new(0);
+    let show_tab = Callback::new(move |index| {
+        tab.set(index);
+        let id = if index == 0 {
+            "plugins-tab-browse"
+        } else {
+            "plugins-tab-sources"
+        };
+        if let Some(button) = document()
+            .get_element_by_id(id)
+            .and_then(|button| button.dyn_into::<web_sys::HtmlElement>().ok())
+        {
+            let _ = button.focus();
+        }
+    });
     let manual = RwSignal::new(false);
     let attempted = RwSignal::new(false);
     let auth = expect_context::<crate::state::auth::AuthState>();
@@ -42,6 +56,12 @@ pub fn Plugins() -> impl IntoView {
         }
     });
     view! {
+        <DialogTabs label="Plugin categories" options=vec![
+            DialogTab::new("Browse", "plugins-tab-browse", "plugins-panel-browse"),
+            DialogTab::new("Sources", "plugins-tab-sources", "plugins-panel-sources"),
+        ] selected=tab.read_only().into() on_change=Callback::new(move |index| tab.set(index)) />
+        <DialogBody class="ui-tabbed-body" selected_tab=tab.read_only()>
+        <div id="plugins-panel-browse" class="ui-tab-panel" role="tabpanel" aria-labelledby="plugins-tab-browse" tabindex="0" hidden=move || tab.get() != 0>
         <div class="ui-section-content">
             <PanelSearchRow unpadded=true>
                 <input type="search" class="form-input panel-search-input" aria-label="Search plugins" placeholder="Search plugins…" maxlength="128"
@@ -50,11 +70,7 @@ pub fn Plugins() -> impl IntoView {
                     <button type="button" role="menuitem" class="ui-dropdown-item recent-item" disabled=move ||state.busy.get() on:click=move |_|actions.refresh.run(())><Icon name=IconName::ListChecks/><span>"Refresh installations"</span></button>
                     <button type="button" role="menuitem" class="ui-dropdown-item recent-item" disabled=move ||state.busy.get() on:click=move |_|actions.refresh_catalogs.run(())><Icon name=IconName::RefreshCw/><span>"Refresh marketplaces"</span></button>
                     <button type="button" role="menuitem" class="ui-dropdown-item recent-item" on:click=move |_|manual.update(|open| *open = !*open)><Icon name=IconName::Plus/><span>"Install a pinned plugin manually"</span></button>
-                    <button type="button" role="menuitem" class="ui-dropdown-item recent-item" on:click=move |_| {
-                        ui.plugins_open.set(false);
-                        settings.requested_tab.set(5);
-                        settings.show_settings.set(true);
-                    }><Icon name=IconName::Settings/><span>"Manage marketplace sources"</span></button>
+                    <button type="button" role="menuitem" class="ui-dropdown-item recent-item" on:click=move |_| show_tab.run(1)><Icon name=IconName::Settings/><span>"Manage marketplace sources"</span></button>
                 </ActionMenu>
             </PanelSearchRow>
             <Show when=move ||state.busy.get()><InlineActions>
@@ -107,6 +123,11 @@ pub fn Plugins() -> impl IntoView {
                 <InlineActions><Button variant=ButtonVariant::Ghost on_click=Callback::new(move |_|manual.set(false))>"Cancel"</Button></InlineActions>
             </div></FormSection></Show>
         </div>
+        </div>
+        <div id="plugins-panel-sources" class="ui-tab-panel" role="tabpanel" aria-labelledby="plugins-tab-sources" tabindex="0" hidden=move || tab.get() != 1>
+            <PluginMarketplaceSources on_browse=Callback::new(move |()| show_tab.run(0)) />
+        </div>
+        </DialogBody>
     }
 }
 /// Search and plugin lifecycle controls opened from the status bar.
@@ -116,25 +137,24 @@ pub fn PluginsDialog() -> impl IntoView {
     view! {
         <super::modal::Modal title=Signal::derive(|| "Plugins".to_string())
             on_close=Callback::new(move |()| ui.plugins_open.set(false))
-            size=super::ui::DialogSize::Wide>
-            <super::ui::DialogBody><Plugins/></super::ui::DialogBody>
+            size=super::ui::DialogSize::Wide class="modal ui-tabbed-modal plugins-dialog">
+            <Plugins/>
         </super::modal::Modal>
     }
 }
 
 /// Marketplace configuration stays separate from discovery and plugin lifecycle.
 #[component]
-pub fn PluginMarketplaceSources() -> impl IntoView {
+pub fn PluginMarketplaceSources(
+    #[prop(optional)] on_browse: Option<Callback<()>>,
+) -> impl IntoView {
     let state = expect_context::<PluginsState>();
     let actions = expect_context::<ProjectPluginActions>();
-    let ui = expect_context::<crate::state::ui::UiState>();
-    let settings = expect_context::<crate::state::settings::SettingsState>();
     view! {
-        <FormSection title="Plugin marketplaces" description="Configure the public Git repositories used to discover plugins.">
+        <FormSection title="Plugin marketplaces" description="Add a public Git repository that lists plugins. Leave the reference blank to use its default branch.">
             <Show when=move ||state.busy.get()><p class="form-hint" role="status">"Working…"</p></Show>
             <Show when=move ||state.error.get().is_some()><p class="error" role="alert">{move ||state.error.get().unwrap_or_default()}</p></Show>
             <div class="ui-section-content">
-                <p class="form-hint">"Each catalog lists plugins in its own public Git repository. Leave the reference empty to follow its default branch."</p>
                 <For each=move ||state.marketplaces.get().sources key=|s|(s.repository.clone(),s.reference.clone(),s.path.clone()) children=move |source| {
                     let official=source==MarketplaceSource::official();let remove=StoredValue::new(source.clone());
                     view!{<div class="ui-section-content"><p class="form-hint">{format!("{} · {} · {}",source.repository,if source.reference.is_empty(){"default branch"}else{&source.reference},source.path)}</p><Show when=move ||official><p class="form-hint">"Official marketplace · always available"</p></Show><Show when=move ||!official><InlineActions><Button disabled=state.busy.read_only() on_click=Callback::new(move |_|{let mut sources=state.marketplaces.get_untracked().sources;sources.retain(|s|s!=&remove.get_value());actions.save_sources.run(sources);})>"Remove marketplace"</Button></InlineActions></Show></div>}
@@ -145,10 +165,9 @@ pub fn PluginMarketplaceSources() -> impl IntoView {
                 <InlineActions><Button disabled=state.busy.read_only() on_click=Callback::new(move |_|{let mut sources=state.marketplaces.get_untracked().sources;sources.push(MarketplaceSource{repository:state.marketplace_repository.get_untracked().trim().into(),reference:state.marketplace_reference.get_untracked().trim().into(),path:state.marketplace_path.get_untracked().trim().into()});actions.save_sources.run(sources);})><Icon name=IconName::Plus/>"Add marketplace"</Button></InlineActions>
             </div>
 
-            <InlineActions><Button variant=ButtonVariant::Ghost on_click=Callback::new(move |_| {
-                settings.show_settings.set(false);
-                ui.plugins_open.set(true);
-            })>"Browse plugins"</Button></InlineActions>
+            {on_browse.map(|browse| view! {
+                <InlineActions><Button variant=ButtonVariant::Ghost on_click=Callback::new(move |_| browse.run(()))>"Browse plugins"</Button></InlineActions>
+            })}
         </FormSection>
     }
 }

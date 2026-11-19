@@ -6,7 +6,7 @@ support and systemd. See [Podman's Quadlet reference](https://docs.podman.io/en/
 This deployment is not available on macOS/Windows.
 
 Host administration is included in the image. Configure its SSH connection in
-**Settings → Host** with your SSH username to manage the actual Linux host.
+**Settings → Host → Host administration** with your SSH username to manage the actual Linux host.
 The host address is automatic. Use the SSH credentials below; no privileged
 container or second bridge is required. See
 [host administration](host-administration.md).
@@ -135,7 +135,7 @@ Host administration and Git over SSH use the host user's SSH agent forwarded int
    systemctl --user daemon-reload
    systemctl --user restart openwebide.service
    ```
-7. **Configure in Settings → Host**:
+7. **Configure in Settings → Host → Host administration**:
    - Check **Enable host administration**.
    - Set **SSH username** to your host user account.
    - The host operating system is detected automatically.

@@ -514,7 +514,17 @@ async fn unconfigured_host_offers_settings_without_polling() {
             state.chat,
             state.projects,
         ));
-        view! { <style>{include_str!("../../styles.css")}</style><HostPanel/> }
+        view! {
+            <style>{include_str!("../../styles.css")}</style>
+            <HostPanel/>
+            <Show when=move || state.settings.show_settings.get()>
+                <openwebide_frontend::components::Settings
+                    on_set_notifications=Callback::new(|_| ())
+                    on_set_theme=Callback::new(|_| ())
+                    on_set_default_prompt=Callback::new(|_| ())
+                    on_set_bridge_url=Callback::new(|_| ()) />
+            </Show>
+        }
     });
     settle().await;
     mounted.click("[aria-label='Host environment']");
@@ -530,7 +540,21 @@ async fn unconfigured_host_offers_settings_without_polling() {
     mounted.click_text("Open host settings");
     settle().await;
     assert!(mounted.state.settings.show_settings.get_untracked());
-    assert_eq!(mounted.state.settings.requested_tab.get_untracked(), 4);
+    let administration = "#settings-host-administration .ui-disclosure-toggle";
+    wait_until("focus reaches the SSH settings section", || {
+        document().active_element().is_some_and(|active| {
+            mounted.has_element(administration)
+                && active.is_same_node(Some(&mounted.element(administration)))
+        })
+    })
+    .await;
+    assert_eq!(
+        mounted
+            .element(administration)
+            .get_attribute("aria-expanded")
+            .as_deref(),
+        Some("true")
+    );
 }
 
 #[wasm_bindgen_test]

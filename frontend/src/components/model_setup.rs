@@ -477,6 +477,7 @@ fn BooleanSetting(label: &'static str, value: RwSignal<Option<bool>>) -> impl In
 pub fn ServerOptions(
     #[prop(optional_no_strip)] id: Option<i64>,
     on_edit: Callback<Result<ServerSettingsUpdate, String>>,
+    #[prop(optional)] on_load: Option<Callback<openwebide_core::ServerSettings>>,
     #[prop(default = Signal::derive(|| false))] disabled: Signal<bool>,
 ) -> impl IntoView {
     let api = expect_context::<Api>();
@@ -485,6 +486,7 @@ pub fn ServerOptions(
     let edited = RwSignal::new(false);
     let loading = RwSignal::new(id.is_some());
     let load_error = RwSignal::new(None::<String>);
+    let has_key = RwSignal::new(false);
     let clear_key = RwSignal::new(false);
     let timeout = RwSignal::new("300".to_string());
     let keep_alive = RwSignal::new(String::new());
@@ -502,6 +504,10 @@ pub fn ServerOptions(
             loading.set(false);
             match result {
                 Ok(settings) => {
+                    has_key.set(settings.has_api_key);
+                    if let Some(on_load) = on_load {
+                        on_load.run(settings.clone());
+                    }
                     timeout.set(settings.timeout_seconds.to_string());
                     keep_alive.set(settings.keep_alive.unwrap_or_default());
                     if !edited.get_untracked() {
@@ -552,15 +558,17 @@ pub fn ServerOptions(
         on_edit.run(result);
     });
     view! {
-        <super::tool_budget::ToolBudget disabled=disabled selection=tool_selection on_edit=Callback::new(move |()| edited.set(true)) />
         <Show when=move || loading.get()><p class="form-hint">"Loading server options…"</p></Show>
         <Show when=move || load_error.get().is_some()><FormNotice tone=NoticeTone::Error>{move || load_error.get()}</FormNotice></Show>
         <details class="ui-disclosure"><summary>"Advanced server options"</summary>
-        <CheckboxField label="Clear stored auth token" checked=clear_key.into() on_change=Callback::new(move |value| clear_key.set(value)) />
+        <fieldset class="server-options" disabled=disabled>
+        <super::tool_budget::ToolBudget disabled=disabled selection=tool_selection on_edit=Callback::new(move |()| edited.set(true)) />
+        <Show when=move || has_key.get()><CheckboxField label="Clear stored auth token" checked=clear_key.into() disabled=disabled on_change=Callback::new(move |value| clear_key.set(value)) /></Show>
         <TextSetting label="Timeout (seconds)" value=timeout input_type="number" />
         <TextSetting label="Ollama keep alive" value=keep_alive placeholder="Server default (e.g. 5m)" />
         <FormField label="Extra headers"><textarea class="form-input" placeholder="One Name: Value per line" rows="3" on:input=move |event| headers.set(event_target_value(&event)) /></FormField>
         <CheckboxField label="Clear stored extra headers" checked=clear_headers.into() on_change=Callback::new(move |value| clear_headers.set(value)) />
         <p class="form-hint">"Blank preserves stored headers. New headers replace them; stored values are never read back."</p>
+        </fieldset>
     </details> }
 }

@@ -155,7 +155,10 @@ impl AuthState {
         chat.show_terminal.set(false);
         chat.active_editor_context.set(None);
         ui.plugins_open.set(false);
-        settings.requested_tab.set(0);
+        settings
+            .destination
+            .set(super::settings::SettingsDestination::General);
+        settings.saved_server.set(None);
         ui.clear_toast();
 
         object_urls

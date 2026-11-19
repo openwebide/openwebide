@@ -218,7 +218,7 @@ impl ServerTransport {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModelProbe {
     pub server_id: Option<i64>,
     pub kind: crate::ProviderKind,
@@ -300,6 +300,21 @@ pub struct ModelDetection {
     pub quantization: Option<String>,
     pub loaded: Option<bool>,
 }
+
+pub fn model_size(bytes: u64) -> String {
+    const MIB: u64 = 1024 * 1024;
+    const GIB: u64 = 1024 * MIB;
+    let (unit, label) = if bytes >= GIB {
+        (GIB, "GiB")
+    } else if bytes >= MIB {
+        (MIB, "MiB")
+    } else {
+        return format!("{bytes} bytes");
+    };
+    let tenths = bytes / unit * 10 + ((bytes % unit * 10 + unit / 2) / unit);
+    format!("{}.{} {label}", tenths / 10, tenths % 10)
+}
+
 impl ModelDetection {
     pub fn chat_capable(&self) -> bool {
         !self
@@ -317,10 +332,10 @@ impl ModelDetection {
             parts.push(format!("server {version}"));
         }
         if let Some(size) = self.size_bytes {
-            parts.push(format!("{size} bytes"));
+            parts.push(model_size(size));
         }
         if let Some(cpu) = self.cpu_bytes {
-            parts.push(format!("{cpu} bytes on CPU"));
+            parts.push(format!("{} on CPU", model_size(cpu)));
         }
         if let Some(quantization) = &self.quantization {
             parts.push(quantization.clone());

@@ -91,4 +91,4 @@ Use [scheduled tasks](docs/scheduled-tasks.md), [goals](docs/chat-controls.md)
 and [monitors](docs/monitors.md) for ongoing work, or inspect and manage your
 homelab through [host administration](docs/host-administration.md).
 Choose Nightly, Preview or Stable and install compatible releases from
-**Settings → Updates**, using a configured Compose or Podman/systemd updater.
+**Settings → Host → Updates**, using a configured Compose or Podman/systemd updater.

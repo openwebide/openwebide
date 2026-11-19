@@ -641,7 +641,10 @@ async fn language_settings_controls_persist_defaults_and_project_overrides_in_bo
                 .workspace
                 .content
                 .set("fn main() { let text = \"文😀\"; }\r\n".into());
-            state.settings.requested_tab.set(1);
+            state
+                .settings
+                .destination
+                .set(openwebide_frontend::state::settings::SettingsDestination::LanguageSupport);
             let actions = build_settings_actions(SettingsActionContext {
                 api: state.api,
                 settings: state.settings,
@@ -657,6 +660,13 @@ async fn language_settings_controls_persist_defaults_and_project_overrides_in_bo
             }
         });
         language_support::ready(&mounted.state).await;
+        assert_eq!(
+            mounted
+                .element("#settings-language-support .ui-disclosure-toggle")
+                .get_attribute("aria-expanded")
+                .as_deref(),
+            Some("true")
+        );
         let warming = mounted
             .root
             .query_selector(

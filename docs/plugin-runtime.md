@@ -447,7 +447,7 @@ follows process handoff and resets on actual process restart. Interactive querie
 remain available. A completed request rejected for changed project files may retry
 on the same service.
 
-Settings → Editor includes **Warm language services while idle**, disabled by
+**Settings → Editor → Language support** includes **Warm language services while idle**, disabled by
 default and saved in the account's database settings. The shared editor scheduler
 waits 750 ms after ordinary work settles, then considers at most four files.
 Current open buffers take priority, followed by known related unopened files and

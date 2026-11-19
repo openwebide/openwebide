@@ -72,9 +72,9 @@ Spin, including REST and streaming responses. It supports WebSocket upgrades at
 backend-only secret bootstrap route is not exposed through the proxy.
 
 Open `https://$OPENWEBIDE_TAILSCALE_HOST`. New browser configurations automatically
-use `wss://<same-host>/bridge`. An existing explicit **Settings → Bridge URL** is
+use `wss://<same-host>/bridge`. An existing explicit **Bridge URL** under **Settings → Host → Execution bridge** is
 retained; change it to this route if migrating from the old port 8443 setup.
-**Settings → Install app** offers the browser install prompt when available, or
+**Settings → General → Installation** offers the browser install prompt when available, or
 browser-specific instructions. On iPhone/iPad, use Safari's Share → Add to Home
 Screen. HTTP LAN origins show the HTTPS setup guidance; HTTP localhost qualifies
 as a secure context.

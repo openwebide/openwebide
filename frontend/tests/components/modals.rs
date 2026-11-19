@@ -969,6 +969,12 @@ async fn settings_tabs_autosave_choices_and_support_keyboard_navigation_in_every
             *state.fake.models.borrow_mut() = vec![openwebide_core::ModelInfo {
                 name: "Tab test model".into(),
             }];
+            provide_context(openwebide_frontend::host_admin::HostState::new(
+                state.api,
+                state.auth,
+                state.chat,
+                state.projects,
+            ));
             view! { <style>{include_str!("../../styles.css")}</style><Settings on_set_notifications=Callback::new(|_| ()) on_set_theme=Callback::new(move |theme| state.settings.theme.set(theme)) on_set_default_prompt=Callback::new(|_| ()) on_set_bridge_url=Callback::new(|_| ()) /> }
         });
         settle().await;
@@ -1005,13 +1011,29 @@ async fn settings_tabs_autosave_choices_and_support_keyboard_navigation_in_every
             false,
         );
         settle().await;
-        assert_eq!(active().id(), "settings-tab-updates");
-        mounted.click("#settings-tab-bridge");
+        assert_eq!(active().id(), "settings-tab-host");
+        assert!(mounted.state.fake.host_update_requests.borrow().is_empty());
+        mounted.click("#settings-host-updates .ui-disclosure-toggle");
+        settle().await;
+        assert!(!mounted.state.fake.host_update_requests.borrow().is_empty());
+        mounted.click_text("Configure SSH");
+        settle().await;
+        let administration = "#settings-host-administration .ui-disclosure-toggle";
+        assert_eq!(
+            mounted
+                .element(administration)
+                .get_attribute("aria-expanded")
+                .as_deref(),
+            Some("true")
+        );
+        assert!(active().is_same_node(Some(&mounted.element(administration))));
+        mounted.click("#settings-execution-bridge .ui-disclosure-toggle");
         settle().await;
         let input: web_sys::HtmlInputElement = mounted
-            .element("#settings-panel-bridge input[type=text]")
+            .element("#settings-execution-bridge input[type=text]")
             .unchecked_into();
         input.set_value("ws://unsaved-draft.test:3001");
+        mounted.click("#settings-execution-bridge .ui-disclosure-toggle");
         mounted.click("#settings-tab-models");
         settle().await;
         wait_until("model choices ready", || {
@@ -1054,36 +1076,14 @@ async fn settings_tabs_autosave_choices_and_support_keyboard_navigation_in_every
                 .model,
             "Tab test model"
         );
-        mounted.click("#settings-tab-bridge");
+        mounted.click("#settings-tab-host");
+        mounted.click("#settings-execution-bridge .ui-disclosure-toggle");
         settle().await;
         assert_eq!(input.value(), "ws://unsaved-draft.test:3001");
+        assert!(input.is_connected());
         assert_eq!(mounted.element(".ui-tabbed-modal").offset_height(), height);
         key(
-            &mounted.element("#settings-tab-bridge"),
-            "ArrowRight",
-            false,
-            false,
-        );
-        settle().await;
-        assert_eq!(active().id(), "settings-tab-host");
-        key(
             &mounted.element("#settings-tab-host"),
-            "ArrowRight",
-            false,
-            false,
-        );
-        settle().await;
-        assert_eq!(active().id(), "settings-tab-plugins");
-        key(
-            &mounted.element("#settings-tab-plugins"),
-            "ArrowRight",
-            false,
-            false,
-        );
-        settle().await;
-        assert_eq!(active().id(), "settings-tab-updates");
-        key(
-            &mounted.element("#settings-tab-updates"),
             "ArrowRight",
             false,
             false,
@@ -1097,13 +1097,8 @@ async fn settings_tabs_autosave_choices_and_support_keyboard_navigation_in_every
             false,
         );
         settle().await;
-        assert_eq!(active().id(), "settings-tab-updates");
-        key(
-            &mounted.element("#settings-tab-updates"),
-            "Home",
-            false,
-            false,
-        );
+        assert_eq!(active().id(), "settings-tab-host");
+        key(&mounted.element("#settings-tab-host"), "Home", false, false);
         settle().await;
         assert_eq!(active().id(), "settings-tab-general");
     }

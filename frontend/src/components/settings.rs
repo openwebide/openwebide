@@ -1,11 +1,61 @@
 use super::{
     modal::Modal,
     model_setup::ModelSetupPanel,
-    ui::{Button, DialogActions, DialogBody, DialogSize, FormField, FormSection, InlineActions},
+    ui::{
+        Button, DialogActions, DialogBody, DialogSize, DisclosurePanel, FormField, FormSection,
+        InlineActions,
+    },
 };
-use crate::state::settings::{SettingsState, Theme};
+use crate::state::settings::{SettingsDestination, SettingsState, Theme};
 use leptos::prelude::*;
 use web_sys::wasm_bindgen::JsCast;
+
+const LANGUAGE_SUPPORT: &str = "settings-language-support";
+const HOST_ADMINISTRATION: &str = "settings-host-administration";
+
+fn focus_section(id: &str) {
+    if let Some(button) = document()
+        .get_element_by_id(id)
+        .and_then(|section| {
+            section
+                .query_selector(".ui-disclosure-toggle")
+                .ok()
+                .flatten()
+        })
+        .and_then(|button| button.dyn_into::<web_sys::HtmlElement>().ok())
+    {
+        let _ = button.focus();
+    }
+}
+
+/// Mount settings when first opened and retain their live state and drafts.
+#[component]
+fn SettingsDisclosure(
+    id: &'static str,
+    title: &'static str,
+    #[prop(default = "")] description: &'static str,
+    expanded: RwSignal<bool>,
+    children: ChildrenFn,
+) -> impl IntoView {
+    let opened = RwSignal::new(expanded.get_untracked());
+    Effect::new(move || {
+        if expanded.get() {
+            opened.set(true);
+        }
+    });
+    view! {
+        <div id=id>
+            <DisclosurePanel class="settings-disclosure" expanded=expanded summary=move || view! {
+                <span class="settings-disclosure-label">
+                    <strong>{title}</strong>
+                    {(!description.is_empty()).then(|| view! { <span>{description}</span> })}
+                </span>
+            }>
+                <Show when=move || opened.get()>{children()}</Show>
+            </DisclosurePanel>
+        </div>
+    }
+}
 
 /// User preferences and the model / system prompt defaults for new sessions.
 #[component]
@@ -19,8 +69,29 @@ pub fn Settings(
     on_set_bridge_url: Callback<String>,
 ) -> impl IntoView {
     let settings = expect_context::<SettingsState>();
-    let tab = RwSignal::new(settings.requested_tab.get_untracked());
-    settings.requested_tab.set(0);
+    let destination = settings.destination.get_untracked();
+    settings.destination.set(SettingsDestination::General);
+    let tab = RwSignal::new(match destination {
+        SettingsDestination::General => 0,
+        SettingsDestination::LanguageSupport => 1,
+        SettingsDestination::Models => 2,
+        SettingsDestination::HostAdministration => 3,
+    });
+    let language = RwSignal::new(destination == SettingsDestination::LanguageSupport);
+    let bridge = RwSignal::new(false);
+    let administration = RwSignal::new(destination == SettingsDestination::HostAdministration);
+    let updates = RwSignal::new(false);
+    if let Some(section) = match destination {
+        SettingsDestination::General | SettingsDestination::Models => None,
+        SettingsDestination::LanguageSupport => Some(LANGUAGE_SUPPORT),
+        SettingsDestination::HostAdministration => Some(HOST_ADMINISTRATION),
+    } {
+        leptos::leptos_dom::helpers::request_animation_frame(move || focus_section(section));
+    }
+    let configure_ssh = Callback::new(move |()| {
+        administration.set(true);
+        focus_section(HOST_ADMINISTRATION);
+    });
     let host_available = use_context::<crate::host_admin::HostState>().is_some();
     let layout = expect_context::<crate::state::layout::LayoutState>();
     let layout_actions = use_context::<crate::state_actions::layout::LayoutActions>();
@@ -45,15 +116,9 @@ pub fn Settings(
                 super::ui::DialogTab::new("General", "settings-tab-general", "settings-panel-general"),
                 super::ui::DialogTab::new("Editor", "settings-tab-editor", "settings-panel-editor"),
                 super::ui::DialogTab::new("Models", "settings-tab-models", "settings-panel-models"),
-                super::ui::DialogTab::new("Bridge", "settings-tab-bridge", "settings-panel-bridge"),
                 super::ui::DialogTab::new("Host", "settings-tab-host", "settings-panel-host"),
-                super::ui::DialogTab::new("Plugins", "settings-tab-plugins", "settings-panel-plugins"),
-                super::ui::DialogTab::new("Updates", "settings-tab-updates", "settings-panel-updates"),
             ] selected=tab.read_only().into() on_change=Callback::new(move |index| tab.set(index)) />
-            <DialogBody class="settings-body ui-tabbed-body">
-                <div id="settings-panel-plugins" class="ui-tab-panel" role="tabpanel" aria-labelledby="settings-tab-plugins" tabindex="0" hidden=move||tab.get()!=5><Show when=move||tab.get()==5><super::plugins::PluginMarketplaceSources/></Show></div>
-                <div id="settings-panel-updates" class="ui-tab-panel" role="tabpanel" aria-labelledby="settings-tab-updates" tabindex="0" hidden=move||tab.get()!=6><Show when=move||host_available && tab.get()==6><super::host_updates::HostUpdates/></Show></div>
-                <div id="settings-panel-host" class="ui-tab-panel" role="tabpanel" aria-labelledby="settings-tab-host" tabindex="0" hidden=move||tab.get()!=4><Show when=move||host_available && tab.get()==4><super::host_admin::HostSettings/></Show></div>
+            <DialogBody class="settings-body ui-tabbed-body" selected_tab=tab.read_only()>
                 <div id="settings-panel-general" class="ui-tab-panel" role="tabpanel" aria-labelledby="settings-tab-general" tabindex="0" hidden=move || tab.get() != 0>
                 <FormSection title="Appearance" description="Changes apply immediately." class="ui-form-grid">
                 <FormField label="Layout" group=true>
@@ -129,7 +194,11 @@ pub fn Settings(
                         }
                     }) />
                 </FormSection>
-                <super::language_settings::LanguageProviderSettings />
+                <SettingsDisclosure id=LANGUAGE_SUPPORT title="Language support"
+                    description="Idle analysis and provider choices for your account and projects."
+                    expanded=language>
+                    <super::language_settings::LanguageProviderSettings />
+                </SettingsDisclosure>
                 </div>
                 <div id="settings-panel-models" class="ui-tab-panel" role="tabpanel" aria-labelledby="settings-tab-models" tabindex="0" hidden=move || tab.get() != 2>
                 <FormSection title="Model defaults" description="Choose the models and system prompt used for new chats. Changes save automatically.">
@@ -143,7 +212,9 @@ pub fn Settings(
 
                 </FormSection>
                 </div>
-                <div id="settings-panel-bridge" class="ui-tab-panel" role="tabpanel" aria-labelledby="settings-tab-bridge" tabindex="0" hidden=move || tab.get() != 3>
+                <div id="settings-panel-host" class="ui-tab-panel settings-host" role="tabpanel" aria-labelledby="settings-tab-host" tabindex="0" hidden=move || tab.get() != 3>
+                <SettingsDisclosure id="settings-execution-bridge" title="Execution bridge"
+                    description="Bridge URL and pairing token for this browser." expanded=bridge>
                 <FormSection title="Execution bridge" description="Connect terminal and agent tools to your execution host.">
                 <FormField label="Bridge URL">
                     <input
@@ -197,6 +268,17 @@ pub fn Settings(
                 </FormField>
 
                 </FormSection>
+                </SettingsDisclosure>
+                <Show when=move || host_available>
+                    <SettingsDisclosure id=HOST_ADMINISTRATION title="Host administration"
+                        description="SSH access for the server running Open WebIDE." expanded=administration>
+                        <super::host_admin::HostSettings />
+                    </SettingsDisclosure>
+                    <SettingsDisclosure id="settings-host-updates" title="Updates"
+                        description="Release channel and installation for this server." expanded=updates>
+                        <super::host_updates::HostUpdates on_configure_ssh=configure_ssh />
+                    </SettingsDisclosure>
+                </Show>
                 </div>
             </DialogBody>
             <DialogActions>

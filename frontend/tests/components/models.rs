@@ -570,12 +570,19 @@ async fn servers_open_shared_configuration_while_preferences_keep_model_defaults
             }
         });
         settle().await;
-        super::support::click_action(&mounted, "button[title='Edit']").await;
+        assert!(
+            mounted
+                .element("#configure-server-1")
+                .text_content()
+                .unwrap_or_default()
+                .contains("Configure")
+        );
+        mounted.click("#configure-server-1");
         settle().await;
         assert_eq!(mounted.state.settings.conn_edit_id.get_untracked(), Some(1));
-        mounted.click_text("Next: server");
-        settle().await;
         mounted.click_text("Discover models");
+        settle().await;
+        mounted.click(".model-review-row .ui-disclosure-toggle");
         settle().await;
         let modal = mounted.element(".modal:has(.model-setup)");
         let text = modal.text_content().unwrap();
@@ -591,7 +598,7 @@ async fn servers_open_shared_configuration_while_preferences_keep_model_defaults
             .dispatch_event(&web_sys::Event::new("input").unwrap())
             .unwrap();
         settle().await;
-        mounted.click_text("Save");
+        mounted.click_text("Save server");
         settle().await;
         assert_eq!(
             mounted.state.fake.model_setup.borrow().profiles[0]
@@ -599,10 +606,22 @@ async fn servers_open_shared_configuration_while_preferences_keep_model_defaults
                 .context_limit,
             Some(16384)
         );
-        mounted.state.settings.show_settings.set(true);
+        assert!(
+            mounted
+                .element(".server-row-saved")
+                .text_content()
+                .unwrap()
+                .contains("Configure")
+        );
+        mounted.click_text("Open model defaults");
         settle().await;
-        mounted.click("#settings-tab-models");
-        settle().await;
+        assert_eq!(
+            mounted
+                .element("#settings-tab-models")
+                .get_attribute("aria-selected")
+                .as_deref(),
+            Some("true")
+        );
         let text = mounted
             .element(".modal:has(.settings, .ui-form-grid)")
             .text_content()
@@ -652,10 +671,8 @@ async fn setup_wizard_discovers_customizes_and_reruns_in_both_modes() {
                 .element("li[aria-current=step]")
                 .text_content()
                 .unwrap()
-                .contains("Provider")
+                .contains("Connect server")
         );
-        mounted.click_text("Next: server");
-        settle().await;
         let key: web_sys::HtmlInputElement =
             mounted.element("input[type=password]").unchecked_into();
         key.set_value("test-token");
@@ -668,9 +685,12 @@ async fn setup_wizard_discovers_customizes_and_reruns_in_both_modes() {
                 .element("li[aria-current=step]")
                 .text_content()
                 .unwrap()
-                .contains("Models")
+                .contains("Review models")
         );
         assert!(mounted.state.fake.server_settings.borrow().is_empty());
+        assert!(!mounted.has_element(".model-settings-editor"));
+        mounted.click(".model-review-row .ui-disclosure-toggle");
+        settle().await;
         let context: web_sys::HtmlInputElement = mounted
             .element(".model-settings-editor input[type=number]")
             .unchecked_into();
@@ -680,6 +700,23 @@ async fn setup_wizard_discovers_customizes_and_reruns_in_both_modes() {
             .dispatch_event(&web_sys::Event::new("input").unwrap())
             .unwrap();
         settle().await;
+        let (sender, receiver) = futures::channel::oneshot::channel();
+        sender
+            .send(Err("An unchanged connection should reuse discovery".into()))
+            .unwrap();
+        mounted
+            .state
+            .fake
+            .model_results
+            .borrow_mut()
+            .push_back(receiver);
+        mounted.click_text("Back");
+        settle().await;
+        assert_eq!(key.value(), "test-token");
+        mounted.click_text("Discover models");
+        settle().await;
+        assert_eq!(context.value(), "16384");
+        assert_eq!(mounted.state.fake.model_results.borrow().len(), 1);
         assert!(mounted.state.fake.model_setup.borrow().profiles.is_empty());
         assert!(
             !mounted
@@ -710,7 +747,7 @@ async fn setup_wizard_discovers_customizes_and_reruns_in_both_modes() {
             .dispatch_event(&web_sys::Event::new("input").unwrap())
             .unwrap();
         settle().await;
-        mounted.click_text("Save");
+        mounted.click_text("Save server");
         settle().await;
         let setup = mounted.state.fake.model_setup.borrow();
         assert_eq!(setup.profiles[0].settings.context_limit, Some(24576));
@@ -733,8 +770,6 @@ async fn setup_retry_keeps_one_server_and_closed_discovery_cannot_apply() {
             let open = RwSignal::new(true);
             view! { <Show when=move || open.get()><ModelSetupWizard on_close=Callback::new(move |()| open.set(false)) /></Show> }
         });
-        settle().await;
-        mounted.click_text("Next: server");
         settle().await;
         mounted.click_text("Discover models");
         settle().await;
@@ -779,10 +814,10 @@ async fn setup_retry_keeps_one_server_and_closed_discovery_cannot_apply() {
                     .element("li[aria-current=step]")
                     .text_content()
                     .unwrap()
-                    .contains("Models")
+                    .contains("Review models")
             );
             assert_eq!(mounted.state.fake.connections.borrow().len(), 0);
-            mounted.click_text("Save");
+            mounted.click_text("Save server");
             settle().await;
             assert_eq!(mounted.state.fake.connections.borrow().len(), 1);
         }
@@ -845,9 +880,9 @@ async fn detection_fills_all_reported_values_and_cancel_discards_them_in_both_mo
             view! { <Show when=move || open.get()><ModelSetupWizard on_close=Callback::new(move |()| open.set(false)) /></Show> }
         });
         settle().await;
-        mounted.click_text("Next: server");
-        settle().await;
         mounted.click_text("Discover models");
+        settle().await;
+        mounted.click(".model-review-row .ui-disclosure-toggle");
         settle().await;
         let context: web_sys::HtmlInputElement = mounted
             .element(".model-settings-editor section:first-of-type label:first-of-type input")
@@ -908,14 +943,14 @@ async fn model_test_plain_chat_fallback_is_saved_only_for_the_tested_model() {
         view! { <Show when=move || open.get()><ModelSetupWizard on_close=Callback::new(move |()| open.set(false)) /></Show> }
     });
     settle().await;
-    mounted.click_text("Next: server");
-    settle().await;
     mounted.click_text("Discover models");
+    settle().await;
+    mounted.click(".model-review-row .ui-disclosure-toggle");
     settle().await;
     mounted.click_text("Test model");
     settle().await;
     assert!(mounted.state.fake.model_setup.borrow().profiles.is_empty());
-    mounted.click_text("Save");
+    mounted.click_text("Save server");
     settle().await;
     let setup = mounted.state.fake.model_setup.borrow();
     let one = setup

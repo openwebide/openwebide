@@ -169,7 +169,7 @@ Search, explicitly rewrites leading
 whitespace while retaining its displayed column width. Conversion is one undo step;
 it does not format the rest of the code. Widths are bounded to 1–16 columns.
 
-Set user defaults in **Settings → Editor defaults**. Changes save immediately to the
+Set user defaults in **Settings → Editor → Editing**. Changes save immediately to the
 user's database settings. Per-file footer overrides remain with the open document
 for the current app lifetime; they do not change the project's `.editorconfig`.
 
@@ -430,7 +430,7 @@ source columns; blank lines continue the common surrounding indentation.
 These controls also work in read-only files and share the same source-coordinate
 facade in both modes.
 
-Horizontal scrolling remains the default. **Settings → Editor defaults** offers
+Horizontal scrolling remains the default. **Settings → Editor → Editing** offers
 **Word wrap** and **Show whitespace**, saved with the existing user-scoped database
 preferences. These reading options affect Edit without changing file content.
 Wrapping keeps one gutter number per logical source line and measures fold-row

@@ -73,7 +73,7 @@ pub fn HostPanel() -> impl IntoView {
         <section class="host-panel" class:host-panel-configured=move||configured.get() aria-label="Host environment details">
         <Show when=move||configured.get() fallback=move||view!{
             <p class="form-hint">"Set up host administration to inspect and manage your homelab."</p>
-            <button class="btn ghost" on:click=move|_|{host.open.set(false); settings.requested_tab.set(4); settings.show_settings.set(true);}>"Open host settings"</button>
+            <button class="btn ghost" on:click=move|_|{host.open.set(false); settings.destination.set(crate::state::settings::SettingsDestination::HostAdministration); settings.show_settings.set(true);}>"Open host settings"</button>
         }>
             <InlineActions><strong>"Host environment"</strong><button class="btn ghost" aria-label="Refresh host environment" title="Refresh host environment" disabled=move||host.busy.get() || chat.active_session.get().is_none() on:click=move|_|host.refresh(true)><super::ui::Icon name=super::ui::IconName::RefreshCw /></button></InlineActions>
             <Show when=move||host.open.get()>

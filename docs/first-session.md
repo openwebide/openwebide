@@ -9,9 +9,13 @@ in the app's database.
 
 ## Connect a model
 
-Open the logo app menu → **Servers**, then click **+** to start the setup wizard.
-Choose a provider, enter its URL and optional authentication, and click
-**Discover models**. Open WebIDE supports Ollama and
+Open the logo app menu → **Servers** and select **Add server**. Select a saved
+server's row to edit its connection or discover models again.
+
+[![The Servers dialog with Add server and a Configure action on the saved server row](../assets/screenshots/model-servers.png)](../assets/screenshots/model-servers.png)
+
+In **Connect server**, choose a preset, enter its URL and optional authentication,
+and select **Discover models**. Open WebIDE supports Ollama and
 OpenAI-compatible servers such as llama.cpp and LM Studio. The server must be
 reachable from the runtime handling the request; `localhost` inside a container
 refers to that container. For containerized deployments (Podman or Docker) connecting to
@@ -20,20 +24,23 @@ an inference server on the host machine, use `http://host.containers.internal:<p
 
 <figure class="doc-screenshot" markdown="1">
 [![The Server connection step of Model setup, with the server URL, optional auth token, and Discover models button](../assets/screenshots/model-setup.png)](../assets/screenshots/model-setup.png)
-<figcaption>The Server step is where you enter the provider address and start model discovery.</figcaption>
+<figcaption>Connect server shows the provider preset, endpoint, and optional authentication together.</figcaption>
 </figure>
 
-Review detected model settings before applying them, including context capacity
-and output limits. Choose a primary model in the user dropdown → **Settings**.
+In **Review models**, expand a model to check or change its detected settings,
+including context capacity and output limits. Select **Save server** to finish.
+Choose **Open model defaults** from the confirmation to set your primary model.
+
+[![Review models shows which discovered models will be saved and lets you expand individual settings](../assets/screenshots/model-review.png)](../assets/screenshots/model-review.png)
+
 You can also choose an [assistance model](assistance-model.md) for naming, summaries,
 suggestions and automatic approval decisions. Server/model
 configuration is shared; your default model selections and system prompts belong
 to your account.
 Manage prompts from the user dropdown → **System prompts**.
 
-You can rerun setup from Servers to discover models again or revise configuration.
 For small-context models, choose a smaller tool set or Chat only under
-**Available tools**; the [tool budget guide](chat-controls.md#keep-tools-within-the-context-budget)
+**Advanced server options → Available tools**. The [tool budget guide](chat-controls.md#keep-tools-within-the-context-budget)
 explains the schema-cost estimates.
 Use `/model` in Chat to change the model for your conversation. Type `/` for
 command suggestions; see [chat commands and goals](chat-controls.md) for

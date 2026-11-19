@@ -9,6 +9,11 @@ Scheduled nightly builds publish a rolling release; the last numbered prerelease
 
 ## [Unreleased]
 
+- Group bridge connection, host administration and updates under Host in Settings.
+  Put language support under Editor and marketplace sources in the Plugins dialog.
+- Make saved servers directly configurable and combine setup into Connect server
+  and Review models. Show the saved server and a shortcut to model defaults.
+
 - Generate desktop and phone homepage screenshots and illustrated guides from
   the current frontend build in headless Chrome.
 

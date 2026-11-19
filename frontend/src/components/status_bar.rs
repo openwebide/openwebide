@@ -105,7 +105,10 @@ pub fn StatusBar(
             </span>
             <Show when=move || language_notice.with(Option::is_some)>
                 <button type="button" class="status-btn" title=move || language_notice.get().unwrap_or_default()
-                    on:click=move |_| { if let Some(settings) = settings { settings.requested_tab.set(1); settings.show_settings.set(true); } }>
+                    on:click=move |_| {
+                        if let Some(close) = close_drawer { close.0.run(()); }
+                        if let Some(settings) = settings { settings.destination.set(crate::state::settings::SettingsDestination::LanguageSupport); settings.show_settings.set(true); }
+                    }>
                     "Language support"
                 </button>
                 <button type="button" class="status-btn" title="Retry language support" aria-label="Retry language support"

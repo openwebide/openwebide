@@ -48,10 +48,11 @@ The project's global Skills switch still applies.
 
 ### Add a marketplace source
 
-Use **Manage marketplace sources** in the Plugins hamburger menu to open
-Settings → Plugins. That settings tab
-only configures marketplace sources; search, install, uninstall and project
-enable/disable controls live in the Plugins interface.
+Open **Plugins** from the status bar and select **Sources**.
+The **Manage marketplace sources** action in the Plugins menu opens the same tab.
+Select **Browse** to return to your installed and available plugins.
+
+[![Marketplace sources in the Plugins dialog, with the repository URL, reference and catalog path fields](../assets/screenshots/marketplace-sources.png)](../assets/screenshots/marketplace-sources.png)
 
 The official source is `https://github.com/openwebide/plugins.git`, using its
 default branch and root `marketplace.json`. It is built in and cannot be removed.
@@ -143,8 +144,8 @@ host. The editor, Inline/Split diffs and change previews consume source-bound
 results; core components render them and apply declared editing rules. Missing,
 disabled or unavailable providers preserve plain editing, saving and recovery.
 
-Settings → Editor → Language providers stores account defaults and project
-choices in the database. Competing providers require a choice; updates, removal,
+**Settings → Editor → Language support → Language providers** stores account
+defaults and project choices in the database. Competing providers require a choice; updates, removal,
 re-enablement and **Retry language support** use the normal plugin lifecycle.
 Source, document and ownership checks reject superseded results.
 

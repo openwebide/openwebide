@@ -56,15 +56,25 @@ pub enum ConfigurationSection {
     SystemPrompts,
 }
 
+/// Direct entry points into Settings.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum SettingsDestination {
+    #[default]
+    General,
+    LanguageSupport,
+    Models,
+    HostAdministration,
+}
+
 /// User preferences and editable connection and prompt configuration.
 #[derive(Clone, Copy)]
 pub struct SettingsState {
     #[cfg(target_arch = "wasm32")]
     startup_request: StoredValue<Option<(u64, SettingsRequest)>, LocalStorage>,
     pub show_settings: RwSignal<bool>,
-    /// Initial category requested when opening the settings dialog.
-    pub requested_tab: RwSignal<usize>,
+    pub destination: RwSignal<SettingsDestination>,
     pub configuration: RwSignal<Option<ConfigurationSection>>,
+    pub saved_server: RwSignal<Option<i64>>,
     pub model_setup: RwSignal<openwebide_core::ModelSetup>,
     pub model_defaults_saving: RwSignal<Option<u64>>,
     pub model_defaults_error: RwSignal<Option<(u64, String)>>,
@@ -116,6 +126,7 @@ impl SettingsState {
     }
 
     pub fn begin_model_setup(self, server: Option<i64>) {
+        self.saved_server.set(None);
         let connection = self.connections.with_untracked(|connections| {
             connections
                 .iter()
@@ -139,8 +150,9 @@ impl SettingsState {
             #[cfg(target_arch = "wasm32")]
             startup_request: StoredValue::new_local(None),
             show_settings: RwSignal::new(false),
-            requested_tab: RwSignal::new(0),
+            destination: RwSignal::new(SettingsDestination::General),
             configuration: RwSignal::new(None),
+            saved_server: RwSignal::new(None),
             model_setup: RwSignal::new(Default::default()),
             model_defaults_saving: RwSignal::new(None),
             model_defaults_error: RwSignal::new(None),

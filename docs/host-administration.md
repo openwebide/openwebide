@@ -18,7 +18,7 @@ Until you configure a connection, host tools are unavailable.
    in the [Quadlet template](podman-quadlet.md#host-administration-and-ssh-setup). Keys remain in the agent;
    the app does not upload or store private keys. On SELinux hosts running Podman Quadlet,
    add `SecurityLabelDisable=true` so the rootless container can access the host user's agent socket.
-3. In **Settings → Host**, enter the SSH username for your host account. The OS
+3. In **Settings → Host → Host administration**, enter the SSH username for your host account. The OS
    is detected over SSH. The host address is automatic: the supplied Compose files
    use Docker's host gateway, Quadlet uses `host.containers.internal`, and a native
    bridge uses `127.0.0.1`. SSH defaults to port 22. **Advanced connection settings**
@@ -31,6 +31,8 @@ Until you configure a connection, host tools are unavailable.
    `ssh-keyscan -p 22 host.containers.internal`), verify them through another trusted
    channel, then add them under advanced settings. Strict host-key checking stays
    enabled; discovery does not automatically trust a new host key.
+
+[![The Host tab in Settings with Execution bridge, Host administration and Updates sections](../assets/screenshots/host-settings.png)](../assets/screenshots/host-settings.png)
 
 Disabling host administration saves immediately. Other connection changes use
 **Save and test connection** and show their saved or connection error status.
@@ -51,7 +53,7 @@ default, but need the SSH credentials and connection above before use.
 Open a project-less session and select **Host** in the chat statusline to open
 a viewport-bounded flyout, aligned with Goal and Monitor on the right of the chat statusline.
 The entry uses a text label. Before configuration, the flyout links directly to
-Settings → Host. Configured inventory and operations refresh while the flyout is
+**Settings → Host → Host administration**. Configured inventory and operations refresh while the flyout is
 open, retaining the last results and a stable scrollable size. The inline refresh
 icon allows manual retries; closing the flyout stops polling. Use it to view the machine identity,
 OS/version, CPU and RAM, services, processes, containers, ports, storage and
@@ -135,9 +137,11 @@ administration tools. Only the authenticated server bridge uses this connection.
 
 ## Updates
 
-**Settings → Updates** manages the Open WebIDE deployment on the server's
+**Settings → Host → Updates** manages the Open WebIDE deployment on the server's
 physical host. It uses the same saved SSH connection regardless of which local or
 remote project is open; it does not update paired companion bridges.
+**Configure SSH** opens the host connection form from the update settings when
+the installation is unidentified.
 
 Choose **Nightly** (the rolling `nightly` image), **Preview**, or **Stable**, then save
 the update settings. Checking reads registry metadata without downloading image
@@ -174,8 +178,8 @@ kept under `$XDG_STATE_HOME/openwebide/updates/<id>` (normally
 `~/.local/state/openwebide/updates/<id>`), readable only by the host account.
 The app records the update claim in SQLite before launching it, polls its status,
 and confirms success only when the selected build answers again. Reload the app
-after success to load the matching frontend. Reopening Settings resumes status
-checks; disconnecting never automatically replays an update.
+after success to load the matching frontend. Reopening **Updates** resumes status
+checks. Disconnecting never automatically replays an update.
 
 Images include their commit, version and supported database schema. Updates that
 cannot read the current schema are rejected, including incompatible channel

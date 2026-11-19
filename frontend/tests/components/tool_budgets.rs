@@ -23,7 +23,7 @@ async fn tool_budgets_wizard_saves_choices_and_context_costs_in_both_modes() {
                 view! { <ModelSetupWizard on_close=Callback::new(|()| ()) /> }
             });
             settle().await;
-            mounted.click_text("Next: server");
+            mounted.click(".model-setup summary");
             settle().await;
             mounted.click("button[aria-label='Tool selection']");
             settle().await;
@@ -57,6 +57,8 @@ async fn tool_budgets_wizard_saves_choices_and_context_costs_in_both_modes() {
             assert!(mounted.state.fake.server_settings.borrow().is_empty());
             mounted.click_text("Discover models");
             settle().await;
+            mounted.click(".model-review-row .ui-disclosure-toggle");
+            settle().await;
             let budget = mounted
                 .element(".model-settings-editor .tool-budget")
                 .text_content()
@@ -66,7 +68,7 @@ async fn tool_budgets_wizard_saves_choices_and_context_costs_in_both_modes() {
             if choice == "chat" {
                 assert!(budget.starts_with("0 tools · ~0"));
             }
-            mounted.click_text("Save");
+            mounted.click_text("Save server");
             settle().await;
             let expected = match choice {
                 "selected" => ToolSelection::Selected(vec!["read_file".into()]),
@@ -102,6 +104,8 @@ async fn tool_budgets_late_server_settings_do_not_replace_edits_or_cross_account
                 .push_back(pending);
             view! { <ServerOptions id=Some(1) on_edit=Callback::new(|_| ()) /> }
         });
+        settle().await;
+        mounted.click("summary");
         settle().await;
         mounted.click("button[aria-label='Tool selection']");
         settle().await;

@@ -116,10 +116,11 @@ snapshots open from the prompt action menu; generation speed opens measured
 statistics with token and recent-rate bars. Chat dialogs mount outside the pane's
 contained layout, preserve focus, and close when their chat or account changes.
 
-Settings and keyboard shortcuts use the shared `DialogTabs` component: one tab
-stop, arrow-key navigation with wrapping, Home/End, named panels, and automatic
+Settings, Plugins and keyboard shortcuts use the shared `DialogTabs` component
+with one tab stop, arrow-key navigation with wrapping, Home/End, named panels, and automatic
 activation. The header, tab list and footer stay visible while content scrolls.
-Settings groups General, Editor, Models and Bridge; switching tabs retains field drafts.
+Settings groups General, Editor, Models and Host. Switching tabs or collapsing
+a Settings section retains field drafts.
 Model defaults save on selection, with saving status and a retry action after errors.
 Autosaves stay queued when the dialog closes and ignore stale account responses.
 All pane headers use the same minus control to collapse their retained content.

@@ -6,7 +6,7 @@ use openwebide_core::host_admin::updates::{
 };
 
 #[component]
-pub fn HostUpdates() -> impl IntoView {
+pub fn HostUpdates(#[prop(optional)] on_configure_ssh: Option<Callback<()>>) -> impl IntoView {
     let host = expect_context::<HostState>();
     let updates = host.updates;
     let draft = RwSignal::new(UpdateSettings::default());
@@ -51,11 +51,18 @@ pub fn HostUpdates() -> impl IntoView {
                 <super::ui::SegmentedControl options=vec![super::ui::SegmentOption::new("Nightly",ReleaseChannel::Nightly),super::ui::SegmentOption::new("Preview",ReleaseChannel::Preview),super::ui::SegmentOption::new("Stable",ReleaseChannel::Stable)] value=Signal::derive(move||draft.with(|value|value.channel)) on_change=Callback::new(move|channel|draft.update(|value|value.channel=channel))/>
             </FormField>
             <p class="form-hint">{move||draft.with(|value|match &value.deployment {
-                Deployment::Unconfigured => "Installation has not been identified. Connect SSH in Host settings, then detect the installation or use the advanced override.".into(),
+                Deployment::Unconfigured => "Installation has not been identified. Detection uses the saved host SSH connection.".into(),
                 Deployment::Compose { directory, .. } => format!("Docker Compose installation: {directory}"),
                 Deployment::Quadlet { image_file, .. } => format!("Podman Quadlet installation: {image_file}"),
             })}</p>
-            <InlineActions><button class="btn ghost" disabled=move||updates.busy.get() || active.get() on:click=move|_|updates.request(UpdateRequest::Discover)>"Detect installation"</button></InlineActions>
+            <InlineActions>
+                <Show when=move || draft.with(|value| matches!(value.deployment, Deployment::Unconfigured))>
+                    {on_configure_ssh.map(|configure| view! {
+                        <button type="button" class="btn ghost" on:click=move |_| configure.run(())>"Configure SSH"</button>
+                    })}
+                </Show>
+                <button class="btn ghost" disabled=move||updates.busy.get() || active.get() on:click=move|_|updates.request(UpdateRequest::Discover)>"Detect installation"</button>
+            </InlineActions>
             <super::ui::DisclosurePanel summary=move||view!{"Advanced deployment settings"}>
                 <p class="form-hint">"Uses the saved host SSH connection. Release installation requires Linux, Python 3, skopeo and a user systemd manager. Discovery uses the running container’s metadata. Review and save the detected settings before checking for updates."</p>
                 <FormField label="Deployment"><select class="form-input" aria-label="Update deployment" prop:value=move||draft.with(|value|match value.deployment{Deployment::Unconfigured=>"none",Deployment::Compose{..}=>"compose",Deployment::Quadlet{..}=>"quadlet"}) on:change=move|event|draft.update(|value|value.deployment=match event_target_value(&event).as_str(){"compose"=>Deployment::Compose{directory:String::new(),files:Vec::new(),service:"openwebide".into()},"quadlet"=>Deployment::Quadlet{image_file:String::new(),service:"openwebide.service".into()},_=>Deployment::Unconfigured})><option value="none">"Not configured"</option><option value="compose">"Docker Compose"</option><option value="quadlet">"Podman / systemd"</option></select></FormField>

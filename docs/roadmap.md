@@ -1456,7 +1456,7 @@ guides and installation walkthroughs against the final app before public launch.
   workspace modes on release hosts. CI verifies both native image architectures,
   bridge archives, HTTPS transport and generated Quadlet services; actual systemd
   service and update-timer checks remain hands-on.
-  Rehearse Settings → Updates on real Compose and user Quadlet installs,
+  Rehearse Settings → Host → Updates on real Compose and user Quadlet installs,
   including installation discovery, host prerequisites, digest pins, failed deployments and reconnects.
   The settings/actions, durable claims and detached SSH worker have shared local/
   remote browser contracts and controlled deployment-fixture coverage.

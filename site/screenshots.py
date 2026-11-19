@@ -197,6 +197,16 @@ def demo_handler(bundle, demo):
             path = self.path
             if path == "/api/projects/1/language-actions/recovery" and request == {"operation": "load", "id": None}:
                 self.reply_json(200, None)
+            elif path == "/api/models/preview":
+                models = {
+                    "weather-coder": {"context_limit": 32768, "source": "Demo model metadata",
+                                      "capabilities": ["completion", "tools"], "loaded": True},
+                    "weather-small": {"context_limit": 8192, "source": "Demo model metadata",
+                                      "capabilities": ["completion"], "loaded": False},
+                    "weather-embeddings": {"source": "Demo model metadata", "capabilities": ["embedding"]},
+                }
+                self.reply_json(200, {"base_url": request["base_url"], "kind": request["kind"],
+                                      "models": [{"name": name} for name in models], "detections": models})
             elif path == "/api/projects/1/git/history":
                 self.reply_json(200, demo.history)
             elif path == "/api/projects/1/git/commit-diff" and request.get("hash") == demo.history["commits"][0]["hash"]:
@@ -366,13 +376,17 @@ def capture_navigation(browser):
     yield "remote-folder", capture_panel(browser, '[role="dialog"]:has(.browser-list)')
     click(browser, "css selector", '[role="dialog"]:has(.browser-list) button[aria-label="Close dialog"]')
 
-    # Show the connection step with a concrete example address and no credentials.
     click(browser, "css selector", 'button[aria-label="App menu"]')
     click(browser, "xpath", '//*[@role="menuitem"][normalize-space(.)="Servers"]')
-    click(browser, "css selector", 'button[aria-label="New server"]')
-    click(browser, "xpath", '//button[normalize-space(.)="Next: server"]')
+    wait(browser, "document.querySelector('.server-configure')", "the saved server and its endpoint")
+    yield "model-servers", capture_panel(browser, '[role="dialog"]:has(.server-list)')
+    click(browser, "xpath", '//button[normalize-space(.)="Add server"]')
     wait(browser, "document.querySelector('.model-setup input[type=url]')", "the server connection step")
     yield "model-setup", capture_panel(browser, '[role="dialog"]:has(.model-setup)')
+    click(browser, "xpath", '//button[normalize-space(.)="Discover models"]')
+    wait(browser, "document.querySelector('.model-review:not([hidden])')?.innerText.includes('2 chat models will be saved.')",
+         "the compact model review")
+    yield "model-review", capture_panel(browser, '[role="dialog"]:has(.model-review)')
     click(browser, "css selector", '[role="dialog"]:has(.model-setup) button[aria-label="Close dialog"]')
     click(browser, "css selector", '[role="dialog"]:has(.app-configuration) button[aria-label="Close dialog"]')
 
@@ -413,6 +427,10 @@ def capture_project_controls(browser):
     wait(browser, "document.querySelector('#settings-panel-editor:not([hidden])')?.innerText.includes('Coding ligatures')",
          "the editor appearance settings")
     yield "editor-settings", capture_panel(browser, '[role="dialog"]:has(#settings-tab-editor)')
+    click(browser, "css selector", "#settings-tab-host")
+    wait(browser, """['settings-execution-bridge', 'settings-host-administration', 'settings-host-updates']
+         .every(id => document.getElementById(id)?.getClientRects().length)""", "the host settings sections")
+    yield "host-settings", capture_panel(browser, '[role="dialog"]:has(#settings-tab-host)', 375)
     click(browser, "css selector", '[role="dialog"]:has(#settings-tab-editor) button[aria-label="Close dialog"]')
 
     click(browser, "css selector", 'button[title="Browse and manage plugins"]')
@@ -420,6 +438,11 @@ def capture_project_controls(browser):
          "&& Array.from(document.querySelectorAll('.plugin-entry')).some(row => row.innerText.includes('Demo TOML') "
          "&& row.innerText.includes('Install'))", "installed and available language plugins")
     yield "project-plugin", capture_panel(browser, '[role="dialog"]:has([aria-label="Search plugins"])')
+    click(browser, "css selector", 'button[aria-label="Plugin actions"]')
+    click(browser, "xpath", '//*[@role="menuitem"][normalize-space(.)="Manage marketplace sources"]')
+    wait(browser, """document.querySelector('#plugins-panel-sources:not([hidden])')?.innerText
+         .includes('Add marketplace')""", "marketplace sources in the Plugins dialog")
+    yield "marketplace-sources", capture_panel(browser, '[role="dialog"]:has(#plugins-tab-sources)')
     click(browser, "css selector", '[role="dialog"]:has([aria-label="Search plugins"]) button[aria-label="Close dialog"]')
 
     click(browser, "css selector", 'button[aria-controls="panel-sessions"]')

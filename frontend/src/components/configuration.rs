@@ -1,6 +1,17 @@
-use crate::state::settings::{ConfigurationSection, SettingsState};
+use crate::state::settings::{ConfigurationSection, SettingsDestination, SettingsState};
 use leptos::prelude::*;
 use web_sys::wasm_bindgen::JsCast;
+
+fn display_endpoint(value: &str) -> String {
+    let Ok(url) = web_sys::Url::new(value) else {
+        return "Endpoint unavailable".into();
+    };
+    url.set_username("");
+    url.set_password("");
+    url.set_search("");
+    url.set_hash("");
+    url.href()
+}
 
 /// Separate server and personal prompt screens using the existing settings actions.
 #[component]
@@ -36,6 +47,21 @@ pub fn Configuration(
             ta.set_value(&prompt_content.get());
         }
     });
+    Effect::new(move || {
+        if !settings.show_conn_form.get()
+            && settings.configuration.get() == Some(ConfigurationSection::Servers)
+            && let Some(id) = settings.saved_server.get()
+        {
+            leptos::leptos_dom::helpers::request_animation_frame(move || {
+                if let Some(button) = document()
+                    .get_element_by_id(&format!("configure-server-{id}"))
+                    .and_then(|button| button.dyn_into::<web_sys::HtmlElement>().ok())
+                {
+                    let _ = button.focus();
+                }
+            });
+        }
+    });
 
     let auth = expect_context::<crate::state::auth::AuthState>();
     Effect::new(move |previous: Option<u64>| {
@@ -49,39 +75,59 @@ pub fn Configuration(
     });
     view! {
         <Show when=move || settings.configuration.get().is_some()>
-            <super::modal::Modal title=Signal::derive(move || match settings.configuration.get() { Some(ConfigurationSection::SystemPrompts) => "System prompts", _ => "Servers" }.to_string()) on_close=Callback::new(move |()| settings.configuration.set(None)) size=super::ui::DialogSize::Wide>
+            <super::modal::Modal title=Signal::derive(move || match settings.configuration.get() { Some(ConfigurationSection::SystemPrompts) => "System prompts", _ => "Servers" }.to_string()) on_close=Callback::new(move |()| {
+                settings.saved_server.set(None);
+                settings.configuration.set(None);
+            }) size=super::ui::DialogSize::Wide>
                 <super::ui::DialogBody class="app-configuration">
             // -- connections --------------------------------------------------
-            <div class="sidebar-section" hidden=move || settings.configuration.get() != Some(crate::state::settings::ConfigurationSection::Servers)>
-                <div class="section-header">
-                    <h2>"Servers"</h2>
+            <div class="server-list" hidden=move || settings.configuration.get() != Some(ConfigurationSection::Servers)>
+                <div class="server-list-toolbar">
                     <button
-                        class="icon-btn"
-                        title="New server" aria-label="New server"
+                        type="button" class="btn send"
                         on:click=move |_| on_new_connection.run(())
                     >
                         <super::ui::Icon name=super::ui::IconName::Plus />
+                        "Add server"
                     </button>
                 </div>
+                <Show when=move || settings.saved_server.with(Option::is_some)>
+                    <super::ui::FormNotice tone=super::ui::NoticeTone::Success>
+                        <div class="server-saved-notice">
+                            <span>"Server saved."</span>
+                            <button type="button" class="btn ghost" on:click=move |_| {
+                                settings.saved_server.set(None);
+                                settings.configuration.set(None);
+                                settings.destination.set(SettingsDestination::Models);
+                                settings.show_settings.set(true);
+                            }>"Open model defaults"</button>
+                        </div>
+                    </super::ui::FormNotice>
+                </Show>
                 <For
                     each=move || connections.get()
-                    key=|c| (c.id, c.name.clone(), c.kind)
+                    key=|c| (c.id, c.name.clone(), c.kind, c.base_url.clone())
                     children=move |c| {
                         let id = c.id;
                         let name = c.name.clone();
+                        let label = format!("Configure {name}");
                         let kind = c.kind;
+                        let endpoint = display_endpoint(&c.base_url);
+                        let endpoint_title = endpoint.clone();
+                        let endpoint_id = format!("server-endpoint-{id}");
+                        let endpoint_description = endpoint_id.clone();
                         view! {
-                            <div class="connection" data-context-menu="">
-                                <span class="conn-name" title=name.clone()>{name.clone()}</span>
-                                <span class="conn-kind" title=kind.display_name()>{kind.display_name()}</span>
+                            <div class="server-row" class:server-row-saved=move || settings.saved_server.get() == Some(id) data-context-menu="">
+                                <button type="button" class="server-configure" id=format!("configure-server-{id}")
+                                    aria-label=label aria-describedby=endpoint_description on:click=move |_| on_edit_connection.run(id)>
+                                    <span class="server-endpoint">
+                                        <strong>{name}</strong>
+                                        <span id=endpoint_id title=endpoint_title>{endpoint}</span>
+                                    </span>
+                                    <span class="server-provider">{kind.display_name()}</span>
+                                    <span class="server-configure-label">"Configure"<super::ui::Icon name=super::ui::IconName::ChevronRight /></span>
+                                </button>
                                 <super::dropdown::ActionMenu aria_label="Server actions">
-                                    <button role="menuitem"
-                                        class="ui-dropdown-item recent-item icon-btn"
-                                        title="Edit"
-                                        on:click=move |_| on_edit_connection.run(id)
-                                    >
-                                        <crate::components::ui::Icon name=crate::components::ui::IconName::Pencil />
-                                    <span>"Edit"</span></button>
                                     <button role="menuitem"
                                         class="ui-dropdown-item recent-item icon-btn"
                                         title="Delete"
@@ -95,7 +141,7 @@ pub fn Configuration(
                     }
                 />
                 <Show when=move || connections.get().is_empty() fallback=|| ()>
-                    <p class="empty">"No connections yet — add one."</p>
+                    <p class="empty">"Add a model server to get started."</p>
                 </Show>
             </div>
 

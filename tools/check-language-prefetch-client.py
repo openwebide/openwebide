@@ -234,6 +234,12 @@ def check():
                     const tab=document.getElementById('settings-tab-editor');
                     if(!tab)return false;tab.click();return true;
                 '''))
+                wait('open Language support', lambda: script(browser, '''
+                    const toggle=document.querySelector('#settings-language-support .ui-disclosure-toggle');
+                    if(!toggle?.getClientRects().length)return false;
+                    if(toggle.getAttribute('aria-expanded')!=='true')toggle.click();
+                    return toggle.getAttribute('aria-expanded')==='true';
+                '''))
                 wait('enable idle language analysis', lambda: script(browser, '''
                     const label=[...document.querySelectorAll('label')]
                         .find(label=>label.textContent.trim()==='Warm language services while idle');

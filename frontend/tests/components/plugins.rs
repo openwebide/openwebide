@@ -984,11 +984,9 @@ async fn plugins_status_bar_discovery_and_source_settings_navigation_in_both_mod
                 .is_some()
         );
         assert!(
-            !mounted
-                .root
-                .text_content()
-                .unwrap()
-                .contains("Add marketplace")
+            mounted
+                .element("#plugins-panel-sources")
+                .has_attribute("hidden")
         );
         assert!(mounted.root.text_content().unwrap().contains("Installed"));
         assert!(
@@ -1142,10 +1140,11 @@ async fn plugins_status_bar_discovery_and_source_settings_navigation_in_both_mod
         settle().await;
         mounted.click_text("Manage marketplace sources");
         settle().await;
-        assert!(!mounted.state.ui.plugins_open.get_untracked());
+        assert!(mounted.state.ui.plugins_open.get_untracked());
+        assert!(!mounted.state.settings.show_settings.get_untracked());
         assert_eq!(
             mounted
-                .element("#settings-tab-plugins")
+                .element("#plugins-tab-sources")
                 .get_attribute("aria-selected")
                 .as_deref(),
             Some("true")
@@ -1157,15 +1156,16 @@ async fn plugins_status_bar_discovery_and_source_settings_navigation_in_both_mod
                 .unwrap()
                 .contains("Add marketplace")
         );
-        assert!(!mounted.root.text_content().unwrap().contains("Installed"));
         assert!(
             mounted
-                .root
-                .query_selector("input[aria-label='Search plugins']")
-                .unwrap()
-                .is_none()
+                .element("#plugins-panel-browse")
+                .has_attribute("hidden")
         );
-        let browse = mounted.element("#settings-panel-plugins .ui-inline-actions button.btn.ghost");
+        assert_eq!(
+            document().active_element().unwrap().id(),
+            "plugins-tab-sources"
+        );
+        let browse = mounted.element("#plugins-panel-sources .ui-inline-actions button.btn.ghost");
         assert!(
             browse.get_bounding_client_rect().width()
                 < browse
@@ -1178,6 +1178,14 @@ async fn plugins_status_bar_discovery_and_source_settings_navigation_in_both_mod
         settle().await;
         assert!(mounted.state.ui.plugins_open.get_untracked());
         assert!(!mounted.state.settings.show_settings.get_untracked());
+        assert_eq!(
+            mounted.state.projects.active_project.get_untracked(),
+            mode.map(|_| 1)
+        );
+        assert_eq!(
+            document().active_element().unwrap().id(),
+            "plugins-tab-browse"
+        );
         mounted.state.auth.logout();
         mounted.state.auth.reset_user_state(
             mounted.state.projects,

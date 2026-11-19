@@ -259,8 +259,24 @@ pub fn DialogTabs(
 
 /// Scrollable dialog content; the header and actions remain visible.
 #[component]
-pub fn DialogBody(#[prop(default = "")] class: &'static str, children: Children) -> impl IntoView {
-    view! { <div class=format!("modal-body {class}")>{children()}</div> }
+pub fn DialogBody(
+    #[prop(default = "")] class: &'static str,
+    #[prop(into, optional)] selected_tab: Option<Signal<usize>>,
+    children: Children,
+) -> impl IntoView {
+    let body = NodeRef::<leptos::html::Div>::new();
+    if let Some(selected_tab) = selected_tab {
+        Effect::new(move |previous: Option<usize>| {
+            let tab = selected_tab.get();
+            if previous.is_some_and(|previous| previous != tab)
+                && let Some(body) = body.get_untracked()
+            {
+                body.set_scroll_top(0.0);
+            }
+            tab
+        });
+    }
+    view! { <div class=format!("modal-body {class}") node_ref=body>{children()}</div> }
 }
 
 /// The dialog's final actions, ordered secondary first and primary last.
@@ -409,6 +425,7 @@ static NEXT_DISCLOSURE_ID: std::sync::atomic::AtomicUsize = std::sync::atomic::A
 #[component]
 pub fn DisclosurePanel(
     #[prop(default = false)] initially_open: bool,
+    #[prop(optional)] expanded: Option<RwSignal<bool>>,
     #[prop(into)] summary: ViewFn,
     #[prop(default = "")] class: &'static str,
     #[prop(into, optional)] force_open: Option<Signal<bool>>,
@@ -422,7 +439,7 @@ pub fn DisclosurePanel(
         "disclosure-{}",
         NEXT_DISCLOSURE_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
     );
-    let expanded = RwSignal::new(initially_open);
+    let expanded = expanded.unwrap_or_else(|| RwSignal::new(initially_open));
     let open = move || expanded.get() || force_open.is_some_and(|force| force.get());
     let toggle = view! {
             <button type="button" class=format!("ui-disclosure-toggle {toggle_class}") title=title class:active=move || active.is_some_and(|value| value.get()) aria-expanded=move || open().to_string() aria-controls=content_id.clone()

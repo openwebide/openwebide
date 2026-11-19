@@ -123,7 +123,7 @@ is [Tailscale Serve in a separate container](docs/tailscale.md).
 
 ## Host administration
 
-Host administration is included by default. Configure **Settings → Host** with an
+Host administration is included by default. Configure **Settings → Host → Host administration** with an
 SSH username, operating system and verified public host keys; the address defaults
 to the deployment host. Project-less chat
 can inspect that machine and propose changes for approval, with private terminal
