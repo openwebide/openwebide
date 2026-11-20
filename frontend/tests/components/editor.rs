@@ -22940,9 +22940,25 @@ async fn wrapped_paragraph_edits_reuse_exact_source_owned_geometry(
             );
             trace("complete-oracle-returned", styled, reconnect, width, change);
             openwebide_frontend::util::sleep_ms(0).await;
-            let suffix = actions.paragraph_suffix(&scope, 0).unwrap();
-            let prefix = actions.paragraph_prefix(&scope, 0).unwrap();
-            let mut plan = actions.prepare_wrapped_paragraph(&scope, 0).unwrap();
+            let suffix = actions
+                .paragraph_suffix_cooperatively(&scope, 0, &|| true)
+                .await
+                .unwrap();
+            let prefix = actions
+                .paragraph_prefix_cooperatively(&scope, 0, &|| true)
+                .await
+                .unwrap();
+            let mut plan = actions
+                .prepare_wrapped_paragraph_cooperatively(&scope, 0)
+                .await
+                .unwrap();
+            trace(
+                "ownership-probes-prepared",
+                styled,
+                reconnect,
+                width,
+                change,
+            );
             let reused = actions.resume_paragraph_prefix_batch(&prefix, &mut plan);
             assert!(reused > 2 && reused <= openwebide_core::editor::MAX_MEASURE_BATCHES_PER_FRAME);
             let original_account = mounted.state.auth.generation.get_untracked();

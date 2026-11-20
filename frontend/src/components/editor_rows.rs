@@ -976,6 +976,7 @@ pub(super) async fn check_wrapped_paragraph_geometry(
         false,
         &[],
     ));
+    crate::util::yield_background_task().await;
     let row = paint
         .query_selector(".editor-source-line")
         .map_err(|_| ())?
@@ -984,12 +985,13 @@ pub(super) async fn check_wrapped_paragraph_geometry(
     let body = scope.projection.line_body(logical).ok_or(())?;
     let index = scope.projection.visual_line_index(logical).ok_or(())?;
     let actual = bounded.anchors(0..index.len() - 1).ok_or(())?;
-    let Some(expected) = super::editor_geometry::paragraph_rectangles_individual(
+    let Some(expected) = super::editor_geometry::paragraph_rectangles_individual_cooperatively(
         &row,
         body,
-        0,
         &actual.iter().map(|anchor| anchor.glyph).collect::<Vec<_>>(),
-    ) else {
+    )
+    .await
+    else {
         return Ok(false);
     };
     if (width - f64::from(row.scroll_width())).abs() > 0.25

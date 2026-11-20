@@ -470,38 +470,67 @@ pub async fn paragraph_rectangles_cooperatively(
 /// Independent per-range reads keep browser geometry oracles separate from the
 /// production batch primitive, including DOM exceptions and missing rectangles.
 #[cfg(feature = "test-support")]
+fn paragraph_rectangle_reader_individual(
+    row: &web_sys::Element,
+    body: &str,
+    glyph_start: usize,
+) -> Option<impl Fn(usize) -> Option<openwebide_core::editor::GlyphRectangle>> {
+    if row.text_content()?.as_str() != body {
+        return None;
+    }
+    let bounds = row.get_bounding_client_rect();
+    // Prepare offsets once so later reads can resume from the same positions.
+    let offsets = openwebide_core::editor::visual_line_offsets(body).ok()?;
+    let nodes = TextNodes::new(row)?;
+    let range = document().create_range().ok()?;
+    Some(move |glyph: usize| {
+        let local = glyph.checked_sub(glyph_start)?;
+        let start = offsets.get(local)?.1;
+        let end = offsets.get(local.checked_add(1)?)?.1;
+        let rect = range_rectangle(&range, &nodes, start, end)?;
+        Some(openwebide_core::editor::GlyphRectangle {
+            glyph,
+            left: rect.left() - bounds.left(),
+            top: rect.top() - bounds.top(),
+            width: rect.width(),
+            height: rect.height(),
+        })
+    })
+}
+
+#[cfg(feature = "test-support")]
 pub fn paragraph_rectangles_individual(
     row: &web_sys::Element,
     body: &str,
     glyph_start: usize,
     targets: &[usize],
 ) -> Option<Vec<openwebide_core::editor::GlyphRectangle>> {
-    if row.text_content()?.as_str() != body {
-        return None;
+    let read = paragraph_rectangle_reader_individual(row, body, glyph_start)?;
+    targets.iter().copied().map(read).collect()
+}
+
+/// Read every independent range on the complete DOM while letting WebDriver
+/// poll between batches of this test-only work.
+#[cfg(feature = "test-support")]
+pub(super) async fn paragraph_rectangles_individual_cooperatively(
+    row: &web_sys::Element,
+    body: &str,
+    targets: &[usize],
+) -> Option<Vec<openwebide_core::editor::GlyphRectangle>> {
+    let read = paragraph_rectangle_reader_individual(row, body, 0)?;
+    let mut rectangles = Vec::with_capacity(targets.len());
+    for (batch, glyphs) in targets
+        .chunks(openwebide_core::editor::ROW_GEOMETRY_BATCH)
+        .enumerate()
+    {
+        if batch > 0 {
+            crate::util::yield_background_task().await;
+        }
+        for &glyph in glyphs {
+            rectangles.push(read(glyph)?);
+        }
     }
-    let bounds = row.get_bounding_client_rect();
-    // Continuation probes are bounded, and their overlap targets are dense.
-    // Build coordinates once instead of repeatedly segmenting each sparse
-    // checkpoint's prefix; keep general viewport queries on the sparse index.
-    let offsets = openwebide_core::editor::visual_line_offsets(body).ok()?;
-    let nodes = TextNodes::new(row)?;
-    let range = document().create_range().ok()?;
-    targets
-        .iter()
-        .map(|glyph| {
-            let local = glyph.checked_sub(glyph_start)?;
-            let start = offsets.get(local)?.1;
-            let end = offsets.get(local.checked_add(1)?)?.1;
-            let rect = range_rectangle(&range, &nodes, start, end)?;
-            Some(openwebide_core::editor::GlyphRectangle {
-                glyph: *glyph,
-                left: rect.left() - bounds.left(),
-                top: rect.top() - bounds.top(),
-                width: rect.width(),
-                height: rect.height(),
-            })
-        })
-        .collect()
+    (row.is_connected() && row.text_content()?.as_str() == body).then_some(rectangles)
 }
 
 #[cfg(feature = "test-support")]

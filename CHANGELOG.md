@@ -9,6 +9,9 @@ Scheduled nightly builds publish a rolling release; the last numbered prerelease
 
 ## [Unreleased]
 
+- Let ChromeDriver poll between batches of complete editor geometry checks.
+  Keep the same reference rectangles and stale-owner assertions in both modes.
+
 - Reuse the local source image and a shared BuildKit cache with a disk budget.
   Remove editor measurement images after use and share pinned language tools
   across worktrees.
