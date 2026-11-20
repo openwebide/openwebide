@@ -1057,14 +1057,11 @@ failed wrapped command remain unresolved. No PSS was collected by this isolated
 probe, and no native folder handle was granted. Existing both-mode application
 contracts and their performance gates remain separate.
 
-Reproduce the matching fixture after building the frontend/backend, using the
-existing measurement image (no new Cargo target):
+Reproduce the matching fixture after building the frontend/backend. This command
+reuses cached measurement layers and removes the image after the run.
 
 ```bash
-docker run --rm --init --shm-size=1g --memory=10g --cpus=4 \
-  --mount type=bind,src="$PWD",dst=/workspace/repos/openwebide \
-  --entrypoint python3 openwebide:editor-view-measurements \
-  tools/measure-editor-row-update.py --repeat 3 --source ascii unicode \
+python3 tools/build_container.py measure-row-update --repeat 3 --source ascii unicode \
   --operations production-replace-data production-set-data production-replace-node \
   --timeout 60
 ```

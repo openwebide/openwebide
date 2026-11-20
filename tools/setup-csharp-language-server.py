@@ -70,10 +70,15 @@ def install(tool_path, package=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--tool-path", type=Path, default=TOOLS / "installed")
+    parser.add_argument("--tool-path", type=Path)
     parser.add_argument("--package", type=Path, help="Use a cached copy of the pinned NuGet package")
     args = parser.parse_args()
-    install(args.tool_path, args.package)
+    if args.tool_path is None:
+        from setup_language_tools import setup_tool
+
+        print(*setup_tool('csharp', lambda path: install(path, args.package)), sep='\n')
+    else:
+        install(args.tool_path, args.package)
 
 
 if __name__ == "__main__":

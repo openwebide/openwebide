@@ -30,11 +30,11 @@ supply the inventory. Notice generation never downloads upstream license texts.
 Keep the exact-version entries in `third-party/notices/index.json` current when
 updating dependencies that omit notices from their published archives.
 
-Git source builds derive their commit automatically. Docker's build context
-excludes `.git`; provide the revision when building an image:
+Git source builds derive their commit automatically. The [source container build
+command](../README.md#run-with-docker) passes the Git revision into the image:
 
 ```sh
-docker build --build-arg OPENWEBIDE_BUILD_COMMIT="$(git rev-parse HEAD)" -t openwebide .
+python3 tools/build_container.py build
 ```
 
 CI and release image builds supply the revision automatically. Source archives

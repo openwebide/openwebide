@@ -3,8 +3,8 @@
 Install the versions in `versions.json` from the repository root:
 
 ```sh
-python3 tools/setup-terraform-language-server.py
-export PATH="$PWD/tools/terraform-language-server/installed/bin:$PATH"
+terraform_path=$(python3 tools/setup_language_tools.py terraform)
+export PATH="$terraform_path:$PATH"
 export CHECKPOINT_DISABLE=1 TF_IN_AUTOMATION=1
 cargo run -p openwebide-bridge --example check_terraform_server --locked
 ```

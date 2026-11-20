@@ -147,14 +147,14 @@ Actions runs.
      the required real language-server service check:
      `rustup component add rust-analyzer rust-src rustfmt`
    - Node.js 22.22.2 or newer and npm. Install the locked TypeScript language-server
-     verification tools with `bash tools/setup-typescript-language-server.sh`;
-     prepend `tools/typescript-language-server/node_modules/.bin` to `PATH`.
+     verification tools with `python3 tools/setup_language_tools.py typescript`
+     and prepend its printed directory to `PATH`.
      Both real-server examples are required: `check_language_server` and
      `check_typescript_server`. The latter verifies all four related dialects,
      unsaved cross-file edits, diagnostics, completion imports and isolation.
-   - Python 3 with `venv` support and the locked Pyright tools installed with
-     `bash tools/setup-python-language-server.sh`; prepend
-     `tools/python-language-server/node_modules/.bin` to `PATH`. The required
+   - Python 3 with `venv` support. Install the locked Pyright tools with
+     `python3 tools/setup_language_tools.py python` and prepend the printed directory
+     to `PATH`. The required
      `check_python_server` example verifies project configuration, virtual-environment
      imports, unsaved buffers, diagnostics, completion and isolation. The production
      browser check is `python3 tools/check-python-server-client.py` in both modes.
@@ -208,27 +208,26 @@ Actions runs.
      file reads, source retirement and original service/draft continuity in both
      editors. Its Local OPFS correspondence does not prove physical permissions.
    - Go 1.27.3 and gopls v0.24.0, installed with
-     `python3 tools/setup-go-language-server.py`. Prepend
-     `tools/go-language-server/installed/bin` and
-     `tools/go-language-server/installed/go/bin` to `PATH`. The required
+     `python3 tools/setup_language_tools.py go`. Prepend both printed directories to
+     `PATH`. The required
      `check_go_server` example verifies modules, multi-module workspaces,
      unsaved overlays, diagnostics, completion and isolation. The production
      browser check is `python3 tools/check-go-server-client.py` in both modes.
    - The pinned clangd distributions, installed with
-     `python3 tools/setup-clangd-language-server.py`. Prepend
-     `tools/clangd-language-server/installed/bin` to `PATH`. The required
+     `python3 tools/setup_language_tools.py clangd`. Prepend the printed directory
+     to `PATH`. The required
      `check_clangd_server` example verifies C/C++ compilation flags, unsaved
      headers, diagnostics, reviewed edits and isolation. The production browser
      check is `python3 tools/check-clangd-server-client.py` in both modes.
    - The .NET 10 SDK. CI pins its version in `tools/csharp-language-server/versions.json`.
-     Run `python3 tools/setup-csharp-language-server.py` and prepend
-     `tools/csharp-language-server/installed` to `PATH`. The required real C#
+     Run `python3 tools/setup_language_tools.py csharp` and prepend the printed
+     directory to `PATH`. The required real C#
      example is `check_csharp_server`: it verifies multi-project `.slnx` and
      standalone `.csproj` discovery, unsaved references, diagnostics, code actions
      and isolation. New solution fixtures must use `.slnx`.
    - Terraform and terraform-ls, installed from checksum-pinned distributions with
-     `python3 tools/setup-terraform-language-server.py`. Prepend
-     `tools/terraform-language-server/installed/bin` to `PATH`; set
+     `python3 tools/setup_language_tools.py terraform`. Prepend the printed
+     directory to `PATH`; set
      `CHECKPOINT_DISABLE=1` and `TF_IN_AUTOMATION=1`. The required
      `check_terraform_server` example verifies all seven supported dialects,
      unsaved cross-file analysis, completion, diagnostics, reviewable formatting,
@@ -355,6 +354,19 @@ spin up --direct-mounts --allow-transient-write
 Spin keeps the existing database in `.spin/sqlite_db.db` and logs in `.spin/logs/`.
 
 ### Build disk usage
+
+- Use `python3 tools/build_container.py build` for source Docker images and
+  `python3 tools/build_container.py up` to start them under Compose. Both reuse
+  `openwebide:local` and the same Buildx builder as editor measurements. Get its
+  name with `python3 tools/build_container.py builder` and inspect cache usage
+  with `docker buildx du --builder NAME`. Its garbage collection policy is in
+  `docker/buildkit.dev.toml`. Recreate the builder to apply policy changes.
+- Install language tools with `python3 tools/setup_language_tools.py` and the
+  tool names you need. Add the printed directories to `PATH`. All worktrees
+  share `${XDG_CACHE_HOME:-$HOME/.cache}/openwebide/language-tools` unless
+  `OPENWEBIDE_TOOL_CACHE` sets a different root. Pin changes create new cache
+  entries. Remove old worktree-local installs and obsolete cache entries when
+  no checks are using them.
 
 `target/` grows fast here: native, `wasm32-unknown-unknown` and `wasm32-wasip2` builds, each
 with its own test and clippy artifacts. A full repo copy that builds its own `target/` adds tens

@@ -11,5 +11,4 @@ runs:
         python-version: '3.13'
     - shell: bash
       run: |
-        bash tools/setup-python-language-server.sh
-        echo "$GITHUB_WORKSPACE/tools/python-language-server/node_modules/.bin" >> "$GITHUB_PATH"
+        python3 tools/setup_language_tools.py python >> "$GITHUB_PATH"

@@ -37,6 +37,7 @@ jobs:
           python3 -m unittest discover -s tools -p 'test_compiled_plugins.py'
           python3 -m unittest discover -s tools -p 'test_plan_release.py'
           python3 -m unittest discover -s tools -p 'test_wasi_sdk.py'
+          python3 -m unittest discover -s tools -p 'test_build_storage.py'
           python3 -m unittest discover -s tools -p 'test_setup_*_language_server.py'
           python3 -m unittest discover -s tools -p 'test_language_process_observation.py'
           python3 -m unittest discover -s tools -p 'test_host_updates.py'

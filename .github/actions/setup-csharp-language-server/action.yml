@@ -12,5 +12,4 @@ runs:
         dotnet-version: ${{ steps.versions.outputs.sdk }}
     - shell: bash
       run: |
-        python3 tools/setup-csharp-language-server.py
-        echo "$GITHUB_WORKSPACE/tools/csharp-language-server/installed" >> "$GITHUB_PATH"
+        python3 tools/setup_language_tools.py csharp >> "$GITHUB_PATH"

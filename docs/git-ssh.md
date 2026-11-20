@@ -48,7 +48,7 @@ For Docker Desktop on Mac/Linux, use its documented host agent socket:
 ```sh
 export OPENWEBIDE_SSH_AUTH_SOCK=/run/host-services/ssh-auth.sock
 export OPENWEBIDE_SSH_CONFIG_DIR="$HOME/.config/openwebide/ssh"
-docker compose -f docker-compose.yml -f docker-compose.ssh.yml up -d --build
+python3 tools/build_container.py up -f docker-compose.yml -f docker-compose.ssh.yml
 ```
 
 For native Docker on Linux, select the running host agent:
@@ -56,11 +56,11 @@ For native Docker on Linux, select the running host agent:
 ```sh
 export OPENWEBIDE_SSH_AUTH_SOCK="$SSH_AUTH_SOCK"
 export OPENWEBIDE_SSH_CONFIG_DIR="$HOME/.config/openwebide/ssh"
-docker compose -f docker-compose.yml -f docker-compose.ssh.yml up -d --build
+python3 tools/build_container.py up -f docker-compose.yml -f docker-compose.ssh.yml
 ```
 
-For downloaded releases, use their `docker-compose.yml` and omit `--build`. For
-Tailscale deployments, use `docker-compose.https.yml` as the first file. Agent
+For downloaded releases, run `docker compose -f docker-compose.yml -f docker-compose.ssh.yml up -d`.
+For Tailscale deployments, use `docker-compose.https.yml` as the first file. Agent
 forwarding is absent unless the overlay is selected; missing source paths fail
 instead of silently becoming directories.
 

@@ -139,11 +139,16 @@ def install(destination, cache=None):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--tool-path', type=Path, default=TOOLS / 'installed')
+    parser.add_argument('--tool-path', type=Path)
     parser.add_argument('--cache', type=Path, help='Read verified archives from this local directory when available')
     args = parser.parse_args()
     try:
-        install(args.tool_path, args.cache)
+        if args.tool_path is None:
+            from setup_language_tools import setup_tool
+
+            print(*setup_tool('clangd', lambda path: install(path, args.cache)), sep='\n')
+        else:
+            install(args.tool_path, args.cache)
     except (OSError, RuntimeError, ValueError, subprocess.SubprocessError, tarfile.TarError, zipfile.BadZipFile) as error:
         print(f'clangd setup failed: {error}', file=sys.stderr)
         sys.exit(1)

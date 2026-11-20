@@ -10,5 +10,4 @@ runs:
         sudo apt-get install -y --no-install-recommends libstdc++6 zlib1g
     - shell: bash
       run: |
-        python3 tools/setup-clangd-language-server.py
-        echo "$GITHUB_WORKSPACE/tools/clangd-language-server/installed/bin" >> "$GITHUB_PATH"
+        python3 tools/setup_language_tools.py clangd >> "$GITHUB_PATH"

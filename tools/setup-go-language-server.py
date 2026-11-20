@@ -103,10 +103,15 @@ def install(destination, archive=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--tool-path', type=Path, default=TOOLS / 'installed')
+    parser.add_argument('--tool-path', type=Path)
     parser.add_argument('--archive', type=Path, help='Use a cached official Go SDK archive')
     args = parser.parse_args()
-    install(args.tool_path, args.archive)
+    if args.tool_path is None:
+        from setup_language_tools import setup_tool
+
+        print(*setup_tool('go', lambda path: install(path, args.archive)), sep='\n')
+    else:
+        install(args.tool_path, args.archive)
 
 
 if __name__ == '__main__':

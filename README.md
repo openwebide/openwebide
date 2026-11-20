@@ -77,7 +77,7 @@ to retain their database and Tailscale identity when adopting the `openwebide` n
 From a checkout of this repository:
 
 ```sh
-docker compose up --build
+python3 tools/build_container.py up
 ```
 
 Open <http://localhost:8080/> and register the first account. Compose mounts
@@ -85,16 +85,19 @@ Open <http://localhost:8080/> and register the first account. Compose mounts
 and exposes the bundled bridge on port 3001. Choose a different workspace with:
 
 ```sh
-OPENWEBIDE_WORKSPACE=/path/to/projects docker compose up --build
+OPENWEBIDE_WORKSPACE=/path/to/projects python3 tools/build_container.py up
 ```
+
+The source command starts Compose in the background. Use `docker compose logs -f`
+to follow its logs. Both source build commands use the `openwebide:local` image.
 
 For a standalone container:
 
 ```sh
-docker build -t openwebide .
+python3 tools/build_container.py build
 docker run -d --name openwebide \
   -p 8080:3000 -p 3001:3001 \
-  -v openwebide-data:/app/.spin -v ~/source:/workspace openwebide
+  -v openwebide-data:/app/.spin -v ~/source:/workspace openwebide:local
 ```
 
 The workspace mount is accessible to file tools and the agent; choose its scope

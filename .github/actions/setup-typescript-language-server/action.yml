@@ -8,5 +8,4 @@ runs:
         node-version: '24'
     - shell: bash
       run: |
-        bash tools/setup-typescript-language-server.sh
-        echo "$GITHUB_WORKSPACE/tools/typescript-language-server/node_modules/.bin" >> "$GITHUB_PATH"
+        python3 tools/setup_language_tools.py typescript >> "$GITHUB_PATH"

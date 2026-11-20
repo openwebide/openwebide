@@ -37,7 +37,7 @@ require a checkout. For a source checkout,
 build with the override instead:
 
 ```sh
-docker compose -f docker-compose.https.yml -f docker-compose.https.build.yml up -d --build
+python3 tools/build_container.py up -f docker-compose.https.yml -f docker-compose.https.build.yml
 ```
 
 Use the same two `-f` arguments for subsequent source-build operations.

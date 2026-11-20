@@ -231,8 +231,7 @@ unsaved header overlays; ordinary editing remains available without the server.
 Execution-host images include pinned clangd and C/C++ build tools. Native bridge
 archives require clangd, the compiler and project headers/libraries separately
 installed on the execution host. For development checks, run
-`python3 tools/setup-clangd-language-server.py` and add
-`tools/clangd-language-server/installed/bin` to PATH. Platform versions, upstream
+`export PATH="$(python3 tools/setup_language_tools.py clangd):$PATH"`. Platform versions, upstream
 archives and their checksums are pinned in
 `tools/clangd-language-server/versions.json`.
 
@@ -275,8 +274,8 @@ generic HCL/Packer files or Terraform JSON variants.
 
 Execution-host images include Terraform and terraform-ls. Paired hosts need both
 on PATH. For the pinned
-development tools, run `python3 tools/setup-terraform-language-server.py` and add
-`tools/terraform-language-server/installed/bin` to PATH.
+development tools, run
+`export PATH="$(python3 tools/setup_language_tools.py terraform):$PATH"`.
 
 Unsaved cross-file types,
 completion, navigation, diagnostics and reviewed formatting use the shared editor

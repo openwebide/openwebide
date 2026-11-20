@@ -6,7 +6,6 @@ runs:
     - shell: bash
       run: |
         python3 -m unittest discover -s tools -p test_setup_terraform_language_server.py
-        python3 tools/setup-terraform-language-server.py
-        echo "$GITHUB_WORKSPACE/tools/terraform-language-server/installed/bin" >> "$GITHUB_PATH"
+        python3 tools/setup_language_tools.py terraform >> "$GITHUB_PATH"
         echo "CHECKPOINT_DISABLE=1" >> "$GITHUB_ENV"
         echo "TF_IN_AUTOMATION=1" >> "$GITHUB_ENV"

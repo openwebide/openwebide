@@ -9,6 +9,10 @@ Scheduled nightly builds publish a rolling release; the last numbered prerelease
 
 ## [Unreleased]
 
+- Reuse the local source image and a shared BuildKit cache with a disk budget.
+  Remove editor measurement images after use and share pinned language tools
+  across worktrees.
+
 - Publish Linux images, install files and bridges independently of macOS builds.
   Publish tested standalone macOS bridges through a separate workflow.
 

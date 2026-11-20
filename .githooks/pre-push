@@ -53,20 +53,10 @@ if [[ -z "${WASI_SDK_PATH:-}" ]]; then
   export WASI_SDK_PATH
 fi
 
-bash tools/setup-typescript-language-server.sh
-export PATH="$repo_root/tools/typescript-language-server/node_modules/.bin:$PATH"
-python3 tools/setup-web-language-servers.py
-export PATH="$repo_root/tools/web-language-servers/node_modules/.bin:$PATH"
-bash tools/setup-python-language-server.sh
-export PATH="$repo_root/tools/python-language-server/node_modules/.bin:$PATH"
-python3 tools/setup-csharp-language-server.py
-export PATH="$repo_root/tools/csharp-language-server/installed:$PATH"
-python3 tools/setup-go-language-server.py
-export PATH="$repo_root/tools/go-language-server/installed/bin:$repo_root/tools/go-language-server/installed/go/bin:$PATH"
-python3 tools/setup-clangd-language-server.py
-export PATH="$repo_root/tools/clangd-language-server/installed/bin:$PATH"
-python3 tools/setup-terraform-language-server.py
-export PATH="$repo_root/tools/terraform-language-server/installed/bin:$PATH"
+language_paths=$(python3 tools/setup_language_tools.py typescript web python csharp go clangd terraform)
+while IFS= read -r directory; do
+  export PATH="$directory:$PATH"
+done <<< "$language_paths"
 export CHECKPOINT_DISABLE=1
 export TF_IN_AUTOMATION=1
 

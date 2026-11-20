@@ -5,6 +5,4 @@ runs:
   steps:
     - shell: bash
       run: |
-        python3 tools/setup-go-language-server.py
-        echo "$GITHUB_WORKSPACE/tools/go-language-server/installed/bin" >> "$GITHUB_PATH"
-        echo "$GITHUB_WORKSPACE/tools/go-language-server/installed/go/bin" >> "$GITHUB_PATH"
+        python3 tools/setup_language_tools.py go >> "$GITHUB_PATH"

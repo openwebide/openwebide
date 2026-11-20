@@ -8,5 +8,4 @@ runs:
         node-version: '24'
     - shell: bash
       run: |
-        python3 tools/setup-web-language-servers.py
-        echo "$GITHUB_WORKSPACE/tools/web-language-servers/node_modules/.bin" >> "$GITHUB_PATH"
+        python3 tools/setup_language_tools.py web >> "$GITHUB_PATH"
