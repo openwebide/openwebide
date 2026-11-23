@@ -1,0 +1,105 @@
+name: Check container image
+description: Check the built image and optionally verify rootless Podman and Quadlet
+inputs:
+  image:
+    description: Tag of the image already loaded in Docker
+    required: true
+  web-components:
+    description: Directory containing the verified portable app files
+    required: true
+  check-podman:
+    description: Run rootless Podman and Quadlet checks on this runner
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Compare packaged web components with the build artifact
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+        WEB_COMPONENTS: ${{ inputs.web-components }}
+      run: |
+        packaged=$(mktemp -d "$RUNNER_TEMP/packaged-web-components.XXXXXX")
+        backend=target/wasm32-wasip2/release/openwebide_backend.wasm
+        container=$(docker create "$IMAGE")
+        trap 'docker rm -v "$container" > /dev/null' EXIT
+        docker cp "$container:/app/frontend/dist" "$packaged/dist"
+        docker cp "$container:/app/$backend" "$packaged/backend.wasm"
+        diff -r "$WEB_COMPONENTS/frontend/dist" "$packaged/dist"
+        cmp "$WEB_COMPONENTS/$backend" "$packaged/backend.wasm"
+
+    - name: Check bundled bridge
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+      run: docker run --rm "$IMAGE" openwebide-bridge --help
+
+    - name: Check packaged .NET SDK and C# tools without network or root
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+      run: docker run --rm --network none --user 12345:12345 -v "$PWD/docker/csharp-test/check.sh:/csharp-test.sh:ro" "$IMAGE" bash /csharp-test.sh
+
+    - name: Check packaged Python and Pyright without network or root
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+      run: docker run --rm --network none --user 12345:12345 -v "$PWD/docker/python-test/check.py:/python-test.py:ro" "$IMAGE" python3 /python-test.py
+
+    - name: Check packaged C/C++ and clangd without network or root
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+      run: docker run --rm --network none --user 12345:12345 -v "$PWD/docker/clangd-test/check.py:/clangd-test.py:ro" "$IMAGE" python3 /clangd-test.py
+
+    - name: Check packaged Go and gopls without network or root
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+      run: docker run --rm --network none --user 12345:12345 -v "$PWD/docker/go-test/check.py:/go-test.py:ro" "$IMAGE" python3 /go-test.py
+
+    - name: Check SSH Git agent forwarding and strict host keys
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+      run: bash docker/ssh-test/check.sh "$IMAGE"
+
+    - name: Check host-owned workspace Git access
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+      run: docker run --rm -v "$PWD/docker/git-ownership-test.sh:/git-ownership-test.sh:ro" "$IMAGE" bash /git-ownership-test.sh
+
+    - name: Check HTTPS REST, SSE and WebSocket transport (Docker)
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+      run: python3 docker/https-test/check.py docker --image "$IMAGE"
+
+    - name: Install rootless Podman
+      if: inputs.check-podman == 'true'
+      shell: bash
+      run: sudo apt-get update && sudo apt-get install -y podman
+
+    - name: Validate release Quadlet services without starting them
+      if: inputs.check-podman == 'true'
+      shell: bash
+      run: |
+        QUADLET_UNIT_DIRS="$PWD/deploy" /usr/lib/systemd/system-generators/podman-system-generator --user --dryrun > "$RUNNER_TEMP/quadlet-services"
+        grep -F 'openwebide.service' "$RUNNER_TEMP/quadlet-services"
+        grep -F 'openwebide-image.service' "$RUNNER_TEMP/quadlet-services"
+        grep -F 'ghcr.io/openwebide/openwebide:stable' "$RUNNER_TEMP/quadlet-services"
+
+    - name: Load the same image into rootless Podman
+      if: inputs.check-podman == 'true'
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+      run: docker save "$IMAGE" | podman load
+
+    - name: Check HTTPS REST, SSE and WebSocket transport (rootless Podman)
+      if: inputs.check-podman == 'true'
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+      run: python3 docker/https-test/check.py podman --port 8447 --image "$IMAGE"

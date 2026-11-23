@@ -1,0 +1,27 @@
+name: Restore web components
+description: Verify and extract the portable app files built for this workflow run
+inputs:
+  path:
+    description: Destination for the verified app files
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: production-web-components
+        path: ${{ runner.temp }}/production-web-components
+
+    - name: Verify and extract web components
+      shell: bash
+      env:
+        DESTINATION: ${{ inputs.path }}
+      run: |
+        artifact="$RUNNER_TEMP/production-web-components"
+        test "$(cat "$artifact/production-web-components.commit")" = "$GITHUB_SHA"
+        (cd "$artifact" && sha256sum --check production-web-components.sha256)
+        mkdir -p "$DESTINATION"
+        tar -xzf "$artifact/production-web-components.tar.gz" -C "$DESTINATION"
+        test -s "$DESTINATION/spin.toml"
+        test -s "$DESTINATION/frontend/dist/index.html"
+        test -s "$DESTINATION/target/wasm32-wasip2/release/openwebide_backend.wasm"

@@ -83,14 +83,21 @@ jobs:
           path: ${{ runner.temp }}/release-notes.md
           if-no-files-found: error
 
-  checks:
+  web-components:
     needs: validate
+    uses: ./.github/workflows/web-components.yml
+    with:
+      nightly: ${{ needs.validate.outputs.rolling == 'true' }}
+
+  checks:
+    needs: [validate, web-components]
     uses: ./.github/workflows/ci.yml
     with:
       release: true
+      nightly: ${{ needs.validate.outputs.rolling == 'true' }}
 
   images:
-    needs: validate
+    needs: [validate, web-components]
     permissions:
       contents: read
       packages: write
@@ -114,10 +121,14 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: ./.github/actions/restore-web-components
+        with:
+          path: ${{ runner.temp }}/openwebide-web-components
       - name: Build native image for smoke tests
         uses: docker/build-push-action@v6
         with:
           context: .
+          build-contexts: web-components=${{ runner.temp }}/openwebide-web-components
           build-args: |
             OPENWEBIDE_BUILD_COMMIT=${{ github.sha }}
             OPENWEBIDE_NIGHTLY_BUILD=${{ needs.validate.outputs.rolling }}
@@ -132,16 +143,11 @@ jobs:
             org.opencontainers.image.version=${{ needs.validate.outputs.version }}
             org.opencontainers.image.licenses=MIT
             io.openwebide.database-schema=${{ needs.validate.outputs.schema }}
-      - name: Smoke-test bundled bridge and mounted Git access
-        run: |
-          docker run --rm openwebide:release-test openwebide-bridge --help
-          docker run --rm --network none --user 12345:12345 -v "$PWD/docker/csharp-test/check.sh:/csharp-test.sh:ro" openwebide:release-test bash /csharp-test.sh
-          docker run --rm --network none --user 12345:12345 -v "$PWD/docker/python-test/check.py:/python-test.py:ro" openwebide:release-test python3 /python-test.py
-          docker run --rm --network none --user 12345:12345 -v "$PWD/docker/go-test/check.py:/go-test.py:ro" openwebide:release-test python3 /go-test.py
-          docker run --rm --network none --user 12345:12345 -v "$PWD/docker/clangd-test/check.py:/clangd-test.py:ro" openwebide:release-test python3 /clangd-test.py
-          docker run --rm -v "$PWD/docker/git-ownership-test.sh:/git-ownership-test.sh:ro" openwebide:release-test bash /git-ownership-test.sh
-          bash docker/ssh-test/check.sh openwebide:release-test
-          python3 docker/https-test/check.py docker --image openwebide:release-test
+      - uses: ./.github/actions/check-container
+        with:
+          image: openwebide:release-test
+          web-components: ${{ runner.temp }}/openwebide-web-components
+          check-podman: ${{ matrix.arch == 'amd64' }}
       - name: Package Linux bridge from tested image
         env:
           RELEASE_TARGET: ${{ matrix.target }}

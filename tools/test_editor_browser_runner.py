@@ -1,5 +1,6 @@
 """A failed browser group must not suppress the remaining verified inventory."""
 import importlib.util
+import json
 import os
 from pathlib import Path
 import shlex
@@ -17,6 +18,29 @@ SPEC.loader.exec_module(RUNNER)
 
 
 class EditorBrowserRunnerTests(unittest.TestCase):
+    def test_export_stages_every_current_wasm_test_from_cargo(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            files = [root / "frontend-a.wasm", root / "components-b.wasm"]
+            for artifact in files:
+                artifact.write_bytes(artifact.name.encode())
+            records = [
+                {"reason": "compiler-artifact", "profile": {"test": True}, "executable": str(artifact)}
+                for artifact in files
+            ]
+            records.append({"reason": "compiler-artifact", "profile": {"test": False}, "executable": "app.wasm"})
+            destination = root / "export"
+            result = subprocess.CompletedProcess([], 0, "\n".join(map(json.dumps, records)))
+            with patch("sys.argv", ["runner", "--export-artifacts", str(destination)]), \
+                    patch.object(RUNNER.subprocess, "run", return_value=result) as run:
+                RUNNER.main()
+            run.assert_called_once()
+            self.assertIn("--no-run", run.call_args.args[0])
+            self.assertEqual(
+                {artifact.name: artifact.read_bytes() for artifact in destination.iterdir()},
+                {artifact.name: artifact.read_bytes() for artifact in files},
+            )
+
     def test_diagnostics_preserve_commands_and_continue_after_replay_failure(self):
         local = "editor::wrapped_paragraph_edits_reuse_exact_source_owned_geometry_local"
         remote = "editor::wrapped_paragraph_edits_reuse_exact_source_owned_geometry_remote"

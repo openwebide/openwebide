@@ -237,13 +237,23 @@ Unreleased changelog and link to the changelog rather than a numbered release.
 Tagged preview and stable builds retain their exact numbered versions.
 
 The shared CI workflow validates release tooling and PWA installation separately
-from compilation. Optimized web components, bundled default plugins and native
-contracts build independently. Production browser checks then share one packaged
-app across language, workspace, review, intelligence, input and pointer jobs.
-Each job verifies the package checksum and source commit before restoring it;
-the archive preserves executable permissions. Every group must pass the final
+from compilation. Ordinary CI smoke-tests its own container build. Release runs
+the same checks on the images it packages, including rootless Podman and Quadlet
+on amd64. The headless UI jobs share one compiled WASM test inventory across
+the non-editor suite and both editor shards.
+
+CI and Release each build the optimized frontend bundle, backend WASM and
+matching Spin manifest once for the requested commit. Release stamps the nightly
+version before building. The production browser app and Linux image jobs verify
+the archive checksum and commit before restoring it. The image jobs check that
+the copies of the web files in their images match the archive byte for byte.
+The bridge and runtime tools still build for each image's architecture. Docker
+builds from a local checkout compile the web files from source by default.
+
+Production browser checks share one packaged app across language, workspace,
+review, intelligence, input and pointer jobs. Each job verifies the app package
+checksum and source commit before restoring it. Every group must pass the final
 frontend gate, including both workspace modes and the existing scenario limits.
-This shortens feedback and lets a failed group be rerun against the same app.
 
 After publication, the macOS companions workflow downloads the same Linux-built
 plugin WASM bundle used by the browser checks. Intel and Apple Silicon runners
