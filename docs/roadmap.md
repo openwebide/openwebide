@@ -1429,8 +1429,10 @@ guides and installation walkthroughs against the final app before public launch.
   release is successful; local checks alone do not establish publication.
   Native companion packaging now reuses the shared compiled plugin WASM with
   commit/checksum and offline-host validation. Hosted Intel and Apple Silicon
-  jobs fell from 148/87 minutes to 63/35 minutes on the first integrated run;
-  Linux image build reuse and Cargo cache retention remain follow-up work.
+  jobs fell from 148/87 minutes to 63/35 minutes on the first integrated run.
+  Verify the shared web components and image byte comparisons on hosted amd64
+  and arm64 runners, and measure the effect on release build time. Cargo cache
+  retention remains follow-up work.
   Verify that the Linux release can publish through a macOS runner failure and
   that the separate macOS workflow subsequently publishes matching bridge archives.
   Nightlies run at 3:00 a.m. Central and skip unchanged successful heads; main

@@ -9,6 +9,12 @@ Scheduled nightly builds publish a rolling release; the last numbered prerelease
 
 ## [Unreleased]
 
+- Build the portable frontend and backend once per CI or release run. Test the
+  same web files in the production browser app and verify their contents in each
+  Linux image. Share one compiled frontend WASM test inventory across browser jobs.
+- Run container checks on the two Linux release images, including rootless Podman
+  on amd64.
+
 - Let ChromeDriver poll between batches of complete editor geometry checks.
   Keep the same reference rectangles and stale-owner assertions in both modes.
 

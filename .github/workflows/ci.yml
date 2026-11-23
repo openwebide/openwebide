@@ -11,6 +11,10 @@ on:
         description: Run the checks required to publish Linux images and install assets
         type: boolean
         default: false
+      nightly:
+        description: Match the rolling nightly version when building the browser execution host
+        type: boolean
+        default: false
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -52,6 +56,11 @@ jobs:
 
       - name: Test PWA caching and installation
         run: node --test frontend/pwa/pwa.test.cjs
+
+      - name: Test container supervisor
+        run: |
+          bash docker/entrypoint-test.sh
+          bash docker/ssh-init-test.sh
 
   backend-and-crates:
     runs-on: ubuntu-latest
@@ -113,9 +122,6 @@ jobs:
 
       - name: Tests (frontend native)
         run: cargo test -p openwebide-frontend
-
-      - name: Build backend component
-        run: cargo build -p openwebide-backend --target wasm32-wasip2 --release
 
   default-plugins:
     runs-on: ubuntu-latest
@@ -275,7 +281,13 @@ jobs:
       - name: Verify native Git metadata freshness
         run: cargo test -p openwebide-bridge --lib languages::host::repository -- --test-threads=1
 
+  web-components:
+    if: "!inputs.release"
+    uses: ./.github/workflows/web-components.yml
+
   frontend-build:
+    needs: web-components
+    if: "!cancelled() && (inputs.release || needs.web-components.result == 'success')"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -283,22 +295,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.98.1
-          components: llvm-tools, rust-analyzer, rust-src, rustfmt
-          targets: wasm32-unknown-unknown, wasm32-wasip2
 
-      - name: Prepare browser parser C compiler
-        timeout-minutes: 12
-        run: bash tools/setup-wasm-compiler.sh
-
-      - uses: Swatinem/rust-cache@v2
-
-      - name: Install Trunk
-        run: |
-          curl -sSL https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-x86_64-unknown-linux-gnu.tar.gz \
-            | tar -xz -C /usr/local/bin trunk
-
-      - name: Build frontend
-        run: cd frontend && trunk build --release
+      - uses: ./.github/actions/restore-web-components
+        with:
+          path: .
 
       - uses: ./.github/actions/setup-editor-browser
         id: chrome
@@ -313,25 +313,6 @@ jobs:
           python3 tools/check-editor-worker.py --fixture
           python3 tools/check-about.py
 
-      - name: Install Spin runtime for editor input verification
-        run: |
-          curl -fsSL https://github.com/spinframework/spin/releases/download/v4.1.0/spin-v4.1.0-linux-amd64.tar.gz \
-            | tar -xz -C /usr/local/bin spin
-
-      - name: Build backend for editor input verification
-        run: cargo build -p openwebide-backend --target wasm32-wasip2 --release
-
-      - name: Package optimized web components
-        run: |
-          tar -czf "$RUNNER_TEMP/production-web-components.tar.gz" \
-            frontend/dist target/wasm32-wasip2/release/openwebide_backend.wasm
-      - uses: actions/upload-artifact@v4
-        with:
-          name: production-web-components
-          path: ${{ runner.temp }}/production-web-components.tar.gz
-          if-no-files-found: error
-          retention-days: 3
-
   production-browser-app:
     runs-on: ubuntu-latest
     needs: [frontend-build, default-plugins]
@@ -341,12 +322,12 @@ jobs:
         with:
           toolchain: 1.98.1
       - uses: Swatinem/rust-cache@v2
-      - uses: actions/download-artifact@v4
+      - name: Stamp nightly version
+        if: inputs.nightly
+        run: python3 tools/release.py stamp-nightly --commit "$GITHUB_SHA"
+      - uses: ./.github/actions/restore-web-components
         with:
-          name: production-web-components
-          path: ${{ runner.temp }}
-      - name: Restore optimized web components
-        run: tar -xzf "$RUNNER_TEMP/production-web-components.tar.gz"
+          path: .
       - name: Load compiled language/default components
         uses: actions/download-artifact@v4
         with:
@@ -359,12 +340,15 @@ jobs:
       - name: Build release execution host with compiled defaults
         env:
           OPENWEBIDE_BUNDLED_ARTIFACTS: ${{ runner.temp }}/openwebide-defaults/bundled-plugins.json
-        run: cargo build -p openwebide-bridge --release --features bundled-defaults
+          OPENWEBIDE_BUILD_COMMIT: ${{ github.sha }}
+        run: |
+          python3 tools/release.py validate
+          cargo build -p openwebide-bridge --release --features bundled-defaults --locked
 
       - name: Package the app for production browser contracts
         run: |
           tar -czf "$RUNNER_TEMP/production-browser-app.tar.gz" \
-            frontend/dist \
+            Cargo.toml Cargo.lock spin.toml frontend/dist \
             target/wasm32-wasip2/release/openwebide_backend.wasm \
             target/release/openwebide-bridge
           (cd "$RUNNER_TEMP" && sha256sum production-browser-app.tar.gz > production-browser-app.sha256)
@@ -623,8 +607,39 @@ jobs:
           test "$APP_RESULT" = success
           test "$CONTRACT_RESULT" = success
 
+  frontend-ui-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.98.1
+          components: llvm-tools
+          targets: wasm32-unknown-unknown
+
+      - name: Prepare browser parser C compiler
+        timeout-minutes: 12
+        run: bash tools/setup-wasm-compiler.sh
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Compile the frontend browser test inventory
+        run: python3 tools/run-editor-browser-tests.py --export-artifacts "$RUNNER_TEMP/frontend-wasm-tests"
+
+      - name: Test frontend documentation
+        run: cargo test -p openwebide-frontend --release --target wasm32-unknown-unknown --doc -- --skip 'editor::'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-wasm-tests
+          path: ${{ runner.temp }}/frontend-wasm-tests/*.wasm
+          if-no-files-found: error
+          retention-days: 7
+
   frontend-ui-tests:
     runs-on: ubuntu-latest
+    needs: frontend-ui-build
     steps:
       - uses: actions/checkout@v4
 
@@ -658,14 +673,24 @@ jobs:
           curl -fsSL https://github.com/rustwasm/wasm-bindgen/releases/download/0.2.128/wasm-bindgen-0.2.128-x86_64-unknown-linux-musl.tar.gz \
             | tar -xz --strip-components=1 -C /usr/local/bin wasm-bindgen-0.2.128-x86_64-unknown-linux-musl/wasm-bindgen wasm-bindgen-0.2.128-x86_64-unknown-linux-musl/wasm-bindgen-test-runner
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-wasm-tests
+          path: ${{ runner.temp }}/frontend-wasm-tests
+
       - name: Tests (frontend UI)
+        working-directory: frontend
         env:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
           # Run the same contracts against optimized WASM to avoid loading the
           # ~250 MiB debug components module into Chrome. Partition editor and
           # other contracts so suite growth cannot exhaust one browser deadline.
           WASM_BINDGEN_TEST_TIMEOUT: "300"
-        run: cargo test -p openwebide-frontend --release --target wasm32-unknown-unknown -- --skip 'editor::'
+        run: |
+          shopt -s failglob
+          for artifact in "$RUNNER_TEMP"/frontend-wasm-tests/*.wasm; do
+            wasm-bindgen-test-runner "$artifact" --skip 'editor::'
+          done
 
       - name: Measure shared editor storage in browser WASM
         env:
@@ -674,24 +699,13 @@ jobs:
 
   editor-ui-tests:
     runs-on: ubuntu-latest
+    needs: frontend-ui-build
     strategy:
       fail-fast: false
       matrix:
         shard: ['1/2', '2/2']
     steps:
       - uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: 1.98.1
-          components: llvm-tools
-          targets: wasm32-unknown-unknown
-
-      - name: Prepare browser parser C compiler
-        timeout-minutes: 12
-        run: bash tools/setup-wasm-compiler.sh
-
-      - uses: Swatinem/rust-cache@v2
 
       - uses: ./.github/actions/setup-editor-browser
         id: chrome
@@ -708,6 +722,11 @@ jobs:
           curl -fsSL https://github.com/rustwasm/wasm-bindgen/releases/download/0.2.128/wasm-bindgen-0.2.128-x86_64-unknown-linux-musl.tar.gz \
             | tar -xz --strip-components=1 -C /usr/local/bin wasm-bindgen-0.2.128-x86_64-unknown-linux-musl/wasm-bindgen wasm-bindgen-0.2.128-x86_64-unknown-linux-musl/wasm-bindgen-test-runner
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-wasm-tests
+          path: ${{ runner.temp }}/frontend-wasm-tests
+
       - name: Tests (editor UI)
         env:
           CHROMEDRIVER: ${{ steps.chrome.outputs.chromedriver-path }}
@@ -715,7 +734,14 @@ jobs:
           # editor groups of at most 64 tests. Keep expensive matrices separate;
           # per-test readiness and every browser-run deadline are unchanged.
           WASM_BINDGEN_TEST_TIMEOUT: "300"
-        run: python3 tools/run-editor-browser-tests.py --shard "${{ matrix.shard }}" --diagnostics-dir "$RUNNER_TEMP/editor-browser-diagnostics"
+          EDITOR_SHARD: ${{ matrix.shard }}
+        run: |
+          shopt -s failglob
+          artifacts=()
+          for artifact in "$RUNNER_TEMP"/frontend-wasm-tests/*.wasm; do
+            artifacts+=(--artifact "$artifact")
+          done
+          python3 tools/run-editor-browser-tests.py "${artifacts[@]}" --shard "$EDITOR_SHARD" --diagnostics-dir "$RUNNER_TEMP/editor-browser-diagnostics"
 
       - name: Retain long replay driver diagnostics
         if: always()
@@ -727,21 +753,23 @@ jobs:
           retention-days: 7
 
   docker:
+    if: "!inputs.release"
+    needs: web-components
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: docker/setup-buildx-action@v3
 
-      - name: Test container supervisor
-        run: |
-          bash docker/entrypoint-test.sh
-          bash docker/ssh-init-test.sh
+      - uses: ./.github/actions/restore-web-components
+        with:
+          path: ${{ runner.temp }}/openwebide-web-components
 
       - name: Build container image
         uses: docker/build-push-action@v6
         with:
           context: .
+          build-contexts: web-components=${{ runner.temp }}/openwebide-web-components
           build-args: |
             OPENWEBIDE_BUILD_COMMIT=${{ github.sha }}
           load: true
@@ -749,42 +777,8 @@ jobs:
           cache-from: type=gha,scope=ci-docker
           cache-to: type=gha,mode=max,scope=ci-docker
 
-      - name: Check bundled bridge
-        run: docker run --rm openwebide:ci openwebide-bridge --help
-
-      - name: Check packaged .NET SDK and C# tools without network or root
-        run: docker run --rm --network none --user 12345:12345 -v "$PWD/docker/csharp-test/check.sh:/csharp-test.sh:ro" openwebide:ci bash /csharp-test.sh
-
-      - name: Check packaged Python and Pyright without network or root
-        run: docker run --rm --network none --user 12345:12345 -v "$PWD/docker/python-test/check.py:/python-test.py:ro" openwebide:ci python3 /python-test.py
-
-      - name: Check packaged C/C++ and clangd without network or root
-        run: docker run --rm --network none --user 12345:12345 -v "$PWD/docker/clangd-test/check.py:/clangd-test.py:ro" openwebide:ci python3 /clangd-test.py
-
-      - name: Check packaged Go and gopls without network or root
-        run: docker run --rm --network none --user 12345:12345 -v "$PWD/docker/go-test/check.py:/go-test.py:ro" openwebide:ci python3 /go-test.py
-
-      - name: Check SSH Git agent forwarding and strict host keys
-        run: bash docker/ssh-test/check.sh openwebide:ci
-
-      - name: Check host-owned workspace Git access
-        run: docker run --rm -v "$PWD/docker/git-ownership-test.sh:/git-ownership-test.sh:ro" openwebide:ci bash /git-ownership-test.sh
-
-      - name: Check HTTPS REST, SSE and WebSocket transport (Docker)
-        run: python3 docker/https-test/check.py docker
-
-      - name: Install rootless Podman
-        run: sudo apt-get update && sudo apt-get install -y podman
-
-      - name: Validate release Quadlet services without starting them
-        run: |
-          QUADLET_UNIT_DIRS="$PWD/deploy" /usr/lib/systemd/system-generators/podman-system-generator --user --dryrun > "$RUNNER_TEMP/quadlet-services"
-          grep -F 'openwebide.service' "$RUNNER_TEMP/quadlet-services"
-          grep -F 'openwebide-image.service' "$RUNNER_TEMP/quadlet-services"
-          grep -F 'ghcr.io/openwebide/openwebide:stable' "$RUNNER_TEMP/quadlet-services"
-
-      - name: Load the same image into rootless Podman
-        run: docker save openwebide:ci | podman load
-
-      - name: Check HTTPS REST, SSE and WebSocket transport (rootless Podman)
-        run: python3 docker/https-test/check.py podman --port 8447
+      - uses: ./.github/actions/check-container
+        with:
+          image: openwebide:ci
+          web-components: ${{ runner.temp }}/openwebide-web-components
+          check-podman: 'true'

@@ -44,7 +44,7 @@ COPY tools/setup-terraform-language-server.py /opt/openwebide-setup/
 COPY tools/terraform-language-server/versions.json /opt/openwebide-setup/terraform-language-server/
 RUN python3 /opt/openwebide-setup/setup-terraform-language-server.py --tool-path /opt/openwebide-terraform-language-server
 
-# --- builder: Spin runtime + Rust + Trunk; builds both components via `spin build` ---
+# --- builder: native bridge, plugin compiler and toolchain ---
 FROM ghcr.io/spinframework/spin:v4.1.0 AS builder
 
 RUN apt-get update && \
@@ -65,17 +65,6 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
         | sh -s -- -y --profile minimal --default-toolchain 1.98.1
 RUN rustup component add llvm-tools rust-analyzer rust-src rustfmt
 
-# Trunk (version must match .github/workflows/ci.yml)
-ARG TARGETARCH
-RUN set -eux; \
-    case "${TARGETARCH}" in \
-        amd64) trunk_arch=x86_64-unknown-linux-gnu ;; \
-        arm64) trunk_arch=aarch64-unknown-linux-gnu ;; \
-        *) echo "unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
-    esac; \
-    curl -sSL "https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-${trunk_arch}.tar.gz" \
-        | tar -xz -C /usr/local/bin trunk
-
 ARG OPENWEBIDE_NIGHTLY_BUILD=false
 ARG OPENWEBIDE_BUILD_COMMIT=unknown
 ENV OPENWEBIDE_BUILD_COMMIT=${OPENWEBIDE_BUILD_COMMIT}
@@ -87,18 +76,37 @@ RUN if [ "$OPENWEBIDE_NIGHTLY_BUILD" = true ]; then \
     fi
 # Regenerate only the locked subset from its immutable upstream Git commit.
 RUN python3 tools/bundle_plugins.py
-# Runs the [component.x.build] commands from spin.toml:
-#   backend  -> cargo build -p openwebide-backend --target wasm32-wasip2 --release
-#   frontend -> cd frontend && trunk build --release
-# BuildKit can inject an OTLP Unix socket that Spin does not support.
-# Disable only build-command telemetry; runtime configuration remains available.
-RUN OTEL_SDK_DISABLED=1 spin build
 # Compile the selected defaults once in the same isolation used for user installs.
 # The final host embeds validated components; first launch requires no Git/network/compiler.
 RUN cargo build -p openwebide-plugin-build -p openwebide-plugin-runtime --bin openwebide-plugin-build --bin openwebide-bundle-plugins --release --locked && \
     /src/target/release/openwebide-bundle-plugins bridge/bundled/plugins.json /src/target/bundled-plugins.json && \
     OPENWEBIDE_BUNDLED_ARTIFACTS=/src/target/bundled-plugins.json \
     cargo build -p openwebide-bridge --features bundled-defaults --release --locked
+
+# Source builds use this stage. CI supplies the same files as a named context.
+FROM builder AS web-build
+# Trunk (version must match .github/workflows/web-components.yml)
+ARG TARGETARCH
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64) trunk_arch=x86_64-unknown-linux-gnu ;; \
+        arm64) trunk_arch=aarch64-unknown-linux-gnu ;; \
+        *) echo "unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    curl -sSL "https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-${trunk_arch}.tar.gz" \
+        | tar -xz -C /usr/local/bin trunk
+
+# Runs the [component.x.build] commands from spin.toml:
+#   backend  -> cargo build -p openwebide-backend --target wasm32-wasip2 --release
+#   frontend -> cd frontend && trunk build --release
+# BuildKit can inject an OTLP Unix socket that Spin does not support.
+# Disable only build-command telemetry; runtime configuration remains available.
+RUN OTEL_SDK_DISABLED=1 spin build
+
+FROM scratch AS web-components
+COPY --from=web-build /src/spin.toml /spin.toml
+COPY --from=web-build /src/target/wasm32-wasip2/release/openwebide_backend.wasm /target/wasm32-wasip2/release/
+COPY --from=web-build /src/frontend/dist /frontend/dist
 
 # --- OS installation policy, shared by runtime and persistence checks ---
 FROM ghcr.io/spinframework/spin:v4.1.0 AS runtime-state
@@ -175,10 +183,7 @@ RUN ln -s rustup /opt/openwebide-toolchain/bin/cargo && \
 COPY --chmod=755 docker/entrypoint.sh ./entrypoint.sh
 COPY --chmod=755 docker/ssh-init.sh /usr/local/bin/openwebide-ssh-init
 COPY --chmod=755 docker/git.sh /usr/local/bin/git
-COPY --from=builder /src/spin.toml ./
-COPY --from=builder /src/target/wasm32-wasip2/release/openwebide_backend.wasm \
-     ./target/wasm32-wasip2/release/
-COPY --from=builder /src/frontend/dist ./frontend/dist
+COPY --from=web-components / ./
 COPY --from=builder /src/bridge/bundled/LICENSE ./licenses/core-plugins-MIT.txt
 
 # Frontend and API share one port; the bridge uses its own.

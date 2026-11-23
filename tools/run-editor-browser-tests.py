@@ -4,8 +4,9 @@
 Use Cargo's current test artifacts and the official runner's test inventory.
 Each group starts a fresh browser with the existing runner/readiness deadlines.
 The expensive font matrices and near-limit replay contracts retain independent
-runs. --check verifies the
-complete selection plan without executing tests; --artifact accepts built WASM.
+runs. --check verifies the complete selection plan without executing tests.
+--export-artifacts stages the current Cargo inventory for CI, where --artifact
+runs that same inventory on each shard.
 """
 import argparse
 import json
@@ -42,7 +43,7 @@ def inventory(runner, artifact, arguments=()):
 def artifacts():
     result = subprocess.run(
         ["cargo", "test", "-p", "openwebide-frontend", "--release",
-         "--target", "wasm32-unknown-unknown", "--no-run", "--message-format=json"],
+         "--target", "wasm32-unknown-unknown", "--no-run", "--message-format=json-render-diagnostics"],
         stdout=subprocess.PIPE, text=True, check=True, cwd=ROOT,
     )
     files = set()
@@ -104,13 +105,23 @@ def parse_shard(spec):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--artifact", type=Path, action="append")
+    artifact_source = parser.add_mutually_exclusive_group()
+    artifact_source.add_argument("--artifact", type=Path, action="append")
+    artifact_source.add_argument("--export-artifacts", type=Path)
     parser.add_argument("--max-tests", type=int, default=64)
     parser.add_argument("--shard", type=str, default=None)
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--diagnostics-dir", type=Path,
                         help="Retain verbose driver logs for independent long replay contracts")
     args = parser.parse_args()
+    if args.export_artifacts is not None:
+        files = artifacts()
+        assert len({path.name for path in files}) == len(files), "WASM artifact names must be unique"
+        args.export_artifacts.mkdir()
+        for path in files:
+            shutil.copyfile(path, args.export_artifacts / path.name)
+        return
+
     assert args.max_tests > 0, "Group size must be positive"
     shard_index, shard_total = parse_shard(args.shard)
     runner = shutil.which("wasm-bindgen-test-runner")

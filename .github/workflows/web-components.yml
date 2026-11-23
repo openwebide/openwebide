@@ -1,0 +1,64 @@
+name: Build web components
+
+on:
+  workflow_call:
+    inputs:
+      nightly:
+        description: Stamp the web components for a rolling nightly
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    env:
+      CARGO_TERM_COLOR: always
+      OPENWEBIDE_BUILD_COMMIT: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.98.1
+          components: llvm-tools
+          targets: wasm32-unknown-unknown, wasm32-wasip2
+
+      - name: Prepare browser parser C compiler
+        timeout-minutes: 12
+        run: bash tools/setup-wasm-compiler.sh
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Stamp nightly version
+        if: inputs.nightly
+        run: python3 tools/release.py stamp-nightly --commit "$GITHUB_SHA"
+
+      - name: Install Trunk
+        run: |
+          curl -fsSL https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-x86_64-unknown-linux-gnu.tar.gz \
+            | tar -xz -C /usr/local/bin trunk
+
+      - name: Build frontend
+        working-directory: frontend
+        run: trunk build --release
+
+      - name: Build backend
+        run: cargo build -p openwebide-backend --target wasm32-wasip2 --release --locked
+
+      - name: Package portable web components
+        run: |
+          tar -czf "$RUNNER_TEMP/production-web-components.tar.gz" \
+            spin.toml frontend/dist target/wasm32-wasip2/release/openwebide_backend.wasm
+          (cd "$RUNNER_TEMP" && sha256sum production-web-components.tar.gz > production-web-components.sha256)
+          printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/production-web-components.commit"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: production-web-components
+          path: ${{ runner.temp }}/production-web-components.*
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
