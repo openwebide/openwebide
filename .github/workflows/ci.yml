@@ -295,6 +295,19 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.98.1
+          components: llvm-tools
+          targets: wasm32-unknown-unknown
+
+      - name: Prepare browser parser C compiler
+        timeout-minutes: 12
+        run: bash tools/setup-wasm-compiler.sh
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install Trunk
+        run: |
+          curl -fsSL https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-x86_64-unknown-linux-gnu.tar.gz \
+            | tar -xz -C /usr/local/bin trunk
 
       - uses: ./.github/actions/restore-web-components
         with:
