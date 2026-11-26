@@ -329,6 +329,9 @@ jobs:
   production-browser-app:
     runs-on: ubuntu-latest
     needs: [frontend-build, default-plugins]
+    # Implicit success() skips jobs when any transitive ancestor (web-components
+    # in release mode) was skipped, even after frontend-build succeeds.
+    if: "!cancelled() && needs.frontend-build.result == 'success' && needs.default-plugins.result == 'success'"
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
@@ -376,6 +379,7 @@ jobs:
   production-browser-tests:
     runs-on: ubuntu-latest
     needs: production-browser-app
+    if: "!cancelled() && needs.production-browser-app.result == 'success'"
     strategy:
       fail-fast: false
       matrix:
