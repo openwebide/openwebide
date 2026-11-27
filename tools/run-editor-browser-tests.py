@@ -19,6 +19,7 @@ import subprocess
 
 MATRICES = {
     "bounded_paragraph_geometry_preserves_fonts_features_and_whitespace_in_both_modes",
+    "bounded_wrapped_paragraphs_preserve_complete_styled_geometry_in_both_modes",
     "paragraph_limit_geometry_matches_complete_rows_in_both_modes",
 }
 LONG_REPLAYS = {
