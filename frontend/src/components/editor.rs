@@ -400,14 +400,14 @@ pub(super) fn reveal_editor_caret(
     textarea: &web_sys::HtmlTextAreaElement,
     paint: RwSignal<Option<EditorPaint>>,
 ) {
-    reveal_editor_caret_with_retry(actions, textarea, paint, true);
+    reveal_editor_caret_with_retry(actions, textarea, paint, 6);
 }
 
 fn reveal_editor_caret_with_retry(
     actions: EditorActions,
     textarea: &web_sys::HtmlTextAreaElement,
     paint: RwSignal<Option<EditorPaint>>,
-    retry: bool,
+    retries: u8,
 ) {
     if !current_editor_target(actions, textarea) {
         return;
@@ -421,9 +421,9 @@ fn reveal_editor_caret_with_retry(
         .and_then(|paint| paint.caret.run(selection.head))
     else {
         // A source motion can precede the reactive paint/cache refresh. Retry
-        // after that frame instead of silently losing the explicit reveal.
+        // across a few frames instead of silently losing the explicit reveal.
         // New source, selection, account or scroll intent cancels the request.
-        if retry {
+        if retries > 0 {
             let scope = untrack(|| actions.presentation_scope());
             let scroll = crate::viewport::editor_scroll(textarea);
             let position = (scroll.scroll_top(), scroll.scroll_left());
@@ -439,7 +439,7 @@ fn reveal_editor_caret_with_retry(
                         && actions.selection(&source) == Some(selection)
                         && (scroll.scroll_top(), scroll.scroll_left()) == position
                     {
-                        reveal_editor_caret_with_retry(actions, &textarea, paint, false);
+                        reveal_editor_caret_with_retry(actions, &textarea, paint, retries - 1);
                     }
                 });
             });

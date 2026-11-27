@@ -38,7 +38,9 @@ def options(browser):
 
 def reveal_caret(browser):
     # Programmatic selection does not reveal a caret in the scroll surface.
-    # Use real navigation to reveal it without changing the intended position.
+    # Wait for initial highlight paint so caret geometry is ready, then use
+    # real navigation to reveal it without changing the intended position.
+    wait('painted editor before caret reveal', lambda: script(browser, "return !!document.querySelector('.highlight-ready');"))
     before = script(browser, "const i=document.querySelector('textarea[data-editor-path]');return {value:i.value,start:i.selectionStart,end:i.selectionEnd};")
     assert before['start'] == before['end'], before
     for arrow in (['\ue012', '\ue014'] if before['start'] else ['\ue014', '\ue012']):
